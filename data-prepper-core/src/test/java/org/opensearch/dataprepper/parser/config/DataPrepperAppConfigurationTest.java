@@ -5,14 +5,13 @@
 
 package org.opensearch.dataprepper.parser.config;
 
-import org.opensearch.dataprepper.TestDataProvider;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.env.Environment;
+import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,91 +32,53 @@ import static org.mockito.Mockito.when;
 class DataPrepperAppConfigurationTest {
 
     private static final DataPrepperAppConfiguration appConfiguration = new DataPrepperAppConfiguration();
-    private static final String pipelineConfigFilePath = "~/.config/data-prepper/pipeline.yaml";
-    private static final String dataPrepperConfigFilePath = "~/.config/data-prepper/data-prepper-config.yaml";
 
     @Test
-    public void testGivenValidCommandLineArgumentThenDataPrepperArgsBeanCreated() {
-        final Environment env = mock(Environment.class);
-
-        when(env.getProperty("nonOptionArgs"))
-                .thenReturn(pipelineConfigFilePath);
-
-        final DataPrepperArgs args = appConfiguration.dataPrepperArgs(env);
-
-        assertThat(args.getPipelineConfigFileLocation(), is(pipelineConfigFilePath));
-        assertThat(args.getDataPrepperConfigFileLocation(), is(nullValue()));
-    }
-
-    @Test
-    public void testGivenValidCommandLineArgumentsThenDataPrepperArgsBeanCreated() {
-        final Environment env = mock(Environment.class);
-
-        when(env.getProperty("nonOptionArgs"))
-                .thenReturn(pipelineConfigFilePath + "," + dataPrepperConfigFilePath);
-
-        final DataPrepperArgs args = appConfiguration.dataPrepperArgs(env);
-
-        assertThat(args.getPipelineConfigFileLocation(), is(pipelineConfigFilePath));
-        assertThat(args.getDataPrepperConfigFileLocation(), is(dataPrepperConfigFilePath));
-    }
-
-    @Test
-    public void testGivenNoCommandLineArgumentsThenExceptionThrown() {
-        final Environment env = mock(Environment.class);
-
-        assertThrows(
-                RuntimeException.class,
-                () -> appConfiguration.dataPrepperArgs(env));
-    }
-
-
-    @Test
-    public void testGivenNoPipelineConfigArgThenResultOfObjectMapperReadValueIsReturned() {
-        final DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
+    void testGivenNoPipelineConfigArgThenResultOfObjectMapperReadValueIsReturned() {
+        final FileStructurePathProvider fileStructurePathProvider = mock(FileStructurePathProvider.class);
         final ObjectMapper objectMapper = mock(ObjectMapper.class);
 
-        final DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper);
+        final DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(fileStructurePathProvider, objectMapper);
 
-        verify(dataPrepperArgs)
+        verify(fileStructurePathProvider)
                 .getDataPrepperConfigFileLocation();
         assertThat(configuration, notNullValue());
     }
 
     @Test
-    public void testGivenPipelineConfigArgThenResultOfObjectMapperReadValueIsReturned() throws IOException {
-        final DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
+    void testGivenPipelineConfigArgThenResultOfObjectMapperReadValueIsReturned() throws IOException {
+        final FileStructurePathProvider fileStructurePathProvider = mock(FileStructurePathProvider.class);
         final ObjectMapper objectMapper = mock(ObjectMapper.class);
         final DataPrepperConfiguration expected = mock(DataPrepperConfiguration.class);
 
-        when(dataPrepperArgs.getDataPrepperConfigFileLocation())
+        when(fileStructurePathProvider.getDataPrepperConfigFileLocation())
                 .thenReturn(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
 
         when(objectMapper.readValue(any(File.class), eq(DataPrepperConfiguration.class)))
                 .thenReturn(expected);
 
-        final DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper);
+        final DataPrepperConfiguration configuration = appConfiguration.dataPrepperConfiguration(fileStructurePathProvider, objectMapper);
 
         assertThat(configuration, is(expected));
     }
 
     @Test
-    public void testGivenInvalidPipelineConfigArgThenExceptionThrown() throws IOException {
-        final DataPrepperArgs dataPrepperArgs = mock(DataPrepperArgs.class);
+    void testGivenInvalidPipelineConfigArgThenExceptionThrown() throws IOException {
+        final FileStructurePathProvider fileStructurePathProvider = mock(FileStructurePathProvider.class);
         final ObjectMapper objectMapper = mock(ObjectMapper.class);
 
-        when(dataPrepperArgs.getDataPrepperConfigFileLocation())
+        when(fileStructurePathProvider.getDataPrepperConfigFileLocation())
                 .thenReturn(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
 
         when(objectMapper.readValue(any(File.class), eq(DataPrepperConfiguration.class)))
                 .thenThrow(new IOException());
 
 
-        assertThrows(IllegalArgumentException.class, () -> appConfiguration.dataPrepperConfiguration(dataPrepperArgs, objectMapper));
+        assertThrows(IllegalArgumentException.class, () -> appConfiguration.dataPrepperConfiguration(fileStructurePathProvider, objectMapper));
     }
 
     @Test
-    public void testPluginModelFromDataPrepperConfigurationAuthentication() {
+    void testPluginModelFromDataPrepperConfigurationAuthentication() {
         final DataPrepperConfiguration configuration = mock(DataPrepperConfiguration.class);
 
         final PluginModel pluginModel = appConfiguration.authentication(configuration);
@@ -127,7 +88,7 @@ class DataPrepperAppConfigurationTest {
     }
 
     @Test
-    public void testGivenReturnAuthenticationThenBeanShouldEqualAuthentication() {
+    void testGivenReturnAuthenticationThenBeanShouldEqualAuthentication() {
         final DataPrepperConfiguration configuration = mock(DataPrepperConfiguration.class);
         final PluginModel expected = mock(PluginModel.class);
 

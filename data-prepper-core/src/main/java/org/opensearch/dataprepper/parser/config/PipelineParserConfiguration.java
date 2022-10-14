@@ -18,13 +18,13 @@ public class PipelineParserConfiguration {
 
     @Bean
     public PipelineParser pipelineParser(
-            final DataPrepperArgs dataPrepperArgs,
+            final FileStructurePathProvider fileStructurePathProvider,
             final PluginFactory pluginFactory,
             final PeerForwarderProvider peerForwarderProvider,
             final RouterFactory routerFactory,
             final DataPrepperConfiguration dataPrepperConfiguration
             ) {
-        return new PipelineParser(dataPrepperArgs.getPipelineConfigFileLocation(),
+        return new PipelineParser(fileStructurePathProvider.getPipelineConfigFileLocation(),
                 pluginFactory,
                 peerForwarderProvider,
                 routerFactory,
