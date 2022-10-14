@@ -640,5 +640,51 @@ public class JacksonSpanTest {
 
             assertThrows(IllegalArgumentException.class, builder::build);
         }
+
+        @Test
+        void testBuilder_withData_with_event_valid_data() {
+	    final Map<String, Object> data = new HashMap<String, Object>();
+	    final String traceId = "414243";
+	    final String kind = "SPAN_KIND_INTERNAL";
+	    final String traceGroup = "FRUITSGroup";
+	    final String traceGroupFields = "{\"endTime\":\"1970-01-01T00:00:00Z\",\"durationInNanos\": 0,\"statusCode\": 0}";
+	    final String spanId = "313030";
+	    final String name = "FRUITS";
+	    final String startTime = "1970-01-01T00:00:00Z";
+	    final String endTime = "1970-01-02T00:00:00Z";
+	    final String durationInNanos = "100";
+	    data.put("traceId", traceId);
+	    data.put("kind", kind);
+	    data.put("traceGroup", traceGroup);
+	    data.put("traceGroupFields", traceGroupFields);
+	    data.put("spanId", spanId);
+	    data.put("name", name);
+	    data.put("startTime", startTime);
+	    data.put("endTime", endTime);
+	    data.put("durationInNanos", durationInNanos);
+
+            EventMetadata eventMetadata = mock(EventMetadata.class);
+            final Instant now = Instant.now();
+            when(eventMetadata.getEventType()).thenReturn(String.valueOf(EventType.TRACE));
+            when(eventMetadata.getTimeReceived()).thenReturn(now);
+
+
+            final JacksonSpan jacksonSpan = JacksonSpan.builder()
+                    .withData(data)
+                    .withEventMetadata(eventMetadata)
+                    .build();
+
+            assertThat(jacksonSpan, is(notNullValue()));
+            assertThat(jacksonSpan.getMetadata(), is(notNullValue()));
+            assertThat(jacksonSpan.getMetadata().getTimeReceived(), equalTo(now));
+            assertThat(jacksonSpan.toMap().get("traceId"), equalTo(traceId));
+            assertThat(jacksonSpan.toMap().get("kind"), equalTo(kind));
+            assertThat(jacksonSpan.toMap().get("traceGroup"), equalTo(traceGroup));
+            assertThat(jacksonSpan.toMap().get("spanId"), equalTo(spanId));
+            assertThat(jacksonSpan.toMap().get("name"), equalTo(name));
+            assertThat(jacksonSpan.toMap().get("startTime"), equalTo(startTime));
+            assertThat(jacksonSpan.toMap().get("endTime"), equalTo(endTime));
+            assertThat(jacksonSpan.toMap().get("durationInNanos"), equalTo(durationInNanos));
+        }
     }
 }

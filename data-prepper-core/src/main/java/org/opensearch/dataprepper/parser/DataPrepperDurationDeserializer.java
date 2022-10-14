@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
  */
 public class DataPrepperDurationDeserializer extends StdDeserializer<Duration> {
 
-    private static final String SIMPLE_DURATION_REGEX = "^([1-9]\\d*)(s|ms)$";
+    private static final String SIMPLE_DURATION_REGEX = "^(0|[1-9]\\d*)(s|ms)$";
     private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(SIMPLE_DURATION_REGEX);
 
     public DataPrepperDurationDeserializer() {
