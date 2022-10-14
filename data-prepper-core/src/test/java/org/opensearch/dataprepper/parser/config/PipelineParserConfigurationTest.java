@@ -26,7 +26,7 @@ class PipelineParserConfigurationTest {
     private static final PipelineParserConfiguration pipelineParserConfiguration = new PipelineParserConfiguration();
 
     @Mock
-    private DataPrepperArgs args;
+    private FileStructurePathProvider fileStructurePathProvider;
 
     @Mock
     private PluginFactory pluginFactory;
@@ -43,13 +43,13 @@ class PipelineParserConfigurationTest {
     @Test
     void pipelineParser() {
         final String pipelineConfigFileLocation = "hot soup";
-        when(args.getPipelineConfigFileLocation())
+        when(fileStructurePathProvider.getPipelineConfigFileLocation())
                 .thenReturn(pipelineConfigFileLocation);
 
         final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(
-                args, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration);
+                fileStructurePathProvider, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration);
 
         assertThat(pipelineParser, is(notNullValue()));
-        verify(args).getPipelineConfigFileLocation();
+        verify(fileStructurePathProvider).getPipelineConfigFileLocation();
     }
 }

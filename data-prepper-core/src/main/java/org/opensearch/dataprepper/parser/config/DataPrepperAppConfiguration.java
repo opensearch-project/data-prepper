@@ -5,17 +5,13 @@
 
 package org.opensearch.dataprepper.parser.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.CommandLinePropertySource;
-import org.springframework.core.env.Environment;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,30 +19,13 @@ import java.time.Duration;
 
 @Configuration
 public class DataPrepperAppConfiguration {
-    private static final Logger LOG = LoggerFactory.getLogger(DataPrepperAppConfiguration.class);
-    private static final String COMMAND_LINE_ARG_DELIMITER = ",";
-
-    @Bean
-    public DataPrepperArgs dataPrepperArgs(final Environment environment) {
-        final String commandLineArgs = environment.getProperty(CommandLinePropertySource.DEFAULT_NON_OPTION_ARGS_PROPERTY_NAME);
-
-        LOG.info("Command line args: {}", commandLineArgs);
-
-        if (commandLineArgs != null) {
-            final String[] args = commandLineArgs.split(COMMAND_LINE_ARG_DELIMITER);
-            return new DataPrepperArgs(args);
-        }
-        else {
-            throw new RuntimeException("Configuration file command line argument required but none found");
-        }
-    }
 
     @Bean
     public DataPrepperConfiguration dataPrepperConfiguration(
-            final DataPrepperArgs dataPrepperArgs,
+            final FileStructurePathProvider fileStructurePathProvider,
             final ObjectMapper objectMapper
     ) {
-        final String dataPrepperConfigFileLocation = dataPrepperArgs.getDataPrepperConfigFileLocation();
+        final String dataPrepperConfigFileLocation = fileStructurePathProvider.getDataPrepperConfigFileLocation();
         if (dataPrepperConfigFileLocation != null) {
             final File configurationFile = new File(dataPrepperConfigFileLocation);
             try {

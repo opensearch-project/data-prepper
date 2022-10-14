@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.parser.config;
+package org.opensearch.dataprepper;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +26,7 @@ class DataPrepperArgsTest {
     private static final String LOGSTASH_PIPELINE_DIRECTORY_PATH = "src/test/resources/logstash-conf";
 
     @Test
-    public void testGivenSingleArgumentThenAssignedToPipelineConfig() {
+    void testGivenSingleArgumentThenAssignedToPipelineConfig() {
         final DataPrepperArgs args = new DataPrepperArgs(PIPELINE_FILE_PATH);
 
         assertThat(args, is(notNullValue()));
@@ -35,7 +35,7 @@ class DataPrepperArgsTest {
     }
 
     @Test
-    public void testGivenTwoArgumentThenAssignedCorrectly() {
+    void testGivenTwoArgumentThenAssignedCorrectly() {
         final DataPrepperArgs args = new DataPrepperArgs(PIPELINE_FILE_PATH, DP_CONFIG_YAML_FILE_PATH);
 
         assertThat(args, is(notNullValue()));
@@ -44,28 +44,28 @@ class DataPrepperArgsTest {
     }
 
     @Test
-    public void testGivenThreeArgumentThenThrowException() {
+    void testGivenThreeArgumentThenThrowException() {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new DataPrepperArgs(PIPELINE_FILE_PATH, LOGSTASH_PIPELINE_FILE_PATH, DP_CONFIG_YAML_FILE_PATH));
     }
 
     @Test
-    public void testGivenNoArgumentThenThrowException() {
+    void testGivenNoArgumentThenThrowException() {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new DataPrepperArgs(new String[]{}));
     }
 
     @Test
-    public void testGivenNullArgumentThenThrowException() {
+    void testGivenNullArgumentThenThrowException() {
         assertThrows(
                 IllegalArgumentException.class,
                 DataPrepperArgs::new);
     }
 
     @Test
-    public void testGivenLogstashConfigPathThenPipelineConfigCreated() {
+    void testGivenLogstashConfigPathThenPipelineConfigCreated() {
         final DataPrepperArgs args = new DataPrepperArgs(LOGSTASH_PIPELINE_FILE_PATH, DP_CONFIG_YAML_FILE_PATH);
 
         final String configFileEnding = Paths.get("src", "test", "resources", "logstash-filter.yaml").toString();
@@ -78,7 +78,7 @@ class DataPrepperArgsTest {
     }
 
     @Test
-    public void testGivenLogstashConfigDirectoryThenPipelineConfigCreated() {
+    void testGivenLogstashConfigDirectoryThenPipelineConfigCreated() {
         final DataPrepperArgs args = new DataPrepperArgs(LOGSTASH_PIPELINE_DIRECTORY_PATH, DP_CONFIG_YAML_FILE_PATH);
 
         final String configFile = Paths.get("src", "test", "resources", "logstash-conf/").toString();
@@ -89,7 +89,7 @@ class DataPrepperArgsTest {
     }
 
     @Test
-    public void testGivenInvalidLogstashConfigPathThenThrowException() {
+    void testGivenInvalidLogstashConfigPathThenThrowException() {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> new DataPrepperArgs("bad-file-path.conf"));
