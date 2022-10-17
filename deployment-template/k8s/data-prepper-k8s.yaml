@@ -95,7 +95,7 @@ spec:
         app: data-prepper
     spec:
       containers:
-        - image: amazon/opendistro-for-elasticsearch-data-prepper:2.0
+        - image: opensearchproject/data-prepper:2
           name: data-prepper
           ports:
             - containerPort: 21890
