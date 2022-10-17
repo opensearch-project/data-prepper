@@ -13,6 +13,10 @@ data:
           health_check_service: true
           ssl: false
       processor:
+        - peer_forwarder:
+            discovery_mode: "dns"
+            domain_name: "data-prepper-headless"
+            ssl: false
       sink:
         - pipeline:
             name: "raw-pipeline"
@@ -37,10 +41,6 @@ data:
         - stdout:
   data-prepper-config.yaml: |
     ssl: false
-    peer_forwarder:
-      ssl: false
-      discovery_mode: "dns"
-      domain_name: "data-prepper-headless"
 ---
 apiVersion: v1
 kind: Service
@@ -95,25 +95,32 @@ spec:
         app: data-prepper
     spec:
       containers:
-        - args:
-            - java
-            - -jar
-            - /usr/share/data-prepper/data-prepper.jar
-            - /etc/data-prepper/pipelines.yaml
-            - /etc/data-prepper/data-prepper-config.yaml
-          image: opensearchproject/data-prepper:latest
+        - image: amazon/opendistro-for-elasticsearch-data-prepper:2.0
           name: data-prepper
           ports:
             - containerPort: 21890
           resources: {}
           volumeMounts:
-            - mountPath: /etc/data-prepper
-              name: prepper-configmap-claim0
+            - name: prepper-configmap-config
+              mountPath: /usr/share/data-prepper/config/data-prepper-config.yaml
+              subPath: data-prepper-config.yaml
+            - name: prepper-configmap-pipelines
+              mountPath: /usr/share/data-prepper/pipelines/pipelines.yaml
+              subPath: pipelines.yaml
       restartPolicy: Always
       serviceAccountName: ""
       volumes:
-        - name: prepper-configmap-claim0
+        - name: prepper-configmap-config
           configMap:
             name: data-prepper-config
+            items:
+              - key: data-prepper-config.yaml
+                path: data-prepper-config.yaml
+        - name: prepper-configmap-pipelines
+          configMap:
+            name: data-prepper-config
+            items:
+              - key: pipelines.yaml
+                path: pipelines.yaml
 status: {}
 ---
