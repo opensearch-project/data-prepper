@@ -1,22 +1,22 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: data-prepper
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
     app: data-prepper
   name: data-prepper-config
+  namespace: data-prepper
 data:
   pipelines.yaml: |
     entry-pipeline:
       delay: "100"
       source:
         otel_trace_source:
-          health_check_service: true
           ssl: false
-      processor:
-        - peer_forwarder:
-            discovery_mode: "dns"
-            domain_name: "data-prepper-headless"
-            ssl: false
       sink:
         - pipeline:
             name: "raw-pipeline"
@@ -41,6 +41,9 @@ data:
         - stdout:
   data-prepper-config.yaml: |
     ssl: false
+    peer_forwarder:
+      discovery_mode: dns
+      domain_name: "data-prepper-cluster.my-domain.net"
 ---
 apiVersion: v1
 kind: Service
@@ -48,6 +51,7 @@ metadata:
   labels:
     app: data-prepper
   name: data-prepper-headless
+  namespace: data-prepper
 spec:
   clusterIP: None
   ports:
@@ -65,6 +69,7 @@ metadata:
   labels:
     app: data-prepper
   name: data-prepper-metrics
+  namespace: data-prepper
 spec:
   type: NodePort
   ports:
@@ -82,6 +87,7 @@ metadata:
   labels:
     app: data-prepper
   name: data-prepper
+  namespace: data-prepper
 spec:
   replicas: 1
   selector:
@@ -124,3 +130,4 @@ spec:
                 path: pipelines.yaml
 status: {}
 ---
+
