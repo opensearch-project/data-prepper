@@ -123,6 +123,12 @@ subprojects {
                 }
                 because 'Fixes WS-2021-0419 DoS vulnerability'
             }
+            implementation('com.google.protobuf:protobuf-java-util') {
+                version {
+                    require '3.21.7'
+                }
+                because 'Fixes CVE-2022-3171'
+            }
         }
         constraints {
             implementation('io.netty:netty-tcnative-boringssl-static') {
