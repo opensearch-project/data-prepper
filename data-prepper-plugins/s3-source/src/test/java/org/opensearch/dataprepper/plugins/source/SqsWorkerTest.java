@@ -102,7 +102,10 @@ class SqsWorkerTest {
 
     @AfterEach
     void cleanup() {
-        verifyNoMoreInteractions(sqsMessagesReceivedCounter, sqsMessagesDeletedCounter, sqsMessagesFailedCounter, sqsMessageDelayTimer);
+        verifyNoMoreInteractions(sqsMessagesReceivedCounter);
+        verifyNoMoreInteractions(sqsMessagesDeletedCounter);
+        verifyNoMoreInteractions(sqsMessagesFailedCounter);
+        verifyNoMoreInteractions(sqsMessageDelayTimer);
     }
 
     @Test
@@ -193,6 +196,39 @@ class SqsWorkerTest {
         verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
         verify(sqsMessagesReceivedCounter).increment(1);
         verify(sqsMessagesFailedCounter).increment();
+    }
+
+    @Test
+    void processSqsMessages_should_not_interact_with_S3Service_and_delete_message_if_TestEvent() {
+        final String messageId = UUID.randomUUID().toString();
+        final String receiptHandle = UUID.randomUUID().toString();
+        final Message message = mock(Message.class);
+        when(message.body()).thenReturn("{\"Service\":\"Amazon S3\",\"Event\":\"s3:TestEvent\",\"Time\":\"2022-10-15T16:36:25.510Z\"," +
+                "\"Bucket\":\"bucketname\",\"RequestId\":\"abcdefg\",\"HostId\":\"hijklm\"}");
+        when(message.messageId()).thenReturn(messageId);
+        when(message.receiptHandle()).thenReturn(receiptHandle);
+
+        final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+        when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+
+        final int messagesProcessed = sqsWorker.processSqsMessages();
+        assertThat(messagesProcessed, equalTo(1));
+        verifyNoInteractions(s3Service);
+
+        final ArgumentCaptor<DeleteMessageBatchRequest> deleteMessageBatchRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteMessageBatchRequest.class);
+        verify(sqsClient).deleteMessageBatch(deleteMessageBatchRequestArgumentCaptor.capture());
+        final DeleteMessageBatchRequest actualDeleteMessageBatchRequest = deleteMessageBatchRequestArgumentCaptor.getValue();
+
+        assertThat(actualDeleteMessageBatchRequest, notNullValue());
+        assertThat(actualDeleteMessageBatchRequest.entries().size(), equalTo(1));
+        assertThat(actualDeleteMessageBatchRequest.queueUrl(), equalTo(s3SourceConfig.getSqsOptions().getSqsUrl()));
+        assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(messageId));
+        assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(receiptHandle));
+        assertThat(messagesProcessed, equalTo(1));
+
+        verify(sqsMessagesReceivedCounter).increment(1);
+        verify(sqsMessagesDeletedCounter).increment(1);
     }
 
     @ParameterizedTest
