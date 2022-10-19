@@ -129,6 +129,9 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("true == (/is_cool == true)", event("{\"is_cool\": true}"), true),
                 Arguments.of("not /is_cool", event("{\"is_cool\": true}"), false),
                 Arguments.of("/status_code < 300", event("{\"status_code\": 200}"), true),
+                Arguments.of("/status_code != null", event("{\"status_code\": 200}"), true),
+                Arguments.of("/response == null", event("{\"status_code\": 200}"), true),
+                Arguments.of("/response != null", event("{\"status_code\": 200}"), false),
                 Arguments.of("/status_code <= 0", event("{\"status_code\": 200}"), false),
                 Arguments.of("/status_code > 0", event("{\"status_code\": 200}"), true),
                 Arguments.of("/status_code >= 300", event("{\"status_code\": 200}"), false),
@@ -159,6 +162,7 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("", event("{}")),
                 Arguments.of("-false", event("{}")),
                 Arguments.of("not 5", event("{}")),
+                Arguments.of("not null", event("{}")),
                 Arguments.of("not/status_code", event("{\"status_code\": 200}")),
                 Arguments.of("trueand/status_code", event("{\"status_code\": 200}")),
                 Arguments.of("trueor/status_code", event("{\"status_code\": 200}"))
