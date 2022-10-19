@@ -29,6 +29,8 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -244,5 +246,31 @@ class SqsWorkerTest {
         verify(sqsMessagesReceivedCounter).increment(1);
         verify(sqsMessagesDeletedCounter).increment(1);
         verify(sqsMessagesFailedCounter).increment();
+    }
+
+    @Test
+    void populateS3Reference_should_interact_with_getUrlDecodedKey() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        // Using reflection to unit test a private method as part of bug fix.
+        final Method method = SqsWorker.class.getDeclaredMethod("populateS3Reference", S3EventNotification.S3EventNotificationRecord.class);
+        method.setAccessible(true);
+
+        final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord = mock(S3EventNotification.S3EventNotificationRecord.class);
+        final S3EventNotification.S3Entity s3Entity = mock(S3EventNotification.S3Entity.class);
+        final S3EventNotification.S3ObjectEntity s3ObjectEntity = mock(S3EventNotification.S3ObjectEntity.class);
+        final S3EventNotification.S3BucketEntity s3BucketEntity = mock(S3EventNotification.S3BucketEntity.class);
+
+        when(s3EventNotificationRecord.getS3()).thenReturn(s3Entity);
+        when(s3Entity.getBucket()).thenReturn(s3BucketEntity);
+        when(s3Entity.getObject()).thenReturn(s3ObjectEntity);
+        when(s3BucketEntity.getName()).thenReturn("test-bucket-name");
+        when(s3ObjectEntity.getUrlDecodedKey()).thenReturn("test-key");
+
+        final S3ObjectReference s3ObjectReference = (S3ObjectReference) method.invoke(sqsWorker, s3EventNotificationRecord);
+
+        assertThat(s3ObjectReference, notNullValue());
+        assertThat(s3ObjectReference.getBucketName(), equalTo("test-bucket-name"));
+        assertThat(s3ObjectReference.getKey(), equalTo("test-key"));
+        verify(s3ObjectEntity).getUrlDecodedKey();
+        verifyNoMoreInteractions(s3ObjectEntity);
     }
 }
