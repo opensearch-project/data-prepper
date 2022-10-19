@@ -11,7 +11,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 
 /**
@@ -22,6 +23,7 @@ import javax.inject.Named;
 public class DataPrepperServer {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperServer.class);
     private final HttpServer server;
+    static final ExecutorService EXECUTOR_SERVICE = Executors.newFixedThreadPool(3);
 
     @Inject
     public DataPrepperServer(
@@ -34,6 +36,7 @@ public class DataPrepperServer {
      * Start the DataPrepperServer
      */
     public void start() {
+        server.setExecutor(EXECUTOR_SERVICE);
         server.start();
         LOG.info("Data Prepper server running at :{}", server.getAddress().getPort());
     }
@@ -42,6 +45,7 @@ public class DataPrepperServer {
      * Stop the DataPrepperServer
      */
     public void stop() {
+        EXECUTOR_SERVICE.shutdownNow();
         server.stop(0);
         LOG.info("Data Prepper server stopped");
     }
