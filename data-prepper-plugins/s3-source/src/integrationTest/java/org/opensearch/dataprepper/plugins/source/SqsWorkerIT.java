@@ -107,7 +107,7 @@ class SqsWorkerIT {
         verify(s3Service, atLeastOnce()).addS3Object(s3ObjectReferenceArgumentCaptor.capture());
 
         assertThat(s3ObjectReferenceArgumentCaptor.getValue().getBucketName(), equalTo(bucket));
-        assertThat(s3ObjectReferenceArgumentCaptor.getValue().getKey(), startsWith("s3source/sqs/"));
+        assertThat(s3ObjectReferenceArgumentCaptor.getValue().getKey(), startsWith("s3 source/sqs/"));
         assertThat(sqsMessagesProcessed, greaterThanOrEqualTo(1));
         assertThat(sqsMessagesProcessed, lessThanOrEqualTo(numberOfObjectsToWrite));
     }
@@ -124,7 +124,7 @@ class SqsWorkerIT {
         final int numberOfRecords = 100;
         final NewlineDelimitedRecordsGenerator newlineDelimitedRecordsGenerator = new NewlineDelimitedRecordsGenerator();
         for (int i = 0; i < numberOfObjectsToWrite; i++) {
-            final String key = "s3source/sqs/" + UUID.randomUUID() + "_" + Instant.now().toString() + newlineDelimitedRecordsGenerator.getFileExtension();
+            final String key = "s3 source/sqs/" + UUID.randomUUID() + "_" + Instant.now().toString() + newlineDelimitedRecordsGenerator.getFileExtension();
             // isCompressionEnabled is set to false since we test for compression in S3ObjectWorkerIT
             s3ObjectGenerator.write(numberOfRecords, key, newlineDelimitedRecordsGenerator, false);
         }

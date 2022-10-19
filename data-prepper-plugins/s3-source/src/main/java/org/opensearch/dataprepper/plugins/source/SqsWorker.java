@@ -219,7 +219,7 @@ public class SqsWorker implements Runnable {
     private S3ObjectReference populateS3Reference(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
         final S3EventNotification.S3Entity s3Entity = s3EventNotificationRecord.getS3();
         return S3ObjectReference.bucketAndKey(s3Entity.getBucket().getName(),
-                s3Entity.getObject().getKey())
+                s3Entity.getObject().getUrlDecodedKey())
                 .build();
     }
 }
