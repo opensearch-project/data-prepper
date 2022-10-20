@@ -45,8 +45,8 @@ public class DataPrepperServer {
      * Stop the DataPrepperServer
      */
     public void stop() {
-        EXECUTOR_SERVICE.shutdownNow();
         server.stop(0);
+        EXECUTOR_SERVICE.shutdownNow();
         LOG.info("Data Prepper server stopped");
     }
 }
