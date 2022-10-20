@@ -5,17 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import org.opensearch.dataprepper.plugins.source.filter.S3EventFilter;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
@@ -28,9 +27,9 @@ import software.amazon.awssdk.services.sqs.model.SqsException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -93,13 +92,10 @@ public class SqsWorker implements Runnable {
         if (!sqsMessages.isEmpty())
             sqsMessagesReceivedCounter.increment(sqsMessages.size());
 
-        // convert each message to S3EventNotificationRecord
-        // TODO: eliminate map with extended S3ObjectReference classes
-        final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords =
-                getS3MessageEventNotificationRecordMap(sqsMessages);
+        final Collection<ParsedMessage> s3MessageEventNotificationRecords = getS3MessageEventNotificationRecords(sqsMessages);
 
         // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
-        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3EventNotificationRecords);
+        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3MessageEventNotificationRecords);
 
         // delete sqs messages
         if (!deleteMessageBatchRequestEntries.isEmpty()) {
@@ -128,58 +124,67 @@ public class SqsWorker implements Runnable {
                 .build();
     }
 
-    private Map<Message, List<S3EventNotification.S3EventNotificationRecord>> getS3MessageEventNotificationRecordMap(final List<Message> sqsMessages) {
-        return sqsMessages.stream().collect(Collectors.toMap(message -> message, this::convertS3EventMessages));
+    private Collection<ParsedMessage> getS3MessageEventNotificationRecords(final List<Message> sqsMessages) {
+        return sqsMessages.stream()
+                .map(this::convertS3EventMessages)
+                .collect(Collectors.toList());
     }
 
-    private List<S3EventNotification.S3EventNotificationRecord> convertS3EventMessages(final Message message) {
+    private ParsedMessage convertS3EventMessages(final Message message) {
         try {
             final S3EventNotification s3EventNotification = S3EventNotification.parseJson(message.body());
             if (s3EventNotification.getRecords() != null)
-                return s3EventNotification.getRecords();
+                return new ParsedMessage(message, s3EventNotification.getRecords());
             else {
                 LOG.debug("S3 notification message with ID:{} cannot be parsed into S3EventNotificationRecord.", message.messageId());
-                return Collections.emptyList();
+                return new ParsedMessage(message, true);
             }
 
         } catch (SdkClientException | JsonProcessingException e) {
-            LOG.error("Invalid JSON string in message body of {}", message.messageId(), e);
+            if (message.body().contains("s3:TestEvent") && message.body().contains("Amazon S3")) {
+                LOG.info("Found s3:TestEvent message. Deleting from SQS queue.");
+                return new ParsedMessage(message, false);
+            } else {
+                LOG.error("Invalid JSON string in message body of {}", message.messageId(), e);
+            }
         }
-        return Collections.emptyList();
+        return new ParsedMessage(message, true);
     }
 
-    private List<DeleteMessageBatchRequestEntry> processS3EventNotificationRecords(final Map<Message, List<S3EventNotification.S3EventNotificationRecord>> s3EventNotificationRecords) {
+    private List<DeleteMessageBatchRequestEntry> processS3EventNotificationRecords(final Collection<ParsedMessage> s3EventNotificationRecords) {
         List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection = new ArrayList<>();
-        for (Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry: s3EventNotificationRecords.entrySet()) {
-            if (entry.getValue().isEmpty()) {
+        for (ParsedMessage parsedMessage : s3EventNotificationRecords) {
+            if (parsedMessage.failedParsing) {
                 sqsMessagesFailedCounter.increment();
                 if (s3SourceConfig.getOnErrorOption().equals(OnErrorOption.DELETE_MESSAGES)) {
-                    deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(entry.getKey()));
+                    deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
                 }
             }
-            else if (isEventNameCreated(entry.getValue().get(0))) {
-                final S3ObjectReference s3ObjectReference = populateS3Reference(entry.getValue().get(0));
-                final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(entry, s3ObjectReference);
-                deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
-            }
             else {
-                // Add SQS message to delete collection if the eventName is not ObjectCreated
-                deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(entry.getKey()));
+                final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;
+                if(!notificationRecords.isEmpty() && isEventNameCreated(notificationRecords.get(0))) {
+                    final S3ObjectReference s3ObjectReference = populateS3Reference(notificationRecords.get(0));
+                    final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference);
+                    deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
+                } else {
+                    // Add SQS message to delete collection if the eventName is not ObjectCreated
+                    deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
+                }
             }
         }
         return deleteMessageBatchRequestEntryCollection;
     }
 
     private Optional<DeleteMessageBatchRequestEntry> processS3Object(
-            final Map.Entry<Message, List<S3EventNotification.S3EventNotificationRecord>> entry,
+            final ParsedMessage parsedMessage,
             final S3ObjectReference s3ObjectReference) {
         Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = Optional.empty();
         // SQS messages won't be deleted if we are unable to process S3Objects because of S3Exception: Access Denied
         try {
             s3Service.addS3Object(s3ObjectReference);
-            deleteMessageBatchRequestEntry = Optional.of(buildDeleteMessageBatchRequestEntry(entry.getKey()));
+            deleteMessageBatchRequestEntry = Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
             sqsMessageDelayTimer.record(Duration.between(
-                    Instant.ofEpochMilli(entry.getValue().get(0).getEventTime().toInstant().getMillis()),
+                    Instant.ofEpochMilli(parsedMessage.notificationRecords.get(0).getEventTime().toInstant().getMillis()),
                     Instant.now()
             ));
         } catch (final Exception e) {
@@ -221,5 +226,25 @@ public class SqsWorker implements Runnable {
         return S3ObjectReference.bucketAndKey(s3Entity.getBucket().getName(),
                 s3Entity.getObject().getUrlDecodedKey())
                 .build();
+    }
+
+    private static class ParsedMessage {
+        private final Message message;
+        private final List<S3EventNotification.S3EventNotificationRecord> notificationRecords;
+        private final boolean failedParsing;
+
+        private ParsedMessage(final Message message, final List<S3EventNotification.S3EventNotificationRecord> notificationRecords) {
+            this(message, notificationRecords, false);
+        }
+
+        private ParsedMessage(final Message message, final boolean failedParsing) {
+            this(message, Collections.emptyList(), failedParsing);
+        }
+
+        private ParsedMessage(final Message message, final List<S3EventNotification.S3EventNotificationRecord> notificationRecords, final boolean failedParsing) {
+            this.message = message;
+            this.notificationRecords = notificationRecords;
+            this.failedParsing = failedParsing;
+        }
     }
 }
