@@ -67,6 +67,21 @@ Examples
 3.14 != /status_code
 {1, 2} == /event/set_property
 ```
+Equality operators can also be used to check if Json Pointer exists or not by checking with 'null'
+
+Syntax
+```
+<Json Pointer> == null
+<Json Pointer> != null
+null == <Json Pointer>
+null != <Json Pointer>
+```
+
+Examples
+```
+/response == null
+null != /response
+```
 
 ## Conditional Expression
 Used to chain together multiple expressions and/or values.
