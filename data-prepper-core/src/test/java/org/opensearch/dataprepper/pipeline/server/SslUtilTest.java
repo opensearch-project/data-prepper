@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.server;
+package org.opensearch.dataprepper.pipeline.server;
 
-import org.opensearch.dataprepper.pipeline.server.SslUtil;
 import org.junit.Test;
 
 import javax.net.ssl.SSLContext;
