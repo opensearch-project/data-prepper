@@ -3,9 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.server;
+package org.opensearch.dataprepper.pipeline.server;
 
-import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +45,7 @@ public class DataPrepperServerTest {
 
         dataPrepperServer.start();
 
+        verify(server).setExecutor(DataPrepperServer.EXECUTOR_SERVICE);
         verify(server).start();
         verify(server).getAddress();
         verify(socketAddress).getPort();
