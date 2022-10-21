@@ -7,7 +7,7 @@ set -e
 
 export IMAGE_NAME="opensearch-data-prepper"
 REPO_ROOT=$(git rev-parse --show-toplevel)
-export OPENSEARCH_VERSION="1.0.1"
+export OPENSEARCH_VERSION="1.3.6"
 OPENSEARCH_HOST="localhost:9200"
 OPENSEARCH_GROK_INDEX="test-grok-index"
 OPENSEARCH_OTEL_INDEX="otel-v1-apm-span-000001"
