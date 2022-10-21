@@ -533,6 +533,54 @@ public class OpenSearchSinkIT {
   }
 
   @Test
+  public void testOpenSearchDocumentId() throws IOException, InterruptedException {
+    final String expectedId = "id1";
+    final String testIndexAlias = "test_index";
+    final Event testEvent = JacksonEvent.builder()
+            .withData("{\"info\": {\"ids\": {\"id\": \""+expectedId+"\"}, \"val\":\"200\"}, \"name\":\"id_test\" }")
+            .withEventType("event")
+            .build();
+
+    final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+    final String testId = "info/ids/id";
+    final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
+    pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    sink.output(testRecords);
+
+    final List<String> docIds = getSearchResponseDocIds(testIndexAlias);
+    for (String docId: docIds) {
+        MatcherAssert.assertThat(docId, equalTo(expectedId));
+    }
+    sink.shutdown();
+  }
+
+  @Test
+  public void testOpenSearchRoutingId() throws IOException, InterruptedException {
+    final String expectedRoutingId = "rid1";
+    final String testIndexAlias = "test_index";
+    final Event testEvent = JacksonEvent.builder()
+            .withData("{\"info\": {\"rids\": {\"rid\": \""+expectedRoutingId+"\"}, \"val\":\"300\"}, \"name\":\"rid_test\" }")
+            .withEventType("event")
+            .build();
+
+    final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+    final String testRoutingId = "info/rids/rid";
+    final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
+    pluginSetting.getSettings().put(IndexConfiguration.ROUTING_ID_FIELD, testRoutingId);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    sink.output(testRecords);
+
+    final List<String> routingIds = getSearchResponseRoutingIds(testIndexAlias);
+    for (String routingId: routingIds) {
+        MatcherAssert.assertThat(routingId, equalTo(expectedRoutingId));
+    }
+    sink.shutdown();
+  }
+
+  @Test
   @Timeout(value = 1, unit = TimeUnit.MINUTES)
   public void testOutputManagementDisabled() throws IOException, InterruptedException {
     final String testIndexAlias = "test-" + UUID.randomUUID();
@@ -648,6 +696,38 @@ public class OpenSearchSinkIT {
     final Response response = client.performRequest(request);
     final String responseBody = EntityUtils.toString(response.getEntity());
     return (Integer) createContentParser(XContentType.JSON.xContent(), responseBody).map().get("count");
+  }
+
+  private List<String> getSearchResponseDocIds(final String index) throws IOException {
+    final Request refresh = new Request(HttpMethod.POST, index + "/_refresh");
+    client.performRequest(refresh);
+    final Request request = new Request(HttpMethod.GET, index + "/_search");
+    final Response response = client.performRequest(request);
+    final String responseBody = EntityUtils.toString(response.getEntity());
+
+    @SuppressWarnings("unchecked") final List<Object> hits =
+            (List<Object>) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
+                    responseBody).map().get("hits")).get("hits");
+    @SuppressWarnings("unchecked") final List<String> ids = hits.stream()
+            .map(hit -> (String) ((Map<String, Object>) hit).get("_id"))
+            .collect(Collectors.toList());
+    return ids;
+  }
+
+  private List<String> getSearchResponseRoutingIds(final String index) throws IOException {
+    final Request refresh = new Request(HttpMethod.POST, index + "/_refresh");
+    client.performRequest(refresh);
+    final Request request = new Request(HttpMethod.GET, index + "/_search");
+    final Response response = client.performRequest(request);
+    final String responseBody = EntityUtils.toString(response.getEntity());
+
+    @SuppressWarnings("unchecked") final List<Object> hits =
+            (List<Object>) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
+                    responseBody).map().get("hits")).get("hits");
+    @SuppressWarnings("unchecked") final List<String> routingIds = hits.stream()
+            .map(hit -> (String) ((Map<String, Object>) hit).get("_routing"))
+            .collect(Collectors.toList());
+    return routingIds;
   }
 
   private List<Map<String, Object>> getSearchResponseDocSources(final String index) throws IOException {
