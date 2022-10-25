@@ -42,6 +42,8 @@ class ParseTreeCoercionService {
                 return Float.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Boolean:
                 return Boolean.valueOf(nodeStringValue);
+            case DataPrepperExpressionParser.Null:
+                return null;
             default:
                 throw new ExpressionCoercionException("Unsupported terminal node type symbol string: " +
                         DataPrepperExpressionParser.VOCABULARY.getDisplayName(nodeType));

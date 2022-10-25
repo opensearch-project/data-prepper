@@ -100,6 +100,16 @@ class ParseTreeCoercionServiceTest {
         assertThat(result, equalTo(testBoolean));
     }
 
+    @Test
+    void testCoerceTerminalNodeNullType() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Null);
+        final Event testEvent = createTestEvent(new HashMap<>());
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(null);
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+        assertThat(result, equalTo(null));
+    }
+
     @ParameterizedTest
     @MethodSource("provideSupportedJsonPointerValues")
     void testCoerceTerminalNodeJsonPointerTypeSupportedValues(final Object testValue) {
