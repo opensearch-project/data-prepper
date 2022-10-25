@@ -117,6 +117,7 @@ literal
     | Integer
     | Boolean
     | String
+    | Null
     ;
 
 
@@ -146,6 +147,10 @@ NonZeroDigit
 Boolean
     : 'true'
     | 'false'
+    ;
+
+Null
+    : 'null'
     ;
 
 JsonPointer

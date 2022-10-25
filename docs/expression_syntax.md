@@ -67,6 +67,21 @@ Examples
 3.14 != /status_code
 {1, 2} == /event/set_property
 ```
+Equality operators can also be used to check if Json Pointer exists or not by checking with 'null'
+
+Syntax
+```
+<Json Pointer> == null
+<Json Pointer> != null
+null == <Json Pointer>
+null != <Json Pointer>
+```
+
+Examples
+```
+/response == null
+null != /response
+```
 
 ## Conditional Expression
 Used to chain together multiple expressions and/or values.
@@ -83,6 +98,8 @@ Examples
 /status_code == 200 and /message == "Hello world"
 /status_code == 200 or /status_code == 202
 not /status_code in {200, 202}
+/response == null
+/response != null
 ```
 
 # Definitions
@@ -93,6 +110,7 @@ A fundamental value that has no children.
 - Boolean _(Supports true or false)_
 - Json Pointer _(See Json Pointer section for details)_
 - String _(Supports Valid Java String characters)_
+- Null _(Supports null check to see if a Json Pointer is present or not)_
 
 ### Expression String
 The String that will be parsed for evaluation. Expression String is the highest level of a Data Prepper Expression. Only supports one
