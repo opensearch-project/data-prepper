@@ -93,6 +93,7 @@ class ParseTreeEvaluatorListenerTest {
         final Float testFloat = random.nextFloat();
         final String testSingleFloatStatement = String.valueOf(testFloat);
         final String testSingleBooleanStatement = "true";
+        final String testSingleNullStatement = "null";
         final String testKey = "testKey";
         final Integer testValue = random.nextInt();
         final Map<String, Integer> data = Map.of(testKey, testValue);
@@ -104,6 +105,7 @@ class ParseTreeEvaluatorListenerTest {
         assertThat(evaluateStatementOnEvent(testSingleIntegerStatement, testEvent), equalTo(testInteger));
         assertThat(evaluateStatementOnEvent(testSingleFloatStatement, testEvent), equalTo(testFloat));
         assertThat(evaluateStatementOnEvent(testSingleBooleanStatement, testEvent), equalTo(true));
+        assertThat(evaluateStatementOnEvent(testSingleNullStatement, testEvent), equalTo(null));
         assertThat(evaluateStatementOnEvent(testSingleJsonPointerStatement, testEvent), equalTo(testValue));
         assertThat(evaluateStatementOnEvent(testSingleEscapeJsonPointerStatement, testEvent), equalTo(testValue));
     }
