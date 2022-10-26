@@ -537,9 +537,9 @@ public class OpenSearchSinkIT {
     final String expectedId = "id1";
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-            .withData("{\"info\": {\"ids\": {\"id\": \""+expectedId+"\"}, \"val\":\"200\"}, \"name\":\"id_test\" }")
-            .withEventType("event")
-            .build();
+	    .withData(Map.of("info", Map.of("ids", Map.of("id", expectedId), "val", "200"), "name", "id_test"))
+	    .withEventType("event")
+	    .build();
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
@@ -557,25 +557,25 @@ public class OpenSearchSinkIT {
   }
 
   @Test
-  public void testOpenSearchRoutingId() throws IOException, InterruptedException {
-    final String expectedRoutingId = "rid1";
+  public void testOpenSearchRoutingField() throws IOException, InterruptedException {
+    final String expectedRoutingField = "rid1";
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-            .withData("{\"info\": {\"rids\": {\"rid\": \""+expectedRoutingId+"\"}, \"val\":\"300\"}, \"name\":\"rid_test\" }")
+	    .withData(Map.of("info", Map.of("rids", Map.of("rid", expectedRoutingField), "val", "200"), "name", "rid_test"))
             .withEventType("event")
             .build();
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
-    final String testRoutingId = "info/rids/rid";
+    final String testRoutingField = "info/rids/rid";
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
-    pluginSetting.getSettings().put(IndexConfiguration.ROUTING_ID_FIELD, testRoutingId);
+    pluginSetting.getSettings().put(IndexConfiguration.ROUTING_FIELD, testRoutingField);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
 
-    final List<String> routingIds = getSearchResponseRoutingIds(testIndexAlias);
-    for (String routingId: routingIds) {
-        MatcherAssert.assertThat(routingId, equalTo(expectedRoutingId));
+    final List<String> routingFields = getSearchResponseRoutingFields(testIndexAlias);
+    for (String routingField: routingFields) {
+        MatcherAssert.assertThat(routingField, equalTo(expectedRoutingField));
     }
     sink.shutdown();
   }
@@ -714,7 +714,7 @@ public class OpenSearchSinkIT {
     return ids;
   }
 
-  private List<String> getSearchResponseRoutingIds(final String index) throws IOException {
+  private List<String> getSearchResponseRoutingFields(final String index) throws IOException {
     final Request refresh = new Request(HttpMethod.POST, index + "/_refresh");
     client.performRequest(refresh);
     final Request request = new Request(HttpMethod.GET, index + "/_search");
@@ -724,10 +724,10 @@ public class OpenSearchSinkIT {
     @SuppressWarnings("unchecked") final List<Object> hits =
             (List<Object>) ((Map<String, Object>) createContentParser(XContentType.JSON.xContent(),
                     responseBody).map().get("hits")).get("hits");
-    @SuppressWarnings("unchecked") final List<String> routingIds = hits.stream()
+    @SuppressWarnings("unchecked") final List<String> routingFields = hits.stream()
             .map(hit -> (String) ((Map<String, Object>) hit).get("_routing"))
             .collect(Collectors.toList());
-    return routingIds;
+    return routingFields;
   }
 
   private List<Map<String, Object>> getSearchResponseDocSources(final String index) throws IOException {

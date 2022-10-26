@@ -65,7 +65,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final long bulkSize;
   private final IndexType indexType;
   private final String documentIdField;
-  private final String routingIdField;
+  private final String routingField;
   private final String action;
 
   private final Timer bulkRequestTimer;
@@ -84,7 +84,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
-    this.routingIdField = openSearchSinkConfig.getIndexConfiguration().getRoutingIdField();
+    this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory();
 
@@ -130,8 +130,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     for (final Record<Event> record : records) {
       final SerializedJson document = getDocument(record.getData());
-      final Optional<String> docId = getDocumentIdFromDocument(document);
-      final Optional<String> routingId = getRoutingIdFromDocument(document);
+      final Optional<String> docId = document.getDocumentId();
+      final Optional<String> routing = document.getRoutingField();
 
       BulkOperation bulkOperation;
 
@@ -144,8 +144,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         if (docId.isPresent()) {
           createOperationBuilder.id(docId.get());
         }
-        if (routingId.isPresent()) {
-          createOperationBuilder.routing(routingId.get());
+        if (routing.isPresent()) {
+          createOperationBuilder.routing(routing.get());
         }
         
         bulkOperation = new BulkOperation.Builder()
@@ -163,8 +163,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         if (docId.isPresent()) {
           indexOperationBuilder.id(docId.get());
         }
-        if (routingId.isPresent()) {
-          indexOperationBuilder.routing(routingId.get());
+        if (routing.isPresent()) {
+          indexOperationBuilder.routing(routing.get());
         }
 
         bulkOperation = new BulkOperation.Builder()
@@ -188,63 +188,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   }
 
-  /*
-   * Look for 'field' in the 'map' and if present, return it's value.
-   * The field may contain multiple sub-fields separated by "/", in which
-   * case, each subfield (except the last one) should be in a map inside 
-   * the map and it is searched for next subfield.
-   */
-  private String findFieldValueInMap(String field, Map map) {
-      final String[] fields = field.split("/");
-      int idx = 0;
-      Object obj = null;
-      while (idx < fields.length) {
-          obj = map.get(fields[idx]);
-          if (obj == null) {
-              return null;
-          }
-          idx++;
-          if (obj instanceof Map) {
-              map = (Map)obj;
-          } else if (idx < fields.length) {
-              return null;
-          }
-      }
-      if (obj instanceof String) {
-          return (String)obj;
-      }
-      return null;
-  }
-
-  private Optional<String> getDocumentFieldFromDocument(final SerializedJson document, String fieldName) {
-    if (fieldName == null) {
-        return Optional.empty();
-    }
-    final Map documentAsMap;
-    try {
-      documentAsMap = objectMapper.readValue(document.getSerializedJson(), Map.class);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    if (documentAsMap != null) {
-      String value = findFieldValueInMap(fieldName, documentAsMap);
-      if (value != null) {
-          return Optional.of(value);
-      }
-    }
-    return Optional.empty();
-  }
-
-  private Optional<String> getDocumentIdFromDocument(final SerializedJson document) {
-    return getDocumentFieldFromDocument(document, documentIdField);
-  }
-
-  private Optional<String> getRoutingIdFromDocument(final SerializedJson document) {
-    return getDocumentFieldFromDocument(document, routingIdField);
-  }
-
   private SerializedJson getDocument(final Event event) {
-    return SerializedJson.fromString(event.toJsonString());
+    String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
+    String routing = (routingField != null) ? event.get(routingField, String.class) : null;
+    return SerializedJson.fromStringAndOptionals(event.toJsonString(), docId, routing);
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {

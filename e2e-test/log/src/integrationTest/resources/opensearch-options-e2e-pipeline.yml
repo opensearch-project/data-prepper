@@ -8,18 +8,18 @@ pipeline1:
         password: "admin"
         index: "test-index-one"
         document_id_field: "info/ids/id"
-        routing_id_field: "info/rids/rid"
+        routing_field: "info/rids/rid"
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
         index: "test-index-two"
         document_id_field: "info/id"
-        routing_id_field: "info/rid"
+        routing_field: "info/rid"
     - opensearch:
         hosts: [ "https://node-0.example.com:9200" ]
         username: "admin"
         password: "admin"
         index: "test-index-three"
         document_id_field: "id"
-        routing_id_field: "rid"
+        routing_field: "rid"
