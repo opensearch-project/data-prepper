@@ -11,3 +11,4 @@
 * Added GZIP compression integration tests for S3 source ([#1577](https://github.com/opensearch-project/data-prepper/pull/1577))
 * Updated smoke tests to run against OpenSearch 1.3.6 ([#1955](https://github.com/opensearch-project/data-prepper/pull/1955))
 * Updated grpcio to 1.50.0 in smoke tests which takes less time to install ([#1954](https://github.com/opensearch-project/data-prepper/pull/1954))
+* Updated spring to 5.3.23 ([#1967](https://github.com/opensearch-project/data-prepper/pull/1967))
