@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
 import software.amazon.awssdk.services.sqs.SqsClient;
 
 public class SqsService {
@@ -38,11 +39,19 @@ public class SqsService {
 
     SqsClient createSqsClient() {
         LOG.info("Creating SQS client");
+
+        final EqualJitterBackoffStrategy backoffStrategy =
+            EqualJitterBackoffStrategy.builder()
+                .maxBackoffTime(s3SourceConfig.getSqsOptions().getMaxBackOff())
+                .baseDelay(s3SourceConfig.getSqsOptions().getBaseDelay())
+                .build();
+
         return SqsClient.builder()
                 .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
                 .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
-                        .retryPolicy(RetryPolicy.builder().numRetries(5).build())
+                        .retryPolicy(RetryPolicy.builder().backoffStrategy(backoffStrategy)
+                            .numRetries(s3SourceConfig.getSqsOptions().getMaxRetries()).build())
                         .build())
                 .build();
     }
@@ -50,4 +59,7 @@ public class SqsService {
     public void stop() {
         sqsWorkerThread.interrupt();
     }
+
+
+
 }

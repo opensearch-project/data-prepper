@@ -19,6 +19,9 @@ public class SqsOptions {
     private static final Duration DEFAULT_VISIBILITY_TIMEOUT_SECONDS = Duration.ofSeconds(30);
     private static final Duration DEFAULT_WAIT_TIME_SECONDS = Duration.ofSeconds(20);
     private static final Duration DEFAULT_POLL_DELAY_SECONDS = Duration.ofSeconds(0);
+    private static final Duration DEFAULT_MAX_BACKOFF = Duration.ofSeconds(600);
+    private static final Duration DEFAULT_BASE_DELAY = Duration.ofSeconds(30);
+    private static final int DEFAULT_MAX_RETRIES = 5;
 
     @JsonProperty("queue_url")
     @NotBlank(message = "SQS URL cannot be null or empty")
@@ -43,6 +46,17 @@ public class SqsOptions {
     @DurationMin(seconds = 0)
     private Duration pollDelay = DEFAULT_POLL_DELAY_SECONDS;
 
+    @JsonProperty("max_backoff")
+    @DurationMin(seconds = 0)
+    private Duration maxBackOff = DEFAULT_MAX_BACKOFF;
+
+    @JsonProperty("base_delay")
+    @DurationMin(seconds = 0)
+    private Duration baseDelay = DEFAULT_BASE_DELAY;
+
+    @JsonProperty("max_retries")
+    private int maxRetries = DEFAULT_MAX_RETRIES;
+
     public String getSqsUrl() {
         return sqsUrl;
     }
@@ -62,4 +76,17 @@ public class SqsOptions {
     public Duration getPollDelay() {
         return pollDelay;
     }
+
+    public Duration getMaxBackOff() {
+        return maxBackOff;
+    }
+
+    public Duration getBaseDelay() {
+        return baseDelay;
+    }
+
+    public int getMaxRetries() {
+        return maxRetries;
+    }
+
 }
