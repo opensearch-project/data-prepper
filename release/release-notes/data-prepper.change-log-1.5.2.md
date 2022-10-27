@@ -1,9 +1,41 @@
 
+* __Added release notes for 1.5.2 (#1976) (#1979)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 27 Oct 2022 13:29:05 -0500
+    
+    EAD -&gt; refs/heads/1.5, refs/remotes/upstream/1.5, refs/remotes/origin/1.5
+    Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    (cherry picked from commit 4ff991d3648c14b293ce8651b1d5fc72741cd070)
+     Co-authored-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+* __Updates Spring to 5.3.23 (#1967)__
+
+    [David Venable](mailto:dlv@amazon.com) - Thu, 27 Oct 2022 13:27:21 -0500
+    
+    
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Added change log for 1.5.2 (#1977) (#1978)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 27 Oct 2022 13:08:11 -0500
+    
+    
+    Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+    (cherry picked from commit cd600156fa009bd8c031649ac9e6d5f992a458b4)
+     Co-authored-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
+* __Updated third party for 1.5.2 (#1972)__
+
+    [Asif Sohail Mohammed](mailto:nsifmoh@amazon.com) - Thu, 27 Oct 2022 11:43:57 -0500
+    
+    
+    Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
+
 * __Run smoke tests against OpenSearch 1.3.6. (#1955) (#1961)__
 
     [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 21 Oct 2022 08:34:07 -0500
     
-    EAD -&gt; refs/heads/change-log-1.5.2, refs/remotes/upstream/1.5, refs/remotes/origin/1.5, refs/heads/1.5
+    efs/heads/change-log-1.5.2
     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
     (cherry picked from commit 43b7d33c28cb8572a92c397d59e90a3d9aba6ebb)
      Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
