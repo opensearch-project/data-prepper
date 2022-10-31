@@ -76,7 +76,7 @@ public class LogHTTPService {
         try {
             jsonList = jsonCodec.parse(content);
         } catch (IOException e) {
-            LOG.error("Failed to write the request content [{}] due to:", content.toStringUtf8(), e);
+            LOG.error("Failed to write the request of size {} due to:", content.length(), e);
             return requestExceptionHandler.handleException(e, "Bad request data format. Needs to be json array.");
         }
         final List<Record<Log>> records = jsonList.stream()
@@ -85,7 +85,7 @@ public class LogHTTPService {
         try {
             buffer.writeAll(records, bufferWriteTimeoutInMillis);
         } catch (Exception e) {
-            LOG.error("Failed to write the request content [{}] due to:", content.toStringUtf8(), e);
+            LOG.error("Failed to write the request of size {} due to:", content.length(), e);
             return requestExceptionHandler.handleException(e);
         }
         successRequestsCounter.increment();

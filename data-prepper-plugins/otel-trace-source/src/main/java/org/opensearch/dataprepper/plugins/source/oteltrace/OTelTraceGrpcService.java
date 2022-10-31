@@ -94,7 +94,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
         try {
             spans = oTelProtoDecoder.parseExportTraceServiceRequest(request);
         } catch (Exception e) {
-            LOG.error("Failed to parse the request content [{}] due to:", request, e);
+            LOG.error("Failed to parse the request due to:", request, e);
             badRequestsCounter.increment();
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asException());
             return;
@@ -108,7 +108,7 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
             responseObserver.onNext(ExportTraceServiceResponse.newBuilder().build());
             responseObserver.onCompleted();
         } catch (Exception e) {
-            LOG.error("Failed to write the request content [{}] due to:", request, e);
+            LOG.error("Failed to write the request of size {} due to:", request.toString().length(), e);
             if (e instanceof TimeoutException) {
                 requestTimeoutCounter.increment();
                 responseObserver
