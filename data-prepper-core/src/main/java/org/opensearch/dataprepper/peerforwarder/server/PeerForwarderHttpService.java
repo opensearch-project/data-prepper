@@ -79,7 +79,7 @@ public class PeerForwarderHttpService {
         try {
             writeEventsToBuffer(wireEvents);
         } catch (Exception e) {
-            final String message = String.format("Failed to write the request content [%s] due to:", content.toStringUtf8());
+            final String message = String.format("Failed to write the request of size %d due to:", content.length());
             LOG.error(message, e);
             return responseHandler.handleException(e, message);
         }
