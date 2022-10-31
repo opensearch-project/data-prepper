@@ -140,12 +140,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                 .index(indexManager.getIndexAlias())
                 .document(document);
 
-        if (docId.isPresent()) {
-          createOperationBuilder.id(docId.get());
-        }
-        if (routing.isPresent()) {
-          createOperationBuilder.routing(routing.get());
-        }
+	docId.ifPresent(createOperationBuilder::id);
+	routing.ifPresent(createOperationBuilder::routing);
         
         bulkOperation = new BulkOperation.Builder()
                 .create(createOperationBuilder.build())

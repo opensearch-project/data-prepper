@@ -24,6 +24,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
@@ -532,20 +534,21 @@ public class OpenSearchSinkIT {
     sink.shutdown();
   }
 
-  @Test
-  public void testOpenSearchDocumentId() throws IOException, InterruptedException {
-    final String expectedId = "id1";
+  @ParameterizedTest
+  @ValueSource(strings = {"info/ids/id", "id"})
+  public void testOpenSearchDocumentId(final String testDocumentIdField) throws IOException, InterruptedException {
+    final String expectedId = UUID.randomUUID().toString();
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-	    .withData(Map.of("info", Map.of("ids", Map.of("id", expectedId), "val", "200"), "name", "id_test"))
+	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
 	    .withEventType("event")
 	    .build();
+    testEvent.put(testDocumentIdField, expectedId);
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
-    final String testId = "info/ids/id";
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
-    pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testId);
+    pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testDocumentIdField);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
     sink.output(testRecords);
 
@@ -556,18 +559,19 @@ public class OpenSearchSinkIT {
     sink.shutdown();
   }
 
-  @Test
-  public void testOpenSearchRoutingField() throws IOException, InterruptedException {
-    final String expectedRoutingField = "rid1";
+  @ParameterizedTest
+  @ValueSource(strings = {"info/ids/rid", "rid"})
+  public void testOpenSearchRoutingField(final String testRoutingField) throws IOException, InterruptedException {
+    final String expectedRoutingField = UUID.randomUUID().toString();
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-	    .withData(Map.of("info", Map.of("rids", Map.of("rid", expectedRoutingField), "val", "200"), "name", "rid_test"))
+	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
             .withEventType("event")
             .build();
+    testEvent.put(testRoutingField, expectedRoutingField);
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
-    final String testRoutingField = "info/rids/rid";
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
     pluginSetting.getSettings().put(IndexConfiguration.ROUTING_FIELD, testRoutingField);
     final OpenSearchSink sink = new OpenSearchSink(pluginSetting);

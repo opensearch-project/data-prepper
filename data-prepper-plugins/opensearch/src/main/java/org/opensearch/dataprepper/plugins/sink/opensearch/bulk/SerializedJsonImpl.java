@@ -14,8 +14,8 @@ class SerializedJsonImpl implements SerializedJson {
 
     public SerializedJsonImpl(final byte[] document, String docId, String routingField) {
         this.document = document;
-	this.documentId = docId;
-	this.routingField = routingField;
+        this.documentId = docId;
+        this.routingField = routingField;
     }
 
     public SerializedJsonImpl(final byte[] document) {
@@ -34,11 +34,11 @@ class SerializedJsonImpl implements SerializedJson {
 
     @Override
     public Optional<String> getDocumentId() {
-	return (documentId != null) ? Optional.of(documentId) : Optional.empty();
+        return Optional.ofNullable(documentId);
     }
 
     @Override
     public Optional<String> getRoutingField() {
-	return (routingField != null) ? Optional.of(routingField) : Optional.empty();
+        return Optional.ofNullable(routingField);
     }
 }
