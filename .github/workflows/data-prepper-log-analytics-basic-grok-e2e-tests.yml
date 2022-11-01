@@ -14,7 +14,7 @@ jobs:
     strategy:
       matrix:
         java: [11, 17]
-        test: ['basicLogEndToEndTest', 'parallelGrokStringSubstituteTest', 'opensearchOptionsTest']
+        test: ['basicLogEndToEndTest', 'parallelGrokStringSubstituteTest']
       fail-fast: false
 
     runs-on: ubuntu-latest
