@@ -62,7 +62,6 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         exposePorts("tcp", [2021, 4900])
         hostConfig.portBindings = [String.format('%d:2021', sourcePort), String.format('%d:4900', serverPort)]
         hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
-			    (project.file("/tmp/AAA.out").toString()):"/tmp/AAA.out",
                             (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/app/data-prepper/config/data-prepper-config.yaml"]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']

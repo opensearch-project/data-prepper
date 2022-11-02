@@ -32,6 +32,7 @@ public class IndexConfiguration {
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
+    public static final String ROUTING_FIELD = "routing_field";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
     public static final String ACTION = "action";
@@ -40,6 +41,7 @@ public class IndexConfiguration {
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
+    private final String routingField;
     private final long bulkSize;
     private final Optional<String> ismPolicyFile;
     private final String action;
@@ -72,6 +74,7 @@ public class IndexConfiguration {
         }
         this.indexAlias = indexAlias;
         this.bulkSize = builder.bulkSize;
+        this.routingField = builder.routingField;
 
         String documentIdField = builder.documentIdField;
         if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
@@ -117,6 +120,10 @@ public class IndexConfiguration {
         if (documentId != null) {
             builder = builder.withDocumentIdField(documentId);
         }
+        final String routingField = pluginSetting.getStringOrDefault(ROUTING_FIELD, null);
+        if (routingField != null) {
+            builder = builder.withRoutingField(routingField);
+        }
 
         final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
         builder = builder.withIsmPolicyFile(ismPolicyFile);
@@ -140,6 +147,10 @@ public class IndexConfiguration {
 
     public String getDocumentIdField() {
         return documentIdField;
+    }
+
+    public String getRoutingField() {
+        return routingField;
     }
 
     public long getBulkSize() {
@@ -192,6 +203,7 @@ public class IndexConfiguration {
         private String templateFile;
         private int numShards;
         private int numReplicas;
+        private String routingField;
         private String documentIdField;
         private long bulkSize = DEFAULT_BULK_SIZE;
         private Optional<String> ismPolicyFile;
@@ -220,6 +232,11 @@ public class IndexConfiguration {
         public Builder withDocumentIdField(final String documentIdField) {
             checkNotNull(documentIdField, "documentId field cannot be null");
             this.documentIdField = documentIdField;
+            return this;
+        }
+
+        public Builder withRoutingField(final String routingField) {
+            this.routingField = routingField;
             return this;
         }
 

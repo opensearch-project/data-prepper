@@ -292,7 +292,7 @@ public class BulkRetryStrategyTests {
     }
 
     private SerializedJson arbitraryDocument() {
-        return SerializedJson.fromString("{}");
+        return SerializedJson.fromStringAndOptionals("{}", null, null);
     }
 
     private static class FakeClient {
