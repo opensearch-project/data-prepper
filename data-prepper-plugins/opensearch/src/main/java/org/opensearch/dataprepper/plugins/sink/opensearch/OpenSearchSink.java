@@ -43,7 +43,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -65,6 +64,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final long bulkSize;
   private final IndexType indexType;
   private final String documentIdField;
+  private final String routingField;
   private final String action;
 
   private final Timer bulkRequestTimer;
@@ -83,6 +83,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
+    this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory();
 
@@ -128,7 +129,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     for (final Record<Event> record : records) {
       final SerializedJson document = getDocument(record.getData());
-      final Optional<String> docId = getDocumentIdFromDocument(document);
+      final Optional<String> docId = document.getDocumentId();
+      final Optional<String> routing = document.getRoutingField();
 
       BulkOperation bulkOperation;
 
@@ -138,9 +140,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                 .index(indexManager.getIndexAlias())
                 .document(document);
 
-        if (docId.isPresent()) {
-          createOperationBuilder.id(docId.get());
-        }
+	docId.ifPresent(createOperationBuilder::id);
+	routing.ifPresent(createOperationBuilder::routing);
         
         bulkOperation = new BulkOperation.Builder()
                 .create(createOperationBuilder.build())
@@ -154,9 +155,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                 .index(indexManager.getIndexAlias())
                 .document(document);
 
-        if (docId.isPresent()) {
-          indexOperationBuilder.id(docId.get());
-        }
+	docId.ifPresent(indexOperationBuilder::id);
+	routing.ifPresent(indexOperationBuilder::routing);
 
         bulkOperation = new BulkOperation.Builder()
                 .index(indexOperationBuilder.build())
@@ -179,24 +179,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   }
 
-  private Optional<String> getDocumentIdFromDocument(final SerializedJson document) {
-    final Map documentAsMap;
-    try {
-      documentAsMap = objectMapper.readValue(document.getSerializedJson(), Map.class);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    if (documentAsMap != null) {
-      final String docId = (String) documentAsMap.get(documentIdField);
-      if (docId != null) {
-        return Optional.of(docId);
-      }
-    }
-    return Optional.empty();
-  }
-
   private SerializedJson getDocument(final Event event) {
-    return SerializedJson.fromString(event.toJsonString());
+    String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
+    String routing = (routingField != null) ? event.get(routingField, String.class) : null;
+    return SerializedJson.fromStringAndOptionals(event.toJsonString(), docId, routing);
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {

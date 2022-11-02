@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Random;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -17,6 +18,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 class SerializedJsonImplTest {
     private int documentSize;
     private byte[] documentBytes;
+    private String documentId;
+    private String routingField;
 
     @BeforeEach
     void setUp() {
@@ -24,10 +27,12 @@ class SerializedJsonImplTest {
         documentSize = random.nextInt(1_000) + 100;
 
         documentBytes = new byte[documentSize];
+	documentId = RandomStringUtils.randomAlphabetic(10);
+	routingField = RandomStringUtils.randomAlphabetic(10);
     }
 
     private SerializedJsonImpl createObjectUnderTest() {
-        return new SerializedJsonImpl(documentBytes);
+        return new SerializedJsonImpl(documentBytes, documentId, routingField);
     }
 
     @Test
@@ -36,7 +41,9 @@ class SerializedJsonImplTest {
     }
 
     @Test
-    void getSerializedJson_returns_the_document_byte_array() {
+    void getSerializedJson_returns_the_document_byte_array_and_fields() {
         assertThat(createObjectUnderTest().getSerializedJson(), sameInstance(documentBytes));
+        assertThat(createObjectUnderTest().getDocumentId().get(), equalTo(documentId));
+        assertThat(createObjectUnderTest().getRoutingField().get(), equalTo(routingField));
     }
 }
