@@ -18,17 +18,6 @@ public interface SerializedJson extends SizedDocument {
     Optional<String> getRoutingField();
 
     /**
-     * Creates a new {@link SerializedJson} from a JSON string.
-     *
-     * @param jsonString The serialized JSON string which forms this JSON data.
-     * @return A new {@link SerializedJson}.
-     */
-    static SerializedJson fromString(String jsonString) {
-        Objects.requireNonNull(jsonString);
-        return new SerializedJsonImpl(jsonString.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /**
      * Creates a new {@link SerializedJson} from a JSON string and optional documentId and routingField.
      *
      * @param jsonString The serialized JSON string which forms this JSON data.
