@@ -92,4 +92,10 @@ public interface Event {
      * @since 1.3
      */
     Map<String, Object> toMap();
+
+    /**
+     * @return String by replacing the formatted fields in the string format with their value in the event
+     * @since 2.1
+     */
+    String formatString(final String format);
 }

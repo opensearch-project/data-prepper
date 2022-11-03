@@ -59,19 +59,20 @@ public abstract class IndexManager {
     private Optional<DateTimeFormatter> indexTimeSuffixFormatter;
     private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
-    protected IndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration){
+    protected IndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration, String indexAlias){
         checkNotNull(restHighLevelClient);
         checkNotNull(openSearchSinkConfiguration);
         this.restHighLevelClient = restHighLevelClient;
         this.openSearchSinkConfiguration = openSearchSinkConfiguration;
-        initializeIndexPrefixAndSuffix();
+        if (indexAlias == null) {
+            indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
+        }
+        initializeIndexPrefixAndSuffix(indexAlias);
     }
 
-    private void initializeIndexPrefixAndSuffix(){
-        final String indexAliasFromConfig = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
-
+    private void initializeIndexPrefixAndSuffix(final String indexAlias){
         final Pattern pattern = Pattern.compile(TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION);
-        final Matcher timePatternMatcher = pattern.matcher(indexAliasFromConfig);
+        final Matcher timePatternMatcher = pattern.matcher(indexAlias);
         if (timePatternMatcher.find()) {
             final String timePattern = timePatternMatcher.group(1);
             if (timePatternMatcher.find()) { // check if there is a one more match.
@@ -80,21 +81,21 @@ public abstract class IndexManager {
             if(timePattern.contains(TIME_PATTERN_STARTING_SYMBOLS)){ //check if it is a nested pattern such as "data-prepper-%{%{yyyy.MM.dd}}"
                 throw new IllegalArgumentException("An index doesn't allow nested date-time patterns.");
             }
-            validateTimePatternIsAtTheEnd(indexAliasFromConfig, timePattern);
+            validateTimePatternIsAtTheEnd(indexAlias, timePattern);
             validateNoSpecialCharsInTimePattern(timePattern);
             validateTimePatternGranularity(timePattern);
             indexTimeSuffixFormatter = Optional.of(DateTimeFormatter.ofPattern(timePattern));
         } else {
             indexTimeSuffixFormatter = Optional.empty();
         }
-        indexPrefix = indexAliasFromConfig.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
+        indexPrefix = indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
     }
 
     /*
       Data Prepper only allows time pattern as a suffix.
      */
-    private void validateTimePatternIsAtTheEnd(final String indexAliasFromConfig, final String timePattern) {
-        if (!indexAliasFromConfig.endsWith(timePattern + "}")) {
+    private void validateTimePatternIsAtTheEnd(final String indexAlias, final String timePattern) {
+        if (!indexAlias.endsWith(timePattern + "}")) {
             throw new IllegalArgumentException("Time pattern can only be a suffix of an index.");
         }
     }

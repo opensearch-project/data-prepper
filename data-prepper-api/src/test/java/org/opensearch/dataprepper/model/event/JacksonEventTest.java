@@ -457,6 +457,26 @@ public class JacksonEventTest {
     }
 
     @Test
+    public void testBuild_withFormatString() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        assertThat(event.formatString("test-${foo}-string"), is(equalTo("test-bar-string")));
+        assertThat(event.formatString("test-string-${foo}"), is(equalTo("test-string-bar")));
+        assertThat(event.formatString("${foo}-test-string"), is(equalTo("bar-test-string")));
+
+        assertThat(event.formatString("test-${info/ids/id}-string"), is(equalTo("test-idx-string")));
+        assertThat(event.formatString("test-string-${info/ids/id}"), is(equalTo("test-string-idx")));
+        assertThat(event.formatString("${info/ids/id}-test-string"), is(equalTo("idx-test-string")));
+    }
+
+    @Test
     public void testBuild_withInvalidStringData() {
 
         final String jsonString = "foobar";

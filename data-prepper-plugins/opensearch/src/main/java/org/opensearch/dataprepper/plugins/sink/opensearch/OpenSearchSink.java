@@ -43,6 +43,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -58,7 +60,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final OpenSearchSinkConfiguration openSearchSinkConfig;
   private final IndexManagerFactory indexManagerFactory;
   private RestHighLevelClient restHighLevelClient;
-  private IndexManager indexManager;
+  private IndexManager defaultIndexManager;
   private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
@@ -66,12 +68,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String documentIdField;
   private final String routingField;
   private final String action;
+  private String configuredIndexAlias;
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
+  private Map<String, IndexManager> indexManagersMap;
 
   public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
@@ -86,6 +90,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory();
+    this.indexManagersMap = new HashMap<String, IndexManager>();
 
     try {
       initialize();
@@ -98,17 +103,28 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void initialize() throws IOException {
     LOG.info("Initializing OpenSearch sink");
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
-    indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig);
+    configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
     if (dlqFile != null) {
       dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
+    if (!isDynamicIndexAlias(configuredIndexAlias)) {
+        defaultIndexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig);
+        try {
+            defaultIndexManager.setupIndex();
+        } catch (IOException e) {
+            this.shutdown();
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    } else {
+        this.defaultIndexManager = null;
+    }
 
-    indexManager.setupIndex();
+
 
     OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
     openSearchClient = new OpenSearchClient(transport);
-    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder().index(indexManager.getIndexAlias()));
+    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
             this::logFailure,
@@ -117,6 +133,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     LOG.info("Initialized OpenSearch sink");
 
     objectMapper = new ObjectMapper();
+  }
+
+  public boolean isDynamicIndexAlias(final String indexAlias) {
+      return indexAlias.indexOf("${") != -1;
   }
 
   @Override
@@ -128,9 +148,28 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
 
     for (final Record<Event> record : records) {
-      final SerializedJson document = getDocument(record.getData());
+      final Event event = record.getData();
+      final SerializedJson document = getDocument(event);
       final Optional<String> docId = document.getDocumentId();
       final Optional<String> routing = document.getRoutingField();
+      String indexAlias = configuredIndexAlias;
+      IndexManager indexManager = this.defaultIndexManager;
+      if (indexManager == null) {
+        indexAlias = event.formatString(configuredIndexAlias);
+        if (indexAlias == null) {
+            continue;
+        }
+        indexManager = indexManagersMap.get(indexAlias);
+        if (indexManager == null) {
+          indexManager = indexManagerFactory.getDynamicIndexManager(indexType, restHighLevelClient, openSearchSinkConfig, indexAlias);
+          try {
+            indexManager.setupIndex();
+          } catch (IOException e) {
+            this.shutdown();
+            throw new RuntimeException(e.getMessage(), e);
+          }
+        }
+      }
 
       BulkOperation bulkOperation;
 
@@ -140,8 +179,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                 .index(indexManager.getIndexAlias())
                 .document(document);
 
-	docId.ifPresent(createOperationBuilder::id);
-	routing.ifPresent(createOperationBuilder::routing);
+        docId.ifPresent(createOperationBuilder::id);
+        routing.ifPresent(createOperationBuilder::routing);
         
         bulkOperation = new BulkOperation.Builder()
                 .create(createOperationBuilder.build())
@@ -155,8 +194,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                 .index(indexManager.getIndexAlias())
                 .document(document);
 
-	docId.ifPresent(indexOperationBuilder::id);
-	routing.ifPresent(indexOperationBuilder::routing);
+        docId.ifPresent(indexOperationBuilder::id);
+        routing.ifPresent(indexOperationBuilder::routing);
 
         bulkOperation = new BulkOperation.Builder()
                 .index(indexOperationBuilder.build())

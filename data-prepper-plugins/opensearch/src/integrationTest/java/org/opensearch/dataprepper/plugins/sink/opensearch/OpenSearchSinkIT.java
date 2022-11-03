@@ -64,6 +64,7 @@ import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItems;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.closeTo;
@@ -581,6 +582,34 @@ public class OpenSearchSinkIT {
     for (String routingField: routingFields) {
         MatcherAssert.assertThat(routingField, equalTo(expectedRoutingField));
     }
+    sink.shutdown();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"info/ids/id", "id"})
+  public void testOpenSearchDynamicIndex(final String testIndex) throws IOException, InterruptedException {
+    final String dynamicTestIndexAlias = "test-${"+testIndex+"}-index";
+    final String testIndexName = "idx1";
+    final String testIndexAlias = "test-"+testIndexName+"-index";
+    final String data = UUID.randomUUID().toString();
+    final Map<String, Object> dataMap = Map.of("data", data);
+    final Event testEvent = JacksonEvent.builder()
+            .withData(dataMap)
+            .withEventType("event")
+            .build();
+    testEvent.put(testIndex, testIndexName);
+
+    Map<String, Object> expectedMap = testEvent.toMap();
+
+    final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+    final PluginSetting pluginSetting = generatePluginSetting(null, dynamicTestIndexAlias, null);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    sink.output(testRecords);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    System.out.println(retSources);
+    MatcherAssert.assertThat(retSources, hasItem(expectedMap));
     sink.shutdown();
   }
 

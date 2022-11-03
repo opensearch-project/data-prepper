@@ -12,19 +12,26 @@ import java.util.Optional;
 
 public class IndexManagerFactory {
 
+    public final IndexManager getDynamicIndexManager(final IndexType indexType,
+                                        final RestHighLevelClient restHighLevelClient,
+                                        final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                        final String indexAlias) {
+        switch (indexType) {
+            case TRACE_ANALYTICS_RAW:
+                return new TraceAnalyticsRawIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+            case TRACE_ANALYTICS_SERVICE_MAP:
+                return new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+            case MANAGEMENT_DISABLED:
+                return new ManagementDisabledIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+            default:
+                return new DefaultIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+        }
+    }
+
     public final IndexManager getIndexManager(final IndexType indexType,
                                         final RestHighLevelClient restHighLevelClient,
                                         final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
-        switch (indexType) {
-            case TRACE_ANALYTICS_RAW:
-                return new TraceAnalyticsRawIndexManager(restHighLevelClient, openSearchSinkConfiguration);
-            case TRACE_ANALYTICS_SERVICE_MAP:
-                return new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, openSearchSinkConfiguration);
-            case MANAGEMENT_DISABLED:
-                return new ManagementDisabledIndexManager(restHighLevelClient, openSearchSinkConfiguration);
-            default:
-                return new DefaultIndexManager(restHighLevelClient, openSearchSinkConfiguration);
-        }
+        return getDynamicIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, null);
     }
 
     private static class DefaultIndexManager extends IndexManager {
@@ -32,8 +39,9 @@ public class IndexManagerFactory {
         private static final String POLICY_NAME_SUFFIX = "-policy";
 
         public DefaultIndexManager(final RestHighLevelClient restHighLevelClient,
-                                   final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
-            super(restHighLevelClient, openSearchSinkConfiguration);
+                                   final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                   final String indexAlias) {
+            super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
             final Optional<String> ismPolicyFile = openSearchSinkConfiguration.getIndexConfiguration().getIsmPolicyFile();
             if (ismPolicyFile.isPresent()) {
                 final String indexPolicyName = getIndexPolicyName();
@@ -52,8 +60,9 @@ public class IndexManagerFactory {
 
     private static class TraceAnalyticsRawIndexManager extends IndexManager {
         public TraceAnalyticsRawIndexManager(final RestHighLevelClient restHighLevelClient,
-                                             final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
-            super(restHighLevelClient, openSearchSinkConfiguration);
+                                             final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                                    final String indexAlias) {
+            super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
             this.ismPolicyManagementStrategy = new IsmPolicyManagement(
                     restHighLevelClient,
                     IndexConstants.RAW_ISM_POLICY,
@@ -66,16 +75,17 @@ public class IndexManagerFactory {
     private static class TraceAnalyticsServiceMapIndexManager extends IndexManager {
 
         public TraceAnalyticsServiceMapIndexManager(final RestHighLevelClient restHighLevelClient,
-                                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
-            super(restHighLevelClient, openSearchSinkConfiguration);
+                                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                                    final String indexAlias) {
+            super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
             this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
         }
 
     }
 
     private class ManagementDisabledIndexManager extends IndexManager {
-        protected ManagementDisabledIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
-            super(restHighLevelClient, openSearchSinkConfiguration);
+        protected ManagementDisabledIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration, final String indexAlias) {
+            super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
         }
 
         @Override
