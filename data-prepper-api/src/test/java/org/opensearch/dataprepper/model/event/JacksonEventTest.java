@@ -470,10 +470,17 @@ public class JacksonEventTest {
         assertThat(event.formatString("test-${foo}-string"), is(equalTo("test-bar-string")));
         assertThat(event.formatString("test-string-${foo}"), is(equalTo("test-string-bar")));
         assertThat(event.formatString("${foo}-test-string"), is(equalTo("bar-test-string")));
+        assertThat(event.formatString("test-${boo}-string"), is(equalTo(null)));
+        assertThrows(RuntimeException.class, () -> event.formatString("test-${foo-string"));
 
         assertThat(event.formatString("test-${info/ids/id}-string"), is(equalTo("test-idx-string")));
         assertThat(event.formatString("test-string-${info/ids/id}"), is(equalTo("test-string-idx")));
         assertThat(event.formatString("${info/ids/id}-test-string"), is(equalTo("idx-test-string")));
+
+        assertThat(event.formatString("${info/ids/id}-test-string-${foo}"), is(equalTo("idx-test-string-bar")));
+        assertThat(event.formatString("${info/ids/id}-test-${foo}-string"), is(equalTo("idx-test-bar-string")));
+        assertThat(event.formatString("${info/ids/id}-${foo}-test-string"), is(equalTo("idx-bar-test-string")));
+        assertThat(event.formatString("${info/ids/id}${foo}-test-string"), is(equalTo("idxbar-test-string")));
     }
 
     @Test

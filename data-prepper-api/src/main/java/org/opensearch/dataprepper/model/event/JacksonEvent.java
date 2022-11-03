@@ -278,10 +278,12 @@ public class JacksonEvent implements Event {
 	    return null;
 	  }
           result += (String)val;
-          fromIndex += endPos+1;
+          fromIndex = endPos+1;
         }
-      result += format.substring(fromIndex);
-      return result;
+	if (fromIndex < format.length()) {
+            result += format.substring(fromIndex);
+	}
+        return result;
     }
 
     @Override
