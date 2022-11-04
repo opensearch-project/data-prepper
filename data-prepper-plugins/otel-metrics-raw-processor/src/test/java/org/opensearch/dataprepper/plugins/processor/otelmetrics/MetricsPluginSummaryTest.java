@@ -41,7 +41,7 @@ public class MetricsPluginSummaryTest {
     public void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        rawProcessor = new OTelMetricsRawProcessor(testsettings);
+        rawProcessor = new OTelMetricsRawProcessor(testsettings, new OtelMetricsRawProcessorConfig());
     }
 
     @Test
@@ -55,6 +55,7 @@ public class MetricsPluginSummaryTest {
                         .setQuantile(0.7)
                         .setValue(250)
                         .build())
+                .setFlags(1)
                 .build();
         Summary summary = Summary.newBuilder().addDataPoints(dataPoint).build();
         Metric metric = Metric.newBuilder()
@@ -86,17 +87,18 @@ public class MetricsPluginSummaryTest {
         Record<Event> firstRecord = rec.get(0);
 
         ObjectMapper objectMapper = new ObjectMapper();
-        Map map = objectMapper.readValue(firstRecord.getData().toJsonString(), Map.class);
+        Map<String, Object> map = objectMapper.readValue(firstRecord.getData().toJsonString(), Map.class);
         assertSumProcessing(map);
     }
 
-    private void assertSumProcessing(Map map) {
+    private void assertSumProcessing(Map<String, Object> map) {
         assertThat(map).contains(entry("kind", org.opensearch.dataprepper.model.metric.Metric.KIND.SUMMARY.toString()));
         assertThat(map).contains(entry("unit", "seconds"));
         assertThat(map).contains(entry("description", "description"));
         assertThat(map).contains(entry("name", "name"));
         assertThat(map).contains(entry("serviceName", "service"));
         assertThat(map).contains(entry("quantileValuesCount", 2));
+        assertThat(map).contains(entry("flags", 1));
 
         List<Map<String, Object>> quantileValues = (List<Map<String, Object>>) map.get("quantiles");
         assertThat(quantileValues).hasSize(2);

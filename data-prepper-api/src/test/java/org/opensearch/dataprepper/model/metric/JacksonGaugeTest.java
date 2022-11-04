@@ -7,12 +7,15 @@ package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.TestObject;
 import com.google.common.collect.ImmutableMap;
-import org.hamcrest.CoreMatchers;
+import io.micrometer.core.instrument.util.IOUtils;
+import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -33,10 +36,17 @@ class JacksonGaugeTest {
     private static final String TEST_NAME = "name";
     private static final String TEST_DESCRIPTION = "description";
     private static final String TEST_UNIT_NAME = "unit";
-    private static final String TEST_START_TIME = UUID.randomUUID().toString();
-    private static final String TEST_TIME = UUID.randomUUID().toString();
+    private static final String TEST_START_TIME = "2022-01-01T00:00:00Z";
+    private static final String TEST_TIME = "2022-01-02T00:00:00Z";
     private static final String TEST_EVENT_KIND = Metric.KIND.GAUGE.name();
     private static final Double TEST_VALUE = 1D;
+    private static final String TEST_SCHEMA_URL = "schema";
+    private static final Integer TEST_FLAGS = 1;
+
+    private static final List<Exemplar> TEST_EXEMPLARS = Arrays.asList(
+            new DefaultExemplar("1970-01-01T00:00:00Z", 2.0, "xsdf", "abcd", Map.of("test", "value")),
+            new DefaultExemplar("1971-01-01T00:00:00Z", 5.0, "xsdt", "asdf", Map.of("test", "value"))
+    );
 
     private JacksonGauge gauge;
 
@@ -53,7 +63,10 @@ class JacksonGaugeTest {
                 .withTime(TEST_TIME)
                 .withUnit(TEST_UNIT_NAME)
                 .withValue(TEST_VALUE)
-                .withServiceName(TEST_SERVICE_NAME);
+                .withServiceName(TEST_SERVICE_NAME)
+                .withExemplars(TEST_EXEMPLARS)
+                .withSchemaUrl(TEST_SCHEMA_URL)
+                .withFlags(TEST_FLAGS);
 
         gauge = builder.build();
 
@@ -118,6 +131,24 @@ class JacksonGaugeTest {
     }
 
     @Test
+    public void testGetExemplars() {
+        List<? extends Exemplar> exemplars = gauge.getExemplars();
+        assertThat(exemplars.size(), is(equalTo(2)));
+        Exemplar e1 = exemplars.get(0);
+        Exemplar e2 = exemplars.get(1);
+
+        assertThat(e1.getTime(), equalTo("1970-01-01T00:00:00Z"));
+        assertThat(e1.getValue(), equalTo(2.0));
+        assertThat(e1.getSpanId(), equalTo("xsdf"));
+        assertThat(e1.getTraceId(), equalTo("abcd"));
+
+        assertThat(e2.getTime(), equalTo("1971-01-01T00:00:00Z"));
+        assertThat(e2.getValue(), equalTo(5.0));
+        assertThat(e2.getSpanId(), equalTo("xsdt"));
+        assertThat(e2.getTraceId(), equalTo("asdf"));
+    }
+
+    @Test
     public void testBuilder_missingNonNullParameters_throwsNullPointerException() {
         final JacksonGauge.Builder builder = JacksonGauge.builder();
         builder.withValue(null);
@@ -131,12 +162,27 @@ class JacksonGaugeTest {
     }
 
    @Test
-    public void testGaugeToJsonString() {
+    public void testGaugeToJsonString() throws JSONException {
         gauge.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         gauge.put("testObject", new TestObject(value));
         gauge.put("list", Arrays.asList(1, 4, 5));
         final String result = gauge.toJsonString();
-        assertThat(result, CoreMatchers.is(CoreMatchers.equalTo(String.format("{\"unit\":\"unit\",\"kind\":\"GAUGE\",\"name\":\"name\",\"description\":\"description\",\"startTime\":\"%s\",\"time\":\"%s\",\"serviceName\":\"service\",\"value\":1.0,\"foo\":\"bar\",\"testObject\":{\"field1\":\"%s\"},\"list\":[1,4,5],\"key1\":%s,\"key2\":\"%s\"}", TEST_START_TIME, TEST_TIME, value, TEST_TIME_KEY1, TEST_KEY2))));
+
+        String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/gauge.json"));
+        String expected = String.format(file, value, TEST_TIME_KEY1, TEST_KEY2);
+        JSONAssert.assertEquals(expected, result, false);
+    }
+
+    @Test
+    public void testGetSchemaUrl() {
+        final String url = gauge.getSchemaUrl();
+        assertThat(url, is(equalTo(TEST_SCHEMA_URL)));
+    }
+
+    @Test
+    public void testGetFlags() {
+        final Integer flags = gauge.getFlags();
+        assertThat(flags, is(equalTo(TEST_FLAGS)));
     }
 }

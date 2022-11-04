@@ -18,6 +18,7 @@ import io.opentelemetry.proto.resource.v1.Resource;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.metric.Bucket;
@@ -32,49 +33,65 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.mockito.Mockito.when;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsPluginHistogramTest {
 
     private OTelMetricsRawProcessor rawProcessor;
 
+    @Mock
+    private OtelMetricsRawProcessorConfig config;
+
+    private final HistogramDataPoint HISTOGRAM_DATA_POINT = HistogramDataPoint.newBuilder()
+            .addBucketCounts(0)
+            .addBucketCounts(5)
+            .addBucketCounts(17)
+            .addBucketCounts(33)
+            .addExplicitBounds(10.0)
+            .addExplicitBounds(100.0)
+            .addExplicitBounds(1000.0)
+            .setCount(4)
+            .setSum(1d / 3d)
+            .setFlags(1)
+            .build();
+
     @Before
     public void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
-        rawProcessor = new OTelMetricsRawProcessor(testsettings);
+        rawProcessor = new OTelMetricsRawProcessor(testsettings, config);
     }
 
     @Test
     public void test() throws JsonProcessingException {
-
-        final double bound_0 = 10.0;
-        final double bound_1 = 100.0;
-        final double bound_2 = 1000.0;
-        HistogramDataPoint dp = HistogramDataPoint.newBuilder()
-                .addBucketCounts(0)
-                .addBucketCounts(5)
-                .addBucketCounts(17)
-                .addBucketCounts(33)
-                .addExplicitBounds(bound_0)
-                .addExplicitBounds(bound_1)
-                .addExplicitBounds(bound_2)
-                .setCount(4)
-                .setSum(1d / 3d)
-                .build();
-
-        Histogram histogram = Histogram.newBuilder().addDataPoints(dp).build();
+        when(config.getCalculateHistogramBuckets()).thenReturn(true);
+        Histogram histogram = Histogram.newBuilder().addDataPoints(HISTOGRAM_DATA_POINT).build();
 
         List<Record<? extends Metric>> processedRecords = (List<Record<? extends Metric>>) rawProcessor.doExecute(Collections.singletonList(new Record<>(fillServiceRequest(histogram))));
         Record<? extends Metric> record = processedRecords.get(0);
         ObjectMapper objectMapper = new ObjectMapper();
         Map<Object, Object> map = objectMapper.readValue(record.getData().toJsonString(), Map.class);
 
-        DefaultBucket bucket_0 = new DefaultBucket((double) -Float.MAX_VALUE, bound_0, 0L);
-        DefaultBucket bucket_1 = new DefaultBucket(bound_0, bound_1, 5L);
-        DefaultBucket bucket_2 = new DefaultBucket(bound_1, bound_2, 17L);
-        DefaultBucket bucket_3 = new DefaultBucket(bound_2, (double) Float.MAX_VALUE, 33L);
+        DefaultBucket bucket_0 = new DefaultBucket((double) -Float.MAX_VALUE, 10.0, 0L);
+        DefaultBucket bucket_1 = new DefaultBucket(10.0, 100.0, 5L);
+        DefaultBucket bucket_2 = new DefaultBucket(100.0, 1000.0, 17L);
+        DefaultBucket bucket_3 = new DefaultBucket(1000.0, (double) Float.MAX_VALUE, 33L);
         assertHistogramProcessing(map, Arrays.asList(bucket_0, bucket_1, bucket_2, bucket_3));
+    }
+
+    @Test
+    public void testWithConfigFlagDisabled() throws JsonProcessingException {
+        when(config.getCalculateHistogramBuckets()).thenReturn(false);
+
+        Histogram histogram = Histogram.newBuilder().addDataPoints(HISTOGRAM_DATA_POINT).build();
+
+        List<Record<? extends Metric>> processedRecords = (List<Record<? extends Metric>>) rawProcessor.doExecute(Collections.singletonList(new Record<>(fillServiceRequest(histogram))));
+        Record<? extends Metric> record = processedRecords.get(0);
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<Object, Object> map = objectMapper.readValue(record.getData().toJsonString(), Map.class);
+
+        assertHistogramProcessing(map, Collections.emptyList());
     }
 
     private ExportMetricsServiceRequest fillServiceRequest(Histogram histogram) {
@@ -109,21 +126,27 @@ public class MetricsPluginHistogramTest {
         assertThat(map).contains(entry("count", 4));
         assertThat(map).contains(entry("serviceName", "service"));
         assertThat(map).contains(entry("aggregationTemporality", "AGGREGATION_TEMPORALITY_UNSPECIFIED"));
+        assertThat(map).contains(entry("flags", 1));
+        assertThat(map).contains(entry("bucketCountsList", Arrays.asList(0, 5, 17, 33)));
+        assertThat(map).contains(entry("explicitBounds", Arrays.asList(10.0, 100.0, 1000.0)));
 
-        assertThat(map).containsKey("buckets");
+        if (expectedBuckets.isEmpty()) {
+            assertThat(map).doesNotContainKey("buckets");
+        } else {
+            assertThat(map).containsKey("buckets");
+            List<Map> listOfMaps = (List<Map>) map.get("buckets");
+            assertThat(listOfMaps).hasSize(expectedBuckets.size());
 
-        List<Map> listOfMaps = (List<Map>) map.get("buckets");
-        assertThat(listOfMaps).hasSize(expectedBuckets.size());
+            for (int i = 0; i < expectedBuckets.size(); i++) {
+                Bucket expectedBucket = expectedBuckets.get(i);
+                Map<Object, Object> actualBucket = listOfMaps.get(i);
 
-        for (int i = 0; i < expectedBuckets.size(); i++) {
-            Bucket expectedBucket = expectedBuckets.get(i);
-            Map<Object, Object> actualBucket = listOfMaps.get(i);
+                assertThat(actualBucket)
+                        .contains(entry("min", expectedBucket.getMin()))
+                        .contains(entry("max", expectedBucket.getMax()))
+                        .contains(entry("count", expectedBucket.getCount().intValue()));
 
-            assertThat(actualBucket)
-                    .contains(entry("min", expectedBucket.getMin()))
-                    .contains(entry("max", expectedBucket.getMax()))
-                    .contains(entry("count", expectedBucket.getCount().intValue()));
-
+            }
         }
     }
 }
