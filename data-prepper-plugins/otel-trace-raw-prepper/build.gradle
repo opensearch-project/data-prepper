@@ -1,7 +1,7 @@
 /*
-  * Copyright OpenSearch Contributors
-  * SPDX-License-Identifier: Apache-2.0
-  */
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 plugins {
     id 'java'
@@ -10,19 +10,19 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
-    implementation project(':data-prepper-plugins:otel-proto-common')
     implementation 'commons-codec:commons-codec:1.15'
-    implementation 'org.apache.commons:commons-lang3:3.12.0'
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation "io.opentelemetry.proto:opentelemetry-proto:${versionMap.opentelemetryProto}"
-    implementation "com.google.protobuf:protobuf-java-util:${versionMap.protobufJavaUtil}"
-    implementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
-    implementation "com.linecorp.armeria:armeria-grpc:${versionMap.armeriaGrpc}"
+    implementation 'com.google.protobuf:protobuf-java-util:3.19.4'
+    implementation 'com.linecorp.armeria:armeria:1.9.2'
+    implementation 'com.linecorp.armeria:armeria-grpc:1.9.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation group: 'com.google.guava', name: 'guava', version: '31.1-jre'
-    testImplementation 'org.assertj:assertj-core:3.23.1'
+    implementation 'com.google.guava:guava:31.1-jre'
+    testImplementation 'org.assertj:assertj-core:3.22.0'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+    testImplementation 'org.hamcrest:hamcrest:2.2'
+    testImplementation 'org.awaitility:awaitility:4.1.1'
 }
 
 jacocoTestCoverageVerification {

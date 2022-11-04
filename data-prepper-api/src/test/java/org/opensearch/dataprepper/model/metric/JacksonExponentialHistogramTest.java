@@ -13,11 +13,14 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.TestObject;
 import org.skyscreamer.jsonassert.JSONAssert;
 
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
@@ -27,10 +30,14 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class JacksonHistogramTest {
+public class JacksonExponentialHistogramTest {
 
-    private static final Long TEST_KEY1_TIME = new Date().getTime();
+    private static final Long TEST_KEY1_TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
+            LocalDateTime.of(2020, 5, 24, 14, 0, 0),
+            ZoneOffset.UTC).toInstant().toEpochMilli());
+
     private static final String TEST_KEY2 = UUID.randomUUID().toString();
+
     private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of(
             "key1", TEST_KEY1_TIME,
             "key2", TEST_KEY2);
@@ -40,28 +47,34 @@ class JacksonHistogramTest {
     private static final String TEST_UNIT_NAME = "unit";
     private static final String TEST_START_TIME = UUID.randomUUID().toString();
     private static final String TEST_TIME = UUID.randomUUID().toString();
-    private static final String TEST_EVENT_KIND = Metric.KIND.HISTOGRAM.name();
+    private static final String TEST_EVENT_KIND = Metric.KIND.EXPONENTIAL_HISTOGRAM.name();
     private static final Double TEST_SUM = 1D;
-    private static final List<Bucket> TEST_BUCKETS = Arrays.asList(
+    private static final List<Bucket> TEST_POSITIVE_BUCKETS = Arrays.asList(
             new DefaultBucket(0.0, 5.0, 2L),
             new DefaultBucket(5.0, 10.0, 5L)
     );
 
-    private static final List<Long> TEST_BUCKET_COUNTS_LIST = Arrays.asList(1L, 2L, 3L);
-    private static final List<Double> TEST_EXPLICIT_BOUNDS_LIST = Arrays.asList(5D, 10D, 100D);
-    private static final Integer TEST_BUCKETS_COUNT = 2;
+    private static final List<Bucket> TEST_NEGATIVE_BUCKETS = Arrays.asList(
+            new DefaultBucket(0.0, 5.0, 2L),
+            new DefaultBucket(5.0, 10.0, 5L)
+    );
+    private static final List<Long> TEST_NEGATIVE = Arrays.asList(1L, 2L, 3L);
+    private static final List<Long> TEST_POSITIVE = Arrays.asList(4L, 5L);
     private static final Long TEST_COUNT = 2L;
-    private static final Integer TEST_EXPLICIT_BOUNDS_COUNT = 2;
     private static final String TEST_AGGREGATION_TEMPORALITY = "AGGREGATIONTEMPORALITY";
     private static final String TEST_SCHEMA_URL = "schema";
+    private static final Integer TEST_SCALE = -3;
+    private static final Long TEST_ZERO_COUNT = 1L;
+    private static final Integer TEST_NEGATIVE_OFFSET = 2;
+    private static final Integer TEST_POSITIVE_OFFSET = 5;
 
-    private JacksonHistogram histogram;
+    private JacksonExponentialHistogram histogram;
 
-    private JacksonHistogram.Builder builder;
+    private JacksonExponentialHistogram.Builder builder;
 
     @BeforeEach
     public void setup() {
-        builder = JacksonHistogram.builder()
+        builder = JacksonExponentialHistogram.builder()
                 .withAttributes(TEST_ATTRIBUTES)
                 .withName(TEST_NAME)
                 .withDescription(TEST_DESCRIPTION)
@@ -72,13 +85,16 @@ class JacksonHistogramTest {
                 .withServiceName(TEST_SERVICE_NAME)
                 .withSum(TEST_SUM)
                 .withCount(TEST_COUNT)
-                .withBucketCount(TEST_BUCKETS_COUNT)
-                .withBuckets(TEST_BUCKETS)
-                .withExplicitBoundsCount(TEST_EXPLICIT_BOUNDS_COUNT)
+                .withNegativeBuckets(TEST_NEGATIVE_BUCKETS)
+                .withPositiveBuckets(TEST_POSITIVE_BUCKETS)
                 .withAggregationTemporality(TEST_AGGREGATION_TEMPORALITY)
                 .withSchemaUrl(TEST_SCHEMA_URL)
-                .withExplicitBoundsList(TEST_EXPLICIT_BOUNDS_LIST)
-                .withBucketCountsList(TEST_BUCKET_COUNTS_LIST);
+                .withScale(TEST_SCALE)
+                .withZeroCount(TEST_ZERO_COUNT)
+                .withPositiveOffset(TEST_POSITIVE_OFFSET)
+                .withNegativeOffset(TEST_NEGATIVE_OFFSET)
+                .withNegative(TEST_NEGATIVE)
+                .withPositive(TEST_POSITIVE);
 
         histogram = builder.build();
     }
@@ -130,8 +146,20 @@ class JacksonHistogramTest {
     }
 
     @Test
-    public void testGetBuckets() {
-        final List<? extends Bucket> buckets = histogram.getBuckets();
+    public void testGetScale() {
+        Integer scale = histogram.getScale();
+        assertThat(scale, is(equalTo(TEST_SCALE)));
+    }
+
+    @Test
+    public void testZeroCount() {
+        Long zeroCount = histogram.getZeroCount();
+        assertThat(zeroCount, is(equalTo(TEST_ZERO_COUNT)));
+    }
+
+    @Test
+    public void testGetNegativeBuckets() {
+        final List<? extends Bucket> buckets = histogram.getNegativeBuckets();
         assertThat(buckets.size(), is(equalTo(2)));
         Bucket firstBucket = buckets.get(0);
         Bucket secondBucket = buckets.get(1);
@@ -143,31 +171,48 @@ class JacksonHistogramTest {
         assertThat(secondBucket.getMin(), is(equalTo(5.0)));
         assertThat(secondBucket.getMax(), is(equalTo(10.0)));
         assertThat(secondBucket.getCount(), is(equalTo(5L)));
-
     }
 
     @Test
-    public void testGetBucketCountsList() {
-        List<Long> counts = histogram.getBucketCountsList();
-        assertEquals(counts, TEST_BUCKET_COUNTS_LIST);
+    public void testGetPositiveBuckets() {
+        final List<? extends Bucket> buckets = histogram.getPositiveBuckets();
+        assertThat(buckets.size(), is(equalTo(2)));
+        Bucket firstBucket = buckets.get(0);
+        Bucket secondBucket = buckets.get(1);
+
+        assertThat(firstBucket.getMin(), is(equalTo(0.0)));
+        assertThat(firstBucket.getMax(), is(equalTo(5.0)));
+        assertThat(firstBucket.getCount(), is(equalTo(2L)));
+
+        assertThat(secondBucket.getMin(), is(equalTo(5.0)));
+        assertThat(secondBucket.getMax(), is(equalTo(10.0)));
+        assertThat(secondBucket.getCount(), is(equalTo(5L)));
     }
 
     @Test
-    public void testGetExplicitBoundsList() {
-        List<Double> bounds = histogram.getExplicitBoundsList();
-        assertEquals(bounds, TEST_EXPLICIT_BOUNDS_LIST);
+    public void testGetNegative() {
+        List<Long> negativeBucketCounts = histogram.getNegative();
+        assertThat(negativeBucketCounts.size(), is(equalTo(3)));
+        assertEquals(negativeBucketCounts, TEST_NEGATIVE);
     }
 
     @Test
-    public void testGetBucketCounts() {
-        Integer count = histogram.getBucketCount();
-        assertEquals(count, TEST_BUCKETS_COUNT);
+    public void testGetPositive() {
+        List<Long> negativeBucketCounts = histogram.getPositive();
+        assertThat(negativeBucketCounts.size(), is(equalTo(2)));
+        assertEquals(negativeBucketCounts, TEST_POSITIVE);
     }
 
     @Test
-    public void testGetExplicitBoundsCount() {
-        final Integer explicitBoundsCount = histogram.getExplicitBoundsCount();
-        assertThat(explicitBoundsCount, is(equalTo(TEST_EXPLICIT_BOUNDS_COUNT)));
+    public void testGetPositiveOffset() {
+        Integer positiveOffset = histogram.getPositiveOffset();
+        assertThat(positiveOffset, is(TEST_POSITIVE_OFFSET));
+    }
+
+    @Test
+    public void testGetNegativeOffset() {
+        Integer negativeOffset = histogram.getNegativeOffset();
+        assertThat(negativeOffset, is(TEST_NEGATIVE_OFFSET));
     }
 
     @Test
@@ -192,7 +237,7 @@ class JacksonHistogramTest {
     @Test
     public void testGetAttributes_withNull_mustBeEmpty() {
         builder.withAttributes(null);
-        JacksonHistogram histogram = builder.build();
+        JacksonExponentialHistogram histogram = builder.build();
         histogram.toJsonString();
         assertThat(histogram.getAttributes(), is(anEmptyMap()));
     }
@@ -205,9 +250,8 @@ class JacksonHistogramTest {
         histogram.put("list", Arrays.asList(1, 4, 5));
         final String result = histogram.toJsonString();
 
-        String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/histogram.json"));
+        String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/exponentialHistogram.json"));
         String expected = String.format(file, TEST_START_TIME, TEST_TIME, value, TEST_KEY1_TIME, TEST_KEY2);
         JSONAssert.assertEquals(expected, result, false);
     }
-
 }

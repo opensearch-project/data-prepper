@@ -9,13 +9,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
+import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
+import org.apache.commons.codec.binary.Hex;
 import org.opensearch.dataprepper.model.metric.Bucket;
 import org.opensearch.dataprepper.model.metric.DefaultBucket;
+import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.metric.DefaultQuantile;
+import org.opensearch.dataprepper.model.metric.Exemplar;
 import org.opensearch.dataprepper.model.metric.Quantile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,11 +41,13 @@ public final class OTelMetricsProtoHelper {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsProtoHelper.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String SERVICE_NAME = "service.name";
-    private static final String SPAN_ATTRIBUTES = "metric.attributes";
+    private static final String METRIC_ATTRIBUTES = "metric.attributes";
     static final String RESOURCE_ATTRIBUTES = "resource.attributes";
+    static final String EXEMPLAR_ATTRIBUTES = "exemplar.attributes";
     static final String INSTRUMENTATION_LIBRARY_NAME = "instrumentationLibrary.name";
     static final String INSTRUMENTATION_LIBRARY_VERSION = "instrumentationLibrary.version";
-
+    static final String INSTRUMENTATION_SCOPE_NAME = "instrumentationScope.name";
+    static final String INSTRUMENTATION_SCOPE_VERSION = "instrumentationScope.version";
 
     /**
      * To make it ES friendly we will replace '.' in keys with '@' in all the Keys in {@link io.opentelemetry.proto.common.v1.KeyValue}
@@ -49,15 +57,17 @@ public final class OTelMetricsProtoHelper {
     public static final Function<String, String> REPLACE_DOT_WITH_AT = i -> i.replace(DOT, AT);
 
     /**
-     * Span and Resource attributes are essential for kibana so they should not be nested. SO we will prefix them with "span.attributes"
-     * and "resource.attributes".
+     * Span and Resource attributes are essential for kibana so they should not be nested. SO we will prefix them with "metric.attributes"
+     * and "resource.attributes" and "exemplar.attributes".
      */
-    public static final Function<String, String> PREFIX_AND_SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> SPAN_ATTRIBUTES + DOT + i.replace(DOT, AT);
+    public static final Function<String, String> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> METRIC_ATTRIBUTES + DOT + i.replace(DOT, AT);
     public static final Function<String, String> PREFIX_AND_RESOURCE_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> RESOURCE_ATTRIBUTES + DOT + i.replace(DOT, AT);
+    public static final Function<String, String> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT = i -> EXEMPLAR_ATTRIBUTES + DOT + i.replace(DOT, AT);
 
     private OTelMetricsProtoHelper() {
     }
 
+    private static final Map<Integer, double[]> EXPONENTIAL_BUCKET_BOUNDS = new ConcurrentHashMap<>();
 
     /**
      * Converts an {@link AnyValue} into its appropriate data type
@@ -110,7 +120,7 @@ public final class OTelMetricsProtoHelper {
      */
     public static Map<String, Object> convertKeysOfDataPointAttributes(final NumberDataPoint numberDataPoint) {
         return numberDataPoint.getAttributesList().stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
     }
 
     /**
@@ -123,8 +133,22 @@ public final class OTelMetricsProtoHelper {
      */
     public static Map<String, Object> unpackKeyValueList(List<KeyValue> attributesList) {
         return attributesList.stream()
-                .collect(Collectors.toMap(i -> PREFIX_AND_SPAN_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+                .collect(Collectors.toMap(i -> PREFIX_AND_METRIC_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
     }
+
+    /**
+     * Unpacks the List of {@link KeyValue} object into a Map.
+     * <p>
+     * Converts the keys into an os friendly format and casts the underlying data into its actual type?
+     *
+     * @param attributesList The list of {@link KeyValue} objects to process
+     * @return A Map containing unpacked {@link KeyValue} data
+     */
+    public static Map<String, Object> unpackExemplarValueList(List<KeyValue> attributesList) {
+        return attributesList.stream()
+                .collect(Collectors.toMap(i -> PREFIX_AND_EXEMPLAR_ATTRIBUTES_REPLACE_DOT_WITH_AT.apply(i.getKey()), i -> convertAnyValue(i.getValue())));
+    }
+
 
     /**
      * Extracts a value from the passed {@link NumberDataPoint} into a double representation
@@ -139,6 +163,24 @@ public final class OTelMetricsProtoHelper {
             return ndp.getAsDouble();
         } else if (NumberDataPoint.ValueCase.AS_INT == ndpCase) {
             return (double) ndp.getAsInt();
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Extracts a value from the passed {@link io.opentelemetry.proto.metrics.v1.Exemplar} into a double representation
+     *
+     * @param exemplar The {@link io.opentelemetry.proto.metrics.v1.Exemplar} which's data should be turned into a double value
+     * @return A double representing the numerical value of the passed {@link io.opentelemetry.proto.metrics.v1.Exemplar}.
+     * Null if the numerical data point is not present
+     */
+    public static Double getExemplarValueAsDouble(final io.opentelemetry.proto.metrics.v1.Exemplar exemplar) {
+        io.opentelemetry.proto.metrics.v1.Exemplar.ValueCase valueCase = exemplar.getValueCase();
+        if (io.opentelemetry.proto.metrics.v1.Exemplar.ValueCase.AS_DOUBLE == valueCase) {
+            return exemplar.getAsDouble();
+        } else if (io.opentelemetry.proto.metrics.v1.Exemplar.ValueCase.AS_INT == valueCase) {
+            return (double) exemplar.getAsInt();
         } else {
             return null;
         }
@@ -164,6 +206,23 @@ public final class OTelMetricsProtoHelper {
         }
         return instrumentationAttr;
     }
+
+    /**
+     * Extracts the name and version of the used instrumentation scope used
+     *
+     * @return A map, containing information about the instrumentation scope
+     */
+    public static Map<String, Object> getInstrumentationScopeAttributes(final InstrumentationScope instrumentationScope) {
+        final Map<String, Object> instrumentationScopeAttr = new HashMap<>();
+        if (!instrumentationScope.getName().isEmpty()) {
+            instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_NAME, instrumentationScope.getName());
+        }
+        if (!instrumentationScope.getVersion().isEmpty()) {
+            instrumentationScopeAttr.put(INSTRUMENTATION_SCOPE_VERSION, instrumentationScope.getVersion());
+        }
+        return instrumentationScopeAttr;
+    }
+
 
     public static String convertUnixNanosToISO8601(final long unixNano) {
         return Instant.ofEpochSecond(0L, unixNano).toString();
@@ -249,5 +308,57 @@ public final class OTelMetricsProtoHelper {
             }
         }
         return buckets;
+    }
+
+    /**
+     * Converts a List of {@link io.opentelemetry.proto.metrics.v1.Exemplar} values to {@link DefaultExemplar}, the
+     * internal representation for Data Prepper
+     *
+     * @param exemplarsList the List of Exemplars
+     * @return a mapped list of DefaultExemplars
+     */
+    public static List<Exemplar> convertExemplars(List<io.opentelemetry.proto.metrics.v1.Exemplar> exemplarsList) {
+        return exemplarsList.stream().map(exemplar ->
+                        new DefaultExemplar(convertUnixNanosToISO8601(exemplar.getTimeUnixNano()),
+                                getExemplarValueAsDouble(exemplar),
+                                Hex.encodeHexString(exemplar.getSpanId().toByteArray()),
+                                Hex.encodeHexString(exemplar.getTraceId().toByteArray()),
+                                unpackExemplarValueList(exemplar.getFilteredAttributesList())))
+                .collect(Collectors.toList());
+    }
+
+
+    static double[] calculateBoundaries(int scale) {
+        int len = 1 << Math.abs(scale);
+        double[] boundaries = new double[len + 1];
+        for (int i = 0; i <= len ; i++) {
+            boundaries[i] = scale >=0 ?
+                    Math.pow(2., i / (double) len) :
+                    Math.pow(2., Math.pow(2., i));
+        }
+        return boundaries;
+    }
+
+    /**
+     * Maps a List of {@link io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint.Buckets} to an
+     * internal representation for Data Prepper.
+     * See <a href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md#exponential-buckets">data model</a>
+     *
+     * @param buckets the list of buckets
+     * @param scale the scale of the exponential histogram
+     * @return a mapped list of Buckets
+     */
+    public static List<Bucket> createExponentialBuckets(ExponentialHistogramDataPoint.Buckets buckets, int scale) {
+        double[] bucketBounds = EXPONENTIAL_BUCKET_BOUNDS.computeIfAbsent(scale, integer -> calculateBoundaries(scale));
+        List<Bucket> mappedBuckets = new ArrayList<>();
+        int offset = buckets.getOffset();
+        List<Long> bucketsList = buckets.getBucketCountsList();
+        for (int i = 0; i < bucketsList.size(); i++) {
+            Long value = bucketsList.get(i);
+            double lowerBound = bucketBounds[offset + i];
+            double upperBound = bucketBounds[offset + i + 1];
+            mappedBuckets.add(new DefaultBucket(lowerBound, upperBound, value));
+        }
+        return mappedBuckets;
     }
 }

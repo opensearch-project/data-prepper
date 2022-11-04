@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.metric;
 
 import org.opensearch.dataprepper.model.event.Event;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,7 +24,7 @@ public interface Metric extends Event {
      * @see <a href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/datamodel.md">
      *     The OpenTelemetry Data Model Spec</a>
      */
-    enum KIND {GAUGE, HISTOGRAM, SUM, SUMMARY}
+    enum KIND {GAUGE, HISTOGRAM, EXPONENTIAL_HISTOGRAM, SUM, SUMMARY}
 
     /**
      * Gets the serviceName of this metric.
@@ -48,7 +49,6 @@ public interface Metric extends Event {
      * @since 1.4
      */
     String getDescription();
-
 
     /**
      * Gets the unit in which the metric value is reported.
@@ -90,4 +90,28 @@ public interface Metric extends Event {
      */
     Map<String, Object> getAttributes();
 
+    /**
+     * Gets the schema url of this metric.
+     *
+     * @return the schemaUrl
+     * @since 1.4
+     */
+    String getSchemaUrl();
+
+    /**
+     * Gets the associated exemplars for this metric event.
+     *
+     * @return the exemplars
+     * @since 1.4
+     */
+    List<? extends Exemplar> getExemplars();
+
+
+    /**
+     * Gets the associated flags for this metric event.
+     *
+     * @return the flags encoded as Integer
+     * @since 1.4
+     */
+    Integer getFlags();
 }
