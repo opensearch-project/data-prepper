@@ -28,6 +28,8 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     private static final String BUCKET_COUNTS_KEY = "bucketCounts";
     private static final String EXPLICIT_BOUNDS_COUNT_KEY = "explicitBoundsCount";
     private static final String BUCKETS_KEY = "buckets";
+    private static final String BUCKET_COUNTS_LIST_KEY = "bucketCountsList";
+    private static final String EXPLICIT_BOUNDS_KEY = "explicitBounds";
 
     private static final List<String> REQUIRED_KEYS = new ArrayList<>();
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
@@ -72,6 +74,16 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     @Override
     public List<? extends Bucket> getBuckets() {
         return this.getList(BUCKETS_KEY, DefaultBucket.class);
+    }
+
+    @Override
+    public List<Long> getBucketCountsList() {
+        return this.getList(BUCKET_COUNTS_LIST_KEY, Long.class);
+    }
+
+    @Override
+    public List<Double> getExplicitBoundsList() {
+        return this.getList(EXPLICIT_BOUNDS_KEY, Double.class);
     }
 
     /**
@@ -149,6 +161,28 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          */
         public JacksonHistogram.Builder withBuckets(List<Bucket> buckets) {
             data.put(BUCKETS_KEY, buckets);
+            return this;
+        }
+
+        /**
+         * Sets the buckets counts for this histogram
+         * @param bucketCountsList the list with the individual counts
+         * @return the builder
+         * @since 1.4
+         */
+        public JacksonHistogram.Builder withBucketCountsList(List<Long> bucketCountsList) {
+            data.put(BUCKET_COUNTS_LIST_KEY, bucketCountsList);
+            return this;
+        }
+
+        /**
+         * Sets the buckets bounds for this histogram
+         * @param explicitBoundsList the list with the individual bucket bounds
+         * @return the builder
+         * @since 1.4
+         */
+        public JacksonHistogram.Builder withExplicitBoundsList(List<Double> explicitBoundsList) {
+            data.put(EXPLICIT_BOUNDS_KEY, explicitBoundsList);
             return this;
         }
 

@@ -55,11 +55,26 @@ public interface Histogram extends Metric {
     String getAggregationTemporality();
 
     /**
-     * Gets the actual buckets for a histogram
+     * Gets the computed buckets for a histogram
      *
      * @return the buckets
      * @since 1.4
      */
     List<? extends Bucket> getBuckets();
 
+    /**
+     * Gets bucket counts for a histogram
+     *
+     * @return the bucket values
+     * @since 1.4
+     */
+    List<Long> getBucketCountsList();
+
+    /**
+     * Gets the explicit bounds list for a histogram
+     *
+     * @return the bounds
+     * @since 1.4
+     */
+    List<Double> getExplicitBoundsList();
 }

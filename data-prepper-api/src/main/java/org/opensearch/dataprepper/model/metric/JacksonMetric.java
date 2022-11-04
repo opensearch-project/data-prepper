@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,6 +29,9 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String KIND_KEY = "kind";
     protected static final String UNIT_KEY = "unit";
     protected static final String ATTRIBUTES_KEY = "attributes";
+    protected static final String SCHEMA_URL_KEY = "schemaUrl";
+    protected static final String EXEMPLARS_KEY = "exemplars";
+    protected static final String FLAGS_KEY = "flags";
 
     protected JacksonMetric(Builder builder) {
         super(builder);
@@ -88,6 +92,21 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     @Override
     public Map<String, Object> getAttributes() {
         return this.get(ATTRIBUTES_KEY, Map.class);
+    }
+
+    @Override
+    public String getSchemaUrl() {
+        return this.get(SCHEMA_URL_KEY, String.class);
+    }
+
+    @Override
+    public List<? extends Exemplar> getExemplars() {
+        return this.getList(EXEMPLARS_KEY, DefaultExemplar.class);
+    }
+
+    @Override
+    public Integer getFlags() {
+        return this.get(FLAGS_KEY, Integer.class);
     }
 
     /**
@@ -160,7 +179,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
 
         /**
          * Sets the start time of the gauge
-         * @param startTime
+         * @param startTime the start time
          * @return the builder
          * @since 1.4
          */
@@ -188,6 +207,39 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
          */
         public T withServiceName(final String serviceName) {
             data.put(SERVICE_NAME_KEY, serviceName);
+            return getThis();
+        }
+
+        /**
+         * Sets the schema url of the metric event
+         * @param schemaUrl sets the url of the schema
+         * @return the builder
+         * @since 1.4
+         */
+        public T withSchemaUrl(final String schemaUrl) {
+            data.put(SCHEMA_URL_KEY, schemaUrl);
+            return getThis();
+        }
+
+        /**
+         * Sets the exemplars that are associated with this metric event
+         * @param  exemplars sets the exemplars for this metric
+         * @return the builder
+         * @since 1.4
+         */
+        public T withExemplars(final List<Exemplar> exemplars) {
+            data.put(EXEMPLARS_KEY, exemplars);
+            return getThis();
+        }
+
+        /**
+         * Sets the flags that are associated with this metric event
+         * @param flags sets the flags for this metric
+         * @return the builder
+         * @since 1.4
+         */
+        public T withFlags(final Integer flags) {
+            data.put(FLAGS_KEY, flags);
             return getThis();
         }
     }

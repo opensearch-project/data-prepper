@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.metric;
 
 import com.google.common.collect.ImmutableMap;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +42,7 @@ public class JacksonSummaryTest {
     );
     private static final Integer TEST_QUANTILES_COUNT = 2;
     private static final Long TEST_COUNT = 2L;
+    private static final String TEST_SCHEMA_URL = "schema";
 
     private JacksonSummary summary;
 
@@ -60,7 +62,8 @@ public class JacksonSummaryTest {
                 .withSum(TEST_SUM)
                 .withQuantiles(TEST_QUANTILES)
                 .withCount(TEST_COUNT)
-                .withQuantilesValueCount(TEST_QUANTILES_COUNT);
+                .withQuantilesValueCount(TEST_QUANTILES_COUNT)
+                .withSchemaUrl(TEST_SCHEMA_URL);
 
         summary = builder.build();
     }
@@ -149,4 +152,11 @@ public class JacksonSummaryTest {
         builder.withTime("");
         assertThrows(IllegalArgumentException.class, builder::build);
     }
+
+    @Test
+    public void testGetSchemaUrl() {
+        final String url = summary.getSchemaUrl();
+        assertThat(url, Matchers.is(Matchers.equalTo(TEST_SCHEMA_URL)));
+    }
+
 }
