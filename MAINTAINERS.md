@@ -11,3 +11,4 @@
 | Shivani Shukla | [sshivanii](https://github.com/sshivanii) | Amazon |
 | Phill Treddenick | [treddeni-amazon](https://github.com/treddeni-amazon) | Amazon |
 | David Venable | [dlvenable](https://github.com/dlvenable) | Amazon |
+| Hai Yan | [oeyh](https://github.com/oeyh) | Amazon |
