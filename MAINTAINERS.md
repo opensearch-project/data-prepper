@@ -3,6 +3,7 @@
 | --------------- | --------- | ----------- |
 | Steven Bayer | [sbayer55](https://github.com/sbayer55) | Amazon |
 | Qi Chen | [chenqi0805](https://github.com/chenqi0805) | Amazon |
+| Chase Engelbrecht | [engechas](https://github.com/engechas) | Amazon |
 | Taylor Gray | [graytaylor0](https://github.com/graytaylor0) | Amazon |
 | Dinu John |  [dinujoh](https://github.com/dinujoh) | Amazon |
 | Christopher Manning | [cmanning09](https://github.com/cmanning09) | Amazon |
