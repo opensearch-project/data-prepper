@@ -31,7 +31,8 @@ import static org.hamcrest.Matchers.empty;
 
 class MinimalPipelineIT {
 
-    public static final String IN_MEMORY_IDENTIFIER = "MinimalPipelineIT";
+    private static final String IN_MEMORY_IDENTIFIER = "MinimalPipelineIT";
+    private static final String PIPELINE_CONFIGURATION_UNDER_TEST = "minimal-pipeline.yaml";
     private DataPrepperTestRunner dataPrepperTestRunner;
     private InMemorySourceAccessor inMemorySourceAccessor;
     private InMemorySinkAccessor inMemorySinkAccessor;
@@ -39,7 +40,7 @@ class MinimalPipelineIT {
     @BeforeEach
     void setUp() {
         dataPrepperTestRunner = DataPrepperTestRunner.builder()
-                .withPipelinesDirectoryOrFile("minimal-pipeline.yaml")
+                .withPipelinesDirectoryOrFile(PIPELINE_CONFIGURATION_UNDER_TEST)
                 .build();
 
         dataPrepperTestRunner.start();

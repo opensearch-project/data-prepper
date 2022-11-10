@@ -25,14 +25,16 @@ import javax.annotation.Nullable;
 public class DataPrepperTestRunner {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperTestRunner.class);
     private static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper";
+    private static final String BASE_DATA_PREPPER_PACKAGE = "org.opensearch.dataprepper";
+    private static final String EXPRESSION_PACKAGE = BASE_DATA_PREPPER_PACKAGE + ".expression";
     private final AnnotationConfigApplicationContext coreApplicationContext;
-    private final String dataPrepperConfig;
+    private final String dataPrepperConfigFile;
     private final String pipelinesDirectoryOrFile;
     private final InMemorySourceAccessor inMemorySourceAccessor;
     private final InMemorySinkAccessor inMemorySinkAccessor;
 
     private DataPrepperTestRunner(final Builder builder) {
-        dataPrepperConfig = builder.dataPrepperConfig;
+        dataPrepperConfigFile = builder.dataPrepperConfigFile;
         pipelinesDirectoryOrFile = builder.pipelinesDirectoryOrFile;
 
         inMemorySourceAccessor = new InMemorySourceAccessor();
@@ -40,7 +42,7 @@ public class DataPrepperTestRunner {
         LOG.info("created in memory source accessor {}", inMemorySourceAccessor);
 
         final AnnotationConfigApplicationContext publicApplicationContext = new AnnotationConfigApplicationContext();
-        publicApplicationContext.scan("org.opensearch.dataprepper.expression");
+        publicApplicationContext.scan(EXPRESSION_PACKAGE);
         publicApplicationContext.registerBean(InMemorySourceAccessor.class, () -> inMemorySourceAccessor);
         publicApplicationContext.registerBean(InMemorySinkAccessor.class, () -> inMemorySinkAccessor);
         publicApplicationContext.refresh();
@@ -48,7 +50,7 @@ public class DataPrepperTestRunner {
         coreApplicationContext = new AnnotationConfigApplicationContext();
         coreApplicationContext.setParent(publicApplicationContext);
         coreApplicationContext.registerBean(FileStructurePathProvider.class, TestFileStructurePathProvider::new);
-        coreApplicationContext.scan("org.opensearch.dataprepper");
+        coreApplicationContext.scan(BASE_DATA_PREPPER_PACKAGE);
 
         coreApplicationContext.refresh();
         LOG.info("Started Data Prepper Application context for testing.");
@@ -109,13 +111,13 @@ public class DataPrepperTestRunner {
         @Nullable
         @Override
         public String getDataPrepperConfigFileLocation() {
-            return BASE_PATH + "/configuration/" + dataPrepperConfig;
+            return BASE_PATH + "/configuration/" + dataPrepperConfigFile;
         }
     }
 
     public static class Builder {
         private String pipelinesDirectoryOrFile;
-        private String dataPrepperConfig = "data-prepper-config.yaml";
+        private String dataPrepperConfigFile = "data-prepper-config.yaml";
 
         Builder() {
         }
@@ -126,7 +128,7 @@ public class DataPrepperTestRunner {
         }
 
         public Builder withDataPrepperConfigFile(final String dataPrepperConfig) {
-            this.dataPrepperConfig = dataPrepperConfig;
+            this.dataPrepperConfigFile = dataPrepperConfig;
             return this;
         }
 
