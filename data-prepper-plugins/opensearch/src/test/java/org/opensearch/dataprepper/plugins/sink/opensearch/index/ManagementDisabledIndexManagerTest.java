@@ -95,7 +95,7 @@ class ManagementDisabledIndexManagerTest {
         when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern);
         final IndexManager objectUnderTest = indexManagerFactory.getIndexManager(IndexType.MANAGEMENT_DISABLED, restHighLevelClient, openSearchSinkConfiguration);
         final Pattern expectedIndexPattern = Pattern.compile(baseIndexAlias + "-\\d{4}.\\d{2}.\\d{2}.\\d{2}");
-        final String actualIndexPattern = objectUnderTest.getIndexAlias();
+        final String actualIndexPattern = objectUnderTest.getIndexName();
         assertThat(actualIndexPattern, matchesPattern(expectedIndexPattern));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();

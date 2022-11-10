@@ -265,20 +265,20 @@ public class JacksonEvent implements Event {
     public String formatString(final String format) {
         int fromIndex = 0;
         String result = "";
-        int pos = 0;
-        while ((pos = format.indexOf("${", fromIndex)) != -1) {
-          int endPos = format.indexOf("}", pos+1);
-          if (endPos == -1) {
+        int position = 0;
+        while ((position = format.indexOf("${", fromIndex)) != -1) {
+          int endPosition = format.indexOf("}", position+1);
+          if (endPosition == -1) {
             throw new RuntimeException("index name not properly formed");
           }
-          result += format.substring(fromIndex, pos);
-          String name = format.substring(pos+2, endPos);
-          Object val = this.get(name, String.class);
+          result += format.substring(fromIndex, position);
+          String name = format.substring(position+2, endPosition);
+          Object val = this.get(name, Object.class);
 	  if (val == null) {
 	    return null;
 	  }
-          result += (String)val;
-          fromIndex = endPos+1;
+          result += val.toString();
+          fromIndex = endPosition+1;
         }
 	if (fromIndex < format.length()) {
             result += format.substring(fromIndex);

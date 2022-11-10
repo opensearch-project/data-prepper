@@ -8,33 +8,52 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 
+import java.io.IOException;
 import java.util.Optional;
 
 public class IndexManagerFactory {
 
-    public final IndexManager getDynamicIndexManager(final IndexType indexType,
+    public final AbstractIndexManager getIndexManager(final IndexType indexType,
                                         final RestHighLevelClient restHighLevelClient,
-                                        final OpenSearchSinkConfiguration openSearchSinkConfiguration,
-                                        final String indexAlias) {
-        switch (indexType) {
-            case TRACE_ANALYTICS_RAW:
-                return new TraceAnalyticsRawIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-            case TRACE_ANALYTICS_SERVICE_MAP:
-                return new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-            case MANAGEMENT_DISABLED:
-                return new ManagementDisabledIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-            default:
-                return new DefaultIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-        }
+                                        final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
+	try {
+	    return (AbstractIndexManager) getIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, null);
+	} catch (IOException e) {
+	    return null;
+	}
     }
 
     public final IndexManager getIndexManager(final IndexType indexType,
                                         final RestHighLevelClient restHighLevelClient,
-                                        final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
-        return getDynamicIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, null);
+                                        final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+					String indexAlias) throws IOException {
+        if (indexAlias != null && isDynamicIndexAlias(indexAlias)) {
+	    return  new DynamicIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration);
+	}
+
+	IndexManager indexManager;
+        switch (indexType) {
+            case TRACE_ANALYTICS_RAW:
+                indexManager = new TraceAnalyticsRawIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+		break;
+            case TRACE_ANALYTICS_SERVICE_MAP:
+                indexManager = new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+		break;
+            case MANAGEMENT_DISABLED:
+                indexManager = new ManagementDisabledIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+		break;
+            default:
+                indexManager = new DefaultIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+		break;
+        }
+	return indexManager;
     }
 
-    private static class DefaultIndexManager extends IndexManager {
+    private boolean isDynamicIndexAlias(final String indexAlias) {
+      return indexAlias.indexOf("${") != -1;
+    }
+
+    private static class DefaultIndexManager extends AbstractIndexManager {
 
         private static final String POLICY_NAME_SUFFIX = "-policy";
 
@@ -58,7 +77,7 @@ public class IndexManagerFactory {
         }
     }
 
-    private static class TraceAnalyticsRawIndexManager extends IndexManager {
+    private static class TraceAnalyticsRawIndexManager extends AbstractIndexManager {
         public TraceAnalyticsRawIndexManager(final RestHighLevelClient restHighLevelClient,
                                              final OpenSearchSinkConfiguration openSearchSinkConfiguration,
                                                     final String indexAlias) {
@@ -72,7 +91,7 @@ public class IndexManagerFactory {
 
     }
 
-    private static class TraceAnalyticsServiceMapIndexManager extends IndexManager {
+    private static class TraceAnalyticsServiceMapIndexManager extends AbstractIndexManager {
 
         public TraceAnalyticsServiceMapIndexManager(final RestHighLevelClient restHighLevelClient,
                                                     final OpenSearchSinkConfiguration openSearchSinkConfiguration,
@@ -80,17 +99,16 @@ public class IndexManagerFactory {
             super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
             this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
         }
-
     }
 
-    private class ManagementDisabledIndexManager extends IndexManager {
+    private class ManagementDisabledIndexManager extends AbstractIndexManager {
         protected ManagementDisabledIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration, final String indexAlias) {
             super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
         }
-
         @Override
-        public void setupIndex() {
+        public void setupIndex() throws IOException {
+	}
 
-        }
+
     }
 }

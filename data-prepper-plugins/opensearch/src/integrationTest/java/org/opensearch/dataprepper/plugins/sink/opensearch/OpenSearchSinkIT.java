@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
@@ -35,7 +36,7 @@ import org.opensearch.common.xcontent.XContentType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 
 import javax.ws.rs.HttpMethod;
@@ -47,6 +48,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -58,6 +60,7 @@ import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.Date;
 
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.awaitility.Awaitility.await;
@@ -150,7 +153,7 @@ public class OpenSearchSinkIT {
     final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
     client.performRequest(request);
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
-    Assert.assertThrows(String.format(IndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
+    Assert.assertThrows(String.format(AbstractIndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
             RuntimeException.class, () -> new OpenSearchSink(pluginSetting));
   }
 
@@ -608,9 +611,85 @@ public class OpenSearchSinkIT {
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
     MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(retSources, hasItem(expectedMap));
+    sink.shutdown();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+     "info/ids/id, yyyy-MM",
+     "id, yyyy-MM-dd",
+  })
+  public void testOpenSearchDynamicIndexWithDate(final String testIndex, final String testDatePattern) throws IOException, InterruptedException {
+    final String dynamicTestIndexAlias = "test-${"+testIndex+"}-index-%{"+testDatePattern+"}";
+    final String testIndexName = "idx1";
+    SimpleDateFormat formatter = new SimpleDateFormat(testDatePattern);
+    Date date = new Date();
+    String expectedDate = formatter.format(date);
+    final String expectedIndexAlias = "test-"+testIndexName+"-index-"+expectedDate;
+    final String data = UUID.randomUUID().toString();
+    final Map<String, Object> dataMap = Map.of("data", data);
+    final Event testEvent = JacksonEvent.builder()
+            .withData(dataMap)
+            .withEventType("event")
+            .build();
+    testEvent.put(testIndex, testIndexName);
+
+    Map<String, Object> expectedMap = testEvent.toMap();
+
+    final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+    final PluginSetting pluginSetting = generatePluginSetting(null, dynamicTestIndexAlias, null);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    sink.output(testRecords);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(expectedIndexAlias);
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(retSources, hasItem(expectedMap));
+    sink.shutdown();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"yyyy-MM", "yyyy-MM-dd", "dd-MM-yyyy"})
+  public void testOpenSearchIndexWithDate(final String testDatePattern) throws IOException, InterruptedException {
+    SimpleDateFormat formatter = new SimpleDateFormat(testDatePattern);
+    Date date = new Date();
+    String expectedIndexName = "test-index-"+formatter.format(date);
+    final String testIndexName = "idx1";
+    final String testIndexAlias = "test-index-%{"+testDatePattern+"}";
+    final String data = UUID.randomUUID().toString();
+    final Map<String, Object> dataMap = Map.of("data", data);
+    final Event testEvent = JacksonEvent.builder()
+            .withData(dataMap)
+            .withEventType("event")
+            .build();
+
+    Map<String, Object> expectedMap = testEvent.toMap();
+
+    final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+    final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting);
+    sink.output(testRecords);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(expectedIndexName);
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
     System.out.println(retSources);
     MatcherAssert.assertThat(retSources, hasItem(expectedMap));
     sink.shutdown();
+  }
+
+  @Test
+  public void testOpenSearchIndexWithInvalidDate() throws IOException, InterruptedException {
+    String invalidDatePattern = "yyyy-MM-dd HH:ss:mm";
+    final String invalidTestIndexAlias = "test-index-%{"+invalidDatePattern+"}";
+    final PluginSetting pluginSetting = generatePluginSetting(null, invalidTestIndexAlias, null);
+    Assert.assertThrows(IllegalArgumentException.class, () -> new OpenSearchSink(pluginSetting));
+  }
+
+  @Test
+  public void testOpenSearchIndexWithInvalidChars() throws IOException, InterruptedException {
+    final String invalidTestIndexAlias = "test#-index";
+    final PluginSetting pluginSetting = generatePluginSetting(null, invalidTestIndexAlias, null);
+    Assert.assertThrows(RuntimeException.class, () -> new OpenSearchSink(pluginSetting));
   }
 
   @Test

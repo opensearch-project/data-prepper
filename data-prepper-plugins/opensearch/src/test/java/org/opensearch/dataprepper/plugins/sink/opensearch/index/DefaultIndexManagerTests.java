@@ -52,7 +52,7 @@ public class DefaultIndexManagerTests {
 
     private IndexManagerFactory indexManagerFactory;
 
-    private IndexManager defaultIndexManager;
+    private AbstractIndexManager defaultIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
@@ -100,7 +100,7 @@ public class DefaultIndexManagerTests {
     public void getIndexAlias_IndexWithTimePattern(){
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_TIME_PATTERN);
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
-        final String indexAlias = defaultIndexManager.getIndexAlias();
+        final String indexAlias = defaultIndexManager.getIndexName();
         assertTrue(EXPECTED_INDEX_PATTERN.matcher(indexAlias).matches());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
@@ -226,7 +226,7 @@ public class DefaultIndexManagerTests {
     public void getIndexAlias_IndexWithoutTimePattern(){
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
-        final String indexAlias = defaultIndexManager.getIndexAlias();
+        final String indexAlias = defaultIndexManager.getIndexName();
         assertEquals(INDEX_ALIAS, indexAlias);
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
