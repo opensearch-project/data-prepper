@@ -53,6 +53,36 @@ dependencies {
     testImplementation project(':data-prepper-api').sourceSets.test.output
 }
 
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}
+
+check.dependsOn integrationTest
+
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
     violationRules {
@@ -65,3 +95,4 @@ jacocoTestCoverageVerification {
         }
     }
 }
+
