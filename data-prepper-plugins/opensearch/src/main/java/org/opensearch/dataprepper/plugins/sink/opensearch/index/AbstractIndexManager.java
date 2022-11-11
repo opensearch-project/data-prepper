@@ -166,7 +166,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         }
     }
 
-    private static ZonedDateTime getCurrentUtcTime() {
+    public static ZonedDateTime getCurrentUtcTime() {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);
     }
 

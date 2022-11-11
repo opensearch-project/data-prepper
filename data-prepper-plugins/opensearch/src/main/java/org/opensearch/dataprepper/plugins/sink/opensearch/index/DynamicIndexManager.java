@@ -77,9 +77,9 @@ public class DynamicIndexManager implements IndexManager {
 	if (indexManager == null) {
 	    indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, fullIndexAlias);
 	    indexManagerCache.put(fullIndexAlias, indexManager);
+	    indexManager.setupIndex();
 	}
-	indexManager.setupIndex();
-	return indexManager.getIndexName(null);
+	return indexManager.getIndexName(fullIndexAlias);
     }
     
     @Override

@@ -892,7 +892,9 @@ public class OpenSearchSinkIT {
 
     indices.stream()
             .filter(Objects::nonNull)
-            .filter(indexName -> !".opendistro_security".equals(indexName))
+	    .filter(indexName -> !".opendistro_security".equals(indexName))
+	    .filter(indexName -> !".opendistro-reports-definitions".equals(indexName))
+	    .filter(indexName -> !".opendistro-reports-instances".equals(indexName))
             .forEach(indexName -> {
               try {
                 client.performRequest(new Request("DELETE", "/" + indexName));
