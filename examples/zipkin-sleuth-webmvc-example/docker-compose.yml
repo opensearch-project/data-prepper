@@ -39,7 +39,7 @@ services:
     container_name: data-prepper
     image: opensearchproject/data-prepper:latest
     volumes:
-      - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/pipelines.yaml
+      - ../trace_analytics_no_ssl_2x.yml:/usr/share/data-prepper/pipelines/pipelines.yaml
       - ../data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
       - ../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
     ports:
@@ -50,7 +50,7 @@ services:
       - opensearch
   otel-collector:
     container_name: otel-collector
-    image: otel/opentelemetry-collector:0.24.0
+    image: otel/opentelemetry-collector:0.64.1
     command: [ "--config=/etc/otel-collector-config.yml" ]
     working_dir: "/project"
     volumes:
