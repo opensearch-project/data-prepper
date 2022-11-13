@@ -4,7 +4,9 @@ receivers:
 exporters:
   otlp/2:
     endpoint: data-prepper:21890
-    insecure: true
+    tls:
+      insecure: true
+      insecure_skip_verify: true
   logging:
 
 service:
