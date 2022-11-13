@@ -3,7 +3,7 @@ services:
   # AWS OTel Collector
   aws-ot-collector:
     container_name: aws-ot-collector
-    image: otel/opentelemetry-collector:0.24.0
+    image: otel/opentelemetry-collector:0.64.1
     command: ["--config=/etc/aws-ot-collector-config.yml", "--log-level=DEBUG"]
     volumes:
       - ./aws-ot-collector-config.yml:/etc/aws-ot-collector-config.yml
