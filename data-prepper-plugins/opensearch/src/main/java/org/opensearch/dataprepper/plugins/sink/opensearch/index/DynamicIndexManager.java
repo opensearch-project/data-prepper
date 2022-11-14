@@ -61,7 +61,7 @@ public class DynamicIndexManager implements IndexManager {
 		        .concurrencyLevel(1)
 		        .maximumWeight(cacheSizeInKB)
 			.expireAfterAccess(CACHE_EXPIRE_AFTER_ACCESS_TIME_MINUTES, TimeUnit.MINUTES)
-	                .weigher((k, v) -> k.toString().length());
+	                .weigher((k, v) -> 32);
         this.indexManagerCache = cacheBuilder.build();
         checkNotNull(indexManagerCache);
     }
