@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -29,6 +30,7 @@ import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +46,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 public class AggregateProcessorTest {
@@ -105,10 +108,13 @@ public class AggregateProcessorTest {
     @Mock
     private Timer timeElapsed;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     private Event event;
 
     private AggregateProcessor createObjectUnderTest() {
-        return new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, aggregateGroupManager, aggregateIdentificationKeysHasher, aggregateActionSynchronizerProvider);
+        return new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, aggregateGroupManager, aggregateIdentificationKeysHasher, aggregateActionSynchronizerProvider, expressionEvaluator);
     }
 
     @BeforeEach
@@ -171,6 +177,59 @@ public class AggregateProcessorTest {
 
             verify(actionHandleEventsDroppedCounter).increment(1);
             verify(actionHandleEventsOutCounter).increment(0);
+            verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
+            verifyNoInteractions(actionConcludeGroupEventsOutCounter);
+
+            verify(aggregateGroupManager).getGroupsToConclude(eq(false));
+        }
+
+        @Test
+        void handleEvent_returning_with_condition_eliminates_one_record() {
+            final String eventKey = "key";
+            final String key1 = "key1";
+            final String key2 = "key2";
+            final String condition = "/key == "+key1;
+            Event firstEvent;
+            Event secondEvent;
+            final Map<String, Object> eventMap1 = new HashMap<>();
+            eventMap1.put(eventKey, key1);
+
+            firstEvent = JacksonEvent.builder()
+                .withData(eventMap1)
+                .withEventType("event")
+                .build();
+
+            final Map<String, Object> eventMap2 = new HashMap<>();
+            eventMap2.put(eventKey, key2);
+
+            secondEvent = JacksonEvent.builder()
+                .withData(eventMap2)
+                .withEventType("event")
+                .build();
+
+            when(aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(firstEvent))
+                    .thenReturn(identificationHash);
+            when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationHash, aggregateGroup)).thenReturn(aggregateActionResponse);
+            when(expressionEvaluator.evaluate(condition, event)).thenReturn(true);
+            when(expressionEvaluator.evaluate(condition, firstEvent)).thenReturn(true);
+            when(expressionEvaluator.evaluate(condition, secondEvent)).thenReturn(false);
+            when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
+            final AggregateProcessor objectUnderTest = createObjectUnderTest();
+            when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
+            when(aggregateActionResponse.getEvent()).thenReturn(firstEvent);
+
+            event.toMap().put(eventKey, key1);
+            List<Record<Event>> recordsIn = new ArrayList<>();
+            recordsIn.add(new Record<Event>(firstEvent));
+            recordsIn.add(new Record<Event>(secondEvent));
+            recordsIn.add(new Record<Event>(event));
+            Collection<Record<Event>> c = recordsIn;
+            final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(c);
+
+            assertThat(recordsOut.size(), equalTo(2));
+
+            verify(actionHandleEventsDroppedCounter).increment(1);
+            verify(actionHandleEventsOutCounter).increment(2);
             verifyNoInteractions(actionConcludeGroupEventsDroppedCounter);
             verifyNoInteractions(actionConcludeGroupEventsOutCounter);
 

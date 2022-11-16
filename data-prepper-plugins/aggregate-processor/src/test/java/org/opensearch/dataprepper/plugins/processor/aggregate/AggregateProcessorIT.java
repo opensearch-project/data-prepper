@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDuplicatesAggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PutAllAggregateAction;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -61,6 +63,9 @@ public class AggregateProcessorIT {
     private AggregateAction aggregateAction;
     private PluginMetrics pluginMetrics;
 
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
+
     private Collection<Record<Event>> eventBatch;
     private ConcurrentLinkedQueue<Map<String, Object>> aggregatedResult;
     private Set<Map<String, Object>> uniqueEventMaps;
@@ -96,7 +101,7 @@ public class AggregateProcessorIT {
     }
 
     private AggregateProcessor createObjectUnderTest() {
-        return new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory);
+        return new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
     }
 
     @RepeatedTest(value = 10)
@@ -165,6 +170,51 @@ public class AggregateProcessorIT {
 
         for (final Map<String, Object> eventMap : aggregatedResult) {
             assertThat(eventMap, in(uniqueEventMaps));
+        }
+    }
+
+    @RepeatedTest(value = 2)
+    void aggregateWithPutAllActionAndCondition() throws InterruptedException {
+        aggregateAction = new PutAllAggregateAction();
+        String condition = "/firstRandomNumber < 100";
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
+        int count = 0;
+        for (Record<Event> record: eventBatch) {
+            Event event = record.getData();
+            boolean value = (count % 2 == 0) ? true : false;
+            when(expressionEvaluator.evaluate(condition, event)).thenReturn(value);
+            if (!value) {
+                uniqueEventMaps.remove(event.toMap());
+            }
+            count++;
+        }
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        objectUnderTest.doExecute(eventBatch);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                for (final Record<Event> record : recordsOut) {
+                    final Map<String, Object> map = record.getData().toMap();
+                    aggregatedResult.add(map);
+                }
+                countDownLatch.countDown();
+            });
+        }
+
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+
+        assertThat(allThreadsFinished, equalTo(true));
+        assertThat(aggregatedResult.size(), equalTo(NUM_UNIQUE_EVENTS_PER_BATCH/2));
+
+        for (final Map<String, Object> uniqueEventMap : uniqueEventMaps) {
+            assertThat(aggregatedResult, hasItem(uniqueEventMap));
         }
     }
 
