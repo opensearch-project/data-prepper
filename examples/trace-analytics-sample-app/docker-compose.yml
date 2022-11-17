@@ -6,7 +6,7 @@ services:
     image: opensearchproject/data-prepper:2
     volumes:
       - ../trace_analytics_no_ssl_2x.yml:/usr/share/data-prepper/pipelines/pipelines.yaml
-      - ../data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
+      - ../data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
       - ../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
     ports:
       - "21890:21890"
