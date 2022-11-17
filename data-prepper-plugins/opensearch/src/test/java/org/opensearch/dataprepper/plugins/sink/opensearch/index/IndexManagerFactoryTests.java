@@ -17,10 +17,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+
 @ExtendWith(MockitoExtension.class)
 public class IndexManagerFactoryTests {
 
     private static final String INDEX_ALIAS = "test-index-alias";
+    private static final String DYNAMIC_INDEX_ALIAS = "test-${index}-alias";
     private IndexManagerFactory indexManagerFactory;
 
     @Mock
@@ -65,6 +68,16 @@ public class IndexManagerFactoryTests {
         final IndexManager indexManager =
                 indexManagerFactory.getIndexManager(IndexType.MANAGEMENT_DISABLED, restHighLevelClient, openSearchSinkConfiguration);
         assertThat(indexManager, instanceOf(IndexManager.class));
+    }
+
+    @Test
+    public void getIndexManager_dynamic_Default() {
+        when(indexConfiguration.getIndexAlias()).thenReturn(DYNAMIC_INDEX_ALIAS);
+        try {
+            final IndexManager indexManager =
+                indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias());
+            assertThat(indexManager, instanceOf(DynamicIndexManager.class));
+        } catch (IOException e){}
     }
 
 }

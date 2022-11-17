@@ -100,8 +100,10 @@ public class DefaultIndexManagerTests {
     public void getIndexAlias_IndexWithTimePattern(){
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_TIME_PATTERN);
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
-        final String indexAlias = defaultIndexManager.getIndexName();
-        assertTrue(EXPECTED_INDEX_PATTERN.matcher(indexAlias).matches());
+        try {
+            final String indexAlias = defaultIndexManager.getIndexName(null);
+            assertTrue(EXPECTED_INDEX_PATTERN.matcher(indexAlias).matches());
+        } catch (IOException e){}
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();
@@ -226,8 +228,10 @@ public class DefaultIndexManagerTests {
     public void getIndexAlias_IndexWithoutTimePattern(){
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
-        final String indexAlias = defaultIndexManager.getIndexName();
-        assertEquals(INDEX_ALIAS, indexAlias);
+        try {
+            final String indexAlias = defaultIndexManager.getIndexName(null);
+            assertEquals(INDEX_ALIAS, indexAlias);
+        } catch (IOException e){}
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();

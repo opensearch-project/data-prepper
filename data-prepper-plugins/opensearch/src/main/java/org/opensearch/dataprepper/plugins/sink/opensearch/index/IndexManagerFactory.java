@@ -16,37 +16,37 @@ public class IndexManagerFactory {
     public final AbstractIndexManager getIndexManager(final IndexType indexType,
                                         final RestHighLevelClient restHighLevelClient,
                                         final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
-	try {
-	    return (AbstractIndexManager) getIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, null);
-	} catch (IOException e) {
-	    return null;
-	}
+        try {
+            return (AbstractIndexManager) getIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, null);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     public final IndexManager getIndexManager(final IndexType indexType,
                                         final RestHighLevelClient restHighLevelClient,
                                         final OpenSearchSinkConfiguration openSearchSinkConfiguration,
-					String indexAlias) throws IOException {
+                                        String indexAlias) throws IOException {
         if (indexAlias != null && isDynamicIndexAlias(indexAlias)) {
-	    return  new DynamicIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration);
-	}
+            return  new DynamicIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, this);
+        }
 
-	IndexManager indexManager;
+        IndexManager indexManager;
         switch (indexType) {
             case TRACE_ANALYTICS_RAW:
                 indexManager = new TraceAnalyticsRawIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-		break;
+                break;
             case TRACE_ANALYTICS_SERVICE_MAP:
                 indexManager = new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-		break;
+                break;
             case MANAGEMENT_DISABLED:
                 indexManager = new ManagementDisabledIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-		break;
+                break;
             default:
                 indexManager = new DefaultIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-		break;
+                break;
         }
-	return indexManager;
+        return indexManager;
     }
 
     private boolean isDynamicIndexAlias(final String indexAlias) {
@@ -107,7 +107,7 @@ public class IndexManagerFactory {
         }
         @Override
         public void setupIndex() throws IOException {
-	}
+        }
 
 
     }

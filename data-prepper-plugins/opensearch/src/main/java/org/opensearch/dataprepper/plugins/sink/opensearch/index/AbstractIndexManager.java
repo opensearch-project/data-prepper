@@ -87,23 +87,23 @@ public abstract class AbstractIndexManager implements IndexManager {
             validateNoSpecialCharsInTimePattern(timePattern);
             validateTimePatternGranularity(timePattern);
             return DateTimeFormatter.ofPattern(timePattern);
-	}
-	return null;
+        }
+        return null;
     }
 
     static public String getIndexAliasWithDate(final String indexAlias) {
-	DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
-	String suffix = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
-	return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix;
+        DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
+        String suffix = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
+        return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix;
     }
 
     private void initializeIndexPrefixAndSuffix(final String indexAlias){
-	DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
-	if (dateFormatter != null) {
+        DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
+        if (dateFormatter != null) {
             indexTimeSuffixFormatter = Optional.of(dateFormatter);
-	} else {
+        } else {
             indexTimeSuffixFormatter = Optional.empty();
-	}
+        }
 
         indexPrefix = indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "");
     }
@@ -144,15 +144,6 @@ public abstract class AbstractIndexManager implements IndexManager {
         if (containsUnsupportedTimeSymbol) {
             throw new IllegalArgumentException("Index time pattern contains time patterns that are less than one hour: "
                     + UNSUPPORTED_TIME_GRANULARITY_CHARS);
-        }
-    }
-
-    @Override
-    public String getIndexName() {
-        try {
-            return getIndexName(null);
-        } catch (Exception e) {
-            return null;
         }
     }
 
@@ -227,7 +218,7 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     public void checkAndCreateIndex() throws IOException {
         // Check if index name exists
-        final String indexAlias = getIndexName();
+        final String indexAlias = getIndexName(null);
         final boolean indexExists = ismPolicyManagementStrategy.checkIfIndexExistsOnServer(indexAlias);
 
         if (!indexExists) {

@@ -5,9 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.opensearch.OpenSearchException;
@@ -36,28 +35,43 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.time.format.DateTimeFormatter;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.equalTo;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 public class DynamicIndexManagerTests {
 
     private static final String ID = "id";
     private static final String DYNAMIC = "dynamic";
+    private static final String NEW_DYNAMIC = "new-dynamic";
     private static final String INDEX_ALIAS = "test-${" + ID + "}-index-alias";
     private static final String DATE_PATTERN = "yyyy.MM.dd";
     private static final String INDEX_ALIAS_WITH_DATE_PATTERN = INDEX_ALIAS+ "-%{" + DATE_PATTERN + "}";
 
+    @Mock
+    private IndexManagerFactory mockIndexManagerFactory;
     private IndexManagerFactory indexManagerFactory;
+
+    @Mock
     private IndexManager indexManager;
 
     private DynamicIndexManager dynamicIndexManager;
+
+    private IndexManager innerIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
@@ -88,11 +102,12 @@ public class DynamicIndexManagerTests {
 
     static final String EVENT_TYPE = "event";
 
-    @Before
+    @BeforeEach
     public void setup() throws IOException {
         initMocks(this);
 
         indexManagerFactory = new IndexManagerFactory();
+        mockIndexManagerFactory = mock(IndexManagerFactory.class);
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIsmPolicyFile()).thenReturn(Optional.empty());
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
@@ -100,6 +115,7 @@ public class DynamicIndexManagerTests {
         when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
                 .thenReturn(clusterGetSettingsResponse);
         when(restHighLevelClient.indices()).thenReturn(indicesClient);
+        dynamicIndexManager = new DynamicIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, mockIndexManagerFactory);
     }
 
     @Test
@@ -107,14 +123,15 @@ public class DynamicIndexManagerTests {
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
         String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
-	try {
-            indexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, configuredIndexAlias);
-	    assertTrue(indexManager instanceof DynamicIndexManager);
-	    JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
-	    final String indexName = indexManager.getIndexName(event.formatString(configuredIndexAlias));
-	    String expectedIndexPattern = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC);
-	    assertTrue(expectedIndexPattern.equals(indexName));
-	} catch (IOException e) {}
+        try {
+            String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC);
+            innerIndexManager = mock(IndexManager.class);
+            when(mockIndexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+            when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
+            JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
+            final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
+            assertThat(expectedIndexAlias, equalTo(indexName));
+        } catch (IOException e) {}
     }
 
     @Test
@@ -122,14 +139,45 @@ public class DynamicIndexManagerTests {
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_DATE_PATTERN);
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
         String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
-	try {
-            indexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, configuredIndexAlias);
-	    assertTrue(indexManager instanceof DynamicIndexManager);
-	    JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
-	    final String indexName = indexManager.getIndexName(event.formatString(configuredIndexAlias));
-	    DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_PATTERN);
-	    String expectedIndexPattern = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC) + "-" + dateFormatter.format(AbstractIndexManager.getCurrentUtcTime());
-	    assertTrue(expectedIndexPattern.equals(indexName));
-	} catch (IOException e) {}
+        try {
+            DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_PATTERN);
+            String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC) + "-" + dateFormatter.format(AbstractIndexManager.getCurrentUtcTime());
+            innerIndexManager = mock(IndexManager.class);
+            when(mockIndexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+            when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
+            JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
+            final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
+            assertThat(expectedIndexAlias, equalTo(indexName));
+        } catch (IOException e) {}
+    }
+
+    @Test
+    public void dynamicIndexCacheTest(){
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
+        try {
+            String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC);
+            innerIndexManager = mock(IndexManager.class);
+            when(mockIndexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+            when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
+
+            JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
+            // Try multiple times to make sure the getIndexManager is not called more than once and cached values are returned
+            for (int i = 0; i < 10; i++) {
+                final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
+                assertThat(expectedIndexAlias, equalTo(indexName));
+                verify(mockIndexManagerFactory, times(1)).getIndexManager(eq(IndexType.CUSTOM), eq(restHighLevelClient), eq(openSearchSinkConfiguration), anyString());
+            }
+
+            expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", NEW_DYNAMIC);
+            when(mockIndexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+            when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
+            event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, NEW_DYNAMIC)).build();
+            final String newIndexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
+            // When a new index is used, verify that getIndexManager is called again
+            verify(mockIndexManagerFactory, times(2)).getIndexManager(eq(IndexType.CUSTOM), eq(restHighLevelClient), eq(openSearchSinkConfiguration), anyString());
+            assertThat(expectedIndexAlias, equalTo(newIndexName));
+        } catch (IOException e) {}
     }
 }

@@ -5,5 +5,4 @@ import java.io.IOException;
 public interface IndexManager{
 	void setupIndex() throws IOException;
 	String getIndexName(final String indexAlias) throws IOException;
-	String getIndexName();
 }

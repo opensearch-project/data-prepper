@@ -459,6 +459,7 @@ public class JacksonEventTest {
 
     @ParameterizedTest
     @CsvSource({
+        "test-string, test-string",
         "test-${foo}-string, test-bar-string",
         "test-string-${foo}, test-string-bar",
         "${foo}-test-string, bar-test-string",
