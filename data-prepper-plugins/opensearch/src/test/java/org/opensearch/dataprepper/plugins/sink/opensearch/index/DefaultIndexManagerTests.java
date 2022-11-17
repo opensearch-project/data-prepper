@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -102,7 +104,7 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         try {
             final String indexAlias = defaultIndexManager.getIndexName(null);
-            assertTrue(EXPECTED_INDEX_PATTERN.matcher(indexAlias).matches());
+            assertThat(indexAlias, matchesPattern(EXPECTED_INDEX_PATTERN));
         } catch (IOException e){}
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();

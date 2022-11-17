@@ -71,13 +71,11 @@ public class IndexManagerFactoryTests {
     }
 
     @Test
-    public void getIndexManager_dynamic_Default() {
+    public void getIndexManager_dynamic_Default() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(DYNAMIC_INDEX_ALIAS);
-        try {
-            final IndexManager indexManager =
+        final IndexManager indexManager =
                 indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias());
-            assertThat(indexManager, instanceOf(DynamicIndexManager.class));
-        } catch (IOException e){}
+        assertThat(indexManager, instanceOf(DynamicIndexManager.class));
     }
 
 }

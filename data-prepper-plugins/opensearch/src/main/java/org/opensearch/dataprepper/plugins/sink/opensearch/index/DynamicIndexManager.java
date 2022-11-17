@@ -71,10 +71,6 @@ public class DynamicIndexManager implements IndexManager {
     public void setupIndex() throws IOException {
     }
 
-    public boolean isInCache(final String indexAlias) {
-        return (indexManagerCache.getIfPresent(indexAlias) != null);
-    }
-
     @Override
     public String getIndexName(final String dynamicIndexAlias) throws IOException {
         String fullIndexAlias = AbstractIndexManager.getIndexAliasWithDate(dynamicIndexAlias);
