@@ -5,38 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import com.google.common.collect.ImmutableSet;
-import org.opensearch.OpenSearchException;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
-import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.CreateIndexRequest;
-import org.opensearch.client.indices.GetIndexTemplatesRequest;
-import org.opensearch.client.indices.GetIndexTemplatesResponse;
-import org.opensearch.client.indices.IndexTemplateMetadata;
-import org.opensearch.client.indices.IndexTemplatesExistRequest;
-import org.opensearch.client.indices.PutIndexTemplateRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TimeZone;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 

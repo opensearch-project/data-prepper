@@ -91,7 +91,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         return null;
     }
 
-    static public String getIndexAliasWithDate(final String indexAlias) {
+    public static String getIndexAliasWithDate(final String indexAlias) {
         DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
         String suffix = (dateFormatter != null) ? dateFormatter.format(getCurrentUtcTime()) : "";
         return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix;

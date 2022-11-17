@@ -31,7 +31,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWrit
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
@@ -44,7 +43,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
