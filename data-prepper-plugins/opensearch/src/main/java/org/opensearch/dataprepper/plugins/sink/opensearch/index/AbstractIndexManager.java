@@ -18,7 +18,6 @@ import org.opensearch.client.indices.IndexTemplateMetadata;
 import org.opensearch.client.indices.IndexTemplatesExistRequest;
 import org.opensearch.client.indices.PutIndexTemplateRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

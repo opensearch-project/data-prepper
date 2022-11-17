@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.io.IOException;
