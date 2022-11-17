@@ -41,6 +41,7 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -83,6 +84,9 @@ public class AggregateProcessorTest {
 
     @Mock
     private AggregateActionResponse aggregateActionResponse;
+
+    @Mock
+    private AggregateActionResponse firstAggregateActionResponse;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -185,10 +189,10 @@ public class AggregateProcessorTest {
 
         @Test
         void handleEvent_returning_with_condition_eliminates_one_record() {
-            final String eventKey = "key";
-            final String key1 = "key1";
-            final String key2 = "key2";
-            final String condition = "/key == "+key1;
+            final String eventKey = UUID.randomUUID().toString();
+            final String key1 = UUID.randomUUID().toString();
+            final String key2 = UUID.randomUUID().toString();
+            final String condition = "/" + eventKey + " == "+key1;
             Event firstEvent;
             Event secondEvent;
             final Map<String, Object> eventMap1 = new HashMap<>();
@@ -207,16 +211,18 @@ public class AggregateProcessorTest {
                 .withEventType("event")
                 .build();
 
+
             when(aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(firstEvent))
                     .thenReturn(identificationHash);
-            when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationHash, aggregateGroup)).thenReturn(aggregateActionResponse);
+            when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationHash, aggregateGroup)).thenReturn(firstAggregateActionResponse);
             when(expressionEvaluator.evaluate(condition, event)).thenReturn(true);
             when(expressionEvaluator.evaluate(condition, firstEvent)).thenReturn(true);
             when(expressionEvaluator.evaluate(condition, secondEvent)).thenReturn(false);
             when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
             when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());
-            when(aggregateActionResponse.getEvent()).thenReturn(firstEvent);
+            when(aggregateActionResponse.getEvent()).thenReturn(event);
+            when(firstAggregateActionResponse.getEvent()).thenReturn(firstEvent);
 
             event.toMap().put(eventKey, key1);
             List<Record<Event>> recordsIn = new ArrayList<>();
@@ -227,6 +233,10 @@ public class AggregateProcessorTest {
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(c);
 
             assertThat(recordsOut.size(), equalTo(2));
+            assertThat(recordsOut.get(0), notNullValue());
+            assertThat(recordsOut.get(0).getData(), equalTo(firstEvent));
+            assertThat(recordsOut.get(1), notNullValue());
+            assertThat(recordsOut.get(1).getData(), equalTo(event));
 
             verify(actionHandleEventsDroppedCounter).increment(1);
             verify(actionHandleEventsOutCounter).increment(2);

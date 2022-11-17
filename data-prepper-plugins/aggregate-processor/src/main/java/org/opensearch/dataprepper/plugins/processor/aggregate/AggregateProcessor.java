@@ -44,7 +44,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
 
     private boolean forceConclude = false;
-    private String whenCondition;
+    private final String whenCondition;
     private final ExpressionEvaluator<Boolean> expressionEvaluator;
 
     @DataPrepperPluginConstructor

@@ -28,7 +28,7 @@ public class AggregateProcessorConfig {
     @NotNull
     private PluginModel aggregateAction;
 
-    @JsonProperty("when")
+    @JsonProperty("aggregate_when")
     private String whenCondition;
 
     public List<String> getIdentificationKeys() {
