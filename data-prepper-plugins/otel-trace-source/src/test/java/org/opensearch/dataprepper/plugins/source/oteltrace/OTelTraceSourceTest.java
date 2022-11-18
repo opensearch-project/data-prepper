@@ -198,9 +198,8 @@ public class OTelTraceSourceTest {
                 .thenReturn(authenticationProvider);
         configureObjectUnderTest();
         buffer = getBuffer();
-        pipelineDescription = new PluginSetting("http_source", Collections.emptyMap()) {{
-            setPipelineName(TEST_PIPELINE_NAME);
-        }};
+        pipelineDescription = mock(PipelineDescription.class);
+        lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
     }
 
     @AfterEach
