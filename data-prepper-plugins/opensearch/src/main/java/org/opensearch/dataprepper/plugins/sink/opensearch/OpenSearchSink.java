@@ -66,6 +66,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String documentIdField;
   private final String routingField;
   private final String action;
+  private String configuredIndexAlias;
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
@@ -98,17 +99,17 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public void initialize() throws IOException {
     LOG.info("Initializing OpenSearch sink");
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
-    indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig);
+    configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
+    indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig, configuredIndexAlias);
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
     if (dlqFile != null) {
       dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     }
-
     indexManager.setupIndex();
 
     OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
     openSearchClient = new OpenSearchClient(transport);
-    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder().index(indexManager.getIndexAlias()));
+    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
             this::logFailure,
@@ -128,20 +129,27 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
 
     for (final Record<Event> record : records) {
-      final SerializedJson document = getDocument(record.getData());
+      final Event event = record.getData();
+      final SerializedJson document = getDocument(event);
       final Optional<String> docId = document.getDocumentId();
       final Optional<String> routing = document.getRoutingField();
+      String indexName = configuredIndexAlias;
+      try {
+          indexName = indexManager.getIndexName(event.formatString(indexName));
+      } catch (IOException e) {
+	  continue;
+      }
 
       BulkOperation bulkOperation;
 
       if (StringUtils.equalsIgnoreCase(action, BulkAction.CREATE.toString())) {
 
         final CreateOperation.Builder<Object> createOperationBuilder = new CreateOperation.Builder<>()
-                .index(indexManager.getIndexAlias())
+                .index(indexName)
                 .document(document);
 
-	docId.ifPresent(createOperationBuilder::id);
-	routing.ifPresent(createOperationBuilder::routing);
+        docId.ifPresent(createOperationBuilder::id);
+        routing.ifPresent(createOperationBuilder::routing);
         
         bulkOperation = new BulkOperation.Builder()
                 .create(createOperationBuilder.build())
@@ -152,11 +160,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         // Default to "index"
 
         final IndexOperation.Builder<Object> indexOperationBuilder = new IndexOperation.Builder<>()
-                .index(indexManager.getIndexAlias())
+                .index(indexName)
                 .document(document);
 
-	docId.ifPresent(indexOperationBuilder::id);
-	routing.ifPresent(indexOperationBuilder::routing);
+        docId.ifPresent(indexOperationBuilder::id);
+        routing.ifPresent(indexOperationBuilder::routing);
 
         bulkOperation = new BulkOperation.Builder()
                 .index(indexOperationBuilder.build())

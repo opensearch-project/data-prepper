@@ -45,7 +45,7 @@ public class TraceAnalyticsRawIndexManagerTests {
 
     private IndexManagerFactory indexManagerFactory;
 
-    private IndexManager traceAnalyticsRawIndexManager;
+    private AbstractIndexManager traceAnalyticsRawIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;

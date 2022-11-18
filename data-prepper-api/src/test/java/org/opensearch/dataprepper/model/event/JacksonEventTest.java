@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -454,6 +455,75 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.get("foo", String.class), is(equalTo("bar")));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "test-string, test-string",
+        "test-${foo}-string, test-bar-string",
+        "test-string-${foo}, test-string-bar",
+        "${foo}-test-string, bar-test-string",
+        "test-${info/ids/id}-string, test-idx-string",
+        "test-string-${info/ids/id}, test-string-idx",
+        "${info/ids/id}-test-string, idx-test-string",
+        "${info/ids/id}-test-string-${foo}, idx-test-string-bar",
+        "${info/ids/id}-test-${foo}-string, idx-test-bar-string",
+        "${info/ids/id}-${foo}-test-string, idx-bar-test-string",
+        "${info/ids/id}${foo}-test-string, idxbar-test-string",
+    })
+    public void testBuild_withFormatString(String formattedString, String finalString) {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        assertThat(event.formatString(formattedString), is(equalTo(finalString)));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "test-${foo}-string, test-123-string",
+        "${info/ids/id}-${foo}-test-string, true-123-test-string",
+    })
+    public void testBuild_withFormatStringWithIntegerBoolean(String formattedString, String finalString) {
+
+        final String jsonString = "{\"foo\": 123, \"info\": {\"ids\": {\"id\":true}}}";
+
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+        assertThat(event.formatString(formattedString), is(equalTo(finalString)));
+    }
+
+    @Test
+    public void testBuild_withFormatStringWithValueNotFound() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+        assertThat(event.formatString("test-${boo}-string"), is(equalTo(null)));
+    }
+
+    @Test
+    public void testBuild_withFormatStringWithInvalidFormat() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+        assertThrows(RuntimeException.class, () -> event.formatString("test-${foo-string"));
+
     }
 
     @Test

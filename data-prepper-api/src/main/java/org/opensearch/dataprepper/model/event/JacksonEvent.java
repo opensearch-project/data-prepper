@@ -254,6 +254,38 @@ public class JacksonEvent implements Event {
         return jsonNode.toString();
     }
 
+    /**
+     * returns a string with formatted parts replaced by their values. The input
+     * string may contain parts with format "${.../.../...}" which are replaced
+     * by their value in the event
+     * @param format string with format
+     * @throws RuntimeException if the format is incorrect or the value is not a string
+     */
+    @Override
+    public String formatString(final String format) {
+        int fromIndex = 0;
+        String result = "";
+        int position = 0;
+        while ((position = format.indexOf("${", fromIndex)) != -1) {
+          int endPosition = format.indexOf("}", position+1);
+          if (endPosition == -1) {
+            throw new RuntimeException("index name not properly formed");
+          }
+          result += format.substring(fromIndex, position);
+          String name = format.substring(position+2, endPosition);
+          Object val = this.get(name, Object.class);
+	  if (val == null) {
+	    return null;
+	  }
+          result += val.toString();
+          fromIndex = endPosition+1;
+        }
+	if (fromIndex < format.length()) {
+            result += format.substring(fromIndex);
+	}
+        return result;
+    }
+
     @Override
     public EventMetadata getMetadata() {
         return eventMetadata;

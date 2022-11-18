@@ -42,7 +42,7 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
 
     private IndexManagerFactory indexManagerFactory;
 
-    private IndexManager traceAnalyticsServiceMapIndexManager;
+    private AbstractIndexManager traceAnalyticsServiceMapIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
