@@ -51,7 +51,7 @@ class DefaultPluginFactoryTest {
     private PluginSetting pluginSetting;
     private PluginBeanFactoryProvider beanFactoryProvider;
     private BeanFactory beanFactory;
-    private static final String TEST_PIPELINE_NAME = UUID.randomUUID().toString();
+    private String pipelineName;
 
     @BeforeEach
     void setUp() {
@@ -68,7 +68,8 @@ class DefaultPluginFactoryTest {
         pluginName = UUID.randomUUID().toString();
         pluginSetting = mock(PluginSetting.class);
         given(pluginSetting.getName()).willReturn(pluginName);
-        given(pluginSetting.getPipelineName()).willReturn(TEST_PIPELINE_NAME);
+        pipelineName = UUID.randomUUID().toString();
+        given(pluginSetting.getPipelineName()).willReturn(pipelineName);
 
         beanFactoryProvider = mock(PluginBeanFactoryProvider.class);
         beanFactory = mock(BeanFactory.class);
@@ -232,7 +233,7 @@ class DefaultPluginFactoryTest {
             assertThat(pipelineDescriptionObj.length, equalTo(1));
             assertThat(pipelineDescriptionObj[0], instanceOf(PipelineDescription.class));
             final PipelineDescription actualPipelineDescription = (PipelineDescription)pipelineDescriptionObj[0];
-            assertThat(actualPipelineDescription.getPipelineName(), is(TEST_PIPELINE_NAME));
+            assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(1));
             assertThat(plugins.get(0), equalTo(expectedInstance));
@@ -268,7 +269,7 @@ class DefaultPluginFactoryTest {
                 assertThat(pipelineDescriptionObj.length, equalTo(1));
                 assertThat(pipelineDescriptionObj[0], instanceOf(PipelineDescription.class));
                 final PipelineDescription actualPipelineDescription = (PipelineDescription)pipelineDescriptionObj[0];
-                assertThat(actualPipelineDescription.getPipelineName(), is(TEST_PIPELINE_NAME));
+                assertThat(actualPipelineDescription.getPipelineName(), is(pipelineName));
             });
             assertThat(plugins, notNullValue());
             assertThat(plugins.size(), equalTo(3));
