@@ -19,6 +19,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
         identification_keys: ["sourceIp", "destinationIp", "port"]
         action:
           remove_duplicates:
+        aggregate_when: "/sourceIp == 10.10.10.10"
   sink:
      ...
 ```
@@ -40,6 +41,9 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [put_all](#put_all)
 ### <a name="group_duration"></a>
 * `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
+
+### <a name="when"></a>
+* `when` (Optional): A `String` that represents a condition that must be evaluated to true for the aggregation to be applied on the event. Events that do not evaluate to true on the condition are skipped. Default is no condition which means all events are included in the aggregation.
 
 ## Available Aggregate Actions
 

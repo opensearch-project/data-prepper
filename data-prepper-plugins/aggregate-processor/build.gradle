@@ -10,6 +10,7 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
+    implementation project(':data-prepper-expression')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"

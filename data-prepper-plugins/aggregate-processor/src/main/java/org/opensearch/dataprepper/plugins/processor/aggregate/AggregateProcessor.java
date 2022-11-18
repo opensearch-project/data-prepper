@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -43,17 +44,20 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
 
     private boolean forceConclude = false;
+    private final String whenCondition;
+    private final ExpressionEvaluator<Boolean> expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
+    public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final ExpressionEvaluator<Boolean> expressionEvaluator) {
         this(aggregateProcessorConfig, pluginMetrics, pluginFactory, new AggregateGroupManager(aggregateProcessorConfig.getGroupDuration()),
-                new AggregateIdentificationKeysHasher(aggregateProcessorConfig.getIdentificationKeys()), new AggregateActionSynchronizer.AggregateActionSynchronizerProvider());
+                new AggregateIdentificationKeysHasher(aggregateProcessorConfig.getIdentificationKeys()), new AggregateActionSynchronizer.AggregateActionSynchronizerProvider(), expressionEvaluator);
     }
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final AggregateGroupManager aggregateGroupManager,
-                              final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher, final AggregateActionSynchronizer.AggregateActionSynchronizerProvider aggregateActionSynchronizerProvider) {
+                              final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher, final AggregateActionSynchronizer.AggregateActionSynchronizerProvider aggregateActionSynchronizerProvider, final ExpressionEvaluator<Boolean> expressionEvaluator) {
         super(pluginMetrics);
         this.aggregateProcessorConfig = aggregateProcessorConfig;
         this.aggregateGroupManager = aggregateGroupManager;
+        this.expressionEvaluator = expressionEvaluator;
         this.aggregateIdentificationKeysHasher = aggregateIdentificationKeysHasher;
         final AggregateAction aggregateAction = loadAggregateAction(pluginFactory);
         this.aggregateActionSynchronizer = aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics);
@@ -62,6 +66,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         this.actionConcludeGroupEventsDroppedCounter = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_DROPPED);
         this.actionHandleEventsOutCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_OUT);
         this.actionHandleEventsDroppedCounter = pluginMetrics.counter(ACTION_HANDLE_EVENTS_DROPPED);
+        this.whenCondition = aggregateProcessorConfig.getWhenCondition();
 
         pluginMetrics.gauge(CURRENT_AGGREGATE_GROUPS, aggregateGroupManager, AggregateGroupManager::getAllGroupsSize);
     }
@@ -92,6 +97,10 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         int handleEventsDropped = 0;
         for (final Record<Event> record : records) {
             final Event event = record.getData();
+            if (whenCondition != null && !expressionEvaluator.evaluate(whenCondition, event)) {
+                handleEventsDropped++;
+                continue;
+            }
             final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
             final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash);
 
