@@ -83,6 +83,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -180,9 +181,8 @@ public class OTelMetricsSourceTest {
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
-        pipelineDescription = new PluginSetting("http_source", Collections.emptyMap()) {{
-            setPipelineName(TEST_PIPELINE_NAME);
-        }};
+        pipelineDescription = mock(PipelineDescription.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         buffer = getBuffer();
     }

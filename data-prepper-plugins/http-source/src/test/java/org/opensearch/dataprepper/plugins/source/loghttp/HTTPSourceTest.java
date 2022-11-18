@@ -54,7 +54,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -187,9 +186,8 @@ class HTTPSourceTest {
                 .thenReturn(authenticationProvider);
 
         testBuffer = getBuffer();
-        pipelineDescription = new PluginSetting("http_source", Collections.emptyMap()) {{
-            setPipelineName(TEST_PIPELINE_NAME);
-        }};
+        pipelineDescription = mock(PipelineDescription.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
 
