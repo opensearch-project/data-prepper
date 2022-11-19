@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -53,21 +54,23 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
     private final CertificateProviderFactory certificateProviderFactory;
 
     @DataPrepperPluginConstructor
-    public OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
+    public OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics,
+                             final PluginFactory pluginFactory, final PipelineDescription pipelineDescription) {
         oTelMetricsSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelMetricsSourceConfig = oTelMetricsSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = new CertificateProviderFactory(oTelMetricsSourceConfig);
-        this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+        this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
     }
 
     // accessible only in the same package for unit test
-    OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final CertificateProviderFactory certificateProviderFactory) {
+    OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
+                      final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
         oTelMetricsSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelMetricsSourceConfig = oTelMetricsSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
-        this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+        this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
     }
 
     @Override
@@ -191,7 +194,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         return Collections.singletonList(authenticationInterceptor);
     }
 
-    private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
+    private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory, final PipelineDescription pipelineDescription) {
         final PluginModel authenticationConfiguration = oTelMetricsSourceConfig.getAuthentication();
 
         if (authenticationConfiguration == null || authenticationConfiguration.getPluginName().equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
@@ -205,6 +208,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         } else {
             authenticationPluginSetting = new PluginSetting(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
+        authenticationPluginSetting.setPipelineName(pipelineDescription.getPipelineName());
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
     }
 }

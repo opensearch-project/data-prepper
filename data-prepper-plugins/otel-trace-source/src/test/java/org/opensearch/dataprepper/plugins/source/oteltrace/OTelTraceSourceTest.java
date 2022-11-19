@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -83,6 +84,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -126,11 +128,13 @@ public class OTelTraceSourceTest {
     private PluginSetting testPluginSetting;
     private OTelTraceSourceConfig oTelTraceSourceConfig;
     private PluginMetrics pluginMetrics;
+    private PipelineDescription pipelineDescription;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private BlockingBuffer<Record<Object>> buffer;
 
+    private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
             .addResourceSpans(ResourceSpans.newBuilder()
                     .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
@@ -169,7 +173,9 @@ public class OTelTraceSourceTest {
         pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
 
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        pipelineDescription = mock(PipelineDescription.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
     }
 
     @BeforeEach
@@ -192,6 +198,8 @@ public class OTelTraceSourceTest {
                 .thenReturn(authenticationProvider);
         configureObjectUnderTest();
         buffer = getBuffer();
+        pipelineDescription = mock(PipelineDescription.class);
+        lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
     }
 
     @AfterEach
@@ -240,7 +248,7 @@ public class OTelTraceSourceTest {
         pluginSetting.setPipelineName("pipeline");
 
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
 
         buffer = getBuffer();
         SOURCE.start(buffer);
@@ -317,7 +325,7 @@ public class OTelTraceSourceTest {
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
             oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
 
@@ -355,7 +363,7 @@ public class OTelTraceSourceTest {
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
             oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
 
@@ -400,7 +408,7 @@ public class OTelTraceSourceTest {
             testPluginSetting.setPipelineName("pipeline");
 
             oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
         }
@@ -443,7 +451,7 @@ public class OTelTraceSourceTest {
             testPluginSetting.setPipelineName("pipeline");
 
             oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
         }
@@ -484,7 +492,7 @@ public class OTelTraceSourceTest {
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
             oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
         }
@@ -526,7 +534,7 @@ public class OTelTraceSourceTest {
             testPluginSetting = new PluginSetting(null, settingsMap);
             testPluginSetting.setPipelineName("pipeline");
             oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+            final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
             source.start(buffer);
             source.stop();
         }
@@ -559,7 +567,7 @@ public class OTelTraceSourceTest {
         testPluginSetting.setPipelineName("pipeline");
 
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
 
         source.start(buffer);
 
@@ -598,7 +606,7 @@ public class OTelTraceSourceTest {
         testPluginSetting.setPipelineName("pipeline");
 
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
 
         source.start(buffer);
 
@@ -655,7 +663,7 @@ public class OTelTraceSourceTest {
 
         when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
 
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
 
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -682,7 +690,7 @@ public class OTelTraceSourceTest {
 
         when(authenticationProvider.getHttpAuthenticationService()).thenReturn(function);
 
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, certificateProviderFactory, pipelineDescription);
 
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -709,7 +717,7 @@ public class OTelTraceSourceTest {
         testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
         Assertions.assertThrows(RuntimeException.class, () -> source.start(buffer));
     }
@@ -719,14 +727,14 @@ public class OTelTraceSourceTest {
         testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
     }
 
     @Test
     public void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(completableFuture.get()).thenThrow(new ExecutionException("", null));
@@ -739,7 +747,7 @@ public class OTelTraceSourceTest {
     @Test
     public void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             final NullPointerException expCause = new NullPointerException();
@@ -754,7 +762,7 @@ public class OTelTraceSourceTest {
     @Test
     public void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(buffer);
@@ -769,7 +777,7 @@ public class OTelTraceSourceTest {
     @Test
     public void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(completableFuture.get()).thenThrow(new InterruptedException());
@@ -783,7 +791,7 @@ public class OTelTraceSourceTest {
     @Test
     public void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(buffer);
@@ -800,7 +808,7 @@ public class OTelTraceSourceTest {
     @Test
     public void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
-        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory);
+        final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             source.start(buffer);
