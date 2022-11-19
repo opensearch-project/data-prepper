@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.Log;
@@ -49,7 +50,8 @@ public class HTTPSource implements Source<Record<Log>> {
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
 
     @DataPrepperPluginConstructor
-    public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
+    public HTTPSource(final HTTPSourceConfig sourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
+                      final PipelineDescription pipelineDescription) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
@@ -68,6 +70,7 @@ public class HTTPSource implements Source<Record<Log>> {
             authenticationPluginSetting =
                     new PluginSetting(ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
+        authenticationPluginSetting.setPipelineName(pipelineDescription.getPipelineName());
         authenticationProvider = pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, authenticationPluginSetting);
     }
 
