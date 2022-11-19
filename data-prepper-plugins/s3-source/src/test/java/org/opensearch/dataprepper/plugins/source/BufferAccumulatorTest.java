@@ -157,6 +157,66 @@ class BufferAccumulatorTest {
         assertThat(actualRecordsWritten, equalTo(Collections.singletonList(record)));
     }
 
+    @Test
+    void getTotalWritten_returns_zero_if_no_writes() throws Exception {
+        assertThat(createObjectUnderTest().getTotalWritten(), equalTo(0));
+    }
+
+    @Test
+    void getTotalWritten_returns_accumulated_after_single_write() throws Exception {
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+        final Record record = createRecord();
+        objectUnderTest.add(record);
+
+        objectUnderTest.flush();
+
+        assertThat(objectUnderTest.getTotalWritten(), equalTo(1));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 20})
+    void getTotalWritten_returns_accumulated_after_single_write(final int recordsInWrite) throws Exception {
+        recordsToAccumulate = recordsInWrite;
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+
+        for (int i = 0; i < recordsInWrite; i++) {
+            objectUnderTest.add(createRecord());
+        }
+
+        assertThat(objectUnderTest.getTotalWritten(), equalTo(recordsInWrite));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 10, 20})
+    void getTotalWritten_returns_accumulated_after_multiple_writes(final int recordsInWrite) throws Exception {
+        recordsToAccumulate = 10;
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.flush();
+
+        for (int writes = 0; writes < recordsInWrite; writes++) {
+            for (int r = 0; r < recordsToAccumulate; r++) {
+                objectUnderTest.add(createRecord());
+            }
+        }
+
+        assertThat(objectUnderTest.getTotalWritten(), equalTo(recordsInWrite * recordsToAccumulate));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 15})
+    void getTotalWritten_returns_flushed_data(final int accumulationCount) throws Exception {
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+
+        for (int i = 0; i < accumulationCount; i++) {
+            objectUnderTest.add(createRecord());
+        }
+
+        objectUnderTest.flush();
+
+        assertThat(objectUnderTest.getTotalWritten(), equalTo(accumulationCount));
+    }
+
     private Record createRecord() {
         return mock(Record.class);
     }
