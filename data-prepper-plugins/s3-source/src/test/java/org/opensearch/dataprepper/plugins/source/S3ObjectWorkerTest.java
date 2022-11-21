@@ -102,7 +102,7 @@ class S3ObjectWorkerTest {
     @Mock
     private DistributionSummary s3ObjectSizeProcessedSummary;
     @Mock
-    private DistributionSummary s3ObjectRecordsSummary;
+    private DistributionSummary s3ObjectEventsSummary;
     @Mock
     private BiConsumer<Event, S3ObjectReference> eventConsumer;
 
@@ -149,7 +149,7 @@ class S3ObjectWorkerTest {
         when(pluginMetrics.timer(S3ObjectWorker.S3_OBJECTS_TIME_ELAPSED_METRIC_NAME)).thenReturn(s3ObjectReadTimer);
         when(pluginMetrics.summary(S3ObjectWorker.S3_OBJECTS_SIZE)).thenReturn(s3ObjectSizeSummary);
         when(pluginMetrics.summary(S3ObjectWorker.S3_OBJECTS_SIZE_PROCESSED)).thenReturn(s3ObjectSizeProcessedSummary);
-        when(pluginMetrics.summary(S3ObjectWorker.S3_OBJECTS_RECORDS)).thenReturn(s3ObjectRecordsSummary);
+        when(pluginMetrics.summary(S3ObjectWorker.S3_OBJECTS_EVENTS)).thenReturn(s3ObjectEventsSummary);
 
         lenient().when(objectInputStream.response()).thenReturn(getObjectResponse);
         lenient().when(getObjectResponse.contentLength()).thenReturn(objectSize);
@@ -409,7 +409,7 @@ class S3ObjectWorkerTest {
             createObjectUnderTest().parseS3Object(s3ObjectReference);
         }
 
-        verify(s3ObjectRecordsSummary).record(totalWritten);
+        verify(s3ObjectEventsSummary).record(totalWritten);
     }
 
     @Test

@@ -105,7 +105,7 @@ The AWS configuration is the same for both SQS and S3.
 
 * `s3ObjectSizeBytes` - Measures the size of S3 objects as reported by the S3 `Content-Length`. For compressed objects, this is the compressed size.
 * `s3ObjectProcessedBytes` - Measures the bytes processed by the S3 source for a given object. For compressed objects, this is the un-compressed size.
-* `s3ObjectsRecords` - Measures the number of records produced by an S3 object.
+* `s3ObjectsEvents` - Measures the number of events (sometimes called records) produced by an S3 object.
 
 ## Developer Guide
 

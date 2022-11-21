@@ -43,7 +43,7 @@ class S3ObjectWorker {
     static final String S3_OBJECTS_TIME_ELAPSED_METRIC_NAME = "s3ObjectReadTimeElapsed";
     static final String S3_OBJECTS_SIZE = "s3ObjectSizeBytes";
     static final String S3_OBJECTS_SIZE_PROCESSED = "s3ObjectProcessedBytes";
-    static final String S3_OBJECTS_RECORDS = "s3ObjectsRecords";
+    static final String S3_OBJECTS_EVENTS = "s3ObjectsEvents";
 
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
@@ -60,7 +60,7 @@ class S3ObjectWorker {
     private final Timer s3ObjectReadTimer;
     private final DistributionSummary s3ObjectSizeSummary;
     private final DistributionSummary s3ObjectSizeProcessedSummary;
-    private final DistributionSummary s3ObjectRecordsSummary;
+    private final DistributionSummary s3ObjectEventsSummary;
 
     public S3ObjectWorker(final S3Client s3Client,
                           final Buffer<Record<Event>> buffer,
@@ -87,7 +87,7 @@ class S3ObjectWorker {
         s3ObjectReadTimer = pluginMetrics.timer(S3_OBJECTS_TIME_ELAPSED_METRIC_NAME);
         s3ObjectSizeSummary = pluginMetrics.summary(S3_OBJECTS_SIZE);
         s3ObjectSizeProcessedSummary = pluginMetrics.summary(S3_OBJECTS_SIZE_PROCESSED);
-        s3ObjectRecordsSummary = pluginMetrics.summary(S3_OBJECTS_RECORDS);
+        s3ObjectEventsSummary = pluginMetrics.summary(S3_OBJECTS_EVENTS);
     }
 
     void parseS3Object(final S3ObjectReference s3ObjectReference) throws IOException {
@@ -149,7 +149,7 @@ class S3ObjectWorker {
 
         s3ObjectSizeSummary.record(s3ObjectSize);
         s3ObjectSizeProcessedSummary.record(totalBytesRead);
-        s3ObjectRecordsSummary.record(bufferAccumulator.getTotalWritten());
+        s3ObjectEventsSummary.record(bufferAccumulator.getTotalWritten());
     }
 
     private void recordS3Exception(final S3Exception ex) {
