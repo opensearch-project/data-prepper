@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 
 @DataPrepperPlugin(name = "aggregate", pluginType = Processor.class, pluginConfigurationType = AggregateProcessorConfig.class)
@@ -42,6 +43,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private final AggregateGroupManager aggregateGroupManager;
     private final AggregateActionSynchronizer aggregateActionSynchronizer;
     private final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
+    private final AggregateAction aggregateAction;
 
     private boolean forceConclude = false;
     private final String whenCondition;
@@ -59,7 +61,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         this.aggregateGroupManager = aggregateGroupManager;
         this.expressionEvaluator = expressionEvaluator;
         this.aggregateIdentificationKeysHasher = aggregateIdentificationKeysHasher;
-        final AggregateAction aggregateAction = loadAggregateAction(pluginFactory);
+        this.aggregateAction = loadAggregateAction(pluginFactory);
         this.aggregateActionSynchronizer = aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics);
 
         this.actionConcludeGroupEventsOutCounter = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_OUT);
@@ -101,8 +103,12 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
                 handleEventsDropped++;
                 continue;
             }
+            Map<String, Object> identificationKeysMap = new HashMap<>();
+            if (aggregateAction.useOnlyIdentificationKeys()) {
+                getIdentificationKeys().stream().forEach(key -> identificationKeysMap.put(key, event.get(key, Object.class)));
+            }
             final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
-            final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash);
+            final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash, identificationKeysMap);
 
             final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysHash, aggregateGroupForEvent);
 

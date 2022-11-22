@@ -48,11 +48,11 @@ public class AggregateGroupManagerTest {
     void getGroup_with_non_existing_group_state_creates_and_returns_new_group_and_adds_to_allGroups() {
         aggregateGroupManager = createObjectUnderTest();
 
-        final AggregateGroup emptyAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup emptyAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash, new HashMap<String, Object>());
         assertThat(emptyAggregateGroup, notNullValue());
         assertThat(emptyAggregateGroup.getGroupState(), equalTo(Collections.emptyMap()));
 
-        final AggregateGroup secondAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup secondAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash, new HashMap<String, Object>());
         assertThat(secondAggregateGroup, notNullValue());
         assertThat(secondAggregateGroup, is(sameInstance(emptyAggregateGroup)));
     }
@@ -61,11 +61,11 @@ public class AggregateGroupManagerTest {
     void getGroupState_returns_a_mutable_GroupState_Map() {
         aggregateGroupManager = createObjectUnderTest();
 
-        final AggregateGroup firstAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup firstAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash, new HashMap<String, Object>());
         final GroupState groupState = firstAggregateGroup.getGroupState();
         groupState.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        final AggregateGroup secondAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup secondAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash, new HashMap<String, Object>());
         assertThat(secondAggregateGroup, equalTo(firstAggregateGroup));
         assertThat(secondAggregateGroup.getGroupState(), equalTo(groupState));
 
@@ -77,12 +77,12 @@ public class AggregateGroupManagerTest {
 
         final AggregateGroup expectedOldGroup = mock(AggregateGroup.class);
         aggregateGroupManager.putGroupWithHash(identificationHash, expectedOldGroup);
-        final AggregateGroup oldGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup oldGroup = aggregateGroupManager.getAggregateGroup(identificationHash, new HashMap<String, Object>());
         assertThat(oldGroup, equalTo(expectedOldGroup));
 
         final AggregateGroup expectedNewGroup = mock(AggregateGroup.class);
         aggregateGroupManager.putGroupWithHash(identificationHash, expectedNewGroup);
-        final AggregateGroup newGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup newGroup = aggregateGroupManager.getAggregateGroup(identificationHash, new HashMap<String, Object>());
         assertThat(newGroup, equalTo(expectedNewGroup));
     }
 

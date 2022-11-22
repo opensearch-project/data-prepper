@@ -39,6 +39,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
 * `action` (Required): The action to be performed for each group. One of the existing [Aggregate Actions](#available-aggregate-actions) must be provided.
     * [remove_duplicates](#remove_duplicates)
     * [put_all](#put_all)
+    * [count](#count)
 ### <a name="group_duration"></a>
 * `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
 
@@ -73,6 +74,23 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       The following Event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200, "bytes": 1000, "http_verb": "GET" }
+      ```
+
+### <a name="count"></a>
+* `count`: Count Events belonging to the same group and generate a new event with values of the identification keys and the count, indicating the number of events. All Events that make up the combined Event will be dropped.
+    * Given the following three Events with `identification_keys: ["sourceIp", "destination_ip"]`:
+      ```json
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 503 }
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 400 }
+      ```
+      The following Event will be created and processed by the rest of the pipeline when the group is concluded:
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._count": 3 }
+      ```
+    * When used in combination with the `aggregate_when` condition like "/status == 200", the above 3 events will generate the following event
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._count": 1 }
       ```
 
 ## Creating New Aggregate Actions

@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Map;
 
 class AggregateGroup implements AggregateActionInput {
     private final GroupState groupState;
@@ -17,8 +18,9 @@ class AggregateGroup implements AggregateActionInput {
     private final Lock handleEventForGroupLock;
 
 
-    AggregateGroup() {
+    AggregateGroup(Map<String, Object> initState) {
         this.groupState = new DefaultGroupState();
+        this.groupState.putAll(initState);
         this.groupStart = Instant.now();
         this.concludeGroupLock = new ReentrantLock();
         this.handleEventForGroupLock = new ReentrantLock();

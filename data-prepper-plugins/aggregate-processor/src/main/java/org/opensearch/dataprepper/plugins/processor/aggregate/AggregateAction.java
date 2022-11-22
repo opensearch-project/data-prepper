@@ -40,4 +40,14 @@ public interface AggregateAction {
     default Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
         return Optional.empty();
     }
+
+    /**
+     * Determines if the aggregate action need only to return identification keys or all keys
+     *
+     * @return True if the aggregate action needs to only return identification keys from the event, and retrun false if all keys need to be returned.
+     * @since 2.1
+     */
+    default boolean useOnlyIdentificationKeys() {
+        return false;
+    }
 }

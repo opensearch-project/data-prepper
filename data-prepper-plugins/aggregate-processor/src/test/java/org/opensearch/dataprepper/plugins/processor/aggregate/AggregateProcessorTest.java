@@ -163,7 +163,7 @@ public class AggregateProcessorTest {
         void setup() {
             when(aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event))
                     .thenReturn(identificationHash);
-            when(aggregateGroupManager.getAggregateGroup(identificationHash)).thenReturn(aggregateGroup);
+            when(aggregateGroupManager.getAggregateGroup(identificationHash, new HashMap<String, Object>())).thenReturn(aggregateGroup);
             when(aggregateActionSynchronizer.handleEventForGroup(event, identificationHash, aggregateGroup)).thenReturn(aggregateActionResponse);
         }
 

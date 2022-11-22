@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDuplicatesAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PutAllAggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateAction;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ import static org.hamcrest.collection.IsIn.in;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 /**
  * These integration tests are executing concurrent code that is inherently difficult to test, and even more difficult to recreate a failed test.
@@ -56,7 +58,6 @@ public class AggregateProcessorIT {
     private static final int NUM_UNIQUE_EVENTS_PER_BATCH = 8;
     private static final int NUM_THREADS = 100;
     private static final int GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE = 2;
-
     @Mock
     private AggregateProcessorConfig aggregateProcessorConfig;
 
@@ -88,7 +89,7 @@ public class AggregateProcessorIT {
 
         aggregateAction = new RemoveDuplicatesAggregateAction();
 
-        eventBatch = getBatchOfEvents();
+        eventBatch = getBatchOfEvents(false);
 
         pluginMetrics = PluginMetrics.fromNames(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
@@ -96,7 +97,7 @@ public class AggregateProcessorIT {
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
         when(actionConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
-        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+        lenient().when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
     }
 
@@ -176,6 +177,8 @@ public class AggregateProcessorIT {
     @RepeatedTest(value = 2)
     void aggregateWithPutAllActionAndCondition() throws InterruptedException {
         aggregateAction = new PutAllAggregateAction();
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
         String condition = "/firstRandomNumber < 100";
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
@@ -218,16 +221,96 @@ public class AggregateProcessorIT {
         }
     }
 
-    private List<Record<Event>> getBatchOfEvents() {
+    @RepeatedTest(value = 2)
+    void aggregateWithCountAggregateAction() throws InterruptedException {
+        aggregateAction = new CountAggregateAction();
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        eventBatch = getBatchOfEvents(true);
+
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                countDownLatch.countDown();
+            });
+        }
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        assertThat(allThreadsFinished, equalTo(true));
+
+        Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
+        assertThat(results.size(), equalTo(1));
+
+        Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(1));
+        expectedEventMap.put(CountAggregateAction.COUNTKEY, NUM_THREADS * NUM_EVENTS_PER_BATCH);
+
+        Record<Event> record = (Record<Event>)eventBatch.toArray()[0];
+        assertThat(expectedEventMap, equalTo(record.getData().toMap()));
+    }
+
+    @RepeatedTest(value = 2)
+    void aggregateWithCountAggregateActionWithCondition() throws InterruptedException {
+        aggregateAction = new CountAggregateAction();
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
+        final String condition = "/firstRandomNumber < 100";
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
+        int count = 0;
+        eventBatch = getBatchOfEvents(true);
+        Record<Event> rec = (Record<Event>)eventBatch.toArray()[0];
+        for (Record<Event> record: eventBatch) {
+            Event event = record.getData();
+            boolean value = (count % 2 == 0) ? true : false;
+            when(expressionEvaluator.evaluate(condition, event)).thenReturn(value);
+            count++;
+        }
+
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                countDownLatch.countDown();
+            });
+        }
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        assertThat(allThreadsFinished, equalTo(true));
+
+        Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
+        assertThat(results.size(), equalTo(1));
+
+        Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(1));
+        expectedEventMap.put(CountAggregateAction.COUNTKEY, NUM_THREADS * NUM_EVENTS_PER_BATCH/2);
+
+        rec = (Record<Event>)results.toArray()[0];
+        assertThat(expectedEventMap, equalTo(rec.getData().toMap()));
+    }
+
+    private List<Record<Event>> getBatchOfEvents(boolean withSameValue) {
         final List<Record<Event>> events = new ArrayList<>();
 
         for (int i = 0; i < NUM_EVENTS_PER_BATCH; i++) {
-            final Map<String, Object> eventMap = getEventMap(i % NUM_UNIQUE_EVENTS_PER_BATCH);
+            final Map<String, Object> eventMap = (withSameValue) ? getEventMap(1) : getEventMap(i % NUM_UNIQUE_EVENTS_PER_BATCH);
             final Event event = JacksonEvent.builder()
                     .withEventType("event")
                     .withData(eventMap)
                     .build();
-
+            if (forCountAggregation) {
+                event.put("data", UUID.randomUUID().toString());
+            }
 
             uniqueEventMaps.add(eventMap);
             events.add(new Record<>(event));
