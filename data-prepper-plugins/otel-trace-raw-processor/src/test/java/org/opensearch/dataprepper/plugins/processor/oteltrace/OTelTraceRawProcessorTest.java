@@ -5,6 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
@@ -12,19 +18,12 @@ import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.model.trace.TraceGroupFields;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.assertj.core.api.Assertions;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -74,7 +73,7 @@ public class OTelTraceRawProcessorTest {
     public OTelTraceRawProcessor oTelTraceRawProcessor;
     public ExecutorService executorService;
 
-    @Before
+    @BeforeEach
     public void setup() {
         TEST_TRACE_GROUP_1_ROOT_SPAN = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_ROOT_SPAN_JSON_FILE);
         TEST_TRACE_GROUP_1_CHILD_SPAN_1 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_1_JSON_FILE);
@@ -106,16 +105,14 @@ public class OTelTraceRawProcessorTest {
         MetricsTestUtil.initMetrics();
         pluginSetting = new PluginSetting(
                 "OTelTrace",
-                new HashMap<String, Object>() {{
-                    put(OtelTraceRawProcessorConfig.TRACE_FLUSH_INTERVAL, TEST_TRACE_FLUSH_INTERVAL);
-                }});
+                Map.of(OtelTraceRawProcessorConfig.TRACE_FLUSH_INTERVAL, TEST_TRACE_FLUSH_INTERVAL));
         pluginSetting.setPipelineName("pipelineOTelTrace");
         pluginSetting.setProcessWorkers(TEST_CONCURRENCY_SCALE);
         oTelTraceRawProcessor = new OTelTraceRawProcessor(pluginSetting);
         executorService = Executors.newFixedThreadPool(TEST_CONCURRENCY_SCALE);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         oTelTraceRawProcessor.shutdown();
         executorService.shutdown();

@@ -555,13 +555,10 @@ public class OTelTraceSourceTest {
         settingsMap.put("proto_reflection_service", "true");
         settingsMap.put("unauthenticated_health_check", "false");
         settingsMap.put("authentication", new PluginModel("http_basic",
-                new HashMap<>()
-                {
-                    {
-                        put("username", "test");
-                        put("password", "test2");
-                    }
-                }));
+                Map.of(
+                        "username", "test",
+                        "password", "test2"
+                )));
 
         testPluginSetting = new PluginSetting(null, settingsMap);
         testPluginSetting.setPipelineName("pipeline");
@@ -594,13 +591,10 @@ public class OTelTraceSourceTest {
         settingsMap.put("proto_reflection_service", "true");
         settingsMap.put("unauthenticated_health_check", "true");
         settingsMap.put("authentication", new PluginModel("http_basic",
-                new HashMap<>()
-                {
-                    {
-                        put("username", "test");
-                        put("password", "test2");
-                    }
-                }));
+                Map.of(
+                        "username", "test",
+                        "password", "test2"
+                )));
 
         testPluginSetting = new PluginSetting(null, settingsMap);
         testPluginSetting.setPipelineName("pipeline");

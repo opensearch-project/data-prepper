@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.integration.log;
 
-import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import org.opensearch.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.WebClient;
@@ -24,6 +22,8 @@ import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
 
@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -130,10 +129,10 @@ public class EndToEndBasicLogTest {
     private HttpData generateRandomApacheLogHttpData(final int numLogs) throws JsonProcessingException {
         final List<Map<String, Object>> jsonArray = new ArrayList<>();
         for (int i = 0; i < numLogs; i++) {
-            final Map<String, Object> logObj = new HashMap<String, Object>() {{
-                put("date", System.currentTimeMillis());
-                put("log", apacheLogFaker.generateRandomExtendedApacheLog());
-            }};
+            final Map<String, Object> logObj = Map.of(
+                "date", System.currentTimeMillis(),
+                "log", apacheLogFaker.generateRandomExtendedApacheLog()
+            );
             jsonArray.add(logObj);
         }
         final String jsonData = objectMapper.writeValueAsString(jsonArray);

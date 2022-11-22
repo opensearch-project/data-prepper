@@ -123,9 +123,8 @@ class HTTPSourceTest {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         integerHashMap.put("batch_size", 1);
-        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap) {{
-            setPipelineName(TEST_PIPELINE_NAME);
-        }};
+        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
+        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
         return new BlockingBuffer<>(pluginSetting);
     }
 
@@ -276,11 +275,10 @@ class HTTPSourceTest {
         // Prepare
         when(sourceConfig.isUnauthenticatedHealthCheck()).thenReturn(false);
         when(sourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
-                new HashMap()
-                {{
-                    put("username", "test");
-                    put("password", "test");
-                }}));
+                Map.of(
+                    "username", "test",
+                    "password", "test"
+                )));
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
         HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
 
