@@ -24,6 +24,7 @@ class BufferAccumulator<T extends Record<?>> {
     private final Buffer<T> buffer;
     private final int numberOfRecordsToAccumulate;
     private final int bufferTimeoutMillis;
+    private int totalWritten = 0;
 
     private final Collection<T> recordsAccumulated;
 
@@ -55,9 +56,20 @@ class BufferAccumulator<T extends Record<?>> {
     }
 
     private void flushAccumulatedToBuffer() throws Exception {
-        if (recordsAccumulated.size() > 0) {
+        final int currentRecordCountAccumulated = recordsAccumulated.size();
+        if (currentRecordCountAccumulated > 0) {
             buffer.writeAll(recordsAccumulated, bufferTimeoutMillis);
             recordsAccumulated.clear();
+            totalWritten += currentRecordCountAccumulated;
         }
+    }
+
+    /**
+     * Gets the total number of records written to the buffer.
+     *
+     * @return the total number of records written
+     */
+    public int getTotalWritten() {
+        return totalWritten;
     }
 }
