@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.integration.trace;
 
 
+import org.junit.Test;
 import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.plugins.processor.oteltracegroup.model.TraceGroup;
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
@@ -23,8 +24,6 @@ import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
 import io.opentelemetry.proto.trace.v1.Span;
 import io.opentelemetry.proto.trace.v1.Status;
-import org.junit.Assert;
-import org.junit.Test;
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
 import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
@@ -48,13 +47,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class EndToEndRawSpanTest {
     private static final int DATA_PREPPER_PORT_1 = 21890;
     private static final int DATA_PREPPER_PORT_2 = 21891;
 
-    private static final Map<String, TraceGroup> TEST_TRACEID_TO_TRACE_GROUP = new HashMap<String, TraceGroup>() {{
-       put(Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()),
+    private static final Map<String, TraceGroup> TEST_TRACEID_TO_TRACE_GROUP = Map.of(
+       Hex.toHexString(EndToEndTestSpan.TRACE_1_ROOT_SPAN.traceId.getBytes()),
                new TraceGroup.TraceGroupBuilder()
                        .setTraceGroup(EndToEndTestSpan.TRACE_1_ROOT_SPAN.name)
                        .setTraceGroupFields(DefaultTraceGroupFields.builder()
@@ -62,9 +63,8 @@ public class EndToEndRawSpanTest {
                                .withDurationInNanos(EndToEndTestSpan.TRACE_1_ROOT_SPAN.durationInNanos)
                                .withStatusCode(EndToEndTestSpan.TRACE_1_ROOT_SPAN.statusCode)
                                .build())
-                       .build()
-               );
-       put(Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()),
+                       .build(),
+       Hex.toHexString(EndToEndTestSpan.TRACE_2_ROOT_SPAN.traceId.getBytes()),
                new TraceGroup.TraceGroupBuilder()
                        .setTraceGroup(EndToEndTestSpan.TRACE_2_ROOT_SPAN.name)
                        .setTraceGroupFields(DefaultTraceGroupFields.builder()
@@ -73,8 +73,7 @@ public class EndToEndRawSpanTest {
                                .withStatusCode(EndToEndTestSpan.TRACE_2_ROOT_SPAN.statusCode)
                                .build())
                        .build()
-               );
-    }};
+    );
     private static final List<EndToEndTestSpan> TEST_SPAN_SET_1_WITH_ROOT_SPAN = Arrays.asList(
             EndToEndTestSpan.TRACE_1_ROOT_SPAN, EndToEndTestSpan.TRACE_1_SPAN_2, EndToEndTestSpan.TRACE_1_SPAN_3,
             EndToEndTestSpan.TRACE_1_SPAN_4, EndToEndTestSpan.TRACE_1_SPAN_5, EndToEndTestSpan.TRACE_1_SPAN_6);
@@ -131,7 +130,7 @@ public class EndToEndRawSpanTest {
                     );
                     final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
                     final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
-                    Assert.assertEquals(expectedDocuments.size(), foundSources.size());
+                    assertEquals(expectedDocuments.size(), foundSources.size());
                     /**
                      * Our raw trace prepper add more fields than the actual sent object. These are defaults from the proto.
                      * So assertion is done if all the expected fields exists.
@@ -140,7 +139,7 @@ public class EndToEndRawSpanTest {
                      *
                      */
                     expectedDocuments.forEach(expectedDoc -> {
-                        Assert.assertTrue(foundSources.stream()
+                        assertTrue(foundSources.stream()
                                 .filter(i -> i.get("spanId").equals(expectedDoc.get("spanId")))
                                 .findFirst().get()
                                 .entrySet().containsAll(expectedDoc.entrySet()));

@@ -425,13 +425,10 @@ public class OTelMetricsSourceTest {
             settingsMap.put("unframed_requests", "true");
             settingsMap.put("proto_reflection_service", "true");
             settingsMap.put("authentication", new PluginModel("http_basic",
-                    new HashMap<>()
-                    {
-                        {
-                            put("username", "test");
-                            put("password", "test2");
-                        }
-                    }));
+                    Map.of(
+                            "username", "test",
+                            "password", "test2"
+                    )));
         }
 
         void createObjectUnderTest() {

@@ -27,15 +27,15 @@ class OperatorConfiguration {
         final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>>
                 operandsToOperationMap = new HashMap<>();
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> intOperations =
-                new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Integer.class, (lhs, rhs) -> (Integer) lhs > (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Integer) lhs > (Float) rhs);
-                }};
+                Map.of(
+                        Integer.class, (lhs, rhs) -> (Integer) lhs > (Integer) rhs,
+                        Float.class, (lhs, rhs) -> (Integer) lhs > (Float) rhs
+                );
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
-                new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Integer.class, (lhs, rhs) -> (Float) lhs > (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Float) lhs > (Float) rhs);
-                }};
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Float) lhs > (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Float) lhs > (Float) rhs
+                );
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -48,15 +48,15 @@ class OperatorConfiguration {
         final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>>
                 operandsToOperationMap = new HashMap<>();
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> intOperations =
-                new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Integer.class, (lhs, rhs) -> (Integer) lhs >= (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Integer) lhs >= (Float) rhs);
-                }};
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Integer) lhs >= (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Integer) lhs >= (Float) rhs
+                );
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
-                new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Integer.class, (lhs, rhs) -> (Float) lhs >= (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Float) lhs >= (Float) rhs);
-                }};
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Float) lhs >= (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Float) lhs >= (Float) rhs
+                );
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -69,15 +69,15 @@ class OperatorConfiguration {
         final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>>
                 operandsToOperationMap = new HashMap<>();
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> intOperations =
-                new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Integer.class, (lhs, rhs) -> (Integer) lhs < (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Integer) lhs < (Float) rhs);
-                }};
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Integer) lhs < (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Integer) lhs < (Float) rhs
+                );
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
-                new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Integer.class, (lhs, rhs) -> (Float) lhs < (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Float) lhs < (Float) rhs);
-                }};
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Float) lhs < (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Float) lhs < (Float) rhs
+                );
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);
@@ -90,15 +90,15 @@ class OperatorConfiguration {
         final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>>
                 operandsToOperationMap = new HashMap<>();
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> intOperations =
-                new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Integer.class, (lhs, rhs) -> (Integer) lhs <= (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Integer) lhs <= (Float) rhs);
-                }};
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Integer) lhs <= (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Integer) lhs <= (Float) rhs
+                );
         final Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> floatOperations =
-                new HashMap<Class<? extends Number>, BiFunction<Object, Object, Boolean>>() {{
-                    put(Integer.class, (lhs, rhs) -> (Float) lhs <= (Integer) rhs);
-                    put(Float.class, (lhs, rhs) -> (Float) lhs <= (Float) rhs);
-                }};
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Float) lhs <= (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Float) lhs <= (Float) rhs
+                );
 
         operandsToOperationMap.put(Integer.class, intOperations);
         operandsToOperationMap.put(Float.class, floatOperations);

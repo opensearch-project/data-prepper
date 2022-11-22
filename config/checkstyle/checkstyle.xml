@@ -25,6 +25,7 @@
 
     <module name="TreeWalker">
         <module name="AvoidStarImport" />
+        <module name="AvoidDoubleBraceInitializationCheck" />
 
         <!-- Unused imports are forbidden -->
         <module name="UnusedImports" />
