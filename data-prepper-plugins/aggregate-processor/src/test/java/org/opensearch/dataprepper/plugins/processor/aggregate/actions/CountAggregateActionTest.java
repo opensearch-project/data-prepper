@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith; 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -17,12 +16,8 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -66,7 +61,7 @@ public class CountAggregateActionTest {
 
         final Optional<Event> result = countAggregateAction.concludeGroup(aggregateActionInput);
         assertThat(result.isPresent(), equalTo(true));
-        Map<String, Object> expectedEventMap = new HashMap<>() {{ put(key, value); }};
+        Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap(key, value));
         expectedEventMap.put(CountAggregateAction.COUNTKEY, testCount);
         assertEquals(expectedEventMap, result.get().toMap());
     }
