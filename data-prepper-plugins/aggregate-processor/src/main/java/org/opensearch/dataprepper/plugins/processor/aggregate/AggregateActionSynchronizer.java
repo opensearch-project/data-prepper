@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 
@@ -74,7 +75,7 @@ class AggregateActionSynchronizer {
         return concludeGroupEvent;
     }
 
-    AggregateActionResponse handleEventForGroup(final Event event, final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup aggregateGroup) {
+    AggregateActionResponse handleEventForGroup(final Event event, final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup aggregateGroup, Map<String, Object> identificationKeysMap) {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 
@@ -85,7 +86,7 @@ class AggregateActionSynchronizer {
         handleEventForGroupLock.lock();
         try {
             LOG.debug("Start critical section in handleEventForGroup");
-            handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup);
+            handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup, identificationKeysMap);
             aggregateGroupManager.putGroupWithHash(hash, aggregateGroup);
         } catch (final Exception e) {
             LOG.debug("Error while handling event, event will be processed by remainder of the pipeline: ", e);

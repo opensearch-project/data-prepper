@@ -21,8 +21,8 @@ class AggregateGroupManager {
         this.groupDuration = groupDuration;
     }
 
-    AggregateGroup getAggregateGroup(final AggregateIdentificationKeysHasher.IdentificationHash identificationHash, Map<String, Object> identificationKeyMap) {
-        return allGroups.computeIfAbsent(identificationHash, (hash) -> new AggregateGroup(identificationKeyMap));
+    AggregateGroup getAggregateGroup(final AggregateIdentificationKeysHasher.IdentificationHash identificationHash) {
+        return allGroups.computeIfAbsent(identificationHash, (hash) -> new AggregateGroup());
     }
 
     List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> getGroupsToConclude(final boolean forceConclude) {

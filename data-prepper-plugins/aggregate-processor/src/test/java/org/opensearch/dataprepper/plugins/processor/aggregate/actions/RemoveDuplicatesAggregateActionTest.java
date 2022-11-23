@@ -47,7 +47,7 @@ public class RemoveDuplicatesAggregateActionTest {
         removeDuplicatesAggregateAction = createObjectUnderTest();
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
         final GroupState groupState = aggregateActionInput.getGroupState();
-        final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, aggregateActionInput);
+        final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, aggregateActionInput, Collections.emptyMap());
 
         assertThat(aggregateActionResponse.getEvent(), equalTo(testEvent));
         assertThat(groupState, equalTo(expectedGroupState));
@@ -61,7 +61,7 @@ public class RemoveDuplicatesAggregateActionTest {
         final GroupState groupState = aggregateActionInput.getGroupState();
         groupState.put(RemoveDuplicatesAggregateAction.GROUP_STATE_HAS_EVENT, true);
 
-        final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, aggregateActionInput);
+        final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, aggregateActionInput, Collections.emptyMap());
 
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(groupState, equalTo(expectedGroupState));

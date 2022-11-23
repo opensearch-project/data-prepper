@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +66,7 @@ public class PutAllAggregateActionTest {
 
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
 
-        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), aggregateActionInput, Collections.emptyMap());
 
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(aggregateActionInput.getGroupState(), equalTo(events.get(0).toMap()));
@@ -81,7 +82,7 @@ public class PutAllAggregateActionTest {
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
         expectedGroupState.putAll(groupState);
         expectedGroupState.putAll(events.get(1).toMap());
-        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(1), aggregateActionInput);
+        final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(1), aggregateActionInput, Collections.emptyMap());
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(groupState, equalTo(expectedGroupState));
     }

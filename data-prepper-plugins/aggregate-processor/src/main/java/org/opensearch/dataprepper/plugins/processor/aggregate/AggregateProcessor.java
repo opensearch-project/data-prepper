@@ -104,13 +104,11 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
                 continue;
             }
             Map<String, Object> identificationKeysMap = new HashMap<>();
-            if (aggregateAction.useOnlyIdentificationKeys()) {
-                getIdentificationKeys().stream().forEach(key -> identificationKeysMap.put(key, event.get(key, Object.class)));
-            }
+            getIdentificationKeys().stream().forEach(key -> identificationKeysMap.put(key, event.get(key, Object.class)));
             final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
-            final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash, identificationKeysMap);
+            final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash);
 
-            final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysHash, aggregateGroupForEvent);
+            final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysHash, aggregateGroupForEvent, identificationKeysMap);
 
             final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import org.opensearch.dataprepper.model.event.Event;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -25,7 +26,7 @@ public interface AggregateAction {
      * be processed immediately, or is empty if the Event should be removed from processing
      * @since 1.3
      */
-    default AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
+    default AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput, final Map<String, Object> identificationKeysMap) {
         return AggregateActionResponse.fromEvent(event);
     }
 
@@ -39,15 +40,5 @@ public interface AggregateAction {
      */
     default Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
         return Optional.empty();
-    }
-
-    /**
-     * Determines if the aggregate action need only to return identification keys or all keys
-     *
-     * @return True if the aggregate action needs to only return identification keys from the event, and retrun false if all keys need to be returned.
-     * @since 2.1
-     */
-    default boolean useOnlyIdentificationKeys() {
-        return false;
     }
 }

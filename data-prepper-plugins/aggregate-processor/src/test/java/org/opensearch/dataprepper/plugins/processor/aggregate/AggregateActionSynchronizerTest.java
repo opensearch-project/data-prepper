@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 
@@ -145,15 +146,15 @@ public class AggregateActionSynchronizerTest {
     @Test
     void handleEventForGroup_calls_expected_functions_and_returns_correct_AggregateActionResponse() {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
-        when(aggregateAction.handleEvent(event, aggregateGroup)).thenReturn(aggregateActionResponse);
+        when(aggregateAction.handleEvent(event, aggregateGroup, Collections.emptyMap())).thenReturn(aggregateActionResponse);
 
-        final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationHash, aggregateGroup);
+        final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationHash, aggregateGroup, Collections.emptyMap());
 
         final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateAction, aggregateGroupManager);
         inOrder.verify(concludeGroupLock).lock();
         inOrder.verify(concludeGroupLock).unlock();
         inOrder.verify(handleEventForGroupLock).lock();
-        inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup);
+        inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup, Collections.emptyMap());
         inOrder.verify(aggregateGroupManager).putGroupWithHash(identificationHash, aggregateGroup);
         inOrder.verify(handleEventForGroupLock).unlock();
 
@@ -163,15 +164,15 @@ public class AggregateActionSynchronizerTest {
     @Test
     void locks_are_unlocked_and_event_returned_when_aggregateAction_handleEvent_throws_exception() {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
-        when(aggregateAction.handleEvent(event, aggregateGroup)).thenThrow(RuntimeException.class);
+        when(aggregateAction.handleEvent(event, aggregateGroup, Collections.emptyMap())).thenThrow(RuntimeException.class);
 
-        final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationHash, aggregateGroup);
+        final AggregateActionResponse handleEventResponse = objectUnderTest.handleEventForGroup(event, identificationHash, aggregateGroup, Collections.emptyMap());
 
         final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateAction, actionHandleEventsProcessingErrors);
         inOrder.verify(concludeGroupLock).lock();
         inOrder.verify(concludeGroupLock).unlock();
         inOrder.verify(handleEventForGroupLock).lock();
-        inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup);
+        inOrder.verify(aggregateAction).handleEvent(event, aggregateGroup, Collections.emptyMap());
         inOrder.verify(actionHandleEventsProcessingErrors).increment();
         inOrder.verify(handleEventForGroupLock).unlock();
 

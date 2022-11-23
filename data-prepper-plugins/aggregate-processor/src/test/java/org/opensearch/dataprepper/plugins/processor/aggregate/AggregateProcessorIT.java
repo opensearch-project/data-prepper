@@ -45,7 +45,6 @@ import static org.hamcrest.collection.IsIn.in;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.lenient;
 
 /**
  * These integration tests are executing concurrent code that is inherently difficult to test, and even more difficult to recreate a failed test.
@@ -54,6 +53,7 @@ import static org.mockito.Mockito.lenient;
 @ExtendWith(MockitoExtension.class)
 public class AggregateProcessorIT {
 
+    private static final int testValue = 1;
     private static final int NUM_EVENTS_PER_BATCH = 200;
     private static final int NUM_UNIQUE_EVENTS_PER_BATCH = 8;
     private static final int NUM_THREADS = 100;
@@ -87,7 +87,6 @@ public class AggregateProcessorIT {
         identificationKeys.add("secondRandomNumber");
         identificationKeys.add("thirdRandomNumber");
 
-        aggregateAction = new RemoveDuplicatesAggregateAction();
 
         eventBatch = getBatchOfEvents(false);
 
@@ -97,8 +96,6 @@ public class AggregateProcessorIT {
         when(aggregateProcessorConfig.getAggregateAction()).thenReturn(actionConfiguration);
         when(actionConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
         when(actionConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
-        lenient().when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
-                .thenReturn(aggregateAction);
     }
 
     private AggregateProcessor createObjectUnderTest() {
@@ -107,6 +104,9 @@ public class AggregateProcessorIT {
 
     @RepeatedTest(value = 10)
     void aggregateWithNoConcludingGroupsReturnsExpectedResult() throws InterruptedException {
+        aggregateAction = new RemoveDuplicatesAggregateAction();
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(1000));
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
@@ -140,6 +140,9 @@ public class AggregateProcessorIT {
 
     @RepeatedTest(value = 2)
     void aggregateWithConcludingGroupsOnceReturnsExpectedResult() throws InterruptedException {
+        aggregateAction = new RemoveDuplicatesAggregateAction();
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
 
@@ -248,10 +251,10 @@ public class AggregateProcessorIT {
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
         assertThat(results.size(), equalTo(1));
 
-        Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(1));
+        Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
         expectedEventMap.put(CountAggregateAction.COUNTKEY, NUM_THREADS * NUM_EVENTS_PER_BATCH);
 
-        Record<Event> record = (Record<Event>)eventBatch.toArray()[0];
+        Record<Event> record = (Record<Event>)results.toArray()[0];
         assertThat(expectedEventMap, equalTo(record.getData().toMap()));
     }
 
@@ -292,7 +295,7 @@ public class AggregateProcessorIT {
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
         assertThat(results.size(), equalTo(1));
 
-        Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(1));
+        Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
         expectedEventMap.put(CountAggregateAction.COUNTKEY, NUM_THREADS * NUM_EVENTS_PER_BATCH/2);
 
         rec = (Record<Event>)results.toArray()[0];
@@ -303,12 +306,12 @@ public class AggregateProcessorIT {
         final List<Record<Event>> events = new ArrayList<>();
 
         for (int i = 0; i < NUM_EVENTS_PER_BATCH; i++) {
-            final Map<String, Object> eventMap = (withSameValue) ? getEventMap(1) : getEventMap(i % NUM_UNIQUE_EVENTS_PER_BATCH);
+            final Map<String, Object> eventMap = (withSameValue) ? getEventMap(testValue) : getEventMap(i % NUM_UNIQUE_EVENTS_PER_BATCH);
             final Event event = JacksonEvent.builder()
                     .withEventType("event")
                     .withData(eventMap)
                     .build();
-            if (forCountAggregation) {
+            if (withSameValue) {
                 event.put("data", UUID.randomUUID().toString());
             }
 

@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInp
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -25,13 +26,14 @@ import java.util.Optional;
 public class CountAggregateAction implements AggregateAction {
     static final String EVENT_TYPE = "event";
     // COUNTKEY string is chosen to be unique and NOT to conflict with user provided keys
-    // This COUNTKEY is used by OTEL/Prometheus format converter processor to generate a SUMMARY metric
+    // This COUNTKEY is used by OTEL/Prometheus format converter processor to convert this event to metric event
     public static final String COUNTKEY = "aggr._count";
 
     @Override
-    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
+    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput, final Map<String, Object> identificationKeysMap) {
         final GroupState groupState = aggregateActionInput.getGroupState();
         if (groupState.get(COUNTKEY) == null) {
+            groupState.putAll(identificationKeysMap);
             groupState.put(COUNTKEY, 1);
         } else {
             Integer v = (Integer)groupState.get(COUNTKEY) + 1;
@@ -51,10 +53,4 @@ public class CountAggregateAction implements AggregateAction {
         
         return Optional.of(event);
     }
-
-    @Override
-    public boolean useOnlyIdentificationKeys() {
-        return true;
-    }
-    
 }

@@ -12,6 +12,8 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInp
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
+import java.util.Map;
+
 /**
  * An AggregateAction that will pass down the first Event of a groupState immediately for processing, and then ignore Events
  * that have a non-empty groupState associated with them
@@ -22,7 +24,7 @@ public class RemoveDuplicatesAggregateAction implements AggregateAction {
     static final String GROUP_STATE_HAS_EVENT = "GROUP_STATE_HAS_EVENT";
 
     @Override
-    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
+    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput, final Map<String, Object> identificationKeysMap) {
         final GroupState groupState = aggregateActionInput.getGroupState();
         if (groupState.size() == 0) {
             groupState.put(GROUP_STATE_HAS_EVENT, true);

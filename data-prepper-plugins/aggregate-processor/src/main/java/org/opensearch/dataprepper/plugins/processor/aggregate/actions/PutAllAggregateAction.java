@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInp
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -26,7 +27,7 @@ public class PutAllAggregateAction implements AggregateAction {
     static final String EVENT_TYPE = "event";
 
     @Override
-    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
+    public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput, final Map<String, Object> identificationKeysMap) {
         final GroupState groupState = aggregateActionInput.getGroupState();
         groupState.putAll(event.toMap());
         return AggregateActionResponse.nullEventResponse();

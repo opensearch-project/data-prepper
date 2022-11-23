@@ -24,7 +24,7 @@ public class AggregateGroupTest {
 
     @Test
     void resetGroup_after_getting_group_state_clears_group_state() {
-        final AggregateGroup aggregateGroup = new AggregateGroup(new HashMap<String, Object>());
+        final AggregateGroup aggregateGroup = new AggregateGroup();
 
         final GroupState groupState = aggregateGroup.getGroupState();
         groupState.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
@@ -36,7 +36,7 @@ public class AggregateGroupTest {
 
     @Test
     void shouldConcludeGroup_returns_true_when_duration_is_over() throws NoSuchFieldException, IllegalAccessException {
-        final AggregateGroup aggregateGroup = new AggregateGroup(new HashMap<String, Object>());
+        final AggregateGroup aggregateGroup = new AggregateGroup();
         reflectivelySetField(aggregateGroup, "groupStart", Instant.now().minusSeconds(TEST_GROUP_DURATION.getSeconds()));
 
         assertThat(aggregateGroup.shouldConcludeGroup(TEST_GROUP_DURATION), equalTo(true));
@@ -45,7 +45,7 @@ public class AggregateGroupTest {
 
     @Test
     void shouldConcludeGroup_returns_false_when_duration_is_not_over() throws NoSuchFieldException, IllegalAccessException {
-        final AggregateGroup aggregateGroup = new AggregateGroup(new HashMap<String, Object>());
+        final AggregateGroup aggregateGroup = new AggregateGroup();
         reflectivelySetField(aggregateGroup, "groupStart", Instant.now().plusSeconds(TEST_GROUP_DURATION.getSeconds()));
 
         assertThat(aggregateGroup.shouldConcludeGroup(TEST_GROUP_DURATION), equalTo(false));

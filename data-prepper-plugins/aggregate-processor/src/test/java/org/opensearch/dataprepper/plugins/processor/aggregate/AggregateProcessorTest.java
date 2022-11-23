@@ -163,8 +163,8 @@ public class AggregateProcessorTest {
         void setup() {
             when(aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event))
                     .thenReturn(identificationHash);
-            when(aggregateGroupManager.getAggregateGroup(identificationHash, new HashMap<String, Object>())).thenReturn(aggregateGroup);
-            when(aggregateActionSynchronizer.handleEventForGroup(event, identificationHash, aggregateGroup)).thenReturn(aggregateActionResponse);
+            when(aggregateGroupManager.getAggregateGroup(identificationHash)).thenReturn(aggregateGroup);
+            when(aggregateActionSynchronizer.handleEventForGroup(event, identificationHash, aggregateGroup, Collections.emptyMap())).thenReturn(aggregateActionResponse);
         }
 
         @Test
@@ -212,7 +212,7 @@ public class AggregateProcessorTest {
 
             when(aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(firstEvent))
                     .thenReturn(identificationHash);
-            when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationHash, aggregateGroup)).thenReturn(firstAggregateActionResponse);
+            when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationHash, aggregateGroup, Collections.emptyMap())).thenReturn(firstAggregateActionResponse);
             when(expressionEvaluator.evaluate(condition, event)).thenReturn(true);
             when(expressionEvaluator.evaluate(condition, firstEvent)).thenReturn(true);
             when(expressionEvaluator.evaluate(condition, secondEvent)).thenReturn(false);
