@@ -3,26 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.typeconversion;
+package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
-public class TypeConversionProcessorConfig {
+public class ConvertEntryTypeProcessorConfig  {
     @JsonProperty("key")
     @NotEmpty
     private String key;
 
     @JsonProperty("type")
     @NotEmpty
-    private String type;
+    private TargetType type;
 
     public String getKey() {
         return key;
     }
 
-    public String getType() {
+    public TargetType getType() {
         return type;
     }
 }
