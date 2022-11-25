@@ -19,6 +19,9 @@ public class BooleanConverter implements TypeConverter<Boolean> {
                     (number.shortValue() != 0) ||
                     (number.byteValue() != 0)) ? true : false;
         }
+        if (source instanceof Boolean) {
+            return (Boolean)source;
+        }
         throw new IllegalArgumentException("Unsupported type conversion");
     }
 }

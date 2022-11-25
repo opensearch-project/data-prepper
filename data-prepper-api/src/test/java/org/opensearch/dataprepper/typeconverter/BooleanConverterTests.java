@@ -37,6 +37,46 @@ public class BooleanConverterTests {
         assertThat(converter.convert(doubleFalseConstant), equalTo(false));
     }
     @Test
+    void testLongToBooleanConversion() {
+        BooleanConverter converter = new BooleanConverter();
+        final Long longTrueConstant = (long)1234578912;
+        assertThat(converter.convert(longTrueConstant), equalTo(true));
+        final Long longFalseConstant = (long)0;
+        assertThat(converter.convert(longFalseConstant), equalTo(false));
+    }
+    @Test
+    void testShortToBooleanConversion() {
+        BooleanConverter converter = new BooleanConverter();
+        final Short shortTrueConstant = 12345;
+        assertThat(converter.convert(shortTrueConstant), equalTo(true));
+        final Short shortFalseConstant = 0;
+        assertThat(converter.convert(shortFalseConstant), equalTo(false));
+    }
+    @Test
+    void testByteToBooleanConversion() {
+        BooleanConverter converter = new BooleanConverter();
+        final Byte byteTrueConstant = 12;
+        assertThat(converter.convert(byteTrueConstant), equalTo(true));
+        final Byte byteFalseConstant = 0;
+        assertThat(converter.convert(byteFalseConstant), equalTo(false));
+    }
+    @Test
+    void testFloatToBooleanConversion() {
+        BooleanConverter converter = new BooleanConverter();
+        final Float floatTrueConstant = (float)12345.0;
+        assertThat(converter.convert(floatTrueConstant), equalTo(true));
+        final Float floatFalseConstant = (float)0.0;
+        assertThat(converter.convert(floatFalseConstant), equalTo(false));
+    }
+    @Test
+    void testBooleanToBooleanConversion() {
+        BooleanConverter converter = new BooleanConverter();
+        final Boolean boolTrueConstant = true;
+        assertThat(converter.convert(boolTrueConstant), equalTo(true));
+        final Boolean boolFalseConstant = false;
+        assertThat(converter.convert(boolFalseConstant), equalTo(false));
+    }
+    @Test
     void testInvalidBooleanConversion() {
         BooleanConverter converter = new BooleanConverter();
         final Map<Object, Object> map = Collections.emptyMap();

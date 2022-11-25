@@ -57,6 +57,12 @@ public class StringConverterTests {
         assertThat(converter.convert(boolConstant), equalTo(boolConstant.toString()));
     }
     @Test
+    void testStringToStringConversion() {
+        StringConverter converter = new StringConverter();
+        final String strConstant = "testString";
+        assertThat(converter.convert(strConstant), equalTo(strConstant));
+    }
+    @Test
     void testInvalidStringConversion() {
         StringConverter converter = new StringConverter();
         final Map<Object, Object> map = Collections.emptyMap();

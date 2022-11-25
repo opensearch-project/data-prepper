@@ -23,12 +23,19 @@ public class IntegerConverterTests {
         final Float floatConstant = (float)1234.56789;
         assertThat(converter.convert(floatConstant), equalTo((int)(float)floatConstant));
     }
+    @Test
     void testBooleanToIntegerConversion() {
         IntegerConverter converter = new IntegerConverter();
         final Boolean boolFalseConstant = false;
         assertThat(converter.convert(boolFalseConstant), equalTo(0));
         final Boolean boolTrueConstant = true;
         assertThat(converter.convert(boolTrueConstant), equalTo(1));
+    }
+    @Test
+    void testIntegerToIntegerConversion() {
+        IntegerConverter converter = new IntegerConverter();
+        final Integer intConstant = (int)1234;
+        assertThat(converter.convert(intConstant), equalTo(intConstant));
     }
     @Test
     void testInvalidStringConversion() {

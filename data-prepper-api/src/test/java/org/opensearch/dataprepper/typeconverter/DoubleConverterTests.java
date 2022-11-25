@@ -35,6 +35,12 @@ public class DoubleConverterTests {
         assertThat(converter.convert(boolTrueConstant), equalTo(1.0));
     }
     @Test
+    void testDoubleToDoubleConversion() {
+        DoubleConverter converter = new DoubleConverter();
+        final Double doubleConstant = (double)12345.123;
+        assertThat(converter.convert(doubleConstant), equalTo(doubleConstant));
+    }
+    @Test
     void testInvalidDoubleConversion() {
         DoubleConverter converter = new DoubleConverter();
         final Map<Object, Object> map = Collections.emptyMap();
