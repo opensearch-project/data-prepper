@@ -18,7 +18,7 @@ dependencies {
     }
     implementation project(':data-prepper-api')
     implementation 'javax.inject:javax.inject:1'
-    implementation('org.springframework:spring-core:5.3.23') {
+    implementation('org.springframework:spring-core:6.0.2') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation('org.springframework:spring-context:5.3.23') {
