@@ -11,8 +11,13 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.source.Source;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @DataPrepperPlugin(name = "rss", pluginType = Source.class, pluginConfigurationType =  RSSSourceConfig.class)
 public class RSSSource implements Source {
+
+    private static final Logger LOG = LoggerFactory.getLogger(RSSSource.class);
 
     private final PluginMetrics pluginMetrics;
 
@@ -28,11 +33,11 @@ public class RSSSource implements Source {
 
     @Override
     public void start(Buffer buffer) {
-
+        // TODO: Add to buffer
     }
 
     @Override
     public void stop() {
-
+        // TODO: Stop the service
     }
 }
