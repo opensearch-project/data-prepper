@@ -21,6 +21,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDuplicatesAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PutAllAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig;
+import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig.DEFAULT_COUNT_KEY;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -226,7 +228,8 @@ public class AggregateProcessorIT {
 
     @RepeatedTest(value = 2)
     void aggregateWithCountAggregateAction() throws InterruptedException {
-        aggregateAction = new CountAggregateAction();
+        CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        aggregateAction = new CountAggregateAction(countAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
@@ -252,7 +255,7 @@ public class AggregateProcessorIT {
         assertThat(results.size(), equalTo(1));
 
         Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
-        expectedEventMap.put(CountAggregateAction.COUNTKEY, NUM_THREADS * NUM_EVENTS_PER_BATCH);
+        expectedEventMap.put(DEFAULT_COUNT_KEY, NUM_THREADS * NUM_EVENTS_PER_BATCH);
 
         Record<Event> record = (Record<Event>)results.toArray()[0];
         assertThat(expectedEventMap, equalTo(record.getData().toMap()));
@@ -260,7 +263,8 @@ public class AggregateProcessorIT {
 
     @RepeatedTest(value = 2)
     void aggregateWithCountAggregateActionWithCondition() throws InterruptedException {
-        aggregateAction = new CountAggregateAction();
+        CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        aggregateAction = new CountAggregateAction(countAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
         final String condition = "/firstRandomNumber < 100";
@@ -296,7 +300,7 @@ public class AggregateProcessorIT {
         assertThat(results.size(), equalTo(1));
 
         Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
-        expectedEventMap.put(CountAggregateAction.COUNTKEY, NUM_THREADS * NUM_EVENTS_PER_BATCH/2);
+        expectedEventMap.put(DEFAULT_COUNT_KEY, NUM_THREADS * NUM_EVENTS_PER_BATCH/2);
 
         rec = (Record<Event>)results.toArray()[0];
         assertThat(expectedEventMap, equalTo(rec.getData().toMap()));

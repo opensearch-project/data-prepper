@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -15,10 +16,11 @@ class AggregateGroup implements AggregateActionInput {
     private Instant groupStart;
     private final Lock concludeGroupLock;
     private final Lock handleEventForGroupLock;
+    private final Map<Object, Object> identificationKeyMap;
 
-
-    AggregateGroup() {
+    AggregateGroup(final Map<Object, Object> identificationKeyMap) {
         this.groupState = new DefaultGroupState();
+        this.identificationKeyMap = identificationKeyMap;
         this.groupStart = Instant.now();
         this.concludeGroupLock = new ReentrantLock();
         this.handleEventForGroupLock = new ReentrantLock();
@@ -28,8 +30,16 @@ class AggregateGroup implements AggregateActionInput {
         return groupState;
     }
 
+    public Map<Object, Object> getIdentificationKeysMap() {
+        return identificationKeyMap;
+    }
+
     Instant getGroupStart() {
         return groupStart;
+    }
+
+    Map<Object, Object> getIdentificationKeyMap() {
+        return identificationKeyMap;
     }
 
     Lock getConcludeGroupLock() {

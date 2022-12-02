@@ -18,32 +18,36 @@ class AggregateIdentificationKeysHasher {
         this.identificationKeys = identificationKeys;
     }
 
-    IdentificationHash createIdentificationKeyHashFromEvent(final Event event) {
-        final Map<Object, Object> identificationKeysHash = new HashMap<>();
+    IdentificationKeysMap createIdentificationKeysMapFromEvent(final Event event) {
+        final Map<Object, Object> identificationKeysMap = new HashMap<>();
         for (final String identificationKey : identificationKeys) {
-            identificationKeysHash.put(identificationKey, event.get(identificationKey, Object.class));
+            identificationKeysMap.put(identificationKey, event.get(identificationKey, Object.class));
         }
-        return new IdentificationHash(identificationKeysHash);
+        return new IdentificationKeysMap(identificationKeysMap);
     }
 
-    public static class IdentificationHash {
-        private final Map<Object, Object> hash;
+    public static class IdentificationKeysMap {
+        private final Map<Object, Object> keyMap;
 
-        IdentificationHash(final Map<Object, Object> hash) {
-            this.hash = hash;
+        IdentificationKeysMap(final Map<Object, Object> keyMap) {
+            this.keyMap = keyMap;
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            IdentificationHash that = (IdentificationHash) o;
-            return Objects.equals(hash, that.hash);
+            IdentificationKeysMap that = (IdentificationKeysMap) o;
+            return Objects.equals(keyMap, that.keyMap);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(hash);
+            return Objects.hash(keyMap);
+        }
+
+        Map<Object, Object> getKeyMap() {
+            return keyMap;
         }
     }
 }

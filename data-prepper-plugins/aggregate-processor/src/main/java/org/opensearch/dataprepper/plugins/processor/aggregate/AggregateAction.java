@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import org.opensearch.dataprepper.model.event.Event;
 
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -26,7 +25,7 @@ public interface AggregateAction {
      * be processed immediately, or is empty if the Event should be removed from processing
      * @since 1.3
      */
-    default AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput, final Map<String, Object> identificationKeysMap) {
+    default AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
         return AggregateActionResponse.fromEvent(event);
     }
 

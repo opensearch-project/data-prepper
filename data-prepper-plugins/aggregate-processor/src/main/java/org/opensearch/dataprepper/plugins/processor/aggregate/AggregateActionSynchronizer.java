@@ -11,7 +11,6 @@ import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 
@@ -50,7 +49,7 @@ class AggregateActionSynchronizer {
         this.actionConcludeGroupEventsProcessingErrors = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_PROCESSING_ERRORS);
     }
 
-    Optional<Event> concludeGroup(final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
+    Optional<Event> concludeGroup(final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 
@@ -75,7 +74,7 @@ class AggregateActionSynchronizer {
         return concludeGroupEvent;
     }
 
-    AggregateActionResponse handleEventForGroup(final Event event, final AggregateIdentificationKeysHasher.IdentificationHash hash, final AggregateGroup aggregateGroup, Map<String, Object> identificationKeysMap) {
+    AggregateActionResponse handleEventForGroup(final Event event, final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup) {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 
@@ -86,7 +85,7 @@ class AggregateActionSynchronizer {
         handleEventForGroupLock.lock();
         try {
             LOG.debug("Start critical section in handleEventForGroup");
-            handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup, identificationKeysMap);
+            handleEventResponse = aggregateAction.handleEvent(event, aggregateGroup);
             aggregateGroupManager.putGroupWithHash(hash, aggregateGroup);
         } catch (final Exception e) {
             LOG.debug("Error while handling event, event will be processed by remainder of the pipeline: ", e);

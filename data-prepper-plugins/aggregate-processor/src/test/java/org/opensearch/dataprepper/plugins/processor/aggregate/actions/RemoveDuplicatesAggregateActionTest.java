@@ -45,9 +45,9 @@ public class RemoveDuplicatesAggregateActionTest {
     @Test
     void handleEvent_with_empty_groupState_returns_expected_AggregateResponse_and_modifies_groupState() {
         removeDuplicatesAggregateAction = createObjectUnderTest();
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState groupState = aggregateActionInput.getGroupState();
-        final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, aggregateActionInput, Collections.emptyMap());
+        final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, aggregateActionInput);
 
         assertThat(aggregateActionResponse.getEvent(), equalTo(testEvent));
         assertThat(groupState, equalTo(expectedGroupState));
@@ -57,11 +57,11 @@ public class RemoveDuplicatesAggregateActionTest {
     void handleEvent_with_non_empty_groupState_returns_expected_AggregateResponse_and_does_not_modify_groupState() {
         removeDuplicatesAggregateAction = createObjectUnderTest();
 
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState groupState = aggregateActionInput.getGroupState();
         groupState.put(RemoveDuplicatesAggregateAction.GROUP_STATE_HAS_EVENT, true);
 
-        final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, aggregateActionInput, Collections.emptyMap());
+        final AggregateActionResponse aggregateActionResponse = removeDuplicatesAggregateAction.handleEvent(testEvent, aggregateActionInput);
 
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(groupState, equalTo(expectedGroupState));
@@ -70,7 +70,7 @@ public class RemoveDuplicatesAggregateActionTest {
     @Test
     void concludeGroup_with_empty_groupState_returns_empty_Optional() {
         removeDuplicatesAggregateAction = createObjectUnderTest();
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final Optional<Event> result = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
 
         assertThat(result.isPresent(), equalTo(false));
@@ -79,7 +79,7 @@ public class RemoveDuplicatesAggregateActionTest {
     @Test
     void concludeGroup_with_non_empty_groupState_returns_empty_Optional() {
         removeDuplicatesAggregateAction = createObjectUnderTest();
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState groupState = aggregateActionInput.getGroupState();
         groupState.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final Optional<Event> result = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);

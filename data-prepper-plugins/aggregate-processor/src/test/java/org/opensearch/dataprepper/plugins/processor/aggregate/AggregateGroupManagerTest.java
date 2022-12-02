@@ -28,7 +28,7 @@ public class AggregateGroupManagerTest {
 
     private AggregateGroupManager aggregateGroupManager;
 
-    private AggregateIdentificationKeysHasher.IdentificationHash identificationHash;
+    private AggregateIdentificationKeysHasher.IdentificationKeysMap identificationKeysMap;
 
     private static final Duration TEST_GROUP_DURATION = Duration.ofSeconds(new Random().nextInt(10) + 10);
 
@@ -37,7 +37,7 @@ public class AggregateGroupManagerTest {
         final Map<Object, Object> identificationKeysHash = new HashMap<>();
         identificationKeysHash.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        identificationHash = new AggregateIdentificationKeysHasher.IdentificationHash(identificationKeysHash);
+        identificationKeysMap = new AggregateIdentificationKeysHasher.IdentificationKeysMap(identificationKeysHash);
     }
 
     private AggregateGroupManager createObjectUnderTest() {
@@ -48,11 +48,11 @@ public class AggregateGroupManagerTest {
     void getGroup_with_non_existing_group_state_creates_and_returns_new_group_and_adds_to_allGroups() {
         aggregateGroupManager = createObjectUnderTest();
 
-        final AggregateGroup emptyAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup emptyAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
         assertThat(emptyAggregateGroup, notNullValue());
         assertThat(emptyAggregateGroup.getGroupState(), equalTo(Collections.emptyMap()));
 
-        final AggregateGroup secondAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup secondAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
         assertThat(secondAggregateGroup, notNullValue());
         assertThat(secondAggregateGroup, is(sameInstance(emptyAggregateGroup)));
     }
@@ -61,11 +61,11 @@ public class AggregateGroupManagerTest {
     void getGroupState_returns_a_mutable_GroupState_Map() {
         aggregateGroupManager = createObjectUnderTest();
 
-        final AggregateGroup firstAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup firstAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
         final GroupState groupState = firstAggregateGroup.getGroupState();
         groupState.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        final AggregateGroup secondAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        final AggregateGroup secondAggregateGroup = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
         assertThat(secondAggregateGroup, equalTo(firstAggregateGroup));
         assertThat(secondAggregateGroup.getGroupState(), equalTo(groupState));
 
@@ -76,13 +76,13 @@ public class AggregateGroupManagerTest {
         aggregateGroupManager = createObjectUnderTest();
 
         final AggregateGroup expectedOldGroup = mock(AggregateGroup.class);
-        aggregateGroupManager.putGroupWithHash(identificationHash, expectedOldGroup);
-        final AggregateGroup oldGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        aggregateGroupManager.putGroupWithHash(identificationKeysMap, expectedOldGroup);
+        final AggregateGroup oldGroup = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
         assertThat(oldGroup, equalTo(expectedOldGroup));
 
         final AggregateGroup expectedNewGroup = mock(AggregateGroup.class);
-        aggregateGroupManager.putGroupWithHash(identificationHash, expectedNewGroup);
-        final AggregateGroup newGroup = aggregateGroupManager.getAggregateGroup(identificationHash);
+        aggregateGroupManager.putGroupWithHash(identificationKeysMap, expectedNewGroup);
+        final AggregateGroup newGroup = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
         assertThat(newGroup, equalTo(expectedNewGroup));
     }
 
@@ -92,16 +92,16 @@ public class AggregateGroupManagerTest {
 
         final AggregateGroup groupToConclude = mock(AggregateGroup.class);
         when(groupToConclude.shouldConcludeGroup(TEST_GROUP_DURATION)).thenReturn(true);
-        final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
+        final AggregateIdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude = mock(AggregateIdentificationKeysHasher.IdentificationKeysMap.class);
 
         final AggregateGroup groupToNotConclude = mock(AggregateGroup.class);
         when(groupToNotConclude.shouldConcludeGroup(TEST_GROUP_DURATION)).thenReturn(false);
-        final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToNotConclude = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
+        final AggregateIdentificationKeysHasher.IdentificationKeysMap hashForGroupToNotConclude = mock(AggregateIdentificationKeysHasher.IdentificationKeysMap.class);
 
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude, groupToConclude);
         aggregateGroupManager.putGroupWithHash(hashForGroupToNotConclude, groupToNotConclude);
 
-        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(false);
+        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(false);
 
         assertThat(groupsToConclude.size(), equalTo(1));
         assertThat(groupsToConclude.get(0), notNullValue());
@@ -114,15 +114,15 @@ public class AggregateGroupManagerTest {
         aggregateGroupManager = createObjectUnderTest();
 
         final AggregateGroup groupToConclude1 = mock(AggregateGroup.class);
-        final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude1 = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
+        final AggregateIdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude1 = mock(AggregateIdentificationKeysHasher.IdentificationKeysMap.class);
 
         final AggregateGroup groupToConclude2 = mock(AggregateGroup.class);
-        final AggregateIdentificationKeysHasher.IdentificationHash hashForGroupToConclude2 = mock(AggregateIdentificationKeysHasher.IdentificationHash.class);
+        final AggregateIdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude2 = mock(AggregateIdentificationKeysHasher.IdentificationKeysMap.class);
 
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude1, groupToConclude1);
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude2, groupToConclude2);
 
-        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(true);
+        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(true);
 
         assertThat(groupsToConclude.size(), equalTo(2));
         assertThat(groupsToConclude.get(0), notNullValue());
