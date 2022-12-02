@@ -10,8 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig.DEFAULT_COUNT_KEY;
-import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig.DEFAULT_OUTPUT_FORMAT;
-import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig.OTEL_OUTPUT_FORMAT;
 
 import java.util.UUID;
 
@@ -37,7 +35,7 @@ public class CountAggregateActionConfigTests {
     @Test
     void testDefault() {
         assertThat(countAggregateActionConfig.getCountKey(), equalTo(DEFAULT_COUNT_KEY));
-        assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(DEFAULT_OUTPUT_FORMAT));
+        assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.DEFAULT.toString()));
     }
 
     @Test
@@ -45,9 +43,9 @@ public class CountAggregateActionConfigTests {
         final String testCountKey = UUID.randomUUID().toString();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "countKey", testCountKey);
         assertThat(countAggregateActionConfig.getCountKey(), equalTo(testCountKey));
-        final String testOutputFormat = OTEL_OUTPUT_FORMAT;
+        final String testOutputFormat = OutputFormat.OTEL_METRICS.toString();
         setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", testOutputFormat);
-        assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OTEL_OUTPUT_FORMAT));
+        assertThat(countAggregateActionConfig.getOutputFormat(), equalTo(OutputFormat.OTEL_METRICS.toString()));
     }
 
     @Test

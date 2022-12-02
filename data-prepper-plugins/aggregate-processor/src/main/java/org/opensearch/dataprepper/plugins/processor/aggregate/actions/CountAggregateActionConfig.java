@@ -11,15 +11,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class CountAggregateActionConfig {
     public static final String DEFAULT_COUNT_KEY = "aggr._count";
-    public static final String DEFAULT_OUTPUT_FORMAT = "default";
-    public static final String OTEL_OUTPUT_FORMAT = "otel_metrics";
-    public static final Set<String> validOutputFormats = new HashSet<>(Set.of(OTEL_OUTPUT_FORMAT, DEFAULT_OUTPUT_FORMAT));
+    public static final Set<String> validOutputFormats = new HashSet<>(Set.of(OutputFormat.OTEL_METRICS.toString(), OutputFormat.DEFAULT.toString()));
 
     @JsonProperty("countKey")
     String countKey = DEFAULT_COUNT_KEY;
 
     @JsonProperty("outputFormat")
-    String outputFormat = DEFAULT_OUTPUT_FORMAT;
+    String outputFormat = OutputFormat.DEFAULT.toString();
 
     public String getCountKey() {
         return countKey;

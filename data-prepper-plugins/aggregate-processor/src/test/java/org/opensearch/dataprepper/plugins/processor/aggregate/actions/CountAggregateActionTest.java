@@ -71,7 +71,7 @@ public class CountAggregateActionTest {
     @ValueSource(ints = {1, 2, 10, 100})
     void testCountAggregateOTelFormat(int testCount) throws NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
-        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", CountAggregateActionConfig.OTEL_OUTPUT_FORMAT);
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.OTEL_METRICS.toString());
         countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();

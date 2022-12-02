@@ -78,6 +78,12 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
 
 ### <a name="count"></a>
 * `count`: Count Events belonging to the same group and generate a new event with values of the identification keys and the count, indicating the number of events. All Events that make up the combined Event will be dropped.
+    * It supports the following config options
+       * `countKey`: key name to use for storing the count, default name is "aggr._count"
+       * `outputFormat`: format of the aggregated event.
+         * Default is JSON with `countKey` added to the input events with identification keys
+         * Other supported output format is `otel_metrics` which generates OTEL SUM metric with the count as value
+
     * Given the following three Events with `identification_keys: ["sourceIp", "destination_ip"]`:
       ```json
           { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
@@ -88,9 +94,17 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._count": 3 }
       ```
+      If otel_metrics output format is used, the following Event will be created and processed by the rest of the pipeline when the group is concluded:
+      ```json
+        {"isMonotonic":true,"unit":"1","aggregationTemporality":"AGGREGATION_TEMPORALITY_CUMULATIVE","kind":"SUM","name":"count","description":"Number of events","startTime":"2022-12-02T19:29:51.245358486Z","time":"2022-12-02T19:30:15.247799684Z","value":3.0,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1"}
+      ```
     * When used in combination with the `aggregate_when` condition like "/status == 200", the above 3 events will generate the following event
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._count": 1 }
+      ```
+      If otel_metrics output format is used, the following Event will be created and processed by the rest of the pipeline when the group is concluded:
+      ```json
+        {"isMonotonic":true,"unit":"1","aggregationTemporality":"AGGREGATION_TEMPORALITY_CUMULATIVE","kind":"SUM","name":"count","description":"Number of events","startTime":"2022-12-02T19:29:51.245358486Z","time":"2022-12-02T19:30:15.247799684Z","value":1.0,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1"}
       ```
 
 ## Creating New Aggregate Actions

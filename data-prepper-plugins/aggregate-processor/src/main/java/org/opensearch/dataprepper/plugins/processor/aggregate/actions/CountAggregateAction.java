@@ -66,7 +66,7 @@ public class CountAggregateAction implements AggregateAction {
     public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
-        if (outputFormat == CountAggregateActionConfig.DEFAULT_OUTPUT_FORMAT) {
+        if (outputFormat == OutputFormat.DEFAULT.toString()) {
             event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(groupState)
