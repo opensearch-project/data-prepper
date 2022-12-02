@@ -22,8 +22,6 @@ public class RSSSource implements Source {
     public RSSSource(PluginMetrics pluginMetrics, final RSSSourceConfig rssSourceConfig) {
         this.pluginMetrics = pluginMetrics;
         this.rssSourceConfig = rssSourceConfig;
-
-
     }
 
 
