@@ -13,10 +13,10 @@ public class CountAggregateActionConfig {
     public static final String DEFAULT_COUNT_KEY = "aggr._count";
     public static final Set<String> validOutputFormats = new HashSet<>(Set.of(OutputFormat.OTEL_METRICS.toString(), OutputFormat.DEFAULT.toString()));
 
-    @JsonProperty("countKey")
+    @JsonProperty("count_key")
     String countKey = DEFAULT_COUNT_KEY;
 
-    @JsonProperty("outputFormat")
+    @JsonProperty("output_format")
     String outputFormat = OutputFormat.DEFAULT.toString();
 
     public String getCountKey() {

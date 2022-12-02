@@ -31,6 +31,10 @@ import java.util.Optional;
 @DataPrepperPlugin(name = "count", pluginType = AggregateAction.class, pluginConfigurationType = CountAggregateActionConfig.class)
 public class CountAggregateAction implements AggregateAction {
     static final String EVENT_TYPE = "event";
+    static final String SUM_METRIC_NAME = "count";
+    static final String SUM_METRIC_DESCRIPTION = "Number of events";
+    static final String SUM_METRIC_UNIT = "1";
+    static final boolean SUM_METRIC_IS_MONOTONIC = true;
     public final String countKey;
     public final String outputFormat;
     private long startTimeNanos;
@@ -78,12 +82,12 @@ public class CountAggregateAction implements AggregateAction {
             Map<String, Object> attr = new HashMap<String, Object>();
             groupState.forEach((k, v) -> attr.put((String)k, v));
             JacksonSum js = JacksonSum.builder()
-                .withName("count")
-                .withDescription("Number of events")
+                .withName(SUM_METRIC_NAME)
+                .withDescription(SUM_METRIC_DESCRIPTION)
                 .withTime(OTelProtoCodec.convertUnixNanosToISO8601(currentTimeNanos))
                 .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))
-                .withIsMonotonic(true)
-                .withUnit("1")
+                .withIsMonotonic(SUM_METRIC_IS_MONOTONIC)
+                .withUnit(SUM_METRIC_UNIT)
                 .withAggregationTemporality(AggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE.name())
                 .withValue((double)countValue)
                 .withAttributes(attr)

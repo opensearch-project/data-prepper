@@ -79,9 +79,9 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
 ### <a name="count"></a>
 * `count`: Count Events belonging to the same group and generate a new event with values of the identification keys and the count, indicating the number of events. All Events that make up the combined Event will be dropped.
     * It supports the following config options
-       * `countKey`: key name to use for storing the count, default name is "aggr._count"
-       * `outputFormat`: format of the aggregated event.
-         * Default is JSON with `countKey` added to the input events with identification keys
+       * `count_key`: key name to use for storing the count, default name is "aggr._count"
+       * `output_format`: format of the aggregated event.
+         * Default is JSON with `count_key` added to the input events with identification keys
          * Other supported output format is `otel_metrics` which generates OTEL SUM metric with the count as value
 
     * Given the following three Events with `identification_keys: ["sourceIp", "destination_ip"]`:
