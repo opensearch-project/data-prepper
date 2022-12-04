@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
@@ -26,7 +27,7 @@ import java.util.Optional;
  * An AggregateAction that combines multiple Events into a single Event. This action will add the unique keys of each smaller Event to the overall groupState,
  * and will create a combined Event from the groupState on concludeGroup. If smaller Events have the same keys, then these keys will be overwritten with the keys of the
  * most recently handled Event.
- * @since 1.3
+ * @since 2.1
  */
 @DataPrepperPlugin(name = "count", pluginType = AggregateAction.class, pluginConfigurationType = CountAggregateActionConfig.class)
 public class CountAggregateAction implements AggregateAction {
@@ -36,19 +37,20 @@ public class CountAggregateAction implements AggregateAction {
     static final String SUM_METRIC_UNIT = "1";
     static final boolean SUM_METRIC_IS_MONOTONIC = true;
     public final String countKey;
+    public final String startTimeKey;
     public final String outputFormat;
     private long startTimeNanos;
 
     @DataPrepperPluginConstructor
     public CountAggregateAction(final CountAggregateActionConfig countAggregateActionConfig) {
         this.countKey = countAggregateActionConfig.getCountKey();
+        this.startTimeKey = countAggregateActionConfig.getStartTimeKey();
         this.outputFormat = countAggregateActionConfig.getOutputFormat();
     }
 
-    private long getCurrentTimeNanos() {
+    private long getTimeNanos(Instant time) {
         final long NANO_MULTIPLIER = 1_000 * 1_000 * 1_000;
-        Instant now = Instant.now();
-        long currentTimeNanos = now.getEpochSecond() * NANO_MULTIPLIER + now.getNano();
+        long currentTimeNanos = time.getEpochSecond() * NANO_MULTIPLIER + time.getNano();
         return currentTimeNanos;
     }
 
@@ -56,8 +58,8 @@ public class CountAggregateAction implements AggregateAction {
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
         final GroupState groupState = aggregateActionInput.getGroupState();
         if (groupState.get(countKey) == null) {
-            startTimeNanos = getCurrentTimeNanos();
-            groupState.putAll(aggregateActionInput.getIdentificationKeysMap());
+            groupState.put(startTimeKey, Instant.now());
+            groupState.putAll(aggregateActionInput.getIdentificationKeys());
             groupState.put(countKey, 1);
         } else {
             Integer v = (Integer)groupState.get(countKey) + 1;
@@ -70,7 +72,9 @@ public class CountAggregateAction implements AggregateAction {
     public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
-        if (outputFormat == OutputFormat.DEFAULT.toString()) {
+        Instant startTime = (Instant)groupState.get(startTimeKey);
+        if (outputFormat == OutputFormat.RAW.toString()) {
+            groupState.put(startTimeKey, startTime.atZone(ZoneId.of(ZoneId.systemDefault().toString())));
             event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(groupState)
@@ -78,7 +82,9 @@ public class CountAggregateAction implements AggregateAction {
         } else {
             Integer countValue = (Integer)groupState.get(countKey);
             groupState.remove(countKey);
-            long currentTimeNanos = getCurrentTimeNanos();
+            groupState.remove(startTimeKey);
+            long currentTimeNanos = getTimeNanos(Instant.now());
+            long startTimeNanos = getTimeNanos(startTime);
             Map<String, Object> attr = new HashMap<String, Object>();
             groupState.forEach((k, v) -> attr.put((String)k, v));
             JacksonSum js = JacksonSum.builder()

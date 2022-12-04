@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -22,7 +23,9 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDupl
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PutAllAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.OutputFormat;
 import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig.DEFAULT_COUNT_KEY;
+import static org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig.DEFAULT_START_TIME_KEY;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -43,6 +46,8 @@ import java.util.concurrent.TimeUnit;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.collection.IsIn.in;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -227,8 +232,9 @@ public class AggregateProcessorIT {
     }
 
     @RepeatedTest(value = 2)
-    void aggregateWithCountAggregateAction() throws InterruptedException {
+    void aggregateWithCountAggregateAction() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
         aggregateAction = new CountAggregateAction(countAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
@@ -256,14 +262,16 @@ public class AggregateProcessorIT {
 
         Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
         expectedEventMap.put(DEFAULT_COUNT_KEY, NUM_THREADS * NUM_EVENTS_PER_BATCH);
-
-        Record<Event> record = (Record<Event>)results.toArray()[0];
-        assertThat(expectedEventMap, equalTo(record.getData().toMap()));
+        
+        final Record<Event> record = (Record<Event>)results.toArray()[0];
+        expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k,v)));
+        assertThat(record.getData().toMap(), hasKey(DEFAULT_START_TIME_KEY));
     }
 
     @RepeatedTest(value = 2)
-    void aggregateWithCountAggregateActionWithCondition() throws InterruptedException {
+    void aggregateWithCountAggregateActionWithCondition() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
         aggregateAction = new CountAggregateAction(countAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
@@ -272,7 +280,6 @@ public class AggregateProcessorIT {
         when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
         int count = 0;
         eventBatch = getBatchOfEvents(true);
-        Record<Event> rec = (Record<Event>)eventBatch.toArray()[0];
         for (Record<Event> record: eventBatch) {
             Event event = record.getData();
             boolean value = (count % 2 == 0) ? true : false;
@@ -302,8 +309,9 @@ public class AggregateProcessorIT {
         Map<String, Object> expectedEventMap = new HashMap<>(getEventMap(testValue));
         expectedEventMap.put(DEFAULT_COUNT_KEY, NUM_THREADS * NUM_EVENTS_PER_BATCH/2);
 
-        rec = (Record<Event>)results.toArray()[0];
-        assertThat(expectedEventMap, equalTo(rec.getData().toMap()));
+        final Record<Event> record = (Record<Event>)results.toArray()[0];
+        expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k,v)));
+        assertThat(record.getData().toMap(), hasKey(DEFAULT_START_TIME_KEY));
     }
 
     private List<Record<Event>> getBatchOfEvents(boolean withSameValue) {

@@ -16,11 +16,11 @@ class AggregateGroup implements AggregateActionInput {
     private Instant groupStart;
     private final Lock concludeGroupLock;
     private final Lock handleEventForGroupLock;
-    private final Map<Object, Object> identificationKeyMap;
+    private final Map<Object, Object> identificationKeys;
 
-    AggregateGroup(final Map<Object, Object> identificationKeyMap) {
+    AggregateGroup(final Map<Object, Object> identificationKeys) {
         this.groupState = new DefaultGroupState();
-        this.identificationKeyMap = identificationKeyMap;
+        this.identificationKeys = identificationKeys;
         this.groupStart = Instant.now();
         this.concludeGroupLock = new ReentrantLock();
         this.handleEventForGroupLock = new ReentrantLock();
@@ -30,16 +30,12 @@ class AggregateGroup implements AggregateActionInput {
         return groupState;
     }
 
-    public Map<Object, Object> getIdentificationKeysMap() {
-        return identificationKeyMap;
+    public Map<Object, Object> getIdentificationKeys() {
+        return identificationKeys;
     }
 
     Instant getGroupStart() {
         return groupStart;
-    }
-
-    Map<Object, Object> getIdentificationKeyMap() {
-        return identificationKeyMap;
     }
 
     Lock getConcludeGroupLock() {

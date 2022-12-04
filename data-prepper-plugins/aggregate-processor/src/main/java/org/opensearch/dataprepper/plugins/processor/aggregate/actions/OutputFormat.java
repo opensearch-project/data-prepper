@@ -12,9 +12,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public enum OutputFormat {
-
     OTEL_METRICS("otel_metrics"),
-    DEFAULT("default");
+    RAW("raw");
 
     private static final Map<String, OutputFormat> ACTIONS_MAP = Arrays.stream(OutputFormat.values())
         .collect(Collectors.toMap(

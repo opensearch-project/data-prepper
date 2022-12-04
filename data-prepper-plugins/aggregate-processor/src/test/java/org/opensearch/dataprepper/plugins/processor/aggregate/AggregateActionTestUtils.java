@@ -11,11 +11,11 @@ import java.util.HashMap;
 public class AggregateActionTestUtils {
     public static class TestAggregateActionInput implements AggregateActionInput {
         private final GroupState groupState;
-        private final Map<Object, Object> identificationKeyMap;
+        private final Map<Object, Object> identificationKeys;
 
-        public TestAggregateActionInput(Map<Object, Object> identificationKeyMap) {
+        public TestAggregateActionInput(Map<Object, Object> identificationKeys) {
             this.groupState = new AggregateActionTestUtils.TestGroupState();
-            this.identificationKeyMap = identificationKeyMap;
+            this.identificationKeys = identificationKeys;
         }
 
         @Override
@@ -24,8 +24,8 @@ public class AggregateActionTestUtils {
         }
 
         @Override
-        public Map<Object, Object> getIdentificationKeysMap() {
-            return identificationKeyMap;
+        public Map<Object, Object> getIdentificationKeys() {
+            return identificationKeys;
         }
     }
 

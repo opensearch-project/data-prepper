@@ -11,16 +11,24 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class CountAggregateActionConfig {
     public static final String DEFAULT_COUNT_KEY = "aggr._count";
-    public static final Set<String> validOutputFormats = new HashSet<>(Set.of(OutputFormat.OTEL_METRICS.toString(), OutputFormat.DEFAULT.toString()));
+    public static final String DEFAULT_START_TIME_KEY = "aggr._start_time";
+    public static final Set<String> validOutputFormats = new HashSet<>(Set.of(OutputFormat.OTEL_METRICS.toString(), OutputFormat.RAW.toString()));
 
     @JsonProperty("count_key")
     String countKey = DEFAULT_COUNT_KEY;
 
+    @JsonProperty("start_time")
+    String startTimeKey = DEFAULT_START_TIME_KEY;
+
     @JsonProperty("output_format")
-    String outputFormat = OutputFormat.DEFAULT.toString();
+    String outputFormat = OutputFormat.OTEL_METRICS.toString();
 
     public String getCountKey() {
         return countKey;
+    }
+
+    public String getStartTimeKey() {
+        return startTimeKey;
     }
 
     public String getOutputFormat() {

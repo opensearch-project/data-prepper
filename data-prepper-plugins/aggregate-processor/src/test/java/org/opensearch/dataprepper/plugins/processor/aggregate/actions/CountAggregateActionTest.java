@@ -28,7 +28,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasKey;
-import static org.junit.Assert.assertEquals;
 
 @ExtendWith(MockitoExtension.class)
 public class CountAggregateActionTest {
@@ -42,8 +41,9 @@ public class CountAggregateActionTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
-    void testCountAggregate(int testCount) {
+    void testCountAggregate(int testCount) throws NoSuchFieldException, IllegalAccessException {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
+        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
         countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
@@ -64,14 +64,14 @@ public class CountAggregateActionTest {
         assertThat(result.isPresent(), equalTo(true));
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap(key, value));
         expectedEventMap.put(CountAggregateActionConfig.DEFAULT_COUNT_KEY, testCount);
-        assertEquals(expectedEventMap, result.get().toMap());
+        expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
+        assertThat(result.get().toMap(), hasKey(CountAggregateActionConfig.DEFAULT_START_TIME_KEY));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
-    void testCountAggregateOTelFormat(int testCount) throws NoSuchFieldException, IllegalAccessException {
+    void testCountAggregateOTelFormat(int testCount) {
         CountAggregateActionConfig countAggregateActionConfig = new CountAggregateActionConfig();
-        setField(CountAggregateActionConfig.class, countAggregateActionConfig, "outputFormat", OutputFormat.OTEL_METRICS.toString());
         countAggregateAction = createObjectUnderTest(countAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();

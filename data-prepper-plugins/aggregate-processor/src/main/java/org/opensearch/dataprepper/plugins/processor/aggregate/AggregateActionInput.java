@@ -20,9 +20,9 @@ public interface AggregateActionInput {
     GroupState getGroupState();
 
     /**
-     * @return a map of Identification keys map containing identification keys and
+     * @return a map of Identification keys containing identification keys and
      *         their values
      * @since 2.1
      */
-    Map<Object, Object> getIdentificationKeysMap();
+    Map<Object, Object> getIdentificationKeys();
 }
