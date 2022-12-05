@@ -19,6 +19,7 @@ import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
 
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
@@ -31,6 +32,7 @@ import java.util.Optional;
  */
 @DataPrepperPlugin(name = "count", pluginType = AggregateAction.class, pluginConfigurationType = CountAggregateActionConfig.class)
 public class CountAggregateAction implements AggregateAction {
+    private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
     static final String EVENT_TYPE = "event";
     static final String SUM_METRIC_NAME = "count";
     static final String SUM_METRIC_DESCRIPTION = "Number of events";
@@ -73,8 +75,8 @@ public class CountAggregateAction implements AggregateAction {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
-        if (outputFormat == OutputFormat.RAW.toString()) {
-            groupState.put(startTimeKey, startTime.atZone(ZoneId.of(ZoneId.systemDefault().toString())));
+        if (outputFormat.equals(OutputFormat.RAW.toString())) {
+            groupState.put(startTimeKey, startTime.atZone(ZoneId.of(ZoneId.systemDefault().toString())).format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
             event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(groupState)

@@ -17,7 +17,7 @@ public class CountAggregateActionConfig {
     @JsonProperty("count_key")
     String countKey = DEFAULT_COUNT_KEY;
 
-    @JsonProperty("start_time")
+    @JsonProperty("start_time_key")
     String startTimeKey = DEFAULT_START_TIME_KEY;
 
     @JsonProperty("output_format")
