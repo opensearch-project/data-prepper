@@ -28,6 +28,17 @@ public class JacksonDocumentTest {
     }
 
     @Test
+    public void testBuilderUsesCustomEventType() {
+        final Document document = JacksonDocument.builder()
+                        .withEventType("custom")
+                        .getThis()
+                        .build();
+
+        assertThat(document, is(notNullValue()));
+        assertThat(document.getMetadata().getEventType(), is(equalTo("DOCUMENT")));
+    }
+
+    @Test
     public void testBuilderWithoutDocumentEventType_throwsIllegalArgumentException() {
         final EventMetadata eventMetadata = DefaultEventMetadata.builder()
                 .withEventType("someEventType")

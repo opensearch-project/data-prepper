@@ -25,6 +25,10 @@ public class JacksonDocument extends JacksonEvent implements Document {
         return new Builder();
     }
 
+    /**
+     * Builder for creating {@link JacksonDocument}
+     * @since 2.1
+     */
     public static class Builder extends JacksonEvent.Builder<Builder> {
 
         @Override
@@ -42,6 +46,4 @@ public class JacksonDocument extends JacksonEvent implements Document {
             return new JacksonDocument(this);
         }
     }
-
-
 }
