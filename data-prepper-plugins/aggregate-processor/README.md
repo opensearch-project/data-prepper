@@ -82,7 +82,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
        * `count_key`: key name to use for storing the count, default name is `aggr._count`
        * `start_time_key`: key name to use for storing the start time, default name is `aggr._start_time`
        * `output_format`: format of the aggregated event.
-         * `otel_metrics` - Default output format. Outputs in otel metrics format, etc.
+         * `otel_metrics` - Default output format. Outputs in otel metrics SUM type with count as value
          * `raw` - generates JSON with `count_key` field with count as value and `start_time_key` field with aggregation start time as value
 
     * Given the following three Events with `identification_keys: ["sourceIp", "destination_ip"]`:
