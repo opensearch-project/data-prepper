@@ -6,9 +6,13 @@
 package org.opensearch.dataprepper.plugins.processor.anomalydetector;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -26,6 +30,11 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+
+import org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestMode;
+import org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig;
 
 @ExtendWith(MockitoExtension.class)
 public class AnomalyDetectorProcessorTests {
@@ -34,6 +43,12 @@ public class AnomalyDetectorProcessorTests {
 
     @Mock
     private AnomalyDetectorProcessorConfig mockConfig;
+
+    @Mock
+    private PluginFactory pluginFactory;
+
+    @Mock
+    private PluginModel modeConfiguration;
 
     private AnomalyDetectorProcessor anomalyDetectorProcessor;
 
@@ -62,22 +77,30 @@ public class AnomalyDetectorProcessorTests {
     @Test
     void testAnomalyDetectorProcessor() {
         when(mockConfig.getKeys()).thenReturn(new ArrayList<String>(Collections.singleton("latency")));
-        when(mockConfig.getMode()).thenReturn(AnomalyDetectorProcessorConfig.DEFAULT_MODE);
-        when(mockConfig.getShingleSize()).thenReturn(AnomalyDetectorProcessorConfig.DEFAULT_SHINGLE_SIZE);
-        when(mockConfig.getSampleSize()).thenReturn(AnomalyDetectorProcessorConfig.DEFAULT_SAMPLE_SIZE);
-        when(mockConfig.getTimeDecay()).thenReturn(AnomalyDetectorProcessorConfig.DEFAULT_TIME_DECAY);
-        anomalyDetectorProcessor = new AnomalyDetectorProcessor(pluginMetrics, mockConfig);
+        RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
+        AnomalyDetectorMode anomalyDetectorMode = new RandomCutForestMode(randomCutForestModeConfig);
+
+        when(mockConfig.getDetectorMode()).thenReturn(modeConfiguration);
+        when(modeConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
+        when(modeConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
+
+        when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
+                .thenReturn(anomalyDetectorMode);
+        anomalyDetectorProcessor = new AnomalyDetectorProcessor(mockConfig, pluginMetrics, pluginFactory);
         final int numSamples = 1024;
+        final List<Record<Event>> records = new ArrayList<Record<Event>>();
         for (int i = 0; i < numSamples; i++) {
-            final List<Record<Event>> records = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6))));
+            records.add(getLatencyMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6)));
         }
-        final List<Record<Event>> records = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(10.4, 10.8))));
-        assertThat(records.size(), equalTo(1));
-        Event event = records.get(0).getData();
-        double deviation = (double)event.get(AnomalyDetectorProcessor.DEVIATION_KEY, Double.class);
-        assertThat(deviation, greaterThan(9.0));
+        anomalyDetectorProcessor.doExecute(records);
+        
+        final List<Record<Event>> recordsWithAnomaly = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(10.4, 10.8))));
+        assertThat(recordsWithAnomaly.size(), equalTo(1));
+        Event event = recordsWithAnomaly.get(0).getData();
+        List<Double> deviation = event.get(AnomalyDetectorProcessor.DEVIATION_KEY, List.class);
+        assertThat((double)deviation.get(0), greaterThan(9.0));
         double grade = (double)event.get(AnomalyDetectorProcessor.GRADE_KEY, Double.class);
-        assertThat(deviation, greaterThan(1.0));
+        assertThat(grade, equalTo(1.0));
     }
 
     @Test
@@ -86,22 +109,31 @@ public class AnomalyDetectorProcessorTests {
         keyList.add("latency");
         keyList.add("bytes");
         when(mockConfig.getKeys()).thenReturn(keyList);
-        when(mockConfig.getMode()).thenReturn(AnomalyDetectorProcessorConfig.DEFAULT_MODE);
-        when(mockConfig.getShingleSize()).thenReturn(AnomalyDetectorProcessorConfig.DEFAULT_SHINGLE_SIZE);
-        when(mockConfig.getSampleSize()).thenReturn(AnomalyDetectorProcessorConfig.DEFAULT_SAMPLE_SIZE);
-        when(mockConfig.getTimeDecay()).thenReturn(AnomalyDetectorProcessorConfig.DEFAULT_TIME_DECAY);
-        anomalyDetectorProcessor = new AnomalyDetectorProcessor(pluginMetrics, mockConfig);
+        RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
+        AnomalyDetectorMode anomalyDetectorMode = new RandomCutForestMode(randomCutForestModeConfig);
+
+        when(mockConfig.getDetectorMode()).thenReturn(modeConfiguration);
+        when(modeConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
+        when(modeConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
+
+        when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
+                .thenReturn(anomalyDetectorMode);
+        anomalyDetectorProcessor = new AnomalyDetectorProcessor(mockConfig, pluginMetrics, pluginFactory);
         final int numSamples = 1024;
+        final List<Record<Event>> records = new ArrayList<Record<Event>>();
         for (int i = 0; i < numSamples; i++) {
-            final List<Record<Event>> records = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6), ThreadLocalRandom.current().nextLong(100, 110))));
+            records.add(getLatencyBytesMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6), ThreadLocalRandom.current().nextLong(100, 110)));
         }
-        final List<Record<Event>> records = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(10.4, 10.8), ThreadLocalRandom.current().nextLong(1000, 1110))));
-        assertThat(records.size(), equalTo(1));
-        Event event = records.get(0).getData();
-        double deviation = (double)event.get(AnomalyDetectorProcessor.DEVIATION_KEY, Double.class);
-        assertThat(deviation, greaterThan(9.0));
+        anomalyDetectorProcessor.doExecute(records);
+        final List<Record<Event>> recordsWithAnomaly = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(10.4, 10.8), ThreadLocalRandom.current().nextLong(1000, 1110))));
+        assertThat(recordsWithAnomaly.size(), equalTo(1));
+        Event event = recordsWithAnomaly.get(0).getData();
+        List<Double> deviation = event.get(AnomalyDetectorProcessor.DEVIATION_KEY, List.class);
+        for (int i = 0; i < keyList.size(); i++) {
+            assertThat((double)deviation.get(i), greaterThan(9.0));
+        }
         double grade = (double)event.get(AnomalyDetectorProcessor.GRADE_KEY, Double.class);
-        assertThat(deviation, greaterThan(1.0));
+        assertThat(grade, equalTo(1.0));
     }
 
 }
