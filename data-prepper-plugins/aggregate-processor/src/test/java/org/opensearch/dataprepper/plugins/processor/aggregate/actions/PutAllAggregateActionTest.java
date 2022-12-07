@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +64,7 @@ public class PutAllAggregateActionTest {
     void handleEvent_with_empty_group_state_should_return_correct_AggregateResponse_and_add_event_to_groupState() {
         combineAggregateAction = createObjectUnderTest();
 
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
 
         final AggregateActionResponse aggregateActionResponse = combineAggregateAction.handleEvent(events.get(0), aggregateActionInput);
 
@@ -75,7 +76,7 @@ public class PutAllAggregateActionTest {
     void handleEvent_with_non_empty_groupState_should_combine_Event_with_groupState_correctly() {
         combineAggregateAction = createObjectUnderTest();
 
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState groupState = aggregateActionInput.getGroupState();
         groupState.putAll(events.get(0).toMap());
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
@@ -89,7 +90,7 @@ public class PutAllAggregateActionTest {
     @Test
     void concludeGroup_should_return_groupState_As_An_Event_correctly() {
         combineAggregateAction = createObjectUnderTest();
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput();
+        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState groupState = aggregateActionInput.getGroupState();
         for (final Map<String, Object> eventMap : eventMaps) {
             groupState.putAll(eventMap);
