@@ -93,7 +93,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```
       The following Event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
-        {"isMonotonic":true,"unit":"1","aggregationTemporality":"AGGREGATION_TEMPORALITY_CUMULATIVE","kind":"SUM","name":"count","description":"Number of events","startTime":"2022-12-02T19:29:51.245358486Z","time":"2022-12-02T19:30:15.247799684Z","value":3.0,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1"}
+        {"isMonotonic":true,"unit":"1","aggregationTemporality":"AGGREGATION_TEMPORALITY_DELTA","kind":"SUM","name":"count","description":"Number of events","startTime":"2022-12-02T19:29:51.245358486Z","time":"2022-12-02T19:30:15.247799684Z","value":3.0,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1"}
       ```
       If raw output format is used, the following Event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
@@ -101,7 +101,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```
     * When used in combination with the `aggregate_when` condition like "/status == 200", the above 3 events will generate the following event
       ```json
-        {"isMonotonic":true,"unit":"1","aggregationTemporality":"AGGREGATION_TEMPORALITY_CUMULATIVE","kind":"SUM","name":"count","description":"Number of events","startTime":"2022-12-02T19:29:51.245358486Z","time":"2022-12-02T19:30:15.247799684Z","value":1.0,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1"}
+        {"isMonotonic":true,"unit":"1","aggregationTemporality":"AGGREGATION_TEMPORALITY_DELTA","kind":"SUM","name":"count","description":"Number of events","startTime":"2022-12-02T19:29:51.245358486Z","time":"2022-12-02T19:30:15.247799684Z","value":1.0,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1"}
       ```
       If raw output format is used, the following Event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
