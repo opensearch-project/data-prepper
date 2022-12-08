@@ -25,9 +25,8 @@ import java.util.HashMap;
 import java.util.Optional;
 
 /**
- * An AggregateAction that combines multiple Events into a single Event. This action will add the unique keys of each smaller Event to the overall groupState,
- * and will create a combined Event from the groupState on concludeGroup. If smaller Events have the same keys, then these keys will be overwritten with the keys of the
- * most recently handled Event.
+ * An AggregateAction that combines multiple Events into a single Event. This action will count the number of events with same keys and will create a combined event
+ * from the groupState on concludeGroup. The combined event will have identification keys, count and the start time either in one of the supported output formats.
  * @since 2.1
  */
 @DataPrepperPlugin(name = "count", pluginType = AggregateAction.class, pluginConfigurationType = CountAggregateActionConfig.class)
@@ -96,7 +95,7 @@ public class CountAggregateAction implements AggregateAction {
                 .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))
                 .withIsMonotonic(SUM_METRIC_IS_MONOTONIC)
                 .withUnit(SUM_METRIC_UNIT)
-                .withAggregationTemporality(AggregationTemporality.AGGREGATION_TEMPORALITY_CUMULATIVE.name())
+                .withAggregationTemporality(AggregationTemporality.AGGREGATION_TEMPORALITY_DELTA.name())
                 .withValue((double)countValue)
                 .withAttributes(attr)
                 .build();

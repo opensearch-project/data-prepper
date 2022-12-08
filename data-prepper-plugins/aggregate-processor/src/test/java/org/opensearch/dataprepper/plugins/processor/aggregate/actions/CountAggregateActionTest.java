@@ -95,7 +95,7 @@ public class CountAggregateActionTest {
         expectedEventMap.put("name", "count");
         expectedEventMap.put("description", "Number of events");
         expectedEventMap.put("isMonotonic", true);
-        expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_CUMULATIVE");
+        expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");
         expectedEventMap.put("unit", "1");
         expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
         assertThat(result.get().toMap().get("attributes"), equalTo(eventMap));
