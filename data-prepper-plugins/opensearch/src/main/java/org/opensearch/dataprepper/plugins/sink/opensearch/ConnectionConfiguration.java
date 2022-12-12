@@ -29,7 +29,8 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
-import software.amazon.awssdk.core.retry.backoff.FixedDelayBackoffStrategy;
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
+import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
 import software.amazon.awssdk.core.retry.conditions.RetryCondition;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
@@ -44,7 +45,6 @@ import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
 import java.time.temporal.ValueRange;
 import java.util.List;
 import java.util.Optional;
@@ -59,7 +59,8 @@ public class ConnectionConfiguration {
   private static final String SERVICE_NAME = "es";
   private static final String DEFAULT_AWS_REGION = "us-east-1";
   private static final int STS_CLIENT_RETRIES = 10;
-  private static final int STS_CLIENT_BACKOFF_SECONDS = 15;
+  private static final long STS_CLIENT_BASE_BACKOFF_MILLIS = 1000l;
+  private static final long STS_CLIENT_MAX_BACKOFF_MILLIS = 60000l;
 
   public static final String HOSTS = "hosts";
   public static final String USERNAME = "username";
@@ -252,10 +253,15 @@ public class ConnectionConfiguration {
   }
 
   private StsClient getStsClient() {
+    final BackoffStrategy backoffStrategy = EqualJitterBackoffStrategy.builder()
+            .baseDelay(Duration.ofMillis(STS_CLIENT_BASE_BACKOFF_MILLIS))
+            .maxBackoffTime(Duration.ofMillis(STS_CLIENT_MAX_BACKOFF_MILLIS))
+            .build();
     final RetryPolicy retryPolicy = RetryPolicy.builder()
             .numRetries(STS_CLIENT_RETRIES)
             .retryCondition(RetryCondition.defaultRetryCondition())
-            .backoffStrategy(FixedDelayBackoffStrategy.create(Duration.of(STS_CLIENT_BACKOFF_SECONDS, ChronoUnit.SECONDS)))
+            .backoffStrategy(backoffStrategy)
+            .throttlingBackoffStrategy(backoffStrategy)
             .build();
     final ClientOverrideConfiguration clientOverrideConfiguration = ClientOverrideConfiguration.builder()
             .retryPolicy(retryPolicy)
