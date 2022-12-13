@@ -41,7 +41,7 @@ public class RSSSource implements Source<Record<Document>> {
     @Override
     public void start(Buffer buffer) {
         // TODO: Add to buffer
-        if(buffer == null) {
+        if (buffer == null) {
             throw new IllegalStateException("Buffer is null");
         }
     }

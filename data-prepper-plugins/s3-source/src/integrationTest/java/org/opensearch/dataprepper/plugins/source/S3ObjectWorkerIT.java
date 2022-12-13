@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
@@ -77,8 +78,10 @@ class S3ObjectWorkerIT {
 
         pluginMetrics = mock(PluginMetrics.class);
         final Counter counter = mock(Counter.class);
+        final DistributionSummary distributionSummary = mock(DistributionSummary.class);
         final Timer timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.summary(anyString())).thenReturn(distributionSummary);
         when(pluginMetrics.timer(anyString())).thenReturn(timer);
 
         bucketOwnerProvider = b -> Optional.empty();

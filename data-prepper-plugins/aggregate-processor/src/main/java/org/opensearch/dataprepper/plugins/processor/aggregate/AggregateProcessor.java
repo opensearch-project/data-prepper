@@ -42,6 +42,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     private final AggregateGroupManager aggregateGroupManager;
     private final AggregateActionSynchronizer aggregateActionSynchronizer;
     private final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
+    private final AggregateAction aggregateAction;
 
     private boolean forceConclude = false;
     private final String whenCondition;
@@ -59,7 +60,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         this.aggregateGroupManager = aggregateGroupManager;
         this.expressionEvaluator = expressionEvaluator;
         this.aggregateIdentificationKeysHasher = aggregateIdentificationKeysHasher;
-        final AggregateAction aggregateAction = loadAggregateAction(pluginFactory);
+        this.aggregateAction = loadAggregateAction(pluginFactory);
         this.aggregateActionSynchronizer = aggregateActionSynchronizerProvider.provide(aggregateAction, aggregateGroupManager, pluginMetrics);
 
         this.actionConcludeGroupEventsOutCounter = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_OUT);
@@ -81,8 +82,8 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         final List<Record<Event>> recordsOut = new LinkedList<>();
 
-        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(forceConclude);
-        for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationHash, AggregateGroup> groupEntry : groupsToConclude) {
+        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(forceConclude);
+        for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry : groupsToConclude) {
             final Optional<Event> concludeGroupEvent = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
 
             if (concludeGroupEvent.isPresent()) {
@@ -101,10 +102,10 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
                 handleEventsDropped++;
                 continue;
             }
-            final AggregateIdentificationKeysHasher.IdentificationHash identificationKeysHash = aggregateIdentificationKeysHasher.createIdentificationKeyHashFromEvent(event);
-            final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysHash);
+            final AggregateIdentificationKeysHasher.IdentificationKeysMap identificationKeysMap = aggregateIdentificationKeysHasher.createIdentificationKeysMapFromEvent(event);
+            final AggregateGroup aggregateGroupForEvent = aggregateGroupManager.getAggregateGroup(identificationKeysMap);
 
-            final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysHash, aggregateGroupForEvent);
+            final AggregateActionResponse handleEventResponse = aggregateActionSynchronizer.handleEventForGroup(event, identificationKeysMap, aggregateGroupForEvent);
 
             final Event aggregateActionResponseEvent = handleEventResponse.getEvent();
 

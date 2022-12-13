@@ -5,32 +5,45 @@
 
 package org.opensearch.dataprepper.metrics;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
-import org.junit.Assert;
-import org.junit.Test;
 
 import java.util.Collections;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class PluginMetricsTest {
     private static final String PLUGIN_NAME = "testPlugin";
     private static final String PIPELINE_NAME = "pipelineName";
     private static final String TAG_KEY = "tagKey";
     private static final String TAG_VALUE = "tagValue";
-    private static final PluginSetting PLUGIN_SETTING = new PluginSetting(PLUGIN_NAME, Collections.emptyMap()) {{
-        setPipelineName(PIPELINE_NAME);
-    }};
-    private static final PluginMetrics PLUGIN_METRICS = PluginMetrics.fromPluginSetting(PLUGIN_SETTING);
+    private PluginMetrics objectUnderTest;
+    private PluginSetting pluginSetting;
+
+    @BeforeEach
+    void setUp() {
+        pluginSetting = mock(PluginSetting.class);
+        when(pluginSetting.getName()).thenReturn(PLUGIN_NAME);
+        when(pluginSetting.getPipelineName()).thenReturn(PIPELINE_NAME);
+
+        objectUnderTest = PluginMetrics.fromPluginSetting(pluginSetting);
+    }
 
     @Test
     public void testCounter() {
-        final Counter counter = PLUGIN_METRICS.counter("counter");
-        Assert.assertEquals(
+        final Counter counter = objectUnderTest.counter("counter");
+        assertEquals(
                 new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("counter").toString(),
@@ -39,20 +52,20 @@ public class PluginMetricsTest {
 
     @Test
     public void testCounterWithTags() {
-        final Counter counter = PLUGIN_METRICS.counterWithTags("counter", TAG_KEY, TAG_VALUE);
-        Assert.assertEquals(
+        final Counter counter = objectUnderTest.counterWithTags("counter", TAG_KEY, TAG_VALUE);
+        assertEquals(
                 new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("counter").toString(),
                 counter.getId().getName());
 
-        Assert.assertEquals(TAG_VALUE, counter.getId().getTag(TAG_KEY));
+        assertEquals(TAG_VALUE, counter.getId().getTag(TAG_KEY));
     }
 
     @Test
     public void testCustomMetricsPrefixCounter() {
-        final Counter counter = PLUGIN_METRICS.counter("counter", PIPELINE_NAME);
-        Assert.assertEquals(
+        final Counter counter = objectUnderTest.counter("counter", PIPELINE_NAME);
+        assertEquals(
                 new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add("counter").toString(),
                 counter.getId().getName());
@@ -60,8 +73,8 @@ public class PluginMetricsTest {
 
     @Test
     public void testTimer() {
-        final Timer timer = PLUGIN_METRICS.timer("timer");
-        Assert.assertEquals(
+        final Timer timer = objectUnderTest.timer("timer");
+        assertEquals(
                 new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("timer").toString(),
@@ -70,20 +83,20 @@ public class PluginMetricsTest {
 
     @Test
     public void testTimerWithTags() {
-        final Timer timer = PLUGIN_METRICS.timerWithTags("timer", TAG_KEY, TAG_VALUE);
-        Assert.assertEquals(
+        final Timer timer = objectUnderTest.timerWithTags("timer", TAG_KEY, TAG_VALUE);
+        assertEquals(
                 new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("timer").toString(),
                 timer.getId().getName());
 
-        Assert.assertEquals(TAG_VALUE, timer.getId().getTag(TAG_KEY));
+        assertEquals(TAG_VALUE, timer.getId().getTag(TAG_KEY));
     }
 
     @Test
     public void testSummary() {
-        final DistributionSummary summary = PLUGIN_METRICS.summary("summary");
-        Assert.assertEquals(
+        final DistributionSummary summary = objectUnderTest.summary("summary");
+        assertEquals(
                 new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("summary").toString(),
@@ -93,28 +106,28 @@ public class PluginMetricsTest {
     @Test
     public void testNumberGauge() {
         final AtomicInteger atomicInteger = new AtomicInteger(0);
-        final AtomicInteger gauge = PLUGIN_METRICS.gauge("gauge", atomicInteger);
-        Assert.assertNotNull(
+        final AtomicInteger gauge = objectUnderTest.gauge("gauge", atomicInteger);
+        assertNotNull(
                 Metrics.globalRegistry.get(new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("gauge").toString()).meter());
-        Assert.assertEquals(atomicInteger.get(), gauge.get());
+        assertEquals(atomicInteger.get(), gauge.get());
     }
 
     @Test
     public void testReferenceGauge() {
         final String testString = "abc";
-        final String gauge = PLUGIN_METRICS.gauge("gauge", testString, String::length);
-        Assert.assertNotNull(
+        final String gauge = objectUnderTest.gauge("gauge", testString, String::length);
+        assertNotNull(
                 Metrics.globalRegistry.get(new StringJoiner(MetricNames.DELIMITER)
                         .add(PIPELINE_NAME).add(PLUGIN_NAME)
                         .add("gauge").toString()).meter());
-        Assert.assertEquals(3, gauge.length());
+        assertEquals(3, gauge.length());
     }
 
     @Test
     public void testEmptyPipelineName() {
-        Assert.assertThrows(
+        assertThrows(
                 IllegalArgumentException.class,
                 () -> PluginMetrics.fromPluginSetting(new PluginSetting("badSetting", Collections.emptyMap())));
     }
