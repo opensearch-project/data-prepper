@@ -14,6 +14,7 @@ import java.util.UUID;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
 
 public class AnomalyDetectorProcessorConfigTests {
     @Test
@@ -28,4 +29,24 @@ public class AnomalyDetectorProcessorConfigTests {
         assertThat(anomalyDetectorProcessorConfig.getKeys().get(0), equalTo(key1));
         assertThat(anomalyDetectorProcessorConfig.getKeys().get(1), equalTo(key2));
     }
+
+    @Test
+    public void testNullKeyConfig() throws NoSuchFieldException, IllegalAccessException {
+        List<String> keyList = new ArrayList<String>();
+        keyList.add(null);
+        final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig = new AnomalyDetectorProcessorConfig();
+        setField(AnomalyDetectorProcessorConfig.class, anomalyDetectorProcessorConfig, "keys", keyList);
+        assertThrows(IllegalArgumentException.class, () -> anomalyDetectorProcessorConfig.getKeys());
+
+    }
+
+    @Test
+    public void testEmptyKeyConfig() throws NoSuchFieldException, IllegalAccessException {
+        List<String> keyList = new ArrayList<String>();
+        keyList.add("");
+        final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig = new AnomalyDetectorProcessorConfig();
+        setField(AnomalyDetectorProcessorConfig.class, anomalyDetectorProcessorConfig, "keys", keyList);
+        assertThrows(IllegalArgumentException.class, () -> anomalyDetectorProcessorConfig.getKeys());
+    }
+
 }

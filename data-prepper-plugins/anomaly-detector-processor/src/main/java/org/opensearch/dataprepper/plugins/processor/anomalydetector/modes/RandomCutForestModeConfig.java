@@ -44,21 +44,21 @@ public class RandomCutForestModeConfig {
 
     public int getShingleSize() {
         if (shingleSize < MIN_SHINGLE_SIZE || shingleSize > MAX_SHINGLE_SIZE) {
-            throw new IllegalArgumentException(String.format("Shingle size of %d is not valid", shingleSize));
+            throw new IllegalArgumentException(String.format("Shingle size of %d is not valid, valid range is %d - %d", shingleSize, MIN_SHINGLE_SIZE, MAX_SHINGLE_SIZE));
         }
         return shingleSize;
     }
 
     public int getSampleSize() {
         if (sampleSize < MIN_SAMPLE_SIZE || sampleSize > MAX_SAMPLE_SIZE) {
-            throw new IllegalArgumentException(String.format("Sample size of %d is not valid", sampleSize));
+            throw new IllegalArgumentException(String.format("Sample size of %d is not valid, valid range is %d - %d", sampleSize, MIN_SAMPLE_SIZE, MAX_SAMPLE_SIZE));
         }
         return sampleSize;
     }
 
     public double getTimeDecay() {
         if (timeDecay < MIN_TIME_DECAY || timeDecay > MAX_TIME_DECAY) {
-            throw new IllegalArgumentException(String.format("Time Decay of %f is not valid", timeDecay));
+            throw new IllegalArgumentException(String.format("Time Decay of %f is not valid, valid range is %f - %f", timeDecay, MIN_TIME_DECAY, MAX_TIME_DECAY));
         }
         return timeDecay;
     }

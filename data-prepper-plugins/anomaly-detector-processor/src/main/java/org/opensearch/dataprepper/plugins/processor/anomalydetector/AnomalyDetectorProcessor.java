@@ -24,9 +24,9 @@ public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, R
     public static final String DEVIATION_KEY = "deviation_from_expected";
     public static final String GRADE_KEY = "grade";
 
-    private List<String> keys;
-    private AnomalyDetectorMode mode;
-    AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig;
+    private final List<String> keys;
+    private final AnomalyDetectorMode mode;
+    private final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig;
 
     @DataPrepperPluginConstructor
     public AnomalyDetectorProcessor(final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {

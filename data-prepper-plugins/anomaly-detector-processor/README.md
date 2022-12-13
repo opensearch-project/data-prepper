@@ -2,6 +2,7 @@
 
 This is a processor that takes structured data and runs anomaly detection algorithm on user configured fields in the data. The data needs to be a number(integer or real) for the anomaly detection algorithm to detect anomalies. The anomaly detector processor supports the following ML algorithms to detect anomalies
  - random-cut-forest
+It is recommended that the anomaly detector processor is deployed after aggregate processor in a pipeline for best results because aggregate processor aggregates events with same keys onto the same host.
 
 ## Basic Usage
 To get started, create the following `pipeline.yaml`.
@@ -40,6 +41,7 @@ When run, the processor will parse the messages and extracts the values for the 
 ### <a name="random_cut_forest"></a>
 * `random_cut_forest`: Processes events using Random Cut Forest ML algorithm to detect anomalies.
   * After passing a bunch of events with `latency` value between 0.2 and 0.3 are passed through the anomaly detector, when an event with `latency` value 11.5 is sent, the following anomaly event will be generated
+  * More details about this can be found at https://docs.aws.amazon.com/sagemaker/latest/dg/randomcutforest.html
         ```json
             { "latency": 11.5, "deviation_from_expected":[10.469302736820003],"grade":1.0}
         ```

@@ -115,8 +115,11 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
                 AnomalyDescriptor result;
 
                 processLock.lock();
-                result = forest.process(points, timeStamp);
-                processLock.unlock();
+                try {
+                    result = forest.process(points, timeStamp);
+                } finally {
+                    processLock.unlock();
+                }
                 if ((result.getAnomalyGrade() != 0) && (result.isExpectedValuesPresent())) {
                     double deviations[] = new double[keys.size()];
                     if (result.getRelativeIndex() != 0 && result.isStartOfAnomaly()) {
