@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -66,11 +67,12 @@ class RSSSourceTest {
 
     }
 
-    @Test
+   @Test
     void test_when_empty_rss_url_provided() {
         when(rssSourceConfig.getUrl()).thenReturn("");
-        rssSource.extractItemsFromRssFeed(rssSourceConfig);
-        doThrow(IllegalArgumentException.class).when(rssSource).extractItemsFromRssFeed(isA(RSSSourceConfig.class));
+       rssSource.extractItemsFromRssFeed(rssSourceConfig);
+       doThrow(IllegalArgumentException.class).when(rssSource).extractItemsFromRssFeed(any(RSSSourceConfig.class));
+       assertThrows(IllegalArgumentException.class, () -> rssSource.extractItemsFromRssFeed(rssSourceConfig));
     }
 
     @Test
@@ -78,5 +80,6 @@ class RSSSourceTest {
         when(rssSourceConfig.getUrl()).thenReturn(INVALID_RSS_URL);
         rssSource.extractItemsFromRssFeed(rssSourceConfig);
         doThrow(RuntimeException.class).when(rssSource).extractItemsFromRssFeed(isA(RSSSourceConfig.class));
+        assertThrows(RuntimeException.class, () -> rssSource.extractItemsFromRssFeed(rssSourceConfig));
     }
 }
