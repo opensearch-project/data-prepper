@@ -23,6 +23,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 public class JacksonHistogram extends JacksonMetric implements Histogram {
 
     private static final String SUM_KEY = "sum";
+    private static final String MAX_KEY = "max";
+    private static final String MIN_KEY = "min";
     private static final String COUNT_KEY = "count";
     private static final String AGGREGATION_TEMPORALITY_KEY = "aggregationTemporality";
     private static final String BUCKET_COUNTS_KEY = "bucketCounts";
@@ -106,6 +108,32 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          */
         public JacksonHistogram.Builder withSum(double sum) {
             data.put(SUM_KEY, sum);
+            return this;
+        }
+
+        /**
+         * Sets the min of the histogram
+         * @param min the min of the histogram
+         * @return the builder
+         * @since 2.1
+         */
+        public JacksonHistogram.Builder withMin(Double min) {
+            if (min != null) {
+                data.put(MIN_KEY, min);
+            }
+            return this;
+        }
+
+        /**
+         * Sets the max of the histogram
+         * @param max the max of the histogram
+         * @return the builder
+         * @since 2.1
+         */
+        public JacksonHistogram.Builder withMax(Double max) {
+            if (max != null) {
+                data.put(MAX_KEY, max);
+            }
             return this;
         }
 

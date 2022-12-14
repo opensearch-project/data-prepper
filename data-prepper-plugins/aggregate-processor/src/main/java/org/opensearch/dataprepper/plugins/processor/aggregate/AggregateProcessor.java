@@ -24,6 +24,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.time.Instant;
 
 @DataPrepperPlugin(name = "aggregate", pluginType = Processor.class, pluginConfigurationType = AggregateProcessorConfig.class)
 public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
@@ -121,6 +122,13 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         actionHandleEventsDroppedCounter.increment(handleEventsDropped);
         return recordsOut;
     }
+
+    public static long getTimeNanos(final Instant time) {
+        final long NANO_MULTIPLIER = 1_000 * 1_000 * 1_000;
+        long currentTimeNanos = time.getEpochSecond() * NANO_MULTIPLIER + time.getNano();
+        return currentTimeNanos;
+    }
+
 
     @Override
     public void prepareForShutdown() {
