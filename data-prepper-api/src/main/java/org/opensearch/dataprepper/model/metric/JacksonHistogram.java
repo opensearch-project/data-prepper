@@ -54,6 +54,16 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     }
 
     @Override
+    public Double getMin() {
+        return this.get(MIN_KEY, Double.class);
+    }
+
+    @Override
+    public Double getMax() {
+        return this.get(MAX_KEY, Double.class);
+    }
+
+    @Override
     public Long getCount() {
         return this.get(COUNT_KEY, Long.class);
     }

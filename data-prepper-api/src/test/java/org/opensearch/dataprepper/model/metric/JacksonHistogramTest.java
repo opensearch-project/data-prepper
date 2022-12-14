@@ -42,6 +42,8 @@ class JacksonHistogramTest {
     private static final String TEST_TIME = UUID.randomUUID().toString();
     private static final String TEST_EVENT_KIND = Metric.KIND.HISTOGRAM.name();
     private static final Double TEST_SUM = 1D;
+    private static final Double TEST_MIN = 0.5D;
+    private static final Double TEST_MAX = 50.5D;
     private static final List<Bucket> TEST_BUCKETS = Arrays.asList(
             new DefaultBucket(0.0, 5.0, 2L),
             new DefaultBucket(5.0, 10.0, 5L)
@@ -71,6 +73,8 @@ class JacksonHistogramTest {
                 .withUnit(TEST_UNIT_NAME)
                 .withServiceName(TEST_SERVICE_NAME)
                 .withSum(TEST_SUM)
+                .withMin(TEST_MIN)
+                .withMax(TEST_MAX)
                 .withCount(TEST_COUNT)
                 .withBucketCount(TEST_BUCKETS_COUNT)
                 .withBuckets(TEST_BUCKETS)
@@ -115,6 +119,18 @@ class JacksonHistogramTest {
     public void testGetSum() {
         final Double sum = histogram.getSum();
         assertThat(sum, is(equalTo(TEST_SUM)));
+    }
+
+    @Test
+    public void testGetMin() {
+        final Double min = histogram.getMin();
+        assertThat(min, is(equalTo(TEST_MIN)));
+    }
+
+    @Test
+    public void testGetMax() {
+        final Double max = histogram.getMax();
+        assertThat(max, is(equalTo(TEST_MAX)));
     }
 
     @Test

@@ -22,6 +22,21 @@ public interface Histogram extends Metric {
      */
     Double getSum();
 
+    /**
+     * Gets the min for the histogram
+     *
+     * @return the min of the values in the population
+     * @since 2.1
+     */
+    Double getMin();
+
+    /**
+     * Gets the max for the histogram
+     *
+     * @return the max of the values in the population
+     * @since 2.1
+     */
+    Double getMax();
 
     /**
      * Gets the count of the histogram
