@@ -72,9 +72,6 @@ public class AggregateProcessorIT {
     @Mock
     private AggregateProcessorConfig aggregateProcessorConfig;
 
-    @Mock
-    private HistogramAggregateActionConfig histogramAggregateActionConfig;
-
     private AggregateAction aggregateAction;
     private PluginMetrics pluginMetrics;
 
@@ -324,9 +321,15 @@ public class AggregateProcessorIT {
     @RepeatedTest(value = 2)
     void aggregateWithHistogramAggregateAction() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
 
-        when(histogramAggregateActionConfig.getKey()).thenReturn("latency");
+        HistogramAggregateActionConfig histogramAggregateActionConfig = new HistogramAggregateActionConfig();
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "outputFormat", OutputFormat.RAW.toString());
+        final String testKey = RandomStringUtils.randomAlphabetic(5);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "key", testKey);
         final String testKeyPrefix = RandomStringUtils.randomAlphabetic(4)+"_";
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "generatedKeyPrefix", testKeyPrefix);
         final String testUnits = RandomStringUtils.randomAlphabetic(3);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "units", testUnits);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "recordMinMax", true);
         List<Number> testBuckets = new ArrayList<Number>();
         final double TEST_VALUE_RANGE_MIN = 0.0;
         final double TEST_VALUE_RANGE_MAX = 40.0;
@@ -334,11 +337,7 @@ public class AggregateProcessorIT {
         for (double d = TEST_VALUE_RANGE_MIN; d <= TEST_VALUE_RANGE_MAX; d += TEST_VALUE_RANGE_STEP) {
             testBuckets.add(d);
         }
-        when(histogramAggregateActionConfig.getGeneratedKeyPrefix()).thenReturn(testKeyPrefix);
-        when(histogramAggregateActionConfig.getRecordMinMax()).thenReturn(true);
-        when(histogramAggregateActionConfig.getUnits()).thenReturn(testUnits);
-        when(histogramAggregateActionConfig.getOutputFormat()).thenReturn(OutputFormat.RAW.toString());
-        when(histogramAggregateActionConfig.getBuckets()).thenReturn(testBuckets);
+        setField(HistogramAggregateActionConfig.class, histogramAggregateActionConfig, "buckets", testBuckets);
 
         aggregateAction = new HistogramAggregateAction(histogramAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
@@ -348,7 +347,7 @@ public class AggregateProcessorIT {
         for (final Record<Event> record : eventBatch) {
             final double value = ThreadLocalRandom.current().nextDouble(TEST_VALUE_RANGE_MIN-TEST_VALUE_RANGE_STEP, TEST_VALUE_RANGE_MAX+TEST_VALUE_RANGE_STEP);
             Event event = record.getData();
-            event.put("latency", value);
+            event.put(testKey, value);
         }
 
         final AggregateProcessor objectUnderTest = createObjectUnderTest();
@@ -370,15 +369,15 @@ public class AggregateProcessorIT {
         Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
         assertThat(results.size(), equalTo(1));
 
-        final String expectedCountKey = testKeyPrefix+HistogramAggregateAction.COUNT_KEY;
+        final String expectedCountKey = histogramAggregateActionConfig.getCountKey();
         Map<String, Object> expectedEventMap = new HashMap<>();
         expectedEventMap.put(expectedCountKey, NUM_THREADS * NUM_EVENTS_PER_BATCH);
-        final String expectedStartTimeKey = testKeyPrefix+HistogramAggregateAction.START_TIME_KEY;
+        final String expectedStartTimeKey = histogramAggregateActionConfig.getStartTimeKey();
         
         final Record<Event> record = (Record<Event>)results.toArray()[0];
         expectedEventMap.forEach((k, v) -> assertThat(record.getData().toMap(), hasEntry(k, v)));
         assertThat(record.getData().toMap(), hasKey(expectedStartTimeKey));
-        final String expectedBucketsKey = testKeyPrefix+HistogramAggregateAction.BUCKETS_KEY;
+        final String expectedBucketsKey = histogramAggregateActionConfig.getBucketsKey();
         List<Double> bucketsInResult = (ArrayList<Double>)record.getData().toMap().get(expectedBucketsKey);
         for (int i = 0; i < testBuckets.size(); i++) {
             assertThat(testBuckets.get(i).doubleValue(), equalTo(bucketsInResult.get(i)));

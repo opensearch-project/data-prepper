@@ -13,6 +13,13 @@ import jakarta.validation.constraints.NotNull;
 
 public class HistogramAggregateActionConfig {
     public static final String DEFAULT_GENERATED_KEY_PREFIX = "aggr._";
+    public static final String SUM_KEY = "sum";
+    public static final String COUNT_KEY = "count";
+    public static final String BUCKETS_KEY = "buckets";
+    public static final String BUCKET_COUNTS_KEY = "bucket_counts";
+    public static final String MIN_KEY = "min";
+    public static final String MAX_KEY = "max";
+    public static final String START_TIME_KEY = "startTime";
     public static final Set<String> validOutputFormats = new HashSet<>(Set.of(OutputFormat.OTEL_METRICS.toString(), OutputFormat.RAW.toString()));
 
     @JsonProperty("key")
@@ -50,6 +57,34 @@ public class HistogramAggregateActionConfig {
 
     public String getKey() {
         return key;
+    }
+
+    public String getSumKey() {
+        return generatedKeyPrefix + SUM_KEY;
+    }
+
+    public String getMinKey() {
+        return generatedKeyPrefix + MIN_KEY;
+    }
+
+    public String getMaxKey() {
+        return generatedKeyPrefix + MAX_KEY;
+    }
+
+    public String getCountKey() {
+        return generatedKeyPrefix + COUNT_KEY;
+    }
+
+    public String getBucketsKey() {
+        return generatedKeyPrefix + BUCKETS_KEY;
+    }
+
+    public String getBucketCountsKey() {
+        return generatedKeyPrefix + BUCKET_COUNTS_KEY;
+    }
+
+    public String getStartTimeKey() {
+        return generatedKeyPrefix + START_TIME_KEY;
     }
 
     public List<Number> getBuckets() {

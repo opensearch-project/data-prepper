@@ -40,13 +40,6 @@ public class HistogramAggregateAction implements AggregateAction {
     private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
     static final String EVENT_TYPE = "event";
     public static final String HISTOGRAM_METRIC_NAME = "histogram";
-    public static final String SUM_KEY = "sum";
-    public static final String COUNT_KEY = "count";
-    public static final String BUCKETS_KEY = "buckets";
-    public static final String BUCKET_COUNTS_KEY = "bucket_counts";
-    public static final String MIN_KEY = "min";
-    public static final String MAX_KEY = "max";
-    public static final String START_TIME_KEY = "startTime";
     public final String countKey;
     public final String bucketCountsKey;
     public final String bucketsKey;
@@ -57,7 +50,6 @@ public class HistogramAggregateAction implements AggregateAction {
     public final String minKey;
     public final String key;
     public final String units;
-    public final String keyPrefix;
     public final boolean recordMinMax;
 
     private long startTimeNanos;
@@ -75,14 +67,13 @@ public class HistogramAggregateAction implements AggregateAction {
         }
         this.buckets[bucketIdx] = Float.MAX_VALUE;
         Arrays.sort(this.buckets);
-        this.keyPrefix = histogramAggregateActionConfig.getGeneratedKeyPrefix();
-        this.bucketCountsKey = this.keyPrefix + BUCKET_COUNTS_KEY;
-        this.bucketsKey = this.keyPrefix + BUCKETS_KEY;
-        this.countKey = this.keyPrefix + COUNT_KEY;
-        this.sumKey = this.keyPrefix + SUM_KEY;
-        this.maxKey = this.keyPrefix + MAX_KEY;
-        this.minKey = this.keyPrefix + MIN_KEY;
-        this.startTimeKey = this.keyPrefix + START_TIME_KEY;
+        this.sumKey = histogramAggregateActionConfig.getSumKey();
+        this.minKey = histogramAggregateActionConfig.getMinKey();
+        this.maxKey = histogramAggregateActionConfig.getMaxKey();
+        this.countKey = histogramAggregateActionConfig.getCountKey();
+        this.bucketsKey = histogramAggregateActionConfig.getBucketsKey();
+        this.bucketCountsKey = histogramAggregateActionConfig.getBucketCountsKey();
+        this.startTimeKey = histogramAggregateActionConfig.getStartTimeKey();
         this.outputFormat = histogramAggregateActionConfig.getOutputFormat();
         this.units = histogramAggregateActionConfig.getUnits();
         this.recordMinMax = histogramAggregateActionConfig.getRecordMinMax();
@@ -125,7 +116,6 @@ public class HistogramAggregateAction implements AggregateAction {
             bucketCountsList[idx]++;
             groupState.put(startTimeKey, Instant.now());
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
-            groupState.put(keyPrefix + "key", key);
             groupState.put(sumKey, doubleValue);
             groupState.put(countKey, 1);
             groupState.put(bucketCountsKey, bucketCountsList);
@@ -159,7 +149,9 @@ public class HistogramAggregateAction implements AggregateAction {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
+        String histogramKey = HISTOGRAM_METRIC_NAME + "_key";
         if (outputFormat.equals(OutputFormat.RAW.toString())) {
+            groupState.put(histogramKey, key);
             groupState.put(bucketsKey, Arrays.copyOfRange(this.buckets, 1, this.buckets.length-1));
             groupState.put(startTimeKey, startTime.atZone(ZoneId.of(ZoneId.systemDefault().toString())).format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
             event = JacksonEvent.builder()
@@ -177,12 +169,10 @@ public class HistogramAggregateAction implements AggregateAction {
             long currentTimeNanos = getTimeNanos(Instant.now());
             long startTimeNanos = getTimeNanos(startTime);
             Map<String, Object> attr = new HashMap<String, Object>();
-            groupState.forEach((k, v) -> {
-                if (((String)k).indexOf(keyPrefix) != 0) {
-                    attr.put((String)k, v);
-                }
+            aggregateActionInput.getIdentificationKeys().forEach((k, v) -> {
+                attr.put((String)k, v);
             });
-            attr.put("key", key);
+            attr.put(histogramKey, key);
             double sum = (double)groupState.get(sumKey);
             Double max = (Double)groupState.get(maxKey);
             Double min = (Double)groupState.get(minKey);

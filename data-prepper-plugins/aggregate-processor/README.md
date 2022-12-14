@@ -40,6 +40,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [remove_duplicates](#remove_duplicates)
     * [put_all](#put_all)
     * [count](#count)
+    * [histogram](#histogram)
 ### <a name="group_duration"></a>
 * `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
 

@@ -103,27 +103,28 @@ public class HistogramAggregateActionTests {
 
         final Optional<Event> result = histogramAggregateAction.concludeGroup(aggregateActionInput);
         assertThat(result.isPresent(), equalTo(true));
-        final String expectedCountKey = testKeyPrefix+HistogramAggregateAction.COUNT_KEY;
-        final String expectedStartTimeKey = testKeyPrefix+HistogramAggregateAction.START_TIME_KEY;
+        final String expectedCountKey = histogramAggregateActionConfig.getCountKey();
+        final String expectedStartTimeKey = histogramAggregateActionConfig.getStartTimeKey();
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap(expectedCountKey, testCount));
         
-        final String expectedSumKey = testKeyPrefix+HistogramAggregateAction.SUM_KEY;
+        final String expectedSumKey = histogramAggregateActionConfig.getSumKey();
         expectedEventMap.put(expectedSumKey, expectedSum);
-        final String expectedMaxKey = testKeyPrefix+HistogramAggregateAction.MAX_KEY;
+        final String expectedMaxKey = histogramAggregateActionConfig.getMaxKey();
         expectedEventMap.put(expectedMaxKey, expectedMax);
-        final String expectedMinKey = testKeyPrefix+HistogramAggregateAction.MIN_KEY;
+        final String expectedMinKey = histogramAggregateActionConfig.getMinKey();
         expectedEventMap.put(expectedMinKey, expectedMin);
         expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
         assertThat(result.get().toMap(), hasKey(expectedStartTimeKey));
-        final String expectedBucketCountsKey = testKeyPrefix+HistogramAggregateAction.BUCKET_COUNTS_KEY;
+        final String expectedBucketCountsKey = histogramAggregateActionConfig.getBucketCountsKey();
         final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get().toMap().get(expectedBucketCountsKey);
         for (int i = 0; i < expectedBucketCounts.length; i++) {
             assertThat(expectedBucketCounts[i], equalTo(bucketCountsFromResult.get(i)));
         }
     }
 
+    //@ValueSource(ints = {10, 20, 50, 100})
     @ParameterizedTest
-    @ValueSource(ints = {10, 20, 50, 100})
+    @ValueSource(ints = {10})
     void testHistogramAggregateOTelFormat(int testCount) throws NoSuchFieldException, IllegalAccessException {
         HistogramAggregateActionConfig histogramAggregateActionConfig = new HistogramAggregateActionConfig();
         final String testKeyPrefix = RandomStringUtils.randomAlphabetic(5)+"_";
@@ -182,8 +183,8 @@ public class HistogramAggregateActionTests {
 
         final Optional<Event> result = histogramAggregateAction.concludeGroup(aggregateActionInput);
         assertThat(result.isPresent(), equalTo(true));
-        final String expectedCountKey = testKeyPrefix+HistogramAggregateAction.COUNT_KEY;
-        final String expectedStartTimeKey = testKeyPrefix+HistogramAggregateAction.START_TIME_KEY;
+        final String expectedCountKey = histogramAggregateActionConfig.getCountKey();
+        final String expectedStartTimeKey = histogramAggregateActionConfig.getStartTimeKey();
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap("count", (long)testCount));
         expectedEventMap.put("unit", testUnits);
         expectedEventMap.put("name", HistogramAggregateAction.HISTOGRAM_METRIC_NAME);
@@ -200,7 +201,7 @@ public class HistogramAggregateActionTests {
         for (int i = 0; i < expectedBucketCounts.length; i++) {
             assertThat(expectedBucketCounts[i], equalTo(bucketCountsFromResult.get(i)));
         }
-        assertThat(result.get().toMap().get("attributes"), equalTo(Map.of("key", testKey, dataKey, dataValue)));
+        assertThat(result.get().toMap().get("attributes"), equalTo(Map.of(HistogramAggregateAction.HISTOGRAM_METRIC_NAME+"_key", testKey, dataKey, dataValue)));
         final List<Double> explicitBoundsFromResult = (ArrayList<Double>)result.get().toMap().get("explicitBounds");
         double bucketVal = TEST_VALUE_RANGE_MIN;
         for (int i = 0; i < explicitBoundsFromResult.size(); i++) {
@@ -221,21 +222,4 @@ public class HistogramAggregateActionTests {
             }
         }
     }
-
-
-/*
-        final Optional<Event> result = histogramAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(true));
-        Map<String, Object> expectedEventMap = new HashMap<>();
-        expectedEventMap.put("value", (double)testCount);
-        expectedEventMap.put("name", "count");
-        expectedEventMap.put("description", "Number of events");
-        expectedEventMap.put("isMonotonic", true);
-        expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_CUMULATIVE");
-        expectedEventMap.put("unit", "1");
-        expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
-        assertThat(result.get().toMap().get("attributes"), equalTo(eventMap));
-        assertThat(result.get().toMap(), hasKey("startTime"));
-        assertThat(result.get().toMap(), hasKey("time"));
-        */
 }
