@@ -21,7 +21,7 @@ public interface AnomalyDetectorMode {
      * @param keys List of keys which are used as dimensions in the anomaly detector
      * @since 2.1
      */
-    public void initialize(List<String> keys);
+    void initialize(List<String> keys);
 
     /**
      * handles a collection of records
@@ -30,5 +30,5 @@ public interface AnomalyDetectorMode {
      * @return The list of anomaly events if anomalies found. Returns empty list if no anomalies are found.
      * @since 2.1
      */
-    public Collection<Record<Event>> handleEvents(Collection<Record<Event>> records);
+    Collection<Record<Event>> handleEvents(Collection<Record<Event>> records);
 }

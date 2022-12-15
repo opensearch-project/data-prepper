@@ -10,6 +10,8 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.amazon.randomcutforest.config.ForestMode;
 import com.amazon.randomcutforest.config.Precision;
@@ -43,6 +45,8 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
     private double timeDecay;
     private List<String> keys;
     private final Lock processLock;
+
+    private static final Logger LOG = LoggerFactory.getLogger(RandomCutForestMode.class);
 
     @DataPrepperPluginConstructor
     public RandomCutForestMode(final RandomCutForestModeConfig randomCutForestModeConfig) {
@@ -111,31 +115,31 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
             if (notFound) {
                 continue;
             }
-            try {
-                AnomalyDescriptor result;
+            AnomalyDescriptor result = null;
 
-                processLock.lock();
-                try {
-                    result = forest.process(points, timeStamp);
-                } finally {
-                    processLock.unlock();
-                }
-                if ((result.getAnomalyGrade() != 0) && (result.isExpectedValuesPresent())) {
-                    double deviations[] = new double[keys.size()];
-                    if (result.getRelativeIndex() != 0 && result.isStartOfAnomaly()) {
-                        for (int i = 0; i < keys.size(); i++) {
-                            deviations[i] = result.getPastValues()[i];
-                        }
-                    } else {
-                        for (int i = 0; i < keys.size(); i++) {
-                            deviations[i] = result.getCurrentInput()[i] - result.getExpectedValuesList()[0][i];
-                        }
+            processLock.lock();
+            try {
+                result = forest.process(points, timeStamp);
+            } catch (final Exception e) {
+                LOG.debug("Error while processing the event in RCF: ", e);
+            } finally {
+                processLock.unlock();
+            }
+            if ((result != null) && (result.getAnomalyGrade() != 0) && (result.isExpectedValuesPresent())) {
+                double deviations[] = new double[keys.size()];
+                if (result.getRelativeIndex() != 0 && result.isStartOfAnomaly()) {
+                    for (int i = 0; i < keys.size(); i++) {
+                        deviations[i] = result.getPastValues()[i];
                     }
-                    event.put(DEVIATION_KEY, deviations);
-                    event.put(GRADE_KEY, result.getAnomalyGrade());
-                    recordsOut.add(record);
+                } else {
+                    for (int i = 0; i < keys.size(); i++) {
+                        deviations[i] = result.getCurrentInput()[i] - result.getExpectedValuesList()[0][i];
+                    }
                 }
-            } catch (Exception e) {}
+                event.put(DEVIATION_KEY, deviations);
+                event.put(GRADE_KEY, result.getAnomalyGrade());
+                recordsOut.add(record);
+            }
         }
         return recordsOut;
     }

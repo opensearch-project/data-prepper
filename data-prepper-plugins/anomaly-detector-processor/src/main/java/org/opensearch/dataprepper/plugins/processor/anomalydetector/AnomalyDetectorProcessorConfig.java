@@ -28,7 +28,7 @@ public class AnomalyDetectorProcessorConfig {
     public List<String> getKeys() {
         keys.forEach((key) -> {
             if (key == null || key.isEmpty()) {
-                throw new IllegalArgumentException("Keys cannot null or empty");
+                throw new IllegalArgumentException("Keys cannot be null or empty");
             }
         });
         return keys;
