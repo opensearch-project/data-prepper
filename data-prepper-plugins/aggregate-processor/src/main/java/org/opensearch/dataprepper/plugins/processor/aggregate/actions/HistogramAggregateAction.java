@@ -38,19 +38,19 @@ import java.util.Optional;
 @DataPrepperPlugin(name = "histogram", pluginType = AggregateAction.class, pluginConfigurationType = HistogramAggregateActionConfig.class)
 public class HistogramAggregateAction implements AggregateAction {
     private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
-    static final String EVENT_TYPE = "event";
+    private static final String EVENT_TYPE = "event";
     public static final String HISTOGRAM_METRIC_NAME = "histogram";
-    public final String countKey;
-    public final String bucketCountsKey;
-    public final String bucketsKey;
-    public final String startTimeKey;
-    public final String outputFormat;
-    public final String sumKey;
-    public final String maxKey;
-    public final String minKey;
-    public final String key;
-    public final String units;
-    public final boolean recordMinMax;
+    private final String countKey;
+    private final String bucketCountsKey;
+    private final String bucketsKey;
+    private final String startTimeKey;
+    private final String outputFormat;
+    private final String sumKey;
+    private final String maxKey;
+    private final String minKey;
+    private final String key;
+    private final String units;
+    private final boolean recordMinMax;
 
     private long startTimeNanos;
     private double[] buckets;
