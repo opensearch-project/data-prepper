@@ -84,11 +84,11 @@ public class ProcessWorker implements Runnable {
         //TODO Hacky way to avoid logging continuously - Will be removed as part of metrics implementation
         if (records.isEmpty()) {
             if(!isEmptyRecordsLogged) {
-                LOG.info(" {} Worker: No records received from buffer", pipeline.getName());
+                LOG.debug(" {} Worker: No records received from buffer", pipeline.getName());
                 isEmptyRecordsLogged = true;
             }
         } else {
-            LOG.info(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
+            LOG.debug(" {} Worker: Processing {} records from buffer", pipeline.getName(), records.size());
         }
         //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
         for (final Processor processor : processors) {
