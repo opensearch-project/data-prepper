@@ -40,6 +40,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [remove_duplicates](#remove_duplicates)
     * [put_all](#put_all)
     * [count](#count)
+    * [histogram](#histogram)
 ### <a name="group_duration"></a>
 * `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
 
@@ -106,6 +107,33 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       If raw output format is used, the following Event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._count": 1, "aggr._start_time": "2022-11-05T23:28:31.916Z"}
+      ```
+
+### <a name="histogram"></a>
+* `histogram`: Aggreates events belonging to the same group and generate a new event with values of the identification keys and histogram of the aggregated events based on a configured `key`. The histogram contains the number of events, sum, buckets, bucket counts, and optionally min and max of the values corresponding to the `key`. All events that make up the combined Event will be dropped.
+    * It supports the following config options
+       * `key`: name of the field in the events for which histogram needs to be generated
+       * `generated_key_prefix`: key prefix to be used for all the fields created in the aggregated event. This allows the user to make sure that the names of the histogram event does not conflict with the field names in the event
+       * `units`: name of the units for the values in the `key`
+       * `record_minmax`: a boolean indicating if the histogram should include the min and max of the values during the aggregation duration
+       * `buckets`: a list of buckets (values of type `double`) indicating the buckets in histogram
+       * `output_format`: format of the aggregated event.
+         * `otel_metrics` - Default output format. Outputs in otel metrics SUM type with count as value
+         * `raw` - generates JSON with `count_key` field with count as value and `start_time_key` field with aggregation start time as value
+    * Given the following four Events with `identification_keys: ["sourceIp", "destination_ip", "request"]`,  `key` as "latency", `buckets as `[0.0, 0.25, 0.5]` :
+      ```json
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "request" : "/index.html", "latency": 0.2 }
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "request" : "/index.html", "latency": 0.55}
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "request" : "/index.html", "latency": 0.25 }
+          { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "request" : "/index.html", "latency": 0.15 }
+      ```
+      The following Event will be created and processed by the rest of the pipeline when the group is concluded:
+      ```json
+        {"max":0.55,"kind":"HISTOGRAM","buckets":[{"min":-3.4028234663852886E38,"max":0.0,"count":0},{"min":0.0,"max":0.25,"count":2},{"min":0.25,"max":0.50,"count":1},{"min":0.50,"max":3.4028234663852886E38,"count":1}],"count":4,"bucketCountsList":[0,2,1,1],"description":"Histogram of latency in the events","sum":1.15,"unit":"seconds","aggregationTemporality":"AGGREGATION_TEMPORALITY_DELTA","min":0.15,"bucketCounts":4,"name":"histogram","startTime":"2022-12-14T06:43:40.848762215Z","explicitBoundsCount":3,"time":"2022-12-14T06:44:04.852564623Z","explicitBounds":[0.0,0.25,0.5],"request":"/index.html","sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "key": "latency"}
+      ```
+      If raw output format is used, the following event will be created and processed by the rest of the pipeline when the group is concluded:
+      ```json
+        {"request":"/index.html","aggr._max":0.55,"aggr._min":0.15,"aggr._buckets":[0.0, 0.25, 0.5],"sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._bucket_counts":[0,2,1,1],"aggr._count":4,"aggr._key":"latency","aggr._startTime":"2022-12-14T06:39:06.081Z","aggr._sum":1.15}
       ```
 
 ## Creating New Aggregate Actions

@@ -13,6 +13,8 @@ dependencies {
     implementation project(':data-prepper-test-common')
     implementation project(':data-prepper-expression')
     implementation project(':data-prepper-plugins:otel-proto-common')
+    implementation project(':data-prepper-plugins:otel-metrics-raw-processor')
+    implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation "io.opentelemetry.proto:opentelemetry-proto:${versionMap.opentelemetryProto}"
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
