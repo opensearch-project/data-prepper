@@ -5,7 +5,11 @@
 
 plugins {
     id 'java'
-    id 'io.gatling.gradle' version '3.7.4'
+    id 'io.gatling.gradle' version '3.9.0'
+}
+
+configurations.all {
+    exclude group: 'io.pebbletemplates', module: 'pebble'
 }
 
 group 'org.opensearch.dataprepper.test.performance'
