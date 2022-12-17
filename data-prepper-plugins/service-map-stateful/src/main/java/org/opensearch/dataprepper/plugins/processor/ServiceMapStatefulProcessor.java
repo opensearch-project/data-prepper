@@ -172,13 +172,13 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
      * @return Set of Record<Event> containing json representation of ServiceMapRelationships found
      */
     private Collection<Record<Event>> evaluateEdges() {
-        LOG.info("Evaluating service map edges");
+        LOG.debug("Evaluating service map edges");
         try {
             final Collection<Record<Event>> serviceDependencyRecords = new HashSet<>();
 
             serviceDependencyRecords.addAll(iterateProcessorState(previousWindow));
             serviceDependencyRecords.addAll(iterateProcessorState(currentWindow));
-            LOG.info("Done evaluating service map edges");
+            LOG.debug("Done evaluating service map edges");
 
             // Wait for all workers before rotating windows
             allThreadsCyclicBarrier.await();
@@ -290,7 +290,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
      * Rotate windows for processor state
      */
     private void rotateWindows() throws InterruptedException {
-        LOG.info("Rotating service map windows at " + clock.instant().toString());
+        LOG.debug("Rotating service map windows at " + clock.instant().toString());
 
         MapDbProcessorState tempWindow = previousWindow;
         previousWindow = currentWindow;
@@ -303,7 +303,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         currentTraceGroupWindow.clear();
 
         previousTimestamp = clock.millis();
-        LOG.info("Done rotating service map windows");
+        LOG.debug("Done rotating service map windows");
     }
 
 

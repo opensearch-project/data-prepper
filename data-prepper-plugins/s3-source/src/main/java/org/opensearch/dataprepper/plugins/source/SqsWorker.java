@@ -172,7 +172,7 @@ public class SqsWorker implements Runnable {
             }
         }
 
-        LOG.info("Received {} messages from SQS. Read {} messages from S3.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
+        LOG.debug("Received {} messages from SQS. Read {} messages from S3.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
 
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;

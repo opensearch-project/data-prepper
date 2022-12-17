@@ -46,7 +46,7 @@ public class RandomStringSource implements Source<Record<Event>> {
         executorService.execute(() -> {
             while (!stop) {
                 try {
-                    LOG.info("Writing to buffer");
+                    LOG.debug("Writing to buffer");
                     final Record<Event> record = generateRandomStringEventRecord();
                     buffer.write(record, 500);
                     Thread.sleep(500);
