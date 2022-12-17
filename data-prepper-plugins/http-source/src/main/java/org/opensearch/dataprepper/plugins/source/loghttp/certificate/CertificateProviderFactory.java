@@ -16,14 +16,23 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.retry.RetryMode;
+import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
+import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
+import software.amazon.awssdk.core.retry.conditions.RetryCondition;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.acm.AcmClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Duration;
+
 public class CertificateProviderFactory {
     private static final Logger LOG = LoggerFactory.getLogger(CertificateProviderFactory.class);
+
+    private static final int ACM_CLIENT_RETRIES = 10;
+    private static final long ACM_CLIENT_BASE_BACKOFF_MILLIS = 1000l;
+    private static final long ACM_CLIENT_MAX_BACKOFF_MILLIS = 60000l;
 
     final HTTPSourceConfig httpSourceConfig;
     public CertificateProviderFactory(final HTTPSourceConfig httpSourceConfig) {
@@ -37,8 +46,18 @@ public class CertificateProviderFactory {
                     .addCredentialsProvider(DefaultCredentialsProvider.create())
                     .build();
 
+            final BackoffStrategy backoffStrategy = EqualJitterBackoffStrategy.builder()
+                    .baseDelay(Duration.ofMillis(ACM_CLIENT_BASE_BACKOFF_MILLIS))
+                    .maxBackoffTime(Duration.ofMillis(ACM_CLIENT_MAX_BACKOFF_MILLIS))
+                    .build();
+            final RetryPolicy retryPolicy = RetryPolicy.builder()
+                    .numRetries(ACM_CLIENT_RETRIES)
+                    .retryCondition(RetryCondition.defaultRetryCondition())
+                    .backoffStrategy(backoffStrategy)
+                    .throttlingBackoffStrategy(backoffStrategy)
+                    .build();
             final ClientOverrideConfiguration clientConfig = ClientOverrideConfiguration.builder()
-                    .retryPolicy(RetryMode.STANDARD)
+                    .retryPolicy(retryPolicy)
                     .build();
 
             final AcmClient awsCertificateManager = AcmClient.builder()
