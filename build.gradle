@@ -123,11 +123,11 @@ subprojects {
                 }
                 because 'Fixes WS-2021-0419 DoS vulnerability'
             }
-            implementation('com.google.protobuf:protobuf-java-util') {
+            implementation('com.google.protobuf:protobuf-java') {
                 version {
-                    require '3.21.7'
+                    require '3.21.11'
                 }
-                because 'Fixes CVE-2022-3171'
+                because 'Fixes CVE-2022-3509, CVE-2022-3510'
             }
         }
         constraints {
