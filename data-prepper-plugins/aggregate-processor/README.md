@@ -41,6 +41,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [put_all](#put_all)
     * [count](#count)
     * [histogram](#histogram)
+    * [rate_limiter](#rate_limiter)
 ### <a name="group_duration"></a>
 * `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
 
@@ -120,7 +121,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
        * `output_format`: format of the aggregated event.
          * `otel_metrics` - Default output format. Outputs in otel metrics SUM type with count as value
          * `raw` - generates JSON with `count_key` field with count as value and `start_time_key` field with aggregation start time as value
-    * Given the following four Events with `identification_keys: ["sourceIp", "destination_ip", "request"]`,  `key` as "latency", `buckets as `[0.0, 0.25, 0.5]` :
+    * Given the following four Events with `identification_keys: ["sourceIp", "destination_ip", "request"]`,  `key` as "latency", `buckets` as `[0.0, 0.25, 0.5]` :
       ```json
           { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "request" : "/index.html", "latency": 0.2 }
           { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "request" : "/index.html", "latency": 0.55}
@@ -135,6 +136,24 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```json
         {"request":"/index.html","aggr._max":0.55,"aggr._min":0.15,"aggr._buckets":[0.0, 0.25, 0.5],"sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._bucket_counts":[0,2,1,1],"aggr._count":4,"aggr._key":"latency","aggr._startTime":"2022-12-14T06:39:06.081Z","aggr._sum":1.15}
       ```
+
+### <a name="rate_limiter"></a>
+* `rate_limiter`: Processes the events and controls the number of events aggregated per second. By default, any events exceeding the configured number of events per second are dropped. This behavior can be overwritten with a config option which blocks until the events are allowed.
+    * It supports the following config options
+       * `events_per_second`: Number of events allowed per second
+       * `drop_when_exceeds`: indicates if the events should be dropped when more number of events than the number of events allowed per second are received. Default value is true.
+    * When the following three events arrive with in one second and the `events_per_second` is set 1
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 1000 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "http_verb": "GET" }
+      ```
+      The following Event will be allowed, and no event is generated when the group is concluded
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
+      ```
+    * When the three events arrive with in one second and the `events_per_second` is set 1 and `drop_when_exceeds` is set to false, all three events are allowed.
+
 
 ## Creating New Aggregate Actions
 
