@@ -5,6 +5,23 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Measurement;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.OpenSearchException;
+import org.opensearch.action.search.SearchRequest;
+import org.opensearch.action.search.SearchResponse;
+import org.opensearch.client.RequestOptions;
+import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.common.document.DocumentField;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -12,23 +29,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.trace.Span;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrometer.core.instrument.Measurement;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
-import org.mockito.junit.MockitoJUnitRunner;
-import org.opensearch.OpenSearchException;
-import org.opensearch.action.search.SearchRequest;
-import org.opensearch.action.search.SearchResponse;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.common.document.DocumentField;
 import org.opensearch.dataprepper.plugins.processor.oteltracegroup.model.TraceGroup;
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import org.opensearch.search.SearchHit;
@@ -40,7 +40,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,11 +54,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class OTelTraceGroupProcessorTests {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -97,22 +97,22 @@ public class OTelTraceGroupProcessorTests {
     @Mock
     private ConnectionConfiguration connectionConfigurationMock;
 
-    @Mock
+    @Mock(lenient = true)
     private RestHighLevelClient restHighLevelClient;
 
-    @Mock
+    @Mock(lenient = true)
     private SearchResponse testSearchResponse;
 
-    @Mock
+    @Mock(lenient = true)
     private SearchHits testSearchHits;
 
-    @Mock
+    @Mock(lenient = true)
     private SearchHit testSearchHit1;
 
-    @Mock
+    @Mock(lenient = true)
     private SearchHit testSearchHit2;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception{
         MetricsTestUtil.initMetrics();
         connectionConfigurationMockedStatic = Mockito.mockStatic(ConnectionConfiguration.class);
@@ -148,14 +148,14 @@ public class OTelTraceGroupProcessorTests {
         when(testSearchHit2.field(TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD))
                 .thenReturn(new DocumentField(
                         TraceGroup.TRACE_GROUP_STATUS_CODE_FIELD, Collections.singletonList(TEST_TRACE_GROUP_2.getTraceGroupFields().getStatusCode())));
-        final PluginSetting testPluginSetting = new PluginSetting(PLUGIN_NAME, new HashMap<>()) {{
-            setPipelineName(TEST_PIPELINE_NAME);
-        }};
+        final PluginSetting testPluginSetting = mock(PluginSetting.class);
+        when(testPluginSetting.getName()).thenReturn(PLUGIN_NAME);
+        when(testPluginSetting.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         otelTraceGroupProcessor = new OTelTraceGroupProcessor(testPluginSetting);
         executorService = Executors.newFixedThreadPool(TEST_NUM_WORKERS);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         otelTraceGroupProcessor.shutdown();
         connectionConfigurationMockedStatic.close();

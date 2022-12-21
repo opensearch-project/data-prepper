@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -52,7 +54,7 @@ public class DefaultIndexManagerTests {
 
     private IndexManagerFactory indexManagerFactory;
 
-    private IndexManager defaultIndexManager;
+    private AbstractIndexManager defaultIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
@@ -100,8 +102,10 @@ public class DefaultIndexManagerTests {
     public void getIndexAlias_IndexWithTimePattern(){
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_TIME_PATTERN);
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
-        final String indexAlias = defaultIndexManager.getIndexAlias();
-        assertTrue(EXPECTED_INDEX_PATTERN.matcher(indexAlias).matches());
+        try {
+            final String indexAlias = defaultIndexManager.getIndexName(null);
+            assertThat(indexAlias, matchesPattern(EXPECTED_INDEX_PATTERN));
+        } catch (IOException e){}
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();
@@ -226,8 +230,10 @@ public class DefaultIndexManagerTests {
     public void getIndexAlias_IndexWithoutTimePattern(){
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
-        final String indexAlias = defaultIndexManager.getIndexAlias();
-        assertEquals(INDEX_ALIAS, indexAlias);
+        try {
+            final String indexAlias = defaultIndexManager.getIndexName(null);
+            assertEquals(INDEX_ALIAS, indexAlias);
+        } catch (IOException e){}
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();

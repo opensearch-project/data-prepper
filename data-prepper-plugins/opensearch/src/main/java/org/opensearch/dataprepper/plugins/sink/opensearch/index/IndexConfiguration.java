@@ -137,7 +137,7 @@ public class IndexConfiguration {
         return indexType;
     }
 
-    String getIndexAlias() {
+    public String getIndexAlias() {
         return indexAlias;
     }
 

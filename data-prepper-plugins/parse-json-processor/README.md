@@ -7,7 +7,7 @@ parse-json-pipeline:
   source:
     stdin:
   processor:
-    - json:
+    - parse_json:
   sink:
     - stdout:
 ```
@@ -30,7 +30,7 @@ parse-json-pipeline:
   source:
     stdin:
   processor:
-    - json:
+    - parse_json:
         pointer: "outer_key/inner_key"
   sink:
     - stdout:

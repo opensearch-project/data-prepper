@@ -92,4 +92,13 @@ public interface Event {
      * @since 1.3
      */
     Map<String, Object> toMap();
+
+    /**
+     * Returns formatted parts of the input string replaced by their values in the event
+     * @param format
+     * @return returns a string with no formatted parts, returns null if no value is found
+     * @throws RuntimeException if the input string is not properly formatted
+     * @since 2.1
+     */
+    String formatString(final String format);
 }

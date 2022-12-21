@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
@@ -61,9 +62,11 @@ class SqsWorkerIT {
 
         pluginMetrics = mock(PluginMetrics.class);
         final Counter sharedCounter = mock(Counter.class);
+        final DistributionSummary distributionSummary = mock(DistributionSummary.class);
         final Timer sqsMessageDelayTimer = mock(Timer.class);
 
         when(pluginMetrics.counter(anyString())).thenReturn(sharedCounter);
+        when(pluginMetrics.summary(anyString())).thenReturn(distributionSummary);
         when(pluginMetrics.timer(anyString())).thenReturn(sqsMessageDelayTimer);
 
         final SqsOptions sqsOptions = mock(SqsOptions.class);

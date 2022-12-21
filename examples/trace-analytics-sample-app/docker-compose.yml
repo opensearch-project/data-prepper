@@ -3,14 +3,11 @@ services:
   data-prepper:
     restart: unless-stopped
     container_name: data-prepper
-    image: opensearchproject/data-prepper:latest
-    working_dir: /usr/share/data-prepper/
-    command: sh data-prepper-wait-for-opensearch-and-start.sh
+    image: opensearchproject/data-prepper:2
     volumes:
-      - ../trace_analytics_no_ssl.yml:/usr/share/data-prepper/pipelines.yaml
-      - ../data-prepper-config.yaml:/usr/share/data-prepper/data-prepper-config.yaml
+      - ../trace_analytics_no_ssl_2x.yml:/usr/share/data-prepper/pipelines/pipelines.yaml
+      - ../data-prepper-config.yaml:/usr/share/data-prepper/config/data-prepper-config.yaml
       - ../demo/root-ca.pem:/usr/share/data-prepper/root-ca.pem
-      - ./data-prepper-wait-for-opensearch-and-start.sh:/usr/share/data-prepper/data-prepper-wait-for-opensearch-and-start.sh
     ports:
       - "21890:21890"
     networks:
@@ -51,7 +48,7 @@ services:
       - my_network
   otel-collector:
     restart: unless-stopped
-    image: otel/opentelemetry-collector:0.24.0
+    image: otel/opentelemetry-collector:0.64.1
     command: ["--config=/etc/otel-collector-config.yml"]
     volumes:
       - ./opentelemetry-collector/otel-collector-config.yml:/etc/otel-collector-config.yml

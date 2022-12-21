@@ -42,6 +42,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 
@@ -56,14 +57,15 @@ public class ServiceMapStatefulProcessorTest {
     private static final String PASSWORD_DATABASE = "PASS";
     private static final String PAYMENT_SERVICE = "PAY";
     private static final String CART_SERVICE = "CART";
-    private static final PluginSetting PLUGIN_SETTING = new PluginSetting("testServiceMapProcessor", Collections.emptyMap()) {{
-        setPipelineName("testPipelineName");
-    }};
+    private PluginSetting pluginSetting;
 
     @Before
     public void setup() throws NoSuchFieldException, IllegalAccessException {
         resetServiceMapStatefulProcessorStatic();
         MetricsTestUtil.initMetrics();
+        pluginSetting = mock(PluginSetting.class);
+        when(pluginSetting.getName()).thenReturn("testServiceMapProcessor");
+        when(pluginSetting.getPipelineName()).thenReturn("testPipelineName");
     }
 
     public void resetServiceMapStatefulProcessorStatic() throws NoSuchFieldException, IllegalAccessException {
@@ -134,8 +136,8 @@ public class ServiceMapStatefulProcessorTest {
         Mockito.when(clock.instant()).thenReturn(Instant.now());
         ExecutorService threadpool = Executors.newCachedThreadPool();
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, PLUGIN_SETTING);
-        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, PLUGIN_SETTING);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
 
         final byte[] rootSpanId1Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] rootSpanId2Bytes = ServiceMapTestUtils.getRandomBytes(8);
@@ -304,7 +306,7 @@ public class ServiceMapStatefulProcessorTest {
     @Test
     public void testPrepareForShutdownWithEventRecordData() {
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
-        final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(100, path, Clock.systemUTC(), 1, PLUGIN_SETTING);
+        final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(100, path, Clock.systemUTC(), 1, pluginSetting);
 
         final byte[] rootSpanId1Bytes = ServiceMapTestUtils.getRandomBytes(8);
         final byte[] traceId1Bytes = ServiceMapTestUtils.getRandomBytes(16);

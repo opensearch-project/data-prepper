@@ -81,15 +81,21 @@ subprojects {
         }
     }
     dependencies {
-        implementation platform('com.fasterxml.jackson:jackson-bom:2.13.4')
+        implementation platform('com.fasterxml.jackson:jackson-bom:2.14.1')
         implementation platform('io.micrometer:micrometer-bom:1.9.4')
         implementation 'com.google.guava:guava:31.1-jre'
-        implementation 'org.slf4j:slf4j-api:1.7.36'
+        implementation 'org.slf4j:slf4j-api:2.0.5'
         testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
         testImplementation 'org.junit.jupiter:junit-jupiter'
         testImplementation 'org.junit.vintage:junit-vintage-engine'
         testImplementation "org.mockito:mockito-core:${versionMap.mockito}"
         testImplementation "org.mockito:mockito-junit-jupiter:${versionMap.mockito}"
+        implementation "software.amazon.randomcutforest:randomcutforest-testutils:3.0.0"
+        implementation "software.amazon.randomcutforest:randomcutforest-core:3.0.0"
+        implementation "software.amazon.randomcutforest:randomcutforest-examples:3.0.0"
+        implementation "software.amazon.randomcutforest:randomcutforest-parkservices:3.0.0"
+        implementation "software.amazon.randomcutforest:randomcutforest-serialization-json:1.0"
+
         testImplementation 'org.hamcrest:hamcrest:2.2'
         testImplementation 'org.awaitility:awaitility:4.2.0'
         constraints {
@@ -111,23 +117,17 @@ subprojects {
                 }
                 because 'the build fails if the Log4j API is not update along with log4j-core'
             }
-            implementation('com.fasterxml.jackson.core:jackson-databind') {
-                version {
-                    require '2.13.4.2'
-                }
-                because 'Fixes CVE-2022-42003. Keep this until Data Prepper uses 2.14.'
-            }
             implementation('com.google.code.gson:gson') {
                 version {
                     require '2.8.9'
                 }
                 because 'Fixes WS-2021-0419 DoS vulnerability'
             }
-            implementation('com.google.protobuf:protobuf-java-util') {
+            implementation('com.google.protobuf:protobuf-java') {
                 version {
-                    require '3.21.7'
+                    require '3.21.11'
                 }
-                because 'Fixes CVE-2022-3171'
+                because 'Fixes CVE-2022-3509, CVE-2022-3510'
             }
         }
         constraints {

@@ -28,12 +28,19 @@ public class AggregateProcessorConfig {
     @NotNull
     private PluginModel aggregateAction;
 
+    @JsonProperty("aggregate_when")
+    private String whenCondition;
+
     public List<String> getIdentificationKeys() {
         return identificationKeys;
     }
 
     public Duration getGroupDuration() {
         return groupDuration;
+    }
+
+    public String getWhenCondition() {
+        return whenCondition;
     }
 
     public PluginModel getAggregateAction() { return aggregateAction; }

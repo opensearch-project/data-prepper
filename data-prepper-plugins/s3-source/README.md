@@ -88,6 +88,8 @@ The AWS configuration is the same for both SQS and S3.
 ### Counters
 
 * `s3ObjectsFailed` - The number of S3 objects that the S3 Source failed to read.
+* `s3ObjectsNotFound` - The number of S3 objects that the S3 Source failed to read due to a Not Found error from S3. These are also counted toward `s3ObjectsFailed`.
+* `s3ObjectsAccessDenied` - The number of S3 objects that the S3 Source failed to read due to an Access Denied or Forbidden error. These are also counted toward `s3ObjectsFailed`. 
 * `s3ObjectsSucceeded` - The number of S3 objects that the S3 Source successfully read.
 * `sqsMessagesReceived` - The number of SQS messages received from the queue by the S3 Source.
 * `sqsMessagesDeleted` - The number of SQS messages deleted from the queue by the S3 Source.
@@ -98,6 +100,12 @@ The AWS configuration is the same for both SQS and S3.
 
 * `s3ObjectReadTimeElapsed` - Measures the time the S3 Source takes to perform a request to GET an S3 object, parse it, and write Events to the buffer.
 * `sqsMessageDelay` - Measures the time from when S3 records an event time for the creation of an object to when it was fully parsed.
+
+### Distribution Summaries
+
+* `s3ObjectSizeBytes` - Measures the size of S3 objects as reported by the S3 `Content-Length`. For compressed objects, this is the compressed size.
+* `s3ObjectProcessedBytes` - Measures the bytes processed by the S3 source for a given object. For compressed objects, this is the un-compressed size.
+* `s3ObjectsEvents` - Measures the number of events (sometimes called records) produced by an S3 object.
 
 ## Developer Guide
 

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectReader;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -54,7 +55,8 @@ public class JacksonEvent implements Event {
     private static final String SEPARATOR = "/";
 
     private static final ObjectMapper mapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
+            .registerModule(new JavaTimeModule())
+            .registerModule(new Jdk8Module()); // required for using Optional with Jackson. Ref: https://github.com/FasterXML/jackson-modules-java8
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
 
@@ -252,6 +254,38 @@ public class JacksonEvent implements Event {
     @Override
     public String toJsonString() {
         return jsonNode.toString();
+    }
+
+    /**
+     * returns a string with formatted parts replaced by their values. The input
+     * string may contain parts with format "${.../.../...}" which are replaced
+     * by their value in the event
+     * @param format string with format
+     * @throws RuntimeException if the format is incorrect or the value is not a string
+     */
+    @Override
+    public String formatString(final String format) {
+        int fromIndex = 0;
+        String result = "";
+        int position = 0;
+        while ((position = format.indexOf("${", fromIndex)) != -1) {
+          int endPosition = format.indexOf("}", position+1);
+          if (endPosition == -1) {
+            throw new RuntimeException("index name not properly formed");
+          }
+          result += format.substring(fromIndex, position);
+          String name = format.substring(position+2, endPosition);
+          Object val = this.get(name, Object.class);
+	  if (val == null) {
+	    return null;
+	  }
+          result += val.toString();
+          fromIndex = endPosition+1;
+        }
+	if (fromIndex < format.length()) {
+            result += format.substring(fromIndex);
+	}
+        return result;
     }
 
     @Override

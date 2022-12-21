@@ -159,7 +159,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
                     .queryParameters(queryParameters)
                     .build();
 
-            LOG.info("Discovering instances.");
+            LOG.debug("Discovering instances.");
 
             awsServiceDiscovery.discoverInstances(discoverInstancesRequest).whenComplete(
                     (discoverInstancesResponse, throwable) -> {
@@ -190,7 +190,7 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
         private void updateEndpointsWithDiscoveredInstances(final DiscoverInstancesResponse discoverInstancesResponse) {
             final List<HttpInstanceSummary> instances = discoverInstancesResponse.instances();
 
-            LOG.info("Discovered {} instances.", instances.size());
+            LOG.debug("Discovered {} instances.", instances.size());
 
             final List<Endpoint> endpoints = instances
                     .stream()

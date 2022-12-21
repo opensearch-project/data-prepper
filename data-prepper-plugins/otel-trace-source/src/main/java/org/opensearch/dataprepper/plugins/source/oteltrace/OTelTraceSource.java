@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -53,21 +54,23 @@ public class OTelTraceSource implements Source<Record<Object>> {
     private final CertificateProviderFactory certificateProviderFactory;
 
     @DataPrepperPluginConstructor
-    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
+    public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
+                           final PipelineDescription pipelineDescription) {
         oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
-        this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+        this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
     }
 
     // accessible only in the same package for unit test
-    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final CertificateProviderFactory certificateProviderFactory) {
+    OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
+                    final CertificateProviderFactory certificateProviderFactory, final PipelineDescription pipelineDescription) {
         oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
         this.oTelTraceSourceConfig = oTelTraceSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
-        this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+        this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
     }
 
     @Override
@@ -192,7 +195,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         return Collections.singletonList(authenticationInterceptor);
     }
 
-    private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
+    private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory, final PipelineDescription pipelineDescription) {
         final PluginModel authenticationConfiguration = oTelTraceSourceConfig.getAuthentication();
 
         if (authenticationConfiguration == null || authenticationConfiguration.getPluginName().equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {
@@ -206,6 +209,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         } else {
             authenticationPluginSetting = new PluginSetting(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
+        authenticationPluginSetting.setPipelineName(pipelineDescription.getPipelineName());
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
     }
 }
