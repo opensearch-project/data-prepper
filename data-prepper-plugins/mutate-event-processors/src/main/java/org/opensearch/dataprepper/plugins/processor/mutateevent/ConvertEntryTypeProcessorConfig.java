@@ -14,8 +14,7 @@ public class ConvertEntryTypeProcessorConfig  {
     private String key;
 
     @JsonProperty("type")
-    @NotEmpty
-    private TargetType type;
+    private TargetType type = TargetType.INTEGER;
 
     public String getKey() {
         return key;

@@ -18,7 +18,7 @@ import java.util.Collection;
 
 @DataPrepperPlugin(name = "convert_entry_type", pluginType = Processor.class, pluginConfigurationType = ConvertEntryTypeProcessorConfig.class)
 public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private String key;
+    private final String key;
     private final TypeConverter converter;
 
     @DataPrepperPluginConstructor
