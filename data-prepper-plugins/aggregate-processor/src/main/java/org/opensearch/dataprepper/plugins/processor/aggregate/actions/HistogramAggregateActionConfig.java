@@ -20,6 +20,8 @@ public class HistogramAggregateActionConfig {
     public static final String MIN_KEY = "min";
     public static final String MAX_KEY = "max";
     public static final String START_TIME_KEY = "startTime";
+    public static final String END_TIME_KEY = "endTime";
+    public static final String DURATION_KEY = "duration";
     public static final Set<String> validOutputFormats = new HashSet<>(Set.of(OutputFormat.OTEL_METRICS.toString(), OutputFormat.RAW.toString()));
 
     @JsonProperty("key")
@@ -85,6 +87,14 @@ public class HistogramAggregateActionConfig {
 
     public String getStartTimeKey() {
         return generatedKeyPrefix + START_TIME_KEY;
+    }
+
+    public String getEndTimeKey() {
+        return generatedKeyPrefix + END_TIME_KEY;
+    }
+
+    public String getDurationKey() {
+        return generatedKeyPrefix + DURATION_KEY;
     }
 
     public List<Number> getBuckets() {
