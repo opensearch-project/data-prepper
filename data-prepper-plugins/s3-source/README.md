@@ -52,7 +52,7 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `compression` (Optional) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
 
-* `codec` (Required) : The codec to apply. Must be either `newline` or `json`.
+* `codec` (Required) : The codec to apply. Must be either `newline`, `csv` or `json`.
 
 * `sqs` (Required) : The SQS configuration. See [SQS Configuration](#sqs_configuration) for details.
 
