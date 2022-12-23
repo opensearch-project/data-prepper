@@ -44,10 +44,12 @@ public class HistogramAggregateAction implements AggregateAction {
     private final String bucketCountsKey;
     private final String bucketsKey;
     private final String startTimeKey;
+    private final String endTimeKey;
     private final String outputFormat;
     private final String sumKey;
     private final String maxKey;
     private final String minKey;
+    private final String durationKey;
     private final String key;
     private final String units;
     private final boolean recordMinMax;
@@ -74,6 +76,8 @@ public class HistogramAggregateAction implements AggregateAction {
         this.bucketsKey = histogramAggregateActionConfig.getBucketsKey();
         this.bucketCountsKey = histogramAggregateActionConfig.getBucketCountsKey();
         this.startTimeKey = histogramAggregateActionConfig.getStartTimeKey();
+        this.endTimeKey = histogramAggregateActionConfig.getEndTimeKey();
+        this.durationKey = histogramAggregateActionConfig.getDurationKey();
         this.outputFormat = histogramAggregateActionConfig.getOutputFormat();
         this.units = histogramAggregateActionConfig.getUnits();
         this.recordMinMax = histogramAggregateActionConfig.getRecordMinMax();
@@ -141,6 +145,8 @@ public class HistogramAggregateAction implements AggregateAction {
                 }
             }
         } 
+        // Keep over-writing endTime to get the last time a record of this group received
+        groupState.put(endTimeKey, Instant.now());
         return AggregateActionResponse.nullEventResponse();
     }
 
@@ -149,9 +155,13 @@ public class HistogramAggregateAction implements AggregateAction {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
+        Instant endTime = (Instant)groupState.get(endTimeKey);
+        long startTimeNanos = getTimeNanos(startTime);
+        long endTimeNanos = getTimeNanos(endTime);
         String histogramKey = HISTOGRAM_METRIC_NAME + "_key";
         if (outputFormat.equals(OutputFormat.RAW.toString())) {
             groupState.put(histogramKey, key);
+            groupState.put(durationKey, endTimeNanos-startTimeNanos);
             groupState.put(bucketsKey, Arrays.copyOfRange(this.buckets, 1, this.buckets.length-1));
             groupState.put(startTimeKey, startTime.atZone(ZoneId.of(ZoneId.systemDefault().toString())).format(DateTimeFormatter.ofPattern(DATE_FORMAT)));
             event = JacksonEvent.builder()
@@ -166,13 +176,12 @@ public class HistogramAggregateAction implements AggregateAction {
             }
             List<Bucket> buckets = createBuckets(bucketCounts, explicitBoundsList);
             Integer countValue = (Integer)groupState.get(countKey);
-            long currentTimeNanos = getTimeNanos(Instant.now());
-            long startTimeNanos = getTimeNanos(startTime);
             Map<String, Object> attr = new HashMap<String, Object>();
             aggregateActionInput.getIdentificationKeys().forEach((k, v) -> {
                 attr.put((String)k, v);
             });
             attr.put(histogramKey, key);
+            attr.put(durationKey, endTimeNanos-startTimeNanos);
             double sum = (double)groupState.get(sumKey);
             Double max = (Double)groupState.get(maxKey);
             Double min = (Double)groupState.get(minKey);
@@ -181,7 +190,7 @@ public class HistogramAggregateAction implements AggregateAction {
             JacksonHistogram histogram = JacksonHistogram.builder()
                 .withName(HISTOGRAM_METRIC_NAME)
                 .withDescription(description)
-                .withTime(OTelProtoCodec.convertUnixNanosToISO8601(currentTimeNanos))
+                .withTime(OTelProtoCodec.convertUnixNanosToISO8601(endTimeNanos))
                 .withStartTime(OTelProtoCodec.convertUnixNanosToISO8601(startTimeNanos))
                 .withUnit(this.units)
                 .withSum(sum)

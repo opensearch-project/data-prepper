@@ -115,6 +115,8 @@ public class HistogramAggregateActionTests {
         expectedEventMap.put(expectedMinKey, expectedMin);
         expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
         assertThat(result.get().toMap(), hasKey(expectedStartTimeKey));
+        final String expectedDurationKey = histogramAggregateActionConfig.getDurationKey();
+        assertThat(result.get().toMap(), hasKey(expectedDurationKey));
         final String expectedBucketCountsKey = histogramAggregateActionConfig.getBucketCountsKey();
         final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get().toMap().get(expectedBucketCountsKey);
         for (int i = 0; i < expectedBucketCounts.length; i++) {
@@ -122,9 +124,8 @@ public class HistogramAggregateActionTests {
         }
     }
 
-    //@ValueSource(ints = {10, 20, 50, 100})
     @ParameterizedTest
-    @ValueSource(ints = {10})
+    @ValueSource(ints = {10, 20, 50, 100})
     void testHistogramAggregateOTelFormat(int testCount) throws NoSuchFieldException, IllegalAccessException {
         HistogramAggregateActionConfig histogramAggregateActionConfig = new HistogramAggregateActionConfig();
         final String testKeyPrefix = RandomStringUtils.randomAlphabetic(5)+"_";
@@ -201,7 +202,10 @@ public class HistogramAggregateActionTests {
         for (int i = 0; i < expectedBucketCounts.length; i++) {
             assertThat(expectedBucketCounts[i], equalTo(bucketCountsFromResult.get(i)));
         }
-        assertThat(result.get().toMap().get("attributes"), equalTo(Map.of(HistogramAggregateAction.HISTOGRAM_METRIC_NAME+"_key", testKey, dataKey, dataValue)));
+        assertThat(((Map<String, String>)result.get().toMap().get("attributes")), hasEntry(HistogramAggregateAction.HISTOGRAM_METRIC_NAME+"_key", testKey));
+        assertThat(((Map<String, String>)result.get().toMap().get("attributes")), hasEntry(dataKey, dataValue));
+        final String expectedDurationKey = histogramAggregateActionConfig.getDurationKey();
+        assertThat(((Map<String, String>)result.get().toMap().get("attributes")), hasKey(expectedDurationKey));
         final List<Double> explicitBoundsFromResult = (ArrayList<Double>)result.get().toMap().get("explicitBounds");
         double bucketVal = TEST_VALUE_RANGE_MIN;
         for (int i = 0; i < explicitBoundsFromResult.size(); i++) {
