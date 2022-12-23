@@ -42,8 +42,7 @@ public class RateLimiterAggregateAction implements AggregateAction {
         } else {
             rateLimiter.acquire();
         }
-        AggregateActionResponse res = new AggregateActionResponse(event);
-        return res;
+        return new AggregateActionResponse(event);
     }
 
     @Override
