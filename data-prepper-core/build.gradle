@@ -34,7 +34,7 @@ dependencies {
     implementation('org.springframework:spring-core:5.3.23') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    implementation('org.springframework:spring-context:5.3.23') {
+    implementation('org.springframework:spring-context:6.0.3') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
     implementation 'software.amazon.cloudwatchlogs:aws-embedded-metrics:2.0.0-beta-1'
