@@ -19,7 +19,7 @@ Source is the input component of a pipeline, it defines the mechanism through wh
 The buffer component will act as the layer between the *source* and *sink.* The buffer could either be in-memory or disk based. The default buffer will be in-memory queue bounded by the number of records called `bounded_blocking`. If the buffer component is not explicitly mentioned in the pipeline configuration, the default `bounded_blocking` will be used.
 
 ### Sink
-Sink in the output component of pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either services like OpenSearch, S3 or another Data Prepper pipeline. By using another Data Prepper pipeline as sink, we could chain multiple Data Prepper pipelines. Sink will have its own configuration options based on the destination type like security, request batching etc. 
+Sink is the output component of pipeline, it defines the one or more destinations to which a Data Prepper pipeline will publish the records. A sink destination could be either services like OpenSearch, S3 or another Data Prepper pipeline. By using another Data Prepper pipeline as sink, we could chain multiple Data Prepper pipelines. Sink will have its own configuration options based on the destination type like security, request batching etc. 
 
 ### Processor
 Processor component of the pipeline, these are intermediary processing units using which users can filter, transform and enrich the records into desired format before publishing to the sink. The processor is an optional component of the pipeline, if not defined the records will be published in the format as defined in the source. You can have more than one processor, and they are executed in the order they are defined in the pipeline spec.
@@ -28,7 +28,7 @@ Processor component of the pipeline, these are intermediary processing units usi
 Data Prepper supports routes on events. These allow pipeline authors to send only events matching certain conditions to different sinks.
 
 ### Prepper
-Preppers were renamed to Processors and are no longer supported starting in DataPrepper 2.0. Please see [Deprecated Pipeline Configuration Support](configuration.md#Deprecated Pipeline Configuration Support) section in the Configuration document for more details.
+Preppers were renamed to Processors and are no longer supported starting in DataPrepper 2.0. Please see [Deprecated Pipeline Configuration Support](configuration.md#deprecated-pipeline-configuration-support) section in the Configuration document for more details.
 
 ### Sample Pipeline configuration
 
