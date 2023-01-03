@@ -58,7 +58,7 @@ dependencies {
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation 'net.bytebuddy:byte-buddy:1.12.18'
     testImplementation 'net.bytebuddy:byte-buddy-agent:1.12.18'
-    testImplementation 'org.slf4j:slf4j-simple:1.7.36'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.5'
 }
 
 sourceSets {
