@@ -20,6 +20,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -32,8 +36,10 @@ public class RSSSource implements Source<Record<Document>> {
 
     private final RSSSourceConfig rssSourceConfig;
 
+    private static int count = 0;
+
     @DataPrepperPluginConstructor
-    public RSSSource(final PluginMetrics pluginMetrics, final RSSSourceConfig rssSourceConfig) {
+    public RSSSource(final PluginMetrics pluginMetrics, final RSSSourceConfig rssSourceConfig) throws InterruptedException {
         this.pluginMetrics = pluginMetrics;
         this.rssSourceConfig = rssSourceConfig;
     }
@@ -51,22 +57,64 @@ public class RSSSource implements Source<Record<Document>> {
         // TODO: Stop the service
     }
 
-    void extractItemsFromRssFeed(final RSSSourceConfig rssSourceConfig) {
-        final String url = rssSourceConfig.getUrl();
+//    public void run() throws InterruptedException {
+//        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+//
+//        Runnable task = () -> {
+//            readRssRead();
+//            count++;
+//            System.out.println("Running task to extract items from RSS feed");
+//        };
+//
+//        ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(task, 0, 5, TimeUnit.MINUTES);
+//
+//        while (true) {
+//            System.out.println("Count: "+ count);
+//            Thread.sleep(1000);
+//            if (count == 20) {
+//                System.out.println(" Count is 20 time to cancel scheduled future");
+//                scheduledFuture.cancel(true);
+//                executorService.shutdown();
+//                break;
+//            }
+//        }
+//    }
+    void extractItemsFromRssFeed(final RSSSourceConfig rssSourceConfig) throws InterruptedException {
 
+        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+
+        final String url = rssSourceConfig.getUrl();
         if(url.isEmpty()) {
             throw new IllegalArgumentException("No path specified for the RSS Feed URL");
         }
-
         final RssReader reader = new RssReader();
-        final Stream<Item> rssFeed;
-        try {
-            rssFeed = reader.read(url);
-        } catch (IOException e) {
-            throw new RuntimeException("IO Exception when reading RSS Feed URL", e);
+
+        Runnable task = () -> {
+            final Stream<Item> rssFeed;
+            try {
+                rssFeed = reader.read(url);
+            } catch (IOException e) {
+                throw new RuntimeException("IO Exception when reading RSS Feed URL", e);
+            }
+            final List<Item> items = rssFeed.collect(Collectors.toList());
+            items.forEach(this::buildEventDocument);
+            count++;
+            System.out.println("Running task to extract items from RSS feed");
+        };
+
+        ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(task, 0, 5, TimeUnit.MINUTES);
+
+        while (true) {
+            System.out.println("Count: "+ count);
+            Thread.sleep(1000);
+            if (count == 1) {
+                System.out.println(" Count is 20 time to cancel scheduled future");
+                scheduledFuture.cancel(true);
+                executorService.shutdown();
+                break;
+            }
         }
-        final List<Item> items = rssFeed.collect(Collectors.toList());
-        items.forEach(this::buildEventDocument);
+
     }
 
     private Record<Document> buildEventDocument(final Item item) {
@@ -75,5 +123,6 @@ public class RSSSource implements Source<Record<Document>> {
                 .getThis()
                 .build();
         return new Record<>(document);
+
     }
 }

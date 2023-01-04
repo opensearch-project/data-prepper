@@ -48,7 +48,7 @@ class RSSSourceTest {
     }
 
     @Test
-    void test_when_extractItemsFromRssFeed_captured() {
+    void test_when_extractItemsFromRssFeed_captured() throws InterruptedException {
         ArgumentCaptor<RSSSourceConfig> argumentCaptor = ArgumentCaptor.forClass(RSSSourceConfig.class);
         when(rssSourceConfig.getUrl()).thenReturn(VALID_RSS_URL);
         doNothing().when(rssSource).extractItemsFromRssFeed(argumentCaptor.capture());
@@ -59,7 +59,7 @@ class RSSSourceTest {
     @ParameterizedTest
     @ValueSource(strings = { "https://www.yahoo.com/news/rss/mostviewed", "https://forum.opensearch.org/latest.rss",
             "https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/dynamodbupdates.rss"})
-    void test_when_items_from_valid_rss_url_extracted(final String url) {
+    void test_when_items_from_valid_rss_url_extracted(final String url) throws InterruptedException {
         when(rssSourceConfig.getUrl()).thenReturn(url);
         doCallRealMethod().when(rssSource).extractItemsFromRssFeed(any(RSSSourceConfig.class));
         rssSource.extractItemsFromRssFeed(rssSourceConfig);
@@ -68,7 +68,7 @@ class RSSSourceTest {
     }
 
    @Test
-    void test_when_empty_rss_url_provided() {
+    void test_when_empty_rss_url_provided() throws InterruptedException {
         when(rssSourceConfig.getUrl()).thenReturn("");
        rssSource.extractItemsFromRssFeed(rssSourceConfig);
        doThrow(IllegalArgumentException.class).when(rssSource).extractItemsFromRssFeed(any(RSSSourceConfig.class));
@@ -76,7 +76,7 @@ class RSSSourceTest {
     }
 
     @Test
-    void test_when_invalid_rss_url_provided() {
+    void test_when_invalid_rss_url_provided() throws InterruptedException {
         when(rssSourceConfig.getUrl()).thenReturn(INVALID_RSS_URL);
         rssSource.extractItemsFromRssFeed(rssSourceConfig);
         doThrow(RuntimeException.class).when(rssSource).extractItemsFromRssFeed(isA(RSSSourceConfig.class));
