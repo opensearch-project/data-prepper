@@ -19,6 +19,7 @@ import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
 import io.opentelemetry.proto.resource.v1.Resource;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -44,8 +45,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -79,8 +80,8 @@ public class OTelProtoCodec {
     private static final String AT = "@";
     private static final String METRIC_ATTRIBUTES = "metric.attributes";
     private static final String EXEMPLAR_ATTRIBUTES = "exemplar.attributes";
-    private static final String INSTRUMENTATION_SCOPE_NAME = "instrumentationScope.name";
-    private static final String INSTRUMENTATION_SCOPE_VERSION = "instrumentationScope.version";
+    static final String INSTRUMENTATION_SCOPE_NAME = "instrumentationScope.name";
+    static final String INSTRUMENTATION_SCOPE_VERSION = "instrumentationScope.version";
 
     public static final Function<String, String> REPLACE_DOT_WITH_AT = i -> i.replace(DOT, AT);
     /**
@@ -144,20 +145,51 @@ public class OTelProtoCodec {
         }
 
         protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans) {
-            final List<Span> spans = new LinkedList<>();
-
             final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);
             final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource());
-            for (InstrumentationLibrarySpans is : resourceSpans.getInstrumentationLibrarySpansList()) {
-                for (io.opentelemetry.proto.trace.v1.Span sp : is.getSpansList()) {
-                    final Span span = parseSpan(sp, is.getInstrumentationLibrary(), serviceName, resourceAttributes);
-                    spans.add(span);
-                }
+
+            if (resourceSpans.getScopeSpansList().size() > 0) {
+                return parseScopeSpans(resourceSpans.getScopeSpansList(), serviceName, resourceAttributes);
             }
-            return spans;
+
+            if (resourceSpans.getInstrumentationLibrarySpansList().size() > 0) {
+                return parseInstrumentationLibrarySpans(resourceSpans.getInstrumentationLibrarySpansList(), serviceName, resourceAttributes);
+            }
+
+            LOG.debug("No spans found to parse from ResourceSpans object: {}", resourceSpans);
+            return Collections.emptyList();
         }
 
-        protected Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp, final InstrumentationLibrary instrumentationLibrary,
+        private List<Span> parseScopeSpans(final List<ScopeSpans> scopeSpansList, final String serviceName, final Map<String, Object> resourceAttributes) {
+            return scopeSpansList.stream()
+                    .map(scopeSpans -> parseSpans(scopeSpans.getSpansList(), scopeSpans.getScope(),
+                            OTelProtoCodec::getInstrumentationScopeAttributes, serviceName, resourceAttributes))
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toList());
+        }
+
+        private List<Span> parseInstrumentationLibrarySpans(final List<InstrumentationLibrarySpans> instrumentationLibrarySpansList,
+                                                            final String serviceName, final Map<String, Object> resourceAttributes) {
+            return instrumentationLibrarySpansList.stream()
+                    .map(instrumentationLibrarySpans -> parseSpans(instrumentationLibrarySpans.getSpansList(),
+                            instrumentationLibrarySpans.getInstrumentationLibrary(), this::getInstrumentationLibraryAttributes,
+                            serviceName, resourceAttributes))
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toList());
+        }
+
+        private <T> List<Span> parseSpans(final List<io.opentelemetry.proto.trace.v1.Span> spans, final T scope,
+                                          final Function<T, Map<String, Object>> scopeAttributesGetter,
+                                          final String serviceName, final Map<String, Object> resourceAttributes) {
+            return spans.stream()
+                    .map(span -> {
+                        final Map<String, Object> scopeAttributes = scopeAttributesGetter.apply(scope);
+                        return parseSpan(span, scopeAttributes, serviceName, resourceAttributes);
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        protected Span parseSpan(final io.opentelemetry.proto.trace.v1.Span sp, final Map<String, Object> instrumentationScopeAttributes,
                                      final String serviceName, final Map<String, Object> resourceAttributes) {
             return JacksonSpan.builder()
                     .withSpanId(Hex.encodeHexString(sp.getSpanId().toByteArray()))
@@ -173,7 +205,7 @@ public class OTelProtoCodec {
                             Arrays.asList(
                                     getSpanAttributes(sp),
                                     resourceAttributes,
-                                    getInstrumentationLibraryAttributes(instrumentationLibrary),
+                                    instrumentationScopeAttributes,
                                     getSpanStatusAttributes(sp.getStatus())
                             )
                     ))
@@ -308,10 +340,10 @@ public class OTelProtoCodec {
         protected Map<String, Object> getInstrumentationLibraryAttributes(final InstrumentationLibrary instrumentationLibrary) {
             final Map<String, Object> instrumentationAttr = new HashMap<>();
             if (!instrumentationLibrary.getName().isEmpty()) {
-                instrumentationAttr.put(INSTRUMENTATION_LIBRARY_NAME, instrumentationLibrary.getName());
+                instrumentationAttr.put(INSTRUMENTATION_SCOPE_NAME, instrumentationLibrary.getName());
             }
             if (!instrumentationLibrary.getVersion().isEmpty()) {
-                instrumentationAttr.put(INSTRUMENTATION_LIBRARY_VERSION, instrumentationLibrary.getVersion());
+                instrumentationAttr.put(INSTRUMENTATION_SCOPE_VERSION, instrumentationLibrary.getVersion());
             }
             return instrumentationAttr;
         }
@@ -355,12 +387,12 @@ public class OTelProtoCodec {
             final Map<String, Object> allAttributes = span.getAttributes();
             final Resource resource = constructResource(span.getServiceName(), allAttributes);
             rsBuilder.setResource(resource);
-            final InstrumentationLibrarySpans.Builder instrumentationLibrarySpansBuilder = InstrumentationLibrarySpans.newBuilder();
-            final InstrumentationLibrary instrumentationLibrary = constructInstrumentationLibrary(allAttributes);
-            instrumentationLibrarySpansBuilder.setInstrumentationLibrary(instrumentationLibrary);
+            final ScopeSpans.Builder scopeSpansBuilder = ScopeSpans.newBuilder();
+            final InstrumentationScope instrumentationScope = constructInstrumentationScope(allAttributes);
+            scopeSpansBuilder.setScope(instrumentationScope);
             final io.opentelemetry.proto.trace.v1.Span otelProtoSpan = constructSpan(span, allAttributes);
-            instrumentationLibrarySpansBuilder.addSpans(otelProtoSpan);
-            rsBuilder.addInstrumentationLibrarySpans(instrumentationLibrarySpansBuilder);
+            scopeSpansBuilder.addSpans(otelProtoSpan);
+            rsBuilder.addScopeSpans(scopeSpansBuilder);
             return rsBuilder.build();
         }
 
@@ -411,12 +443,12 @@ public class OTelProtoCodec {
             return result;
         }
 
-        protected InstrumentationLibrary constructInstrumentationLibrary(final Map<String, Object> attributes) {
-            final InstrumentationLibrary.Builder builder = InstrumentationLibrary.newBuilder();
-            final Optional<String> instrumentationLibraryName = Optional.ofNullable((String) attributes.get(INSTRUMENTATION_LIBRARY_NAME));
-            final Optional<String> instrumentationLibraryVersion = Optional.ofNullable((String) attributes.get(INSTRUMENTATION_LIBRARY_VERSION));
-            instrumentationLibraryName.ifPresent(builder::setName);
-            instrumentationLibraryVersion.ifPresent(builder::setVersion);
+        protected InstrumentationScope constructInstrumentationScope(final Map<String, Object> attributes) {
+            final InstrumentationScope.Builder builder = InstrumentationScope.newBuilder();
+            final Optional<String> instrumentationScopeName = Optional.ofNullable((String) attributes.get(INSTRUMENTATION_SCOPE_NAME));
+            final Optional<String> instrumentationScopeVersion = Optional.ofNullable((String) attributes.get(INSTRUMENTATION_SCOPE_VERSION));
+            instrumentationScopeName.ifPresent(builder::setName);
+            instrumentationScopeVersion.ifPresent(builder::setVersion);
             return builder.build();
         }
 
