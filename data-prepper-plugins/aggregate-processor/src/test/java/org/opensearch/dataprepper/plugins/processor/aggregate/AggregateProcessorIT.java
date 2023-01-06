@@ -50,7 +50,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
@@ -269,7 +269,7 @@ public class AggregateProcessorIT {
 
         assertThat(allThreadsFinished, equalTo(true));
         // Expect less number of events to be received, because of rate limiting
-        assertThat(aggregatedResult.size(), not(equalTo(NUM_THREADS * NUM_EVENTS_PER_BATCH)));
+        assertThat(aggregatedResult.size(), lessThan(NUM_THREADS * NUM_EVENTS_PER_BATCH));
     }
 
     @RepeatedTest(value = 2)

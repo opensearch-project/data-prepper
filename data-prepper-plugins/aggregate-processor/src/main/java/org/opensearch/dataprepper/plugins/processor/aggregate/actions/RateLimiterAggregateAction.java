@@ -44,9 +44,4 @@ public class RateLimiterAggregateAction implements AggregateAction {
         }
         return new AggregateActionResponse(event);
     }
-
-    @Override
-    public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
-        return Optional.empty();
-    }
 }
