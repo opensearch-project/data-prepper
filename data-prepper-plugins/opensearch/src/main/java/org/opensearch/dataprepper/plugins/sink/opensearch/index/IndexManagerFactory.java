@@ -62,9 +62,11 @@ public class IndexManagerFactory {
                                    final String indexAlias) {
             super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
             final Optional<String> ismPolicyFile = openSearchSinkConfiguration.getIndexConfiguration().getIsmPolicyFile();
+            final String s3AwsRegion = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsRegion();
+            final String s3AwsStsRoleArn = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsStsRoleArn();
             if (ismPolicyFile.isPresent()) {
                 final String indexPolicyName = getIndexPolicyName();
-                this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get());
+                this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get(), s3AwsRegion, s3AwsStsRoleArn);
             } else {
                 //Policy file doesn't exist
                 this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);

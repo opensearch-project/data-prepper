@@ -106,9 +106,11 @@ public class DefaultIndexManagerTests {
             final String indexAlias = defaultIndexManager.getIndexName(null);
             assertThat(indexAlias, matchesPattern(EXPECTED_INDEX_PATTERN));
         } catch (IOException e){}
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
     }
 
     @Test
@@ -179,9 +181,11 @@ public class DefaultIndexManagerTests {
         assertTrue(EXPECTED_INDEX_PATTERN.matcher(index).matches());
 
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
         verify(restHighLevelClient).indices();
         verify(indicesClient).exists(any(GetIndexRequest.class), any());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
@@ -196,10 +200,12 @@ public class DefaultIndexManagerTests {
         final String index = createIndexRequestCaptor.getValue().index();
         assertTrue(EXPECTED_INDEX_PATTERN.matcher(index).matches());
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
         verify(restHighLevelClient, times(2)).indices();
         verify(indicesClient).exists(any(GetIndexRequest.class), any());
         verify(indicesClient).create(any(CreateIndexRequest.class), any());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
@@ -214,6 +220,8 @@ public class DefaultIndexManagerTests {
             defaultIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
             verify(indexConfiguration).getIsmPolicyFile();
+            verify(indexConfiguration).getS3AwsRegion();
+            verify(indexConfiguration).getS3AwsStsRoleArn();
             verify(restHighLevelClient, times(2)).indices();
             verify(indicesClient).exists(any(GetIndexRequest.class), any());
             verify(indicesClient).create(any(CreateIndexRequest.class), any());
@@ -221,7 +229,7 @@ public class DefaultIndexManagerTests {
             final String index = createIndexRequestCaptor.getValue().index();
             assertTrue(EXPECTED_INDEX_PATTERN.matcher(index).matches());
 
-            verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+            verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
             verify(indexConfiguration).getIndexAlias();
         }
     }
@@ -234,9 +242,11 @@ public class DefaultIndexManagerTests {
             final String indexAlias = defaultIndexManager.getIndexName(null);
             assertEquals(INDEX_ALIAS, indexAlias);
         } catch (IOException e){}
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
     }
 
     @Test
@@ -245,8 +255,10 @@ public class DefaultIndexManagerTests {
         assertThrows(NullPointerException.class, () ->
                 indexManagerFactory.getIndexManager(IndexType.CUSTOM, null, openSearchSinkConfiguration));
         verify(indexConfiguration).getIndexAlias();
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
     }
 
     @Test
@@ -255,8 +267,10 @@ public class DefaultIndexManagerTests {
         assertThrows(NullPointerException.class, () ->
                 indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, null));
         verify(indexConfiguration).getIndexAlias();
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
     }
 
     @Test
@@ -264,8 +278,10 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
         assertEquals(true, defaultIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
         verify(indexConfiguration).getIndexAlias();
         verify(restHighLevelClient).cluster();
         verify(cluster).getSettings(any(), any());
@@ -277,8 +293,10 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
         assertEquals(false, defaultIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
         verify(indexConfiguration).getIndexAlias();
         verify(restHighLevelClient).cluster();
         verify(cluster).getSettings(any(), any());
@@ -294,9 +312,11 @@ public class DefaultIndexManagerTests {
         assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy());
         verify(restHighLevelClient).getLowLevelClient();
         verify(restClient).performRequest(any());
-        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(8)).getIndexConfiguration();
         verify(indexConfiguration, times(2)).getIsmPolicyFile();
         verify(indexConfiguration, times(2)).getIndexAlias();
+        verify(indexConfiguration, times(2)).getS3AwsRegion();
+        verify(indexConfiguration, times(2)).getS3AwsStsRoleArn();
     }
 
     @Test
@@ -309,8 +329,10 @@ public class DefaultIndexManagerTests {
         assertThrows(ResponseException.class, () -> defaultIndexManager.checkAndCreatePolicy());
         verify(restHighLevelClient, times(2)).getLowLevelClient();
         verify(restClient, times(2)).performRequest(any());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
         verify(indexConfiguration).getIndexAlias();
         verify(responseException, times(3)).getMessage();
     }
@@ -320,8 +342,10 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy());
         verify(indexConfiguration).getIndexAlias();
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
     }
 
     @Test
@@ -329,9 +353,11 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         when(indicesClient.existsTemplate(any(), any())).thenReturn(false);
         defaultIndexManager.checkAndCreateIndexTemplate(false, null);
-        verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(5)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
         verify(restHighLevelClient, times(2)).indices();
         verify(indicesClient).existsTemplate(any(), any());
         verify(indexConfiguration).getIndexAlias();
@@ -348,7 +374,9 @@ public class DefaultIndexManagerTests {
         when(indicesClient.existsTemplate(any(), any())).thenReturn(false);
         defaultIndexManager.checkAndCreateIndexTemplate(true, null);
         verify(indexConfiguration).getIsmPolicyFile();
-        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
+        verify(openSearchSinkConfiguration, times(6)).getIndexConfiguration();
         verify(restHighLevelClient, times(2)).indices();
         verify(indicesClient).existsTemplate(any(), any());
         verify(indexConfiguration).getIndexAlias();
@@ -366,7 +394,9 @@ public class DefaultIndexManagerTests {
             defaultIndexManager.checkAndCreateIndexTemplate(false, null);
         } catch (final RuntimeException e) {
             verify(indexConfiguration).getIsmPolicyFile();
-            verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+            verify(indexConfiguration).getS3AwsRegion();
+            verify(indexConfiguration).getS3AwsStsRoleArn();
+            verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
             verify(restHighLevelClient, times(2)).indices();
             verify(indicesClient).existsTemplate(any(), any());
             verify(indexConfiguration).getIndexAlias();
@@ -382,9 +412,11 @@ public class DefaultIndexManagerTests {
         when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(true);
         defaultIndexManager.checkAndCreateIndex();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
         verify(restHighLevelClient).indices();
         verify(indicesClient).exists(any(GetIndexRequest.class), any());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
@@ -395,10 +427,12 @@ public class DefaultIndexManagerTests {
         when(indicesClient.create(any(CreateIndexRequest.class), any())).thenReturn(null);
         defaultIndexManager.checkAndCreateIndex();
         verify(indexConfiguration).getIsmPolicyFile();
+        verify(indexConfiguration).getS3AwsRegion();
+        verify(indexConfiguration).getS3AwsStsRoleArn();
         verify(restHighLevelClient, times(2)).indices();
         verify(indicesClient).exists(any(GetIndexRequest.class), any());
         verify(indicesClient).create(any(CreateIndexRequest.class), any());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
@@ -411,10 +445,12 @@ public class DefaultIndexManagerTests {
             defaultIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
             verify(indexConfiguration).getIsmPolicyFile();
+            verify(indexConfiguration).getS3AwsRegion();
+            verify(indexConfiguration).getS3AwsStsRoleArn();
             verify(restHighLevelClient, times(2)).indices();
             verify(indicesClient).exists(any(GetIndexRequest.class), any());
             verify(indicesClient).create(any(CreateIndexRequest.class), any());
-            verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
+            verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
             verify(indexConfiguration).getIndexAlias();
         }
     }

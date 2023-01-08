@@ -17,6 +17,9 @@ import org.opensearch.client.RequestOptions;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
+import org.opensearch.dataprepper.plugins.file.DynamicFileReader;
+import org.opensearch.dataprepper.plugins.file.s3.S3ClientProvider;
+import org.opensearch.dataprepper.plugins.file.s3.S3FileReader;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -40,11 +43,14 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     public static final String DEFAULT_INDEX_SUFFIX = "-000001";
     private static final String POLICY_FILE_ROOT_KEY = "policy";
     private static final String POLICY_FILE_ISM_TEMPLATE_KEY = "ism_template";
+    private static final String S3_PREFIX = "s3://";
 
     private final RestHighLevelClient restHighLevelClient;
     private final String policyName;
     private final String policyFile;
     private final String policyFileWithoutIsmTemplate;
+    private String s3AwsRegion;
+    private String s3AwsStsRoleArn;
 
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
@@ -62,7 +68,9 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
 
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
-                               final String policyFile) {
+                               final String policyFile,
+                               final String s3AwsRegion,
+                               final String s3AwsStsRoleArn) {
         checkNotNull(restHighLevelClient);
         checkArgument(StringUtils.isNotEmpty(policyName));
         checkArgument(StringUtils.isNotEmpty(policyFile));
@@ -70,6 +78,8 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         this.policyName = policyName;
         this.policyFile = policyFile;
         this.policyFileWithoutIsmTemplate = null;
+        this.s3AwsRegion = s3AwsRegion;
+        this.s3AwsStsRoleArn = s3AwsStsRoleArn;
     }
 
     @Override
@@ -142,17 +152,27 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     private String retrievePolicyJsonString(final String fileName) throws IOException {
-        final File file = new File(fileName);
-        final URL policyFileUrl;
-        if (file.isAbsolute()) {
-            policyFileUrl = file.toURI().toURL();
-        } else {
-            policyFileUrl = getClass().getClassLoader().getResource(fileName);
-        }
         final StringBuilder policyJsonBuffer = new StringBuilder();
-        try (final InputStream inputStream = policyFileUrl.openStream();
-             final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
-            reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+        if (fileName.startsWith(S3_PREFIX)) {
+            final S3ClientProvider clientProvider = new S3ClientProvider(s3AwsRegion, s3AwsStsRoleArn);
+            final DynamicFileReader s3FileReader = new S3FileReader(clientProvider.buildS3Client(), fileName);
+            try (final InputStream inputStream = s3FileReader.getFile();
+                 final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+                reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+            }
+        }
+        else {
+            final File file = new File(fileName);
+            final URL policyFileUrl;
+            if (file.isAbsolute()) {
+                policyFileUrl = file.toURI().toURL();
+            } else {
+                policyFileUrl = getClass().getClassLoader().getResource(fileName);
+            }
+            try (final InputStream inputStream = policyFileUrl.openStream();
+                 final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+                reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+            }
         }
         return policyJsonBuffer.toString();
     }

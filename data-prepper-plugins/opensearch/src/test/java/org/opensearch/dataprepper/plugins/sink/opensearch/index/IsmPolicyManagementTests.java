@@ -78,7 +78,7 @@ public class IsmPolicyManagementTests {
     public void checkAndCreatePolicy_OnlyOnePolicyFile_TwoExceptions() throws IOException {
         ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient,
                 POLICY_NAME,
-                IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE);
+                IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, null, null);
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException);
         when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
@@ -91,7 +91,7 @@ public class IsmPolicyManagementTests {
     public void checkAndCreatePolicy_OnlyOnePolicyFile_FirstExceptionThenSucceeds() throws IOException {
         ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient,
                 POLICY_NAME,
-                IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE);
+                IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, null, null);
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
         when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");
