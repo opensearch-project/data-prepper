@@ -244,6 +244,7 @@ public class AggregateProcessorIT {
         RateLimiterAggregateActionConfig rateLimiterAggregateActionConfig = new RateLimiterAggregateActionConfig();
         final int eventsPerSecond = 500;
         setField(RateLimiterAggregateActionConfig.class, rateLimiterAggregateActionConfig, "eventsPerSecond", eventsPerSecond);
+
         aggregateAction = new RateLimiterAggregateAction(rateLimiterAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
