@@ -307,6 +307,7 @@ public class DefaultIndexManagerTests {
     public void checkAndCreatePolicy_Normal() throws IOException {
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         when(indexConfiguration.getIsmPolicyFile()).thenReturn(Optional.of("test-custom-index-policy-file.json"));
+        when(indexConfiguration.getS3AwsRegion()).thenReturn("us-east-1");
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         assertEquals(Optional.empty(), defaultIndexManager.checkAndCreatePolicy());
@@ -322,6 +323,7 @@ public class DefaultIndexManagerTests {
     @Test
     public void checkAndCreatePolicy_Exception() throws IOException {
         when(indexConfiguration.getIsmPolicyFile()).thenReturn(Optional.of("test-custom-index-policy-file.json"));
+        when(indexConfiguration.getS3AwsRegion()).thenReturn("us-east-1");
         defaultIndexManager = indexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration);
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException);

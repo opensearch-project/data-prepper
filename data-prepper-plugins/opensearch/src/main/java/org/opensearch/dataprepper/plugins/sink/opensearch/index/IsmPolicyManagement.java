@@ -18,8 +18,8 @@ import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
 import org.opensearch.dataprepper.plugins.file.DynamicFileReader;
-import org.opensearch.dataprepper.plugins.file.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.file.s3.S3FileReader;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -49,8 +49,7 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     private final String policyName;
     private final String policyFile;
     private final String policyFileWithoutIsmTemplate;
-    private String s3AwsRegion;
-    private String s3AwsStsRoleArn;
+    private S3Client s3Client;
 
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
@@ -69,17 +68,16 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
                                final String policyFile,
-                               final String s3AwsRegion,
-                               final String s3AwsStsRoleArn) {
+                               final S3Client s3Client) {
         checkNotNull(restHighLevelClient);
         checkArgument(StringUtils.isNotEmpty(policyName));
         checkArgument(StringUtils.isNotEmpty(policyFile));
+        checkNotNull(s3Client);
         this.restHighLevelClient = restHighLevelClient;
         this.policyName = policyName;
         this.policyFile = policyFile;
         this.policyFileWithoutIsmTemplate = null;
-        this.s3AwsRegion = s3AwsRegion;
-        this.s3AwsStsRoleArn = s3AwsStsRoleArn;
+        this.s3Client = s3Client;
     }
 
     @Override
@@ -152,27 +150,36 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     private String retrievePolicyJsonString(final String fileName) throws IOException {
-        final StringBuilder policyJsonBuffer = new StringBuilder();
         if (fileName.startsWith(S3_PREFIX)) {
-            final S3ClientProvider clientProvider = new S3ClientProvider(s3AwsRegion, s3AwsStsRoleArn);
-            final DynamicFileReader s3FileReader = new S3FileReader(clientProvider.buildS3Client(), fileName);
-            try (final InputStream inputStream = s3FileReader.getFile();
-                 final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
-                reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
-            }
+            return retrievePolicyJsonStringFromS3(fileName);
+        } else {
+            return retrievePolicyJsonStringFromFile(fileName);
         }
-        else {
-            final File file = new File(fileName);
-            final URL policyFileUrl;
-            if (file.isAbsolute()) {
-                policyFileUrl = file.toURI().toURL();
-            } else {
-                policyFileUrl = getClass().getClassLoader().getResource(fileName);
-            }
-            try (final InputStream inputStream = policyFileUrl.openStream();
-                 final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
-                reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
-            }
+    }
+
+    private String retrievePolicyJsonStringFromS3(final String fileName) throws IOException {
+        final StringBuilder policyJsonBuffer = new StringBuilder();
+        final DynamicFileReader s3FileReader = new S3FileReader(s3Client, fileName);
+        try (final InputStream inputStream = s3FileReader.getFile();
+             final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+            reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+        }
+        return policyJsonBuffer.toString();
+    }
+
+    private String retrievePolicyJsonStringFromFile(final String fileName) throws IOException {
+        final StringBuilder policyJsonBuffer = new StringBuilder();
+        final File file = new File(fileName);
+        final URL policyFileUrl;
+
+        if (file.isAbsolute()) {
+            policyFileUrl = file.toURI().toURL();
+        } else {
+            policyFileUrl = getClass().getClassLoader().getResource(fileName);
+        }
+        try (final InputStream inputStream = policyFileUrl.openStream();
+             final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+            reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
         }
         return policyJsonBuffer.toString();
     }

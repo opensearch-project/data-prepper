@@ -6,7 +6,9 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.dataprepper.plugins.file.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -65,8 +67,10 @@ public class IndexManagerFactory {
             final String s3AwsRegion = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsRegion();
             final String s3AwsStsRoleArn = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsStsRoleArn();
             if (ismPolicyFile.isPresent()) {
+                final S3ClientProvider clientProvider = new S3ClientProvider(s3AwsRegion, s3AwsStsRoleArn);
+                final S3Client s3Client = clientProvider.buildS3Client();
                 final String indexPolicyName = getIndexPolicyName();
-                this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get(), s3AwsRegion, s3AwsStsRoleArn);
+                this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get(), s3Client);
             } else {
                 //Policy file doesn't exist
                 this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);

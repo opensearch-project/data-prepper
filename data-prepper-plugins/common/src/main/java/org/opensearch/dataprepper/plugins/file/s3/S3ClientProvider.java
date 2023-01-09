@@ -12,6 +12,7 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
 import software.amazon.awssdk.core.retry.conditions.RetryCondition;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -28,6 +29,7 @@ public class S3ClientProvider {
 
     private final String awsRegion;
     private final String awsStsRoleArn;
+    private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
 
     public S3ClientProvider(final String awsRegion,
                           final String awsStsRoleArn) {
@@ -41,6 +43,7 @@ public class S3ClientProvider {
         return S3Client.builder()
                 .region(Region.of(awsRegion))
                 .credentialsProvider(credentialsProvider)
+                .httpClientBuilder(apacheHttpClientBuilder)
                 .build();
     }
 

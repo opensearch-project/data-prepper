@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.File;
 import java.io.IOException;
@@ -54,8 +55,8 @@ public class IndexConfiguration {
     private final String action;
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
+    private final S3Client s3Client;
 
-    private static final Logger LOG = LoggerFactory.getLogger(IndexManager.class);
     private static final String S3_PREFIX = "s3://";
     private static final String DEFAULT_AWS_REGION = "us-east-1";
 
@@ -65,6 +66,7 @@ public class IndexConfiguration {
 
         this.s3AwsRegion = builder.s3AwsRegion;
         this.s3AwsStsRoleArn = builder.s3AwsStsRoleArn;
+        this.s3Client = builder.s3Client;
 
         this.indexTemplate = readIndexTemplate(builder.templateFile, indexType);
 
@@ -146,9 +148,14 @@ public class IndexConfiguration {
 
         if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
             || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
-            builder.withAwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
-            builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(S3_AWS_STS_ROLE_ARN, null));
+            builder.withS3AwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
+            builder.withS3AWSStsRoleArn(pluginSetting.getStringOrDefault(S3_AWS_STS_ROLE_ARN, null));
+
+            final S3ClientProvider clientProvider = new S3ClientProvider(builder.s3AwsRegion, builder.s3AwsStsRoleArn);
+            builder.withS3Client(clientProvider.buildS3Client());
         }
+
+
 
         return builder.build();
     }
@@ -214,11 +221,8 @@ public class IndexConfiguration {
                         .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
                 if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
-                    final S3ClientProvider clientProvider = new S3ClientProvider(s3AwsRegion, s3AwsStsRoleArn);
-
-                    DynamicFileReader s3FileReader = new S3FileReader(clientProvider.buildS3Client(), templateFile);
+                    DynamicFileReader s3FileReader = new S3FileReader(s3Client, templateFile);
                     s3TemplateFile = s3FileReader.getFile();
-
                 } else {
                     templateURL = new File(templateFile).toURI().toURL();
                 }
@@ -250,6 +254,7 @@ public class IndexConfiguration {
         private String action;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
+        private S3Client s3Client;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -308,13 +313,13 @@ public class IndexConfiguration {
             return this;
         }
 
-        public Builder withAwsRegion(final String s3AwsRegion) {
+        public Builder withS3AwsRegion(final String s3AwsRegion) {
             checkNotNull(s3AwsRegion, "s3AwsRegion cannot be null");
             this.s3AwsRegion = s3AwsRegion;
             return this;
         }
 
-        public Builder withAWSStsRoleArn(final String s3AwsStsRoleArn) {
+        public Builder withS3AWSStsRoleArn(final String s3AwsStsRoleArn) {
             checkArgument(s3AwsStsRoleArn == null || s3AwsStsRoleArn.length() <= 2048, "s3AwsStsRoleArn length cannot exceed 2048");
             if(s3AwsStsRoleArn != null) {
                 try {
@@ -324,6 +329,12 @@ public class IndexConfiguration {
                 }
             }
             this.s3AwsStsRoleArn = s3AwsStsRoleArn;
+            return this;
+        }
+
+        public Builder withS3Client(final S3Client s3Client) {
+            checkArgument(s3Client != null);
+            this.s3Client = s3Client;
             return this;
         }
 
