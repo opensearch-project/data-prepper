@@ -14,8 +14,6 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 
 import com.google.common.util.concurrent.RateLimiter;
 
-import java.util.Optional;
-
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action 
  * 

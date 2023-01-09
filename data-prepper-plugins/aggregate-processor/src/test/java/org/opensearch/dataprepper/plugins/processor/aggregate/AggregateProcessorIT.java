@@ -51,6 +51,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
@@ -241,7 +242,8 @@ public class AggregateProcessorIT {
     @RepeatedTest(value = 2)
     void aggregateWithRateLimiterAction() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         RateLimiterAggregateActionConfig rateLimiterAggregateActionConfig = new RateLimiterAggregateActionConfig();
-        setField(RateLimiterAggregateActionConfig.class, rateLimiterAggregateActionConfig, "eventsPerSecond", 500);
+        final int eventsPerSecond = 500;
+        setField(RateLimiterAggregateActionConfig.class, rateLimiterAggregateActionConfig, "eventsPerSecond", eventsPerSecond);
         aggregateAction = new RateLimiterAggregateAction(rateLimiterAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);
@@ -270,6 +272,7 @@ public class AggregateProcessorIT {
         assertThat(allThreadsFinished, equalTo(true));
         // Expect less number of events to be received, because of rate limiting
         assertThat(aggregatedResult.size(), lessThan(NUM_THREADS * NUM_EVENTS_PER_BATCH));
+        assertThat(aggregatedResult.size(), lessThanOrEqualTo(eventsPerSecond * GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
     }
 
     @RepeatedTest(value = 2)
