@@ -13,8 +13,6 @@ import org.opensearch.dataprepper.plugins.file.DynamicFileReader;
 import org.opensearch.dataprepper.plugins.file.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.file.s3.S3FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.services.s3.S3Client;
 

@@ -142,15 +142,6 @@ public class IsmPolicyManagementTests {
     }
 
     @Test
-    public void IsmPolicyManagement_with_null_s3Client_Exception() {
-        assertThrows(NullPointerException.class,
-                () -> new IsmPolicyManagement(restHighLevelClient,
-                        POLICY_NAME,
-                        TEST_ISM_FILE_PATH_S3, (S3Client) null)
-        );
-    }
-
-    @Test
     public void checkAndCreatePolicy_ExceptionFirstThenSucceed() throws IOException {
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);

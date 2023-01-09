@@ -72,7 +72,6 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         checkNotNull(restHighLevelClient);
         checkArgument(StringUtils.isNotEmpty(policyName));
         checkArgument(StringUtils.isNotEmpty(policyFile));
-        checkNotNull(s3Client);
         this.restHighLevelClient = restHighLevelClient;
         this.policyName = policyName;
         this.policyFile = policyFile;

@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.Optional;
 
 public class IndexManagerFactory {
+    private static final String S3_PREFIX = "s3://";
 
     public final AbstractIndexManager getIndexManager(final IndexType indexType,
                                         final RestHighLevelClient restHighLevelClient,
@@ -64,11 +65,14 @@ public class IndexManagerFactory {
                                    final String indexAlias) {
             super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
             final Optional<String> ismPolicyFile = openSearchSinkConfiguration.getIndexConfiguration().getIsmPolicyFile();
-            final String s3AwsRegion = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsRegion();
-            final String s3AwsStsRoleArn = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsStsRoleArn();
             if (ismPolicyFile.isPresent()) {
-                final S3ClientProvider clientProvider = new S3ClientProvider(s3AwsRegion, s3AwsStsRoleArn);
-                final S3Client s3Client = clientProvider.buildS3Client();
+                S3Client s3Client = null;
+                if (ismPolicyFile.get().startsWith(S3_PREFIX)) {
+                    final String s3AwsRegion = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsRegion();
+                    final String s3AwsStsRoleArn = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsStsRoleArn();
+                    final S3ClientProvider clientProvider = new S3ClientProvider(s3AwsRegion, s3AwsStsRoleArn);
+                    s3Client = clientProvider.buildS3Client();
+                }
                 final String indexPolicyName = getIndexPolicyName();
                 this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get(), s3Client);
             } else {
