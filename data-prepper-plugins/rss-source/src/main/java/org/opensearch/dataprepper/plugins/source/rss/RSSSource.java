@@ -7,6 +7,10 @@ package org.opensearch.dataprepper.plugins.source.rss;
 
 import com.apptasticsoftware.rssreader.Item;
 import com.apptasticsoftware.rssreader.RssReader;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -28,7 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "rss", pluginType = Source.class, pluginConfigurationType =  RSSSourceConfig.class)
-public class RSSSource implements Source<Record<Document>> {
+public class RSSSource implements Source<Record<Document>>, Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(RSSSource.class);
 
@@ -36,7 +40,11 @@ public class RSSSource implements Source<Record<Document>> {
 
     private final RSSSourceConfig rssSourceConfig;
 
+    private ScheduledExecutorService executorService;
+
     private static int count = 0;
+
+    private Thread pollingThread;
 
     @DataPrepperPluginConstructor
     public RSSSource(final PluginMetrics pluginMetrics, final RSSSourceConfig rssSourceConfig) throws InterruptedException {
@@ -50,38 +58,24 @@ public class RSSSource implements Source<Record<Document>> {
         if (buffer == null) {
             throw new IllegalStateException("Buffer is null");
         }
+        try {
+            extractItemsFromRssFeed(rssSourceConfig);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        pollingThread = new Thread();
+        pollingThread.start();
+
     }
 
     @Override
     public void stop() {
-        // TODO: Stop the service
+        executorService.shutdown();
     }
 
-//    public void run() throws InterruptedException {
-//        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
-//
-//        Runnable task = () -> {
-//            readRssRead();
-//            count++;
-//            System.out.println("Running task to extract items from RSS feed");
-//        };
-//
-//        ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(task, 0, 5, TimeUnit.MINUTES);
-//
-//        while (true) {
-//            System.out.println("Count: "+ count);
-//            Thread.sleep(1000);
-//            if (count == 20) {
-//                System.out.println(" Count is 20 time to cancel scheduled future");
-//                scheduledFuture.cancel(true);
-//                executorService.shutdown();
-//                break;
-//            }
-//        }
-//    }
     void extractItemsFromRssFeed(final RSSSourceConfig rssSourceConfig) throws InterruptedException {
 
-        ScheduledExecutorService executorService = Executors.newScheduledThreadPool(1);
+        executorService = Executors.newScheduledThreadPool(1);
 
         final String url = rssSourceConfig.getUrl();
         if(url.isEmpty()) {
@@ -107,12 +101,8 @@ public class RSSSource implements Source<Record<Document>> {
         while (true) {
             System.out.println("Count: "+ count);
             Thread.sleep(1000);
-            if (count == 1) {
-                System.out.println(" Count is 20 time to cancel scheduled future");
-                scheduledFuture.cancel(true);
-                executorService.shutdown();
-                break;
-            }
+            scheduledFuture.cancel(true);
+            executorService.shutdown();
         }
 
     }
@@ -122,7 +112,16 @@ public class RSSSource implements Source<Record<Document>> {
                 .withData(item)
                 .getThis()
                 .build();
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonElement je = JsonParser.parseString(document.toJsonString());
+        String prettyJson = gson.toJson(je);
+        System.out.println("Data Prepper Event: " + prettyJson);
         return new Record<>(document);
+
+    }
+
+    @Override
+    public void run() {
 
     }
 }

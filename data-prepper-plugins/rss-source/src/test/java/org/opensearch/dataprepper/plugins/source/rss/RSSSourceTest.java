@@ -7,10 +7,20 @@ package org.opensearch.dataprepper.plugins.source.rss;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+
+import java.io.File;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -65,6 +75,31 @@ class RSSSourceTest {
         rssSource.extractItemsFromRssFeed(rssSourceConfig);
         verify(rssSource, times(1)).extractItemsFromRssFeed(rssSourceConfig);
 
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(RssFeedProviders.class)
+    void test_when_items_from_one_valid_rss_url_extracted(final String url) throws InterruptedException {
+        when(rssSourceConfig.getUrl()).thenReturn(url);
+        doCallRealMethod().when(rssSource).extractItemsFromRssFeed(any(RSSSourceConfig.class));
+        rssSource.extractItemsFromRssFeed(rssSourceConfig);
+        verify(rssSource, times(1)).extractItemsFromRssFeed(rssSourceConfig);
+
+    }
+
+    static class RssFeedProviders implements ArgumentsProvider {
+
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws Exception {
+            return provideSampleRssUrlFeeds().map(Arguments::of);
+        }
+    }
+
+    private static Stream<String> provideSampleRssUrlFeeds() {
+        final File directoryPath = new File("src/test/resources");
+        return Arrays.stream(Objects.requireNonNull(directoryPath.listFiles((dir, name) -> name.endsWith(".rss"))))
+                .filter(File::isFile)
+                .map(File::toURL).map(URL::toString);
     }
 
    @Test
