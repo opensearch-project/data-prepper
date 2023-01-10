@@ -29,6 +29,7 @@ task removeDataPrepperNetwork(type: DockerRemoveNetwork) {
 }
 
 def AGGREGATE_PIPELINE_YAML = "aggregate-e2e-pipeline.yml"
+def LOG_METRICS_PIPELINE_YAML = "log-metrics-pipeline.yml"
 def DATA_PREPPER_CONFIG_LOCAL_NODE = "data_prepper_local_node.yml"
 def DATA_PREPPER_CONFIG_STATIC = "data_prepper_static.yml"
 
@@ -63,6 +64,7 @@ def createDataPrepperDockerContainer(final String taskBaseName, final String dat
         hostConfig.portBindings = [String.format('%d:2021', sourcePort)]
         hostConfig.network = createDataPrepperNetwork.getNetworkName()
         hostConfig.binds = [(project.file("src/integrationTest/resources/${pipelineConfigYAML}").toString()):"/app/data-prepper/pipelines/pipelines.yaml",
+                            "/tmp":"/tmp",
                             (project.file("src/integrationTest/resources/${dataPrepperConfigYAML}").toString()):"/app/data-prepper/config/data-prepper-config.yaml"]
         cmd = ['java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute']
         targetImageId buildDataPrepperDockerImage.getImageId()
@@ -173,6 +175,17 @@ def createLocalAggregateDataPrepper2Task = createDataPrepperDockerContainer(
 
 def localAggregateEndToEndTest = createEndToEndTest("localAggregateEndToEndTest", includeLocalAggregateTestsMatchPattern,
         createLocalAggregateDataPrepper1Task, createLocalAggregateDataPrepper2Task)
+
+// Discovery mode: LOCAL_NODE
+def includeLocalLogMetricsTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndLogMetricsTest.testLogMetricsPipelineWithMultipleNodesEndToEnd*"
+
+def createLocalLogMetricsDataPrepper1Task = createDataPrepperDockerContainer(
+        "localLogMetricsDataPrepper1", "dataprepper1", 2021, "${LOG_METRICS_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
+def createLocalLogMetricsDataPrepper2Task = createDataPrepperDockerContainer(
+        "localLogMetricsDataPrepper2", "dataprepper2", 2022, "${LOG_METRICS_PIPELINE_YAML}", "${DATA_PREPPER_CONFIG_LOCAL_NODE}")
+
+def localLogMetricsEndToEndTest = createEndToEndTest("localLogMetricsEndToEndTest", includeLocalLogMetricsTestsMatchPattern,
+        createLocalLogMetricsDataPrepper1Task, createLocalLogMetricsDataPrepper2Task)
 
 // Discovery mode: STATIC with SSL & mTLS
 def includeStaticAggregateTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndPeerForwarderTest.testAggregatePipelineWithMultipleNodesEndToEnd*"
