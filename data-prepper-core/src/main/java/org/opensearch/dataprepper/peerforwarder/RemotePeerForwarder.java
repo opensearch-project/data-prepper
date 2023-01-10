@@ -141,8 +141,17 @@ class RemotePeerForwarder implements PeerForwarder {
             final Event event = record.getData();
 
             final List<String> identificationKeyValues = new LinkedList<>();
+            boolean identificationKeysNotFound = false;
             for (final String identificationKey : identificationKeys) {
-                identificationKeyValues.add(event.get(identificationKey, Object.class).toString());
+                Object identificationKeyValue = event.get(identificationKey, Object.class);
+                if (identificationKeyValue == null) {
+                    identificationKeysNotFound = true;
+                    break;
+                }
+                identificationKeyValues.add(identificationKeyValue.toString());
+            }
+            if (identificationKeysNotFound) {
+                continue;
             }
 
             final String dataPrepperIp = hashRing.getServerIp(identificationKeyValues).orElse(StaticPeerListProvider.LOCAL_ENDPOINT);

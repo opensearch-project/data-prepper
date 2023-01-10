@@ -214,6 +214,36 @@ class RemotePeerForwarderTest {
         verify(recordsReceivedFromPeersCounter).increment(3.0);
     }
 
+    @Test
+    void test_receiveRecords_with_no_identification_keys() throws Exception {
+        AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
+        when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
+
+        final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
+        lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
+        lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
+
+        RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> testRecords = generateBatchRecords(2);
+        // Add an event that doesn't have identification keys in it
+        final Map<String, String> eventData = new HashMap<>();
+        eventData.put("key3", "value3");
+        eventData.put("key4", "value4");
+        final JacksonEvent event = JacksonLog.builder().withData(eventData).build();
+        testRecords.add(new Record<>(event));
+
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
+        assertThat(records.size(), equalTo(1));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(1.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(1.0);
+        verify(recordsToBeForwardedCounter).increment(1.0);
+        verify(requestsSuccessfulCounter).increment();
+        verify(recordsSuccessfullyForwardedCounter).increment(1.0);
+    }
+
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {
         final Collection<Record<Event>> results = new ArrayList<>();
         for (int i = 0; i < numRecords; i++) {
