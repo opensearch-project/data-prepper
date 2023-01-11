@@ -44,7 +44,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
     static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
     static final String SPANS_DB_COUNT = "spansDbCount";
     static final String TRACE_GROUP_DB_COUNT = "traceGroupDbCount";
-    static final String RELATIONSHIP_COUNT = "RelationshipCount";
+    static final String RELATIONSHIP_COUNT = "relationshipCount";
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulProcessor.class);
     private static final String EMPTY_SUFFIX = "-empty";
