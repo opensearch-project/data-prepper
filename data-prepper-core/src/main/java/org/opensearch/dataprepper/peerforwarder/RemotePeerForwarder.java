@@ -38,6 +38,7 @@ class RemotePeerForwarder implements PeerForwarder {
     static final String RECORDS_SUCCESSFULLY_FORWARDED = "recordsSuccessfullyForwarded";
     static final String RECORDS_FAILED_FORWARDING = "recordsFailedForwarding";
     static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
+    static final String RECORDS_MISSING_IDENTIFICATION_KEYS = "recordsMissingIdentificationKeys";
     static final String REQUESTS_FAILED = "requestsFailed";
     static final String REQUESTS_SUCCESSFUL = "requestsSuccessful";
 
@@ -53,6 +54,7 @@ class RemotePeerForwarder implements PeerForwarder {
     private final Counter recordsSuccessfullyForwardedCounter;
     private final Counter recordsFailedForwardingCounter;
     private final Counter recordsReceivedFromPeersCounter;
+    private final Counter recordsMissingIdentificationKeys;
     private final Counter requestsFailedCounter;
     private final Counter requestsSuccessfulCounter;
 
@@ -75,6 +77,7 @@ class RemotePeerForwarder implements PeerForwarder {
         recordsSuccessfullyForwardedCounter = pluginMetrics.counter(RECORDS_SUCCESSFULLY_FORWARDED);
         recordsFailedForwardingCounter = pluginMetrics.counter(RECORDS_FAILED_FORWARDING);
         recordsReceivedFromPeersCounter = pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS);
+        recordsMissingIdentificationKeys = pluginMetrics.counter(RECORDS_MISSING_IDENTIFICATION_KEYS);
         requestsFailedCounter = pluginMetrics.counter(REQUESTS_FAILED);
         requestsSuccessfulCounter = pluginMetrics.counter(REQUESTS_SUCCESSFUL);
     }
@@ -141,17 +144,14 @@ class RemotePeerForwarder implements PeerForwarder {
             final Event event = record.getData();
 
             final List<String> identificationKeyValues = new LinkedList<>();
-            boolean identificationKeysNotFound = false;
             for (final String identificationKey : identificationKeys) {
                 Object identificationKeyValue = event.get(identificationKey, Object.class);
                 if (identificationKeyValue == null) {
-                    identificationKeysNotFound = true;
-                    break;
+                    identificationKeyValues.add(null);
+                    recordsMissingIdentificationKeys.increment(1);
+                } else {
+                    identificationKeyValues.add(identificationKeyValue.toString());
                 }
-                identificationKeyValues.add(identificationKeyValue.toString());
-            }
-            if (identificationKeysNotFound) {
-                continue;
             }
 
             final String dataPrepperIp = hashRing.getServerIp(identificationKeyValues).orElse(StaticPeerListProvider.LOCAL_ENDPOINT);

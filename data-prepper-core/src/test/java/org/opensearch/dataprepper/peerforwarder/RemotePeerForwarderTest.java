@@ -50,6 +50,7 @@ import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECOR
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_SUCCESSFULLY_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_PROCESSED_LOCALLY;
+import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_MISSING_IDENTIFICATION_KEYS;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_FAILED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_SUCCESSFUL;
 
@@ -87,6 +88,9 @@ class RemotePeerForwarderTest {
     private Counter recordsReceivedFromPeersCounter;
 
     @Mock
+    private Counter recordsMissingIdentificationKeys;
+
+    @Mock
     private Counter requestsFailedCounter;
 
     @Mock
@@ -110,6 +114,7 @@ class RemotePeerForwarderTest {
         when(pluginMetrics.counter(RECORDS_SUCCESSFULLY_FORWARDED)).thenReturn(recordsSuccessfullyForwardedCounter);
         when(pluginMetrics.counter(RECORDS_FAILED_FORWARDING)).thenReturn(recordsFailedForwardingCounter);
         when(pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS)).thenReturn(recordsReceivedFromPeersCounter);
+        when(pluginMetrics.counter(RECORDS_MISSING_IDENTIFICATION_KEYS)).thenReturn(recordsMissingIdentificationKeys);
         when(pluginMetrics.counter(REQUESTS_FAILED)).thenReturn(requestsFailedCounter);
         when(pluginMetrics.counter(REQUESTS_SUCCESSFUL)).thenReturn(requestsSuccessfulCounter);
     }
@@ -215,7 +220,7 @@ class RemotePeerForwarderTest {
     }
 
     @Test
-    void test_receiveRecords_with_no_identification_keys() throws Exception {
+    void test_receiveRecords_with_missing_identification_keys() throws Exception {
         AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
         when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
         when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
@@ -235,10 +240,11 @@ class RemotePeerForwarderTest {
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
         verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
-        assertThat(records.size(), equalTo(1));
+        assertThat(records.size(), equalTo(2));
 
-        verify(recordsToBeProcessedLocallyCounter).increment(1.0);
-        verify(recordsActuallyProcessedLocallyCounter).increment(1.0);
+        verify(recordsToBeProcessedLocallyCounter).increment(2.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
+        verify(recordsMissingIdentificationKeys, times(2)).increment(1.0);
         verify(recordsToBeForwardedCounter).increment(1.0);
         verify(requestsSuccessfulCounter).increment();
         verify(recordsSuccessfullyForwardedCounter).increment(1.0);
