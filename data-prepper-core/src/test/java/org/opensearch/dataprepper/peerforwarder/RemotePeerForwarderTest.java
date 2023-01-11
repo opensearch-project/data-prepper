@@ -244,7 +244,7 @@ class RemotePeerForwarderTest {
 
         verify(recordsToBeProcessedLocallyCounter).increment(2.0);
         verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
-        verify(recordsMissingIdentificationKeys, times(2)).increment(1.0);
+        verify(recordsMissingIdentificationKeys).increment(1.0);
         verify(recordsToBeForwardedCounter).increment(1.0);
         verify(requestsSuccessfulCounter).increment();
         verify(recordsSuccessfullyForwardedCounter).increment(1.0);
