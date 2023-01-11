@@ -6,12 +6,16 @@
 package org.opensearch.dataprepper.plugins.file.s3;
 
 import org.opensearch.dataprepper.plugins.file.DynamicFileReader;
+import org.opensearch.dataprepper.plugins.file.exception.S3ObjectTooLargeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectAttributesRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectAttributesResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ObjectAttributes;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -33,6 +37,7 @@ public class S3FileReader implements DynamicFileReader {
     public ResponseInputStream<GetObjectResponse> getFile() {
         try {
             final URI fileUri = new URI(filePath);
+            validateS3ObjectSize(fileUri);
 
             final GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(fileUri.getHost())
@@ -44,6 +49,21 @@ public class S3FileReader implements DynamicFileReader {
         } catch (URISyntaxException ex) {
             LOG.error("Error encountered while parsing the Amazon S3 URI in OpenSearch sink.", ex);
             throw new RuntimeException(ex);
+        }
+    }
+
+    private void validateS3ObjectSize(final URI fileUri) {
+        final GetObjectAttributesRequest getObjectAttributesRequest = GetObjectAttributesRequest.builder()
+                .bucket(fileUri.getHost())
+                .key(fileUri.getPath().substring(1))
+                .objectAttributes(ObjectAttributes.OBJECT_SIZE)
+                .build();
+
+        final GetObjectAttributesResponse objectAttributes = s3Client.getObjectAttributes(getObjectAttributesRequest);
+        final Long objectSize = objectAttributes.objectSize();
+
+        if (objectSize > 1_000_000L) {
+            throw new S3ObjectTooLargeException(String.format("S3 Object size can't be more than 1MB. %s object size is %s", fileUri.getPath().substring(1), objectSize));
         }
     }
 }

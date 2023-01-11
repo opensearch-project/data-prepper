@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectAttributesRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectAttributesResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
 import java.net.MalformedURLException;
@@ -80,23 +82,27 @@ public class IndexConfigurationTests {
     public void testValidCustom_from_s3() {
         final String testTemplateFilePath = "s3://folder/file.json";
         final String testS3AwsRegion = "us-east-2";
+        final String testS3StsRoleArn = "arn:aws:iam::123456789:user/user-role";
 
         final S3Client s3Client = mock(S3Client.class);
         when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(null);
+
+        final GetObjectAttributesResponse getObjectAttributesResponse = GetObjectAttributesResponse.builder().objectSize(100L).build();
+        when(s3Client.getObjectAttributes(any(GetObjectAttributesRequest.class))).thenReturn(getObjectAttributesResponse);
 
         final String testIndexAlias = "foo";
         IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexAlias(testIndexAlias)
                 .withTemplateFile(testTemplateFilePath)
-                .withIsmPolicyFile(TEST_CUSTOM_INDEX_POLICY_FILE)
-                .withBulkSize(10)
                 .withS3AwsRegion(testS3AwsRegion)
+                .withS3AWSStsRoleArn(testS3StsRoleArn)
                 .withS3Client(s3Client)
                 .build();
 
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
-        assertEquals(10, indexConfiguration.getBulkSize());
+        assertEquals(testS3AwsRegion, indexConfiguration.getS3AwsRegion());
+        assertEquals(testS3StsRoleArn, indexConfiguration.getS3AwsStsRoleArn());
     }
 
     @Test
