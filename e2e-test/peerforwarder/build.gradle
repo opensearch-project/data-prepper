@@ -176,7 +176,7 @@ def createLocalAggregateDataPrepper2Task = createDataPrepperDockerContainer(
 def localAggregateEndToEndTest = createEndToEndTest("localAggregateEndToEndTest", includeLocalAggregateTestsMatchPattern,
         createLocalAggregateDataPrepper1Task, createLocalAggregateDataPrepper2Task)
 
-// Discovery mode: LOCAL_NODE
+// Discovery mode: LOCAL_NODE - Log pipeline metrics e2e test
 def includeLocalLogMetricsTestsMatchPattern = "org.opensearch.dataprepper.integration.peerforwarder.EndToEndLogMetricsTest.testLogMetricsPipelineWithMultipleNodesEndToEnd*"
 
 def createLocalLogMetricsDataPrepper1Task = createDataPrepperDockerContainer(
