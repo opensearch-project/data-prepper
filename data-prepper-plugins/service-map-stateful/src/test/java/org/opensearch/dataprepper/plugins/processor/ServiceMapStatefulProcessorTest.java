@@ -5,20 +5,18 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
+import com.google.common.collect.Sets;
+import io.micrometer.core.instrument.Measurement;
+import org.apache.commons.codec.binary.Hex;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.Span;
-import com.google.common.collect.Sets;
-import io.micrometer.core.instrument.Measurement;
-import org.apache.commons.codec.binary.Hex;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.lang.reflect.Field;
@@ -48,9 +46,6 @@ import static org.mockito.Mockito.when;
 
 public class ServiceMapStatefulProcessorTest {
 
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
     private static final String FRONTEND_SERVICE = "FRONTEND";
     private static final String CHECKOUT_SERVICE = "CHECKOUT";
     private static final String AUTHENTICATION_SERVICE = "AUTH";
@@ -59,7 +54,7 @@ public class ServiceMapStatefulProcessorTest {
     private static final String CART_SERVICE = "CART";
     private PluginSetting pluginSetting;
 
-    @Before
+    @BeforeEach
     public void setup() throws NoSuchFieldException, IllegalAccessException {
         resetServiceMapStatefulProcessorStatic();
         MetricsTestUtil.initMetrics();
@@ -214,7 +209,7 @@ public class ServiceMapStatefulProcessorTest {
         relationshipsFound.addAll(r2.get());
 
         //Shouldn't find any relationships
-        Assert.assertEquals(0, relationshipsFound.size());
+        Assertions.assertEquals(0, relationshipsFound.size());
 
         //Second batch
         Mockito.when(clock.millis()).thenReturn(220L);
@@ -226,7 +221,7 @@ public class ServiceMapStatefulProcessorTest {
         relationshipsFound.addAll(r4.get());
 
         //Should find the frontend->checkout relationship indicated in the first batch
-        Assert.assertEquals(2, relationshipsFound.size());
+        Assertions.assertEquals(2, relationshipsFound.size());
         assertTrue(relationshipsFound.containsAll(Arrays.asList(
                 frontendCheckout,
                 checkoutTarget
@@ -240,7 +235,7 @@ public class ServiceMapStatefulProcessorTest {
         relationshipsFound.addAll(r6.get());
 
         //Should find the rest of the relationships
-        Assert.assertEquals(10, relationshipsFound.size());
+        Assertions.assertEquals(10, relationshipsFound.size());
         assertTrue(relationshipsFound.containsAll(Arrays.asList(
                 frontendAuth,
                 authTarget,
@@ -264,15 +259,36 @@ public class ServiceMapStatefulProcessorTest {
         assertTrue(evaluateEdges(relationshipsFound).containsAll(expectedSourceDests));
 
         // Verify gauges
-        final List<Measurement> spansDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
+        final List<Measurement> spansDbSizeMeasurementList = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapProcessor")
                         .add(ServiceMapStatefulProcessor.SPANS_DB_SIZE).toString());
-        Assert.assertEquals(1, spansDbSizeMeasurement.size());
+        assertThat(spansDbSizeMeasurementList.size(), equalTo(1));
 
-        final List<Measurement> traceGroupDbSizeMeasurement = MetricsTestUtil.getMeasurementList(
+        final List<Measurement> traceGroupDbSizeMeasurementList = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapProcessor")
                         .add(ServiceMapStatefulProcessor.TRACE_GROUP_DB_SIZE).toString());
-        Assert.assertEquals(1, traceGroupDbSizeMeasurement.size());
+        assertThat(traceGroupDbSizeMeasurementList.size(), equalTo(1));
+
+        final List<Measurement> spansDbCountMeasurementList = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapProcessor")
+                        .add(ServiceMapStatefulProcessor.SPANS_DB_COUNT).toString());
+        assertThat(spansDbCountMeasurementList.size(), equalTo(1));
+        final Measurement spansDbCountMeasurement = spansDbCountMeasurementList.get(0);
+        assertThat(spansDbCountMeasurement.getValue(), equalTo(5.0));
+
+        final List<Measurement> traceGroupDbCountMeasurementList = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapProcessor")
+                        .add(ServiceMapStatefulProcessor.TRACE_GROUP_DB_COUNT).toString());
+        assertThat(traceGroupDbCountMeasurementList.size(), equalTo(1));
+        final Measurement traceGroupDbCountMeasurement = traceGroupDbCountMeasurementList.get(0);
+        assertThat(traceGroupDbCountMeasurement.getValue(), equalTo(0.0));
+
+        final List<Measurement> relationshipCountMeasurementList = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add("testPipelineName").add("testServiceMapProcessor")
+                        .add(ServiceMapStatefulProcessor.RELATIONSHIP_COUNT).toString());
+        assertThat(relationshipCountMeasurementList.size(), equalTo(1));
+        final Measurement relationshipCountMeasurement = relationshipCountMeasurementList.get(0);
+        assertThat(relationshipCountMeasurement.getValue(), equalTo((double)relationshipsFound.size()));
 
 
         //Make sure that future relationships that are equivalent are caught by cache

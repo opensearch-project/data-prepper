@@ -40,8 +40,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 @DataPrepperPlugin(name = "service_map_stateful", pluginType = Processor.class)
 public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
 
-    public static final String SPANS_DB_SIZE = "spansDbSize";
-    public static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
+    static final String SPANS_DB_SIZE = "spansDbSize";
+    static final String TRACE_GROUP_DB_SIZE = "traceGroupDbSize";
+    static final String SPANS_DB_COUNT = "spansDbCount";
+    static final String TRACE_GROUP_DB_COUNT = "traceGroupDbCount";
+    static final String RELATIONSHIP_COUNT = "RelationshipCount";
 
     private static final Logger LOG = LoggerFactory.getLogger(ServiceMapStatefulProcessor.class);
     private static final String EMPTY_SUFFIX = "-empty";
@@ -100,6 +103,9 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
 
         pluginMetrics.gauge(SPANS_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getSpansDbSize());
         pluginMetrics.gauge(TRACE_GROUP_DB_SIZE, this, serviceMapStateful -> serviceMapStateful.getTraceGroupDbSize());
+        pluginMetrics.gauge(SPANS_DB_COUNT, this, serviceMapStateful -> serviceMapStateful.getSpansDbCount());
+        pluginMetrics.gauge(TRACE_GROUP_DB_COUNT, this, serviceMapStateful -> serviceMapStateful.getTraceGroupDbCount());
+        pluginMetrics.gauge(RELATIONSHIP_COUNT, this, serviceMapStateful -> serviceMapStateful.getRelationshipCount());
     }
 
     /**
@@ -314,11 +320,21 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         return currentWindow.sizeInBytes() + previousWindow.sizeInBytes();
     }
 
+    public double getSpansDbCount() {
+        return currentWindow.size() + previousWindow.size();
+    }
+
     /**
      * @return Trace group database size in bytes
      */
     public double getTraceGroupDbSize() {
         return currentTraceGroupWindow.sizeInBytes() + previousTraceGroupWindow.sizeInBytes();
+    }
+    public double getTraceGroupDbCount() {
+        return currentTraceGroupWindow.size() + previousTraceGroupWindow.size();
+    }
+    public double getRelationshipCount() {
+        return RELATIONSHIP_STATE.size();
     }
 
     /**
