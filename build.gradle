@@ -21,12 +21,12 @@ buildscript {
         }
     }
     dependencies {
-        classpath 'com.github.jk1:gradle-license-report:1.17'
+        classpath 'com.github.jk1:gradle-license-report:2.1'
     }
 }
 
 plugins {
-    id 'com.diffplug.spotless' version '6.7.1'
+    id 'com.diffplug.spotless' version '6.11.0'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 }
 
@@ -41,7 +41,7 @@ allprojects {
     ext {
         mavenPublicationRootFile = file("${rootProject.buildDir}/m2")
     }
-    
+
     repositories {
         mavenCentral()
         maven { url 'https://jitpack.io' }
@@ -95,9 +95,9 @@ subprojects {
     }
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.14.1')
-        implementation platform('io.micrometer:micrometer-bom:1.9.0')
-        implementation 'com.google.guava:guava:31.0.1-jre'
-        implementation 'org.slf4j:slf4j-api:1.7.36'
+        implementation platform('io.micrometer:micrometer-bom:1.9.4')
+        implementation 'com.google.guava:guava:31.1-jre'
+        implementation 'org.slf4j:slf4j-api:2.0.5'
         testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
         testImplementation 'org.junit.jupiter:junit-jupiter'
         testImplementation 'org.junit.vintage:junit-vintage-engine'
@@ -172,7 +172,7 @@ subprojects {
 
 configure(subprojects.findAll {it.name != 'data-prepper-api'}) {
     dependencies {
-        implementation platform('software.amazon.awssdk:bom:2.17.209')
+        implementation platform('software.amazon.awssdk:bom:2.17.264')
         implementation 'jakarta.validation:jakarta.validation-api:3.0.1'
     }
 }

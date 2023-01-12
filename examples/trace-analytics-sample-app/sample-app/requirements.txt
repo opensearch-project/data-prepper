@@ -5,4 +5,4 @@ opentelemetry-instrumentation-flask==0.19b0
 opentelemetry-instrumentation-mysql==0.19b0
 opentelemetry-instrumentation-requests==0.19b0
 opentelemetry-sdk==1.0.0
-protobuf==3.15.6
+protobuf==3.18.3
