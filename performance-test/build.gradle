@@ -5,7 +5,11 @@
 
 plugins {
     id 'java'
-    id 'io.gatling.gradle' version '3.7.4'
+    id 'io.gatling.gradle' version '3.9.0'
+}
+
+configurations.all {
+    exclude group: 'io.pebbletemplates', module: 'pebble'
 }
 
 group 'org.opensearch.dataprepper.test.performance'
@@ -16,8 +20,8 @@ repositories {
 
 dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-core'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.0'
 }
 
 test {
