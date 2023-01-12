@@ -146,7 +146,7 @@ class RemotePeerForwarder implements PeerForwarder {
             final List<String> identificationKeyValues = new LinkedList<>();
             int numMissingIdentificationKeys = 0;
             for (final String identificationKey : identificationKeys) {
-                Object identificationKeyValue = event.get(identificationKey, Object.class);
+                final Object identificationKeyValue = event.get(identificationKey, Object.class);
                 if (identificationKeyValue == null) {
                     identificationKeyValues.add(null);
                     numMissingIdentificationKeys++;
