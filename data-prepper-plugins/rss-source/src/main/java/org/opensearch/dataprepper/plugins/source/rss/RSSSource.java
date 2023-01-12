@@ -26,13 +26,13 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @DataPrepperPlugin(name = "rss", pluginType = Source.class, pluginConfigurationType =  RSSSourceConfig.class)
-public class RSSSource implements Source<Record<Document>>, Runnable {
+public class RSSSource implements Source<Record<Document>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(RSSSource.class);
 
@@ -40,71 +40,56 @@ public class RSSSource implements Source<Record<Document>>, Runnable {
 
     private final RSSSourceConfig rssSourceConfig;
 
-    private ScheduledExecutorService executorService;
+    private final ScheduledExecutorService scheduledExecutorService;
 
-    private static int count = 0;
-
-    private Thread pollingThread;
 
     @DataPrepperPluginConstructor
-    public RSSSource(final PluginMetrics pluginMetrics, final RSSSourceConfig rssSourceConfig) throws InterruptedException {
+    public RSSSource(final PluginMetrics pluginMetrics, final RSSSourceConfig rssSourceConfig) {
         this.pluginMetrics = pluginMetrics;
         this.rssSourceConfig = rssSourceConfig;
+        this.scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     }
 
     @Override
-    public void start(Buffer buffer) {
-        // TODO: Add to buffer
+    public void start(final Buffer<Record<Document>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer is null");
         }
+        Runnable task1 = () -> {
+            final RssReader reader = new RssReader();
+            Stream<Item> itemStream;
+            try {
+                LOG.info("Reading RSS Feed URL");
+                itemStream = reader.read(rssSourceConfig.getUrl());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            LOG.info("RSS feed URL read successfully. Proceeding to collect Items from URL");
+            List<Item> items = itemStream.collect(Collectors.toList());
+            for (Item item: items) {
+                LOG.info("Converting Feed Item to an Event Document");
+                Record<Document> document = buildEventDocument(item);
+                try {
+                    buffer.write(document, 500);
+                } catch (TimeoutException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+
+        scheduledExecutorService.scheduleAtFixedRate(task1, 0, 5, TimeUnit.MINUTES);
+
         try {
-            extractItemsFromRssFeed(rssSourceConfig);
+            Thread.sleep(1000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        pollingThread = new Thread();
-        pollingThread.start();
-
     }
 
     @Override
     public void stop() {
-        executorService.shutdown();
-    }
-
-    void extractItemsFromRssFeed(final RSSSourceConfig rssSourceConfig) throws InterruptedException {
-
-        executorService = Executors.newScheduledThreadPool(1);
-
-        final String url = rssSourceConfig.getUrl();
-        if(url.isEmpty()) {
-            throw new IllegalArgumentException("No path specified for the RSS Feed URL");
-        }
-        final RssReader reader = new RssReader();
-
-        Runnable task = () -> {
-            final Stream<Item> rssFeed;
-            try {
-                rssFeed = reader.read(url);
-            } catch (IOException e) {
-                throw new RuntimeException("IO Exception when reading RSS Feed URL", e);
-            }
-            final List<Item> items = rssFeed.collect(Collectors.toList());
-            items.forEach(this::buildEventDocument);
-            count++;
-            System.out.println("Running task to extract items from RSS feed");
-        };
-
-        ScheduledFuture<?> scheduledFuture = executorService.scheduleAtFixedRate(task, 0, 5, TimeUnit.MINUTES);
-
-        while (true) {
-            System.out.println("Count: "+ count);
-            Thread.sleep(1000);
-            scheduledFuture.cancel(true);
-            executorService.shutdown();
-        }
-
+        Thread.interrupted();
+        scheduledExecutorService.shutdownNow();
     }
 
     private Record<Document> buildEventDocument(final Item item) {
@@ -112,16 +97,6 @@ public class RSSSource implements Source<Record<Document>>, Runnable {
                 .withData(item)
                 .getThis()
                 .build();
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        JsonElement je = JsonParser.parseString(document.toJsonString());
-        String prettyJson = gson.toJson(je);
-        System.out.println("Data Prepper Event: " + prettyJson);
         return new Record<>(document);
-
-    }
-
-    @Override
-    public void run() {
-
     }
 }
