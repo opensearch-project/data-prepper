@@ -7,10 +7,6 @@ package org.opensearch.dataprepper.plugins.source.rss;
 
 import com.apptasticsoftware.rssreader.Item;
 import com.apptasticsoftware.rssreader.RssReader;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -55,9 +51,9 @@ public class RSSSource implements Source<Record<Document>> {
         if (buffer == null) {
             throw new IllegalStateException("Buffer is null");
         }
-        Runnable task1 = () -> {
+        final Runnable runnable = () -> {
             final RssReader reader = new RssReader();
-            Stream<Item> itemStream;
+            final Stream<Item> itemStream;
             try {
                 LOG.info("Reading RSS Feed URL");
                 itemStream = reader.read(rssSourceConfig.getUrl());
@@ -65,10 +61,10 @@ public class RSSSource implements Source<Record<Document>> {
                 throw new RuntimeException(e);
             }
             LOG.info("RSS feed URL read successfully. Proceeding to collect Items from URL");
-            List<Item> items = itemStream.collect(Collectors.toList());
-            for (Item item: items) {
+            final List<Item> items = itemStream.collect(Collectors.toList());
+            for (final Item item: items) {
                 LOG.info("Converting Feed Item to an Event Document");
-                Record<Document> document = buildEventDocument(item);
+                final Record<Document> document = buildEventDocument(item);
                 try {
                     buffer.write(document, 500);
                 } catch (TimeoutException e) {
@@ -76,20 +72,12 @@ public class RSSSource implements Source<Record<Document>> {
                 }
             }
         };
-
-        scheduledExecutorService.scheduleAtFixedRate(task1, 0, 5, TimeUnit.MINUTES);
-
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        scheduledExecutorService.scheduleAtFixedRate(runnable, 0, 5, TimeUnit.SECONDS);
     }
 
     @Override
     public void stop() {
-        Thread.interrupted();
-        scheduledExecutorService.shutdownNow();
+        scheduledExecutorService.shutdown();
     }
 
     private Record<Document> buildEventDocument(final Item item) {

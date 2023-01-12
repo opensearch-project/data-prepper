@@ -21,7 +21,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-public class RSSSourceTest {
+class RSSSourceTest {
 
     private final String PLUGIN_NAME = "rss";
 
@@ -36,7 +36,6 @@ public class RSSSourceTest {
     private RSSSourceConfig rssSourceConfig;
 
     private PluginMetrics pluginMetrics;
-
 
     private RSSSource rssSource;
 
@@ -56,9 +55,9 @@ public class RSSSourceTest {
     @Test
     void test_ExecutorService_keep_writing_Events_to_Buffer() throws InterruptedException, TimeoutException {
         rssSource.start(buffer);
-        Thread.sleep(1000);
+        Thread.sleep(5000);
         verify(buffer, atLeastOnce()).write(any(Record.class), anyInt());
-        Thread.sleep(1000);
+        Thread.sleep(5000);
         verify(buffer, atLeastOnce()).write(any(Record.class), anyInt());
     }
 }
