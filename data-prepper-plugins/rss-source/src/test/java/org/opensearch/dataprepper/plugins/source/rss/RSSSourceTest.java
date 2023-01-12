@@ -17,9 +17,8 @@ import org.opensearch.dataprepper.model.document.Document;
 import org.opensearch.dataprepper.model.record.Record;
 
 import java.time.Duration;
-import java.util.concurrent.TimeoutException;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
@@ -58,11 +57,11 @@ class RSSSourceTest {
     }
 
     @Test
-    void test_ExecutorService_keep_writing_Events_to_Buffer() throws InterruptedException, TimeoutException {
+    void test_ExecutorService_keep_writing_Events_to_Buffer() throws Exception {
         rssSource.start(buffer);
         Thread.sleep(5000);
-        verify(buffer, atLeastOnce()).write(any(Record.class), anyInt());
+        verify(buffer, atLeastOnce()).writeAll(anyCollection(), anyInt());
         Thread.sleep(5000);
-        verify(buffer, atLeastOnce()).write(any(Record.class), anyInt());
+        verify(buffer, atLeastOnce()).writeAll(anyCollection(), anyInt());
     }
 }
