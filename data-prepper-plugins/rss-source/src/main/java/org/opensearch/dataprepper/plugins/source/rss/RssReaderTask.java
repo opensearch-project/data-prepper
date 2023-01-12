@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.rss;
 
 import com.apptasticsoftware.rssreader.Item;
 import com.apptasticsoftware.rssreader.RssReader;
+import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.document.Document;
 import org.opensearch.dataprepper.model.document.JacksonDocument;
 import org.opensearch.dataprepper.model.record.Record;
@@ -28,12 +29,15 @@ class RssReaderTask implements Runnable {
 
     private final RSSSourceConfig rssSourceConfig;
 
+    private final Buffer<Record<Document>> buffer;
+
     final Collection<Record<Document>> collection = new HashSet<>();
 
 
-    public RssReaderTask(RssReader rssReader, final RSSSourceConfig rssSourceConfig) {
+    public RssReaderTask(RssReader rssReader, final RSSSourceConfig rssSourceConfig, final Buffer<Record<Document>> buffer) {
         this.rssReader = rssReader;
         this.rssSourceConfig = rssSourceConfig;
+        this.buffer = buffer;
 
     }
 
@@ -51,6 +55,11 @@ class RssReaderTask implements Runnable {
             LOG.debug("Converting Feed Item with ID:{} to an Event Document", item.getGuid());
             final Record<Document> document = buildEventDocument(item);
             collection.add(document);
+        }
+        try {
+            buffer.writeAll(collection, 500);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
