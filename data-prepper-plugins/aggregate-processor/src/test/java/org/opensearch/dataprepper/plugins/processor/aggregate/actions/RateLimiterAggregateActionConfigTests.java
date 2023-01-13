@@ -31,7 +31,7 @@ public class RateLimiterAggregateActionConfigTests {
 
     @Test
     void testDefault() {
-        assertThat(rateLimiterAggregateActionConfig.getDropWhenExceeds(), equalTo(true));
+        assertThat(rateLimiterAggregateActionConfig.getDropWhenExceeds(), equalTo(false));
     }
 
     @Test

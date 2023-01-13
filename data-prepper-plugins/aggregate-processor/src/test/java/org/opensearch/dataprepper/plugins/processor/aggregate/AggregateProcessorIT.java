@@ -60,6 +60,7 @@ import static org.hamcrest.collection.IsIn.in;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 /**
  * These integration tests are executing concurrent code that is inherently difficult to test, and even more difficult to recreate a failed test.
@@ -75,6 +76,9 @@ public class AggregateProcessorIT {
     private static final int GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE = 2;
     @Mock
     private AggregateProcessorConfig aggregateProcessorConfig;
+
+    @Mock
+    RateLimiterAggregateActionConfig rateLimiterAggregateActionConfig;
 
     private AggregateAction aggregateAction;
     private PluginMetrics pluginMetrics;
@@ -240,10 +244,10 @@ public class AggregateProcessorIT {
     }
 
     @RepeatedTest(value = 2)
-    void aggregateWithRateLimiterAction() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
-        RateLimiterAggregateActionConfig rateLimiterAggregateActionConfig = new RateLimiterAggregateActionConfig();
+    void aggregateWithRateLimiterAction() throws InterruptedException {
         final int eventsPerSecond = 500;
-        setField(RateLimiterAggregateActionConfig.class, rateLimiterAggregateActionConfig, "eventsPerSecond", eventsPerSecond);
+        lenient().when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(eventsPerSecond);
+        lenient().when(rateLimiterAggregateActionConfig.getDropWhenExceeds()).thenReturn(true);
 
         aggregateAction = new RateLimiterAggregateAction(rateLimiterAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
@@ -277,10 +281,9 @@ public class AggregateProcessorIT {
     }
 
     @RepeatedTest(value = 2)
-    void aggregateWithRateLimiterActionNoDrops() throws InterruptedException, NoSuchFieldException, IllegalAccessException {
-        RateLimiterAggregateActionConfig rateLimiterAggregateActionConfig = new RateLimiterAggregateActionConfig();
-        setField(RateLimiterAggregateActionConfig.class, rateLimiterAggregateActionConfig, "eventsPerSecond", 10000);
-        setField(RateLimiterAggregateActionConfig.class, rateLimiterAggregateActionConfig, "dropWhenExceeds", false);
+    void aggregateWithRateLimiterActionNoDrops() throws InterruptedException {
+        final int eventsPerSecond = 10000;
+        lenient().when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(eventsPerSecond);
         aggregateAction = new RateLimiterAggregateAction(rateLimiterAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
                 .thenReturn(aggregateAction);

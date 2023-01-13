@@ -14,7 +14,7 @@ public class RateLimiterAggregateActionConfig {
     int eventsPerSecond;
     
     @JsonProperty("drop_when_exceeds")
-    boolean dropWhenExceeds = true;
+    boolean dropWhenExceeds = false;
     
     public int getEventsPerSecond() {
         return eventsPerSecond;
