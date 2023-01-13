@@ -14,6 +14,7 @@ jobs:
     strategy:
       matrix:
         java: [11, 17]
+        test: ['localAggregateEndToEndTest', 'localLogMetricsEndToEndTest']
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -26,4 +27,4 @@ jobs:
       - name: Checkout Data-Prepper
         uses: actions/checkout@v2
       - name: Run raw-span latest release compatibility end-to-end tests with Gradle
-        run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:peerforwarder:localAggregateEndToEndTest
+        run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:peerforwarder:${{ matrix.test }}
