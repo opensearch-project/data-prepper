@@ -156,6 +156,7 @@ class RemotePeerForwarder implements PeerForwarder {
             }
             if (numMissingIdentificationKeys == identificationKeys.size()) {
                 recordsMissingIdentificationKeys.increment(1);
+                identificationKeyValues.clear();
             }
 
             final String dataPrepperIp = hashRing.getServerIp(identificationKeyValues).orElse(StaticPeerListProvider.LOCAL_ENDPOINT);

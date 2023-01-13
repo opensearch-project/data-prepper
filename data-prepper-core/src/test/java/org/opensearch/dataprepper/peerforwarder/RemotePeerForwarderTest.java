@@ -53,6 +53,7 @@ import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECOR
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_MISSING_IDENTIFICATION_KEYS;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_FAILED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_SUCCESSFUL;
+import org.apache.commons.lang3.RandomStringUtils;
 
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
@@ -233,8 +234,8 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> testRecords = generateBatchRecords(2);
         // Add an event that doesn't have identification keys in it
         final Map<String, String> eventData = new HashMap<>();
-        eventData.put("key3", "value3");
-        eventData.put("key4", "value4");
+        eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
+        eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
         final JacksonEvent event = JacksonLog.builder().withData(eventData).build();
         testRecords.add(new Record<>(event));
 
