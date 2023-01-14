@@ -118,6 +118,7 @@ public class OTelLogsSourceTest {
     @Mock
     private GrpcBasicAuthenticationProvider authenticationProvider;
 
+    private BlockingBuffer<Record<Object>> buffer;
     private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
     private OTelLogsSourceConfig oTelLogsSourceConfig;
@@ -125,7 +126,7 @@ public class OTelLogsSourceTest {
     private PipelineDescription pipelineDescription;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private BlockingBuffer<Record<ExportLogsServiceRequest>> buffer;
+
 
     private OTelLogsSource SOURCE;
 
@@ -146,7 +147,7 @@ public class OTelLogsSourceTest {
         assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
-    private BlockingBuffer<Record<ExportLogsServiceRequest>> getBuffer() {
+    private BlockingBuffer<Record<Object>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 1);
         integerHashMap.put("batch_size", 1);

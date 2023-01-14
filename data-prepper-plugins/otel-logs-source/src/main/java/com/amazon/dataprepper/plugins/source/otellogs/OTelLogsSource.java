@@ -14,7 +14,6 @@ import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
-import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -29,6 +28,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 @DataPrepperPlugin(name = "otel_logs_source", pluginType = Source.class, pluginConfigurationType = OTelLogsSourceConfig.class)
-public class OTelLogsSource implements Source<Record<ExportLogsServiceRequest>> {
+public class OTelLogsSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelLogsSource.class);
     private final OTelLogsSourceConfig oTelLogsSourceConfig;
     private Server server;
@@ -71,7 +71,7 @@ public class OTelLogsSource implements Source<Record<ExportLogsServiceRequest>> 
     }
 
     @Override
-    public void start(Buffer<Record<ExportLogsServiceRequest>> buffer) {
+    public void start(Buffer<Record<Object>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
@@ -80,6 +80,7 @@ public class OTelLogsSource implements Source<Record<ExportLogsServiceRequest>> 
 
             final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
                     oTelLogsSourceConfig.getRequestTimeoutInMillis(),
+                    new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics
             );

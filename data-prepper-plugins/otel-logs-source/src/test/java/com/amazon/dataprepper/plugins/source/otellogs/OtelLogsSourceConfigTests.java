@@ -12,10 +12,21 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.AWS_REGION;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_THREAD_COUNT;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.ENABLE_UNFRAMED_REQUESTS;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.HEALTH_CHECK_SERVICE;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.MAX_CONNECTION_COUNT;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PORT;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PROTO_REFLECTION_SERVICE;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.REQUEST_TIMEOUT;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_CERT_FILE;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_FILE;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.THREAD_COUNT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -46,7 +57,7 @@ public class OtelLogsSourceConfigTests {
         assertEquals(DEFAULT_REQUEST_TIMEOUT_MS, otelLogsSourceConfig.getRequestTimeoutInMillis());
         assertEquals(DEFAULT_PORT, otelLogsSourceConfig.getPort());
         assertEquals(DEFAULT_THREAD_COUNT, otelLogsSourceConfig.getThreadCount());
-        assertEquals(OTelLogsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, otelLogsSourceConfig.getMaxConnectionCount());
+        assertEquals(DEFAULT_MAX_CONNECTION_COUNT, otelLogsSourceConfig.getMaxConnectionCount());
         assertFalse(otelLogsSourceConfig.hasHealthCheck());
         assertFalse(otelLogsSourceConfig.hasProtoReflectionService());
         assertFalse(otelLogsSourceConfig.isSslCertAndKeyFileInS3());
@@ -102,7 +113,7 @@ public class OtelLogsSourceConfigTests {
                 TEST_THREAD_COUNT,
                 TEST_MAX_CONNECTION_COUNT);
 
-        validPluginSettingWithS3CertAndKey.getSettings().put(OTelLogsSourceConfig.AWS_REGION, TEST_REGION);
+        validPluginSettingWithS3CertAndKey.getSettings().put(AWS_REGION, TEST_REGION);
 
         final OTelLogsSourceConfig otelLogsSourceConfig = OBJECT_MAPPER.convertValue(validPluginSettingWithS3CertAndKey.getSettings(), OTelLogsSourceConfig.class);
         otelLogsSourceConfig.validateAndInitializeCertAndKeyFileInS3();
@@ -194,16 +205,16 @@ public class OtelLogsSourceConfigTests {
                                                                  final int threadCount,
                                                                  final int maxConnectionCount) {
         final Map<String, Object> settings = new HashMap<>();
-        settings.put(OTelLogsSourceConfig.REQUEST_TIMEOUT, requestTimeoutInMillis);
-        settings.put(OTelLogsSourceConfig.PORT, port);
-        settings.put(OTelLogsSourceConfig.HEALTH_CHECK_SERVICE, healthCheck);
-        settings.put(OTelLogsSourceConfig.PROTO_REFLECTION_SERVICE, protoReflectionService);
-        settings.put(OTelLogsSourceConfig.ENABLE_UNFRAMED_REQUESTS, enableUnframedRequests);
-        settings.put(OTelLogsSourceConfig.SSL, isSSL);
-        settings.put(OTelLogsSourceConfig.SSL_KEY_CERT_FILE, sslKeyCertChainFile);
-        settings.put(OTelLogsSourceConfig.SSL_KEY_FILE, sslKeyFile);
-        settings.put(OTelLogsSourceConfig.THREAD_COUNT, threadCount);
-        settings.put(OTelLogsSourceConfig.MAX_CONNECTION_COUNT, maxConnectionCount);
+        settings.put(REQUEST_TIMEOUT, requestTimeoutInMillis);
+        settings.put(PORT, port);
+        settings.put(HEALTH_CHECK_SERVICE, healthCheck);
+        settings.put(PROTO_REFLECTION_SERVICE, protoReflectionService);
+        settings.put(ENABLE_UNFRAMED_REQUESTS, enableUnframedRequests);
+        settings.put(SSL, isSSL);
+        settings.put(SSL_KEY_CERT_FILE, sslKeyCertChainFile);
+        settings.put(SSL_KEY_FILE, sslKeyFile);
+        settings.put(THREAD_COUNT, threadCount);
+        settings.put(MAX_CONNECTION_COUNT, maxConnectionCount);
         return new PluginSetting(PLUGIN_NAME, settings);
     }
 }

@@ -8,11 +8,14 @@ package org.opensearch.dataprepper.plugins.otel.codec;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.InstrumentationLibrary;
 import io.opentelemetry.proto.common.v1.InstrumentationScope;
 import io.opentelemetry.proto.common.v1.KeyValue;
+import io.opentelemetry.proto.logs.v1.LogRecord;
+import io.opentelemetry.proto.logs.v1.ResourceLogs;
 import io.opentelemetry.proto.metrics.v1.ExponentialHistogramDataPoint;
 import io.opentelemetry.proto.metrics.v1.NumberDataPoint;
 import io.opentelemetry.proto.metrics.v1.SummaryDataPoint;
@@ -23,6 +26,8 @@ import io.opentelemetry.proto.trace.v1.ScopeSpans;
 import io.opentelemetry.proto.trace.v1.Status;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.opensearch.dataprepper.model.log.JacksonOtelLog;
+import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.metric.Bucket;
 import org.opensearch.dataprepper.model.metric.DefaultBucket;
 import org.opensearch.dataprepper.model.metric.DefaultExemplar;
@@ -54,6 +59,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * OTelProtoCodec is for encoding/decoding between {@link org.opensearch.dataprepper.model.trace} and {@link io.opentelemetry.proto}.
@@ -146,6 +152,39 @@ public class OTelProtoCodec {
                     .flatMap(rs -> parseResourceSpans(rs).stream()).collect(Collectors.toList());
         }
 
+        public List<OpenTelemetryLog> parseExportLogsServiceRequest(final ExportLogsServiceRequest exportLogsServiceRequest) {
+            return exportLogsServiceRequest.getResourceLogsList().stream()
+                    .flatMap(rs -> parseResourceLogs(rs).stream()).collect(Collectors.toList());
+        }
+
+        protected Collection<OpenTelemetryLog> parseResourceLogs(ResourceLogs rs) {
+            final String serviceName = OTelProtoCodec.getServiceName(rs.getResource()).orElse(null);
+            final Map<String, Object> resourceAttributes = OTelProtoCodec.getResourceAttributes(rs.getResource());
+            final String schemaUrl = rs.getSchemaUrl();
+
+            Stream<OpenTelemetryLog> mappedInstrumentationLibraryLogs = rs.getInstrumentationLibraryLogsList()
+                    .stream()
+                    .map(ils ->
+                            processLogsList(ils.getLogRecordsList(),
+                                    serviceName,
+                                    OTelProtoCodec.getInstrumentationLibraryAttributes(ils.getInstrumentationLibrary()),
+                                    resourceAttributes,
+                                    schemaUrl))
+                    .flatMap(Collection::stream);
+
+            Stream<OpenTelemetryLog> mappedScopeListLogs = rs.getScopeLogsList()
+                    .stream()
+                    .map(sls ->
+                            processLogsList(sls.getLogRecordsList(),
+                                    serviceName,
+                                    OTelProtoCodec.getInstrumentationScopeAttributes(sls.getScope()),
+                                    resourceAttributes,
+                                    schemaUrl))
+                    .flatMap(Collection::stream);
+
+            return Stream.concat(mappedInstrumentationLibraryLogs, mappedScopeListLogs).collect(Collectors.toList());
+        }
+
         protected List<Span> parseResourceSpans(final ResourceSpans resourceSpans) {
             final String serviceName = getServiceName(resourceSpans.getResource()).orElse(null);
             final Map<String, Object> resourceAttributes = getResourceAttributes(resourceSpans.getResource());
@@ -188,6 +227,34 @@ public class OTelProtoCodec {
                         final Map<String, Object> scopeAttributes = scopeAttributesGetter.apply(scope);
                         return parseSpan(span, scopeAttributes, serviceName, resourceAttributes);
                     })
+                    .collect(Collectors.toList());
+        }
+
+        protected List<OpenTelemetryLog> processLogsList(final List<LogRecord> logsList,
+                                                                                         final String serviceName,
+                                                                                         final Map<String, Object> ils,
+                                                                                         final Map<String, Object> resourceAttributes,
+                                                                                         final String schemaUrl) {
+            return logsList.stream()
+                    .map(log -> JacksonOtelLog.builder()
+                            .withTime(OTelProtoCodec.convertUnixNanosToISO8601(log.getTimeUnixNano()))
+                            .withObservedTime(OTelProtoCodec.convertUnixNanosToISO8601(log.getObservedTimeUnixNano()))
+                            .withServiceName(serviceName)
+                            .withAttributes(OTelProtoCodec.mergeAllAttributes(
+                                    Arrays.asList(
+                                            OTelProtoCodec.unpackKeyValueListLog(log.getAttributesList()),
+                                            resourceAttributes,
+                                            ils
+                                    )
+                            ))
+                            .withSchemaUrl(schemaUrl)
+                            .withFlags(log.getFlags())
+                            .withTraceId(OTelProtoCodec.convertByteStringToString(log.getTraceId()))
+                            .withSpanId(OTelProtoCodec.convertByteStringToString(log.getSpanId()))
+                            .withSeverityNumber(log.getSeverityNumberValue())
+                            .withDroppedAttributesCount(log.getDroppedAttributesCount())
+                            .withBody(OTelProtoCodec.convertAnyValue(log.getBody()))
+                            .build())
                     .collect(Collectors.toList());
         }
 
