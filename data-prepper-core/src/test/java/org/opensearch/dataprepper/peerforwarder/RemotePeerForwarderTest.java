@@ -234,7 +234,7 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> testRecords = generateBatchRecords(2);
         // Add an event that doesn't have identification keys in it
         final Map<String, String> eventData = new HashMap<>();
-        eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
+        eventData.put("key1", "8.8.8.8");
         eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
         final JacksonEvent event = JacksonLog.builder().withData(eventData).build();
         testRecords.add(new Record<>(event));
@@ -245,10 +245,37 @@ class RemotePeerForwarderTest {
 
         verify(recordsToBeProcessedLocallyCounter).increment(2.0);
         verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
-        verify(recordsMissingIdentificationKeys).increment(1.0);
+        verify(recordsMissingIdentificationKeys, times(0)).increment(1.0);
         verify(recordsToBeForwardedCounter).increment(1.0);
         verify(requestsSuccessfulCounter).increment();
         verify(recordsSuccessfullyForwardedCounter).increment(1.0);
+    }
+
+    @Test
+    void test_receiveRecords_with_no_identification_keys() throws Exception {
+        AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
+
+        RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> testRecords = new ArrayList<>();
+        // Add an event that doesn't have identification keys in it
+        for (int i = 0; i < 2; i++) {
+            final Map<String, String> eventData = new HashMap<>();
+            eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
+            eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
+            final JacksonEvent event = JacksonLog.builder().withData(eventData).build();
+            testRecords.add(new Record<>(event));
+        }
+
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
+        verify(peerForwarderClient, times(0)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
+        assertThat(records.size(), equalTo(2));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(2.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
+        verify(recordsMissingIdentificationKeys, times(2)).increment(1.0);
+        verify(recordsToBeForwardedCounter, times(0)).increment(0.0);
+        verify(requestsSuccessfulCounter, times(0)).increment();
+        verify(recordsSuccessfullyForwardedCounter, times(0)).increment(0.0);
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {
