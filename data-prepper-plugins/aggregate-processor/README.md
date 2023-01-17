@@ -141,8 +141,8 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
 * `rate_limiter`: Processes the events and controls the number of events aggregated per second. By default, any events exceeding the configured number of events per second are dropped. This behavior can be overwritten with a config option which blocks until the events are allowed.
     * It supports the following config options
        * `events_per_second`: Number of events allowed per second
-       * `drop_when_exceeds`: indicates if the events should be dropped when more number of events than the number of events allowed per second are received. Default value is true.
-    * When the following three events arrive with in one second and the `events_per_second` is set 1
+       * `drop_when_exceeds`: indicates if the events should be dropped when more number of events than the number of events allowed per second are received. Default value is false.
+    * When the following three events arrive with in one second and the `events_per_second` is set 1 and `drop_when_exceeds` set to true
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 1000 }
