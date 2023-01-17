@@ -44,7 +44,7 @@ public class RSSSource implements Source<Record<Document>> {
         if (buffer == null) {
             throw new IllegalStateException("Buffer is null");
         }
-        rssReaderTask = new RssReaderTask(rssReader, rssSourceConfig, buffer);
+        rssReaderTask = new RssReaderTask(rssReader, rssSourceConfig.getUrl(), buffer);
         scheduledExecutorService.scheduleAtFixedRate(rssReaderTask, 0, 5, TimeUnit.SECONDS);
     }
 

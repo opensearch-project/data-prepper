@@ -27,16 +27,16 @@ class RssReaderTask implements Runnable {
 
     private final RssReader rssReader;
 
-    private final RSSSourceConfig rssSourceConfig;
+    private final String url;
 
     private final Buffer<Record<Document>> buffer;
 
     final Collection<Record<Document>> collection = new HashSet<>();
 
 
-    public RssReaderTask(RssReader rssReader, final RSSSourceConfig rssSourceConfig, final Buffer<Record<Document>> buffer) {
+    public RssReaderTask(RssReader rssReader, final String url, final Buffer<Record<Document>> buffer) {
         this.rssReader = rssReader;
-        this.rssSourceConfig = rssSourceConfig;
+        this.url = url;
         this.buffer = buffer;
 
     }
@@ -46,7 +46,7 @@ class RssReaderTask implements Runnable {
         final Stream<Item> itemStream;
         try {
             LOG.debug("Reading RSS Feed URL");
-            itemStream = rssReader.read(rssSourceConfig.getUrl());
+            itemStream = rssReader.read(url);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
