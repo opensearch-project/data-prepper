@@ -45,6 +45,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.concurrent.locks.ReentrantLock;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
 public class OpenSearchSink extends AbstractSink<Record<Event>> {
@@ -67,12 +68,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String routingField;
   private final String action;
   private String configuredIndexAlias;
+  private final ReentrantLock lock;
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
+  private boolean initialized;
 
   public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
@@ -87,12 +90,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory();
+    this.initialized = false;
+    this.lock = new ReentrantLock(true);
 
     try {
       initialize();
     } catch (final IOException e) {
-      this.shutdown();
-      throw new RuntimeException(e.getMessage(), e);
     }
   }
 
@@ -118,12 +121,26 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     LOG.info("Initialized OpenSearch sink");
 
     objectMapper = new ObjectMapper();
+    this.initialized = true;
   }
 
   @Override
   public void doOutput(final Collection<Record<Event>> records) {
     if (records.isEmpty()) {
       return;
+    }
+
+    if (!initialized) {
+        lock.lock();
+        try {
+          if (!initialized) {
+            initialize();
+          }
+        } catch (final IOException e) {
+          return;
+        } finally {
+          lock.unlock();
+        }
     }
 
     AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
