@@ -44,7 +44,7 @@ public class RateLimiterAggregateActionTests {
     @ValueSource(ints = {1, 2, 100, 1000})
     void testRateLimiterAggregateSmoothTraffic(int testEventsPerSecond) throws InterruptedException {
         when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(testEventsPerSecond);
-        when(rateLimiterAggregateActionConfig.getDropWhenExceeds()).thenReturn(true);
+        when(rateLimiterAggregateActionConfig.getWhenExceeds()).thenReturn(RateLimiterMode.DROP.toString());
         rateLimiterAggregateAction = createObjectUnderTest(rateLimiterAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
@@ -67,9 +67,9 @@ public class RateLimiterAggregateActionTests {
 
     @ParameterizedTest
     @ValueSource(ints = {100, 200, 500, 1000})
-    void testRateLimiterAggregateFailuresBurstTraffic(int testEventsPerSecond) throws InterruptedException {
+    void testRateLimiterInDropMode(int testEventsPerSecond) throws InterruptedException {
         when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(testEventsPerSecond);
-        when(rateLimiterAggregateActionConfig.getDropWhenExceeds()).thenReturn(true);
+        when(rateLimiterAggregateActionConfig.getWhenExceeds()).thenReturn(RateLimiterMode.DROP.toString());
         rateLimiterAggregateAction = createObjectUnderTest(rateLimiterAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
@@ -95,8 +95,9 @@ public class RateLimiterAggregateActionTests {
 
     @ParameterizedTest
     @ValueSource(ints = {100, 200, 500, 1000})
-    void testRateLimiterAggregateSuccessWithBurstTraffic(int testEventsPerSecond) throws InterruptedException {
+    void testRateLimiterInBlockMode(int testEventsPerSecond) throws InterruptedException {
         when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(testEventsPerSecond);
+        when(rateLimiterAggregateActionConfig.getWhenExceeds()).thenReturn(RateLimiterMode.BLOCK.toString());
         rateLimiterAggregateAction = createObjectUnderTest(rateLimiterAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();

@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDupl
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PutAllAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterMode;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateActionConfig;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.HistogramAggregateAction;
@@ -247,7 +248,7 @@ public class AggregateProcessorIT {
     void aggregateWithRateLimiterAction() throws InterruptedException {
         final int eventsPerSecond = 500;
         lenient().when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(eventsPerSecond);
-        lenient().when(rateLimiterAggregateActionConfig.getDropWhenExceeds()).thenReturn(true);
+        lenient().when(rateLimiterAggregateActionConfig.getWhenExceeds()).thenReturn(RateLimiterMode.DROP.toString());
 
         aggregateAction = new RateLimiterAggregateAction(rateLimiterAggregateActionConfig);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))

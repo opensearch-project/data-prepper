@@ -22,18 +22,18 @@ import com.google.common.util.concurrent.RateLimiter;
 @DataPrepperPlugin(name = "rate_limiter", pluginType = AggregateAction.class, pluginConfigurationType = RateLimiterAggregateActionConfig.class)
 public class RateLimiterAggregateAction implements AggregateAction {
     private final RateLimiter rateLimiter;
-    private final boolean shouldDropWhenExceeds;
+    private final String rateLimiterMode;
 
     @DataPrepperPluginConstructor
     public RateLimiterAggregateAction(final RateLimiterAggregateActionConfig ratelimiterAggregateActionConfig) {
         final int eventsPerSecond = ratelimiterAggregateActionConfig.getEventsPerSecond();
-        shouldDropWhenExceeds = ratelimiterAggregateActionConfig.getDropWhenExceeds();
+        this.rateLimiterMode = ratelimiterAggregateActionConfig.getWhenExceeds();
         this.rateLimiter = RateLimiter.create(eventsPerSecond);
     }
 
     @Override
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
-        if (shouldDropWhenExceeds) {
+        if (rateLimiterMode.equals(RateLimiterMode.DROP.toString())) {
             if (!rateLimiter.tryAcquire()) {
                 return AggregateActionResponse.nullEventResponse();
             }
