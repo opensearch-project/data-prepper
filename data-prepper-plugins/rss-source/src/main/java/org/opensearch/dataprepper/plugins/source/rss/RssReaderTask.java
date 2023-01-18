@@ -48,9 +48,12 @@ class RssReaderTask implements Runnable {
             LOG.debug("Reading RSS Feed URL");
             itemStream = rssReader.read(url);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Unable to read the RSS Feed URL", e);
         }
         final List<Item> items = itemStream.collect(Collectors.toList());
+        if (items.isEmpty()) {
+            return;
+        }
         for (final Item item: items) {
             LOG.debug("Converting Feed Item with ID:{} to an Event Document", item.getGuid());
             final Record<Document> document = buildEventDocument(item);
