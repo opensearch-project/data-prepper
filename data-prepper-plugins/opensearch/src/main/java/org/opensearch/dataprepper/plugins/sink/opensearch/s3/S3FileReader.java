@@ -3,10 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.file.s3;
+package org.opensearch.dataprepper.plugins.sink.opensearch.s3;
 
-import org.opensearch.dataprepper.plugins.file.DynamicFileReader;
-import org.opensearch.dataprepper.plugins.file.exception.S3ObjectTooLargeException;
+import org.apache.commons.lang3.EnumUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -21,22 +20,21 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Objects;
 
-public class S3FileReader implements DynamicFileReader {
+public class S3FileReader implements FileReader {
     private static final Logger LOG = LoggerFactory.getLogger(S3FileReader.class);
+    private static final long MAX_FILE_SIZE = 5_000_000L;
+
     private final S3Client s3Client;
-    private final String filePath;
 
-
-    public S3FileReader(final S3Client s3Client,
-                                 final String filePath) {
+    public S3FileReader(final S3Client s3Client) {
         this.s3Client = Objects.requireNonNull(s3Client);
-        this.filePath = Objects.requireNonNull(filePath);
     }
 
     @Override
-    public ResponseInputStream<GetObjectResponse> getFile() {
+    public ResponseInputStream<GetObjectResponse> readFile(final String filePath) {
         try {
             final URI fileUri = new URI(filePath);
+            validateFileType(filePath);
             validateS3ObjectSize(fileUri);
 
             final GetObjectRequest getObjectRequest = GetObjectRequest.builder()
@@ -52,6 +50,17 @@ public class S3FileReader implements DynamicFileReader {
         }
     }
 
+    private void validateFileType(final String filePath) {
+        final int index = filePath.lastIndexOf(".");
+        String fileType = null;
+        if (index != -1) {
+            fileType = filePath.substring(index).substring(1);
+        }
+        if (!EnumUtils.isValidEnumIgnoreCase(FileType.class, fileType)) {
+            throw new UnsupportedFileTypeException("S3 file type provided is not supported");
+        }
+    }
+
     private void validateS3ObjectSize(final URI fileUri) {
         final GetObjectAttributesRequest getObjectAttributesRequest = GetObjectAttributesRequest.builder()
                 .bucket(fileUri.getHost())
@@ -62,8 +71,8 @@ public class S3FileReader implements DynamicFileReader {
         final GetObjectAttributesResponse objectAttributes = s3Client.getObjectAttributes(getObjectAttributesRequest);
         final Long objectSize = objectAttributes.objectSize();
 
-        if (objectSize > 1_000_000L) {
-            throw new S3ObjectTooLargeException(String.format("S3 Object size can't be more than 1MB. %s object size is %s", fileUri.getPath().substring(1), objectSize));
+        if (objectSize > MAX_FILE_SIZE) {
+            throw new S3ObjectTooLargeException(String.format("S3 Object size can't be more than 5MB. %s object size is %s", fileUri.getPath().substring(1), objectSize));
         }
     }
 }

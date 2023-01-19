@@ -17,8 +17,8 @@ import org.opensearch.client.RequestOptions;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
-import org.opensearch.dataprepper.plugins.file.DynamicFileReader;
-import org.opensearch.dataprepper.plugins.file.s3.S3FileReader;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import javax.ws.rs.HttpMethod;
@@ -158,8 +158,8 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
 
     private String retrievePolicyJsonStringFromS3(final String fileName) throws IOException {
         final StringBuilder policyJsonBuffer = new StringBuilder();
-        final DynamicFileReader s3FileReader = new S3FileReader(s3Client, fileName);
-        try (final InputStream inputStream = s3FileReader.getFile();
+        final FileReader s3FileReader = new S3FileReader(s3Client);
+        try (final InputStream inputStream = s3FileReader.readFile(fileName);
              final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
             reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
         }

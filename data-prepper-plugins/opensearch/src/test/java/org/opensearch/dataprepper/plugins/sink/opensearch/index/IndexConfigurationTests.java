@@ -17,6 +17,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.junit.Assert.assertEquals;
@@ -90,7 +91,7 @@ public class IndexConfigurationTests {
         final GetObjectAttributesResponse getObjectAttributesResponse = GetObjectAttributesResponse.builder().objectSize(100L).build();
         when(s3Client.getObjectAttributes(any(GetObjectAttributesRequest.class))).thenReturn(getObjectAttributesResponse);
 
-        final String testIndexAlias = "foo";
+        final String testIndexAlias = UUID.randomUUID().toString();
         IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexAlias(testIndexAlias)
                 .withTemplateFile(testTemplateFilePath)

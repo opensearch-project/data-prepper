@@ -9,10 +9,10 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
-import org.opensearch.dataprepper.plugins.file.DynamicFileReader;
-import org.opensearch.dataprepper.plugins.file.s3.S3ClientProvider;
-import org.opensearch.dataprepper.plugins.file.s3.S3FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.services.s3.S3Client;
 
@@ -219,8 +219,8 @@ public class IndexConfiguration {
                         .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
                 if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
-                    DynamicFileReader s3FileReader = new S3FileReader(s3Client, templateFile);
-                    s3TemplateFile = s3FileReader.getFile();
+                    FileReader s3FileReader = new S3FileReader(s3Client);
+                    s3TemplateFile = s3FileReader.readFile(templateFile);
                 } else {
                     templateURL = new File(templateFile).toURI().toURL();
                 }

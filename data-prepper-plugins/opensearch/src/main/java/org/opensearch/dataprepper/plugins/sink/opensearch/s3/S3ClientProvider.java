@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.file.s3;
+package org.opensearch.dataprepper.plugins.sink.opensearch.s3;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -87,6 +87,7 @@ public class S3ClientProvider {
         return StsClient.builder()
                 .overrideConfiguration(clientOverrideConfiguration)
                 .region(Region.of(awsRegion))
+                .httpClientBuilder(apacheHttpClientBuilder)
                 .build();
     }
 }
