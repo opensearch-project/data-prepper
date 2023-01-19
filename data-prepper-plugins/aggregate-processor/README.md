@@ -138,11 +138,11 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```
 
 ### <a name="rate_limiter"></a>
-* `rate_limiter`: Processes the events and controls the number of events aggregated per second. By default, any events exceeding the configured number of events per second are dropped. This behavior can be overwritten with a config option which blocks until the events are allowed.
+* `rate_limiter`: Processes the events and controls the number of events aggregated per second. By default, the processor blocks if more events than allowed by the configured number of events are received. This behavior can be overwritten with a config option which drops any excess events received in a given time period.
     * It supports the following config options
        * `events_per_second`: Number of events allowed per second
-       * `drop_when_exceeds`: indicates if the events should be dropped when more number of events than the number of events allowed per second are received. Default value is false.
-    * When the following three events arrive with in one second and the `events_per_second` is set 1 and `drop_when_exceeds` set to true
+       * `when_exceeds`: indicates what action to be taken when more number of events than the number of events allowed per second are received. Default value is `block` which means the processor blocks after max number allowed per second are allowed until the next time period. Other option is `drop` which drops the excess events received in the time period.
+    * When the following three events arrive with in one second and the `events_per_second` is set 1 and `when_exceeds` set to `drop`
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 1000 }
@@ -152,7 +152,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
       ```
-    * When the three events arrive with in one second and the `events_per_second` is set 1 and `drop_when_exceeds` is set to false, all three events are allowed.
+    * When the three events arrive with in one second and the `events_per_second` is set 1 and `when_exceeds` is set to `block`, all three events are allowed.
 
 
 ## Creating New Aggregate Actions
