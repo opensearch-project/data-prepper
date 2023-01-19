@@ -24,6 +24,9 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDupl
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PutAllAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterMode;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateActionConfig;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.HistogramAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.HistogramAggregateActionConfig;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.OutputFormat;
@@ -48,6 +51,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.lessThan;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
@@ -56,6 +61,7 @@ import static org.hamcrest.collection.IsIn.in;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 /**
  * These integration tests are executing concurrent code that is inherently difficult to test, and even more difficult to recreate a failed test.
@@ -71,6 +77,9 @@ public class AggregateProcessorIT {
     private static final int GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE = 2;
     @Mock
     private AggregateProcessorConfig aggregateProcessorConfig;
+
+    @Mock
+    RateLimiterAggregateActionConfig rateLimiterAggregateActionConfig;
 
     private AggregateAction aggregateAction;
     private PluginMetrics pluginMetrics;
@@ -233,6 +242,77 @@ public class AggregateProcessorIT {
         for (final Map<String, Object> uniqueEventMap : uniqueEventMaps) {
             assertThat(aggregatedResult, hasItem(uniqueEventMap));
         }
+    }
+
+    @RepeatedTest(value = 2)
+    void aggregateWithRateLimiterAction() throws InterruptedException {
+        final int eventsPerSecond = 500;
+        lenient().when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(eventsPerSecond);
+        lenient().when(rateLimiterAggregateActionConfig.getWhenExceeds()).thenReturn(RateLimiterMode.DROP.toString());
+
+        aggregateAction = new RateLimiterAggregateAction(rateLimiterAggregateActionConfig);
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        objectUnderTest.doExecute(eventBatch);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                for (final Record<Event> record : recordsOut) {
+                    final Map<String, Object> map = record.getData().toMap();
+                    aggregatedResult.add(map);
+                }
+                countDownLatch.countDown();
+            });
+        }
+
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+
+        assertThat(allThreadsFinished, equalTo(true));
+        // Expect less number of events to be received, because of rate limiting
+        assertThat(aggregatedResult.size(), lessThan(NUM_THREADS * NUM_EVENTS_PER_BATCH));
+        assertThat(aggregatedResult.size(), lessThanOrEqualTo(eventsPerSecond * GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+    }
+
+    @RepeatedTest(value = 2)
+    void aggregateWithRateLimiterActionNoDrops() throws InterruptedException {
+        final int eventsPerSecond = 10000;
+        lenient().when(rateLimiterAggregateActionConfig.getEventsPerSecond()).thenReturn(eventsPerSecond);
+        aggregateAction = new RateLimiterAggregateAction(rateLimiterAggregateActionConfig);
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        objectUnderTest.doExecute(eventBatch);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                for (final Record<Event> record : recordsOut) {
+                    final Map<String, Object> map = record.getData().toMap();
+                    aggregatedResult.add(map);
+                }
+                countDownLatch.countDown();
+            });
+        }
+
+        boolean allThreadsFinished = countDownLatch.await(10L, TimeUnit.SECONDS);
+
+        assertThat(allThreadsFinished, equalTo(true));
+        // Expect all events to be received even with rate limiting because no events are dropped
+        assertThat(aggregatedResult.size(), equalTo(NUM_THREADS * NUM_EVENTS_PER_BATCH));
     }
 
     @RepeatedTest(value = 2)
