@@ -47,7 +47,14 @@ public class PeerForwarderProvider {
                 hashRing = peerForwarderClientFactory.createHashRing();
             }
             return new RemotePeerForwarder(
-                    peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics
+                    peerForwarderClient,
+                    hashRing,
+                    peerForwarderReceiveBuffer,
+                    pipelineName,
+                    pluginId,
+                    identificationKeys,
+                    pluginMetrics,
+                    peerForwarderConfiguration.getBatchDelay()
             );
         }
         else {

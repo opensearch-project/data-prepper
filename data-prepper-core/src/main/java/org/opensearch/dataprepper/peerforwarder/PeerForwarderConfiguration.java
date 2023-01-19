@@ -52,6 +52,7 @@ public class PeerForwarderConfiguration {
     private List<String> staticEndpoints = new ArrayList<>();
     private Integer clientThreadCount = 200;
     private Integer batchSize = 48;
+    private Integer batchDelay = 3_000;
     private Integer bufferSize = 512;
     private boolean sslCertAndKeyFileInS3 = false;
     private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
@@ -84,6 +85,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("static_endpoints") final List<String> staticEndpoints,
             @JsonProperty("client_thread_count") final Integer clientThreadCount,
             @JsonProperty("batch_size") final Integer batchSize,
+            @JsonProperty("batch_delay") final Integer batchDelay,
             @JsonProperty("buffer_size") final Integer bufferSize,
             @JsonProperty("drain_timeout") final Duration drainTimeout
     ) {
@@ -111,6 +113,7 @@ public class PeerForwarderConfiguration {
         setStaticEndpoints(staticEndpoints);
         setClientThreadCount(clientThreadCount);
         setBatchSize(batchSize);
+        setBatchDelay(batchDelay);
         setBufferSize(bufferSize);
         setDrainTimeout(drainTimeout);
         checkForCertAndKeyFileInS3();
@@ -199,6 +202,10 @@ public class PeerForwarderConfiguration {
 
     public int getBatchSize() {
         return batchSize;
+    }
+
+    public Integer getBatchDelay() {
+        return batchDelay;
     }
 
     public int getBufferSize() {
@@ -408,6 +415,15 @@ public class PeerForwarderConfiguration {
                 throw new IllegalArgumentException("Batch size must be a positive integer.");
             }
             this.batchSize = batchSize;
+        }
+    }
+
+    private void setBatchDelay(final Integer batchDelay) {
+        if (batchDelay != null) {
+            if (batchDelay <= 0) {
+                throw new IllegalArgumentException("Batch delay must be a positive integer.");
+            }
+            this.batchDelay = batchDelay;
         }
     }
 

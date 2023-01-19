@@ -57,6 +57,7 @@ class RemotePeerForwarder implements PeerForwarder {
     private final Counter recordsMissingIdentificationKeys;
     private final Counter requestsFailedCounter;
     private final Counter requestsSuccessfulCounter;
+    private final Integer batchDelay;
 
     RemotePeerForwarder(final PeerForwarderClient peerForwarderClient,
                         final HashRing hashRing,
@@ -64,13 +65,15 @@ class RemotePeerForwarder implements PeerForwarder {
                         final String pipelineName,
                         final String pluginId,
                         final Set<String> identificationKeys,
-                        final PluginMetrics pluginMetrics) {
+                        final PluginMetrics pluginMetrics,
+                        final Integer batchDelay) {
         this.peerForwarderClient = peerForwarderClient;
         this.hashRing = hashRing;
         this.peerForwarderReceiveBuffer = peerForwarderReceiveBuffer;
         this.pipelineName = pipelineName;
         this.pluginId = pluginId;
         this.identificationKeys = identificationKeys;
+        this.batchDelay = batchDelay;
         recordsActuallyProcessedLocallyCounter = pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY);
         recordsToBeProcessedLocallyCounter = pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY);
         recordsToBeForwardedCounter = pluginMetrics.counter(RECORDS_TO_BE_FORWARDED);
@@ -119,9 +122,7 @@ class RemotePeerForwarder implements PeerForwarder {
     }
 
     public Collection<Record<Event>> receiveRecords() {
-        // TODO: Make the read timeout configurable? This is the default read batch delay in PipelineConfiguration
-        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult =
-                peerForwarderReceiveBuffer.read(READ_BATCH_DELAY);
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> readResult = peerForwarderReceiveBuffer.read(batchDelay);
 
         final Collection<Record<Event>> records = readResult.getKey();
         final CheckpointState checkpointState = readResult.getValue();
