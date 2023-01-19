@@ -59,6 +59,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 class RemotePeerForwarderTest {
     private static final int TEST_BUFFER_CAPACITY = 3;
     private static final int TEST_BATCH_SIZE = 3;
+    private static final int TEST_BATCH_DELAY = 3_000;
     private static final int TEST_TIMEOUT_IN_MILLIS = 500;
 
     @Mock
@@ -135,7 +136,7 @@ class RemotePeerForwarderTest {
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
-        return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics);
+        return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics, TEST_BATCH_DELAY);
     }
 
     @Test
