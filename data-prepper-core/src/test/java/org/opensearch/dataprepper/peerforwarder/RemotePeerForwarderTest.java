@@ -50,8 +50,10 @@ import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECOR
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_SUCCESSFULLY_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_PROCESSED_LOCALLY;
+import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_MISSING_IDENTIFICATION_KEYS;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_FAILED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_SUCCESSFUL;
+import org.apache.commons.lang3.RandomStringUtils;
 
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
@@ -87,6 +89,9 @@ class RemotePeerForwarderTest {
     private Counter recordsReceivedFromPeersCounter;
 
     @Mock
+    private Counter recordsMissingIdentificationKeys;
+
+    @Mock
     private Counter requestsFailedCounter;
 
     @Mock
@@ -110,6 +115,7 @@ class RemotePeerForwarderTest {
         when(pluginMetrics.counter(RECORDS_SUCCESSFULLY_FORWARDED)).thenReturn(recordsSuccessfullyForwardedCounter);
         when(pluginMetrics.counter(RECORDS_FAILED_FORWARDING)).thenReturn(recordsFailedForwardingCounter);
         when(pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS)).thenReturn(recordsReceivedFromPeersCounter);
+        when(pluginMetrics.counter(RECORDS_MISSING_IDENTIFICATION_KEYS)).thenReturn(recordsMissingIdentificationKeys);
         when(pluginMetrics.counter(REQUESTS_FAILED)).thenReturn(requestsFailedCounter);
         when(pluginMetrics.counter(REQUESTS_SUCCESSFUL)).thenReturn(requestsSuccessfulCounter);
     }
@@ -212,6 +218,64 @@ class RemotePeerForwarderTest {
         assertThat(records, equalTo(testRecords));
 
         verify(recordsReceivedFromPeersCounter).increment(3.0);
+    }
+
+    @Test
+    void test_receiveRecords_with_missing_identification_keys() throws Exception {
+        AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
+        when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenReturn(aggregatedHttpResponse);
+
+        final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
+        lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
+        lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
+
+        RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> testRecords = generateBatchRecords(2);
+        // Add an event that doesn't have identification keys in it
+        final Map<String, String> eventData = new HashMap<>();
+        eventData.put("key1", "8.8.8.8");
+        eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
+        final JacksonEvent event = JacksonLog.builder().withData(eventData).build();
+        testRecords.add(new Record<>(event));
+
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
+        assertThat(records.size(), equalTo(2));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(2.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
+        verify(recordsMissingIdentificationKeys, times(0)).increment(1.0);
+        verify(recordsToBeForwardedCounter).increment(1.0);
+        verify(requestsSuccessfulCounter).increment();
+        verify(recordsSuccessfullyForwardedCounter).increment(1.0);
+    }
+
+    @Test
+    void test_receiveRecords_with_no_identification_keys() throws Exception {
+        AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
+
+        RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final Collection<Record<Event>> testRecords = new ArrayList<>();
+        // Add an event that doesn't have identification keys in it
+        for (int i = 0; i < 2; i++) {
+            final Map<String, String> eventData = new HashMap<>();
+            eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
+            eventData.put(RandomStringUtils.randomAlphabetic(5), RandomStringUtils.randomAlphabetic(10));
+            final JacksonEvent event = JacksonLog.builder().withData(eventData).build();
+            testRecords.add(new Record<>(event));
+        }
+
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
+        verify(peerForwarderClient, times(0)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
+        assertThat(records.size(), equalTo(2));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(2.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
+        verify(recordsMissingIdentificationKeys, times(2)).increment(1.0);
+        verify(recordsToBeForwardedCounter, times(0)).increment(0.0);
+        verify(requestsSuccessfulCounter, times(0)).increment();
+        verify(recordsSuccessfullyForwardedCounter, times(0)).increment(0.0);
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {
