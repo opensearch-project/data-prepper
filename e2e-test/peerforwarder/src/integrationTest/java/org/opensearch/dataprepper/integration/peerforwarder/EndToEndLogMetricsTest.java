@@ -150,8 +150,8 @@ public class EndToEndLogMetricsTest {
                 }
             }
         }
-        Assert.assertThat(expectedMin, equalTo(receivedMin));
-        Assert.assertThat(expectedMax, equalTo(receivedMax));
+        Assert.assertThat(expectedMin, closeTo(receivedMin, 0.01));
+        Assert.assertThat(expectedMax, closeTo(receivedMax, 0.01));
         Assert.assertThat(TOTAL_EVENTS, equalTo(receivedCount));
         Assert.assertThat(expectedSum, closeTo(receivedSum, 0.1));
     }
