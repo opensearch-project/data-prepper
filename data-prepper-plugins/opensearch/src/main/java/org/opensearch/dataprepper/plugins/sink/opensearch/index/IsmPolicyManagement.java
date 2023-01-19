@@ -17,6 +17,9 @@ import org.opensearch.client.RequestOptions;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -40,11 +43,13 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     public static final String DEFAULT_INDEX_SUFFIX = "-000001";
     private static final String POLICY_FILE_ROOT_KEY = "policy";
     private static final String POLICY_FILE_ISM_TEMPLATE_KEY = "ism_template";
+    private static final String S3_PREFIX = "s3://";
 
     private final RestHighLevelClient restHighLevelClient;
     private final String policyName;
     private final String policyFile;
     private final String policyFileWithoutIsmTemplate;
+    private S3Client s3Client;
 
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
@@ -62,7 +67,8 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
 
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
-                               final String policyFile) {
+                               final String policyFile,
+                               final S3Client s3Client) {
         checkNotNull(restHighLevelClient);
         checkArgument(StringUtils.isNotEmpty(policyName));
         checkArgument(StringUtils.isNotEmpty(policyFile));
@@ -70,6 +76,7 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         this.policyName = policyName;
         this.policyFile = policyFile;
         this.policyFileWithoutIsmTemplate = null;
+        this.s3Client = s3Client;
     }
 
     @Override
@@ -142,14 +149,33 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     private String retrievePolicyJsonString(final String fileName) throws IOException {
+        if (fileName.startsWith(S3_PREFIX)) {
+            return retrievePolicyJsonStringFromS3(fileName);
+        } else {
+            return retrievePolicyJsonStringFromFile(fileName);
+        }
+    }
+
+    private String retrievePolicyJsonStringFromS3(final String fileName) throws IOException {
+        final StringBuilder policyJsonBuffer = new StringBuilder();
+        final FileReader s3FileReader = new S3FileReader(s3Client);
+        try (final InputStream inputStream = s3FileReader.readFile(fileName);
+             final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
+            reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
+        }
+        return policyJsonBuffer.toString();
+    }
+
+    private String retrievePolicyJsonStringFromFile(final String fileName) throws IOException {
+        final StringBuilder policyJsonBuffer = new StringBuilder();
         final File file = new File(fileName);
         final URL policyFileUrl;
+
         if (file.isAbsolute()) {
             policyFileUrl = file.toURI().toURL();
         } else {
             policyFileUrl = getClass().getClassLoader().getResource(fileName);
         }
-        final StringBuilder policyJsonBuffer = new StringBuilder();
         try (final InputStream inputStream = policyFileUrl.openStream();
              final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
             reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));

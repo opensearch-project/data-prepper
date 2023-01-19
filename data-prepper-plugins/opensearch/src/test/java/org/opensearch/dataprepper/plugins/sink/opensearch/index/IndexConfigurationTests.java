@@ -7,17 +7,25 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectAttributesRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectAttributesResponse;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
@@ -69,6 +77,33 @@ public class IndexConfigurationTests {
                 .withBulkSize(-1)
                 .build();
         assertEquals(-1, indexConfiguration.getBulkSize());
+    }
+
+    @Test
+    public void testValidCustom_from_s3() {
+        final String testTemplateFilePath = "s3://folder/file.json";
+        final String testS3AwsRegion = "us-east-2";
+        final String testS3StsRoleArn = "arn:aws:iam::123456789:user/user-role";
+
+        final S3Client s3Client = mock(S3Client.class);
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(null);
+
+        final GetObjectAttributesResponse getObjectAttributesResponse = GetObjectAttributesResponse.builder().objectSize(100L).build();
+        when(s3Client.getObjectAttributes(any(GetObjectAttributesRequest.class))).thenReturn(getObjectAttributesResponse);
+
+        final String testIndexAlias = UUID.randomUUID().toString();
+        IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexAlias(testIndexAlias)
+                .withTemplateFile(testTemplateFilePath)
+                .withS3AwsRegion(testS3AwsRegion)
+                .withS3AWSStsRoleArn(testS3StsRoleArn)
+                .withS3Client(s3Client)
+                .build();
+
+        assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
+        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+        assertEquals(testS3AwsRegion, indexConfiguration.getS3AwsRegion());
+        assertEquals(testS3StsRoleArn, indexConfiguration.getS3AwsStsRoleArn());
     }
 
     @Test
