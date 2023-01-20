@@ -15,7 +15,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 public class PercentSamplerAggregateActionConfigTests {
@@ -40,12 +39,12 @@ public class PercentSamplerAggregateActionConfigTests {
     @Test
     void testInvalidConfig() throws NoSuchFieldException, IllegalAccessException {
         setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", 0.0);
-        assertThrows(IllegalArgumentException.class, () -> percentSamplerAggregateActionConfig.getPercent());
+        assertThat(percentSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
         setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", 100.0);
-        assertThrows(IllegalArgumentException.class, () -> percentSamplerAggregateActionConfig.getPercent());
+        assertThat(percentSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
         setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", -1.0);
-        assertThrows(IllegalArgumentException.class, () -> percentSamplerAggregateActionConfig.getPercent());
+        assertThat(percentSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
         setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", 110.0);
-        assertThrows(IllegalArgumentException.class, () -> percentSamplerAggregateActionConfig.getPercent());
+        assertThat(percentSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
     }
 }

@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
-import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.junit.jupiter.api.extension.ExtendWith; 
@@ -16,7 +15,9 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInp
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.Map;
@@ -32,15 +33,17 @@ public class PercentSamplerAggregateActionTests {
 
     private AggregateAction percentSamplerAggregateAction;
 
+    @Mock
+    private PercentSamplerAggregateActionConfig percentSamplerAggregateActionConfig;
+
     private AggregateAction createObjectUnderTest(PercentSamplerAggregateActionConfig config) {
         return new PercentSamplerAggregateAction(config);
     }
 
     @ParameterizedTest
     @ValueSource(doubles = {1.0, 10.0, 25.0, 50.0, 66.0, 75.0, 90.0, 99.0})
-    void testPercentSamplerAggregate(double testPercent) throws NoSuchFieldException, IllegalAccessException, InterruptedException {
-        PercentSamplerAggregateActionConfig percentSamplerAggregateActionConfig = new PercentSamplerAggregateActionConfig();
-        setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", testPercent);
+    void testPercentSamplerAggregate(double testPercent) throws InterruptedException {
+        when(percentSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
         percentSamplerAggregateAction = createObjectUnderTest(percentSamplerAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
