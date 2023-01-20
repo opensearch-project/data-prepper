@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.metric.JacksonMetric;
 import org.junit.jupiter.api.extension.ExtendWith; 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasKey;
@@ -206,6 +208,8 @@ public class HistogramAggregateActionTests {
         assertThat(((Map<String, String>)result.get().toMap().get("attributes")), hasEntry(dataKey, dataValue));
         final String expectedDurationKey = histogramAggregateActionConfig.getDurationKey();
         assertThat(((Map<String, String>)result.get().toMap().get("attributes")), hasKey(expectedDurationKey));
+        JacksonMetric metric = (JacksonMetric) result.get();
+        assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
         final List<Double> explicitBoundsFromResult = (ArrayList<Double>)result.get().toMap().get("explicitBounds");
         double bucketVal = TEST_VALUE_RANGE_MIN;
         for (int i = 0; i < explicitBoundsFromResult.size(); i++) {

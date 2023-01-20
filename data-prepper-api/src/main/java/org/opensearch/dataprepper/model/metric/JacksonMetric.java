@@ -32,6 +32,7 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     protected static final String SCHEMA_URL_KEY = "schemaUrl";
     protected static final String EXEMPLARS_KEY = "exemplars";
     protected static final String FLAGS_KEY = "flags";
+    private boolean flattenAttributes = true;
 
     protected JacksonMetric(Builder builder) {
         super(builder);
@@ -39,6 +40,9 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
 
     @Override
     public String toJsonString() {
+        if (!flattenAttributes) {
+            return getJsonNode().toString();
+        }
         final ObjectNode attributesNode = (ObjectNode) getJsonNode().get(ATTRIBUTES_KEY);
         final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
         if (attributesNode != null) {
@@ -107,6 +111,10 @@ public abstract class JacksonMetric extends JacksonEvent implements Metric {
     @Override
     public Integer getFlags() {
         return this.get(FLAGS_KEY, Integer.class);
+    }
+
+    public void disableAttributesFlattening() {
+        flattenAttributes = false;
     }
 
     /**
