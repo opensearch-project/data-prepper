@@ -11,8 +11,9 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.metrics.MetricsTestUtil;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.mockito.ArgumentCaptor;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
@@ -32,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -41,6 +43,10 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class OTelTraceRawProcessorTest {
 
@@ -69,7 +75,8 @@ public class OTelTraceRawProcessorTest {
     private List<Record<Span>> TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_2_RECORDS;
     private List<Record<Span>> TEST_TWO_TRACE_GROUP_MISSING_ROOT_RECORDS;
 
-    PluginSetting pluginSetting;
+    private OtelTraceRawProcessorConfig config;
+    private PluginMetrics pluginMetrics;
     public OTelTraceRawProcessor oTelTraceRawProcessor;
     public ExecutorService executorService;
 
@@ -102,13 +109,16 @@ public class OTelTraceRawProcessorTest {
                         TEST_TRACE_GROUP_2_CHILD_SPAN_1, TEST_TRACE_GROUP_2_CHILD_SPAN_2)
                 .map(Record::new).collect(Collectors.toList());
 
-        MetricsTestUtil.initMetrics();
-        pluginSetting = new PluginSetting(
-                "OTelTrace",
-                Map.of(OtelTraceRawProcessorConfig.TRACE_FLUSH_INTERVAL, TEST_TRACE_FLUSH_INTERVAL));
-        pluginSetting.setPipelineName("pipelineOTelTrace");
-        pluginSetting.setProcessWorkers(TEST_CONCURRENCY_SCALE);
-        oTelTraceRawProcessor = new OTelTraceRawProcessor(pluginSetting);
+        config = mock(OtelTraceRawProcessorConfig.class);
+        final PipelineDescription pipelineDescription = mock(PipelineDescription.class);
+        when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(TEST_CONCURRENCY_SCALE);
+        pluginMetrics = mock(PluginMetrics.class);
+
+        when(config.getTraceFlushIntervalSeconds()).thenReturn(TEST_TRACE_FLUSH_INTERVAL);
+        when(config.getMaxTraceIdCacheSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
+        when(config.getTraceIdTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+
+        oTelTraceRawProcessor = new OTelTraceRawProcessor(config, pipelineDescription, pluginMetrics);
         executorService = Executors.newFixedThreadPool(TEST_CONCURRENCY_SCALE);
     }
 
@@ -202,6 +212,36 @@ public class OTelTraceRawProcessorTest {
     public void testGetIdentificationKeys() {
         final Collection<String> expectedIdentificationKeys = oTelTraceRawProcessor.getIdentificationKeys();
         assertThat(expectedIdentificationKeys, equalTo(Collections.singleton("traceId")));
+    }
+
+    @Test
+    void testMetricsOnTraceGroup() {
+        ArgumentCaptor<Object> gaugeObjectArgumentCaptor = ArgumentCaptor.forClass(Object.class);
+        ArgumentCaptor<ToDoubleFunction> gaugeFunctionArgumentCaptor = ArgumentCaptor.forClass(ToDoubleFunction.class);
+        verify(pluginMetrics).gauge(eq(OTelTraceRawProcessor.TRACE_GROUP_CACHE_COUNT_METRIC_NAME), gaugeObjectArgumentCaptor.capture(), gaugeFunctionArgumentCaptor.capture());
+        final Object actualMeasuredObject = gaugeObjectArgumentCaptor.getValue();
+        final ToDoubleFunction actualFunction = gaugeFunctionArgumentCaptor.getValue();
+
+        assertThat(actualFunction.applyAsDouble(actualMeasuredObject), equalTo(0.0));
+
+        oTelTraceRawProcessor.doExecute(TEST_TWO_FULL_TRACE_GROUP_RECORDS);
+
+        assertThat(actualFunction.applyAsDouble(actualMeasuredObject), equalTo(2.0));
+    }
+
+    @Test
+    void testMetricsOnSpanSet() {
+        ArgumentCaptor<Object> gaugeObjectArgumentCaptor = ArgumentCaptor.forClass(Object.class);
+        ArgumentCaptor<ToDoubleFunction> gaugeFunctionArgumentCaptor = ArgumentCaptor.forClass(ToDoubleFunction.class);
+        verify(pluginMetrics).gauge(eq(OTelTraceRawProcessor.SPAN_SET_COUNT_METRIC_NAME), gaugeObjectArgumentCaptor.capture(), gaugeFunctionArgumentCaptor.capture());
+        final Object actualMeasuredObject = gaugeObjectArgumentCaptor.getValue();
+        final ToDoubleFunction actualFunction = gaugeFunctionArgumentCaptor.getValue();
+
+        assertThat(actualFunction.applyAsDouble(actualMeasuredObject), equalTo(0.0));
+
+        oTelTraceRawProcessor.doExecute(TEST_ONE_TRACE_GROUP_MISSING_ROOT_RECORDS);
+
+        assertThat(actualFunction.applyAsDouble(actualMeasuredObject), equalTo(1.0));
     }
 
     private static Span buildSpanFromJsonFile(final String jsonFileName) {
