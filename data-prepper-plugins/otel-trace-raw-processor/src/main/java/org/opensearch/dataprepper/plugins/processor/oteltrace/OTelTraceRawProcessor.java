@@ -65,8 +65,8 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
         final int numProcessWorkers = pipelineDescription.getNumberOfProcessWorkers();
         traceIdTraceGroupCache = CacheBuilder.newBuilder()
                 .concurrencyLevel(numProcessWorkers)
-                .maximumSize(otelTraceRawProcessorConfig.getMaxTraceIdCacheSize())
-                .expireAfterWrite(otelTraceRawProcessorConfig.getTraceIdTimeToLive().toMillis(), TimeUnit.MILLISECONDS)
+                .maximumSize(otelTraceRawProcessorConfig.getTraceGroupCacheMaxSize())
+                .expireAfterWrite(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive().toMillis(), TimeUnit.MILLISECONDS)
                 .build();
 
         pluginMetrics.gauge(TRACE_GROUP_CACHE_COUNT_METRIC_NAME, traceIdTraceGroupCache, cache -> (double) cache.size());

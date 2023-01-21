@@ -16,21 +16,21 @@ public class OtelTraceRawProcessorConfig {
     @JsonProperty("trace_flush_interval")
     private long traceFlushInterval = DEFAULT_TG_FLUSH_INTERVAL_SEC;
 
-    @JsonProperty("trace_id_ttl")
-    private Duration traceIdTimeToLive = DEFAULT_TRACE_ID_TTL;
+    @JsonProperty("trace_group_cache_ttl")
+    private Duration traceGroupCacheTimeToLive = DEFAULT_TRACE_ID_TTL;
 
-    @JsonProperty("max_trace_id_cache_size")
-    private long maxTraceIdCacheSize = MAX_TRACE_ID_CACHE_SIZE;
+    @JsonProperty("trace_group_cache_max_size")
+    private long traceGroupCacheMaxSize = MAX_TRACE_ID_CACHE_SIZE;
 
     public long getTraceFlushIntervalSeconds() {
         return traceFlushInterval;
     }
 
-    public Duration getTraceIdTimeToLive() {
-        return traceIdTimeToLive;
+    public Duration getTraceGroupCacheTimeToLive() {
+        return traceGroupCacheTimeToLive;
     }
 
-    public long getMaxTraceIdCacheSize() {
-        return maxTraceIdCacheSize;
+    public long getTraceGroupCacheMaxSize() {
+        return traceGroupCacheMaxSize;
     }
 }
