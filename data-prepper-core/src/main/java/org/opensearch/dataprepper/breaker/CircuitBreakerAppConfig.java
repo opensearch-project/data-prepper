@@ -5,9 +5,12 @@
 
 package org.opensearch.dataprepper.breaker;
 
+import org.opensearch.dataprepper.parser.model.CircuitBreakerConfig;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
 
 /**
  * The application config for circuit breakers. Used for wiring beans
@@ -18,7 +21,17 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class CircuitBreakerAppConfig {
     @Bean
-    public CircuitBreakerService circuitBreakerService(final DataPrepperConfiguration dataPrepperConfiguration) {
-        return new CircuitBreakerService(dataPrepperConfiguration.getCircuitBreakerConfig());
+    public CircuitBreakerManager circuitBreakerService(final List<InnerCircuitBreaker> circuitBreakers) {
+        return new CircuitBreakerManager(circuitBreakers);
+    }
+
+    @Bean
+    InnerCircuitBreaker heapCircuitBreaker(final DataPrepperConfiguration dataPrepperConfiguration) {
+        final CircuitBreakerConfig circuitBreakerConfig = dataPrepperConfiguration.getCircuitBreakerConfig();
+        if(circuitBreakerConfig != null && circuitBreakerConfig.getHeapConfig() != null) {
+            return new HeapCircuitBreaker(circuitBreakerConfig.getHeapConfig());
+        } else {
+            return null;
+        }
     }
 }

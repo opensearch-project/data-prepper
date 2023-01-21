@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.parser.config;
 
-import org.opensearch.dataprepper.breaker.CircuitBreakerService;
+import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.PipelineParser;
@@ -24,13 +24,13 @@ public class PipelineParserConfiguration {
             final PeerForwarderProvider peerForwarderProvider,
             final RouterFactory routerFactory,
             final DataPrepperConfiguration dataPrepperConfiguration,
-            final CircuitBreakerService circuitBreakerService
+            final CircuitBreakerManager circuitBreakerManager
             ) {
         return new PipelineParser(fileStructurePathProvider.getPipelineConfigFileLocation(),
                 pluginFactory,
                 peerForwarderProvider,
                 routerFactory,
                 dataPrepperConfiguration,
-                circuitBreakerService);
+                circuitBreakerManager);
     }
 }

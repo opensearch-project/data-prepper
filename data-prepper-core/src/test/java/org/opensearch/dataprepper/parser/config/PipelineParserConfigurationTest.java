@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.parser.config;
 
-import org.opensearch.dataprepper.breaker.CircuitBreakerService;
+import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.junit.jupiter.api.Test;
@@ -42,7 +42,7 @@ class PipelineParserConfigurationTest {
     private DataPrepperConfiguration dataPrepperConfiguration;
 
     @Mock
-    private CircuitBreakerService circuitBreakerService;
+    private CircuitBreakerManager circuitBreakerManager;
 
     @Test
     void pipelineParser() {
@@ -51,7 +51,7 @@ class PipelineParserConfigurationTest {
                 .thenReturn(pipelineConfigFileLocation);
 
         final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(
-                fileStructurePathProvider, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerService);
+                fileStructurePathProvider, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerManager);
 
         assertThat(pipelineParser, is(notNullValue()));
         verify(fileStructurePathProvider).getPipelineConfigFileLocation();

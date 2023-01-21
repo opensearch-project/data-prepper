@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @since 2.1
  */
-class HeapCircuitBreaker implements CircuitBreaker {
+class HeapCircuitBreaker implements InnerCircuitBreaker {
     private static final Logger LOG = LoggerFactory.getLogger(HeapCircuitBreaker.class);
     private final MemoryMXBean memoryMXBean;
     private final long usageBytes;

@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.parser;
 
-import org.opensearch.dataprepper.breaker.CircuitBreakerService;
+import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
@@ -62,7 +62,7 @@ public class PipelineParser {
     private final String pipelineConfigurationFileLocation;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
-    private final CircuitBreakerService circuitBreakerService;
+    private final CircuitBreakerManager circuitBreakerManager;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
     private final PeerForwarderProvider peerForwarderProvider;
@@ -72,13 +72,13 @@ public class PipelineParser {
                           final PeerForwarderProvider peerForwarderProvider,
                           final RouterFactory routerFactory,
                           final DataPrepperConfiguration dataPrepperConfiguration,
-                          final CircuitBreakerService circuitBreakerService) {
+                          final CircuitBreakerManager circuitBreakerManager) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
         this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
-        this.circuitBreakerService = circuitBreakerService;
+        this.circuitBreakerManager = circuitBreakerManager;
     }
 
     /**
@@ -198,7 +198,7 @@ public class PipelineParser {
             if(source instanceof PipelineConnector) {
                 buffer = multiBufferDecorator;
             } else {
-                buffer = circuitBreakerService.getGlobalCircuitBreaker()
+                buffer = circuitBreakerManager.getGlobalCircuitBreaker()
                         .map(circuitBreaker -> new CircuitBreakingBuffer<>(multiBufferDecorator, circuitBreaker))
                         .map(b -> (Buffer)b)
                         .orElseGet(() -> multiBufferDecorator);

@@ -17,7 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.breaker.CircuitBreaker;
-import org.opensearch.dataprepper.breaker.CircuitBreakerService;
+import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -67,7 +67,7 @@ class PipelineParserTests {
     @Mock
     private PeerForwarderReceiveBuffer buffer;
     @Mock
-    private CircuitBreakerService circuitBreakerService;
+    private CircuitBreakerManager circuitBreakerManager;
 
     private PluginFactory pluginFactory;
 
@@ -90,7 +90,7 @@ class PipelineParserTests {
     }
 
     private PipelineParser createObjectUnderTest(final String pipelineConfigurationFileLocation) {
-        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerService);
+        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerManager);
     }
 
     @Test
@@ -267,7 +267,7 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_uses_CircuitBreaking_buffer_when_circuit_breakers_applied() {
         final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
-        when(circuitBreakerService.getGlobalCircuitBreaker())
+        when(circuitBreakerManager.getGlobalCircuitBreaker())
                 .thenReturn(Optional.of(circuitBreaker));
         final PipelineParser objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
@@ -287,7 +287,7 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_uses_unwrapped_buffer_when_no_circuit_breakers_are_applied() {
-        when(circuitBreakerService.getGlobalCircuitBreaker())
+        when(circuitBreakerManager.getGlobalCircuitBreaker())
                 .thenReturn(Optional.empty());
         final PipelineParser objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
@@ -309,7 +309,7 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_uses_unwrapped_buffer_for_pipeline_connectors() {
         final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
-        when(circuitBreakerService.getGlobalCircuitBreaker())
+        when(circuitBreakerManager.getGlobalCircuitBreaker())
                 .thenReturn(Optional.of(circuitBreaker));
         final PipelineParser objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
