@@ -36,7 +36,7 @@ class HeapCircuitBreakerTest {
     private static final Duration VERY_LARGE_RESET_PERIOD = Duration.ofDays(1);
     private static final Duration SMALL_RESET_PERIOD = Duration.ofMillis(50);
     private static final Duration SMALL_CHECK_INTERVAL = SMALL_RESET_PERIOD;
-    private static final long SLEEP_MILLIS = SMALL_CHECK_INTERVAL.plusMillis(5).toMillis();
+    private static final long SLEEP_MILLIS = SMALL_CHECK_INTERVAL.plusMillis(50).toMillis();
     @Mock
     private HeapCircuitBreakerConfig config;
 
