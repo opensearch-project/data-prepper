@@ -216,11 +216,14 @@ class HeapCircuitBreakerTest {
         }
 
         @Test
-        void isOpen_returns_false_if_MemoryMXBean_throws_on_first_call() {
+        void isOpen_returns_false_if_MemoryMXBean_throws_on_first_call() throws InterruptedException {
             reset(memoryMXBean);
             when(memoryMXBean.getHeapMemoryUsage()).thenThrow(RuntimeException.class);
 
-            assertThat(createObjectUnderTest().isOpen(), equalTo(false));
+            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
         }
     }
 }
