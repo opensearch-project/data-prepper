@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.HeapCircuitBreakerConfig;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.time.Duration;
 import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class CircuitBreakerIT {
+    private static final Duration SMALL_SLEEP_INTERVAL = Duration.ofMillis(50);
     @Mock
     private DataPrepperConfiguration dataPrepperConfiguration;
     @Mock
@@ -62,6 +64,7 @@ public class CircuitBreakerIT {
         @BeforeEach
         void setUp() {
             when(circuitBreakerConfig.getHeapConfig()).thenReturn(heapCircuitBreakerConfig);
+            when(heapCircuitBreakerConfig.getCheckInterval()).thenReturn(SMALL_SLEEP_INTERVAL);
         }
 
         @ParameterizedTest
@@ -69,7 +72,7 @@ public class CircuitBreakerIT {
                 "1000000gb, false",
                 "8b, true"
         })
-        void globalCircuitBreaker_returns_expected_value_based_on_heap(final String byteCount, final boolean expectedIsOpen) {
+        void globalCircuitBreaker_returns_expected_value_based_on_heap(final String byteCount, final boolean expectedIsOpen) throws InterruptedException {
             when(heapCircuitBreakerConfig.getUsage()).thenReturn(ByteCount.parse(byteCount));
             final Optional<CircuitBreaker> globalCircuitBreaker = createObjectUnderTest().getGlobalCircuitBreaker();
 
@@ -77,6 +80,8 @@ public class CircuitBreakerIT {
             assertThat(globalCircuitBreaker.isPresent(), equalTo(true));
             final CircuitBreaker circuitBreaker = globalCircuitBreaker.get();
             assertThat(circuitBreaker, notNullValue());
+
+            Thread.sleep(SMALL_SLEEP_INTERVAL.toMillis());
 
             assertThat(circuitBreaker.isOpen(), equalTo(expectedIsOpen));
         }

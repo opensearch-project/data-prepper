@@ -14,6 +14,8 @@ import org.opensearch.dataprepper.parser.model.CircuitBreakerConfig;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.HeapCircuitBreakerConfig;
 
+import java.time.Duration;
+
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -51,6 +53,7 @@ class CircuitBreakerAppConfigTest {
         when(byteCount.getBytes()).thenReturn(1L);
         final HeapCircuitBreakerConfig heapCircuitBreakerConfig = mock(HeapCircuitBreakerConfig.class);
         when(heapCircuitBreakerConfig.getUsage()).thenReturn(byteCount);
+        when(heapCircuitBreakerConfig.getCheckInterval()).thenReturn(Duration.ofSeconds(1));
         final CircuitBreakerConfig circuitBreakerConfig = mock(CircuitBreakerConfig.class);
         when(circuitBreakerConfig.getHeapConfig()).thenReturn(heapCircuitBreakerConfig);
         when(dataPrepperConfiguration.getCircuitBreakerConfig())

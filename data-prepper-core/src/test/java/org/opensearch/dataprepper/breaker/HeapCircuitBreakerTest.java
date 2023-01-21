@@ -24,16 +24,19 @@ import java.util.Random;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class HeapCircuitBreakerTest {
     private static final Duration VERY_LARGE_RESET_PERIOD = Duration.ofDays(1);
-    private static final Duration SMALL_RESET_PERIOD = Duration.ofMillis(200);
+    private static final Duration SMALL_RESET_PERIOD = Duration.ofMillis(50);
+    private static final Duration SMALL_CHECK_INTERVAL = SMALL_RESET_PERIOD;
+    private static final long SLEEP_MILLIS = SMALL_CHECK_INTERVAL.plusMillis(5).toMillis();
     @Mock
     private HeapCircuitBreakerConfig config;
 
@@ -61,7 +64,21 @@ class HeapCircuitBreakerTest {
 
     @Test
     void constructor_throws_if_usage_is_null() {
-        when(config.getUsage()).thenReturn(null);
+        lenient().when(config.getUsage()).thenReturn(null);
+        lenient().when(config.getReset()).thenReturn(Duration.ofSeconds(1));
+        lenient().when(config.getCheckInterval()).thenReturn(Duration.ofSeconds(1));
+        assertThrows(NullPointerException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void constructor_throws_if_reset_is_null() {
+        lenient().when(config.getCheckInterval()).thenReturn(Duration.ofSeconds(1));
+        assertThrows(NullPointerException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void constructor_throws_if_checkInterval_is_null() {
+        lenient().when(config.getReset()).thenReturn(Duration.ofSeconds(1));
         assertThrows(NullPointerException.class, this::createObjectUnderTest);
     }
 
@@ -82,105 +99,120 @@ class HeapCircuitBreakerTest {
             final ByteCount usageByteCount = mock(ByteCount.class);
             when(usageByteCount.getBytes()).thenReturn(byteUsage);
             when(config.getUsage()).thenReturn(usageByteCount);
+            when(config.getCheckInterval()).thenReturn(SMALL_CHECK_INTERVAL);
 
             memoryUsage = mock(MemoryUsage.class);
             when(memoryMXBean.getHeapMemoryUsage()).thenReturn(memoryUsage);
         }
 
+        @Test
+        void object_checks_memory_even_when_not_calling_isOpen() throws InterruptedException {
+            createObjectUnderTest();
+
+            Thread.sleep(SLEEP_MILLIS);
+
+            verify(memoryMXBean, atLeastOnce()).getHeapMemoryUsage();
+        }
+
         @ParameterizedTest
         @ValueSource(longs = {1, 2, 1024})
-        void isOpen_returns_false_if_used_bytes_less_than_configured_bytes(final long bytesDifference) {
+        void isOpen_returns_false_if_used_bytes_less_than_configured_bytes(final long bytesDifference) throws InterruptedException {
             when(memoryUsage.getUsed()).thenReturn(byteUsage - bytesDifference);
 
-            assertThat(createObjectUnderTest().isOpen(), equalTo(false));
+            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
         }
 
         @Test
-        void isOpen_returns_false_if_used_bytes_equal_to_configured_bytes() {
+        void isOpen_returns_false_if_used_bytes_equal_to_configured_bytes() throws InterruptedException {
             when(memoryUsage.getUsed()).thenReturn(byteUsage);
 
-            assertThat(createObjectUnderTest().isOpen(), equalTo(false));
+            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
         }
 
         @ParameterizedTest
         @ValueSource(longs = {1, 2, 1024, 1024 * 1024})
-        void isOpen_returns_true_if_used_bytes_greater_than_configured_bytes(final long bytesGreater) {
+        void isOpen_returns_true_if_used_bytes_greater_than_configured_bytes(final long bytesGreater) throws InterruptedException {
             when(memoryUsage.getUsed()).thenReturn(byteUsage + bytesGreater);
 
-            assertThat(createObjectUnderTest().isOpen(), equalTo(true));
-        }
-
-        @Test
-        void isOpen_called_multiple_times_within_reset_period_when_below_threshold_will_check_memory_each_time() {
-            when(config.getReset()).thenReturn(VERY_LARGE_RESET_PERIOD);
-
-            when(memoryUsage.getUsed()).thenReturn(byteUsage - 1);
-
             final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
-
-            final int timesToCheckIsOpen = 200;
-            for (int i = 0; i < timesToCheckIsOpen; i++) {
-                objectUnderTest.isOpen();
-            }
-
-            verify(memoryMXBean, times(timesToCheckIsOpen)).getHeapMemoryUsage();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
         }
 
         @Test
-        void isOpen_called_multiple_times_within_reset_period_when_used_bytes_less_than_configured_will_not_call_again() {
+        void will_not_check_within_reset_period() throws InterruptedException {
             when(config.getReset()).thenReturn(VERY_LARGE_RESET_PERIOD);
 
             when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
 
             final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
-            objectUnderTest.isOpen();
 
-            for (int i = 0; i < 200; i++) {
-                objectUnderTest.isOpen();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+
+            reset(memoryUsage);
+            lenient().when(memoryUsage.getUsed()).thenReturn(byteUsage - 1);
+            for(int i = 0; i < 3; i++) {
+                Thread.sleep(SLEEP_MILLIS);
             }
 
-            verify(memoryMXBean, times(1)).getHeapMemoryUsage();
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
         }
 
         @Test
-        void isOpen_called_twice_after_reset_period_will_call_again() throws InterruptedException {
+        void will_check_after_reset_period() throws InterruptedException {
             when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
 
             when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
 
             final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
-            objectUnderTest.isOpen();
-            Thread.sleep(SMALL_RESET_PERIOD.toMillis());
-            objectUnderTest.isOpen();
 
-            verify(memoryMXBean, times(2)).getHeapMemoryUsage();
+            Thread.sleep(SLEEP_MILLIS);
+            assertThat(objectUnderTest.isOpen(), equalTo(true));
+
+            reset(memoryUsage);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage - 1);
+            for(int i = 0; i < 3; i++) {
+                Thread.sleep(SLEEP_MILLIS);
+            }
+
+            assertThat(objectUnderTest.isOpen(), equalTo(false));
         }
 
         @Test
-        void isOpen_transition_from_false_to_true() {
+        void isOpen_transition_from_false_to_true() throws InterruptedException {
+            when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage - 1);
+
             final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
 
-            when(memoryUsage.getUsed())
-                    .thenReturn(byteUsage - 1)
-                    .thenReturn(byteUsage + 1);
+            Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(false));
+
+            reset(memoryUsage);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
+            Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(true));
-            verify(memoryMXBean, times(2)).getHeapMemoryUsage();
         }
 
         @Test
         void isOpen_transition_from_true_to_false() throws InterruptedException {
             when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
 
+            when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
             final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
 
-            when(memoryUsage.getUsed())
-                    .thenReturn(byteUsage + 1)
-                    .thenReturn(byteUsage - 1);
+            Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(true));
-            Thread.sleep(SMALL_RESET_PERIOD.toMillis());
+
+            reset(memoryUsage);
+            when(memoryUsage.getUsed()).thenReturn(byteUsage - 1);
+            Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(false));
-            verify(memoryMXBean, times(2)).getHeapMemoryUsage();
         }
 
         @Test
@@ -189,25 +221,6 @@ class HeapCircuitBreakerTest {
             when(memoryMXBean.getHeapMemoryUsage()).thenThrow(RuntimeException.class);
 
             assertThat(createObjectUnderTest().isOpen(), equalTo(false));
-        }
-
-        @ParameterizedTest
-        @ValueSource(longs = {1, -1})
-        void isOpen_returns_previous_state_if_MemoryMXBean_throws_on_first_call(final long difference) {
-            when(config.getReset()).thenReturn(Duration.ZERO);
-            reset(memoryMXBean);
-            when(memoryUsage.getUsed())
-                    .thenReturn(byteUsage + difference)
-                    .thenReturn(byteUsage - difference);
-            when(memoryMXBean.getHeapMemoryUsage())
-                    .thenReturn(memoryUsage)
-                    .thenThrow(RuntimeException.class);
-
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
-            final boolean previousOpen = objectUnderTest.isOpen();
-            assertThat(objectUnderTest.isOpen(), equalTo(previousOpen));
-
-            verify(memoryMXBean, times(2)).getHeapMemoryUsage();
         }
     }
 }

@@ -15,6 +15,9 @@ import java.lang.management.MemoryMXBean;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -24,14 +27,17 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @since 2.1
  */
-class HeapCircuitBreaker implements InnerCircuitBreaker {
+class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(HeapCircuitBreaker.class);
+    public static final int OPEN_METRIC_VALUE = 1;
+    public static final int CLOSED_METRIC_VALUE = 0;
     private final MemoryMXBean memoryMXBean;
     private final long usageBytes;
     private final Duration resetPeriod;
     private final Lock lock;
     private final AtomicInteger openGauge;
-    private boolean open;
+    private final ScheduledExecutorService scheduledExecutorService;
+    private volatile boolean open;
     private Instant resetTime;
 
     HeapCircuitBreaker(final HeapCircuitBreakerConfig circuitBreakerConfig) {
@@ -46,7 +52,7 @@ class HeapCircuitBreaker implements InnerCircuitBreaker {
         if(usageBytes <= 0)
             throw new IllegalArgumentException("Bytes usage must be positive.");
 
-        resetPeriod = circuitBreakerConfig.getReset();
+        resetPeriod = Objects.requireNonNull(circuitBreakerConfig.getReset());
         this.memoryMXBean = memoryMXBean;
         open = false;
         lock = new ReentrantLock();
@@ -55,21 +61,16 @@ class HeapCircuitBreaker implements InnerCircuitBreaker {
         Metrics.gauge("core.circuitBreakers.heap.memoryUsage", this, cb -> getUsedMemoryBytes());
         openGauge = Metrics.gauge("core.circuitBreakers.heap.open", new AtomicInteger(0));
 
+        final Duration checkInterval = Objects.requireNonNull(circuitBreakerConfig.getCheckInterval());
+        scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        scheduledExecutorService
+                        .scheduleAtFixedRate(this::checkMemory, 0L, checkInterval.toMillis(), TimeUnit.MILLISECONDS);
+
         LOG.info("Heap circuit breaker with usage of {} bytes.", usageBytes);
     }
 
     @Override
     public boolean isOpen() {
-        if(lock.tryLock()) {
-            try {
-                checkMemory();
-            } catch (final RuntimeException ex) {
-                LOG.warn("Suppressing exception thrown while checking memory.", ex);
-            } finally {
-                lock.unlock();
-            }
-        }
-
         return open;
     }
 
@@ -85,13 +86,13 @@ class HeapCircuitBreaker implements InnerCircuitBreaker {
             open = true;
             if(!previousOpen) {
                 resetTime = Instant.now().plus(resetPeriod);
-                openGauge.set(1);
+                openGauge.set(OPEN_METRIC_VALUE);
                 LOG.info("Circuit breaker tripped and open. {} used > {} configured", usedMemoryBytes, usageBytes);
             }
         } else {
             open = false;
             if(previousOpen) {
-                openGauge.set(0);
+                openGauge.set(CLOSED_METRIC_VALUE);
                 LOG.info("Circuit breaker closed. {} used <= {} configured", usedMemoryBytes, usageBytes);
             }
         }
@@ -99,5 +100,10 @@ class HeapCircuitBreaker implements InnerCircuitBreaker {
 
     private long getUsedMemoryBytes() {
         return memoryMXBean.getHeapMemoryUsage().getUsed();
+    }
+
+    @Override
+    public void close() throws Exception {
+        scheduledExecutorService.shutdown();
     }
 }
