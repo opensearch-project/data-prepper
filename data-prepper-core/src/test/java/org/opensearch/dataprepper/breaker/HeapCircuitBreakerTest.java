@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.breaker;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -47,9 +48,19 @@ class HeapCircuitBreakerTest {
     private long byteUsage;
     private MemoryUsage memoryUsage;
 
+    private HeapCircuitBreaker objectUnderTest;
+
     @BeforeEach
     void setUp() {
         random = new Random();
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        if(objectUnderTest != null) {
+            objectUnderTest.close();
+            objectUnderTest = null;
+        }
     }
 
     private HeapCircuitBreaker createObjectUnderTest() {
@@ -107,7 +118,7 @@ class HeapCircuitBreakerTest {
 
         @Test
         void object_checks_memory_even_when_not_calling_isOpen() throws InterruptedException {
-            createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
 
             Thread.sleep(SLEEP_MILLIS);
 
@@ -119,7 +130,7 @@ class HeapCircuitBreakerTest {
         void isOpen_returns_false_if_used_bytes_less_than_configured_bytes(final long bytesDifference) throws InterruptedException {
             when(memoryUsage.getUsed()).thenReturn(byteUsage - bytesDifference);
 
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
             Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(false));
         }
@@ -128,7 +139,7 @@ class HeapCircuitBreakerTest {
         void isOpen_returns_false_if_used_bytes_equal_to_configured_bytes() throws InterruptedException {
             when(memoryUsage.getUsed()).thenReturn(byteUsage);
 
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
             Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(false));
         }
@@ -138,7 +149,7 @@ class HeapCircuitBreakerTest {
         void isOpen_returns_true_if_used_bytes_greater_than_configured_bytes(final long bytesGreater) throws InterruptedException {
             when(memoryUsage.getUsed()).thenReturn(byteUsage + bytesGreater);
 
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
             Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(true));
         }
@@ -149,7 +160,7 @@ class HeapCircuitBreakerTest {
 
             when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
 
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
 
             Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(true));
@@ -169,7 +180,7 @@ class HeapCircuitBreakerTest {
 
             when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
 
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
 
             Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(true));
@@ -188,7 +199,7 @@ class HeapCircuitBreakerTest {
             when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
             when(memoryUsage.getUsed()).thenReturn(byteUsage - 1);
 
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
 
             Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(false));
@@ -204,7 +215,7 @@ class HeapCircuitBreakerTest {
             when(config.getReset()).thenReturn(SMALL_RESET_PERIOD);
 
             when(memoryUsage.getUsed()).thenReturn(byteUsage + 1);
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
 
             Thread.sleep(SLEEP_MILLIS);
             assertThat(objectUnderTest.isOpen(), equalTo(true));
@@ -220,7 +231,7 @@ class HeapCircuitBreakerTest {
             reset(memoryMXBean);
             when(memoryMXBean.getHeapMemoryUsage()).thenThrow(RuntimeException.class);
 
-            final HeapCircuitBreaker objectUnderTest = createObjectUnderTest();
+            objectUnderTest = createObjectUnderTest();
             Thread.sleep(SLEEP_MILLIS);
 
             assertThat(objectUnderTest.isOpen(), equalTo(false));
