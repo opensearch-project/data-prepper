@@ -17,7 +17,6 @@ public class CircuitBreakerManager {
     private final CircuitBreaker globalCircuitBreaker;
 
     CircuitBreakerManager(final List<InnerCircuitBreaker> circuitBreakers) {
-
         if(circuitBreakers.isEmpty()) {
             globalCircuitBreaker = null;
         } else {
