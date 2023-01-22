@@ -46,6 +46,10 @@ Default is null.
 
 - `aws_region`: A String represents the region of Amazon OpenSearch Service domain, e.g. us-west-2. Only applies to Amazon OpenSearch Service. Defaults to `us-east-1`.
 
+- `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon OpenSearch Service. If not provided the plugin will use the default credentials.
+
+- `aws_sts_header_overrides`: An optional map of header overrides to make when assuming the IAM role for the sink plugin.
+
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
 
 - `username`(optional): A String of username used in the [internal users](https://opensearch.org/docs/latest/security-plugin/access-control/users-roles) of OpenSearch cluster. Default is null.
