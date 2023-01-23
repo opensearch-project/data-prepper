@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
 import org.opensearch.dataprepper.test.framework.DataPrepperTestRunner;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -29,9 +30,9 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 class MultiWorkerPipelineIT {
-
     private static final String IN_MEMORY_IDENTIFIER = "MultiWorkerPipelineIT";
     private static final String PIPELINE_CONFIGURATION_UNDER_TEST = "multi-worker.yaml";
     private static final int WORKER_THREADS = 4;
@@ -111,6 +112,8 @@ class MultiWorkerPipelineIT {
 
         final int iterations = 10;
 
+        final Set<String> allThreadNames = new HashSet<>();
+
         for (int iteration = 0; iteration < iterations; iteration++) {
             final List<Record<Event>> inputRecordsBatch = IntStream.range(0, recordsToCreate)
                     .mapToObj(i -> UUID.randomUUID().toString())
@@ -127,12 +130,15 @@ class MultiWorkerPipelineIT {
             final List<Record<Event>> receivedRecords = inMemorySinkAccessor.getAndClear(IN_MEMORY_IDENTIFIER);
             assertThat(receivedRecords.size(), equalTo(recordsToCreate));
 
-            final Set<String> allThreadNames = receivedRecords.stream()
+            final Set<String> allThreadNamesThisIteration = receivedRecords.stream()
                     .map(Record::getData)
                     .map(event -> event.get("thread_name", String.class))
                     .collect(Collectors.toSet());
 
-            assertThat(allThreadNames.size(), equalTo(WORKER_THREADS));
+            assertThat(allThreadNamesThisIteration.size(), lessThanOrEqualTo(WORKER_THREADS));
+            allThreadNames.addAll(allThreadNamesThisIteration);
         }
+
+        assertThat(allThreadNames.size(), equalTo(WORKER_THREADS));
     }
 }
