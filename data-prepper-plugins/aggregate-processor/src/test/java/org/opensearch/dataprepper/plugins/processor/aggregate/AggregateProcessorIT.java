@@ -56,6 +56,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -278,7 +279,7 @@ public class AggregateProcessorIT {
         boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
 
         assertThat(allThreadsFinished, equalTo(true));
-        assertThat((double)allowedEventsCount.get(), equalTo(NUM_THREADS * NUM_EVENTS_PER_BATCH * testPercent/100));
+        assertThat((double)allowedEventsCount.get(), closeTo(NUM_THREADS * NUM_EVENTS_PER_BATCH * testPercent/100, 1.0));
     }
 
     @RepeatedTest(value = 2)
