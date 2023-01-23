@@ -146,6 +146,28 @@ To do so, add the argument below to the `docker run` command.
  -v /full/path/to/keystore.p12:/usr/share/data-prepper/keystore.p12
 ```
 
+## Circuit Breakers
+
+Data Prepper supports circuit breakers which will interrupt adding objects
+to the buffer when certain conditions are met.
+
+### Heap
+
+Heap circuit breaker: When the JVM heap usage reaches a configurable size stop accepting requests to buffers.
+
+Configuration
+
+```yaml
+circuit_breakers:
+  heap:
+    usage: 6.5gb
+    reset: 2s
+```
+
+* `usage` - float - The absolute value of JVM memory which will trip the circuit breaker. This can be defined with bytes (`b`), kilobytes (`kb`), megabytes (`mb`), or gigabytes (`gb`).
+* `reset` - Duration - The time between when the circuit is tripped and the next attempt to validate will occur. Defaults to 1s.
+* `check_interval` - Duration - The time between checks of the heap usage. Defaults to 500ms.
+
 ## Deprecated Pipeline Configuration Support
 Starting in Data Prepper 1.3.0, Prepper plugins were renamed to Processors. The use of the prepper or processor name in pipeline configuration files is still supported. However, the use of both processor and prepper in the same configuration file is **not** supported.
 

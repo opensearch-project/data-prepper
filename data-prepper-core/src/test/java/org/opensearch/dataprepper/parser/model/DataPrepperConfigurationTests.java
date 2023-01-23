@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.parser.model;
 
 import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -33,7 +35,9 @@ import static org.hamcrest.Matchers.isA;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DataPrepperConfigurationTests {
-    private static SimpleModule simpleModule = new SimpleModule().addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
+    private static SimpleModule simpleModule = new SimpleModule()
+            .addDeserializer(Duration.class, new DataPrepperDurationDeserializer())
+            .addDeserializer(ByteCount.class, new ByteCountDeserializer());
     private static ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory()).registerModule(simpleModule);
 
     private static DataPrepperConfiguration makeConfig(String filePath) throws IOException {
@@ -181,5 +185,15 @@ public class DataPrepperConfigurationTests {
     })
     void testConfigWithNegativeShutdownTimeout(final String configFile) {
         assertThrows(ValueInstantiationException.class, () -> makeConfig(configFile));
+    }
+
+    @Test
+    void testConfigWithHeapCircuitBreaker() throws IOException {
+        final DataPrepperConfiguration config = makeConfig("src/test/resources/valid_data_prepper_config_with_heap_circuit_breaker.yml");
+        assertThat(config, notNullValue());
+        assertThat(config.getCircuitBreakerConfig(), notNullValue());
+        assertThat(config.getCircuitBreakerConfig().getHeapConfig(), notNullValue());
+        assertThat(config.getCircuitBreakerConfig().getHeapConfig().getUsage(), notNullValue());
+        assertThat(config.getCircuitBreakerConfig().getHeapConfig().getUsage().getBytes(), Matchers.equalTo(2_684_354_560L));
     }
 }

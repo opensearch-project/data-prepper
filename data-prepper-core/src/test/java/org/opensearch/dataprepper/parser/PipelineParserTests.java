@@ -5,47 +5,53 @@
 
 package org.opensearch.dataprepper.parser;
 
+import org.hamcrest.CoreMatchers;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.breaker.CircuitBreaker;
+import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
-import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.Mock;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
-import java.util.stream.Stream;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class PipelineParserTests {
@@ -60,6 +66,8 @@ class PipelineParserTests {
     private PeerForwarderConfiguration peerForwarderConfiguration;
     @Mock
     private PeerForwarderReceiveBuffer buffer;
+    @Mock
+    private CircuitBreakerManager circuitBreakerManager;
 
     private PluginFactory pluginFactory;
 
@@ -82,7 +90,7 @@ class PipelineParserTests {
     }
 
     private PipelineParser createObjectUnderTest(final String pipelineConfigurationFileLocation) {
-        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration);
+        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerManager);
     }
 
     @Test
@@ -254,6 +262,74 @@ class PipelineParserTests {
 
         verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
         verify(peerForwarderConfiguration).getDrainTimeout();
+    }
+
+    @Test
+    void parseConfiguration_uses_CircuitBreaking_buffer_when_circuit_breakers_applied() {
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreakerManager.getGlobalCircuitBreaker())
+                .thenReturn(Optional.of(circuitBreaker));
+        final PipelineParser objectUnderTest =
+                createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
+
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.parseConfiguration();
+
+        assertThat(pipelineMap.size(), equalTo(1));
+        assertThat(pipelineMap, hasKey("test-pipeline-1"));
+        final Pipeline pipeline = pipelineMap.get("test-pipeline-1");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getBuffer(), instanceOf(CircuitBreakingBuffer.class));
+
+        verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
+        verify(dataPrepperConfiguration).getSinkShutdownTimeout();
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+    }
+
+    @Test
+    void parseConfiguration_uses_unwrapped_buffer_when_no_circuit_breakers_are_applied() {
+        when(circuitBreakerManager.getGlobalCircuitBreaker())
+                .thenReturn(Optional.empty());
+        final PipelineParser objectUnderTest =
+                createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
+
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.parseConfiguration();
+
+        assertThat(pipelineMap.size(), equalTo(1));
+        assertThat(pipelineMap, hasKey("test-pipeline-1"));
+        final Pipeline pipeline = pipelineMap.get("test-pipeline-1");
+        assertThat(pipeline, notNullValue());
+        assertThat(pipeline.getBuffer(), notNullValue());
+        assertThat(pipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
+
+        verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
+        verify(dataPrepperConfiguration).getSinkShutdownTimeout();
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
+    }
+
+    @Test
+    void parseConfiguration_uses_unwrapped_buffer_for_pipeline_connectors() {
+        final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
+        when(circuitBreakerManager.getGlobalCircuitBreaker())
+                .thenReturn(Optional.of(circuitBreaker));
+        final PipelineParser objectUnderTest =
+                createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
+
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.parseConfiguration();
+
+        assertThat(pipelineMap, hasKey("test-pipeline-1"));
+        final Pipeline entryPipeline = pipelineMap.get("test-pipeline-1");
+        assertThat(entryPipeline, notNullValue());
+        assertThat(entryPipeline.getBuffer(), instanceOf(CircuitBreakingBuffer.class));
+
+        assertThat(pipelineMap, hasKey("test-pipeline-2"));
+        final Pipeline connectedPipeline = pipelineMap.get("test-pipeline-2");
+        assertThat(connectedPipeline, notNullValue());
+        assertThat(connectedPipeline.getBuffer(), notNullValue());
+        assertThat(connectedPipeline.getBuffer(), CoreMatchers.not(instanceOf(CircuitBreakingBuffer.class)));
+
+        verify(dataPrepperConfiguration, times(3)).getProcessorShutdownTimeout();
+        verify(dataPrepperConfiguration, times(3)).getSinkShutdownTimeout();
+        verify(dataPrepperConfiguration, times(3)).getPeerForwarderConfiguration();
     }
 
     private void mockDataPrepperConfigurationAccesses() {
