@@ -17,6 +17,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -24,6 +26,8 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RemoveDupl
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PutAllAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PercentSamplerAggregateAction;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PercentSamplerAggregateActionConfig;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterMode;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateActionConfig;
@@ -49,8 +53,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.hasItem;
@@ -242,6 +248,38 @@ public class AggregateProcessorIT {
         for (final Map<String, Object> uniqueEventMap : uniqueEventMaps) {
             assertThat(aggregatedResult, hasItem(uniqueEventMap));
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {5.0, 15.0, 33.0, 55.0, 70.0, 85.0, 92.0, 99.0})
+    void aggregateWithPercentSamplerAction(double testPercent) throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+        PercentSamplerAggregateActionConfig percentSamplerAggregateActionConfig = new PercentSamplerAggregateActionConfig();
+        setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", testPercent);
+        aggregateAction = new PercentSamplerAggregateAction(percentSamplerAggregateActionConfig);
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
+                .thenReturn(aggregateAction);
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        objectUnderTest.doExecute(eventBatch);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        AtomicInteger allowedEventsCount = new AtomicInteger(0);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                allowedEventsCount.getAndAdd(recordsOut.size());
+                countDownLatch.countDown();
+            });
+        }
+
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+
+        assertThat(allThreadsFinished, equalTo(true));
+        assertThat((double)allowedEventsCount.get(), closeTo(NUM_THREADS * NUM_EVENTS_PER_BATCH * testPercent/100, 1.0));
     }
 
     @RepeatedTest(value = 2)
