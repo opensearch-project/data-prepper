@@ -30,6 +30,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final AtomicLong recordsInBuffer;
     private final Counter recordsProcessedCounter;
     private final Counter writeTimeoutCounter;
+    private final Counter recordsOverflow;
     private final Timer writeTimer;
     private final Timer readTimer;
     private final Timer checkpointTimer;
@@ -49,6 +50,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.recordsInFlight = pluginMetrics.gauge(MetricNames.RECORDS_INFLIGHT, new AtomicLong());
         this.recordsInBuffer = pluginMetrics.gauge(MetricNames.RECORDS_IN_BUFFER, new AtomicLong());
         this.recordsProcessedCounter = pluginMetrics.counter(MetricNames.RECORDS_PROCESSED, pipelineName);
+        this.recordsOverflow = pluginMetrics.counter(MetricNames.RECORDS_OVERFLOW);
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
@@ -73,6 +75,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
             recordsInBuffer.incrementAndGet();
             postProcess(recordsInBuffer.get());
         } catch (TimeoutException e) {
+            recordsOverflow.increment();
             writeTimeoutCounter.increment();
             throw e;
         } finally {
@@ -92,13 +95,14 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     public void writeAll(Collection<T> records, int timeoutInMillis) throws Exception {
         long startTime = System.nanoTime();
 
+        final int size = records.size();
         try {
-            final int size = records.size();
             doWriteAll(records, timeoutInMillis);
             recordsWrittenCounter.increment(size);
             recordsInBuffer.addAndGet(size);
             postProcess(recordsInBuffer.get());
         } catch (Exception e) {
+            recordsOverflow.increment(size);
             if (e instanceof TimeoutException) {
                 writeTimeoutCounter.increment();
             }

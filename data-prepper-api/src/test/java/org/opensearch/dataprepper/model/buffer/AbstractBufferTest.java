@@ -183,6 +183,20 @@ public class AbstractBufferTest {
     }
 
     @Test
+    public void testWriteRecordsOverflowMetric() throws TimeoutException {
+        // Given
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
+
+        // When/Then
+        Assert.assertThrows(TimeoutException.class, () -> abstractBuffer.write(new Record<>(UUID.randomUUID().toString()), 1000));
+
+        final List<Measurement> recordsOverflowMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_OVERFLOW).toString());
+        Assert.assertEquals(1, recordsOverflowMeasurements.size());
+        Assert.assertEquals(1.0, recordsOverflowMeasurements.get(0).getValue(), 0);
+    }
+
+    @Test
     public void testWriteAllTimeoutMetric() throws TimeoutException {
         // Given
         final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
@@ -196,6 +210,22 @@ public class AbstractBufferTest {
                 new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.WRITE_TIMEOUTS).toString());
         Assert.assertEquals(1, timeoutMeasurements.size());
         Assert.assertEquals(1.0, timeoutMeasurements.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testWriteAllRecordsOverflowMetric() {
+        // Given
+        final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferRuntimeExceptionImpl(testPluginSetting);
+        final Collection<Record<String>> testRecords = Arrays.asList(
+                new Record<>(UUID.randomUUID().toString()), new Record<>(UUID.randomUUID().toString()));
+
+        // When/Then
+        Assert.assertThrows(RuntimeException.class, () -> abstractBuffer.writeAll(testRecords, 1000));
+
+        final List<Measurement> timeoutMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_OVERFLOW).toString());
+        Assert.assertEquals(1, timeoutMeasurements.size());
+        Assert.assertEquals(2.0, timeoutMeasurements.get(0).getValue(), 0);
     }
 
     @Test
@@ -302,6 +332,22 @@ public class AbstractBufferTest {
         @Override
         public void doWriteAll(Collection<Record<String>> records, int timeoutInMillis) throws TimeoutException {
             throw new TimeoutException();
+        }
+    }
+
+    public static class AbstractBufferRuntimeExceptionImpl extends AbstractBufferImpl {
+        public AbstractBufferRuntimeExceptionImpl(PluginSetting pluginSetting) {
+            super(pluginSetting);
+        }
+
+        @Override
+        public void doWrite(Record<String> record, int timeoutInMillis) {
+            throw new RuntimeException();
+        }
+
+        @Override
+        public void doWriteAll(Collection<Record<String>> records, int timeoutInMillis) {
+            throw new RuntimeException();
         }
     }
 

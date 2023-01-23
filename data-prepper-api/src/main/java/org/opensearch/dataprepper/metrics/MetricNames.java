@@ -58,6 +58,11 @@ public class MetricNames {
     public static final String RECORDS_PROCESSED = "recordsProcessed";
 
     /**
+     * Metric representing the number of records failed to be written into the buffer.
+     */
+    public static final String RECORDS_OVERFLOW = "recordsOverflow";
+
+    /**
      * Metric representing the time elapsed while writing to a Buffer
      */
     public static final String WRITE_TIME_ELAPSED = "writeTimeElapsed";
