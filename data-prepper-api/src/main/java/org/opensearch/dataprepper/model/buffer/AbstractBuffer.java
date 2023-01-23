@@ -30,7 +30,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
     private final AtomicLong recordsInBuffer;
     private final Counter recordsProcessedCounter;
     private final Counter writeTimeoutCounter;
-    private final Counter recordsOverflow;
+    private final Counter recordsWriteFailed;
     private final Timer writeTimer;
     private final Timer readTimer;
     private final Timer checkpointTimer;
@@ -50,7 +50,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
         this.recordsInFlight = pluginMetrics.gauge(MetricNames.RECORDS_INFLIGHT, new AtomicLong());
         this.recordsInBuffer = pluginMetrics.gauge(MetricNames.RECORDS_IN_BUFFER, new AtomicLong());
         this.recordsProcessedCounter = pluginMetrics.counter(MetricNames.RECORDS_PROCESSED, pipelineName);
-        this.recordsOverflow = pluginMetrics.counter(MetricNames.RECORDS_OVERFLOW);
+        this.recordsWriteFailed = pluginMetrics.counter(MetricNames.RECORDS_WRITE_FAILED);
         this.writeTimeoutCounter = pluginMetrics.counter(MetricNames.WRITE_TIMEOUTS);
         this.writeTimer = pluginMetrics.timer(MetricNames.WRITE_TIME_ELAPSED);
         this.readTimer = pluginMetrics.timer(MetricNames.READ_TIME_ELAPSED);
@@ -75,7 +75,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
             recordsInBuffer.incrementAndGet();
             postProcess(recordsInBuffer.get());
         } catch (TimeoutException e) {
-            recordsOverflow.increment();
+            recordsWriteFailed.increment();
             writeTimeoutCounter.increment();
             throw e;
         } finally {
@@ -102,7 +102,7 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
             recordsInBuffer.addAndGet(size);
             postProcess(recordsInBuffer.get());
         } catch (Exception e) {
-            recordsOverflow.increment(size);
+            recordsWriteFailed.increment(size);
             if (e instanceof TimeoutException) {
                 writeTimeoutCounter.increment();
             }

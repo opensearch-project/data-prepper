@@ -183,17 +183,17 @@ public class AbstractBufferTest {
     }
 
     @Test
-    public void testWriteRecordsOverflowMetric() throws TimeoutException {
+    public void testWriteRecordsWriteFailedMetric() throws TimeoutException {
         // Given
         final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferTimeoutImpl(testPluginSetting);
 
         // When/Then
         Assert.assertThrows(TimeoutException.class, () -> abstractBuffer.write(new Record<>(UUID.randomUUID().toString()), 1000));
 
-        final List<Measurement> recordsOverflowMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_OVERFLOW).toString());
-        Assert.assertEquals(1, recordsOverflowMeasurements.size());
-        Assert.assertEquals(1.0, recordsOverflowMeasurements.get(0).getValue(), 0);
+        final List<Measurement> recordsWriteFailedMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_WRITE_FAILED).toString());
+        Assert.assertEquals(1, recordsWriteFailedMeasurements.size());
+        Assert.assertEquals(1.0, recordsWriteFailedMeasurements.get(0).getValue(), 0);
     }
 
     @Test
@@ -213,7 +213,7 @@ public class AbstractBufferTest {
     }
 
     @Test
-    public void testWriteAllRecordsOverflowMetric() {
+    public void testWriteAllRecordsWriteFailedMetric() {
         // Given
         final AbstractBuffer<Record<String>> abstractBuffer = new AbstractBufferRuntimeExceptionImpl(testPluginSetting);
         final Collection<Record<String>> testRecords = Arrays.asList(
@@ -222,10 +222,10 @@ public class AbstractBufferTest {
         // When/Then
         Assert.assertThrows(RuntimeException.class, () -> abstractBuffer.writeAll(testRecords, 1000));
 
-        final List<Measurement> timeoutMeasurements = MetricsTestUtil.getMeasurementList(
-                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_OVERFLOW).toString());
-        Assert.assertEquals(1, timeoutMeasurements.size());
-        Assert.assertEquals(2.0, timeoutMeasurements.get(0).getValue(), 0);
+        final List<Measurement> recordsWriteFailedMeasurements = MetricsTestUtil.getMeasurementList(
+                new StringJoiner(MetricNames.DELIMITER).add(PIPELINE_NAME).add(BUFFER_NAME).add(MetricNames.RECORDS_WRITE_FAILED).toString());
+        Assert.assertEquals(1, recordsWriteFailedMeasurements.size());
+        Assert.assertEquals(2.0, recordsWriteFailedMeasurements.get(0).getValue(), 0);
     }
 
     @Test

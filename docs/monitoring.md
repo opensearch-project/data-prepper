@@ -29,7 +29,7 @@ plugin types.
         - `recordsWritten`: number of records written into a buffer.
         - `recordsRead`: number of records read from a buffer.
         - `recordsProcessed`: number of records read from a buffer and marked as processed.
-        - `recordsOverflow`: number of records failed to be written into a buffer.
+        - `recordsWriteFailed`: number of records failed to be written into a buffer.
         - `writeTimeouts`: count of write timeouts in a buffer.
     - Gauge
         - `recordsInBuffer`: number of records in the buffer.

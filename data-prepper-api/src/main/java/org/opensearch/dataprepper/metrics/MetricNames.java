@@ -60,7 +60,7 @@ public class MetricNames {
     /**
      * Metric representing the number of records failed to be written into the buffer.
      */
-    public static final String RECORDS_OVERFLOW = "recordsOverflow";
+    public static final String RECORDS_WRITE_FAILED = "recordsWriteFailed";
 
     /**
      * Metric representing the time elapsed while writing to a Buffer
