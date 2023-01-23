@@ -16,6 +16,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
 @ExtendWith(MockitoExtension.class)
 public class PercentSamplerAggregateActionConfigTests {
     private PercentSamplerAggregateActionConfig percentSamplerAggregateActionConfig;
@@ -36,15 +39,10 @@ public class PercentSamplerAggregateActionConfigTests {
         assertThat(percentSamplerAggregateActionConfig.getPercent(), equalTo(testPercent));
     }
     
-    @Test
-    void testInvalidConfig() throws NoSuchFieldException, IllegalAccessException {
-        setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", 0.0);
-        assertThat(percentSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
-        setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", 100.0);
-        assertThat(percentSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
-        setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", -1.0);
-        assertThat(percentSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
-        setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", 110.0);
+    @ParameterizedTest
+    @ValueSource(doubles = {0.0, 100.0, -1.0, 110.0})
+    void testInvalidConfig(double percent) throws NoSuchFieldException, IllegalAccessException {
+        setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", percent);
         assertThat(percentSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
     }
 }
