@@ -42,6 +42,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [count](#count)
     * [histogram](#histogram)
     * [rate_limiter](#rate_limiter)
+    * [percent_sampler](#percent_sampler)
 ### <a name="group_duration"></a>
 * `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
 
@@ -154,6 +155,23 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```
     * When the three events arrive with in one second and the `events_per_second` is set 1 and `when_exceeds` is set to `block`, all three events are allowed.
 
+
+### <a name="percent_sampler"></a>
+* `percent_sampler`: Processes the events and controls the number of events aggregated based on the configuration. Only specified `percent` of the events are allowed and the rest are dropped.
+    * It supports the following config options
+       * `percent`: percent of events to be allowed during aggregation window
+    * When the following three events arrive with in one second and the `percent` is set 50
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 2500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 1000 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 3100 }
+      ```
+      The following Events will be allowed, and no event is generated when the group is concluded
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 3100 }
+      ```
 
 ## Creating New Aggregate Actions
 
