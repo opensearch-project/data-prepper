@@ -165,7 +165,8 @@ circuit_breakers:
 ```
 
 * `usage` - float - The absolute value of JVM memory which will trip the circuit breaker. This can be defined with bytes (`b`), kilobytes (`kb`), megabytes (`mb`), or gigabytes (`gb`).
-* `reset` - Duration - The time between when the circuit is tripped and the next attempt to validate will occur.
+* `reset` - Duration - The time between when the circuit is tripped and the next attempt to validate will occur. Defaults to 1s.
+* `check_interval` - Duration - The time between checks of the heap usage. Defaults to 500ms.
 
 ## Deprecated Pipeline Configuration Support
 Starting in Data Prepper 1.3.0, Prepper plugins were renamed to Processors. The use of the prepper or processor name in pipeline configuration files is still supported. However, the use of both processor and prepper in the same configuration file is **not** supported.

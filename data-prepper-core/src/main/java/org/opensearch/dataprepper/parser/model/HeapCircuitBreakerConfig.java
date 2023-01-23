@@ -16,7 +16,7 @@ import java.time.Duration;
  */
 public class HeapCircuitBreakerConfig {
     public static final Duration DEFAULT_RESET = Duration.ofSeconds(1);
-    private static final Duration DEFAULT_CHECK_INTERVAL = Duration.ofSeconds(1);
+    private static final Duration DEFAULT_CHECK_INTERVAL = Duration.ofMillis(500);
     @NotNull
     @JsonProperty("usage")
     private ByteCount usage;
