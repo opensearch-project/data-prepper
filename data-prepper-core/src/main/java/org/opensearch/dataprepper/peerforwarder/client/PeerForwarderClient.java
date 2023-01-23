@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -36,6 +35,7 @@ import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguratio
 
 public class PeerForwarderClient {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderClient.class);
+    private static final int FAILED_REQUESTS_BUFFER_WRITE_TIMEOUT_MILLIS = 500;
     static final String REQUESTS = "requests";
     static final String RECORDS_SUCCESSFULLY_FORWARDED = "recordsSuccessfullyForwarded";
     static final String RECORDS_FAILED_FORWARDING = "recordsFailedForwarding";
@@ -70,7 +70,7 @@ public class PeerForwarderClient {
         requestsSuccessfulCounter = pluginMetrics.counter(REQUESTS_SUCCESSFUL);
     }
 
-    public void serializeRecordsAndSendHttpRequest(
+    public CompletableFuture<AggregatedHttpResponse> serializeRecordsAndSendHttpRequest(
             final Collection<Record<Event>> records,
             final String ipAddress,
             final String pluginId,
@@ -86,10 +86,12 @@ public class PeerForwarderClient {
 
         final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
 
-        clientRequestForwardingLatencyTimer.record(() ->
+        final CompletableFuture<AggregatedHttpResponse> httpResponseCompletableFuture = clientRequestForwardingLatencyTimer.record(() ->
             processHttpRequest(client, serializedJsonString, records, peerForwarderReceiveBuffer)
         );
         requestsCounter.increment();
+
+        return httpResponseCompletableFuture;
     }
 
     private String getSerializedJsonString(final Collection<Record<Event>> records, final String pluginId, final String pipelineName) {
@@ -127,8 +129,13 @@ public class PeerForwarderClient {
                                                                          final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer) {
         return CompletableFuture.supplyAsync(() ->
         {
-            final CompletableFuture<AggregatedHttpResponse> aggregate = client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate();
-            return aggregate.join();
+            try {
+                final CompletableFuture<AggregatedHttpResponse> aggregate = client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate();
+                return aggregate.join();
+            } catch (final Exception e) {
+                processFailedRequestsLocally(null, records, peerForwarderReceiveBuffer);
+                throw e;
+            }
         }, executorService).thenApply(httpResponse -> processFailedRequestsLocally(httpResponse, records, peerForwarderReceiveBuffer));
     }
 
@@ -136,7 +143,7 @@ public class PeerForwarderClient {
                                                                 final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer) {
         if (httpResponse == null || httpResponse.status() != HttpStatus.OK) {
             try {
-                peerForwarderReceiveBuffer.writeAll(records, 500);
+                peerForwarderReceiveBuffer.writeAll(records, FAILED_REQUESTS_BUFFER_WRITE_TIMEOUT_MILLIS);
             } catch (final Exception e) {
                 LOG.error("Unable to write failed records to local peer forwarder receive buffer due to exception. Dropping data.", e);
             }

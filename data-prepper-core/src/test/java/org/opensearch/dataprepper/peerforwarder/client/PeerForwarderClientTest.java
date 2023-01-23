@@ -19,8 +19,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.linecorp.armeria.client.ClientBuilder;
 import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
-import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.HttpStatus;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -37,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.IOException;
@@ -49,9 +48,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -85,6 +82,9 @@ class PeerForwarderClientTest {
 
     @Mock
     private PeerForwarderClientFactory peerForwarderClientFactory;
+
+    @Mock
+    private PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer;
 
     @Mock
     private Counter requestsCounter;
@@ -125,12 +125,9 @@ class PeerForwarderClientTest {
 
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
 
-        final AggregatedHttpResponse aggregatedHttpResponse =
-                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(), TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
+        peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(),
+                TEST_PLUGIN_ID, TEST_PIPELINE_NAME, peerForwarderReceiveBuffer);
 
-        assertThat(aggregatedHttpResponse, notNullValue());
-        assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
-        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
         server.stop(0);
 
         verify(requestsCounter).increment();
@@ -146,7 +143,8 @@ class PeerForwarderClientTest {
         final Collection<Record<Event>> records = generateBatchRecords(1);
 
         final RuntimeException actualException = assertThrows(RuntimeException.class,
-                () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID, TEST_PIPELINE_NAME));
+                () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID,
+                        TEST_PIPELINE_NAME, peerForwarderReceiveBuffer));
 
         assertThat(actualException.getCause(), instanceOf(JsonProcessingException.class));
     }
@@ -164,10 +162,7 @@ class PeerForwarderClientTest {
         final Collection<Record<Event>> records = generateBatchRecords(1);
 
         for (int i = 0; i < requestCount; i++) {
-            final AggregatedHttpResponse aggregatedHttpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
-            assertThat(aggregatedHttpResponse, notNullValue());
-            assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
-            assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
+            peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME, peerForwarderReceiveBuffer);
         }
 
         verify(requestsCounter, times(requestCount)).increment();
