@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.parser;
 
+import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
@@ -61,6 +62,7 @@ public class PipelineParser {
     private final String pipelineConfigurationFileLocation;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
+    private final CircuitBreakerManager circuitBreakerManager;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
     private final PeerForwarderProvider peerForwarderProvider;
@@ -69,12 +71,14 @@ public class PipelineParser {
                           final PluginFactory pluginFactory,
                           final PeerForwarderProvider peerForwarderProvider,
                           final RouterFactory routerFactory,
-                          final DataPrepperConfiguration dataPrepperConfiguration) {
+                          final DataPrepperConfiguration dataPrepperConfiguration,
+                          final CircuitBreakerManager circuitBreakerManager) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
         this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
+        this.circuitBreakerManager = circuitBreakerManager;
     }
 
     /**
@@ -158,7 +162,7 @@ public class PipelineParser {
                     pluginFactory.loadPlugin(Source.class, sourceSetting));
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
-            final Buffer buffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
+            final Buffer pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
 
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final int processorThreads = pipelineConfiguration.getWorkers();
@@ -187,11 +191,22 @@ public class PipelineParser {
 
             final List<Buffer> secondaryBuffers = getSecondaryBuffers();
             LOG.info("Constructing MultiBufferDecorator with [{}] secondary buffers for pipeline [{}]", secondaryBuffers.size(), pipelineName);
-            final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(buffer, secondaryBuffers);
+            final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(pipelineDefinedBuffer, secondaryBuffers);
+
+
+            final Buffer buffer;
+            if(source instanceof PipelineConnector) {
+                buffer = multiBufferDecorator;
+            } else {
+                buffer = circuitBreakerManager.getGlobalCircuitBreaker()
+                        .map(circuitBreaker -> new CircuitBreakingBuffer<>(multiBufferDecorator, circuitBreaker))
+                        .map(b -> (Buffer)b)
+                        .orElseGet(() -> multiBufferDecorator);
+            }
 
             final Router router = routerFactory.createRouter(pipelineConfiguration.getRoutes());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, multiBufferDecorator, decoratedProcessorSets, sinks, router, processorThreads, readBatchDelay,
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, router, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
             pipelineMap.put(pipelineName, pipeline);

@@ -5,12 +5,10 @@
 
 package org.opensearch.dataprepper.parser.model;
 
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -33,12 +31,11 @@ public class DataPrepperConfiguration {
     private String privateKeyPassword = "";
     private List<MetricRegistryType> metricRegistries = DEFAULT_METRIC_REGISTRY_TYPE;
     private PluginModel authentication;
+    private CircuitBreakerConfig circuitBreakerConfig;
     private Map<String, String> metricTags = new HashMap<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory());
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
@@ -57,9 +54,11 @@ public class DataPrepperConfiguration {
             @JsonProperty("metricTags") final Map<String, String> metricTags,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
             @JsonProperty("processorShutdownTimeout") final Duration processorShutdownTimeout,
-            @JsonProperty("sinkShutdownTimeout") final Duration sinkShutdownTimeout
+            @JsonProperty("sinkShutdownTimeout") final Duration sinkShutdownTimeout,
+            @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig
             ) {
         this.authentication = authentication;
+        this.circuitBreakerConfig = circuitBreakerConfig;
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
         this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
@@ -151,5 +150,9 @@ public class DataPrepperConfiguration {
 
     public Duration getSinkShutdownTimeout() {
         return sinkShutdownTimeout;
+    }
+
+    public CircuitBreakerConfig getCircuitBreakerConfig() {
+        return circuitBreakerConfig;
     }
 }
