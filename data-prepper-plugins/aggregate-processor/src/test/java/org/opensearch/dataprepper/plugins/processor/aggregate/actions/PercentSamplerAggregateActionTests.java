@@ -57,9 +57,13 @@ public class PercentSamplerAggregateActionTests {
         int allowedEvents = 0;
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
         for (int i = 0; i < totalEvents; i++) { 
-            testEvent.put(dataKey, UUID.randomUUID().toString());
+            final String dataValue = UUID.randomUUID().toString();
+            testEvent.put(dataKey, dataValue);
             final AggregateActionResponse aggregateActionResponse = percentSamplerAggregateAction.handleEvent(testEvent, aggregateActionInput);
-            if (aggregateActionResponse.getEvent() != null) {
+            Event receivedEvent = aggregateActionResponse.getEvent();
+            if (receivedEvent != null) {
+                assertThat(receivedEvent.get(dataKey, String.class), equalTo(dataValue));
+                assertThat(receivedEvent.get(key, String.class), equalTo(value));
                 allowedEvents++;
             }
         }
