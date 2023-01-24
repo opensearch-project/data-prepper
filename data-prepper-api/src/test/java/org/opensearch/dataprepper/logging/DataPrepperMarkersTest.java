@@ -10,6 +10,6 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE_MA
 class DataPrepperMarkersTest {
     @Test
     void testMarkers() {
-        assertThat(SENSITIVE_MARKER.contains(EVENT_MARKER.getName()), is(true));
+        assertThat(EVENT_MARKER.contains(SENSITIVE_MARKER.getName()), is(true));
     }
 }

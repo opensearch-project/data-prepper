@@ -8,7 +8,7 @@ public final class DataPrepperMarkers {
     public static final Marker SENSITIVE_MARKER = MarkerFactory.getMarker("SENSITIVE");
 
     static {
-        SENSITIVE_MARKER.add(EVENT_MARKER);
+        EVENT_MARKER.add(SENSITIVE_MARKER);
     }
 
     private DataPrepperMarkers() {}
