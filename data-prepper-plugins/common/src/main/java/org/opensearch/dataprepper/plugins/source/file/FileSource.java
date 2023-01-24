@@ -30,6 +30,7 @@ import java.util.concurrent.TimeoutException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.lang.String.format;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE_MARKER;
 
 @DataPrepperPlugin(name = "file", pluginType = Source.class, pluginConfigurationType = FileSourceConfig.class)
 public class FileSource implements Source<Record<Object>> {
@@ -96,7 +97,7 @@ public class FileSource implements Source<Record<Object>> {
         try {
             return OBJECT_MAPPER.readValue(jsonString, MAP_TYPE_REFERENCE);
         } catch (JsonProcessingException e) {
-            LOG.error("Unable to parse json data [{}], assuming plain text", jsonString, e);
+            LOG.error(SENSITIVE_MARKER, "Unable to parse json data [{}], assuming plain text", jsonString, e);
             final Map<String, Object> plainMap = new HashMap<>();
             plainMap.put(MESSAGE_KEY, jsonString);
             return plainMap;
