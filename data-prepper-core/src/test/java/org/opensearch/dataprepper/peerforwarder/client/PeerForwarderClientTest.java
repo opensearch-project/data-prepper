@@ -126,7 +126,7 @@ class PeerForwarderClientTest {
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
 
         peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(),
-                TEST_PLUGIN_ID, TEST_PIPELINE_NAME, peerForwarderReceiveBuffer);
+                TEST_PLUGIN_ID, TEST_PIPELINE_NAME, (agg) -> {});
 
         server.stop(0);
 
@@ -144,7 +144,7 @@ class PeerForwarderClientTest {
 
         final RuntimeException actualException = assertThrows(RuntimeException.class,
                 () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID,
-                        TEST_PIPELINE_NAME, peerForwarderReceiveBuffer));
+                        TEST_PIPELINE_NAME, (agg) -> {}));
 
         assertThat(actualException.getCause(), instanceOf(JsonProcessingException.class));
     }
@@ -162,7 +162,7 @@ class PeerForwarderClientTest {
         final Collection<Record<Event>> records = generateBatchRecords(1);
 
         for (int i = 0; i < requestCount; i++) {
-            peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME, peerForwarderReceiveBuffer);
+            peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME, (agg) -> {});
         }
 
         verify(requestsCounter, times(requestCount)).increment();

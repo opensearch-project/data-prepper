@@ -55,9 +55,12 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.LOCAL_NODE));
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
+        assertThat(peerForwarderConfiguration.getBatchDelay(), equalTo(3_000));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
+        assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(500));
+        assertThat(peerForwarderConfiguration.getForwardingRequestWorkers(), equalTo(8));
     }
 
     @Test
