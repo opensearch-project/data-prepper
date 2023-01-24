@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.HttpStatus;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -25,10 +27,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
@@ -50,11 +55,10 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
-    private static final int TEST_BUFFER_CAPACITY = 3;
-    private static final int TEST_BATCH_SIZE = 3;
+    private static final int TEST_BUFFER_CAPACITY = 20;
+    private static final int TEST_BATCH_SIZE = 20;
     private static final int TEST_BATCH_DELAY = 3_000;
     private static final int TEST_LOCAL_WRITE_TIMEOUT = 500;
-    private static final int TEST_FORWARDING_THREADS = 1;
     private static final int TEST_TIMEOUT_IN_MILLIS = 500;
 
     @Mock
@@ -171,6 +175,32 @@ class RemotePeerForwarderTest {
     }
 
     @Test
+    void forwardRecords_should_return_all_input_events_when_executor_service_throws() {
+        when(executorService.submit(any(Runnable.class))).thenThrow(RuntimeException.class);
+
+        final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
+        lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
+        lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
+
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+
+        final Collection<Record<Event>> inputRecords = generateBatchRecords(2);
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
+        verify(executorService, times(1)).submit(any(Runnable.class));
+        assertThat(records, notNullValue());
+        assertThat(records.size(), equalTo(inputRecords.size()));
+        for (Record<Event> inputRecord : inputRecords) {
+            assertThat(records, hasItem(inputRecord));
+        }
+
+        verify(recordsToBeProcessedLocallyCounter).increment(1.0);
+        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
+        verify(recordsToBeForwardedCounter).increment(1.0);
+        verify(recordsFailedForwardingCounter).increment(1.0);
+        verify(requestsFailedCounter).increment();
+    }
+
+    @Test
     void test_receiveRecords_should_return_record_from_buffer() throws Exception {
         final Collection<Record<Event>> testRecords = generateBatchRecords(3);
         peerForwarderReceiveBuffer.writeAll(testRecords, TEST_TIMEOUT_IN_MILLIS);
@@ -228,6 +258,75 @@ class RemotePeerForwarderTest {
         verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
         verify(recordsMissingIdentificationKeys, times(2)).increment(1.0);
         verify(recordsToBeForwardedCounter, times(0)).increment(0.0);
+    }
+
+    @Test
+    void test_processFailedRequestsLocally_null_http_response_populates_in_local_buffer() {
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final int recordCount = new Random().nextInt(10) + 1;
+        final Collection<Record<Event>> inputRecords = generateBatchRecords(recordCount);
+
+        peerForwarder.processFailedRequestsLocally(null, inputRecords);
+        final Collection<Record<Event>> receivedRecords = peerForwarder.receiveRecords();
+
+        validateFailedForwardingRecords(receivedRecords, inputRecords, recordCount);
+        validateFailedForwardingMetrics(recordCount);
+    }
+
+    @Test
+    void test_processFailedRequestsLocally_bad_http_response_populates_in_local_buffer() {
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final int recordCount = new Random().nextInt(10) + 1;
+        final Collection<Record<Event>> inputRecords = generateBatchRecords(recordCount);
+
+        peerForwarder.processFailedRequestsLocally(AggregatedHttpResponse.of(HttpStatus.BAD_REQUEST), inputRecords);
+        final Collection<Record<Event>> receivedRecords = peerForwarder.receiveRecords();
+
+        validateFailedForwardingRecords(receivedRecords, inputRecords, recordCount);
+        validateFailedForwardingMetrics(recordCount);
+    }
+
+    @Test
+    void test_processFailedRequestsLocally_exception_writing_to_local_buffer() {
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final int recordCount = 100;
+        final Collection<Record<Event>> inputRecords = generateBatchRecords(recordCount);
+
+        peerForwarder.processFailedRequestsLocally(AggregatedHttpResponse.of(HttpStatus.BAD_REQUEST), inputRecords);
+        final Collection<Record<Event>> receivedRecords = peerForwarder.receiveRecords();
+
+        validateFailedForwardingRecords(receivedRecords, inputRecords, 0);
+        verify(recordsFailedForwardingCounter).increment(recordCount);
+        verify(requestsFailedCounter).increment();
+    }
+
+    @Test
+    void test_processFailedRequestsLocally_no_failure() {
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+        final int recordCount = new Random().nextInt(10) + 1;
+        final Collection<Record<Event>> inputRecords = generateBatchRecords(recordCount);
+
+        peerForwarder.processFailedRequestsLocally(AggregatedHttpResponse.of(HttpStatus.OK), inputRecords);
+        final Collection<Record<Event>> receivedRecords = peerForwarder.receiveRecords();
+
+        validateFailedForwardingRecords(receivedRecords, inputRecords, 0);
+        verify(recordsSuccessfullyForwardedCounter).increment(recordCount);
+        verify(requestsSuccessfulCounter).increment();
+    }
+
+    private void validateFailedForwardingRecords(final Collection<Record<Event>> receivedRecords, final Collection<Record<Event>> inputRecords,
+                                                 final int expectedRecordCount) {
+        assertThat(receivedRecords, notNullValue());
+        assertThat(receivedRecords.size(), equalTo(expectedRecordCount));
+        for (Record<Event> recivedRecord : receivedRecords) {
+            assertThat(inputRecords, hasItem(recivedRecord));
+        }
+    }
+
+    private void validateFailedForwardingMetrics(final int expectedRecordCount) {
+        verify(recordsActuallyProcessedLocallyCounter).increment(expectedRecordCount);
+        verify(recordsFailedForwardingCounter).increment(expectedRecordCount);
+        verify(requestsFailedCounter).increment();
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {

@@ -109,15 +109,16 @@ public class PeerForwarderClient {
         );
     }
 
-    private AggregatedHttpResponse processHttpRequest(final WebClient client, final String content,
-                                                                         final Consumer<AggregatedHttpResponse> responseConsumer) {
+    private AggregatedHttpResponse processHttpRequest(final WebClient client, final String content, final Consumer<AggregatedHttpResponse> responseConsumer) {
+        final AggregatedHttpResponse aggregatedHttpResponse;
         try {
-            final AggregatedHttpResponse aggregatedHttpResponse = client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate().join();
-            responseConsumer.accept(aggregatedHttpResponse);
-            return aggregatedHttpResponse;
+            aggregatedHttpResponse = client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate().join();
         } catch (final Exception e) {
             responseConsumer.accept(null);
             throw e;
         }
+
+        responseConsumer.accept(aggregatedHttpResponse);
+        return aggregatedHttpResponse;
     }
 }
