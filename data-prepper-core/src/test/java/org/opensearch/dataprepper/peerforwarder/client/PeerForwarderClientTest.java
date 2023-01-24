@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.peerforwarder.client;
 
+import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpResponse;
+import com.linecorp.armeria.common.HttpStatus;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -48,7 +50,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -125,9 +129,13 @@ class PeerForwarderClientTest {
 
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
 
-        peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(),
+        final AggregatedHttpResponse aggregatedHttpResponse =
+                peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(),
                 TEST_PLUGIN_ID, TEST_PIPELINE_NAME, (agg) -> {});
 
+        assertThat(aggregatedHttpResponse, notNullValue());
+        assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
+        assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
         server.stop(0);
 
         verify(requestsCounter).increment();
@@ -162,7 +170,11 @@ class PeerForwarderClientTest {
         final Collection<Record<Event>> records = generateBatchRecords(1);
 
         for (int i = 0; i < requestCount; i++) {
-            peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME, (agg) -> {});
+            final AggregatedHttpResponse aggregatedHttpResponse =
+                    peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME, (agg) -> {});
+            assertThat(aggregatedHttpResponse, notNullValue());
+            assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
+            assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
         }
 
         verify(requestsCounter, times(requestCount)).increment();

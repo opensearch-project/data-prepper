@@ -84,9 +84,12 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getAwsCloudMapServiceName(), equalTo(null));
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(100));
+        assertThat(peerForwarderConfiguration.getBatchDelay(), equalTo(10));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
+        assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(15));
+        assertThat(peerForwarderConfiguration.getForwardingRequestWorkers(), equalTo(20));
     }
 
     @Test
@@ -172,6 +175,8 @@ class PeerForwarderConfigurationTest {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_NEGATIVE_DRAIN_TIMEOUT,
+            TestDataProvider.INVALID_PEER_FORWARDER_WITH_ZERO_LOCAL_WRITE_TIMEOUT,
+            TestDataProvider.INVALID_PEER_FORWARDER_WITH_ZERO_FORWARDING_THREADS,
             "src/test/resources/invalid_peer_forwarder_config_with_many_authentication.yml",
             "src/test/resources/invalid_peer_forwarder_config_with_mutual_tls_not_ssl.yml"
     })

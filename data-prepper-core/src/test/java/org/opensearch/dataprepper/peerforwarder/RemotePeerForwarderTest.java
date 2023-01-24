@@ -7,6 +7,10 @@ package org.opensearch.dataprepper.peerforwarder;
 
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import io.micrometer.core.instrument.Measurement;
+import org.junit.jupiter.api.parallel.Execution;
+import org.mockito.Spy;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -36,6 +40,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
@@ -45,6 +50,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_ACTUALLY_PROCESSED_LOCALLY;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_FAILED_FORWARDING;
+import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_RECEIVED_FROM_PEERS;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_SUCCESSFULLY_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_FORWARDED;
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.RECORDS_TO_BE_PROCESSED_LOCALLY;
@@ -53,6 +59,7 @@ import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUE
 import static org.opensearch.dataprepper.peerforwarder.RemotePeerForwarder.REQUESTS_SUCCESSFUL;
 import org.apache.commons.lang3.RandomStringUtils;
 
+@Execution(SAME_THREAD)
 @ExtendWith(MockitoExtension.class)
 class RemotePeerForwarderTest {
     private static final int TEST_BUFFER_CAPACITY = 20;
@@ -70,8 +77,8 @@ class RemotePeerForwarderTest {
     @Mock
     private HashRing hashRing;
 
-    @Mock
-    private PluginMetrics pluginMetrics;
+    @Spy
+    private PluginMetrics pluginMetrics = PluginMetrics.fromNames("core", "peerForwarder");
 
     @Mock
     private Counter recordsToBeProcessedLocallyCounter;
@@ -117,6 +124,8 @@ class RemotePeerForwarderTest {
         when(pluginMetrics.counter(RECORDS_MISSING_IDENTIFICATION_KEYS)).thenReturn(recordsMissingIdentificationKeys);
         when(pluginMetrics.counter(REQUESTS_FAILED)).thenReturn(requestsFailedCounter);
         when(pluginMetrics.counter(REQUESTS_SUCCESSFUL)).thenReturn(requestsSuccessfulCounter);
+
+        MetricsTestUtil.initMetrics();
     }
 
     @AfterEach
@@ -210,6 +219,11 @@ class RemotePeerForwarderTest {
 
         assertThat(records.size(), equalTo(testRecords.size()));
         assertThat(records, equalTo(testRecords));
+
+        final List<Measurement> recordsFromPeersMeasurementList = MetricsTestUtil.getMeasurementList(
+                pluginMetrics.getMeterName(RECORDS_RECEIVED_FROM_PEERS));
+        assertThat(recordsFromPeersMeasurementList.size(), equalTo(1));
+        assertThat(recordsFromPeersMeasurementList.get(0).getValue(), equalTo(3.0));
     }
 
     @Test
@@ -321,6 +335,11 @@ class RemotePeerForwarderTest {
         for (Record<Event> recivedRecord : receivedRecords) {
             assertThat(inputRecords, hasItem(recivedRecord));
         }
+
+        final List<Measurement> recordsFromPeersMeasurementList = MetricsTestUtil.getMeasurementList(
+                pluginMetrics.getMeterName(RECORDS_RECEIVED_FROM_PEERS));
+        assertThat(recordsFromPeersMeasurementList.size(), equalTo(1));
+        assertThat(recordsFromPeersMeasurementList.get(0).getValue(), equalTo(0.0));
     }
 
     private void validateFailedForwardingMetrics(final int expectedRecordCount) {
