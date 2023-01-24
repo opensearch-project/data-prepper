@@ -86,12 +86,12 @@ public class PeerForwarderClient {
 
         final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
 
-        final CompletableFuture<AggregatedHttpResponse> httpResponseCompletableFuture = clientRequestForwardingLatencyTimer.record(() ->
+        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseCompletableFuture = clientRequestForwardingLatencyTimer.record(() ->
             processHttpRequest(client, serializedJsonString, records, peerForwarderReceiveBuffer)
         );
         requestsCounter.increment();
 
-        return httpResponseCompletableFuture;
+        return aggregatedHttpResponseCompletableFuture;
     }
 
     private String getSerializedJsonString(final Collection<Record<Event>> records, final String pluginId, final String pipelineName) {

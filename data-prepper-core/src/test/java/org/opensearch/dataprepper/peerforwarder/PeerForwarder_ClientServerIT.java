@@ -5,10 +5,6 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import com.linecorp.armeria.client.UnprocessedRequestException;
-import com.linecorp.armeria.common.AggregatedHttpResponse;
-import com.linecorp.armeria.common.ClosedSessionException;
-import com.linecorp.armeria.common.HttpStatus;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.event.Event;
@@ -16,6 +12,10 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.linecorp.armeria.client.UnprocessedRequestException;
+import com.linecorp.armeria.common.AggregatedHttpResponse;
+import com.linecorp.armeria.common.ClosedSessionException;
+import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,7 +47,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Integration tests that verify that Peer Forwarder client-server communication

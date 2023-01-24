@@ -70,9 +70,9 @@ class RemotePeerForwarder implements PeerForwarder {
         recordsActuallyProcessedLocallyCounter = pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY);
         recordsToBeProcessedLocallyCounter = pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY);
         recordsToBeForwardedCounter = pluginMetrics.counter(RECORDS_TO_BE_FORWARDED);
+        recordsFailedForwardingCounter = pluginMetrics.counter(RECORDS_FAILED_FORWARDING);
         recordsReceivedFromPeersCounter = pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS);
         recordsMissingIdentificationKeys = pluginMetrics.counter(RECORDS_MISSING_IDENTIFICATION_KEYS);
-        recordsFailedForwardingCounter = pluginMetrics.counter(RECORDS_FAILED_FORWARDING);
         requestsFailedCounter = pluginMetrics.counter(REQUESTS_FAILED);
     }
 
