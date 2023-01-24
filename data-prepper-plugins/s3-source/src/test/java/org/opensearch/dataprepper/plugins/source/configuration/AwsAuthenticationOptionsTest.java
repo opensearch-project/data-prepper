@@ -189,7 +189,7 @@ class AwsAuthenticationOptionsTest {
         }
 
         @Test
-        void authenticateAWSConfiguration_should_override_STS_Headers_when_HeaderOverrides_are_empty() throws NoSuchFieldException, IllegalAccessException {
+        void authenticateAWSConfiguration_should_not_override_STS_Headers_when_HeaderOverrides_are_empty() throws NoSuchFieldException, IllegalAccessException {
             reflectivelySetField(awsAuthenticationOptions, "awsRegion", "us-east-1");
             reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
             reflectivelySetField(awsAuthenticationOptions, "awsStsHeaderOverrides", Collections.emptyMap());
