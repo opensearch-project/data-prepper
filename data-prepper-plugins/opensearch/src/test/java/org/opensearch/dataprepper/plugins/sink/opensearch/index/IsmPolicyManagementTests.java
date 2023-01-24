@@ -18,8 +18,6 @@ import org.opensearch.client.RestHighLevelClient;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectAttributesRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectAttributesResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
@@ -130,13 +128,11 @@ public class IsmPolicyManagementTests {
 
         final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
         final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
-                GetObjectResponse.builder().build(),
+                GetObjectResponse.builder().contentLength(1000L).build(),
                 AbortableInputStream.create(fileObjectStream)
         );
-        final GetObjectAttributesResponse getObjectAttributesResponse = GetObjectAttributesResponse.builder().objectSize(100L).build();
 
         when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(fileInputStream);
-        when(s3Client.getObjectAttributes(any(GetObjectAttributesRequest.class))).thenReturn(getObjectAttributesResponse);
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
         when(restClient.performRequest(any())).thenThrow(responseException).thenReturn(null);
         when(responseException.getMessage()).thenReturn("Invalid field: [ism_template]");

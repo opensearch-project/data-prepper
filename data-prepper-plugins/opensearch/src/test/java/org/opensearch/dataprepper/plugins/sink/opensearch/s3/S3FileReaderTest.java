@@ -14,8 +14,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectAttributesRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectAttributesResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
@@ -26,7 +24,6 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 
@@ -48,15 +45,13 @@ class S3FileReaderTest {
 
         final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
         final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
-                GetObjectResponse.builder().build(),
+                GetObjectResponse.builder().contentLength(1_000_000L).build(),
                 AbortableInputStream.create(fileObjectStream)
         );
 
         final GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(filePath).build();
-        final GetObjectAttributesResponse getObjectAttributesResponse = GetObjectAttributesResponse.builder().objectSize(100L).build();
 
         when(s3Client.getObject(getObjectRequest)).thenReturn(fileInputStream);
-        when(s3Client.getObjectAttributes(any(GetObjectAttributesRequest.class))).thenReturn(getObjectAttributesResponse);
 
         s3FileReader = new S3FileReader(s3Client);
 
@@ -71,12 +66,10 @@ class S3FileReaderTest {
         final String filePath = UUID.randomUUID().toString().concat(".json");
 
         final String s3File = String.format("s3://%s/%s",bucketName, filePath);
-        final GetObjectAttributesResponse getObjectAttributesResponse = GetObjectAttributesResponse.builder().objectSize(100L).build();
 
         s3FileReader = new S3FileReader(s3Client);
 
         when(s3Client.getObject(Mockito.any(GetObjectRequest.class))).thenThrow(new RuntimeException("S3 exception"));
-        when(s3Client.getObjectAttributes(any(GetObjectAttributesRequest.class))).thenReturn(getObjectAttributesResponse);
 
         assertThrows(RuntimeException.class, () -> s3FileReader.readFile(s3File));
     }
@@ -85,12 +78,18 @@ class S3FileReaderTest {
     void readFile_with_bigger_object_throws_S3ObjectTooLargeException() {
         final String bucketName = UUID.randomUUID().toString();
         final String filePath = UUID.randomUUID().toString().concat(".json");
+        final String fileContent = UUID.randomUUID().toString();
 
         final String s3SFile = String.format("s3://%s/%s",bucketName, filePath);
 
-        final GetObjectAttributesResponse getObjectAttributesResponse = GetObjectAttributesResponse.builder().objectSize(8_000_000L).build();
+        final GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(filePath).build();
+        final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
+        final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
+                GetObjectResponse.builder().contentLength(8_000_000L).build(),
+                AbortableInputStream.create(fileObjectStream)
+        );
 
-        when(s3Client.getObjectAttributes(any(GetObjectAttributesRequest.class))).thenReturn(getObjectAttributesResponse);
+        when(s3Client.getObject(getObjectRequest)).thenReturn(fileInputStream);
 
         s3FileReader = new S3FileReader(s3Client);
 
