@@ -29,6 +29,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class S3FileReaderTest {
+    private static final Long CONTENT_LENGTH_EXCEEDING_THRESHOLD = 8_000_000L;
+    private static final Long CONTENT_LENGTH_SMALLER_THAN_THRESHOLD = 1_000_000L;
 
     @Mock
     private S3Client s3Client;
@@ -45,7 +47,7 @@ class S3FileReaderTest {
 
         final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
         final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
-                GetObjectResponse.builder().contentLength(1_000_000L).build(),
+                GetObjectResponse.builder().contentLength(CONTENT_LENGTH_SMALLER_THAN_THRESHOLD).build(),
                 AbortableInputStream.create(fileObjectStream)
         );
 
@@ -85,7 +87,7 @@ class S3FileReaderTest {
         final GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(bucketName).key(filePath).build();
         final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
         final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
-                GetObjectResponse.builder().contentLength(8_000_000L).build(),
+                GetObjectResponse.builder().contentLength(CONTENT_LENGTH_EXCEEDING_THRESHOLD).build(),
                 AbortableInputStream.create(fileObjectStream)
         );
 

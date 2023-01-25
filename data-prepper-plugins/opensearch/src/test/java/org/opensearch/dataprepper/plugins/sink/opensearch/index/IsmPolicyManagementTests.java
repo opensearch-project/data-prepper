@@ -118,6 +118,7 @@ public class IsmPolicyManagementTests {
 
     @Test
     public void checkAndCreatePolicy_with_custom_ism_policy_from_s3() throws IOException {
+        final long CONTENT_LENGTH = 1_000_000L;
         IsmPolicyManagement ismPolicyManagementStrategyWithTemplate = new IsmPolicyManagement(restHighLevelClient,
                 POLICY_NAME,
                 TEST_ISM_FILE_PATH_S3, s3Client);
@@ -128,7 +129,7 @@ public class IsmPolicyManagementTests {
 
         final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
         final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
-                GetObjectResponse.builder().contentLength(1000L).build(),
+                GetObjectResponse.builder().contentLength(CONTENT_LENGTH).build(),
                 AbortableInputStream.create(fileObjectStream)
         );
 

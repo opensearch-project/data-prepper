@@ -89,12 +89,13 @@ public class IndexConfigurationTests {
         final String testS3AwsRegion = "us-east-2";
         final String testS3StsRoleArn = "arn:aws:iam::123456789:user/user-role";
         final String fileContent = "{}";
+        final long CONTENT_LENGTH = 1_000_000L;
 
         final S3Client s3Client = mock(S3Client.class);
 
         final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
         final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
-                GetObjectResponse.builder().contentLength(1_000_000L).build(),
+                GetObjectResponse.builder().contentLength(CONTENT_LENGTH).build(),
                 AbortableInputStream.create(fileObjectStream)
         );
         when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(fileInputStream);
