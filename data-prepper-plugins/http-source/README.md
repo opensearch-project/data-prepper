@@ -55,7 +55,7 @@ source:
 ```
 
 This plugin uses pluggable authentication for HTTP servers. To provide custom authentication,
-create a plugin which implements [`ArmeriaHttpAuthenticationProvider`](../armeria-common/src/main/java/com/amazon/dataprepper/armeria/authentication/ArmeriaHttpAuthenticationProvider.java)
+create a plugin which implements [`ArmeriaHttpAuthenticationProvider`](../armeria-common/src/main/java/org/opensearch/dataprepper/armeria/authentication/ArmeriaHttpAuthenticationProvider.java)
 
 
 ### SSL
