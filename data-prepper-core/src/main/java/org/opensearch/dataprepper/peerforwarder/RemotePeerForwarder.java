@@ -177,7 +177,7 @@ class RemotePeerForwarder implements PeerForwarder {
         }
     }
 
-    void submitForwardingRequest(final Collection<Record<Event>> records, final String destinationIp) {
+    private void submitForwardingRequest(final Collection<Record<Event>> records, final String destinationIp) {
         forwardingRequestExecutor.submit(() -> {
             AggregatedHttpResponse aggregatedHttpResponse;
             try {
