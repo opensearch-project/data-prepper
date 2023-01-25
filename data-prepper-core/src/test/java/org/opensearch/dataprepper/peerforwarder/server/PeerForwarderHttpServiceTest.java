@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
+import io.micrometer.core.instrument.Counter;
+import org.junit.jupiter.api.AfterEach;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.event.Event;
@@ -51,8 +53,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
+import static org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService.RECORDS_RECEIVED_FROM_PEERS;
 import static org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService.SERVER_REQUEST_PROCESSING_LATENCY;
 
 @ExtendWith(MockitoExtension.class)
@@ -81,12 +86,22 @@ class PeerForwarderHttpServiceTest {
 
     @Mock
     private ResponseHandler responseHandler;
+
+    @Mock
+    private Counter recordsReceivedFromPeersCounter;
+
     private Timer serverRequestProcessingLatencyTimer;
 
     @BeforeEach
     void setUp() {
         serverRequestProcessingLatencyTimer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
         when(pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY)).thenReturn(serverRequestProcessingLatencyTimer);
+        when(pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS)).thenReturn(recordsReceivedFromPeersCounter);
+    }
+
+    @AfterEach
+    void tearDown() {
+        verifyNoMoreInteractions(recordsReceivedFromPeersCounter);
     }
 
     private PeerForwarderHttpService createObjectUnderTest() {
@@ -107,6 +122,8 @@ class PeerForwarderHttpServiceTest {
         final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
 
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
+
+        verify(recordsReceivedFromPeersCounter).increment(1);
     }
 
     @Test

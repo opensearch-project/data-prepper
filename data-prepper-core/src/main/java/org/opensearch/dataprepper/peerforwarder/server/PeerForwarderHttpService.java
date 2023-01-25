@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.server;
 
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
@@ -40,12 +41,14 @@ public class PeerForwarderHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpService.class);
     private static final String TRACE_EVENT_TYPE = "TRACE";
     static final String SERVER_REQUEST_PROCESSING_LATENCY = "serverRequestProcessingLatency";
+    static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
 
     private final ResponseHandler responseHandler;
     private final PeerForwarderProvider peerForwarderProvider;
     private final PeerForwarderConfiguration peerForwarderConfiguration;
     private final ObjectMapper objectMapper;
     private final Timer serverRequestProcessingLatencyTimer;
+    private final Counter recordsReceivedFromPeersCounter;
 
     public PeerForwarderHttpService(final ResponseHandler responseHandler,
                                     final PeerForwarderProvider peerForwarderProvider,
@@ -57,6 +60,7 @@ public class PeerForwarderHttpService {
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.objectMapper = objectMapper;
         serverRequestProcessingLatencyTimer = pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY);
+        recordsReceivedFromPeersCounter = pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS);
     }
 
     @Post
@@ -96,6 +100,7 @@ public class PeerForwarderHttpService {
                     .collect(Collectors.toList());
 
             recordPeerForwarderReceiveBuffer.writeAll(jacksonEvents, peerForwarderConfiguration.getRequestTimeout());
+            recordsReceivedFromPeersCounter.increment(jacksonEvents.size());
         }
     }
 

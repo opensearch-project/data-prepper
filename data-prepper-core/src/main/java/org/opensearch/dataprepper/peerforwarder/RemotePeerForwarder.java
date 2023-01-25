@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
@@ -38,7 +37,6 @@ class RemotePeerForwarder implements PeerForwarder {
     static final String RECORDS_TO_BE_FORWARDED = "recordsToBeForwarded";
     static final String RECORDS_SUCCESSFULLY_FORWARDED = "recordsSuccessfullyForwarded";
     static final String RECORDS_FAILED_FORWARDING = "recordsFailedForwarding";
-    static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
     static final String RECORDS_MISSING_IDENTIFICATION_KEYS = "recordsMissingIdentificationKeys";
     static final String REQUESTS_FAILED = "requestsFailed";
     static final String REQUESTS_SUCCESSFUL = "requestsSuccessful";
@@ -54,7 +52,6 @@ class RemotePeerForwarder implements PeerForwarder {
     private final Counter recordsToBeForwardedCounter;
     private final Counter recordsSuccessfullyForwardedCounter;
     private final Counter recordsFailedForwardingCounter;
-    private final AtomicInteger recordsReceivedFromPeersCount;
     private final Counter recordsMissingIdentificationKeys;
     private final Counter requestsFailedCounter;
     private final Counter requestsSuccessfulCounter;
@@ -86,8 +83,6 @@ class RemotePeerForwarder implements PeerForwarder {
         recordsToBeForwardedCounter = pluginMetrics.counter(RECORDS_TO_BE_FORWARDED);
         recordsSuccessfullyForwardedCounter = pluginMetrics.counter(RECORDS_SUCCESSFULLY_FORWARDED);
         recordsFailedForwardingCounter = pluginMetrics.counter(RECORDS_FAILED_FORWARDING);
-        recordsReceivedFromPeersCount = new AtomicInteger(0);
-        pluginMetrics.gauge(RECORDS_RECEIVED_FROM_PEERS, recordsReceivedFromPeersCount);
         recordsMissingIdentificationKeys = pluginMetrics.counter(RECORDS_MISSING_IDENTIFICATION_KEYS);
         requestsFailedCounter = pluginMetrics.counter(REQUESTS_FAILED);
         requestsSuccessfulCounter = pluginMetrics.counter(REQUESTS_SUCCESSFUL);
@@ -136,7 +131,6 @@ class RemotePeerForwarder implements PeerForwarder {
         // Checkpoint the current batch read from the buffer after reading from buffer
         peerForwarderReceiveBuffer.checkpoint(checkpointState);
 
-        recordsReceivedFromPeersCount.addAndGet(records.size());
         return records;
     }
 
@@ -195,7 +189,6 @@ class RemotePeerForwarder implements PeerForwarder {
             try {
                 peerForwarderReceiveBuffer.writeAll(records, failedForwardingRequestLocalWriteTimeout);
                 recordsActuallyProcessedLocallyCounter.increment(records.size());
-                recordsReceivedFromPeersCount.addAndGet(records.size() * -1);
             } catch (final Exception e) {
                 LOG.error("Unable to write failed records to local peer forwarder receive buffer due to exception. Dropping {} records.", records.size(), e);
             }

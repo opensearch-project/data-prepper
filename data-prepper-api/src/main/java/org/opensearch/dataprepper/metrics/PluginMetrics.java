@@ -78,7 +78,7 @@ public class PluginMetrics {
         return Metrics.gauge(getMeterName(name), obj, valueFunction);
     }
 
-    public String getMeterName(final String name) {
+    private String getMeterName(final String name) {
         return new StringJoiner(MetricNames.DELIMITER).add(metricsPrefix).add(name).toString();
     }
 
