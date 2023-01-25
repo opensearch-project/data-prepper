@@ -16,7 +16,7 @@ processor:
 * `trace_group_cache_max_size`: An `int` representing the total number of traces to keep in the trace group cache.
 
 ## Metrics
-In addition to the metrics from [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java):
+In addition to the metrics from [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/processor/AbstractProcessor.java):
 
 * `traceGroupCacheCount` - (gauge) The count of trace groups in the trace group cache
 * `spanSetCount` - (gauge) The count of span sets in the span set collection

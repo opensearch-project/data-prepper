@@ -8,9 +8,12 @@ package org.opensearch.dataprepper.plugins.processor.oteltrace;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.assertj.core.api.Assertions;
+import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
@@ -22,6 +25,7 @@ import org.opensearch.dataprepper.model.trace.TraceGroupFields;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,10 +49,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class OTelTraceRawProcessorTest {
+class OTelTraceRawProcessorTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final long TEST_TRACE_FLUSH_INTERVAL = 3L;
@@ -79,9 +84,10 @@ public class OTelTraceRawProcessorTest {
     private PluginMetrics pluginMetrics;
     public OTelTraceRawProcessor oTelTraceRawProcessor;
     public ExecutorService executorService;
+    private PipelineDescription pipelineDescription;
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         TEST_TRACE_GROUP_1_ROOT_SPAN = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_ROOT_SPAN_JSON_FILE);
         TEST_TRACE_GROUP_1_CHILD_SPAN_1 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_1_JSON_FILE);
         TEST_TRACE_GROUP_1_CHILD_SPAN_2 = buildSpanFromJsonFile(TEST_TRACE_GROUP_1_CHILD_SPAN_2_JSON_FILE);
@@ -110,7 +116,7 @@ public class OTelTraceRawProcessorTest {
                 .map(Record::new).collect(Collectors.toList());
 
         config = mock(OtelTraceRawProcessorConfig.class);
-        final PipelineDescription pipelineDescription = mock(PipelineDescription.class);
+        pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getNumberOfProcessWorkers()).thenReturn(TEST_CONCURRENCY_SCALE);
         pluginMetrics = mock(PluginMetrics.class);
 
@@ -123,26 +129,26 @@ public class OTelTraceRawProcessorTest {
     }
 
     @AfterEach
-    public void tearDown() {
+    void tearDown() {
         oTelTraceRawProcessor.shutdown();
         executorService.shutdown();
     }
 
     @Test
-    public void testEmptyCollection() {
+    void testEmptyCollection() {
         assertThat(oTelTraceRawProcessor.doExecute(Collections.EMPTY_LIST)).isEmpty();
     }
 
     @Test
-    public void testExportRequestFlushByParentSpan() {
-        final List<Record<Span>> processedRecords = (List<Record<Span>>) oTelTraceRawProcessor.doExecute(TEST_TWO_FULL_TRACE_GROUP_RECORDS);
+    void testExportRequestFlushByParentSpan() {
+        final Collection<Record<Span>> processedRecords = oTelTraceRawProcessor.doExecute(TEST_TWO_FULL_TRACE_GROUP_RECORDS);
 
         Assertions.assertThat(processedRecords.size()).isEqualTo(6);
         Assertions.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords)).isEqualTo(0);
     }
 
     @Test
-    public void testExportRequestFlushByParentSpanMultiThread() throws InterruptedException, ExecutionException {
+    void testExportRequestFlushByParentSpanMultiThread() throws InterruptedException, ExecutionException {
         final List<Record<Span>> processedRecords = new ArrayList<>();
         List<Future<Collection<Record<Span>>>> futures = new ArrayList<>();
         futures.addAll(submitRecords(TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_1_RECORDS));
@@ -161,7 +167,7 @@ public class OTelTraceRawProcessorTest {
     }
 
     @Test
-    public void testExportRequestFlushByGC() {
+    void testExportRequestFlushByGC() {
         oTelTraceRawProcessor.doExecute(TEST_TWO_TRACE_GROUP_MISSING_ROOT_RECORDS);
         await().atMost(2 * TEST_TRACE_FLUSH_INTERVAL, TimeUnit.SECONDS).untilAsserted(() -> {
             final List<Record<Span>> processedRecords = (List<Record<Span>>) oTelTraceRawProcessor.doExecute(Collections.emptyList());
@@ -171,7 +177,7 @@ public class OTelTraceRawProcessorTest {
     }
 
     @Test
-    public void testExportRequestFlushByMixedMultiThread() throws InterruptedException, ExecutionException {
+    void testExportRequestFlushByMixedMultiThread() throws InterruptedException, ExecutionException {
         List<Record<Span>> processedRecords = new ArrayList<>();
         List<Future<Collection<Record<Span>>>> futures = new ArrayList<>();
         futures.addAll(submitRecords(TEST_ONE_FULL_TRACE_GROUP_RECORDS));
@@ -190,7 +196,7 @@ public class OTelTraceRawProcessorTest {
     }
 
     @Test
-    public void testPrepareForShutdown() {
+    void testPrepareForShutdown() {
         // Assert no records in memory
         assertTrue(oTelTraceRawProcessor.isReadyForShutdown());
 
@@ -209,7 +215,7 @@ public class OTelTraceRawProcessorTest {
     }
 
     @Test
-    public void testGetIdentificationKeys() {
+    void testGetIdentificationKeys() {
         final Collection<String> expectedIdentificationKeys = oTelTraceRawProcessor.getIdentificationKeys();
         assertThat(expectedIdentificationKeys, equalTo(Collections.singleton("traceId")));
     }
@@ -242,6 +248,49 @@ public class OTelTraceRawProcessorTest {
         oTelTraceRawProcessor.doExecute(TEST_ONE_TRACE_GROUP_MISSING_ROOT_RECORDS);
 
         assertThat(actualFunction.applyAsDouble(actualMeasuredObject), equalTo(1.0));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "1, 4",
+            "2, 6"
+    })
+    void traceGroupCacheMaxSize_provides_an_upper_bound(final long cacheMaxSize, final int expectedProcessedRecords) {
+        reset(config);
+        when(config.getTraceFlushIntervalSeconds()).thenReturn(TEST_TRACE_FLUSH_INTERVAL);
+        when(config.getTraceGroupCacheMaxSize()).thenReturn(cacheMaxSize);
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL);
+
+        oTelTraceRawProcessor = new OTelTraceRawProcessor(config, pipelineDescription, pluginMetrics);
+
+        final Collection<Record<Span>> processedRecords = new ArrayList<>();
+        processedRecords.addAll(oTelTraceRawProcessor.doExecute(TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_1_RECORDS));
+        processedRecords.addAll(oTelTraceRawProcessor.doExecute(TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_2_RECORDS));
+
+        MatcherAssert.assertThat(processedRecords.size(), equalTo(expectedProcessedRecords));
+        MatcherAssert.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords), equalTo(0));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "100, 4",
+            "2000, 6"
+    })
+    void traceGroupCacheTimeToLive_causes_trace_group_expiry(final long traceIdTtlMillis, final int expectedProcessedRecords) throws InterruptedException {
+        reset(config);
+        when(config.getTraceFlushIntervalSeconds()).thenReturn(TEST_TRACE_FLUSH_INTERVAL);
+        when(config.getTraceGroupCacheMaxSize()).thenReturn(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE);
+        when(config.getTraceGroupCacheTimeToLive()).thenReturn(Duration.ofMillis(traceIdTtlMillis));
+
+        oTelTraceRawProcessor = new OTelTraceRawProcessor(config, pipelineDescription, pluginMetrics);
+
+        final Collection<Record<Span>> processedRecords = new ArrayList<>();
+        processedRecords.addAll(oTelTraceRawProcessor.doExecute(TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_1_RECORDS));
+        Thread.sleep(200);
+        processedRecords.addAll(oTelTraceRawProcessor.doExecute(TEST_TWO_TRACE_GROUP_INTERLEAVED_PART_2_RECORDS));
+
+        MatcherAssert.assertThat(processedRecords.size(), equalTo(expectedProcessedRecords));
+        MatcherAssert.assertThat(getMissingTraceGroupFieldsSpanCount(processedRecords), equalTo(0));
     }
 
     private static Span buildSpanFromJsonFile(final String jsonFileName) {
@@ -292,7 +341,7 @@ public class OTelTraceRawProcessorTest {
         return futures;
     }
 
-    private int getMissingTraceGroupFieldsSpanCount(List<Record<Span>> records) {
+    private int getMissingTraceGroupFieldsSpanCount(final Collection<Record<Span>> records) {
         int count = 0;
         for (Record<Span> record: records) {
             final Span span = record.getData();
