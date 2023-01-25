@@ -111,7 +111,7 @@ All exponential histograms that have a scale that is above the configured parame
 **Note**: the absolute scale value is used for comparison, so a scale of -11 will be treated equally to 11 and thus exceed the configured value of 10 - and be discarded.
 
 ## Metrics
-This plugin uses all common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java), and does not currently introduce custom metrics.
+This plugin uses all common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/processor/AbstractProcessor.java), and does not currently introduce custom metrics.
 
 ## Developer Guide
 This plugin is compatible with Java 8. See 

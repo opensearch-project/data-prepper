@@ -65,7 +65,7 @@ source:
 ```
 
 This plugin uses pluggable authentication for GRPC servers. To provide custom authentication,
-create a plugin which implements [`GrpcAuthenticationProvider`](../armeria-common/src/main/java/com/amazon/dataprepper/armeria/authentication/GrpcAuthenticationProvider.java)
+create a plugin which implements [`GrpcAuthenticationProvider`](../armeria-common/src/main/java/org/opensearch/dataprepper/armeria/authentication/GrpcAuthenticationProvider.java)
 
 ### SSL
 

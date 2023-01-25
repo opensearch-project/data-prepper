@@ -171,7 +171,7 @@ is explicitly mapped by your index template.
 
 ## Metrics
 
-Besides common metrics in [AbstractSink](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/sink/AbstractSink.java), OpenSearch sink introduces the following custom metrics.
+Besides common metrics in [AbstractSink](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/sink/AbstractSink.java), OpenSearch sink introduces the following custom metrics.
 
 ### Timer
 

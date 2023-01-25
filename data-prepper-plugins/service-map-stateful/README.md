@@ -14,7 +14,7 @@ processor:
 * window_duration(Optional) => An `int` represents the fixed time window in seconds to evaluate service-map relationships. Default is ```180```.
 
 ## Metrics
-Besides common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java), service-map-stateful processor introduces the following custom metrics.
+Besides common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/processor/AbstractProcessor.java), service-map-stateful processor introduces the following custom metrics.
 
 ### Gauge
 - `spansDbSize`: measures total spans byte sizes in MapDB across the current and previous window durations. This only tracks the byte size for the file (if used).

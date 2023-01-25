@@ -33,8 +33,8 @@ The [OpenTelemetry source](../data-prepper-plugins/otel-trace-source/README.md) 
 ### Processor
 
 We have two processor for the Trace Analytics feature,
-* *otel_trace_raw* -  This is a processor that receives collection of [Span](../../data-prepper-api/src/main/java/com/amazon/dataprepper/model/trace/Span.java) records sent from [otel-trace-source](../dataPrepper-plugins/otel-trace-source), does stateful processing on extracting and filling-in trace group related fields.
-* *otel_trace_group* -  This is a processor that fills in the missing trace group related fields in the collection of [Span](../../data-prepper-api/src/main/java/com/amazon/dataprepper/model/trace/Span.java) records by looking up the opensearch backend.
+* *otel_trace_raw* -  This is a processor that receives collection of [Span](../data-prepper-api/src/main/java/org/opensearch/dataprepper/model/trace/Span.java) records sent from [otel-trace-source](../data-prepper-plugins/otel-trace-source/README.md), does stateful processing on extracting and filling-in trace group related fields.
+* *otel_trace_group* -  This is a processor that fills in the missing trace group related fields in the collection of [Span](../data-prepper-api/src/main/java/org/opensearch/dataprepper/model/trace/Span.java) records by looking up the opensearch backend.
 * *service_map_stateful* -  This processor performs the required preprocessing on the trace data and build metadata to display the service-map OpenSearch Dashboards dashboards.
 
 

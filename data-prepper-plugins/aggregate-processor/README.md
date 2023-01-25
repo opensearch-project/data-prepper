@@ -175,7 +175,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
 
 ## Creating New Aggregate Actions
 
-It is easy to create custom Aggregate Actions to be used by the Aggregate Processor. To do so, create a new class that implements the [AggregateAction interface](src/main/java/com/amazon/dataprepper/plugins/processor/aggregate/AggregateAction.java).
+It is easy to create custom Aggregate Actions to be used by the Aggregate Processor. To do so, create a new class that implements the [AggregateAction interface](src/main/java/org/opensearch/dataprepper/plugins/processor/aggregate/AggregateAction.java).
 The interface has the following signature:
 
 ```
@@ -194,7 +194,7 @@ public interface AggregateAction {
 ```
 
 The `AggregateActionInput` that is passed to the functions of the interface contains a method `getGroupState()`, which returns a `GroupState` Object that can be operated on like a java `Map`. 
-For actual examples, take a closer look at the code for some existing AggregateActions [here](src/main/java/com/amazon/dataprepper/plugins/processor/aggregate/actions).
+For actual examples, take a closer look at the code for some existing AggregateActions [here](src/main/java/org/opensearch/dataprepper/plugins/processor/aggregate/actions).
 
 ## State
 
@@ -203,7 +203,7 @@ This functionality is on the Data Prepper Roadmap.
 
 ## Metrics
 
-Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java), the Aggregate Processor introduces the following custom metrics.
+Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/processor/AbstractProcessor.java), the Aggregate Processor introduces the following custom metrics.
 
 **Counter**
 
