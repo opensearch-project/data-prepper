@@ -26,7 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT_MARKER;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 /**
  * Processor to parse CSV data in Events.
@@ -77,7 +77,7 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
                 }
             } catch (final IOException e) {
                 csvInvalidEventsCounter.increment();
-                LOG.error(EVENT_MARKER, "An exception occurred while reading event [{}]", event, e);
+                LOG.error(EVENT, "An exception occurred while reading event [{}]", event, e);
             }
         }
         return records;

@@ -4,11 +4,11 @@ import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 public final class DataPrepperMarkers {
-    public static final Marker EVENT_MARKER = MarkerFactory.getMarker("EVENT");
-    public static final Marker SENSITIVE_MARKER = MarkerFactory.getMarker("SENSITIVE");
+    public static final Marker EVENT = MarkerFactory.getMarker("EVENT");
+    public static final Marker SENSITIVE = MarkerFactory.getMarker("SENSITIVE");
 
     static {
-        EVENT_MARKER.add(SENSITIVE_MARKER);
+        EVENT.add(SENSITIVE);
     }
 
     private DataPrepperMarkers() {}

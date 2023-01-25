@@ -46,7 +46,7 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Supplier;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE_MARKER;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
 @DataPrepperPlugin(name = "opensearch", pluginType = Sink.class)
 public class OpenSearchSink extends AbstractSink<Record<Event>> {
@@ -215,10 +215,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         dlqWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
                 BulkOperationWriter.bulkOperationToString(bulkOperation), failure.getMessage()));
       } catch (final IOException e) {
-        LOG.error(SENSITIVE_MARKER, "DLQ failed for Document [{}]", bulkOperation, e);
+        LOG.error(SENSITIVE, "DLQ failed for Document [{}]", bulkOperation, e);
       }
     } else {
-      LOG.warn(SENSITIVE_MARKER, "Document [{}] has failure.", bulkOperation.toString(), failure);
+      LOG.warn(SENSITIVE, "Document [{}] has failure.", bulkOperation.toString(), failure);
     }
   }
 

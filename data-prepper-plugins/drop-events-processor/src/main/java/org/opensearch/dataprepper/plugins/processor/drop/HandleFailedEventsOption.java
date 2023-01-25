@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT_MARKER;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 enum HandleFailedEventsOption {
     DROP("drop", true, false),
@@ -39,7 +39,7 @@ enum HandleFailedEventsOption {
 
     public boolean isDropEventOption(final Event event, final Throwable cause, final Logger log) {
         if (isLogRequired) {
-            log.warn(EVENT_MARKER, "An exception occurred while processing when expression for event {}", event, cause);
+            log.warn(EVENT, "An exception occurred while processing when expression for event {}", event, cause);
         }
         return isDropEventOption;
     }

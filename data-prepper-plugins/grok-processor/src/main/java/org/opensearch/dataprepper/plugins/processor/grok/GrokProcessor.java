@@ -50,7 +50,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT_MARKER;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 
 @SingleThread
@@ -124,19 +124,19 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 final Record<Event> grokkedRecord = new Record<>(event, record.getMetadata());
                 recordsOut.add(grokkedRecord);
             } catch (TimeoutException e) {
-                LOG.error(EVENT_MARKER, "Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokProcessorConfig.getTimeoutMillis());
+                LOG.error(EVENT, "Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokProcessorConfig.getTimeoutMillis());
                 recordsOut.add(record);
                 grokProcessingTimeoutsCounter.increment();
             } catch (ExecutionException e) {
-                LOG.error(EVENT_MARKER, "An exception occurred while matching on record [{}]", record.getData(), e);
+                LOG.error(EVENT, "An exception occurred while matching on record [{}]", record.getData(), e);
                 recordsOut.add(record);
                 grokProcessingErrorsCounter.increment();
             } catch (InterruptedException e) {
-                LOG.error(EVENT_MARKER, "Matching on record [{}] was interrupted", record.getData(), e);
+                LOG.error(EVENT, "Matching on record [{}] was interrupted", record.getData(), e);
                 recordsOut.add(record);
                 grokProcessingErrorsCounter.increment();
             } catch (RuntimeException e) {
-                LOG.error(EVENT_MARKER, "Unknown exception occurred when matching record [{}]", record.getData(), e);
+                LOG.error(EVENT, "Unknown exception occurred when matching record [{}]", record.getData(), e);
                 recordsOut.add(record);
                 grokProcessingErrorsCounter.increment();
             }

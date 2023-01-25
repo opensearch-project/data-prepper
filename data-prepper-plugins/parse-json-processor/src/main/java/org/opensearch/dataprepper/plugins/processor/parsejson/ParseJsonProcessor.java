@@ -27,7 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT_MARKER;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 @DataPrepperPlugin(name = "parse_json", pluginType = Processor.class, pluginConfigurationType = ParseJsonProcessorConfig.class)
 public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -69,7 +69,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
                     event.put(destination, parsedJson);
                 }
             } catch (final JsonProcessingException jsonException) {
-                LOG.error(EVENT_MARKER, "An exception occurred due to invalid JSON while reading event [{}]", event, jsonException);
+                LOG.error(EVENT, "An exception occurred due to invalid JSON while reading event [{}]", event, jsonException);
             }
         }
         return records;
@@ -100,7 +100,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
 
         final boolean pointerIsValid = temporaryEvent.containsKey(actualPointer);
         if (!pointerIsValid) {
-            LOG.error(EVENT_MARKER, "Writing entire JSON because the pointer {} is invalid on Event {}", pointer, event);
+            LOG.error(EVENT, "Writing entire JSON because the pointer {} is invalid on Event {}", pointer, event);
             return parsedJson;
         }
 
