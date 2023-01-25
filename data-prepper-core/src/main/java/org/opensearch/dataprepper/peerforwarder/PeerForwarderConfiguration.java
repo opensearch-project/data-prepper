@@ -57,7 +57,6 @@ public class PeerForwarderConfiguration {
     private boolean sslCertAndKeyFileInS3 = false;
     private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
     private Integer failedForwardingRequestLocalWriteTimeout = 500;
-    private Integer forwardingRequestWorkers = 8;
 
     public PeerForwarderConfiguration() {}
 
@@ -90,8 +89,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("batch_delay") final Integer batchDelay,
             @JsonProperty("buffer_size") final Integer bufferSize,
             @JsonProperty("drain_timeout") final Duration drainTimeout,
-            @JsonProperty("failed_forwarding_requests_local_write_timeout") final Integer failedForwardingRequestLocalWriteTimeout,
-            @JsonProperty("forwarding_requests_workers") final Integer forwardingRequestWorkers
+            @JsonProperty("failed_forwarding_requests_local_write_timeout") final Integer failedForwardingRequestLocalWriteTimeout
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
@@ -121,7 +119,6 @@ public class PeerForwarderConfiguration {
         setBufferSize(bufferSize);
         setDrainTimeout(drainTimeout);
         setFailedForwardingRequestLocalWriteTimeout(failedForwardingRequestLocalWriteTimeout);
-        setForwardingRequestWorkers(forwardingRequestWorkers);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
     }
@@ -224,10 +221,6 @@ public class PeerForwarderConfiguration {
 
     public Integer getFailedForwardingRequestLocalWriteTimeout() {
         return failedForwardingRequestLocalWriteTimeout;
-    }
-
-    public Integer getForwardingRequestWorkers() {
-        return forwardingRequestWorkers;
     }
 
     private void setServerPort(final Integer serverPort) {
@@ -481,15 +474,6 @@ public class PeerForwarderConfiguration {
                 throw new IllegalArgumentException("Failed forwarding requests local write timeout must be a positive integer.");
             }
             this.failedForwardingRequestLocalWriteTimeout = failedForwardingRequestLocalWriteTimeout;
-        }
-    }
-
-    private void setForwardingRequestWorkers(final Integer forwardingRequestWorkers) {
-        if (forwardingRequestWorkers != null) {
-            if (forwardingRequestWorkers <= 0) {
-                throw new IllegalArgumentException("Forwarding requests workers must be a positive integer.");
-            }
-            this.forwardingRequestWorkers = forwardingRequestWorkers;
         }
     }
 }

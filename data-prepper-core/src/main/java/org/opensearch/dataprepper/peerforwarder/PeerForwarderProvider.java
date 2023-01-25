@@ -57,7 +57,7 @@ public class PeerForwarderProvider {
                     pluginMetrics,
                     peerForwarderConfiguration.getBatchDelay(),
                     peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(),
-                    Executors.newFixedThreadPool(peerForwarderConfiguration.getForwardingRequestWorkers())
+                    Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount())
             );
         }
         else {

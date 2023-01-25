@@ -16,7 +16,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
@@ -25,8 +24,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
 
@@ -37,19 +34,16 @@ public class PeerForwarderClient {
 
     private final PeerForwarderClientFactory peerForwarderClientFactory;
     private final ObjectMapper objectMapper;
-    private final ExecutorService executorService;
     private final Counter requestsCounter;
     private final Timer clientRequestForwardingLatencyTimer;
 
     private PeerClientPool peerClientPool;
 
-    public PeerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
-                               final PeerForwarderClientFactory peerForwarderClientFactory,
+    public PeerForwarderClient(final PeerForwarderClientFactory peerForwarderClientFactory,
                                final ObjectMapper objectMapper,
                                final PluginMetrics pluginMetrics) {
         this.peerForwarderClientFactory = peerForwarderClientFactory;
         this.objectMapper = objectMapper;
-        executorService = Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount());
         requestsCounter = pluginMetrics.counter(REQUESTS);
         clientRequestForwardingLatencyTimer = pluginMetrics.timer(CLIENT_REQUEST_FORWARDING_LATENCY);
     }

@@ -36,8 +36,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.IOException;
@@ -79,16 +77,10 @@ class PeerForwarderClientTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private PeerForwarderConfiguration peerForwarderConfiguration;
-
-    @Mock
     private PeerClientPool peerClientPool;
 
     @Mock
     private PeerForwarderClientFactory peerForwarderClientFactory;
-
-    @Mock
-    private PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer;
 
     @Mock
     private Counter requestsCounter;
@@ -111,8 +103,7 @@ class PeerForwarderClientTest {
     }
 
     private PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
-        when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(200);
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
+        return new PeerForwarderClient(peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
 
     @Test

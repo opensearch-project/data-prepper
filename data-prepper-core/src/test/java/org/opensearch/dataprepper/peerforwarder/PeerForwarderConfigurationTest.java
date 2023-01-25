@@ -60,7 +60,6 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(500));
-        assertThat(peerForwarderConfiguration.getForwardingRequestWorkers(), equalTo(8));
     }
 
     @Test
@@ -89,7 +88,6 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(15));
-        assertThat(peerForwarderConfiguration.getForwardingRequestWorkers(), equalTo(20));
     }
 
     @Test
@@ -176,7 +174,6 @@ class PeerForwarderConfigurationTest {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_NEGATIVE_DRAIN_TIMEOUT,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_ZERO_LOCAL_WRITE_TIMEOUT,
-            TestDataProvider.INVALID_PEER_FORWARDER_WITH_ZERO_FORWARDING_THREADS,
             "src/test/resources/invalid_peer_forwarder_config_with_many_authentication.yml",
             "src/test/resources/invalid_peer_forwarder_config_with_mutual_tls_not_ssl.yml"
     })

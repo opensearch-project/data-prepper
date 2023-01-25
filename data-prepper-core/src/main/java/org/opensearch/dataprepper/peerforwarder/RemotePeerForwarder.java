@@ -104,7 +104,7 @@ class RemotePeerForwarder implements PeerForwarder {
                 try {
                     submitForwardingRequest(entry.getValue(), destinationIp);
                 } catch (final Exception ex) {
-                    LOG.warn("Unable to send request to peer, processing locally.", ex);
+                    LOG.warn("Unable submit request for forwarding, processing locally.", ex);
                     recordsToProcessLocally.addAll(entry.getValue());
                     recordsFailedForwardingCounter.increment(entry.getValue().size());
                     requestsFailedCounter.increment();

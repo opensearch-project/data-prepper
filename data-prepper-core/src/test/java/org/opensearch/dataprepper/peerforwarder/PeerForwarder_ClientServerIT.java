@@ -121,7 +121,7 @@ class PeerForwarder_ClientServerIT {
         final PeerClientPool peerClientPool = new PeerClientPool();
         final PeerForwarderClientFactory peerForwarderClientFactory = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
         peerForwarderClientFactory.setPeerClientPool();
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
+        return new PeerForwarderClient(peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
 
     private Collection<Record<Event>> getServerSideRecords(final PeerForwarderProvider peerForwarderProvider) {
@@ -468,7 +468,6 @@ class PeerForwarder_ClientServerIT {
                 48,
                 3000,
                 512,
-                null,
                 null,
                 null
         );
