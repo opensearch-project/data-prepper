@@ -7,7 +7,7 @@ are created as Data Prepper plugins.
 
 Plugins are created as Java classes. They must conform to the following.
 
-* The class must be annotated with [`@DataPrepperPlugin`](../data-prepper-api/src/main/java/com/amazon/dataprepper/model/annotations/DataPrepperPlugin.java)
+* The class must be annotated with [`@DataPrepperPlugin`](../data-prepper-api/src/main/java/org/opensearch/dataprepper/model/annotations/DataPrepperPlugin.java)
 * The class must be in the `org.opensearch.dataprepper.plugins` package
 * The class must implement the required interface
 * The class must have a valid constructor (see below)
@@ -15,7 +15,7 @@ Plugins are created as Java classes. They must conform to the following.
 ### Plugin Constructors
 
 The preferred way to create a plugin constructor is to choose a single
-constructor and annotate it with [`@DataPrepperConstructor`](../data-prepper-api/src/main/java/com/amazon/dataprepper/model/annotations/DataPrepperPluginConstructor.java).
+constructor and annotate it with [`@DataPrepperConstructor`](../data-prepper-api/src/main/java/org/opensearch/dataprepper/model/annotations/DataPrepperPluginConstructor.java).
 The constructor can only take in class types which are supported by the plugin framework.
 
 The plugin framework can inject the following types into this constructor:
