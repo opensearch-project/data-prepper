@@ -204,8 +204,7 @@ public class HistogramAggregateAction implements AggregateAction {
                 .withBucketCountsList(bucketCounts)
                 .withExplicitBoundsList(explicitBoundsList)
                 .withAttributes(attr)
-                .build();
-            histogram.disableAttributesFlattening();
+                .build(false);
             event = (Event)histogram;
         }
         

@@ -38,11 +38,13 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsRawProcessor.class);
 
     private final OtelMetricsRawProcessorConfig otelMetricsRawProcessorConfig;
+    private final boolean flattenAttributesFlag;
 
     @DataPrepperPluginConstructor
     public OTelMetricsRawProcessor(PluginSetting pluginSetting, final OtelMetricsRawProcessorConfig otelMetricsRawProcessorConfig) {
         super(pluginSetting);
         this.otelMetricsRawProcessorConfig = otelMetricsRawProcessorConfig;
+        this.flattenAttributesFlag = otelMetricsRawProcessorConfig.getFlattenAttributesFlag();
     }
 
     @Override
@@ -115,7 +117,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         .withSchemaUrl(schemaUrl)
                         .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
                         .withFlags(dp.getFlags())
-                        .build())
+                        .build(flattenAttributesFlag))
                 .map(Record::new)
                 .collect(Collectors.toList());
     }
@@ -146,7 +148,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         .withSchemaUrl(schemaUrl)
                         .withExemplars(OTelProtoCodec.convertExemplars(dp.getExemplarsList()))
                         .withFlags(dp.getFlags())
-                        .build())
+                        .build(flattenAttributesFlag))
                 .map(Record::new)
                 .collect(Collectors.toList());
     }
@@ -177,7 +179,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         ))
                         .withSchemaUrl(schemaUrl)
                         .withFlags(dp.getFlags())
-                        .build())
+                        .build(flattenAttributesFlag))
                 .map(Record::new)
                 .collect(Collectors.toList());
     }
@@ -187,6 +189,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                                                  final Map<String, Object> ils,
                                                  final Map<String, Object> resourceAttributes,
                                                  final String schemaUrl) {
+        System.out.println("================HERE=========");
         return metric.getHistogram().getDataPointsList().stream()
                 .map(dp -> {
                     JacksonHistogram.Builder builder = JacksonHistogram.builder()
@@ -216,7 +219,10 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                     if (otelMetricsRawProcessorConfig.getCalculateHistogramBuckets()) {
                         builder.withBuckets(OTelProtoCodec.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
                     }
-                    return builder.build();
+                    System.out.println("......FLATTEN..."+flattenAttributesFlag);
+                    JacksonHistogram jh = builder.build(flattenAttributesFlag);
+                    System.out.println("......"+jh.toJsonString());
+                    return jh;
 
                 })
                 .map(Record::new)
@@ -267,7 +273,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                         builder.withNegativeBuckets(OTelProtoCodec.createExponentialBuckets(dp.getNegative(), dp.getScale()));
                     }
 
-                    return builder.build();
+                    return builder.build(flattenAttributesFlag);
                 })
                 .map(Record::new)
                 .collect(Collectors.toList());

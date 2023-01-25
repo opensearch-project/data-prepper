@@ -18,6 +18,7 @@ It is possible to create explicit representations of histogram buckets and their
         calculate_histogram_buckets: true
         calculate_exponential_histogram_buckets: true
         exponential_histogram_max_allowed_scale: 10
+        flatten_attributes: false
 ```
 
 There are three possible parameters: `calculate_histogram_buckets`, `calculate_exponential_histogram_buckets` and `exponential_histogram_max_allowed_scale`
@@ -25,6 +26,7 @@ If `calculate_histogram_buckets` and `calculate_exponential_histogram_buckets` a
 If `exponential_histogram_max_allowed_scale` is not provided it defaults to 10.
 
 If `calculate_histogram_buckets` is not set to `false`, the following JSON will be added to every histogram JSON:
+If `flatten_attributes` is set to `false`, the json string format of the metrics will keep the attributes field as is, and if it is set to `true`, the fleds in attributes field are put in the parent json object. Default is `true`
 
 ```json
  "buckets": [

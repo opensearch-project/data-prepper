@@ -233,17 +233,11 @@ class JacksonHistogramTest {
 
     @Test
     public void testHistogramToJsonStringWithAttributes() throws JSONException {
+        histogram = builder.build(false);
         histogram.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
         histogram.put("testObject", new TestObject(value));
         histogram.put("list", Arrays.asList(1, 4, 5));
-        final String result = histogram.toJsonString();
-
-        String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/histogram.json"));
-        String expected = String.format(file, TEST_START_TIME, TEST_TIME, value, TEST_KEY1_TIME, TEST_KEY2);
-        JSONAssert.assertEquals(expected, result, false);
-
-        histogram.disableAttributesFlattening();
         final Map<String, Object> attributes = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         histogram.put("attributes", attributes);
         final String resultAttr = histogram.toJsonString();

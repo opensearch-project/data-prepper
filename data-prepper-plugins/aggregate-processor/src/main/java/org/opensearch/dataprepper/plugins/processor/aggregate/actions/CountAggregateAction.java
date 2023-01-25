@@ -98,8 +98,7 @@ public class CountAggregateAction implements AggregateAction {
                 .withAggregationTemporality(AggregationTemporality.AGGREGATION_TEMPORALITY_DELTA.name())
                 .withValue((double)countValue)
                 .withAttributes(attr)
-                .build();
-            sum.disableAttributesFlattening();
+                .build(false);
             event = (Event)sum;
         }
         

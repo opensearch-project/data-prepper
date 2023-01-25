@@ -31,8 +31,8 @@ public class JacksonSummary extends JacksonMetric implements Summary {
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.emptyList();
 
 
-    protected JacksonSummary(JacksonSummary.Builder builder) {
-        super(builder);
+    protected JacksonSummary(JacksonSummary.Builder builder, boolean flattenAttributes) {
+        super(builder, flattenAttributes);
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
@@ -123,13 +123,22 @@ public class JacksonSummary extends JacksonMetric implements Summary {
          * @since 1.4
          */
         public JacksonSummary build() {
+            return build(true);
+        }
+
+        /**
+         * Returns a newly created {@link JacksonSummary}
+         * @return a JacksonSummary
+         * @since 2.1
+         */
+        public JacksonSummary build(boolean flattenAttributes) {
             this.withData(data);
             this.withEventKind(KIND.SUMMARY.toString());
             this.withEventType(EventType.METRIC.toString());
 
             new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
             checkAndSetDefaultValues();
-            return new JacksonSummary(this);
+            return new JacksonSummary(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {
