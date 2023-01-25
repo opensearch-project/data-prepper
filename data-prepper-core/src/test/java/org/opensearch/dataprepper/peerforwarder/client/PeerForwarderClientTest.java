@@ -131,7 +131,7 @@ class PeerForwarderClientTest {
 
         final AggregatedHttpResponse aggregatedHttpResponse =
                 peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(),
-                TEST_PLUGIN_ID, TEST_PIPELINE_NAME, (agg) -> {});
+                TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
 
         assertThat(aggregatedHttpResponse, notNullValue());
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
@@ -152,7 +152,7 @@ class PeerForwarderClientTest {
 
         final RuntimeException actualException = assertThrows(RuntimeException.class,
                 () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID,
-                        TEST_PIPELINE_NAME, (agg) -> {}));
+                        TEST_PIPELINE_NAME));
 
         assertThat(actualException.getCause(), instanceOf(JsonProcessingException.class));
     }
@@ -171,7 +171,7 @@ class PeerForwarderClientTest {
 
         for (int i = 0; i < requestCount; i++) {
             final AggregatedHttpResponse aggregatedHttpResponse =
-                    peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME, (agg) -> {});
+                    peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
             assertThat(aggregatedHttpResponse, notNullValue());
             assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
             assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));

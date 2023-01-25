@@ -27,7 +27,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
 
@@ -59,8 +58,7 @@ public class PeerForwarderClient {
             final Collection<Record<Event>> records,
             final String ipAddress,
             final String pluginId,
-            final String pipelineName,
-            final Consumer<AggregatedHttpResponse> responseProcessor) {
+            final String pipelineName) {
         // TODO: Initialize this in the constructor in future.
         //  It doesn't work right now as default certificate and private key file paths are not valid while loading constructor.
         if (peerClientPool == null) {
@@ -72,7 +70,7 @@ public class PeerForwarderClient {
         final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
 
         final AggregatedHttpResponse aggregatedHttpResponse = clientRequestForwardingLatencyTimer.record(() ->
-            processHttpRequest(client, serializedJsonString, responseProcessor)
+            processHttpRequest(client, serializedJsonString)
         );
         requestsCounter.increment();
 
@@ -109,16 +107,7 @@ public class PeerForwarderClient {
         );
     }
 
-    private AggregatedHttpResponse processHttpRequest(final WebClient client, final String content, final Consumer<AggregatedHttpResponse> responseConsumer) {
-        final AggregatedHttpResponse aggregatedHttpResponse;
-        try {
-            aggregatedHttpResponse = client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate().join();
-        } catch (final Exception e) {
-            responseConsumer.accept(null);
-            throw e;
-        }
-
-        responseConsumer.accept(aggregatedHttpResponse);
-        return aggregatedHttpResponse;
+    private AggregatedHttpResponse processHttpRequest(final WebClient client, final String content) {
+        return client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate().join();
     }
 }

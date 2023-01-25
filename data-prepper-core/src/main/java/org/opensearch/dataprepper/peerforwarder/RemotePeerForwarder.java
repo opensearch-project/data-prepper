@@ -102,14 +102,7 @@ class RemotePeerForwarder implements PeerForwarder {
             } else {
                 recordsToBeForwardedCounter.increment(entry.getValue().size());
                 try {
-                    forwardingRequestExecutor.submit(() -> {
-                        try {
-                            peerForwarderClient.serializeRecordsAndSendHttpRequest(entry.getValue(), destinationIp, pluginId,
-                                    pipelineName, aggregatedHttpResponse -> processFailedRequestsLocally(aggregatedHttpResponse, entry.getValue()));
-                        } catch (final Exception ex) {
-                            processFailedRequestsLocally(null, entry.getValue());
-                        }
-                    });
+                    submitForwardingRequest(entry.getValue(), destinationIp);
                 } catch (final Exception ex) {
                     LOG.warn("Unable to send request to peer, processing locally.", ex);
                     recordsToProcessLocally.addAll(entry.getValue());
@@ -182,6 +175,20 @@ class RemotePeerForwarder implements PeerForwarder {
                 return false;
             }
         }
+    }
+
+    void submitForwardingRequest(final Collection<Record<Event>> records, final String destinationIp) {
+        forwardingRequestExecutor.submit(() -> {
+            AggregatedHttpResponse aggregatedHttpResponse;
+            try {
+                aggregatedHttpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(records, destinationIp, pluginId, pipelineName);
+            } catch (final Exception ex) {
+                LOG.warn("Unable to send request to peer, processing locally.", ex);
+                aggregatedHttpResponse = null;
+            }
+
+            processFailedRequestsLocally(aggregatedHttpResponse, records);
+        });
     }
 
     void processFailedRequestsLocally(final AggregatedHttpResponse httpResponse, final Collection<Record<Event>> records) {
