@@ -10,7 +10,8 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'opensearch-data-prepper'
+//rootProject.name = 'opensearch-data-prepper'
+rootProject.name = 'data-prepper'
 
 dependencyResolutionManagement {
     versionCatalogs {
@@ -91,4 +92,6 @@ include 'release:docker'
 include 'release:maven'
 include 'e2e-test:peerforwarder'
 include 'rss-source'
+include 'data-prepper-plugins:s3-sink'
+findProject(':data-prepper-plugins:s3-sink')?.name = 's3-sink'
 
