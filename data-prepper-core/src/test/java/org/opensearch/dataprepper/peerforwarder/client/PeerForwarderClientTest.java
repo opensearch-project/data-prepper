@@ -53,6 +53,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
@@ -135,7 +136,7 @@ class PeerForwarderClientTest {
     @Test
     void test_serializeRecordsAndSendHttpRequest_with_bad_wireEvents_should_throw() throws JsonProcessingException {
         ObjectMapper objectMapper = mock(ObjectMapper.class);
-        when(objectMapper.writeValueAsString(isA(WireEvents.class))).thenThrow(JsonProcessingException.class);
+        when(objectMapper.writeValueAsBytes(isA(WireEvents.class))).thenThrow(JsonProcessingException.class);
 
         final PeerForwarderClient objectUnderTest = createObjectUnderTest(objectMapper);
 
@@ -155,7 +156,7 @@ class PeerForwarderClientTest {
 
         final WebClient webClient = mock(WebClient.class);
         when(peerClientPool.getClient(anyString())).thenReturn(webClient);
-        when(webClient.post(anyString(), anyString())).thenReturn(HttpResponse.ofJson(CompletableFuture.class));
+        when(webClient.post(anyString(), any(byte[].class))).thenReturn(HttpResponse.ofJson(CompletableFuture.class));
 
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
         final Collection<Record<Event>> records = generateBatchRecords(1);

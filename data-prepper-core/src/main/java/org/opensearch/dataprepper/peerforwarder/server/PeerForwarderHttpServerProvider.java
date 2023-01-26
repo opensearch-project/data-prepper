@@ -80,7 +80,8 @@ public class PeerForwarderHttpServerProvider implements Provider<Server> {
 
 
         sb.maxNumConnections(peerForwarderConfiguration.getMaxConnectionCount());
-        sb.requestTimeout(Duration.ofMillis(peerForwarderConfiguration.getRequestTimeout()));
+        // Add 1 second to the request timeout to allow for processing other than the buffer writes
+        sb.requestTimeout(Duration.ofMillis(peerForwarderConfiguration.getRequestTimeout() + 1000));
         final int threadCount = peerForwarderConfiguration.getServerThreadCount();
         final ScheduledThreadPoolExecutor blockingTaskExecutor = new ScheduledThreadPoolExecutor(threadCount);
         sb.blockingTaskExecutor(blockingTaskExecutor, true);

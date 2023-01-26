@@ -11,7 +11,6 @@ import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
@@ -28,6 +27,7 @@ import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -73,8 +73,8 @@ public class PeerForwarderHttpService {
         WireEvents wireEvents;
         final HttpData content = aggregatedHttpRequest.content();
         try {
-            wireEvents = objectMapper.readValue(content.toStringUtf8(), WireEvents.class);
-        } catch (JsonProcessingException e) {
+            wireEvents = objectMapper.readValue(content.array(), WireEvents.class);
+        } catch (IOException e) {
             final String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
             LOG.error(message, e);
             return responseHandler.handleException(e, message);

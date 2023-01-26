@@ -61,22 +61,22 @@ public class PeerForwarderClient {
 
         final WebClient client = peerClientPool.getClient(ipAddress);
 
-        final String serializedJsonString = getSerializedJsonString(records, pluginId, pipelineName);
+        final byte[] serializedJsonBytes = getSerializedJsonBytes(records, pluginId, pipelineName);
 
         final AggregatedHttpResponse aggregatedHttpResponse = clientRequestForwardingLatencyTimer.record(() ->
-            processHttpRequest(client, serializedJsonString)
+            processHttpRequest(client, serializedJsonBytes)
         );
         requestsCounter.increment();
 
         return aggregatedHttpResponse;
     }
 
-    private String getSerializedJsonString(final Collection<Record<Event>> records, final String pluginId, final String pipelineName) {
+    private byte[] getSerializedJsonBytes(final Collection<Record<Event>> records, final String pluginId, final String pipelineName) {
         final List<WireEvent> wireEventList = getWireEventList(records);
         final WireEvents wireEvents = new WireEvents(wireEventList, pluginId, pipelineName);
 
         try {
-            return objectMapper.writeValueAsString(wireEvents);
+            return objectMapper.writeValueAsBytes(wireEvents);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -101,7 +101,7 @@ public class PeerForwarderClient {
         );
     }
 
-    private AggregatedHttpResponse processHttpRequest(final WebClient client, final String content) {
+    private AggregatedHttpResponse processHttpRequest(final WebClient client, final byte[] content) {
         return client.post(DEFAULT_PEER_FORWARDING_URI, content).aggregate().join();
     }
 }
