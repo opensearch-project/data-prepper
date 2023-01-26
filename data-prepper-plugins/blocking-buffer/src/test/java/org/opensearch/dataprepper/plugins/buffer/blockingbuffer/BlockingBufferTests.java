@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.buffer.blockingbuffer;
 
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -190,8 +191,9 @@ public class BlockingBufferTests {
         assertThat(readResult.getKey().size(), is(0));
     }
 
-    @Test
-    public void testBatchRead() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {0, TEST_BATCH_READ_TIMEOUT})
+    public void testBatchRead(final int readTimeout) throws Exception {
         final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
         assertThat(blockingBuffer, notNullValue());
@@ -201,7 +203,7 @@ public class BlockingBufferTests {
             blockingBuffer.write(record, TEST_WRITE_TIMEOUT);
         }
         verifyBufferUsageMetric(38.46153846153847);
-        final Map.Entry<Collection<Record<String>>, CheckpointState> partialReadResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> partialReadResult = blockingBuffer.read(readTimeout);
         final Collection<Record<String>> partialRecords = partialReadResult.getKey();
         final CheckpointState partialCheckpointState = partialReadResult.getValue();
         final int expectedBatchSize = (Integer) completePluginSetting.getAttributeFromSettings(ATTRIBUTE_BATCH_SIZE);
@@ -213,7 +215,7 @@ public class BlockingBufferTests {
             i++;
         }
         verifyBufferUsageMetric(15.384615384615385);
-        final Map.Entry<Collection<Record<String>>, CheckpointState> finalReadResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> finalReadResult = blockingBuffer.read(readTimeout);
         final Collection<Record<String>> finalBatch = finalReadResult.getKey();
         final CheckpointState finalCheckpointState = finalReadResult.getValue();
         assertThat(finalBatch.size(), is(testSize - expectedBatchSize));

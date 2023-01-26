@@ -145,7 +145,11 @@ public class PipelineConfiguration {
 
     private Integer getReadBatchDelayFromPipelineModel(final PipelineModel pipelineModel) {
         final Integer configuredDelay = pipelineModel.getReadBatchDelay();
-        validateConfiguration(configuredDelay, DELAY_COMPONENT);
+
+        if (configuredDelay != null && configuredDelay < 0) {
+            throw new IllegalArgumentException(String.format("Invalid configuration, %s must be a non-negative integer.", DELAY_COMPONENT));
+        }
+
         return configuredDelay == null ? DEFAULT_READ_BATCH_DELAY : configuredDelay;
     }
 

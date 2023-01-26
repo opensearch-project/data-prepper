@@ -87,21 +87,16 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> implements Buffer<T
     @Override
     public Map.Entry<Collection<T>, CheckpointState> read(final int timeoutInMillis) {
         final List<T> records = new ArrayList<>();
-        final Stopwatch stopwatch = Stopwatch.createStarted();
-        try {
+
+        if (timeoutInMillis == 0) {
+            blockingQueue.drainTo(records, batchSize);
+        } else {
+            final Stopwatch stopwatch = Stopwatch.createStarted();
             while (stopwatch.elapsed(TimeUnit.MILLISECONDS) < timeoutInMillis && records.size() < batchSize) {
-                final T record = blockingQueue.poll(timeoutInMillis, TimeUnit.MILLISECONDS);
-                if (record != null) { //record can be null, avoiding adding nulls
-                    records.add(record);
-                }
-                if (records.size() < batchSize) {
-                    blockingQueue.drainTo(records, batchSize - records.size());
-                }
+                blockingQueue.drainTo(records, batchSize - records.size());
             }
-        } catch (InterruptedException ex) {
-            LOG.info("Peer forwarder buffer - Interrupt received while reading from buffer");
-            throw new RuntimeException(ex);
         }
+
         final CheckpointState checkpointState = new CheckpointState(records.size());
         recordsInFlight += checkpointState.getNumRecordsToBeChecked();
         return new AbstractMap.SimpleEntry<>(records, checkpointState);
