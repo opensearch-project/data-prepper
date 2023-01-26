@@ -34,6 +34,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.entry;
+import static org.hamcrest.Matchers.equalTo;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MetricsPluginSumTest {
@@ -107,6 +108,63 @@ public class MetricsPluginSumTest {
         ObjectMapper objectMapper = new ObjectMapper();
         Map<String, Object> map = objectMapper.readValue(firstRecord.getData().toJsonString(), Map.class);
         assertSumProcessing(map);
+    }
+
+    @Test
+    public void missingNameInvalidMetricTest() throws JsonProcessingException {
+
+        final KeyValue childAttr1 = KeyValue.newBuilder().setKey("statement").setValue(AnyValue.newBuilder()
+                .setIntValue(1_000).build()).build();
+        final KeyValue childAttr2 = KeyValue.newBuilder().setKey("statement.params").setValue(AnyValue.newBuilder()
+                .setStringValue("us-east-1").build()).build();
+
+        final KeyValue attribute1 = KeyValue.newBuilder().setKey("db.details").setValue(AnyValue.newBuilder()
+                .setKvlistValue(KeyValueList.newBuilder().addAllValues(Arrays.asList(childAttr1, childAttr2)).build()).build()).build();
+        final KeyValue attribute2 = KeyValue.newBuilder().setKey("http.status").setValue(AnyValue.newBuilder()
+                .setStringValue("4xx").build()).build();
+
+        final AnyValue anyValue1 = AnyValue.newBuilder().setStringValue("asdf").build();
+        final AnyValue anyValue2 = AnyValue.newBuilder().setDoubleValue(2000.123).build();
+        final AnyValue anyValue3 = AnyValue.newBuilder().setKvlistValue(KeyValueList.newBuilder().addAllValues(Arrays.asList(childAttr1, childAttr2))).build();
+        final ArrayValue arrayValue = ArrayValue.newBuilder().addAllValues(Arrays.asList(anyValue1, anyValue2, anyValue3)).build();
+        final KeyValue attribute3 = KeyValue.newBuilder().setKey("aws.details").setValue(AnyValue.newBuilder()
+                .setArrayValue(arrayValue)).build();
+
+
+        NumberDataPoint dataPoint = NumberDataPoint.newBuilder()
+                .setAsInt(3)
+                .addAllAttributes(Arrays.asList(attribute1, attribute2, attribute3))
+                .setFlags(0)
+                .build();
+        Sum sum = Sum.newBuilder().addAllDataPoints(Collections.singletonList(dataPoint)).build();
+
+        Metric metric = Metric.newBuilder()
+                .setSum(sum)
+                .setUnit("seconds")
+                .setDescription("description")
+                .build();
+
+        InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
+                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().setVersion("v1").setName("name").build())
+                .addMetrics(metric).build();
+
+        Resource resource = Resource.newBuilder()
+                .addAttributes(KeyValue.newBuilder()
+                        .setKey("service.name")
+                        .setValue(AnyValue.newBuilder().setStringValue("service").build())
+                ).build();
+
+        ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
+                .setResource(resource)
+                .addInstrumentationLibraryMetrics(instLib)
+                .build();
+
+        ExportMetricsServiceRequest exportMetricRequest = ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();
+
+        Record record = new Record<>(exportMetricRequest);
+
+        List<Record<Event>> rec = (List<Record<Event>>) rawProcessor.doExecute(Arrays.asList(record));
+        org.hamcrest.MatcherAssert.assertThat(rec.size(), equalTo(0));
     }
 
     private void assertSumProcessing(Map<String, Object> map) {
