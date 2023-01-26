@@ -4,8 +4,12 @@
  */
 
 package org.opensearch.dataprepper.plugins.processor.otelmetrics;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class OtelMetricsRawProcessorConfig {
+
+    @JsonProperty("flatten_attributes")
+    boolean flattenAttributesFlag = true;
 
     private Boolean calculateHistogramBuckets = true;
 
@@ -23,5 +27,9 @@ public class OtelMetricsRawProcessorConfig {
 
     public Integer getExponentialHistogramMaxAllowedScale() {
         return exponentialHistogramMaxAllowedScale;
+    }
+
+    public Boolean getFlattenAttributesFlag() {
+        return flattenAttributesFlag;
     }
 }
