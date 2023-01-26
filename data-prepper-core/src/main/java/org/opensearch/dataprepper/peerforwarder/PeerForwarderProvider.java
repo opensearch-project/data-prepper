@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
 
 public class PeerForwarderProvider {
 
@@ -54,7 +55,9 @@ public class PeerForwarderProvider {
                     pluginId,
                     identificationKeys,
                     pluginMetrics,
-                    peerForwarderConfiguration.getBatchDelay()
+                    peerForwarderConfiguration.getBatchDelay(),
+                    peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(),
+                    Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount())
             );
         }
         else {
