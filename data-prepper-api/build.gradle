@@ -10,6 +10,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.13.3'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation 'org.apache.logging.log4j:log4j-core'
     testImplementation project(':data-prepper-test-common')
     testImplementation 'org.skyscreamer:jsonassert:1.5.1'
     testImplementation 'commons-io:commons-io:2.11.0'
