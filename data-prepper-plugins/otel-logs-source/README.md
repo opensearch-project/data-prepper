@@ -35,7 +35,17 @@ source:
 
 ### Counter
 - `requestTimeouts`: measures total number of requests that time out.
-- `requestsReceived`: measures total number of requests received by otel logs source.
+- `requestsReceived`: measures total number of requests received by Otel logs source.
+- `badRequests`: measures total number of requests that could not be parsed.
+- `requestsTooLarge`: measures total number of requests that exceed the maximum allowed size. Indicates the size of the data to be written into the buffer is beyond buffer's maximum capacity.
+- `internalServerError`: measures total number of requests that are erroneous due to any other reason than requestTimeouts or requestsTooLarge error.
+- `successRequests`: measures total number of requests successfully written to the buffer.
+
+### Summary
+- `payloadSize`: measures the distribution of all incoming payload sizes.
+
+### Timer
+- `requestProcessDuration`: measures the duration of request processing.
 
 ## Developer Guide
 This plugin is compatible with Java 8. See 
