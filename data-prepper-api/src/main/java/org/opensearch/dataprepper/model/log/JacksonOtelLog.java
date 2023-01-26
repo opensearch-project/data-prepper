@@ -19,7 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 /**
  * A Jackson implementation for {@link OpenTelemetryLog}.
  *
- * @since 1.5
+ * @since 2.1
  */
 public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
 
@@ -101,7 +101,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
      * Constructs an empty builder.
      *
      * @return a builder
-     * @since 1.5
+     * @since 2.1
      */
     public static JacksonOtelLog.Builder builder() {
         return new JacksonOtelLog.Builder();
@@ -126,7 +126,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     /**
      * Builder for creating {@link JacksonLog}.
      *
-     * @since 1.5
+     * @since 2.1
      */
     public static class Builder extends JacksonEvent.Builder<JacksonOtelLog.Builder> {
 
@@ -146,7 +146,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param attributes the attributes to associate with this event.
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withAttributes(final Map<String, Object> attributes) {
             data.put(ATTRIBUTES_KEY, attributes);
@@ -158,7 +158,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param observedTime the start time
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withObservedTime(final String observedTime) {
             data.put(OBSERVED_TIME_KEY, observedTime);
@@ -170,7 +170,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param time the moment corresponding to when the data point's aggregate value was captured.
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withTime(final String time) {
             data.put(TIME_KEY, time);
@@ -181,7 +181,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * Sets the service name of the log event
          * @param serviceName sets the name of the service
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withServiceName(final String serviceName) {
             data.put(SERVICE_NAME_KEY, serviceName);
@@ -193,7 +193,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param schemaUrl sets the url of the schema
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withSchemaUrl(final String schemaUrl) {
             data.put(SCHEMA_URL_KEY, schemaUrl);
@@ -205,7 +205,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param flags sets the flags for this log
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withFlags(final Integer flags) {
             data.put(FLAGS_KEY, flags);
@@ -217,7 +217,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param body sets the body of this log event
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withBody(final Object body) {
             data.put(BODY_KEY, body);
@@ -229,7 +229,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param spanId sets the span id of this log event
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withSpanId(final String spanId) {
             data.put(SPAN_ID_KEY, spanId);
@@ -241,7 +241,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param traceId sets trace id of this log event
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withTraceId(final String traceId) {
             data.put(TRACE_ID_KEY, traceId);
@@ -253,7 +253,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param severityNumber sets the severity number of this log event
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withSeverityNumber(final Integer severityNumber) {
             data.put(SEVERITY_NUMBER_KEY, severityNumber);
@@ -265,7 +265,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param droppedAttributesCount sets the dropped attributes count of this log event
          * @return the builder
-         * @since 1.5
+         * @since 2.1
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {
             data.put(DROPPED_ATTRIBUTES_COUNT_KEY, droppedAttributesCount);
@@ -276,7 +276,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          * Returns a newly created {@link JacksonOtelLog}.
          *
          * @return a log
-         * @since 1.5
+         * @since 2.1
          */
         public JacksonOtelLog build() {
             this.withEventType(EventType.LOG.toString());

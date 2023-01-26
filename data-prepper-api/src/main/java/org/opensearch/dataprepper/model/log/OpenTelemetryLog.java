@@ -12,7 +12,7 @@ import java.util.Map;
  *
  * @see <a href="https://github.com/open-telemetry/opentelemetry-proto/blob/main/opentelemetry/proto/logs/v1/logs.proto">
  *     OpenTelemetry Protobuf Logs Spec</a>
- * @since 1.5
+ * @since 2.1
  */
 public interface OpenTelemetryLog extends Log {
 
@@ -20,7 +20,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the serviceName of this log.
      *
      * @return the ServiceName
-     * @since 1.5
+     * @since 2.1
      */
     String getServiceName();
 
@@ -28,7 +28,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets ISO8601 representation of the observed time of the log event.
      *
      * @return the event time
-     * @since 1.5
+     * @since 2.1
      */
     String getObservedTime();
 
@@ -36,7 +36,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets ISO8601 representation of the time of the log event.
      *
      * @return the event time
-     * @since 1.5
+     * @since 2.1
      */
     String getTime();
 
@@ -44,7 +44,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets a String description of the log's attributes.
      *
      * @return the attributes
-     * @since 1.5
+     * @since 2.1
      */
     Map<String, Object> getAttributes();
 
@@ -52,7 +52,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the schema url of this log event.
      *
      * @return the schemaUrl
-     * @since 1.5
+     * @since 2.1
      */
     String getSchemaUrl();
 
@@ -60,7 +60,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the associated flags for this log event.
      *
      * @return the flags encoded as Integer
-     * @since 1.5
+     * @since 2.1
      */
     Integer getFlags();
 
@@ -68,7 +68,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the span id of this log event.
      *
      * @return the span id
-     * @since 1.5
+     * @since 2.1
      */
     String getSpanId();
 
@@ -76,7 +76,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the trace id of this log event.
      *
      * @return the trace id
-     * @since 1.5
+     * @since 2.1
      */
     String getTraceId();
 
@@ -84,7 +84,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the severity number of this log event.
      *
      * @return the severity number encoded as Integer
-     * @since 1.5
+     * @since 2.1
      */
     Integer getSeverityNumber();
 
@@ -92,7 +92,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the dropped attributes count of this log event.
      *
      * @return the dropped attributes count as Integer
-     * @since 1.5
+     * @since 2.1
      */
     Integer getDroppedAttributesCount();
 
@@ -100,7 +100,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the body of this log event.
      *
      * @return the body
-     * @since 1.5
+     * @since 2.1
      */
     Object getBody();
 }
