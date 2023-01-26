@@ -109,4 +109,28 @@ class S3FileReaderTest {
 
         assertThrows(UnsupportedFileTypeException.class, () -> s3FileReader.readFile(s3SFile));
     }
+
+    @Test
+    void readFile_with_invalid_bucket_name() {
+        final String bucketName = "";
+        final String filePath = UUID.randomUUID().toString();
+
+        final String s3SFile = String.format("s3://%s/%s",bucketName, filePath);
+
+        s3FileReader = new S3FileReader(s3Client);
+
+        assertThrows(InvalidS3URIException.class, () -> s3FileReader.readFile(s3SFile));
+    }
+
+    @Test
+    void readFile_with_invalid_object_key() {
+        final String bucketName = UUID.randomUUID().toString();
+        final String filePath = "";
+
+        final String s3SFile = String.format("s3://%s/%s",bucketName, filePath);
+
+        s3FileReader = new S3FileReader(s3Client);
+
+        assertThrows(InvalidS3URIException.class, () -> s3FileReader.readFile(s3SFile));
+    }
 }

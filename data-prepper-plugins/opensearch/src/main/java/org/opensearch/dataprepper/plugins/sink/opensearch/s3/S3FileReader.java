@@ -31,6 +31,7 @@ public class S3FileReader implements FileReader {
     public ResponseInputStream<GetObjectResponse> readFile(final String filePath) {
         try {
             final URI fileUri = new URI(filePath);
+            validateURI(fileUri);
             validateFileType(filePath);
 
             final GetObjectRequest getObjectRequest = GetObjectRequest.builder()
@@ -46,6 +47,15 @@ public class S3FileReader implements FileReader {
         } catch (URISyntaxException ex) {
             LOG.error("Error encountered while parsing the Amazon S3 URI in OpenSearch sink.", ex);
             throw new RuntimeException(ex);
+        }
+    }
+
+    private void validateURI(URI fileUri) {
+        final String bucketName = fileUri.getHost();
+        final String objectKey = fileUri.getPath();
+
+        if (bucketName == null || objectKey.length() < 2) {
+            throw new InvalidS3URIException("S3 URi must contain valid bucket and object key name");
         }
     }
 
