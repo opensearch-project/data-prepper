@@ -107,6 +107,9 @@ class SensitiveArgumentMaskingConverterTest {
         return Stream.of(
                 Arguments.of("Insufficient anchors: {}", new Object[]{"event1", "event2"},
                         String.format("Insufficient anchors: %s", MASK_PATTERN)),
+                Arguments.of("Message with anchors and exception: {}", new Object[]{
+                        "event1", new RuntimeException()},
+                        String.format("Message with anchors and exception: %s", MASK_PATTERN)),
                 Arguments.of("Overflow anchors: {} {}", new Object[]{"event1"},
                         String.format("Overflow anchors: %s {}", MASK_PATTERN)),
                 Arguments.of("Escaped anchor: \\{}", new Object[]{"event1"},
