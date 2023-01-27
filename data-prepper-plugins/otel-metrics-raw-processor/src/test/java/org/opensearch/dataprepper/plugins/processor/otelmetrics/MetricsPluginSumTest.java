@@ -138,15 +138,26 @@ public class MetricsPluginSumTest {
                 .build();
         Sum sum = Sum.newBuilder().addAllDataPoints(Collections.singletonList(dataPoint)).build();
 
+        Metric metricWithNameMissing = Metric.newBuilder()
+                .setSum(sum)
+                .setUnit("seconds")
+                .setDescription("description")
+                .build();
+
         Metric metric = Metric.newBuilder()
                 .setSum(sum)
                 .setUnit("seconds")
+                .setName("name")
                 .setDescription("description")
                 .build();
 
         InstrumentationLibraryMetrics instLib = InstrumentationLibraryMetrics.newBuilder()
                 .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().setVersion("v1").setName("name").build())
                 .addMetrics(metric).build();
+
+        InstrumentationLibraryMetrics instLibWithInvalidMetric = InstrumentationLibraryMetrics.newBuilder()
+                .setInstrumentationLibrary(InstrumentationLibrary.newBuilder().setVersion("v1").setName("name").build())
+                .addMetrics(metricWithNameMissing).build();
 
         Resource resource = Resource.newBuilder()
                 .addAttributes(KeyValue.newBuilder()
@@ -159,12 +170,20 @@ public class MetricsPluginSumTest {
                 .addInstrumentationLibraryMetrics(instLib)
                 .build();
 
+        ResourceMetrics resourceMetricsWithInvalidMetric = ResourceMetrics.newBuilder()
+                .setResource(resource)
+                .addInstrumentationLibraryMetrics(instLibWithInvalidMetric)
+                .build();
+
         ExportMetricsServiceRequest exportMetricRequest = ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetrics).build();
 
-        Record record = new Record<>(exportMetricRequest);
+        ExportMetricsServiceRequest exportMetricRequestWithInvalidMetric = ExportMetricsServiceRequest.newBuilder().addResourceMetrics(resourceMetricsWithInvalidMetric).build();
 
-        List<Record<Event>> rec = (List<Record<Event>>) rawProcessor.doExecute(Arrays.asList(record));
-        org.hamcrest.MatcherAssert.assertThat(rec.size(), equalTo(0));
+        Record record = new Record<>(exportMetricRequest);
+        Record invalidRecord = new Record<>(exportMetricRequestWithInvalidMetric);
+
+        List<Record<Event>> rec = (List<Record<Event>>) rawProcessor.doExecute(Arrays.asList(record, invalidRecord));
+        org.hamcrest.MatcherAssert.assertThat(rec.size(), equalTo(1));
     }
 
     private void assertSumProcessing(Map<String, Object> map) {
