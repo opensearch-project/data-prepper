@@ -427,8 +427,8 @@ public class PeerForwarderConfiguration {
 
     private void setBatchDelay(final Integer batchDelay) {
         if (batchDelay != null) {
-            if (batchDelay <= 0) {
-                throw new IllegalArgumentException("Batch delay must be a positive integer.");
+            if (batchDelay < 0) {
+                throw new IllegalArgumentException("Batch delay must be a non-negative integer.");
             }
             this.batchDelay = batchDelay;
         }
