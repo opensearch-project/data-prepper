@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
+import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
@@ -36,14 +37,18 @@ import java.util.stream.Collectors;
 public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetricsServiceRequest>, Record<? extends Metric>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsRawProcessor.class);
+    public static final String RECORDS_DROPPED_METRICS_RAW = "recordsDroppedMetricsRaw";
 
     private final OtelMetricsRawProcessorConfig otelMetricsRawProcessorConfig;
     private final boolean flattenAttributesFlag;
+
+    private final Counter recordsDroppedMetricsRawCounter;
 
     @DataPrepperPluginConstructor
     public OTelMetricsRawProcessor(PluginSetting pluginSetting, final OtelMetricsRawProcessorConfig otelMetricsRawProcessorConfig) {
         super(pluginSetting);
         this.otelMetricsRawProcessorConfig = otelMetricsRawProcessorConfig;
+        recordsDroppedMetricsRawCounter = pluginMetrics.counter(RECORDS_DROPPED_METRICS_RAW);
         this.flattenAttributesFlag = otelMetricsRawProcessorConfig.getFlattenAttributesFlag();
     }
 
@@ -65,7 +70,6 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                     final Map<String, Object> ils = OTelProtoCodec.getInstrumentationScopeAttributes(sm.getScope());
                     recordsOut.addAll(processMetricsList(sm.getMetricsList(), serviceName, ils, resourceAttributes, schemaUrl));
                 }
-
             }
         }
         return recordsOut;
@@ -78,16 +82,21 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                                                                         final String schemaUrl) {
         List<Record<? extends Metric>> recordsOut = new ArrayList<>();
         for (io.opentelemetry.proto.metrics.v1.Metric metric : metricsList) {
-            if (metric.hasGauge()) {
-                recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes, schemaUrl));
-            } else if (metric.hasSum()) {
-                recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes, schemaUrl));
-            } else if (metric.hasSummary()) {
-                recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl));
-            } else if (metric.hasHistogram()) {
-                recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl));
-            } else if (metric.hasExponentialHistogram()) {
-                recordsOut.addAll(mapExponentialHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl));
+            try {
+                if (metric.hasGauge()) {
+                    recordsOut.addAll(mapGauge(metric, serviceName, ils, resourceAttributes, schemaUrl));
+                } else if (metric.hasSum()) {
+                    recordsOut.addAll(mapSum(metric, serviceName, ils, resourceAttributes, schemaUrl));
+                } else if (metric.hasSummary()) {
+                    recordsOut.addAll(mapSummary(metric, serviceName, ils, resourceAttributes, schemaUrl));
+                } else if (metric.hasHistogram()) {
+                    recordsOut.addAll(mapHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl));
+                } else if (metric.hasExponentialHistogram()) {
+                    recordsOut.addAll(mapExponentialHistogram(metric, serviceName, ils, resourceAttributes, schemaUrl));
+                }
+            } catch (Exception e) {
+                LOG.warn("Error while processing metrics", e);
+                recordsDroppedMetricsRawCounter.increment();
             }
         }
         return recordsOut;
@@ -189,7 +198,6 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                                                  final Map<String, Object> ils,
                                                  final Map<String, Object> resourceAttributes,
                                                  final String schemaUrl) {
-        System.out.println("================HERE=========");
         return metric.getHistogram().getDataPointsList().stream()
                 .map(dp -> {
                     JacksonHistogram.Builder builder = JacksonHistogram.builder()
@@ -219,9 +227,7 @@ public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetr
                     if (otelMetricsRawProcessorConfig.getCalculateHistogramBuckets()) {
                         builder.withBuckets(OTelProtoCodec.createBuckets(dp.getBucketCountsList(), dp.getExplicitBoundsList()));
                     }
-                    System.out.println("......FLATTEN..."+flattenAttributesFlag);
                     JacksonHistogram jh = builder.build(flattenAttributesFlag);
-                    System.out.println("......"+jh.toJsonString());
                     return jh;
 
                 })
