@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltrace;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -34,10 +36,12 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 
-@DataPrepperPlugin(name = "otel_trace_raw", pluginType = Processor.class)
+@DataPrepperPlugin(name = "otel_trace_raw", pluginType = Processor.class, pluginConfigurationType = OtelTraceRawProcessorConfig.class)
 public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Record<Span>> implements RequiresPeerForwarding {
     private static final long SEC_TO_MILLIS = 1_000L;
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceRawProcessor.class);
+    public static final String TRACE_GROUP_CACHE_COUNT_METRIC_NAME = "traceGroupCacheCount";
+    public static final String SPAN_SET_COUNT_METRIC_NAME = "spanSetCount";
 
     private final long traceFlushInterval;
 
@@ -52,16 +56,23 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
 
     private volatile boolean isShuttingDown = false;
 
-    public OTelTraceRawProcessor(final PluginSetting pluginSetting) {
-        super(pluginSetting);
-        traceFlushInterval = SEC_TO_MILLIS * pluginSetting.getLongOrDefault(
-                OtelTraceRawProcessorConfig.TRACE_FLUSH_INTERVAL, OtelTraceRawProcessorConfig.DEFAULT_TG_FLUSH_INTERVAL_SEC);
-        final int numProcessWorkers = pluginSetting.getNumberOfProcessWorkers();
+    @DataPrepperPluginConstructor
+    public OTelTraceRawProcessor(final OtelTraceRawProcessorConfig otelTraceRawProcessorConfig,
+                                 final PipelineDescription pipelineDescription,
+                                 final PluginMetrics pluginMetrics) {
+        super(pluginMetrics);
+        traceFlushInterval = SEC_TO_MILLIS * otelTraceRawProcessorConfig.getTraceFlushIntervalSeconds();
+        final int numProcessWorkers = pipelineDescription.getNumberOfProcessWorkers();
         traceIdTraceGroupCache = CacheBuilder.newBuilder()
                 .concurrencyLevel(numProcessWorkers)
-                .maximumSize(OtelTraceRawProcessorConfig.MAX_TRACE_ID_CACHE_SIZE)
-                .expireAfterWrite(OtelTraceRawProcessorConfig.DEFAULT_TRACE_ID_TTL_SEC, TimeUnit.SECONDS)
+                .maximumSize(otelTraceRawProcessorConfig.getTraceGroupCacheMaxSize())
+                .expireAfterWrite(otelTraceRawProcessorConfig.getTraceGroupCacheTimeToLive().toMillis(), TimeUnit.MILLISECONDS)
                 .build();
+
+        pluginMetrics.gauge(TRACE_GROUP_CACHE_COUNT_METRIC_NAME, traceIdTraceGroupCache, cache -> (double) cache.size());
+        pluginMetrics.gauge(SPAN_SET_COUNT_METRIC_NAME, traceIdSpanSetMap, cache -> (double) cache.size());
+
+        LOG.info("Configured Trace Raw Processor with a trace flush interval of {} ms.", traceFlushInterval);
     }
 
     /**
