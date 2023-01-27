@@ -33,6 +33,7 @@ public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
     private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
     private static final String DEFAULT_SERVICE_NAME = "dataprepper";
+    private static final int MAX_RETRIES = 100;
 
     private final PluginFactory pluginFactory;
     private final PeerForwarderServer peerForwarderServer;
@@ -75,7 +76,8 @@ public class DataPrepper {
     public boolean execute() {
         peerForwarderServer.start();
         Set<String> pipelineNames = transformationPipelines.keySet();
-        while (pipelineNames.size() > 0) {
+        int numRetries = 0;
+        while (pipelineNames.size() > 0 && numRetries++ < MAX_RETRIES) {
             Set<String> failedPipelines = new HashSet<String>();
             Iterator pipelineIter = pipelineNames.iterator();
             while (pipelineIter.hasNext()) {
@@ -90,6 +92,10 @@ public class DataPrepper {
                     Thread.sleep(5000);
                 } catch (Exception e){}
             }
+        }
+        if (pipelineNames.size() > 0) {
+            LOG.info("One or more Sinks are not ready even after {} retries.", numRetries);
+            throw new RuntimeException("Failed to start pipelines");
         }
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.execute();

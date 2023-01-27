@@ -33,7 +33,6 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
             numRetries = NUM_DEFAULT_RETRIES;
         }
         retryThread = new Thread(new SinkThread(this, numRetries));
-        initialize();
         if (!isReady()) {
             retryThread.start();
         }
