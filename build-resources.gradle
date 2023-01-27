@@ -12,7 +12,8 @@ ext.versionMap = [
         armeria: '1.20.3',
         armeriaGrpc: '1.20.3',
         protobufJavaUtil: '3.21.11',
-        protobufJava: '3.21.11'
+        protobufJava: '3.21.11',
+        guava: '31.1-jre'
 ]
 
 ext.coreProjects = [
