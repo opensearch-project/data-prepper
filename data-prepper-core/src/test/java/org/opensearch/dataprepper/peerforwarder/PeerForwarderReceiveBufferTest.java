@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.record.Record;
@@ -131,8 +133,9 @@ class PeerForwarderReceiveBufferTest {
         assertThat(readResult.getKey().size(), is(0));
     }
 
-    @Test
-    void testBatchRead() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {0, TEST_BATCH_READ_TIMEOUT})
+    void testBatchRead(final int readTimeout) throws Exception {
         final PeerForwarderReceiveBuffer<Record<String>> peerForwarderReceiveBuffer = createObjectUnderTest(TEST_BUFFER_SIZE);
         assertThat(peerForwarderReceiveBuffer, notNullValue());
         final int testSize = 5;
@@ -140,13 +143,13 @@ class PeerForwarderReceiveBufferTest {
         final Collection<Record<String>> testRecords = generateBatchRecords(testSize);
         peerForwarderReceiveBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
 
-        final Map.Entry<Collection<Record<String>>, CheckpointState> partialReadResult = peerForwarderReceiveBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> partialReadResult = peerForwarderReceiveBuffer.read(readTimeout);
         final Collection<Record<String>> partialRecords = partialReadResult.getKey();
         final CheckpointState partialCheckpointState = partialReadResult.getValue();
         assertThat(partialRecords.size(), is(TEST_BATCH_SIZE));
         assertThat(partialCheckpointState.getNumRecordsToBeChecked(), is(TEST_BATCH_SIZE));
 
-        final Map.Entry<Collection<Record<String>>, CheckpointState> finalReadResult = peerForwarderReceiveBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> finalReadResult = peerForwarderReceiveBuffer.read(readTimeout);
         final Collection<Record<String>> finalBatch = finalReadResult.getKey();
         final CheckpointState finalCheckpointState = finalReadResult.getValue();
         assertThat(finalBatch.size(), is(testSize - TEST_BATCH_SIZE));
