@@ -469,6 +469,7 @@ class PeerForwarder_ClientServerIT {
                 3000,
                 512,
                 null,
+                null,
                 null
         );
     }

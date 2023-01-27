@@ -60,6 +60,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(500));
+        assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(1500));
     }
 
     @Test
@@ -88,6 +89,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(15));
+        assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(2500));
     }
 
     @Test

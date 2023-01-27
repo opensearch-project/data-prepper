@@ -60,6 +60,7 @@ class RemotePeerForwarderTest {
     private static final int TEST_BATCH_DELAY = 3_000;
     private static final int TEST_LOCAL_WRITE_TIMEOUT = 500;
     private static final int TEST_TIMEOUT_IN_MILLIS = 500;
+    private static final int FORWARDING_BATCH_SIZE = 5;
 
     @Mock
     private PeerForwarderClient peerForwarderClient;
@@ -135,7 +136,7 @@ class RemotePeerForwarderTest {
 
     private RemotePeerForwarder createObjectUnderTest() {
         return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId,
-                identificationKeys, pluginMetrics, TEST_BATCH_DELAY, TEST_LOCAL_WRITE_TIMEOUT, executorService);
+                identificationKeys, pluginMetrics, TEST_BATCH_DELAY, TEST_LOCAL_WRITE_TIMEOUT, executorService, FORWARDING_BATCH_SIZE);
     }
 
     @Test
