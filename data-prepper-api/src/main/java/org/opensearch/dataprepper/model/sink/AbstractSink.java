@@ -17,14 +17,26 @@ import io.micrometer.core.instrument.Timer;
  * This class implements the Sink interface and records boilerplate metrics
  */
 public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
+    static private final String NUM_RETRIES = "num_retries";
+    static private final int NUM_DEFAULT_RETRIES = 600;
     protected final PluginMetrics pluginMetrics;
     private final Counter recordsInCounter;
     private final Timer timeElapsedTimer;
+    private final Thread retryThread;
 
     public AbstractSink(final PluginSetting pluginSetting) {
         this.pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
         recordsInCounter = pluginMetrics.counter(MetricNames.RECORDS_IN);
         timeElapsedTimer = pluginMetrics.timer(MetricNames.TIME_ELAPSED);
+        Integer numRetries = (Integer) pluginSetting.getAttributeFromSettings(NUM_RETRIES);
+        if (numRetries == null) {
+            numRetries = NUM_DEFAULT_RETRIES;
+        }
+        retryThread = new Thread(new SinkThread(this, numRetries));
+        initialize();
+        if (!isReady()) {
+            retryThread.start();
+        }
     }
 
     /**
@@ -43,4 +55,13 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
      * @param records Records to be output
      */
     public abstract void doOutput(Collection<T> records);
+
+    @Override
+    public void shutdown() {
+        retryThread.stop();
+    }
+
+    public Thread.State getRetryThreadState() {
+        return retryThread.getState();
+    }
 }

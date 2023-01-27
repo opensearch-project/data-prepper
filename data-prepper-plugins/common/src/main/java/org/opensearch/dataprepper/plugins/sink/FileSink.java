@@ -34,6 +34,7 @@ public class FileSink implements Sink<Record<Object>> {
     private final BufferedWriter writer;
     private final ReentrantLock lock;
     private boolean isStopRequested;
+    private boolean initialized;
 
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper
@@ -54,12 +55,14 @@ public class FileSink implements Sink<Record<Object>> {
     public FileSink(final String outputFile) {
         this.outputFilePath = outputFile == null ? SAMPLE_FILE_PATH : outputFile;
         isStopRequested = false;
+        initialized = false;
         try {
             writer = Files.newBufferedWriter(Paths.get(outputFilePath), StandardCharsets.UTF_8);
         } catch (final IOException ex) {
             throw new RuntimeException(format("Encountered exception opening/creating file %s", outputFilePath), ex);
         }
         lock = new ReentrantLock(true);
+        initialized = true;
     }
 
     @Override
@@ -113,4 +116,12 @@ public class FileSink implements Sink<Record<Object>> {
         }
     }
 
+    @Override
+    public void initialize() {
+    }
+
+    @Override
+    public boolean isReady() {
+        return initialized;
+    }
 }

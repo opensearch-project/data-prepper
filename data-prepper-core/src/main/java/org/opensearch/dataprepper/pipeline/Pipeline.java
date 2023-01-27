@@ -158,6 +158,15 @@ public class Pipeline {
         return readBatchTimeoutInMillis;
     }
 
+    public boolean isReady() {
+        for (final Sink sink: getSinks()) {
+            if (!sink.isReady()) {
+                LOG.info("Pipeline [{}] - sink is not ready for execution, will retry", name);
+                return false;
+            }
+        }
+        return true;
+    }
     /**
      * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Processor} on the
      * read data and outputs to {@link Sink}.

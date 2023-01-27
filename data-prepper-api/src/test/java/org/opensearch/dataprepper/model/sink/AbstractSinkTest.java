@@ -29,6 +29,7 @@ public class AbstractSinkTest {
         PluginSetting pluginSetting = new PluginSetting(sinkName, Collections.emptyMap());
         pluginSetting.setPipelineName(pipelineName);
         AbstractSink<Record<String>> abstractSink = new AbstractSinkImpl(pluginSetting);
+        Assert.assertEquals(abstractSink.isReady(), true);
         abstractSink.output(Arrays.asList(
                 new Record<>(UUID.randomUUID().toString()),
                 new Record<>(UUID.randomUUID().toString()),
@@ -50,6 +51,29 @@ public class AbstractSinkTest {
                 MetricsTestUtil.getMeasurementFromList(elapsedTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
                 0.5,
                 0.6));
+        Assert.assertEquals(abstractSink.getRetryThreadState(), Thread.State.NEW);
+    }
+
+    @Test
+    public void testSinkNotReady() {
+        final String sinkName = "testSink";
+        final String pipelineName = "pipelineName";
+        MetricsTestUtil.initMetrics();
+        PluginSetting pluginSetting = new PluginSetting(sinkName, Collections.singletonMap("num_retries", 10));
+        pluginSetting.setPipelineName(pipelineName);
+        AbstractSink<Record<String>> abstractSink = new AbstractSinkNotReadyImpl(pluginSetting);
+        Assert.assertEquals(abstractSink.isReady(), false);
+        Assert.assertEquals(abstractSink.getRetryThreadState(), Thread.State.RUNNABLE);
+        while (!abstractSink.isReady()) {
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {}
+        }
+        try {
+            Thread.sleep(2000);
+        } catch (Exception e) {}
+        Assert.assertEquals(abstractSink.getRetryThreadState(), Thread.State.TERMINATED);
+        abstractSink.shutdown();
     }
 
     private static class AbstractSinkImpl extends AbstractSink<Record<String>> {
@@ -69,7 +93,53 @@ public class AbstractSinkTest {
 
         @Override
         public void shutdown() {
+            super.shutdown();
+        }
 
+        @Override
+        public void initialize() {
+        }
+
+        @Override
+        public boolean isReady() {
+            return true;
+        }
+    }
+
+    private static class AbstractSinkNotReadyImpl extends AbstractSink<Record<String>> {
+
+        boolean initialized;
+        int initCount;
+        public AbstractSinkNotReadyImpl(PluginSetting pluginSetting) {
+            super(pluginSetting);
+            initialized = false;
+            initCount = 0;
+        }
+
+        @Override
+        public void doOutput(Collection<Record<String>> records) {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+
+            }
+        }
+
+        @Override
+        public void shutdown() {
+            super.shutdown();
+        }
+
+        @Override
+        public void initialize() {
+            if (++initCount == 3) {
+                initialized = true;
+            }
+        }
+
+        @Override
+        public boolean isReady() {
+            return initialized;
         }
     }
 }

@@ -75,7 +75,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
-  private boolean initialized;
+  private volatile boolean initialized;
 
   public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
@@ -92,55 +92,45 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.indexManagerFactory = new IndexManagerFactory();
     this.initialized = false;
     this.lock = new ReentrantLock(true);
-
-    try {
-      initialize();
-    } catch (final IOException e) {
-    }
   }
 
-  public void initialize() throws IOException {
+  @Override
+  public void initialize() {
     LOG.info("Initializing OpenSearch sink");
-    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
-    configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
-    indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig, configuredIndexAlias);
-    final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
-    if (dlqFile != null) {
-      dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-    }
-    indexManager.setupIndex();
+    try {
+        restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
+        configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
+        indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig, configuredIndexAlias);
+        final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
+        if (dlqFile != null) {
+          dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        }
+        indexManager.setupIndex();
 
-    OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
-    openSearchClient = new OpenSearchClient(transport);
-    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
-    bulkRetryStrategy = new BulkRetryStrategy(
-            bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
-            this::logFailure,
-            pluginMetrics,
-            bulkRequestSupplier);
-    LOG.info("Initialized OpenSearch sink");
+        OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
+        openSearchClient = new OpenSearchClient(transport);
+        bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+        bulkRetryStrategy = new BulkRetryStrategy(
+                bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
+                this::logFailure,
+                pluginMetrics,
+                bulkRequestSupplier);
 
-    objectMapper = new ObjectMapper();
-    this.initialized = true;
+        objectMapper = new ObjectMapper();
+        this.initialized = true;
+        LOG.info("Initialized OpenSearch sink");
+    } catch (Exception e) {}
+  }
+
+  @Override
+  public boolean isReady() {
+    return initialized;
   }
 
   @Override
   public void doOutput(final Collection<Record<Event>> records) {
     if (records.isEmpty()) {
       return;
-    }
-
-    if (!initialized) {
-        lock.lock();
-        try {
-          if (!initialized) {
-            initialize();
-          }
-        } catch (final IOException e) {
-          return;
-        } finally {
-          lock.unlock();
-        }
     }
 
     AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
@@ -239,6 +229,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   @Override
   public void shutdown() {
+    super.shutdown();
     // Close the client. This closes the low-level client which will close it for both high-level clients.
     if (restHighLevelClient != null) {
       try {

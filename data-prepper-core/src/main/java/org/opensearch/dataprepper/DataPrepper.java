@@ -18,6 +18,9 @@ import org.springframework.context.annotation.Lazy;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Iterator;
 
 /**
  * DataPrepper is the entry point into the execution engine. The instance can be used to trigger execution via
@@ -71,6 +74,23 @@ public class DataPrepper {
      */
     public boolean execute() {
         peerForwarderServer.start();
+        Set<String> pipelineNames = transformationPipelines.keySet();
+        while (pipelineNames.size() > 0) {
+            Set<String> failedPipelines = new HashSet<String>();
+            Iterator pipelineIter = pipelineNames.iterator();
+            while (pipelineIter.hasNext()) {
+                String pipelineName = (String)pipelineIter.next();
+                if (!transformationPipelines.get(pipelineName).isReady()) {
+                    failedPipelines.add(pipelineName);
+                }
+            }
+            pipelineNames = failedPipelines;
+            if (pipelineNames.size() > 0) {
+                try {
+                    Thread.sleep(5000);
+                } catch (Exception e){}
+            }
+        }
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.execute();
         });
