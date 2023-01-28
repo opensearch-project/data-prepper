@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.util.JsonFormat;
+import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.common.v1.AnyValue;
 import io.opentelemetry.proto.common.v1.ArrayValue;
@@ -31,6 +32,7 @@ import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.metric.Bucket;
 import org.opensearch.dataprepper.model.trace.DefaultLink;
 import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
@@ -77,15 +79,16 @@ public class OTelProtoCodecTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Random RANDOM = new Random();
-    private static final String TEST_REQUEST_JSON_FILE = "test-request.json";
-    private static final String TEST_REQUEST_INSTRUMENTATION_LIBRARY_JSON_FILE = "test-request-instrumentation-library.json";
+    private static final String TEST_REQUEST_TRACE_JSON_FILE = "test-request.json";
+    private static final String TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE = "test-request-instrumentation-library.json";
     private static final String TEST_REQUEST_BOTH_SPAN_TYPES_JSON_FILE = "test-request-both-span-types.json";
     private static final String TEST_REQUEST_NO_SPANS_JSON_FILE = "test-request-no-spans.json";
     private static final String TEST_SPAN_EVENT_JSON_FILE = "test-span-event.json";
 
-    private static final Long START_TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
-            LocalDateTime.of(2020, 5, 24, 14, 0, 0),
-            ZoneOffset.UTC).toInstant().toEpochMilli());
+    private static final String TEST_REQUEST_LOGS_JSON_FILE = "test-request-log.json";
+
+    private static final String TEST_REQUEST_LOGS_IS_JSON_FILE = "test-request-log-is.json";
+
 
     private static final Long TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
             LocalDateTime.of(2020, 5, 24, 14, 1, 0),
@@ -95,8 +98,7 @@ public class OTelProtoCodecTest {
 
     private final OTelProtoCodec.OTelProtoDecoder decoderUnderTest = new OTelProtoCodec.OTelProtoDecoder();
     private final OTelProtoCodec.OTelProtoEncoder encoderUnderTest = new OTelProtoCodec.OTelProtoEncoder();
-
-    private byte[] getRandomBytes(int len) {
+    private static byte[] getRandomBytes(int len) {
         byte[] bytes = new byte[len];
         RANDOM.nextBytes(bytes);
         return bytes;
@@ -111,30 +113,40 @@ public class OTelProtoCodecTest {
     }
 
     private ExportTraceServiceRequest buildExportTraceServiceRequestFromJsonFile(String requestJsonFileName) throws IOException {
+        final ExportTraceServiceRequest.Builder builder = ExportTraceServiceRequest.newBuilder();
+        JsonFormat.parser().merge(getFileAsJsonString(requestJsonFileName), builder);
+        return builder.build();
+    }
+
+    private ExportLogsServiceRequest buildExportLogsServiceRequestFromJsonFile(String requestJsonFileName) throws IOException {
+        final ExportLogsServiceRequest.Builder builder = ExportLogsServiceRequest.newBuilder();
+        JsonFormat.parser().merge(getFileAsJsonString(requestJsonFileName), builder);
+        return builder.build();
+    }
+
+    private String getFileAsJsonString(String requestJsonFileName) throws IOException {
         final StringBuilder jsonBuilder = new StringBuilder();
         try (final InputStream inputStream = Objects.requireNonNull(
                 OTelProtoCodecTest.class.getClassLoader().getResourceAsStream(requestJsonFileName))) {
             final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
             bufferedReader.lines().forEach(jsonBuilder::append);
         }
-        final String requestJson = jsonBuilder.toString();
-        final ExportTraceServiceRequest.Builder builder = ExportTraceServiceRequest.newBuilder();
-        JsonFormat.parser().merge(requestJson, builder);
-        return builder.build();
+        return jsonBuilder.toString();
     }
+
 
     @Nested
     class OTelProtoDecoderTest {
         @Test
         public void testParseExportTraceServiceRequest() throws IOException {
-            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
+            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACE_JSON_FILE);
             final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
             validateSpans(spans);
         }
 
         @Test
         public void testParseExportTraceServiceRequest_InstrumentationLibrarySpans() throws IOException {
-            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_INSTRUMENTATION_LIBRARY_JSON_FILE);
+            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE);
             final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
             validateSpans(spans);
         }
@@ -174,7 +186,6 @@ public class OTelProtoCodecTest {
                 assertThat(attributes.containsKey(OTelProtoCodec.STATUS_CODE), is(true));
             }
         }
-
         @Test
         public void testGetSpanEvent() {
             final String testName = "test name";
@@ -406,6 +417,48 @@ public class OTelProtoCodecTest {
                     .build();
             assertThat(decoderUnderTest.getTraceGroupFields(span2), equalTo(expectedTraceGroupFields));
         }
+
+        @Test
+        public void testParseExportLogsServiceRequest_ScopedLogs() throws IOException {
+            final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_LOGS_JSON_FILE);
+            List<OpenTelemetryLog> logs = decoderUnderTest.parseExportLogsServiceRequest(exportLogsServiceRequest);
+
+            assertThat(logs.size() , is(equalTo(1)));
+            validateLog(logs.get(0));
+        }
+
+        @Test
+        public void testParseExportLogsServiceRequest_InstrumentationLibraryLogs() throws IOException {
+            final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_LOGS_IS_JSON_FILE);
+            List<OpenTelemetryLog> logs = decoderUnderTest.parseExportLogsServiceRequest(exportLogsServiceRequest);
+
+            assertThat(logs.size() , is(equalTo(1)));
+            validateLog(logs.get(0));
+        }
+
+        private void validateLog(OpenTelemetryLog logRecord) {
+            assertThat(logRecord.getServiceName(), is("service"));
+            assertThat(logRecord.getTime(), is("2020-05-24T14:00:00Z"));
+            assertThat(logRecord.getObservedTime(), is("2020-05-24T14:00:02Z"));
+            assertThat(logRecord.getBody(), is("Log value"));
+            assertThat(logRecord.getDroppedAttributesCount(), is(3));
+            assertThat(logRecord.getSchemaUrl(), is("schemaurl"));
+            assertThat(logRecord.getSeverityNumber(), is(5));
+            assertThat(logRecord.getTraceId(), is("ba1a1c23b4093b63"));
+            assertThat(logRecord.getSpanId(), is("2cc83ac90ebc469c"));
+            Map<String, Object> mergedAttributes = logRecord.getAttributes();
+            assertThat(mergedAttributes.keySet().size(), is(2));
+            assertThat(mergedAttributes.get("log.attributes.statement@params"), is("us-east-1"));
+            assertThat(mergedAttributes.get("resource.attributes.service@name"), is("service"));
+        }
+
+        @Test
+        public void testParseExportLogsServiceRequest_InstrumentationLibrarySpans() throws IOException {
+            final ExportTraceServiceRequest exportTraceServiceRequest = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_INSTRUMENTATION_LIBRARY_TRACE_JSON_FILE);
+            final List<Span> spans = decoderUnderTest.parseExportTraceServiceRequest(exportTraceServiceRequest);
+            validateSpans(spans);
+        }
+
     }
 
     @Nested
@@ -726,7 +779,7 @@ public class OTelProtoCodecTest {
 
     @Test
     public void testOTelProtoCodecConsistency() throws IOException, DecoderException {
-        final ExportTraceServiceRequest request = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_JSON_FILE);
+        final ExportTraceServiceRequest request = buildExportTraceServiceRequestFromJsonFile(TEST_REQUEST_TRACE_JSON_FILE);
         final List<Span> spansFirstDec = decoderUnderTest.parseExportTraceServiceRequest(request);
         final List<ResourceSpans> resourceSpansList = new ArrayList<>();
         for (final Span span : spansFirstDec) {
