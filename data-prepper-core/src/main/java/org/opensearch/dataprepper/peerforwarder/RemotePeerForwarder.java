@@ -21,6 +21,8 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -35,6 +37,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
+    private static final int BATCH_QUEUE_DEPTH = 1;
+
     static final String RECORDS_ACTUALLY_PROCESSED_LOCALLY = "recordsActuallyProcessedLocally";
     static final String RECORDS_TO_BE_PROCESSED_LOCALLY = "recordsToBeProcessedLocally";
     static final String RECORDS_TO_BE_FORWARDED = "recordsToBeForwarded";
@@ -51,6 +55,7 @@ class RemotePeerForwarder implements PeerForwarder {
     private final String pluginId;
     private final Set<String> identificationKeys;
     private final ConcurrentHashMap<String, LinkedBlockingQueue<Record<Event>>> peerBatchingQueueMap;
+    private final ConcurrentHashMap<String, Long> peerBatchingLastFlushTimeMap;
 
     private final Counter recordsActuallyProcessedLocallyCounter;
     private final Counter recordsToBeProcessedLocallyCounter;
@@ -64,6 +69,8 @@ class RemotePeerForwarder implements PeerForwarder {
     private final Integer failedForwardingRequestLocalWriteTimeout;
     private final ExecutorService forwardingRequestExecutor;
     private final Integer forwardingBatchSize;
+    private final Duration forwardingBatchTimeout;
+    private final Integer pipelineWorkerThreads;
 
     RemotePeerForwarder(final PeerForwarderClient peerForwarderClient,
                         final HashRing hashRing,
@@ -75,7 +82,9 @@ class RemotePeerForwarder implements PeerForwarder {
                         final Integer batchDelay,
                         final Integer failedForwardingRequestLocalWriteTimeout,
                         final ExecutorService forwardingRequestExecutor,
-                        final Integer forwardingBatchSize) {
+                        final Integer forwardingBatchSize,
+                        final Duration forwardingBatchTimeout,
+                        final Integer pipelineWorkerThreads) {
         this.peerForwarderClient = peerForwarderClient;
         this.hashRing = hashRing;
         this.peerForwarderReceiveBuffer = peerForwarderReceiveBuffer;
@@ -86,7 +95,10 @@ class RemotePeerForwarder implements PeerForwarder {
         this.failedForwardingRequestLocalWriteTimeout = failedForwardingRequestLocalWriteTimeout;
         this.forwardingRequestExecutor = forwardingRequestExecutor;
         this.forwardingBatchSize = forwardingBatchSize;
+        this.forwardingBatchTimeout = forwardingBatchTimeout;
+        this.pipelineWorkerThreads = pipelineWorkerThreads;
         peerBatchingQueueMap = new ConcurrentHashMap<>();
+        peerBatchingLastFlushTimeMap = new ConcurrentHashMap<>();
         
         recordsActuallyProcessedLocallyCounter = pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY);
         recordsToBeProcessedLocallyCounter = pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY);
@@ -191,13 +203,14 @@ class RemotePeerForwarder implements PeerForwarder {
     }
 
     private List<Record<Event>> batchRecordsForForwarding(final String destinationIp, final List<Record<Event>> records) {
-        if (!peerBatchingQueueMap.containsKey(destinationIp)) {
-            peerBatchingQueueMap.put(destinationIp, new LinkedBlockingQueue<>(forwardingBatchSize * 5));
-        } else {
-            peerBatchingQueueMap.get(destinationIp).addAll(records);
-        }
+        peerBatchingQueueMap.putIfAbsent(destinationIp, new LinkedBlockingQueue<>(forwardingBatchSize * pipelineWorkerThreads * BATCH_QUEUE_DEPTH));
+        peerBatchingLastFlushTimeMap.putIfAbsent(destinationIp, 0L);
 
-        if (peerBatchingQueueMap.get(destinationIp).size() >= forwardingBatchSize) {
+        peerBatchingQueueMap.get(destinationIp).addAll(records);
+
+        if (shouldFlushBatch(destinationIp)) {
+            peerBatchingLastFlushTimeMap.put(destinationIp, System.currentTimeMillis());
+
             final List<Record<Event>> recordsToForward = new ArrayList<>();
             peerBatchingQueueMap.get(destinationIp).drainTo(recordsToForward, forwardingBatchSize);
 
@@ -205,6 +218,18 @@ class RemotePeerForwarder implements PeerForwarder {
         }
 
         return Collections.emptyList();
+    }
+
+    private boolean shouldFlushBatch(final String destinationIp) {
+        final long currentTime = System.currentTimeMillis();
+        final long millisSinceLastFlush = currentTime - peerBatchingLastFlushTimeMap.get(destinationIp);
+        final Duration durationSinceLastFlush = Duration.of(millisSinceLastFlush, ChronoUnit.MILLIS);
+
+        final boolean shouldFlushDueToTimeout = forwardingBatchTimeout.compareTo(durationSinceLastFlush) >= 0;
+        System.out.println(shouldFlushDueToTimeout);
+        System.out.println(peerBatchingQueueMap.get(destinationIp).size());
+        System.out.println(forwardingBatchSize);
+        return shouldFlushDueToTimeout || peerBatchingQueueMap.get(destinationIp).size() >= forwardingBatchSize;
     }
 
     private void submitForwardingRequest(final Collection<Record<Event>> records, final String destinationIp) {

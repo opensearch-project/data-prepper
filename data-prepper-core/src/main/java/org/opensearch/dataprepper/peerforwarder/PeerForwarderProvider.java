@@ -35,7 +35,8 @@ public class PeerForwarderProvider {
         this.pluginMetrics = pluginMetrics;
     }
 
-    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys) {
+    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys,
+                                  final Integer pipelineWorkerThreads) {
         if (pipelinePeerForwarderReceiveBufferMap.containsKey(pipelineName) &&
                 pipelinePeerForwarderReceiveBufferMap.get(pipelineName).containsKey(pluginId)) {
             throw new RuntimeException("Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type");
@@ -58,7 +59,9 @@ public class PeerForwarderProvider {
                     peerForwarderConfiguration.getBatchDelay(),
                     peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(),
                     Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount()),
-                    peerForwarderConfiguration.getForwardingBatchSize()
+                    peerForwarderConfiguration.getForwardingBatchSize(),
+                    peerForwarderConfiguration.getForwardingBatchTimeout(),
+                    pipelineWorkerThreads
             );
         }
         else {

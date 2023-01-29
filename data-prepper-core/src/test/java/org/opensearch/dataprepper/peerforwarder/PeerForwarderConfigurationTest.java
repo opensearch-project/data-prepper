@@ -22,11 +22,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_FORWARDING_BATCH_TIMEOUT;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PRIVATE_KEY_FILE_PATH;
 
 class PeerForwarderConfigurationTest {
@@ -61,6 +63,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(500));
         assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(1500));
+        assertThat(peerForwarderConfiguration.getForwardingBatchTimeout(), equalTo(DEFAULT_FORWARDING_BATCH_TIMEOUT));
     }
 
     @Test
@@ -90,6 +93,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(15));
         assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(2500));
+        assertThat(peerForwarderConfiguration.getForwardingBatchTimeout(), equalTo(Duration.of(5, ChronoUnit.SECONDS)));
     }
 
     @Test

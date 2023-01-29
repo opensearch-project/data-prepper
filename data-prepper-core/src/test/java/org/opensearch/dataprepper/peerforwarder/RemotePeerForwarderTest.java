@@ -21,6 +21,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -31,6 +33,8 @@ import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -61,6 +65,8 @@ class RemotePeerForwarderTest {
     private static final int TEST_LOCAL_WRITE_TIMEOUT = 500;
     private static final int TEST_TIMEOUT_IN_MILLIS = 500;
     private static final int FORWARDING_BATCH_SIZE = 5;
+    private static final Duration FORWARDING_BATCH_TIMEOUT = Duration.of(3, ChronoUnit.SECONDS);
+    private static final int PIPELINE_WORKER_THREADS = 3;
 
     @Mock
     private PeerForwarderClient peerForwarderClient;
@@ -135,8 +141,8 @@ class RemotePeerForwarderTest {
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
-        return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId,
-                identificationKeys, pluginMetrics, TEST_BATCH_DELAY, TEST_LOCAL_WRITE_TIMEOUT, executorService, FORWARDING_BATCH_SIZE);
+        return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics,
+                TEST_BATCH_DELAY, TEST_LOCAL_WRITE_TIMEOUT, executorService, FORWARDING_BATCH_SIZE, FORWARDING_BATCH_TIMEOUT, PIPELINE_WORKER_THREADS);
     }
 
     @Test
@@ -164,15 +170,16 @@ class RemotePeerForwarderTest {
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
         RemotePeerForwarder peerForwarder = createObjectUnderTest();
-        final Collection<Record<Event>> testRecords = generateBatchRecords(2);
+        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE) + FORWARDING_BATCH_SIZE;
+        final Collection<Record<Event>> testRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
         verify(executorService, times(1)).submit(any(Runnable.class));
-        assertThat(records.size(), equalTo(1));
+        assertThat(records.size(), equalTo(recordsSetsToGenerate));
 
-        verify(recordsToBeProcessedLocallyCounter).increment(1.0);
-        verify(recordsActuallyProcessedLocallyCounter).increment(1.0);
-        verify(recordsToBeForwardedCounter).increment(1.0);
+        verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
     }
 
     @Test
@@ -185,7 +192,9 @@ class RemotePeerForwarderTest {
 
         final RemotePeerForwarder peerForwarder = createObjectUnderTest();
 
-        final Collection<Record<Event>> inputRecords = generateBatchRecords(2);
+        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE) + FORWARDING_BATCH_SIZE;
+        final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
+
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
         verify(executorService, times(1)).submit(any(Runnable.class));
         assertThat(records, notNullValue());
@@ -194,10 +203,10 @@ class RemotePeerForwarderTest {
             assertThat(records, hasItem(inputRecord));
         }
 
-        verify(recordsToBeProcessedLocallyCounter).increment(1.0);
-        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
-        verify(recordsToBeForwardedCounter).increment(1.0);
-        verify(recordsFailedForwardingCounter).increment(1.0);
+        verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsActuallyProcessedLocallyCounter).increment(inputRecords.size());
+        verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+        verify(recordsFailedForwardingCounter).increment(recordsSetsToGenerate);
         verify(requestsFailedCounter).increment();
     }
 
@@ -220,7 +229,8 @@ class RemotePeerForwarderTest {
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
         RemotePeerForwarder peerForwarder = createObjectUnderTest();
-        final Collection<Record<Event>> testRecords = generateBatchRecords(2);
+        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE) + FORWARDING_BATCH_SIZE;
+        final Collection<Record<Event>> testRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
         // Add an event that doesn't have identification keys in it
         final Map<String, String> eventData = new HashMap<>();
         eventData.put("key1", "8.8.8.8");
@@ -230,12 +240,12 @@ class RemotePeerForwarderTest {
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
         verify(executorService, times(1)).submit(any(Runnable.class));
-        assertThat(records.size(), equalTo(2));
+        assertThat(records.size(), equalTo(recordsSetsToGenerate + 1));
 
-        verify(recordsToBeProcessedLocallyCounter).increment(2.0);
-        verify(recordsActuallyProcessedLocallyCounter).increment(2.0);
+        verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate + 1);
+        verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate + 1);
         verify(recordsMissingIdentificationKeys, times(0)).increment(1.0);
-        verify(recordsToBeForwardedCounter).increment(1.0);
+        verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
     }
 
     @Test
@@ -328,6 +338,14 @@ class RemotePeerForwarderTest {
         verify(recordsActuallyProcessedLocallyCounter).increment(expectedRecordCount);
         verify(recordsFailedForwardingCounter).increment(expectedRecordCount);
         verify(requestsFailedCounter).increment();
+    }
+
+    private Collection<Record<Event>> generateSetsofBatchRecords(final int recordsSetsToGenerate, final int numRecords) {
+        return IntStream.range(0, recordsSetsToGenerate)
+                .mapToObj(i -> generateBatchRecords(numRecords))
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+
     }
 
     private Collection<Record<Event>> generateBatchRecords(final int numRecords) {
