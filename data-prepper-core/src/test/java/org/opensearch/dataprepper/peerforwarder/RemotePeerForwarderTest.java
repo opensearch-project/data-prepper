@@ -252,7 +252,7 @@ class RemotePeerForwarderTest {
 
         final RemotePeerForwarder peerForwarder = createObjectUnderTest();
 
-        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE) + FORWARDING_BATCH_SIZE + 1;
+        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE - 1) + FORWARDING_BATCH_SIZE;
         final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
         // Send first forwarding request with record count under the batch size
