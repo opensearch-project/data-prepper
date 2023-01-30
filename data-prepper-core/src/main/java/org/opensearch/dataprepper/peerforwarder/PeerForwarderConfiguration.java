@@ -28,7 +28,7 @@ public class PeerForwarderConfiguration {
     public static final String DEFAULT_CERTIFICATE_FILE_PATH = "config/default_certificate.pem";
     public static final String DEFAULT_PRIVATE_KEY_FILE_PATH = "config/default_private_key.pem";
     private static final String S3_PREFIX = "s3://";
-    private static final int MAX_FORWADING_BATCH_SIZE = 3000;
+    private static final int MAX_FORWARDING_BATCH_SIZE = 3000;
 
     private Integer serverPort = 4994;
     private Integer requestTimeout = 10_000;
@@ -495,7 +495,7 @@ public class PeerForwarderConfiguration {
 
     private void setForwardingBatchSize(final Integer forwardingBatchSize) {
         if (forwardingBatchSize != null) {
-            if (forwardingBatchSize <= 0 || forwardingBatchSize > MAX_FORWADING_BATCH_SIZE) {
+            if (forwardingBatchSize <= 0 || forwardingBatchSize > MAX_FORWARDING_BATCH_SIZE) {
                 throw new IllegalArgumentException("Forwarding batch size must be between 1 and 3000 inclusive.");
             }
             this.forwardingBatchSize = forwardingBatchSize;
