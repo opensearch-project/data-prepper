@@ -241,8 +241,8 @@ public class PeerForwarderConfiguration {
 
     private void setRequestTimeout(final Integer requestTimeout) {
         if (requestTimeout!= null) {
-            if (requestTimeout <= 0) {
-                throw new IllegalArgumentException("Request timeout must be a positive integer.");
+            if (requestTimeout <= 1) {
+                throw new IllegalArgumentException("Request timeout must be a positive integer greater than 1.");
             }
             this.requestTimeout = requestTimeout;
         }

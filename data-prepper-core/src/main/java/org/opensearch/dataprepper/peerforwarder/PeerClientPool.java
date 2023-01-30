@@ -36,7 +36,7 @@ public class PeerClientPool {
         peerClients = new ConcurrentHashMap<>();
     }
 
-    public void setClientTimeoutSeconds(int clientTimeoutMillis) {
+    public void setClientTimeoutMillis(int clientTimeoutMillis) {
         this.clientTimeoutMillis = clientTimeoutMillis;
     }
 
