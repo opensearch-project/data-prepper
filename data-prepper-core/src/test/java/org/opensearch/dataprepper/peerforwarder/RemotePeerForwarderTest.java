@@ -193,7 +193,7 @@ class RemotePeerForwarderTest {
 
         final RemotePeerForwarder peerForwarder = createObjectUnderTest();
 
-        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE) + FORWARDING_BATCH_SIZE;
+        final int recordsSetsToGenerate = FORWARDING_BATCH_SIZE;
         final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
@@ -255,7 +255,6 @@ class RemotePeerForwarderTest {
         final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE - 1) + FORWARDING_BATCH_SIZE;
         final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
-        // Send first forwarding request with record count under the batch size
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
         verify(executorService, times(1)).submit(any(Runnable.class));
 
@@ -266,6 +265,54 @@ class RemotePeerForwarderTest {
         verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+    }
+
+    @Test
+    void forwardRecords_should_flush_all_batches() {
+        final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
+        lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
+        lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
+
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+
+        final int batches = new Random().nextInt(PIPELINE_WORKER_THREADS) + 1;
+        final int recordsSetsToGenerate = batches * FORWARDING_BATCH_SIZE;
+        final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
+
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
+        verify(executorService, times(batches)).submit(any(Runnable.class));
+
+        assertThat(records, notNullValue());
+        assertThat(records.size(), equalTo(recordsSetsToGenerate));
+        assertThat(peerForwarder.peerBatchingQueueMap.get(testIps.get(0)).isEmpty(), equalTo(true));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+    }
+
+    @Test
+    void forwardRecords_should_process_data_locally_if_forwarding_buffer_full() {
+        final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
+        lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
+        lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
+
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+
+        final int batches = PIPELINE_WORKER_THREADS;
+        final int recordsSetsToGenerate = FORWARDING_BATCH_SIZE * batches + 1;
+        final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
+
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
+        verify(executorService, times(batches)).submit(any(Runnable.class));
+
+        assertThat(records, notNullValue());
+        assertThat(records.size(), equalTo(recordsSetsToGenerate + 1));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate + 1);
+        verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+        verify(recordsFailedForwardingCounter).increment(1);
     }
 
     @Test
