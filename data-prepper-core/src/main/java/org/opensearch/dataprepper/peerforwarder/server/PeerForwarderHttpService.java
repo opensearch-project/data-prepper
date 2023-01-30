@@ -42,7 +42,7 @@ public class PeerForwarderHttpService {
     private static final String TRACE_EVENT_TYPE = "TRACE";
     static final String SERVER_REQUEST_PROCESSING_LATENCY = "serverRequestProcessingLatency";
     static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
-    static final double BUFFER_TIMEOUT_FRACTION = 0.8;
+    private static final double BUFFER_TIMEOUT_FRACTION = 0.8;
 
     private final ResponseHandler responseHandler;
     private final PeerForwarderProvider peerForwarderProvider;
