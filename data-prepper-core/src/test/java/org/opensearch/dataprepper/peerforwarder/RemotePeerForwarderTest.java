@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,6 +209,63 @@ class RemotePeerForwarderTest {
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
         verify(recordsFailedForwardingCounter).increment(recordsSetsToGenerate);
         verify(requestsFailedCounter).increment();
+    }
+
+    @Test
+    void forwardRecords_should_flush_partial_batch_after_timeout() throws InterruptedException {
+        final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
+        lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
+        lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
+
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+
+        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE - 1) + 1;
+        final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
+
+        // Send first forwarding request with record count under the batch size
+        final Collection<Record<Event>> firstRoundRecords = peerForwarder.forwardRecords(inputRecords);
+        verify(executorService, times(0)).submit(any(Runnable.class));
+
+        assertThat(firstRoundRecords, notNullValue());
+        assertThat(firstRoundRecords.size(), equalTo(recordsSetsToGenerate));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+
+        // Wait longer than the batch timeout then send second forwarding request with no new records
+        Thread.sleep(FORWARDING_BATCH_TIMEOUT.toMillis() + 1000);
+        final Collection<Record<Event>> secondRoundRecords = peerForwarder.forwardRecords(Collections.emptyList());
+        verify(executorService, times(1)).submit(any(Runnable.class));
+
+        assertThat(secondRoundRecords, notNullValue());
+        assertThat(secondRoundRecords.size(), equalTo(0));
+
+        verify(recordsActuallyProcessedLocallyCounter).increment(0);
+    }
+
+    @Test
+    void forwardRecords_should_only_flush_batch_size() {
+        final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
+        lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
+        lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
+
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+
+        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE) + FORWARDING_BATCH_SIZE + 1;
+        final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
+
+        // Send first forwarding request with record count under the batch size
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
+        verify(executorService, times(1)).submit(any(Runnable.class));
+
+        assertThat(records, notNullValue());
+        assertThat(records.size(), equalTo(recordsSetsToGenerate));
+        assertThat(peerForwarder.peerBatchingQueueMap.get(testIps.get(0)).size(), equalTo(recordsSetsToGenerate - FORWARDING_BATCH_SIZE));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
     }
 
     @Test
