@@ -265,7 +265,7 @@ class RemotePeerForwarder implements PeerForwarder {
 
     private boolean shouldFlushBatch(final String destinationIp) {
         final long currentTime = System.currentTimeMillis();
-        final long millisSinceLastFlush = currentTime - peerBatchingLastFlushTimeMap.get(destinationIp);
+        final long millisSinceLastFlush = currentTime - peerBatchingLastFlushTimeMap.getOrDefault(destinationIp, System.currentTimeMillis());
         final Duration durationSinceLastFlush = Duration.of(millisSinceLastFlush, ChronoUnit.MILLIS);
 
         final boolean shouldFlushDueToTimeout = durationSinceLastFlush.compareTo(forwardingBatchTimeout) >= 0;
