@@ -14,7 +14,10 @@ import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class PeerForwarderProvider {
 
@@ -57,7 +60,7 @@ public class PeerForwarderProvider {
                     pluginMetrics,
                     peerForwarderConfiguration.getBatchDelay(),
                     peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(),
-                    Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount())
+                    getClientExecutorService()
             );
         }
         else {
@@ -94,5 +97,11 @@ public class PeerForwarderProvider {
 
     public Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> getPipelinePeerForwarderReceiveBufferMap() {
         return pipelinePeerForwarderReceiveBufferMap;
+    }
+
+    private ExecutorService getClientExecutorService() {
+        return new ThreadPoolExecutor(peerForwarderConfiguration.getClientThreadCount(),
+                peerForwarderConfiguration.getClientThreadCount(), 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(peerForwarderConfiguration.getClientThreadPoolBound()));
     }
 }

@@ -51,6 +51,7 @@ public class PeerForwarderConfiguration {
     private String domainName;
     private List<String> staticEndpoints = new ArrayList<>();
     private Integer clientThreadCount = 200;
+    private Integer clientThreadPoolBound = 500;
     private Integer batchSize = 48;
     private Integer batchDelay = 3_000;
     private Integer bufferSize = 512;
@@ -85,6 +86,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("domain_name") final String domainName,
             @JsonProperty("static_endpoints") final List<String> staticEndpoints,
             @JsonProperty("client_thread_count") final Integer clientThreadCount,
+            @JsonProperty("client_thread_pool_bound") final Integer clientThreadPoolBound,
             @JsonProperty("batch_size") final Integer batchSize,
             @JsonProperty("batch_delay") final Integer batchDelay,
             @JsonProperty("buffer_size") final Integer bufferSize,
@@ -114,6 +116,7 @@ public class PeerForwarderConfiguration {
         setDomainName(domainName);
         setStaticEndpoints(staticEndpoints);
         setClientThreadCount(clientThreadCount);
+        setClientThreadPoolBound(clientThreadPoolBound);
         setBatchSize(batchSize);
         setBatchDelay(batchDelay);
         setBufferSize(bufferSize);
@@ -201,6 +204,10 @@ public class PeerForwarderConfiguration {
 
     public Integer getClientThreadCount() {
         return clientThreadCount;
+    }
+
+    public Integer getClientThreadPoolBound() {
+        return clientThreadPoolBound;
     }
 
     public int getBatchSize() {
@@ -413,6 +420,15 @@ public class PeerForwarderConfiguration {
                 throw new IllegalArgumentException("Client thread count must be a positive integer.");
             }
             this.clientThreadCount = clientThreadCount;
+        }
+    }
+
+    public void setClientThreadPoolBound(final Integer clientThreadPoolBound) {
+        if (clientThreadPoolBound != null) {
+            if (clientThreadPoolBound <= 0) {
+                throw new IllegalArgumentException("Client thread count must be a positive integer.");
+            }
+            this.clientThreadPoolBound = clientThreadPoolBound;
         }
     }
 

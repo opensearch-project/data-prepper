@@ -54,6 +54,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.isUseAcmCertificateForSsl(), equalTo(false));
         assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.LOCAL_NODE));
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(200));
+        assertThat(peerForwarderConfiguration.getClientThreadPoolBound(), equalTo(500));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
         assertThat(peerForwarderConfiguration.getBatchDelay(), equalTo(3_000));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
@@ -82,6 +83,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getAwsCloudMapNamespaceName(), equalTo(null));
         assertThat(peerForwarderConfiguration.getAwsCloudMapServiceName(), equalTo(null));
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(100));
+        assertThat(peerForwarderConfiguration.getClientThreadPoolBound(), equalTo(50));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBatchDelay(), equalTo(10));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(100));

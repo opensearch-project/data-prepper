@@ -465,6 +465,7 @@ class PeerForwarder_ClientServerIT {
                 null,
                 List.of("127.0.0.1"),
                 200,
+                500,
                 48,
                 3000,
                 512,
