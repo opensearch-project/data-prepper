@@ -30,6 +30,7 @@ public class PeerForwarderConfiguration {
 
     private Integer serverPort = 4994;
     private Integer requestTimeout = 10_000;
+    private Integer clientTimeout = 60_000;
     private Integer serverThreadCount = 200;
     private Integer maxConnectionCount = 500;
     private Integer maxPendingRequests = 1024;
@@ -64,6 +65,7 @@ public class PeerForwarderConfiguration {
     public PeerForwarderConfiguration (
             @JsonProperty("port") final Integer serverPort,
             @JsonProperty("request_timeout") final Integer requestTimeout,
+            @JsonProperty("client_timeout") final Integer clientTimeout,
             @JsonProperty("server_thread_count") final Integer serverThreadCount,
             @JsonProperty("max_connection_count") final Integer maxConnectionCount,
             @JsonProperty("max_pending_requests") final Integer maxPendingRequests,
@@ -93,6 +95,7 @@ public class PeerForwarderConfiguration {
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
+        setClientTimeout(clientTimeout);
         setServerThreadCount(serverThreadCount);
         setMaxConnectionCount(maxConnectionCount);
         setMaxPendingRequests(maxPendingRequests);
@@ -129,6 +132,10 @@ public class PeerForwarderConfiguration {
 
     public int getRequestTimeout() {
         return requestTimeout;
+    }
+
+    public int getClientTimeout() {
+        return clientTimeout;
     }
 
     public int getServerThreadCount() {
@@ -234,10 +241,19 @@ public class PeerForwarderConfiguration {
 
     private void setRequestTimeout(final Integer requestTimeout) {
         if (requestTimeout!= null) {
-            if (requestTimeout <= 0) {
-                throw new IllegalArgumentException("Request timeout must be a positive integer.");
+            if (requestTimeout <= 1) {
+                throw new IllegalArgumentException("Request timeout must be a positive integer greater than 1.");
             }
             this.requestTimeout = requestTimeout;
+        }
+    }
+
+    private void setClientTimeout(final Integer clientTimeout) {
+        if (clientTimeout != null) {
+            if (clientTimeout <= 0) {
+                throw new IllegalArgumentException("Client timeout must be a positive integer.");
+            }
+            this.clientTimeout = clientTimeout;
         }
     }
 

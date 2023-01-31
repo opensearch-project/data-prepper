@@ -444,6 +444,7 @@ class PeerForwarder_ClientServerIT {
         return new PeerForwarderConfiguration(
                 4994,
                 10_000,
+                60_000,
                 200,
                 500,
                 1024,

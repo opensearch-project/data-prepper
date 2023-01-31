@@ -44,6 +44,7 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.getServerPort(), equalTo(4994));
         assertThat(peerForwarderConfiguration.getRequestTimeout(), equalTo(10_000));
+        assertThat(peerForwarderConfiguration.getClientTimeout(), equalTo(60_000));
         assertThat(peerForwarderConfiguration.getServerThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(500));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(1024));
@@ -68,6 +69,7 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.getServerPort(), equalTo(21895));
         assertThat(peerForwarderConfiguration.getRequestTimeout(), equalTo(1000));
+        assertThat(peerForwarderConfiguration.getClientTimeout(), equalTo(50));
         assertThat(peerForwarderConfiguration.getServerThreadCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(512));

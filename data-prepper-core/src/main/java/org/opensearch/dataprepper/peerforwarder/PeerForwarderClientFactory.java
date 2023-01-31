@@ -36,7 +36,7 @@ public class PeerForwarderClientFactory {
     }
 
     public PeerClientPool setPeerClientPool() {
-        peerClientPool.setClientTimeoutSeconds(3);
+        peerClientPool.setClientTimeoutMillis(peerForwarderConfiguration.getClientTimeout());
 
         final int targetPort = peerForwarderConfiguration.getServerPort();
         peerClientPool.setPort(targetPort);
