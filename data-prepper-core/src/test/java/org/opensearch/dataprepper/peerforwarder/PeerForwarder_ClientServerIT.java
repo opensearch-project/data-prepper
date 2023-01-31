@@ -37,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
@@ -57,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * works.
  */
 class PeerForwarder_ClientServerIT {
-
+    private static final int PIPELINE_WORKER_THREADS = new Random().nextInt(10) + 1;
     private static final String LOCALHOST = "127.0.0.1";
     private static final String SSL_CERTIFICATE_FILE = "src/test/resources/test-crt.crt";
     private static final String SSL_KEY_FILE = "src/test/resources/test-key.key";
@@ -146,7 +147,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -250,7 +251,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -303,7 +304,7 @@ class PeerForwarder_ClientServerIT {
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -469,6 +470,8 @@ class PeerForwarder_ClientServerIT {
                 48,
                 3000,
                 512,
+                null,
+                null,
                 null,
                 null
         );
