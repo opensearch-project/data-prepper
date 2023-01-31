@@ -18,6 +18,7 @@ import org.opensearch.client.indices.IndexTemplateMetadata;
 import org.opensearch.client.indices.IndexTemplatesExistRequest;
 import org.opensearch.client.indices.PutIndexTemplateRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,8 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     public static final String INDEX_ALIAS_USED_AS_INDEX_ERROR
             = "Invalid alias name [%s], an index exists with the same name as the alias";
+    public static final String INVALID_INDEX_ALIAS_ERROR
+            = "type=invalid_index_name_exception";
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
     protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
@@ -228,9 +231,10 @@ public abstract class AbstractIndexManager implements IndexManager {
                 if (e.getMessage().contains("resource_already_exists_exception")) {
                     // Do nothing - likely caused by a race condition where the resource was created
                     // by another host before this host's restClient made its request
+                } else if (e.getMessage().contains(INVALID_INDEX_ALIAS_ERROR)) {
+                    throw new OpenSearchSinkException(String.format("Invalid characters in the index name %s", indexAlias));
                 } else if (e.getMessage().contains(String.format(INDEX_ALIAS_USED_AS_INDEX_ERROR, indexAlias))) {
-                    // TODO: replace IOException with custom data-prepper exception
-                    throw new IOException(
+                    throw new OpenSearchSinkException(
                             String.format("An index exists with the same name as the reserved index alias name [%s], please delete or migrate the existing index",
                                     indexAlias));
                 } else {

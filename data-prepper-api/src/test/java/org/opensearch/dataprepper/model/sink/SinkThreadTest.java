@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -35,6 +36,14 @@ public class SinkThreadTest {
         sinkThread = new SinkThread(sink, 5);
         sinkThread.run();
         verify(sink, times(6)).isReady();
-        verify(sink, times(5)).initialize();
+        try {
+            doAnswer((i) -> {
+                return null;
+            }).when(sink).doInitialize();
+            verify(sink, times(5)).doInitialize();
+        } catch (Exception e){}
+        when(sink.isReady()).thenReturn(false).thenReturn(true);
+        sinkThread.run();
+        verify(sink, times(8)).isReady();
     }
 }

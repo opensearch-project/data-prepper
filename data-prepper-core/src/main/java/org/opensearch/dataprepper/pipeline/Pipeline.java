@@ -161,8 +161,11 @@ public class Pipeline {
     public boolean isReady() {
         for (final Sink sink: getSinks()) {
             if (!sink.isReady()) {
-                LOG.info("Pipeline [{}] - sink is not ready for execution, will retry", name);
-                return false;
+                LOG.info("Pipeline [{}] - sink is not ready for execution, retrying", name);
+                sink.initialize();
+                if (!sink.isReady()) {
+                    return false;
+                }
             }
         }
         return true;

@@ -29,6 +29,7 @@ public class AbstractSinkTest {
         PluginSetting pluginSetting = new PluginSetting(sinkName, Collections.emptyMap());
         pluginSetting.setPipelineName(pipelineName);
         AbstractSink<Record<String>> abstractSink = new AbstractSinkImpl(pluginSetting);
+        abstractSink.initialize();
         Assert.assertEquals(abstractSink.isReady(), true);
         abstractSink.output(Arrays.asList(
                 new Record<>(UUID.randomUUID().toString()),
@@ -51,7 +52,8 @@ public class AbstractSinkTest {
                 MetricsTestUtil.getMeasurementFromList(elapsedTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
                 0.5,
                 0.6));
-        Assert.assertEquals(abstractSink.getRetryThreadState(), Thread.State.NEW);
+        Assert.assertEquals(abstractSink.getRetryThreadState(), null);
+        abstractSink.shutdown();
     }
 
     @Test
@@ -62,6 +64,7 @@ public class AbstractSinkTest {
         PluginSetting pluginSetting = new PluginSetting(sinkName, Collections.singletonMap("num_retries", 10));
         pluginSetting.setPipelineName(pipelineName);
         AbstractSink<Record<String>> abstractSink = new AbstractSinkNotReadyImpl(pluginSetting);
+        abstractSink.initialize();
         Assert.assertEquals(abstractSink.isReady(), false);
         Assert.assertEquals(abstractSink.getRetryThreadState(), Thread.State.RUNNABLE);
         while (!abstractSink.isReady()) {
@@ -97,7 +100,7 @@ public class AbstractSinkTest {
         }
 
         @Override
-        public void initialize() {
+        public void doInitialize() {
         }
 
         @Override
@@ -131,9 +134,11 @@ public class AbstractSinkTest {
         }
 
         @Override
-        public void initialize() {
+        public void doInitialize() throws Exception {
             if (++initCount == 3) {
                 initialized = true;
+            } else {
+                throw new RuntimeException("Not initialized");
             }
         }
 

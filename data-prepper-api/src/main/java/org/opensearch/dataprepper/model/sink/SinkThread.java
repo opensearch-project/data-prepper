@@ -20,8 +20,8 @@ class SinkThread implements Runnable {
         while (!sink.isReady() && numRetries++ < maxRetries) {
             try {
                 Thread.sleep(1000);
-            } catch (InterruptedException e){}
-            sink.initialize();
+                sink.doInitialize();
+            } catch (Exception e){}
         }
     }
 }

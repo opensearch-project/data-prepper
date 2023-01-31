@@ -92,34 +92,40 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.indexManagerFactory = new IndexManagerFactory();
     this.initialized = false;
     this.lock = new ReentrantLock(true);
+    try {
+        doInitialize();
+    } catch (IOException e) {
+        LOG.warn("Failed to initialize OpenSearch sink " + e.getMessage());
+    } catch (Exception e) {
+        this.shutdown();
+        throw new RuntimeException(e.getMessage(), e);
+    }
   }
 
   @Override
-  public void initialize() {
+  public void doInitialize() throws IOException {
     LOG.info("Initializing OpenSearch sink");
-    try {
-        restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
-        configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
-        indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig, configuredIndexAlias);
-        final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
-        if (dlqFile != null) {
-          dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-        }
-        indexManager.setupIndex();
+    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
+    configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
+    indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig, configuredIndexAlias);
+    final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
+    if (dlqFile != null) {
+      dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    }
+    indexManager.setupIndex();
 
-        OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
-        openSearchClient = new OpenSearchClient(transport);
-        bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
-        bulkRetryStrategy = new BulkRetryStrategy(
-                bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
-                this::logFailure,
-                pluginMetrics,
-                bulkRequestSupplier);
+    OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
+    openSearchClient = new OpenSearchClient(transport);
+    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+    bulkRetryStrategy = new BulkRetryStrategy(
+            bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
+            this::logFailure,
+            pluginMetrics,
+            bulkRequestSupplier);
 
-        objectMapper = new ObjectMapper();
-        this.initialized = true;
-        LOG.info("Initialized OpenSearch sink");
-    } catch (Exception e) {}
+    objectMapper = new ObjectMapper();
+    this.initialized = true;
+    LOG.info("Initialized OpenSearch sink");
   }
 
   @Override

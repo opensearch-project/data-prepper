@@ -75,26 +75,26 @@ public class DataPrepper {
      */
     public boolean execute() {
         peerForwarderServer.start();
-        Set<String> pipelineNames = transformationPipelines.keySet();
+        Set<String> waitingPipelineNames = transformationPipelines.keySet();
         int numRetries = 0;
-        while (pipelineNames.size() > 0 && numRetries++ < MAX_RETRIES) {
-            Set<String> failedPipelines = new HashSet<String>();
-            Iterator pipelineIter = pipelineNames.iterator();
+        while (waitingPipelineNames.size() > 0 && numRetries++ < MAX_RETRIES) {
+            Set<String> uninitializedPipelines = new HashSet<String>();
+            Iterator pipelineIter = waitingPipelineNames.iterator();
             while (pipelineIter.hasNext()) {
                 String pipelineName = (String)pipelineIter.next();
                 if (!transformationPipelines.get(pipelineName).isReady()) {
-                    failedPipelines.add(pipelineName);
+                    uninitializedPipelines.add(pipelineName);
                 }
             }
-            pipelineNames = failedPipelines;
-            if (pipelineNames.size() > 0) {
+            waitingPipelineNames = uninitializedPipelines;
+            if (waitingPipelineNames.size() > 0) {
                 try {
                     Thread.sleep(5000);
                 } catch (Exception e){}
             }
         }
-        if (pipelineNames.size() > 0) {
-            LOG.info("One or more Sinks are not ready even after {} retries.", numRetries);
+        if (waitingPipelineNames.size() > 0) {
+            LOG.info("One or more Pipelines are not ready even after {} retries.", numRetries);
             throw new RuntimeException("Failed to start pipelines");
         }
         transformationPipelines.forEach((name, pipeline) -> {
