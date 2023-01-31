@@ -29,8 +29,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class S3FileReaderTest {
-    private static final Long CONTENT_LENGTH_EXCEEDING_THRESHOLD = 8_000_000L;
-    private static final Long CONTENT_LENGTH_SMALLER_THAN_THRESHOLD = 1_000_000L;
+    private static final Long CONTENT_LENGTH_EXCEEDING_THRESHOLD = 8 * S3FileReader.ONE_MB;
+    private static final Long CONTENT_LENGTH_SMALLER_THAN_THRESHOLD = 3 * S3FileReader.ONE_MB;
 
     @Mock
     private S3Client s3Client;

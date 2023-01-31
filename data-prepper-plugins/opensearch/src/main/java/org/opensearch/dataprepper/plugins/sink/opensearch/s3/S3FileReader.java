@@ -19,7 +19,8 @@ import java.util.Objects;
 
 public class S3FileReader implements FileReader {
     private static final Logger LOG = LoggerFactory.getLogger(S3FileReader.class);
-    private static final long MAX_FILE_SIZE = 5_000_000L;
+    static final long ONE_MB = 1024L * 1024L;
+    private static final long FIVE_MB = 5 * ONE_MB;
 
     private final S3Client s3Client;
 
@@ -73,7 +74,7 @@ public class S3FileReader implements FileReader {
     private void validateS3ObjectSize(final ResponseInputStream<GetObjectResponse> responseInputStream, final URI uri) {
         final Long contentLength = responseInputStream.response().contentLength();
 
-        if (contentLength > MAX_FILE_SIZE) {
+        if (contentLength > FIVE_MB) {
             throw new S3ObjectTooLargeException(String.format("S3 object content length can't be more than 5MB. %s object size is %s bytes",
                     uri.getPath().substring(1), contentLength));
         }

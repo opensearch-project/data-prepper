@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import static org.apache.commons.io.FileUtils.ONE_MB;
 import static org.mockito.ArgumentMatchers.any;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -89,7 +90,7 @@ public class IndexConfigurationTests {
         final String testS3AwsRegion = "us-east-2";
         final String testS3StsRoleArn = "arn:aws:iam::123456789:user/user-role";
         final String fileContent = "{}";
-        final long CONTENT_LENGTH = 1_000_000L;
+        final long CONTENT_LENGTH = 3 * ONE_MB;
 
         final S3Client s3Client = mock(S3Client.class);
 

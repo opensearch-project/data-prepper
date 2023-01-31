@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Objects;
 
+import static org.apache.commons.io.FileUtils.ONE_MB;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
@@ -118,7 +119,6 @@ public class IsmPolicyManagementTests {
 
     @Test
     public void checkAndCreatePolicy_with_custom_ism_policy_from_s3() throws IOException {
-        final long CONTENT_LENGTH = 1_000_000L;
         IsmPolicyManagement ismPolicyManagementStrategyWithTemplate = new IsmPolicyManagement(restHighLevelClient,
                 POLICY_NAME,
                 TEST_ISM_FILE_PATH_S3, s3Client);
@@ -129,7 +129,7 @@ public class IsmPolicyManagementTests {
 
         final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
         final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
-                GetObjectResponse.builder().contentLength(CONTENT_LENGTH).build(),
+                GetObjectResponse.builder().contentLength(ONE_MB).build(),
                 AbortableInputStream.create(fileObjectStream)
         );
 
