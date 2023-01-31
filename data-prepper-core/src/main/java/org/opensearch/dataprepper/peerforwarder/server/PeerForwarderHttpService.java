@@ -11,7 +11,6 @@ import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
@@ -28,6 +27,7 @@ import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,6 +42,7 @@ public class PeerForwarderHttpService {
     private static final String TRACE_EVENT_TYPE = "TRACE";
     static final String SERVER_REQUEST_PROCESSING_LATENCY = "serverRequestProcessingLatency";
     static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
+    private static final double BUFFER_TIMEOUT_FRACTION = 0.8;
 
     private final ResponseHandler responseHandler;
     private final PeerForwarderProvider peerForwarderProvider;
@@ -73,8 +74,8 @@ public class PeerForwarderHttpService {
         WireEvents wireEvents;
         final HttpData content = aggregatedHttpRequest.content();
         try {
-            wireEvents = objectMapper.readValue(content.toStringUtf8(), WireEvents.class);
-        } catch (JsonProcessingException e) {
+            wireEvents = objectMapper.readValue(content.array(), WireEvents.class);
+        } catch (IOException e) {
             final String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
             LOG.error(message, e);
             return responseHandler.handleException(e, message);
@@ -99,9 +100,13 @@ public class PeerForwarderHttpService {
                     .map(this::transformEvent)
                     .collect(Collectors.toList());
 
-            recordPeerForwarderReceiveBuffer.writeAll(jacksonEvents, peerForwarderConfiguration.getRequestTimeout());
+            recordPeerForwarderReceiveBuffer.writeAll(jacksonEvents, getBufferTimeoutMillis());
             recordsReceivedFromPeersCounter.increment(jacksonEvents.size());
         }
+    }
+
+    private int getBufferTimeoutMillis() {
+        return (int) (peerForwarderConfiguration.getRequestTimeout() * BUFFER_TIMEOUT_FRACTION);
     }
 
     private PeerForwarderReceiveBuffer<Record<Event>> getPeerForwarderBuffer(final WireEvents wireEvents) {
