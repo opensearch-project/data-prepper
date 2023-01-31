@@ -185,6 +185,9 @@ Besides common metrics in [AbstractSink](https://github.com/opensearch-project/d
 - `documentsSuccess`: measures number of documents successfully sent to ES by bulk requests including retries.
 - `documentsSuccessFirstAttempt`: measures number of documents successfully sent to ES by bulk requests on first attempt.
 - `documentErrors`: measures number of documents failed to be sent by bulk requests.
+- `documentNumberOfRetries`: measures number of times bulk requests are retried.
+- `documentNumberOfFailures`: measures number of times bulk requests are failed after retries.
+- `documentNumberOfNullResponses`: measures number of times bulk requests returned null responses.
 
 ### Distribution Summary
 - `bulkRequestSizeBytes`: measures the distribution of bulk request's payload sizes in bytes.
