@@ -32,6 +32,9 @@ public final class BulkRetryStrategy {
     public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
     public static final String DOCUMENTS_SUCCESS_FIRST_ATTEMPT = "documentsSuccessFirstAttempt";
     public static final String DOCUMENT_ERRORS = "documentErrors";
+    public static final String DOCUMENT_NUMBER_OF_RETRIES = "documentNumberOfRetries";
+    public static final String DOCUMENT_NUMBER_OF_FAILURES = "documentNumberOfFailures";
+    public static final String DOCUMENT_NUMBER_OF_NULL_RESPONSES = "documentNumberOfNullResponses";
 
     private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
             Arrays.asList(
@@ -48,6 +51,9 @@ public final class BulkRetryStrategy {
     private final Counter sentDocumentsCounter;
     private final Counter sentDocumentsOnFirstAttemptCounter;
     private final Counter documentErrorsCounter;
+    private final Counter documentNumberOfRetries;
+    private final Counter documentNumberOfFailures;
+    private final Counter documentNumberOfNullResponses;
 
     public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperation, BulkRequest>, BulkResponse> requestFunction,
                              final BiConsumer<BulkOperation, Throwable> logFailure,
@@ -61,6 +67,9 @@ public final class BulkRetryStrategy {
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
         documentErrorsCounter = pluginMetrics.counter(DOCUMENT_ERRORS);
+        documentNumberOfRetries = pluginMetrics.counter(DOCUMENT_NUMBER_OF_RETRIES);
+        documentNumberOfFailures = pluginMetrics.counter(DOCUMENT_NUMBER_OF_FAILURES);
+        documentNumberOfNullResponses = pluginMetrics.counter(DOCUMENT_NUMBER_OF_NULL_RESPONSES);
     }
 
     public void execute(final AccumulatingBulkRequest bulkRequest) throws InterruptedException {
@@ -98,8 +107,10 @@ public final class BulkRetryStrategy {
             } catch (final Exception e) {
                 if (canRetry(e)) {
                     handleRetry(bulkRequestForRetry, null, backOffUtils, false);
+                    documentNumberOfRetries.increment();
                 } else {
                     handleFailures(bulkRequestForRetry, e);
+                    documentNumberOfFailures.increment();
                 }
 
                 return;
@@ -131,6 +142,7 @@ public final class BulkRetryStrategy {
             final AccumulatingBulkRequest<BulkOperation, BulkRequest> request, final BulkResponse response) {
         if (response == null) {
             // first attempt or retry due to Exception
+            documentNumberOfNullResponses.increment();
             return request;
         } else {
             final AccumulatingBulkRequest requestToReissue = bulkRequestSupplier.get();
