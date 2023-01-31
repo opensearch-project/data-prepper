@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.yaml.snakeyaml.LoaderOptions;
 
 @Configuration
 class PeerForwarderAppConfig {
@@ -33,8 +34,13 @@ class PeerForwarderAppConfig {
     }
 
     @Bean(name = "peerForwarderObjectMapper")
-    public ObjectMapper objectMapper(final YAMLFactory yamlFactory) {
+    public ObjectMapper objectMapper() {
         final JavaTimeModule javaTimeModule = new JavaTimeModule();
+        final LoaderOptions loaderOptions = new LoaderOptions();
+        loaderOptions.setCodePointLimit(10 * 1024 * 1024); // 10MB
+        final YAMLFactory yamlFactory = YAMLFactory.builder()
+                .loaderOptions(loaderOptions)
+                .build();
         return new ObjectMapper(yamlFactory).registerModule(javaTimeModule);
     }
 

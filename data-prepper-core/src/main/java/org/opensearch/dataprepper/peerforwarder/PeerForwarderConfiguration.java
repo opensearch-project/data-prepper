@@ -24,9 +24,11 @@ import java.util.Map;
 public class PeerForwarderConfiguration {
     public static final String DEFAULT_PEER_FORWARDING_URI = "/event/forward";
     public static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(10L);
+    public static final Duration DEFAULT_FORWARDING_BATCH_TIMEOUT = Duration.ofSeconds(3L);
     public static final String DEFAULT_CERTIFICATE_FILE_PATH = "config/default_certificate.pem";
     public static final String DEFAULT_PRIVATE_KEY_FILE_PATH = "config/default_private_key.pem";
     private static final String S3_PREFIX = "s3://";
+    private static final int MAX_FORWARDING_BATCH_SIZE = 3000;
 
     private Integer serverPort = 4994;
     private Integer requestTimeout = 10_000;
@@ -58,6 +60,8 @@ public class PeerForwarderConfiguration {
     private boolean sslCertAndKeyFileInS3 = false;
     private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
     private Integer failedForwardingRequestLocalWriteTimeout = 500;
+    private Integer forwardingBatchSize = 1500;
+    private Duration forwardingBatchTimeout = DEFAULT_FORWARDING_BATCH_TIMEOUT;
 
     public PeerForwarderConfiguration() {}
 
@@ -91,7 +95,9 @@ public class PeerForwarderConfiguration {
             @JsonProperty("batch_delay") final Integer batchDelay,
             @JsonProperty("buffer_size") final Integer bufferSize,
             @JsonProperty("drain_timeout") final Duration drainTimeout,
-            @JsonProperty("failed_forwarding_requests_local_write_timeout") final Integer failedForwardingRequestLocalWriteTimeout
+            @JsonProperty("failed_forwarding_requests_local_write_timeout") final Integer failedForwardingRequestLocalWriteTimeout,
+            @JsonProperty("forwarding_batch_size") final Integer forwardingBatchSize,
+            @JsonProperty("forwarding_batch_timeout") final Duration forwardingBatchTimeout
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
@@ -122,6 +128,8 @@ public class PeerForwarderConfiguration {
         setBufferSize(bufferSize);
         setDrainTimeout(drainTimeout);
         setFailedForwardingRequestLocalWriteTimeout(failedForwardingRequestLocalWriteTimeout);
+        setForwardingBatchSize(forwardingBatchSize);
+        setForwardingBatchTimeout(forwardingBatchTimeout);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
     }
@@ -228,6 +236,14 @@ public class PeerForwarderConfiguration {
 
     public Integer getFailedForwardingRequestLocalWriteTimeout() {
         return failedForwardingRequestLocalWriteTimeout;
+    }
+
+    public Integer getForwardingBatchSize() {
+        return forwardingBatchSize;
+    }
+
+    public Duration getForwardingBatchTimeout() {
+        return forwardingBatchTimeout;
     }
 
     private void setServerPort(final Integer serverPort) {
@@ -490,6 +506,24 @@ public class PeerForwarderConfiguration {
                 throw new IllegalArgumentException("Failed forwarding requests local write timeout must be a positive integer.");
             }
             this.failedForwardingRequestLocalWriteTimeout = failedForwardingRequestLocalWriteTimeout;
+        }
+    }
+
+    private void setForwardingBatchSize(final Integer forwardingBatchSize) {
+        if (forwardingBatchSize != null) {
+            if (forwardingBatchSize <= 0 || forwardingBatchSize > MAX_FORWARDING_BATCH_SIZE) {
+                throw new IllegalArgumentException("Forwarding batch size must be between 1 and 3000 inclusive.");
+            }
+            this.forwardingBatchSize = forwardingBatchSize;
+        }
+    }
+
+    private void setForwardingBatchTimeout(final Duration forwardingBatchTimeout) {
+        if (forwardingBatchTimeout != null) {
+            if (forwardingBatchTimeout.isNegative()) {
+                throw new IllegalArgumentException("Forwarding batch timeout must be non-negative.");
+            }
+            this.forwardingBatchTimeout = forwardingBatchTimeout;
         }
     }
 }

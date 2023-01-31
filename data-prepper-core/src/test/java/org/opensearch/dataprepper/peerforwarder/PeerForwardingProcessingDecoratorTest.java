@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -39,6 +40,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwardingProcessingDecoratorTest {
+    private static final int PIPELINE_WORKER_THREADS = new Random().nextInt(10) + 1;
     private static final String TEST_IDENTIFICATION_KEY = "identification_key";
 
     private Record<Event> record;
@@ -66,7 +68,7 @@ class PeerForwardingProcessingDecoratorTest {
     }
 
     private List<Processor> createObjectUnderTesDecoratedProcessors(final List<Processor> processors) {
-        return PeerForwardingProcessorDecorator.decorateProcessors(processors, peerForwarderProvider, pipelineName, pluginId);
+        return PeerForwardingProcessorDecorator.decorateProcessors(processors, peerForwarderProvider, pipelineName, pluginId, PIPELINE_WORKER_THREADS);
     }
 
     @Test
@@ -113,7 +115,7 @@ class PeerForwardingProcessingDecoratorTest {
         void setUp() {
             identificationKeys = Set.of(TEST_IDENTIFICATION_KEY);
 
-            when(peerForwarderProvider.register(pipelineName, pluginId, identificationKeys)).thenReturn(peerForwarder);
+            when(peerForwarderProvider.register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS)).thenReturn(peerForwarder);
             when(requiresPeerForwarding.getIdentificationKeys()).thenReturn(identificationKeys);
             processor = (Processor) requiresPeerForwarding;
         }
@@ -122,7 +124,7 @@ class PeerForwardingProcessingDecoratorTest {
         void PeerForwardingProcessingDecorator_should_have_interaction_with_getIdentificationKeys() {
             createObjectUnderTesDecoratedProcessors(Collections.singletonList(processor));
             verify(requiresPeerForwarding, times(2)).getIdentificationKeys();
-            verify(peerForwarderProvider).register(pipelineName, pluginId, identificationKeys);
+            verify(peerForwarderProvider).register(pipelineName, pluginId, identificationKeys, PIPELINE_WORKER_THREADS);
         }
 
         @Test
