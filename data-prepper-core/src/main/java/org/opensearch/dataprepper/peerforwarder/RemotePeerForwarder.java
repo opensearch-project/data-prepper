@@ -244,6 +244,7 @@ class RemotePeerForwarder implements PeerForwarder {
             try {
                 httpResponse = key.get();
             } catch (final ExecutionException | InterruptedException e) {
+                LOG.warn("Unable to send request to peer, processing locally.", e);
                 httpResponse = null;
             }
 
