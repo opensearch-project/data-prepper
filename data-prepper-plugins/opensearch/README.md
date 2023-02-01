@@ -88,8 +88,6 @@ Default is null.
 
 - `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management-disabled`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
 
-- `num_retries` (optional): a Number indicating the number of times the sink initialization should be tried before failing the pipeline. The retry mechanism waits for 1 second before each retry. Default value 600.
-
 ```
     APM trace analytics raw span data type example:
     {

@@ -61,7 +61,7 @@ public class AbstractSinkTest {
         final String sinkName = "testSink";
         final String pipelineName = "pipelineName";
         MetricsTestUtil.initMetrics();
-        PluginSetting pluginSetting = new PluginSetting(sinkName, Collections.singletonMap("num_retries", 10));
+        PluginSetting pluginSetting = new PluginSetting(sinkName, Collections.emptyMap());
         pluginSetting.setPipelineName(pipelineName);
         AbstractSink<Record<String>> abstractSink = new AbstractSinkNotReadyImpl(pluginSetting);
         abstractSink.initialize();
@@ -135,7 +135,8 @@ public class AbstractSinkTest {
 
         @Override
         public void doInitialize() throws Exception {
-            if (++initCount == 3) {
+            // make this check for smaller number so that test finishes sooner
+            if (++initCount == NUMBER_OF_RETRIES/20) {
                 initialized = true;
             } else {
                 throw new RuntimeException("Not initialized");

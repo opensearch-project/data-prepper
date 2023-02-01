@@ -17,7 +17,7 @@ import io.micrometer.core.instrument.Timer;
  * This class implements the Sink interface and records boilerplate metrics
  */
 public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
-    private static final int NUMBER_OF_RETRIES = 600;
+    protected static final int NUMBER_OF_RETRIES = 600;
     protected final PluginMetrics pluginMetrics;
     private final Counter recordsInCounter;
     private final Timer timeElapsedTimer;
