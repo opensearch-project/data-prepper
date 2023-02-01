@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -92,11 +94,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.indexManagerFactory = new IndexManagerFactory();
     this.initialized = false;
     this.lock = new ReentrantLock(true);
+  }
+
+  @Override
+  public void doInitialize() throws IOException {
     try {
-        doInitialize();
+        doInitializeInternal();
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink " + e.getMessage());
-    } catch (OpenSearchSinkException e) {
+    } catch (InvalidPluginConfigurationException e) {
         this.shutdown();
         throw new RuntimeException(e.getMessage(), e);
     } catch (Exception e) {
@@ -107,8 +113,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
   }
 
-  @Override
-  public void doInitialize() throws IOException {
+  private void doInitializeInternal() throws IOException {
     LOG.info("Initializing OpenSearch sink");
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
