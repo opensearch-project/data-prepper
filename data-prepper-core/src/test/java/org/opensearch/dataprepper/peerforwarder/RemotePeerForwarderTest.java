@@ -27,13 +27,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -41,8 +42,11 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -71,9 +75,6 @@ class RemotePeerForwarderTest {
 
     @Mock
     private PeerForwarderClient peerForwarderClient;
-
-    @Mock
-    private ExecutorService executorService;
 
     @Mock
     private HashRing hashRing;
@@ -136,14 +137,13 @@ class RemotePeerForwarderTest {
                 recordsSuccessfullyForwardedCounter,
                 recordsFailedForwardingCounter,
                 requestsFailedCounter,
-                requestsSuccessfulCounter,
-                executorService
+                requestsSuccessfulCounter
         );
     }
 
     private RemotePeerForwarder createObjectUnderTest() {
         return new RemotePeerForwarder(peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics,
-                TEST_BATCH_DELAY, TEST_LOCAL_WRITE_TIMEOUT, executorService, FORWARDING_BATCH_SIZE, FORWARDING_BATCH_TIMEOUT, PIPELINE_WORKER_THREADS);
+                TEST_BATCH_DELAY, TEST_LOCAL_WRITE_TIMEOUT, FORWARDING_BATCH_SIZE, FORWARDING_BATCH_TIMEOUT, PIPELINE_WORKER_THREADS);
     }
 
     @Test
@@ -156,7 +156,7 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> testRecords = generateBatchRecords(2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
-        verifyNoInteractions(executorService);
+        verifyNoInteractions(peerForwarderClient);
         assertThat(records.size(), equalTo(2));
         assertThat(records, equalTo(testRecords));
 
@@ -166,26 +166,30 @@ class RemotePeerForwarderTest {
 
     @Test
     void test_forwardRecords_with_one_local_ip_and_one_remote_ip_should_process_record_one_record_locally() {
+        mockPeerForwarderClientResponse();
+
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
         RemotePeerForwarder peerForwarder = createObjectUnderTest();
-        final int recordsSetsToGenerate = new Random().nextInt(FORWARDING_BATCH_SIZE) + FORWARDING_BATCH_SIZE;
+        final int recordsSetsToGenerate = FORWARDING_BATCH_SIZE;
         final Collection<Record<Event>> testRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
-        verify(executorService, times(1)).submit(any(Runnable.class));
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records.size(), equalTo(recordsSetsToGenerate));
 
         verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+        verify(requestsSuccessfulCounter).increment();
+        verify(recordsSuccessfullyForwardedCounter).increment(recordsSetsToGenerate);
     }
 
     @Test
-    void forwardRecords_should_return_all_input_events_when_executor_service_throws() {
-        when(executorService.submit(any(Runnable.class))).thenThrow(RuntimeException.class);
+    void forwardRecords_should_process_all_input_events_locally_when_client_throws() {
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString())).thenThrow(RuntimeException.class);
 
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
@@ -197,15 +201,22 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
-        verify(executorService, times(1)).submit(any(Runnable.class));
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records, notNullValue());
-        assertThat(records.size(), equalTo(inputRecords.size()));
+        assertThat(records.size(), equalTo(recordsSetsToGenerate));
+
+        final Collection<Record<Event>> receivedRecords = peerForwarder.receiveRecords();
+        assertThat(receivedRecords, notNullValue());
+        assertThat(receivedRecords.size(), equalTo(recordsSetsToGenerate));
+
+        final Collection<Record<Event>> totalRecords = records;
+        totalRecords.addAll(receivedRecords);
         for (Record<Event> inputRecord : inputRecords) {
-            assertThat(records, hasItem(inputRecord));
+            assertThat(totalRecords, hasItem(inputRecord));
         }
 
         verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
-        verify(recordsActuallyProcessedLocallyCounter).increment(inputRecords.size());
+        verify(recordsActuallyProcessedLocallyCounter, times(2)).increment(recordsSetsToGenerate);
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
         verify(recordsFailedForwardingCounter).increment(recordsSetsToGenerate);
         verify(requestsFailedCounter).increment();
@@ -213,6 +224,8 @@ class RemotePeerForwarderTest {
 
     @Test
     void forwardRecords_should_flush_partial_batch_after_timeout() throws InterruptedException {
+        mockPeerForwarderClientResponse();
+
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
@@ -224,7 +237,7 @@ class RemotePeerForwarderTest {
 
         // Send first forwarding request with record count under the batch size
         final Collection<Record<Event>> firstRoundRecords = peerForwarder.forwardRecords(inputRecords);
-        verify(executorService, times(0)).submit(any(Runnable.class));
+        verifyNoInteractions(peerForwarderClient);
 
         assertThat(firstRoundRecords, notNullValue());
         assertThat(firstRoundRecords.size(), equalTo(recordsSetsToGenerate));
@@ -232,20 +245,26 @@ class RemotePeerForwarderTest {
         verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+        verifyNoInteractions(requestsSuccessfulCounter);
+        verifyNoInteractions(recordsSuccessfullyForwardedCounter);
 
         // Wait longer than the batch timeout then send second forwarding request with no new records
         Thread.sleep(FORWARDING_BATCH_TIMEOUT.toMillis() + 1000);
         final Collection<Record<Event>> secondRoundRecords = peerForwarder.forwardRecords(Collections.emptyList());
-        verify(executorService, times(1)).submit(any(Runnable.class));
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
 
         assertThat(secondRoundRecords, notNullValue());
         assertThat(secondRoundRecords.size(), equalTo(0));
 
         verify(recordsActuallyProcessedLocallyCounter).increment(0);
+        verify(requestsSuccessfulCounter).increment();
+        verify(recordsSuccessfullyForwardedCounter).increment(recordsSetsToGenerate);
     }
 
     @Test
     void forwardRecords_should_only_flush_batch_size() {
+        mockPeerForwarderClientResponse();
+
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
@@ -256,7 +275,7 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
-        verify(executorService, times(1)).submit(any(Runnable.class));
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
 
         assertThat(records, notNullValue());
         assertThat(records.size(), equalTo(recordsSetsToGenerate));
@@ -265,22 +284,26 @@ class RemotePeerForwarderTest {
         verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+        verify(requestsSuccessfulCounter).increment();
+        verify(recordsSuccessfullyForwardedCounter).increment(FORWARDING_BATCH_SIZE);
     }
 
     @Test
     void forwardRecords_should_flush_all_batches() {
+        mockPeerForwarderClientResponse();
+
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
 
         final RemotePeerForwarder peerForwarder = createObjectUnderTest();
 
-        final int batches = new Random().nextInt(PIPELINE_WORKER_THREADS) + 1;
+        final int batches = PIPELINE_WORKER_THREADS;
         final int recordsSetsToGenerate = batches * FORWARDING_BATCH_SIZE;
         final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
-        verify(executorService, times(batches)).submit(any(Runnable.class));
+        verify(peerForwarderClient, times(batches)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
 
         assertThat(records, notNullValue());
         assertThat(records.size(), equalTo(recordsSetsToGenerate));
@@ -289,10 +312,14 @@ class RemotePeerForwarderTest {
         verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+        verify(requestsSuccessfulCounter, times(batches)).increment();
+        verify(recordsSuccessfullyForwardedCounter, times(batches)).increment(FORWARDING_BATCH_SIZE);
     }
 
     @Test
     void forwardRecords_should_process_data_locally_if_forwarding_buffer_full() {
+        mockPeerForwarderClientResponse();
+
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
@@ -304,7 +331,7 @@ class RemotePeerForwarderTest {
         final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
-        verify(executorService, times(batches)).submit(any(Runnable.class));
+        verify(peerForwarderClient, times(batches)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
 
         assertThat(records, notNullValue());
         assertThat(records.size(), equalTo(recordsSetsToGenerate + 1));
@@ -313,6 +340,8 @@ class RemotePeerForwarderTest {
         verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate + 1);
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
         verify(recordsFailedForwardingCounter).increment(1);
+        verify(requestsSuccessfulCounter, times(batches)).increment();
+        verify(recordsSuccessfullyForwardedCounter, times(batches)).increment(FORWARDING_BATCH_SIZE);
     }
 
     @Test
@@ -329,6 +358,8 @@ class RemotePeerForwarderTest {
 
     @Test
     void test_receiveRecords_with_missing_identification_keys() {
+        mockPeerForwarderClientResponse();
+
         final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
         lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
         lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
@@ -344,13 +375,15 @@ class RemotePeerForwarderTest {
         testRecords.add(new Record<>(event));
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
-        verify(executorService, times(1)).submit(any(Runnable.class));
+        verify(peerForwarderClient, times(1)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
         assertThat(records.size(), equalTo(recordsSetsToGenerate + 1));
 
         verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate + 1);
         verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate + 1);
         verify(recordsMissingIdentificationKeys, times(0)).increment(1.0);
         verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+        verify(requestsSuccessfulCounter).increment();
+        verify(recordsSuccessfullyForwardedCounter).increment(FORWARDING_BATCH_SIZE);
     }
 
     @Test
@@ -367,7 +400,7 @@ class RemotePeerForwarderTest {
         }
 
         final Collection<Record<Event>> records = peerForwarder.forwardRecords(testRecords);
-        verifyNoInteractions(executorService);
+        verifyNoInteractions(peerForwarderClient);
         assertThat(records.size(), equalTo(2));
 
         verify(recordsToBeProcessedLocallyCounter).increment(2.0);
@@ -469,4 +502,16 @@ class RemotePeerForwarderTest {
         return Set.of("key1", "key2");
     }
 
+    private void mockPeerForwarderClientResponse() {
+        final Iterator<AggregatedHttpResponse> aggregatedHttpResponses = IntStream.range(0, PIPELINE_WORKER_THREADS)
+                        .mapToObj(i -> {
+                            final AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
+                            when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
+                            return aggregatedHttpResponse;
+                        }).iterator();
+
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString()))
+                .thenAnswer(i -> CompletableFuture.completedFuture(aggregatedHttpResponses.next()));
+
+    }
 }

@@ -75,11 +75,12 @@ class PeerForwarderAppConfig {
     }
 
     @Bean
-    public PeerForwarderClient peerForwarderClient(final PeerForwarderClientFactory peerForwarderClientFactory,
+    public PeerForwarderClient peerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
+                                                   final PeerForwarderClientFactory peerForwarderClientFactory,
                                                    @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper,
                                                    @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics
     ) {
-        return new PeerForwarderClient(peerForwarderClientFactory, objectMapper, pluginMetrics);
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
 
     @Bean

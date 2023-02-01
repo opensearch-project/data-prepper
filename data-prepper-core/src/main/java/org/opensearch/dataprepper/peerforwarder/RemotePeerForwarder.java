@@ -31,9 +31,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.stream.Collectors;
 
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
@@ -67,7 +69,6 @@ class RemotePeerForwarder implements PeerForwarder {
     private final Counter requestsSuccessfulCounter;
     private final Integer batchDelay;
     private final Integer failedForwardingRequestLocalWriteTimeout;
-    private final ExecutorService forwardingRequestExecutor;
     private final Integer forwardingBatchSize;
     private final Duration forwardingBatchTimeout;
     private final Integer pipelineWorkerThreads;
@@ -81,7 +82,6 @@ class RemotePeerForwarder implements PeerForwarder {
                         final PluginMetrics pluginMetrics,
                         final Integer batchDelay,
                         final Integer failedForwardingRequestLocalWriteTimeout,
-                        final ExecutorService forwardingRequestExecutor,
                         final Integer forwardingBatchSize,
                         final Duration forwardingBatchTimeout,
                         final Integer pipelineWorkerThreads) {
@@ -93,7 +93,6 @@ class RemotePeerForwarder implements PeerForwarder {
         this.identificationKeys = identificationKeys;
         this.batchDelay = batchDelay;
         this.failedForwardingRequestLocalWriteTimeout = failedForwardingRequestLocalWriteTimeout;
-        this.forwardingRequestExecutor = forwardingRequestExecutor;
         this.forwardingBatchSize = forwardingBatchSize;
         this.forwardingBatchTimeout = forwardingBatchTimeout;
         this.pipelineWorkerThreads = pipelineWorkerThreads;
@@ -127,11 +126,7 @@ class RemotePeerForwarder implements PeerForwarder {
             }
         }
 
-        for (final String destinationIp: peerBatchingQueueMap.keySet()) {
-            final List<Record<Event>> recordsFailedToForward = forwardRecordBatches(destinationIp);
-            recordsToProcessLocally.addAll(recordsFailedToForward);
-        }
-
+        forwardRecords();
         recordsActuallyProcessedLocallyCounter.increment(recordsToProcessLocally.size());
 
         return recordsToProcessLocally;
@@ -231,23 +226,48 @@ class RemotePeerForwarder implements PeerForwarder {
         return recordsFailedToBatch;
     }
 
-    private List<Record<Event>> forwardRecordBatches(final String destinationIp) {
-        final List<Record<Event>> recordsFailedToForward = new ArrayList<>();
+    private void forwardRecords() {
+        final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> futuresMap = peerBatchingQueueMap.keySet().stream()
+                .map(this::forwardRecordsForIp)
+                .flatMap(map -> map.entrySet().stream())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
-        List<Record<Event>> recordsToForward;
-        do {
-            recordsToForward = getRecordsToForward(destinationIp);
+        final CompletableFuture<Void> compositeFuture = CompletableFuture.allOf(futuresMap.keySet().toArray(CompletableFuture[]::new));
+        try {
+            compositeFuture.get();
+        } catch (final ExecutionException | InterruptedException e) {
+            LOG.debug("Caught exception getting results of composite forwarding future.", e);
+        }
+
+        futuresMap.forEach((key, value) -> {
+            AggregatedHttpResponse httpResponse;
             try {
-                submitForwardingRequest(recordsToForward, destinationIp);
+                httpResponse = key.get();
+            } catch (final ExecutionException | InterruptedException e) {
+                httpResponse = null;
+            }
+
+            processFailedRequestsLocally(httpResponse, value);
+        });
+    }
+
+    private Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> forwardRecordsForIp(final String destinationIp) {
+        final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> forwardingRequestsMap = new HashMap<>();
+
+        List<Record<Event>> recordsToForward = getRecordsToForward(destinationIp);
+        while (!recordsToForward.isEmpty()) {
+            try {
+                final CompletableFuture<AggregatedHttpResponse> responseFuture =
+                        peerForwarderClient.serializeRecordsAndSendHttpRequest(recordsToForward, destinationIp, pluginId, pipelineName);
+                forwardingRequestsMap.put(responseFuture, recordsToForward);
             } catch (final Exception e) {
                 LOG.warn("Unable to submit request for forwarding, processing locally.", e);
-                recordsFailedToForward.addAll(recordsToForward);
-                recordsFailedForwardingCounter.increment(recordsToForward.size());
-                requestsFailedCounter.increment();
+                processFailedRequestsLocally(null, recordsToForward);
             }
-        } while(!recordsToForward.isEmpty());
+            recordsToForward = getRecordsToForward(destinationIp);
+        }
 
-        return recordsFailedToForward;
+        return forwardingRequestsMap;
     }
 
     private List<Record<Event>> getRecordsToForward(final String destinationIp) {
@@ -270,24 +290,6 @@ class RemotePeerForwarder implements PeerForwarder {
 
         final boolean shouldFlushDueToTimeout = durationSinceLastFlush.compareTo(forwardingBatchTimeout) >= 0;
         return shouldFlushDueToTimeout || peerBatchingQueueMap.get(destinationIp).size() >= forwardingBatchSize;
-    }
-
-    private void submitForwardingRequest(final Collection<Record<Event>> records, final String destinationIp) {
-        if (records.isEmpty()) {
-            return;
-        }
-
-        forwardingRequestExecutor.submit(() -> {
-            AggregatedHttpResponse aggregatedHttpResponse;
-            try {
-                aggregatedHttpResponse = peerForwarderClient.serializeRecordsAndSendHttpRequest(records, destinationIp, pluginId, pipelineName);
-            } catch (final Exception ex) {
-                LOG.warn("Unable to send request to peer, processing locally.", ex);
-                aggregatedHttpResponse = null;
-            }
-
-            processFailedRequestsLocally(aggregatedHttpResponse, records);
-        });
     }
 
     void processFailedRequestsLocally(final AggregatedHttpResponse httpResponse, final Collection<Record<Event>> records) {
