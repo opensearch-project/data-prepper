@@ -32,12 +32,62 @@ public final class BulkRetryStrategy {
     public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
     public static final String DOCUMENTS_SUCCESS_FIRST_ATTEMPT = "documentsSuccessFirstAttempt";
     public static final String DOCUMENT_ERRORS = "documentErrors";
+    public static final String BULK_REQUEST_FAILED = "bulkRequestFailed";
+    public static final String BULK_REQUEST_NUMBER_OF_RETRIES = "bulkRequestNumberOfRetries";
+    public static final String BULK_BAD_REQUEST_ERRORS = "bulkBadRequestErrors";
+    public static final String BULK_REQUEST_NOT_ALLOWED_ERRORS = "bulkRequestNotAllowedErrors";
+    public static final String BULK_REQUEST_INVALID_INPUT_ERRORS = "bulkRequestInvalidInputErrors";
+    public static final String BULK_REQUEST_NOT_FOUND_ERRORS = "bulkRequestNotFoundErrors";
+    public static final String BULK_REQUEST_TIMEOUT_ERRORS = "bulkRequestTimeoutErrors";
+    public static final String BULK_REQUEST_SERVER_ERRORS = "bulkRequestServerErrors";
 
     private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
             Arrays.asList(
                     RestStatus.BAD_REQUEST.getStatus(),
                     RestStatus.NOT_FOUND.getStatus(),
                     RestStatus.CONFLICT.getStatus()
+            ));
+
+    private static final Set<Integer> BAD_REQUEST_ERRORS = new HashSet<>(
+            Arrays.asList(
+                    RestStatus.BAD_REQUEST.getStatus(),
+                    RestStatus.EXPECTATION_FAILED.getStatus(),
+                    RestStatus.UNPROCESSABLE_ENTITY.getStatus(),
+                    RestStatus.FAILED_DEPENDENCY.getStatus(),
+                    RestStatus.NOT_ACCEPTABLE.getStatus()
+            ));
+
+    private static final Set<Integer> NOT_ALLOWED_ERRORS = new HashSet<>(
+            Arrays.asList(
+                    RestStatus.UNAUTHORIZED.getStatus(),
+                    RestStatus.FORBIDDEN.getStatus(),
+                    RestStatus.PAYMENT_REQUIRED.getStatus(),
+                    RestStatus.METHOD_NOT_ALLOWED.getStatus(),
+                    RestStatus.PROXY_AUTHENTICATION.getStatus(),
+                    RestStatus.LOCKED.getStatus(),
+                    RestStatus.TOO_MANY_REQUESTS.getStatus()
+            ));
+
+    private static final Set<Integer> INVALID_INPUT_ERRORS = new HashSet<>(
+            Arrays.asList(
+                    RestStatus.REQUEST_ENTITY_TOO_LARGE.getStatus(),
+                    RestStatus.REQUEST_URI_TOO_LONG.getStatus(),
+                    RestStatus.REQUESTED_RANGE_NOT_SATISFIED.getStatus(),
+                    RestStatus.LENGTH_REQUIRED.getStatus(),
+                    RestStatus.PRECONDITION_FAILED.getStatus(),
+                    RestStatus.UNSUPPORTED_MEDIA_TYPE.getStatus(),
+                    RestStatus.CONFLICT.getStatus()
+            ));
+
+    private static final Set<Integer> NOT_FOUND_ERRORS = new HashSet<>(
+            Arrays.asList(
+                    RestStatus.NOT_FOUND.getStatus(),
+                    RestStatus.GONE.getStatus()
+            ));
+
+    private static final Set<Integer> TIMEOUT_ERROR = new HashSet<>(
+            Arrays.asList(
+                    RestStatus.REQUEST_TIMEOUT.getStatus()
             ));
 
     private final RequestFunction<AccumulatingBulkRequest<BulkOperation, BulkRequest>, BulkResponse> requestFunction;
@@ -48,6 +98,14 @@ public final class BulkRetryStrategy {
     private final Counter sentDocumentsCounter;
     private final Counter sentDocumentsOnFirstAttemptCounter;
     private final Counter documentErrorsCounter;
+    private final Counter bulkRequestFailedCounter;
+    private final Counter bulkRequestNumberOfRetries;
+    private final Counter bulkRequestBadErrors;
+    private final Counter bulkRequestNotAllowedErrors;
+    private final Counter bulkRequestInvalidInputErrors;
+    private final Counter bulkRequestNotFoundErrors;
+    private final Counter bulkRequestTimeoutErrors;
+    private final Counter bulkRequestServerErrors;
 
     public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperation, BulkRequest>, BulkResponse> requestFunction,
                              final BiConsumer<BulkOperation, Throwable> logFailure,
@@ -61,6 +119,14 @@ public final class BulkRetryStrategy {
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
         documentErrorsCounter = pluginMetrics.counter(DOCUMENT_ERRORS);
+        bulkRequestFailedCounter = pluginMetrics.counter(BULK_REQUEST_FAILED);
+        bulkRequestNumberOfRetries = pluginMetrics.counter(BULK_REQUEST_NUMBER_OF_RETRIES);
+        bulkRequestBadErrors = pluginMetrics.counter(BULK_BAD_REQUEST_ERRORS);
+        bulkRequestNotAllowedErrors = pluginMetrics.counter(BULK_REQUEST_NOT_ALLOWED_ERRORS);
+        bulkRequestInvalidInputErrors = pluginMetrics.counter(BULK_REQUEST_INVALID_INPUT_ERRORS);
+        bulkRequestNotFoundErrors = pluginMetrics.counter(BULK_REQUEST_NOT_FOUND_ERRORS);
+        bulkRequestTimeoutErrors = pluginMetrics.counter(BULK_REQUEST_TIMEOUT_ERRORS);
+        bulkRequestServerErrors = pluginMetrics.counter(BULK_REQUEST_SERVER_ERRORS);
     }
 
     public void execute(final AccumulatingBulkRequest bulkRequest) throws InterruptedException {
@@ -96,10 +162,29 @@ public final class BulkRetryStrategy {
             try {
                 bulkResponse = requestFunction.apply(bulkRequestForRetry);
             } catch (final Exception e) {
+                if (e instanceof OpenSearchException) {
+                    int status = ((OpenSearchException) e).status().getStatus();
+                    if (NOT_ALLOWED_ERRORS.contains(status)) {
+                        bulkRequestNotAllowedErrors.increment();
+                    } else if (INVALID_INPUT_ERRORS.contains(status)) {
+                        bulkRequestInvalidInputErrors.increment();
+                    } else if (NOT_FOUND_ERRORS.contains(status)) {
+                        bulkRequestNotFoundErrors.increment();
+                    } else if (status == RestStatus.REQUEST_TIMEOUT.getStatus()) {
+                        bulkRequestTimeoutErrors.increment();
+                    } else if (status >= RestStatus.INTERNAL_SERVER_ERROR.getStatus()) {
+                        bulkRequestServerErrors.increment();
+                    } else { // Default to Bad Requests
+                        bulkRequestBadErrors.increment();
+                    }
+                }
+
                 if (canRetry(e)) {
                     handleRetry(bulkRequestForRetry, null, backOffUtils, false);
+                    bulkRequestNumberOfRetries.increment();
                 } else {
                     handleFailures(bulkRequestForRetry, e);
+                    bulkRequestFailedCounter.increment();
                 }
 
                 return;
