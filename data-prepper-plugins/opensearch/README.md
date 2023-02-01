@@ -185,6 +185,14 @@ Besides common metrics in [AbstractSink](https://github.com/opensearch-project/d
 - `documentsSuccess`: measures number of documents successfully sent to ES by bulk requests including retries.
 - `documentsSuccessFirstAttempt`: measures number of documents successfully sent to ES by bulk requests on first attempt.
 - `documentErrors`: measures number of documents failed to be sent by bulk requests.
+- `bulkRequestFailed`: measures number of bulk requests failed at the request level.
+- `bulkRequestNumberOfRetries`: measures number of times bulk requests are retried.
+- `bulkBadRequestErrors`: measures number of errors due to bad bulk requests. `RestStatus` values of `BAD_REQUEST`, `EXPECTATION_FAILED`, `UNPROCESSABLE_ENTITY`, `FAILED_DEPENDENCY`, and `NOT_ACCEPTABLE` are mapped to this errors counter.
+- `bulkRequestNotAllowedErrors`: measures number of errors due to requests that are not allowed. `RestStatus` values of `UNAUTHORIZED`, `FORBIDDEN`, `PAYMENT_REQUIRED`, `METHOD_NOT_ALLOWED`, `PROXY_AUTHENTICATION`, `LOCKED`, and `TOO_MANY_REQUESTS` are mapped to this errors counter.
+- `bulkRequestInvalidInputErrors`: measures number of errors due to requests with invalid input. `RestStatus` values of `REQUEST_ENTITY_TOO_LARGE`, `REQUEST_URI_TOO_LONG`, `REQUESTED_RANGE_NOT_SATISFIED`, `LENGTH_REQUIRED`, `PRECONDITION_FAILED`, `UNSUPPORTED_MEDIA_TYPE`, and `CONFLICT` are mapped to this errors counter.
+- `bulkRequestNotFoundErrors`: measures number of errors due to resource/URI not found. `RestStatus` values of `NOT_FOUND` and `GONE` are mapped to this errors counter.
+- `bulkRequestTimeoutErrors`: measures number of requests failed with timeout error. `RestStatus` value of `REQUEST_TIMEOUT` is mapped to this errors counter.
+- `bulkRequestServerErrors`: measures the number of requests failed with 5xx errors. `RestStatus` value of 500-599 are mapped to this errors counter.
 
 ### Distribution Summary
 - `bulkRequestSizeBytes`: measures the distribution of bulk request's payload sizes in bytes.
