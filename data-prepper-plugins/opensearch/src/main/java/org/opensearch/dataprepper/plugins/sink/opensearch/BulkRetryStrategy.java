@@ -32,13 +32,14 @@ public final class BulkRetryStrategy {
     public static final String DOCUMENTS_SUCCESS = "documentsSuccess";
     public static final String DOCUMENTS_SUCCESS_FIRST_ATTEMPT = "documentsSuccessFirstAttempt";
     public static final String DOCUMENT_ERRORS = "documentErrors";
-    public static final String DOCUMENT_NUMBER_OF_RETRIES = "documentNumberOfRetries";
-    public static final String DOCUMENT_BAD_REQUEST_ERRORS = "documentBadRequestErrors";
-    public static final String DOCUMENT_NOT_ALLOWED_ERRORS = "documentNotAllowedErrors";
-    public static final String DOCUMENT_INVALID_INPUT_ERRORS = "documentInvalidInputErrors";
-    public static final String DOCUMENT_NOT_FOUND_ERRORS = "documentNotFoundErrors";
-    public static final String DOCUMENT_TIMEOUT_ERRORS = "documentTimeoutErrors";
-    public static final String DOCUMENT_SERVER_ERRORS = "documentServerErrors";
+    public static final String BULK_REQUEST_FAILED = "bulkRequestFailed";
+    public static final String BULK_REQUEST_NUMBER_OF_RETRIES = "bulkRequestNumberOfRetries";
+    public static final String BULK_BAD_REQUEST_ERRORS = "bulkBadRequestErrors";
+    public static final String BULK_REQUEST_NOT_ALLOWED_ERRORS = "bulkRequestNotAllowedErrors";
+    public static final String BULK_REQUEST_INVALID_INPUT_ERRORS = "bulkRequestInvalidInputErrors";
+    public static final String BULK_REQUEST_NOT_FOUND_ERRORS = "bulkRequestNotFoundErrors";
+    public static final String BULK_REQUEST_TIMEOUT_ERRORS = "bulkRequestTimeoutErrors";
+    public static final String BULK_REQUEST_SERVER_ERRORS = "bulkRequestServerErrors";
 
     private static final Set<Integer> NON_RETRY_STATUS = new HashSet<>(
             Arrays.asList(
@@ -97,13 +98,14 @@ public final class BulkRetryStrategy {
     private final Counter sentDocumentsCounter;
     private final Counter sentDocumentsOnFirstAttemptCounter;
     private final Counter documentErrorsCounter;
-    private final Counter documentNumberOfRetries;
-    private final Counter documentBadRequestErrors;
-    private final Counter documentNotAllowedErrors;
-    private final Counter documentInvalidInputErrors;
-    private final Counter documentNotFoundErrors;
-    private final Counter documentTimeoutErrors;
-    private final Counter documentServerErrors;
+    private final Counter bulkRequestFailedCounter;
+    private final Counter bulkRequestNumberOfRetries;
+    private final Counter bulkRequestBadErrors;
+    private final Counter bulkRequestNotAllowedErrors;
+    private final Counter bulkRequestInvalidInputErrors;
+    private final Counter bulkRequestNotFoundErrors;
+    private final Counter bulkRequestTimeoutErrors;
+    private final Counter bulkRequestServerErrors;
 
     public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperation, BulkRequest>, BulkResponse> requestFunction,
                              final BiConsumer<BulkOperation, Throwable> logFailure,
@@ -117,13 +119,14 @@ public final class BulkRetryStrategy {
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
         documentErrorsCounter = pluginMetrics.counter(DOCUMENT_ERRORS);
-        documentNumberOfRetries = pluginMetrics.counter(DOCUMENT_NUMBER_OF_RETRIES);
-        documentBadRequestErrors = pluginMetrics.counter(DOCUMENT_BAD_REQUEST_ERRORS);
-        documentNotAllowedErrors = pluginMetrics.counter(DOCUMENT_NOT_ALLOWED_ERRORS);
-        documentInvalidInputErrors = pluginMetrics.counter(DOCUMENT_INVALID_INPUT_ERRORS);
-        documentNotFoundErrors = pluginMetrics.counter(DOCUMENT_NOT_FOUND_ERRORS);
-        documentTimeoutErrors = pluginMetrics.counter(DOCUMENT_TIMEOUT_ERRORS);
-        documentServerErrors = pluginMetrics.counter(DOCUMENT_SERVER_ERRORS);
+        bulkRequestFailedCounter = pluginMetrics.counter(BULK_REQUEST_ERRORS);
+        bulkRequestNumberOfRetries = pluginMetrics.counter(BULK_REQUEST_NUMBER_OF_RETRIES);
+        bulkRequestBadErrors = pluginMetrics.counter(BULK_BAD_REQUEST_ERRORS);
+        bulkRequestNotAllowedErrors = pluginMetrics.counter(BULK_REQUEST_NOT_ALLOWED_ERRORS);
+        bulkRequestInvalidInputErrors = pluginMetrics.counter(BULK_REQUEST_INVALID_INPUT_ERRORS);
+        bulkRequestNotFoundErrors = pluginMetrics.counter(BULK_REQUEST_NOT_FOUND_ERRORS);
+        bulkRequestTimeoutErrors = pluginMetrics.counter(BULK_REQUEST_TIMEOUT_ERRORS);
+        bulkRequestServerErrors = pluginMetrics.counter(BULK_REQUEST_SERVER_ERRORS);
     }
 
     public void execute(final AccumulatingBulkRequest bulkRequest) throws InterruptedException {
@@ -162,23 +165,23 @@ public final class BulkRetryStrategy {
                 if (e instanceof OpenSearchException) {
                     int status = ((OpenSearchException) e).status().getStatus();
                     if (NOT_ALLOWED_ERRORS.contains(status)) {
-                        documentNotAllowedErrors.increment();
+                        bulkRequestNotAllowedErrors.increment();
                     } else if (INVALID_INPUT_ERRORS.contains(status)) {
-                        documentInvalidInputErrors.increment();
+                        bulkRequestInvalidInputErrors.increment();
                     } else if (NOT_FOUND_ERRORS.contains(status)) {
-                        documentNotFoundErrors.increment();
+                        bulkRequestNotFoundErrors.increment();
                     } else if (status == RestStatus.REQUEST_TIMEOUT.getStatus()) {
-                        documentTimeoutErrors.increment();
-                    } else if (status >= RestStatus.INTERNAL_SERVER_ERROR.getStatus() && status <= RestStatus.INSUFFICIENT_STORAGE.getStatus()) {
-                        documentServerErrors.increment();
+                        bulkRequestTimeoutErrors.increment();
+                    } else if (status >= RestStatus.INTERNAL_SERVER_ERROR.getStatus()) {
+                        bulkRequestServerErrors.increment();
                     } else { // Default to Bad Requests
-                        documentBadRequestErrors.increment();
+                        bulkRequestBadErrors.increment();
                     }
                 }
 
                 if (canRetry(e)) {
                     handleRetry(bulkRequestForRetry, null, backOffUtils, false);
-                    documentNumberOfRetries.increment();
+                    bulkRequestNumberOfRetries.increment();
                 } else {
                     handleFailures(bulkRequestForRetry, e);
                 }
@@ -250,7 +253,7 @@ public final class BulkRetryStrategy {
     }
 
     private void handleFailures(final AccumulatingBulkRequest<BulkOperation, BulkRequest> accumulatingBulkRequest, final Throwable failure) {
-        documentErrorsCounter.increment(accumulatingBulkRequest.getOperationsCount());
+        bulkRequestFailedCounter.increment(accumulatingBulkRequest.getOperationsCount());
         for (final BulkOperation bulkOperation: accumulatingBulkRequest.getOperations()) {
             logFailure.accept(bulkOperation, failure);
         }
