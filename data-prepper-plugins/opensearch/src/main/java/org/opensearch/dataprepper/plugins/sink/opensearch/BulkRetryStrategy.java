@@ -119,7 +119,7 @@ public final class BulkRetryStrategy {
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
         documentErrorsCounter = pluginMetrics.counter(DOCUMENT_ERRORS);
-        bulkRequestFailedCounter = pluginMetrics.counter(BULK_REQUEST_ERRORS);
+        bulkRequestFailedCounter = pluginMetrics.counter(BULK_REQUEST_FAILED);
         bulkRequestNumberOfRetries = pluginMetrics.counter(BULK_REQUEST_NUMBER_OF_RETRIES);
         bulkRequestBadErrors = pluginMetrics.counter(BULK_BAD_REQUEST_ERRORS);
         bulkRequestNotAllowedErrors = pluginMetrics.counter(BULK_REQUEST_NOT_ALLOWED_ERRORS);
@@ -184,6 +184,7 @@ public final class BulkRetryStrategy {
                     bulkRequestNumberOfRetries.increment();
                 } else {
                     handleFailures(bulkRequestForRetry, e);
+                    bulkRequestFailedCounter.increment();
                 }
 
                 return;
@@ -253,7 +254,7 @@ public final class BulkRetryStrategy {
     }
 
     private void handleFailures(final AccumulatingBulkRequest<BulkOperation, BulkRequest> accumulatingBulkRequest, final Throwable failure) {
-        bulkRequestFailedCounter.increment(accumulatingBulkRequest.getOperationsCount());
+        documentErrorsCounter.increment(accumulatingBulkRequest.getOperationsCount());
         for (final BulkOperation bulkOperation: accumulatingBulkRequest.getOperations()) {
             logFailure.accept(bulkOperation, failure);
         }
