@@ -51,7 +51,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
-  public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "DynamicIndexDroppedEvents";
+  public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
 
@@ -80,7 +80,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
-    DynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
+    dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
@@ -140,7 +140,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName));
       } catch (IOException e) {
-          DynamicIndexDroppedEvents.increment();
+          dynamicIndexDroppedEvents.increment();
           continue;
       }
 
