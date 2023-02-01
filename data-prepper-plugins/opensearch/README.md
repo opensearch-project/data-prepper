@@ -186,7 +186,6 @@ Besides common metrics in [AbstractSink](https://github.com/opensearch-project/d
 - `documentsSuccessFirstAttempt`: measures number of documents successfully sent to ES by bulk requests on first attempt.
 - `documentErrors`: measures number of documents failed to be sent by bulk requests.
 - `documentNumberOfRetries`: measures number of times bulk requests are retried.
-- `documentNumberOfFailures`: measures number of times bulk requests are failed after retries.
 - `documentBadRequestErrors`: measures number of errors due to bad bulk requests. `RestStatus` values of `BAD_REQUEST`, `EXPECTATION_FAILED`, `UNPROCESSABLE_ENTITY`, `FAILED_DEPENDENCY`, and `NOT_ACCEPTABLE` are mapped to this errors counter.
 - `documentNotAllowedErrors`: measures number of errors due to requests that are not allowed. `RestStatus` values of `UNAUTHORIZED`, `FORBIDDEN`, `PAYMENT_REQUIRED`, `METHOD_NOT_ALLOWED`, `PROXY_AUTHENTICATION`, `LOCKED`, and `TOO_MANY_REQUESTS` are mapped to this errors counter.
 - `documentInvalidInputErrors`: measures number of errors due to requests with invalid input. `RestStatus` values of `REQUEST_ENTITY_TOO_LARGE`, `REQUEST_URI_TOO_LONG`, `REQUESTED_RANGE_NOT_SATISFIED`, `LENGTH_REQUIRED`, `PRECONDITION_FAILED`, `UNSUPPORTED_MEDIA_TYPE`, and `CONFLICT` are mapped to this errors counter.
