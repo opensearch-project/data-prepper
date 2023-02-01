@@ -96,9 +96,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         doInitialize();
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink " + e.getMessage());
-    } catch (Exception e) {
+    } catch (OpenSearchSinkException e) {
         this.shutdown();
         throw new RuntimeException(e.getMessage(), e);
+    } catch (Exception e) {
+        this.shutdown();
+        throw e;
     }
   }
 
