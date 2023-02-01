@@ -137,7 +137,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName));
       } catch (IOException e) {
-	  continue;
+          continue;
       }
 
       BulkOperation bulkOperation;
