@@ -345,6 +345,44 @@ class RemotePeerForwarderTest {
     }
 
     @Test
+    void forwardRecords_should_process_data_locally_if_forwarding_future_is_exceptional() {
+        final AggregatedHttpResponse aggregatedHttpResponse = mock(AggregatedHttpResponse.class);
+        when(aggregatedHttpResponse.status()).thenReturn(HttpStatus.OK);
+        when(peerForwarderClient.serializeRecordsAndSendHttpRequest(anyCollection(), anyString(), anyString(), anyString()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException()))
+                .thenReturn(CompletableFuture.completedFuture(aggregatedHttpResponse));
+
+        final List<String> testIps = List.of("8.8.8.8", "127.0.0.1");
+        lenient().when(hashRing.getServerIp(List.of("value1", "value1"))).thenReturn(Optional.of(testIps.get(0)));
+        lenient().when(hashRing.getServerIp(List.of("value2", "value2"))).thenReturn(Optional.of(testIps.get(1)));
+
+        final RemotePeerForwarder peerForwarder = createObjectUnderTest();
+
+        final int batches = 2;
+        final int recordsSetsToGenerate = FORWARDING_BATCH_SIZE * batches;
+        final Collection<Record<Event>> inputRecords = generateSetsofBatchRecords(recordsSetsToGenerate, 2);
+
+        final Collection<Record<Event>> records = peerForwarder.forwardRecords(inputRecords);
+        verify(peerForwarderClient, times(batches)).serializeRecordsAndSendHttpRequest(anyList(), anyString(), anyString(), anyString());
+
+        assertThat(records, notNullValue());
+        assertThat(records.size(), equalTo(recordsSetsToGenerate));
+
+        final Collection<Record<Event>> receivedRecords = peerForwarder.receiveRecords();
+        assertThat(receivedRecords, notNullValue());
+        assertThat(receivedRecords.size(), equalTo(FORWARDING_BATCH_SIZE));
+
+        verify(recordsToBeProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsActuallyProcessedLocallyCounter).increment(recordsSetsToGenerate);
+        verify(recordsActuallyProcessedLocallyCounter).increment(FORWARDING_BATCH_SIZE);
+        verify(recordsToBeForwardedCounter).increment(recordsSetsToGenerate);
+        verify(requestsFailedCounter).increment();
+        verify(recordsFailedForwardingCounter).increment(FORWARDING_BATCH_SIZE);
+        verify(requestsSuccessfulCounter).increment();
+        verify(recordsSuccessfullyForwardedCounter).increment(FORWARDING_BATCH_SIZE);
+    }
+
+    @Test
     void test_receiveRecords_should_return_record_from_buffer() throws Exception {
         final Collection<Record<Event>> testRecords = generateBatchRecords(3);
         peerForwarderReceiveBuffer.writeAll(testRecords, TEST_TIMEOUT_IN_MILLIS);
