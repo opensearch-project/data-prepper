@@ -126,7 +126,7 @@ class RemotePeerForwarder implements PeerForwarder {
             }
         }
 
-        forwardRecords();
+        forwardBatchedRecords();
         recordsActuallyProcessedLocallyCounter.increment(recordsToProcessLocally.size());
 
         return recordsToProcessLocally;
@@ -226,7 +226,7 @@ class RemotePeerForwarder implements PeerForwarder {
         return recordsFailedToBatch;
     }
 
-    private void forwardRecords() {
+    private void forwardBatchedRecords() {
         final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> futuresMap = peerBatchingQueueMap.keySet().stream()
                 .map(this::forwardRecordsForIp)
                 .flatMap(map -> map.entrySet().stream())
