@@ -21,7 +21,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation group: 'com.google.guava', name: 'guava', version: '31.1-jre'
-    testImplementation 'org.assertj:assertj-core:3.23.1'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
 }
 
