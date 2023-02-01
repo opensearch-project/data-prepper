@@ -71,7 +71,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
-  private final Counter DynamicIndexDroppedEvents;
+  private final Counter dynamicIndexDroppedEvents;
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
