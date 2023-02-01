@@ -27,4 +27,14 @@ public interface Sink<T extends Record<?>> {
      */
     void shutdown();
 
+    /**
+     * Initialize Sink
+     */
+    void initialize();
+
+    /**
+     * Indicates if Sink is ready to do output
+     */
+    boolean isReady();
+
 }

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import static org.mockito.Mockito.lenient;
 
 import java.lang.reflect.Field;
 import java.util.HashMap;
@@ -48,6 +49,7 @@ public class DataPrepperTests {
     public static void beforeAll() {
         parseConfigurationFixture = new HashMap<>();
         parseConfigurationFixture.put("testKey", pipeline);
+        when(pipeline.isReady()).thenReturn(true);
 
         when(pipelineParser.parseConfiguration())
                 .thenReturn(parseConfigurationFixture);
@@ -108,6 +110,7 @@ public class DataPrepperTests {
     @Test
     public void testDataPrepperShutdownPipeline() {
         final Pipeline randomPipeline = mock(Pipeline.class);
+        lenient().when(randomPipeline.isReady()).thenReturn(true);
         parseConfigurationFixture.put("Random Pipeline", randomPipeline);
         dataPrepper.shutdown("Random Pipeline");
 

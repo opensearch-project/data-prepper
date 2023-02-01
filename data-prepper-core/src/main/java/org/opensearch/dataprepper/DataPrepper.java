@@ -18,6 +18,9 @@ import org.springframework.context.annotation.Lazy;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Iterator;
 
 /**
  * DataPrepper is the entry point into the execution engine. The instance can be used to trigger execution via
@@ -30,6 +33,7 @@ public class DataPrepper {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepper.class);
     private static final String DATAPREPPER_SERVICE_NAME = "DATAPREPPER_SERVICE_NAME";
     private static final String DEFAULT_SERVICE_NAME = "dataprepper";
+    private static final int MAX_RETRIES = 100;
 
     private final PluginFactory pluginFactory;
     private final PeerForwarderServer peerForwarderServer;
@@ -71,6 +75,28 @@ public class DataPrepper {
      */
     public boolean execute() {
         peerForwarderServer.start();
+        Set<String> waitingPipelineNames = transformationPipelines.keySet();
+        int numRetries = 0;
+        while (waitingPipelineNames.size() > 0 && numRetries++ < MAX_RETRIES) {
+            Set<String> uninitializedPipelines = new HashSet<String>();
+            Iterator pipelineIter = waitingPipelineNames.iterator();
+            while (pipelineIter.hasNext()) {
+                String pipelineName = (String)pipelineIter.next();
+                if (!transformationPipelines.get(pipelineName).isReady()) {
+                    uninitializedPipelines.add(pipelineName);
+                }
+            }
+            waitingPipelineNames = uninitializedPipelines;
+            if (waitingPipelineNames.size() > 0) {
+                try {
+                    Thread.sleep(5000);
+                } catch (Exception e){}
+            }
+        }
+        if (waitingPipelineNames.size() > 0) {
+            LOG.info("One or more Pipelines are not ready even after {} retries.", numRetries);
+            throw new RuntimeException("Failed to start pipelines");
+        }
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.execute();
         });
