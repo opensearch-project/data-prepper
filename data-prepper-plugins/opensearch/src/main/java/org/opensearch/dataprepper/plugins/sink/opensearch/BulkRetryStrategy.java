@@ -33,7 +33,6 @@ public final class BulkRetryStrategy {
     public static final String DOCUMENTS_SUCCESS_FIRST_ATTEMPT = "documentsSuccessFirstAttempt";
     public static final String DOCUMENT_ERRORS = "documentErrors";
     public static final String DOCUMENT_NUMBER_OF_RETRIES = "documentNumberOfRetries";
-    public static final String DOCUMENT_NUMBER_OF_FAILURES = "documentNumberOfFailures";
     public static final String DOCUMENT_BAD_REQUEST_ERRORS = "documentBadRequestErrors";
     public static final String DOCUMENT_NOT_ALLOWED_ERRORS = "documentNotAllowedErrors";
     public static final String DOCUMENT_INVALID_INPUT_ERRORS = "documentInvalidInputErrors";
@@ -99,7 +98,6 @@ public final class BulkRetryStrategy {
     private final Counter sentDocumentsOnFirstAttemptCounter;
     private final Counter documentErrorsCounter;
     private final Counter documentNumberOfRetries;
-    private final Counter documentNumberOfFailures;
     private final Counter documentBadRequestErrors;
     private final Counter documentNotAllowedErrors;
     private final Counter documentInvalidInputErrors;
@@ -120,7 +118,6 @@ public final class BulkRetryStrategy {
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
         documentErrorsCounter = pluginMetrics.counter(DOCUMENT_ERRORS);
         documentNumberOfRetries = pluginMetrics.counter(DOCUMENT_NUMBER_OF_RETRIES);
-        documentNumberOfFailures = pluginMetrics.counter(DOCUMENT_NUMBER_OF_FAILURES);
         documentBadRequestErrors = pluginMetrics.counter(DOCUMENT_BAD_REQUEST_ERRORS);
         documentNotAllowedErrors = pluginMetrics.counter(DOCUMENT_NOT_ALLOWED_ERRORS);
         documentInvalidInputErrors = pluginMetrics.counter(DOCUMENT_INVALID_INPUT_ERRORS);
@@ -162,19 +159,21 @@ public final class BulkRetryStrategy {
             try {
                 bulkResponse = requestFunction.apply(bulkRequestForRetry);
             } catch (final Exception e) {
-                int status = ((OpenSearchException) e).status().getStatus();
-                if (NOT_ALLOWED_ERRORS.contains(status)) {
-                    documentNotAllowedErrors.increment();
-                } else if (INVALID_INPUT_ERRORS.contains(status)) {
-                    documentInvalidInputErrors.increment();
-                } else if (NOT_FOUND_ERRORS.contains(status)) {
-                    documentNotFoundErrors.increment();
-                } else if (status == RestStatus.REQUEST_TIMEOUT.getStatus()) {
-                    documentTimeoutErrors.increment();
-                } else if (status >= RestStatus.INTERNAL_SERVER_ERROR.getStatus() && status <= RestStatus.INSUFFICIENT_STORAGE.getStatus()) {
-                    documentServerErrors.increment();
-                } else { // Default to Bad Requests
-                    documentBadRequestErrors.increment();
+                if (e instanceof OpenSearchException) {
+                    int status = ((OpenSearchException) e).status().getStatus();
+                    if (NOT_ALLOWED_ERRORS.contains(status)) {
+                        documentNotAllowedErrors.increment();
+                    } else if (INVALID_INPUT_ERRORS.contains(status)) {
+                        documentInvalidInputErrors.increment();
+                    } else if (NOT_FOUND_ERRORS.contains(status)) {
+                        documentNotFoundErrors.increment();
+                    } else if (status == RestStatus.REQUEST_TIMEOUT.getStatus()) {
+                        documentTimeoutErrors.increment();
+                    } else if (status >= RestStatus.INTERNAL_SERVER_ERROR.getStatus() && status <= RestStatus.INSUFFICIENT_STORAGE.getStatus()) {
+                        documentServerErrors.increment();
+                    } else { // Default to Bad Requests
+                        documentBadRequestErrors.increment();
+                    }
                 }
 
                 if (canRetry(e)) {
@@ -182,7 +181,6 @@ public final class BulkRetryStrategy {
                     documentNumberOfRetries.increment();
                 } else {
                     handleFailures(bulkRequestForRetry, e);
-                    documentNumberOfFailures.increment();
                 }
 
                 return;
