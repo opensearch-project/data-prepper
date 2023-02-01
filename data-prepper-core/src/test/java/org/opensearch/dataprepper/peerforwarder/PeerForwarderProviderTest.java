@@ -67,7 +67,6 @@ class PeerForwarderProviderTest {
         lenient().when(peerForwarderConfiguration.getBufferSize()).thenReturn(512);
         lenient().when(peerForwarderConfiguration.getBatchSize()).thenReturn(48);
         lenient().when(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout()).thenReturn(500);
-        lenient().when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(8);
         when(peerForwarderConfiguration.getDiscoveryMode()).thenReturn(DiscoveryMode.LOCAL_NODE);
     }
 

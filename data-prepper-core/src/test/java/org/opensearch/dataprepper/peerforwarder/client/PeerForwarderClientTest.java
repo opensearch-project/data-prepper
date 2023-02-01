@@ -36,6 +36,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.IOException;
@@ -47,6 +48,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -78,6 +80,8 @@ class PeerForwarderClientTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
+    private PeerForwarderConfiguration peerForwarderConfiguration;
+    @Mock
     private PeerClientPool peerClientPool;
 
     @Mock
@@ -104,11 +108,12 @@ class PeerForwarderClientTest {
     }
 
     private PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
-        return new PeerForwarderClient(peerForwarderClientFactory, objectMapper, pluginMetrics);
+        when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(200);
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
     }
 
     @Test
-    void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return() {
+    void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return() throws ExecutionException, InterruptedException {
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
 
         final HttpServer server = createServer(2022);
@@ -121,9 +126,10 @@ class PeerForwarderClientTest {
 
         final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
 
-        final AggregatedHttpResponse aggregatedHttpResponse =
+        final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseFuture =
                 peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(),
                 TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
+        final AggregatedHttpResponse aggregatedHttpResponse = aggregatedHttpResponseFuture.get();
 
         assertThat(aggregatedHttpResponse, notNullValue());
         assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
@@ -151,7 +157,7 @@ class PeerForwarderClientTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 3})
-    void test_serializeRecordsAndSendHttpRequest_should_only_call_setPeerClientPool_once_even_with_multiple_calls(final int requestCount) {
+    void test_serializeRecordsAndSendHttpRequest_should_only_call_setPeerClientPool_once_even_with_multiple_calls(final int requestCount) throws ExecutionException, InterruptedException {
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
 
         final WebClient webClient = mock(WebClient.class);
@@ -162,8 +168,10 @@ class PeerForwarderClientTest {
         final Collection<Record<Event>> records = generateBatchRecords(1);
 
         for (int i = 0; i < requestCount; i++) {
-            final AggregatedHttpResponse aggregatedHttpResponse =
-                    peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS, TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
+            final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseFuture =
+                    peerForwarderClient.serializeRecordsAndSendHttpRequest(records, TEST_ADDRESS,
+                            TEST_PLUGIN_ID, TEST_PIPELINE_NAME);
+            final AggregatedHttpResponse aggregatedHttpResponse = aggregatedHttpResponseFuture.get();
             assertThat(aggregatedHttpResponse, notNullValue());
             assertThat(aggregatedHttpResponse, instanceOf(AggregatedHttpResponse.class));
             assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
