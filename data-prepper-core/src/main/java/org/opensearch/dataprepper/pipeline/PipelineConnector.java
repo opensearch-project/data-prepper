@@ -55,6 +55,15 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     }
 
     @Override
+    public void initialize() {
+    }
+
+    @Override
+    public boolean isReady() {
+        return true;
+    }
+
+    @Override
     public void output(final Collection<T> records) {
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {

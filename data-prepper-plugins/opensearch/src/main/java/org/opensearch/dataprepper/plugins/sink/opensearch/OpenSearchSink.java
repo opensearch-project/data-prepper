@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -45,6 +47,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
@@ -70,6 +73,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String routingField;
   private final String action;
   private String configuredIndexAlias;
+  private final ReentrantLock lock;
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
@@ -77,6 +81,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
+  private volatile boolean initialized;
 
   public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
@@ -92,16 +97,28 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory();
+    this.initialized = false;
+    this.lock = new ReentrantLock(true);
+  }
 
+  @Override
+  public void doInitialize() throws IOException {
     try {
-      initialize();
-    } catch (final IOException e) {
-      this.shutdown();
-      throw new RuntimeException(e.getMessage(), e);
+        doInitializeInternal();
+    } catch (IOException e) {
+        LOG.warn("Failed to initialize OpenSearch sink " + e.getMessage());
+    } catch (InvalidPluginConfigurationException e) {
+        this.shutdown();
+        throw new RuntimeException(e.getMessage(), e);
+    } catch (Exception e) {
+        if (!BulkRetryStrategy.canRetry(e)) {
+            this.shutdown();
+            throw e;
+        }
     }
   }
 
-  public void initialize() throws IOException {
+  private void doInitializeInternal() throws IOException {
     LOG.info("Initializing OpenSearch sink");
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
@@ -120,9 +137,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             this::logFailure,
             pluginMetrics,
             bulkRequestSupplier);
-    LOG.info("Initialized OpenSearch sink");
 
     objectMapper = new ObjectMapper();
+    this.initialized = true;
+    LOG.info("Initialized OpenSearch sink");
+  }
+
+  @Override
+  public boolean isReady() {
+    return initialized;
   }
 
   @Override
@@ -228,6 +251,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   @Override
   public void shutdown() {
+    super.shutdown();
     // Close the client. This closes the low-level client which will close it for both high-level clients.
     if (restHighLevelClient != null) {
       try {

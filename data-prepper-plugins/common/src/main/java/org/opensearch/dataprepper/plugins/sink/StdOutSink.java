@@ -50,6 +50,14 @@ public class StdOutSink implements Sink<Record<Object>> {
 
     @Override
     public void shutdown() {
+    }
 
+    @Override
+    public void initialize() {
+    }
+
+    @Override
+    public boolean isReady() {
+        return true;
     }
 }
