@@ -80,7 +80,7 @@ public final class BulkRetryStrategy {
         return false;
     }
 
-    public boolean canRetry(final Exception e) {
+    public static boolean canRetry(final Exception e) {
         return (e instanceof IOException ||
                 (e instanceof OpenSearchException &&
                         !NON_RETRY_STATUS.contains(((OpenSearchException) e).status().getStatus())));

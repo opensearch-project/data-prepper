@@ -100,8 +100,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         this.shutdown();
         throw new RuntimeException(e.getMessage(), e);
     } catch (Exception e) {
-        this.shutdown();
-        throw e;
+        if (!BulkRetryStrategy.canRetry(e)) {
+            this.shutdown();
+            throw e;
+        }
     }
   }
 
