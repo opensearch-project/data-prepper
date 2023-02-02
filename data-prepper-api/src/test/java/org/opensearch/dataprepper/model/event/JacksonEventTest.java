@@ -481,7 +481,7 @@ public class JacksonEventTest {
                 .getThis()
                 .build();
 
-        assertThat(event.formatString(formattedString), is(equalTo(finalString)));
+        assertThat(event.formatString(formattedString, null), is(equalTo(finalString)));
     }
 
     @ParameterizedTest
@@ -498,7 +498,7 @@ public class JacksonEventTest {
                 .withData(jsonString)
                 .getThis()
                 .build();
-        assertThat(event.formatString(formattedString), is(equalTo(finalString)));
+        assertThat(event.formatString(formattedString, null), is(equalTo(finalString)));
     }
 
     @Test
@@ -510,7 +510,35 @@ public class JacksonEventTest {
                 .withData(jsonString)
                 .getThis()
                 .build();
-        assertThat(event.formatString("test-${boo}-string"), is(equalTo(null)));
+        assertThat(event.formatString("test-${boo}-string", null), is(equalTo(null)));
+    }
+
+    @Test
+    public void testBuild_withFormatStringWithFallbackValue() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+        final String fallbackString = UUID.randomUUID().toString();
+        final String expectedString = "test-"+fallbackString+"-string";
+        assertThat(event.formatString("test-${boo}-string", fallbackString), is(equalTo(expectedString)));
+    }
+
+    @Test
+    public void testBuild_withFormatStringWithMultipleFallbackValue() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+        final String fallbackString = UUID.randomUUID().toString();
+        final String expectedString = "test-"+fallbackString+"-"+fallbackString;
+        assertThat(event.formatString("test-${boo}-${boo}", fallbackString), is(equalTo(expectedString)));
     }
 
     @Test
@@ -522,7 +550,7 @@ public class JacksonEventTest {
                 .withData(jsonString)
                 .getThis()
                 .build();
-        assertThrows(RuntimeException.class, () -> event.formatString("test-${foo-string"));
+        assertThrows(RuntimeException.class, () -> event.formatString("test-${foo-string", null));
 
     }
 

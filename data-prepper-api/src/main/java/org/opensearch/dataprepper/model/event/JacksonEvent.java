@@ -264,7 +264,7 @@ public class JacksonEvent implements Event {
      * @throws RuntimeException if the format is incorrect or the value is not a string
      */
     @Override
-    public String formatString(final String format) {
+    public String formatString(final String format, final String fallbackValue) {
         int fromIndex = 0;
         String result = "";
         int position = 0;
@@ -276,15 +276,19 @@ public class JacksonEvent implements Event {
           result += format.substring(fromIndex, position);
           String name = format.substring(position+2, endPosition);
           Object val = this.get(name, Object.class);
-	  if (val == null) {
-	    return null;
-	  }
-          result += val.toString();
+          if (val == null) {
+            if (fallbackValue == null) {
+              return null;
+            }
+            result += fallbackValue;
+          } else {
+            result += val.toString();
+          }
           fromIndex = endPosition+1;
         }
-	if (fromIndex < format.length()) {
+        if (fromIndex < format.length()) {
             result += format.substring(fromIndex);
-	}
+        }
         return result;
     }
 

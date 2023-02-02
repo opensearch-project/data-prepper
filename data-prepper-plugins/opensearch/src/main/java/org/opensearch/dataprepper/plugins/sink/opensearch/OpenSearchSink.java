@@ -56,7 +56,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
-  public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
+  public static final String NUMBER_OF_DROPPED_EVENTS = "numberOfDroppedEvents";
+  public static final String DEFAULT_FALLBACK_VALUE = "d_e_f_a_u_l_t";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
 
@@ -77,7 +78,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
-  private final Counter dynamicIndexDroppedEvents;
+  private final Counter numberOfDroppedEvents;
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
@@ -87,7 +88,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
-    dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
+    numberOfDroppedEvents = pluginMetrics.counter(NUMBER_OF_DROPPED_EVENTS);
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
@@ -163,9 +164,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final Optional<String> routing = document.getRoutingField();
       String indexName = configuredIndexAlias;
       try {
-          indexName = indexManager.getIndexName(event.formatString(indexName));
+          indexName = indexManager.getIndexName(event.formatString(indexName, DEFAULT_FALLBACK_VALUE));
       } catch (IOException e) {
-          dynamicIndexDroppedEvents.increment();
+          numberOfDroppedEvents.increment();
           continue;
       }
 

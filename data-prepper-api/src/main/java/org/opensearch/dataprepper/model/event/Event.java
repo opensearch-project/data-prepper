@@ -95,10 +95,11 @@ public interface Event {
 
     /**
      * Returns formatted parts of the input string replaced by their values in the event
-     * @param format
+     * @param format format string with dynamic parts, as indicated by ${...}, of the string are replaced by the value of the field in the event
+     * @param fallbackValue value to be used when a field in the format not found in the event
      * @return returns a string with no formatted parts, returns null if no value is found
      * @throws RuntimeException if the input string is not properly formatted
      * @since 2.1
      */
-    String formatString(final String format);
+    String formatString(final String format, final String fallbackValue);
 }
