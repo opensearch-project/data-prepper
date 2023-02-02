@@ -123,8 +123,8 @@ class MicrometerMetricPublisherTest {
         objectUnderTest.publish(metricCollection);
 
         verify(sdkMetric).name();
-        verify(sdkMetric, times(2)).valueClass();
-        verify(metricRecordMock, times(4)).metric();
+        verify(sdkMetric).valueClass();
+        verify(metricRecordMock, times(3)).metric();
         verify(metricRecordMock).value();
 
         verify(counter).increment(metricValue);
@@ -153,8 +153,8 @@ class MicrometerMetricPublisherTest {
         objectUnderTest.publish(metricCollection);
 
         verify(sdkMetric).name();
-        verify(sdkMetric, times(2)).valueClass();
-        verify(metricRecordMock, times(4)).metric();
+        verify(sdkMetric).valueClass();
+        verify(metricRecordMock, times(3)).metric();
         verify(metricRecordMock).value();
 
         verify(counter).increment(metricValue);
@@ -182,8 +182,8 @@ class MicrometerMetricPublisherTest {
         objectUnderTest.publish(metricCollection);
 
         verify(sdkMetric).name();
-        verify(sdkMetric, times(3)).valueClass();
-        verify(metricRecordMock, times(5)).metric();
+        verify(sdkMetric).valueClass();
+        verify(metricRecordMock, times(3)).metric();
         verify(metricRecordMock).value();
 
         final double incrementCount = metricValue ? 1 : 0;
@@ -214,8 +214,8 @@ class MicrometerMetricPublisherTest {
         objectUnderTest.publish(metricCollection);
 
         verify(sdkMetric, times(2)).name();
-        verify(sdkMetric, times(4)).valueClass();
-        verify(metricRecordMock, times(7)).metric();
+        verify(sdkMetric, times(2)).valueClass();
+        verify(metricRecordMock, times(5)).metric();
         verify(metricRecordMock, times(2)).value();
 
         verify(counter, times(2)).increment(metricValue);

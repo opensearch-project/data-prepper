@@ -52,17 +52,21 @@ public class MicrometerMetricPublisher implements MetricPublisher {
         final String operationNameValue = dimensions.get(OPERATION_NAME);
 
         metricCollection.forEach(metricRecord -> {
-            if (Duration.class.isAssignableFrom(metricRecord.metric().valueClass())) {
-                pluginMetrics.timerWithTags(metricRecord.metric().name(), SERVICE_ID, serviceIdValue, OPERATION_NAME, operationNameValue)
-                        .record(Duration.parse(metricRecord.value().toString()).toMillis(), TimeUnit.MILLISECONDS);
-            } else if (Number.class.isAssignableFrom(metricRecord.metric().valueClass())) {
+            final Class<?> metricValueClass = metricRecord.metric().valueClass();
+            final String metricName = metricRecord.metric().name();
+
+            if (Duration.class.isAssignableFrom(metricValueClass)) {
+                final long metricValueInMillis = Duration.parse(metricRecord.value().toString()).toMillis();
+                pluginMetrics.timerWithTags(metricName, SERVICE_ID, serviceIdValue, OPERATION_NAME, operationNameValue)
+                        .record(metricValueInMillis, TimeUnit.MILLISECONDS);
+            } else if (Number.class.isAssignableFrom(metricValueClass)) {
                 final Number numberMetricValue = (Number) metricRecord.value();
-                pluginMetrics.counterWithTags(metricRecord.metric().name(), SERVICE_ID, serviceIdValue, OPERATION_NAME, operationNameValue)
+                pluginMetrics.counterWithTags(metricName, SERVICE_ID, serviceIdValue, OPERATION_NAME, operationNameValue)
                         .increment(numberMetricValue.doubleValue());
-            } else if (Boolean.class.isAssignableFrom(metricRecord.metric().valueClass())) {
+            } else if (Boolean.class.isAssignableFrom(metricValueClass)) {
                 final Boolean booleanValue = (Boolean) metricRecord.value();
                 final double metricValue = Boolean.TRUE.equals(booleanValue) ? 1.0 : 0.0;
-                pluginMetrics.counterWithTags(metricRecord.metric().name(), SERVICE_ID, serviceIdValue, OPERATION_NAME, operationNameValue)
+                pluginMetrics.counterWithTags(metricName, SERVICE_ID, serviceIdValue, OPERATION_NAME, operationNameValue)
                         .increment(metricValue);
             }
         });
