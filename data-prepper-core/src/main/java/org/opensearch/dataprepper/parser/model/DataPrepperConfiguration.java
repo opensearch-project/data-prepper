@@ -9,11 +9,13 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +36,7 @@ public class DataPrepperConfiguration {
     private PluginModel authentication;
     private CircuitBreakerConfig circuitBreakerConfig;
     private Map<String, String> metricTags = new HashMap<>();
+    private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
@@ -64,6 +67,9 @@ public class DataPrepperConfiguration {
             @JsonProperty("metric_tags")
             @JsonAlias("metricTags")
             final Map<String, String> metricTags,
+            @JsonProperty("metricTagFilters")
+            @JsonAlias("metric_tag_filters")
+            final List<MetricTagFilter> metricTagFilters,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
             @JsonProperty("processor_shutdown_timeout")
             @JsonAlias("processorShutdownTimeout")
@@ -81,6 +87,7 @@ public class DataPrepperConfiguration {
         this.privateKeyPassword = privateKeyPassword != null ? privateKeyPassword : "";
         this.metricRegistries = metricRegistries != null && !metricRegistries.isEmpty() ? metricRegistries : DEFAULT_METRIC_REGISTRY_TYPE;
         setMetricTags(metricTags);
+        setMetricTagFilters(metricTagFilters);
         setServerPort(serverPort);
         this.peerForwarderConfiguration = peerForwarderConfiguration;
 
@@ -123,6 +130,10 @@ public class DataPrepperConfiguration {
         return metricTags;
     }
 
+    public List<MetricTagFilter> getMetricTagFilters() {
+        return metricTagFilters;
+    }
+
     private void setSsl(final Boolean ssl) {
         if (ssl != null) {
             this.ssl = ssl;
@@ -157,6 +168,19 @@ public class DataPrepperConfiguration {
                 throw new IllegalArgumentException("metricTags cannot be more than 3");
             }
             this.metricTags = metricTags;
+        }
+    }
+
+    public void setMetricTagFilters(final List<MetricTagFilter> metricTagFilters) {
+        if (metricTagFilters != null) {
+            metricTagFilters.forEach(
+                    metricTagFilter -> {
+                        if (metricTagFilter.getTags() != null && metricTagFilter.getTags().size() > MAX_TAGS_NUMBER) {
+                            throw new IllegalArgumentException("Tags cannot be more than 3 for each filter");
+                        }
+                    }
+            );
+            this.metricTagFilters = metricTagFilters;
         }
     }
 

@@ -11,6 +11,7 @@ import com.linecorp.armeria.client.retry.Backoff;
 import com.linecorp.armeria.common.CommonPools;
 import io.netty.channel.EventLoop;
 import io.netty.util.concurrent.ScheduledFuture;
+import org.opensearch.dataprepper.metricpublisher.MicrometerMetricPublisher;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.slf4j.Logger;
@@ -93,10 +94,13 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
         final Backoff standardBackoff = Backoff.exponential(ONE_SECOND, TWENTY_SECONDS).withJitter(TWENTY_PERCENT);
         final int timeToRefreshSeconds = 20;
 
+        final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
+
         final ServiceDiscoveryAsyncClient serviceDiscoveryAsyncClient = ServiceDiscoveryAsyncClient
                 .builder()
                 .region(Region.of(awsRegion))
                 .credentialsProvider(DefaultCredentialsProvider.create())
+                .overrideConfiguration(metricPublisher -> metricPublisher.addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics)))
                 .build();
 
         return new AwsCloudMapPeerListProvider(

@@ -1,0 +1,5 @@
+ssl: false
+metricTagFilters:
+  - regex: "aws.sdk.*"
+    tags:
+      tag1: value1

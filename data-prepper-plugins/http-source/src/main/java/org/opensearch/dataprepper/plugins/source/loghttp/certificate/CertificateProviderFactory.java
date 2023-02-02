@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp.certificate;
 
+import org.opensearch.dataprepper.metricpublisher.MicrometerMetricPublisher;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
@@ -60,11 +62,14 @@ public class CertificateProviderFactory {
                     .retryPolicy(retryPolicy)
                     .build();
 
+            final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
+
             final AcmClient awsCertificateManager = AcmClient.builder()
                     .region(Region.of(httpSourceConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(clientConfig)
                     .httpClientBuilder(ApacheHttpClient.builder())
+                    .overrideConfiguration(metricPublisher -> metricPublisher.addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics)))
                     .build();
 
             return new ACMCertificateProvider(awsCertificateManager,

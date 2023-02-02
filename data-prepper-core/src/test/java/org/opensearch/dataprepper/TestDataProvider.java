@@ -91,6 +91,8 @@ public class TestDataProvider {
     public static final String INVALID_PEER_FORWARDER_WITH_NEGATIVE_DRAIN_TIMEOUT = "src/test/resources/invalid_peer_forwarder_with_negative_drain_timeout.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_ZERO_LOCAL_WRITE_TIMEOUT = "src/test/resources/invalid_peer_forwarder_with_zero_local_write_timeout.yml";
     public static final String VALID_PEER_FORWARDER_WITH_ACM_SSL_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_config_with_acm_ssl.yml";
+    public static final String VALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER = "src/test/resources/valid_data_prepper_config_with_metric_filter.yml";
+    public static final String INVALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER = "src/test/resources/invalid_data_prepper_config_with_metric_filter.yml";
 
 
 

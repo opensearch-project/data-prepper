@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.parser.config;
 
 import io.micrometer.core.instrument.Metrics;
+import org.apache.commons.collections.CollectionUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.opensearch.dataprepper.DataPrepper;
@@ -37,6 +38,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -48,6 +50,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.isA;
 import static org.hamcrest.Matchers.nullValue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -222,6 +225,91 @@ class MetricsConfigTest {
         commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
 
         assertThat(commonTags, equalTo(List.of(Tag.of(MetricNames.SERVICE_NAME, testServiceName))));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideMetricRegistryTypesAndCreators")
+    void testGivenConfigWithMetricTagsAndMatchingMetricFilterTags(final MetricRegistryType metricRegistryType,
+                                                                         final Function<DataPrepperConfiguration, MeterRegistry> creator) {
+        final String testTagKey = "testKey";
+        final String testFilterKey = "testFilterKey";
+        final String testTagValue = "testValue";
+        final String testFilterValue = "testFilterValue";
+        final String testServiceName = "testServiceName";
+        final String filterRegex = "counter";
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+        when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
+        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of(testTagKey, testTagValue));
+
+        final MetricTagFilter metricTagFilter = new MetricTagFilter(filterRegex, Map.of(testFilterKey, testFilterValue));
+        when(dataPrepperConfiguration.getMetricTagFilters()).thenReturn(List.of(metricTagFilter));
+
+        MeterRegistry meterRegistry = creator.apply(dataPrepperConfiguration);
+        Counter counter = meterRegistry.counter("counter");
+        List<Tag> commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
+
+        // validate tags along with default service name
+        assertTrue(CollectionUtils.isEqualCollection(commonTags, Arrays.asList(
+                Tag.of(MetricNames.SERVICE_NAME, DataPrepper.getServiceNameForMetrics()),
+                Tag.of(testFilterKey, testFilterValue))));
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
+        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of(MetricNames.SERVICE_NAME, testServiceName));
+
+        final MetricTagFilter metricTagFilterWithServiceName = new MetricTagFilter(filterRegex, Map.of(MetricNames.SERVICE_NAME, testServiceName));
+        when(dataPrepperConfiguration.getMetricTagFilters()).thenReturn(List.of(metricTagFilterWithServiceName));
+
+        meterRegistry = creator.apply(dataPrepperConfiguration);
+        counter = meterRegistry.counter("counter");
+        commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
+
+        // validate tags along with custom service name
+        assertTrue(CollectionUtils.isEqualCollection(commonTags, List.of(Tag.of(MetricNames.SERVICE_NAME, testServiceName))));
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideMetricRegistryTypesAndCreators")
+    void testGivenConfigWithMetricTagsAndFailedMatchingMetricFilterTags(final MetricRegistryType metricRegistryType,
+                                                                  final Function<DataPrepperConfiguration, MeterRegistry> creator) {
+        final String testTagKey = "testKey";
+        final String testFilterKey = "testFilterKey";
+        final String testTagValue = "testValue";
+        final String testFilterValue = "testFilterValue";
+        final String testServiceName = "testServiceName";
+        final String filterRegex = "pipeline.*";
+        final DataPrepperConfiguration dataPrepperConfiguration = mock(DataPrepperConfiguration.class);
+        when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
+        when(dataPrepperConfiguration.getMetricTags()).thenReturn(Map.of(testTagKey, testTagValue));
+
+        final MetricTagFilter metricTagFilter = new MetricTagFilter(filterRegex, Map.of(testFilterKey, testFilterValue));
+        when(dataPrepperConfiguration.getMetricTagFilters()).thenReturn(List.of(metricTagFilter));
+
+        MeterRegistry meterRegistry = creator.apply(dataPrepperConfiguration);
+        Counter counter = meterRegistry.counter("counter");
+        List<Tag> commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
+
+        // validate tags along with default service name when regex doesn't match. Tags from metricTags will be used
+        assertTrue(CollectionUtils.isEqualCollection(commonTags, Arrays.asList(
+                Tag.of(MetricNames.SERVICE_NAME, DataPrepper.getServiceNameForMetrics()),
+                Tag.of(testTagKey, testTagValue))));
+
+        when(dataPrepperConfiguration.getMetricRegistryTypes()).thenReturn(Collections.singletonList(metricRegistryType));
+        final HashMap<String, String> metricTags = new HashMap<>();
+        metricTags.put(MetricNames.SERVICE_NAME, testServiceName);
+        metricTags.put(testTagKey, testTagValue);
+
+        when(dataPrepperConfiguration.getMetricTags()).thenReturn(metricTags);
+        final MetricTagFilter metricTagFilterWithServiceName = new MetricTagFilter(filterRegex, Map.of(MetricNames.SERVICE_NAME, testServiceName));
+        when(dataPrepperConfiguration.getMetricTagFilters()).thenReturn(List.of(metricTagFilterWithServiceName));
+
+        meterRegistry = creator.apply(dataPrepperConfiguration);
+        counter = meterRegistry.counter("counter");
+        commonTags = counter.getId().getConventionTags(meterRegistry.config().namingConvention());
+
+        // validate tags along with custom service name when regex doesn't match. Tags from metricTags will be used
+        assertTrue(CollectionUtils.isEqualCollection(commonTags, Arrays.asList(
+                Tag.of(MetricNames.SERVICE_NAME, testServiceName),
+                Tag.of(testTagKey, testTagValue))));
     }
 
     @Test
