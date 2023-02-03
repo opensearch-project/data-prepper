@@ -81,6 +81,30 @@ public class DefaultEventMetadataTest {
     }
 
     @Test
+    public void testAttributesMutation_without_attributes_throwsAnException() {
+        eventMetadata = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .withTimeReceived(testTimeReceived)
+                .build();
+        final Map<String, Object> attributes = eventMetadata.getAttributes();
+
+        assertThrows(UnsupportedOperationException.class, () -> attributes.put("foo", "bar"));
+    }
+
+    @Test
+    public void testAttributes_without_attributes_is_empty() {
+        eventMetadata = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .withTimeReceived(testTimeReceived)
+                .build();
+        final Map<String, Object> attributes = eventMetadata.getAttributes();
+        assertThat(attributes, notNullValue());
+        assertThat(attributes.size(), equalTo(0));
+
+        assertThrows(UnsupportedOperationException.class, () -> attributes.put("foo", "bar"));
+    }
+
+    @Test
     public void testBuild_withoutTimeReceived() {
 
         final Instant before = Instant.now();
