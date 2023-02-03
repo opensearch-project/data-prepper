@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics.certificate;
 
-import org.opensearch.dataprepper.metricpublisher.MicrometerMetricPublisher;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
+import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

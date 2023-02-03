@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.parser.config;
 
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.config.MeterFilter;
 import org.opensearch.dataprepper.meter.EMFLoggingMeterRegistry;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.MetricRegistryType;
@@ -16,7 +14,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -34,13 +31,8 @@ import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-
-import static org.opensearch.dataprepper.DataPrepper.getServiceNameForMetrics;
-import static org.opensearch.dataprepper.metrics.MetricNames.SERVICE_NAME;
 
 @Configuration
 public class MetricsConfig {
@@ -85,25 +77,7 @@ public class MetricsConfig {
     private void configureMetricRegistry(final Map<String, String> metricTags,
                                          final List<MetricTagFilter> metricTagFilters,
                                          final MeterRegistry meterRegistry) {
-        final Map<String, String> metricTagsWithServiceName = new HashMap<>(metricTags);
-        metricTagsWithServiceName.putIfAbsent(SERVICE_NAME, getServiceNameForMetrics());
-
-        meterRegistry.config().meterFilter(new MeterFilter() {
-            @Override
-            public Meter.Id map(Meter.Id id) {
-                for (MetricTagFilter metricTagFilter: metricTagFilters) {
-                    final String metricRegex = metricTagFilter.getRegex();
-                    final Map<String, String> metricFilterTagsWithServiceName = new HashMap<>(metricTagFilter.getTags());
-                    metricFilterTagsWithServiceName.putIfAbsent(SERVICE_NAME, getServiceNameForMetrics());
-                    if (id.getName().matches(metricRegex)) {
-                        return MeterFilter.commonTags(metricFilterTagsWithServiceName.entrySet().stream().map(e -> Tag.of(e.getKey(), e.getValue()))
-                                .collect(Collectors.toList())).map(id);
-                    }
-                }
-                return MeterFilter.commonTags(metricTagsWithServiceName.entrySet().stream().map(e -> Tag.of(e.getKey(), e.getValue()))
-                        .collect(Collectors.toList())).map(id);
-            }
-        });
+        meterRegistry.config().meterFilter(new CustomTagsMeterFilter(metricTags, metricTagFilters));
     }
 
     @Bean

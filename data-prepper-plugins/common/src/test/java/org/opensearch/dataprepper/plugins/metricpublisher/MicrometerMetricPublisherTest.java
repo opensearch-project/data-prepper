@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.metricpublisher;
+package org.opensearch.dataprepper.plugins.metricpublisher;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -32,7 +32,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-
 
 @ExtendWith(MockitoExtension.class)
 class MicrometerMetricPublisherTest {
@@ -220,5 +219,4 @@ class MicrometerMetricPublisherTest {
 
         verify(counter, times(2)).increment(metricValue);
     }
-
 }

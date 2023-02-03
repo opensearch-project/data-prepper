@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.metricpublisher;
+package org.opensearch.dataprepper.plugins.metricpublisher;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.core.metrics.CoreMetric;
