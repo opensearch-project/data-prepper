@@ -25,7 +25,7 @@ class MetricTagFilterTest {
         final MetricTagFilter metricTagFilter = new MetricTagFilter(testRegex, testTags);
 
         assertThat(metricTagFilter, notNullValue());
-        assertThat(metricTagFilter.getRegex(), equalTo(testRegex));
+        assertThat(metricTagFilter.getPattern(), equalTo(testRegex));
         assertThat(metricTagFilter.getTags().size(), equalTo(testTags.size()));
         assertThat(metricTagFilter.getTags(), equalTo(testTags));
     }

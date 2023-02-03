@@ -16,13 +16,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class MicrometerMetricPublisher implements MetricPublisher {
     private static final String SERVICE_ID = "ServiceId";
     private static final String OPERATION_NAME = "OperationName";
-    private static final Set<SdkMetric<String>> DEFAULT_DIMENSIONS = Stream.of(CoreMetric.SERVICE_ID, CoreMetric.OPERATION_NAME)
-            .collect(Collectors.toSet());
+    private static final Set<SdkMetric<String>> DEFAULT_DIMENSIONS = Set.of(CoreMetric.SERVICE_ID, CoreMetric.OPERATION_NAME);
 
     private final PluginMetrics pluginMetrics;
 

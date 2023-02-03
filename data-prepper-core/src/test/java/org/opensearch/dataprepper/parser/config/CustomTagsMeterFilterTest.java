@@ -8,7 +8,8 @@ package org.opensearch.dataprepper.parser.config;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 import java.util.Map;
@@ -21,20 +22,22 @@ import static org.opensearch.dataprepper.metrics.MetricNames.SERVICE_NAME;
 
 class CustomTagsMeterFilterTest {
     private static final String testTagKey = "testKey";
-    final String testFilterKey = "testFilterKey";
-    final String testTagValue = "testValue";
-    final String testFilterValue = "testFilterValue";
+    private final String testFilterKey = "testFilterKey";
+    private final String testTagValue = "testValue";
+    private final String testFilterValue = "testFilterValue";
+    private final String testMetricName = "test-pipeline.grok.matchErrors.count";
 
-    CustomTagsMeterFilter createObjectUnderTest(final String regexPattern) {
+    private CustomTagsMeterFilter createObjectUnderTest(final String regexPattern) {
         final MetricTagFilter metricTagFilter = new MetricTagFilter(regexPattern, Map.of(testFilterKey, testFilterValue));
         return new CustomTagsMeterFilter(Map.of(testTagKey, testTagValue), List.of(metricTagFilter));
     }
 
-    @Test
-    void testMapShouldAddTagsIfRegexMatches() {
-        final CustomTagsMeterFilter objectUnderTest = createObjectUnderTest("name.*");
+    @ParameterizedTest
+    @ValueSource(strings = {"test-pipeline.grok.**", "**.grok.**", "**.*Errors.*", "**.count"})
+    void testMapShouldAddTagsIfRegexMatches(final String regex) {
+        final CustomTagsMeterFilter objectUnderTest = createObjectUnderTest(regex);
 
-        final Meter.Id testMeterId = new Meter.Id("name", Tags.empty(), null, null, Meter.Type.COUNTER);
+        final Meter.Id testMeterId = new Meter.Id(testMetricName, Tags.empty(), null, null, Meter.Type.COUNTER);
         final Meter.Id testMeterIdWithTags = objectUnderTest.map(testMeterId);
 
         final List<Tag> expectedTags = List.of(Tag.of(SERVICE_NAME, getServiceNameForMetrics()), Tag.of(testFilterKey, testFilterValue));
@@ -45,11 +48,12 @@ class CustomTagsMeterFilterTest {
         assertThat(testMeterIdWithTags.getTags(), equalTo(expectedTags));
     }
 
-    @Test
-    void testMapShouldAddTagsFromMetricTagsIfRegexDoesNotMatch() {
-        final CustomTagsMeterFilter objectUnderTest = createObjectUnderTest("nomatch.*");
+    @ParameterizedTest
+    @ValueSource(strings = {"test-pipeline.grok**", "**.?grok.**", "**.Errors.*", "*.count"})
+    void testMapShouldAddTagsFromMetricTagsIfRegexDoesNotMatch(final String regex) {
+        final CustomTagsMeterFilter objectUnderTest = createObjectUnderTest(regex);
 
-        final Meter.Id testMeterId = new Meter.Id("name", Tags.empty(), null, null, Meter.Type.COUNTER);
+        final Meter.Id testMeterId = new Meter.Id(testMetricName, Tags.empty(), null, null, Meter.Type.COUNTER);
         final Meter.Id testMeterIdWithTags = objectUnderTest.map(testMeterId);
 
         final List<Tag> expectedTags = List.of(Tag.of(SERVICE_NAME, getServiceNameForMetrics()), Tag.of(testTagKey, testTagValue));

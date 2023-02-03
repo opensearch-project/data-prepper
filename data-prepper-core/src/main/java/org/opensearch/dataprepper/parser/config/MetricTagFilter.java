@@ -11,8 +11,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MetricTagFilter {
-    @JsonProperty("regex")
-    private String regex;
+    @JsonProperty("pattern")
+    private String pattern;
 
     @JsonProperty("tags")
     private Map<String, String> tags = new LinkedHashMap<>();
@@ -21,12 +21,12 @@ public class MetricTagFilter {
     }
 
     public MetricTagFilter(final String regex, final Map<String, String> tags) {
-        this.regex = regex;
+        this.pattern = regex;
         this.tags = tags;
     }
 
-    public String getRegex() {
-        return regex;
+    public String getPattern() {
+        return pattern;
     }
 
     public Map<String, String> getTags() {
