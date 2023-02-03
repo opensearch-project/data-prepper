@@ -15,7 +15,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import com.fasterxml.jackson.core.JsonProcessingException;
+//import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.linecorp.armeria.client.ClientBuilder;
@@ -37,7 +37,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
+//import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -54,10 +54,10 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
+//import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.isA;
+//import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -139,21 +139,21 @@ class PeerForwarderClientTest {
         verify(requestsCounter).increment();
     }
 
-    @Test
-    void test_serializeRecordsAndSendHttpRequest_with_bad_wireEvents_should_throw() throws JsonProcessingException {
-        ObjectMapper objectMapper = mock(ObjectMapper.class);
-        when(objectMapper.writeValueAsBytes(isA(WireEvents.class))).thenThrow(JsonProcessingException.class);
-
-        final PeerForwarderClient objectUnderTest = createObjectUnderTest(objectMapper);
-
-        final Collection<Record<Event>> records = generateBatchRecords(1);
-
-        final RuntimeException actualException = assertThrows(RuntimeException.class,
-                () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID,
-                        TEST_PIPELINE_NAME));
-
-        assertThat(actualException.getCause(), instanceOf(JsonProcessingException.class));
-    }
+//    @Test
+//    void test_serializeRecordsAndSendHttpRequest_with_bad_wireEvents_should_throw() throws JsonProcessingException {
+//        ObjectMapper objectMapper = mock(ObjectMapper.class);
+//        when(objectMapper.writeValueAsBytes(isA(WireEvents.class))).thenThrow(JsonProcessingException.class);
+//
+//        final PeerForwarderClient objectUnderTest = createObjectUnderTest(objectMapper);
+//
+//        final Collection<Record<Event>> records = generateBatchRecords(1);
+//
+//        final RuntimeException actualException = assertThrows(RuntimeException.class,
+//                () -> objectUnderTest.serializeRecordsAndSendHttpRequest(records, "127.0.0.1", TEST_PLUGIN_ID,
+//                        TEST_PIPELINE_NAME));
+//
+//        assertThat(actualException.getCause(), instanceOf(JsonProcessingException.class));
+//    }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 3})

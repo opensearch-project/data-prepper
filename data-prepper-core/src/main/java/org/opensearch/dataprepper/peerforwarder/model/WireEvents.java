@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.peerforwarder.model;
 
 import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -14,7 +15,7 @@ import java.util.List;
  *
  * @since 2.0
  */
-public class WireEvents {
+public class WireEvents implements Serializable {
     private List<WireEvent> events;
     private String destinationPluginId;
     private String destinationPipelineName;

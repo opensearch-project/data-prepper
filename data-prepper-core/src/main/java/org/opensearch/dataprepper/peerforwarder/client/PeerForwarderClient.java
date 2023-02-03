@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.peerforwarder.client;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
@@ -22,6 +21,9 @@ import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -82,9 +84,11 @@ public class PeerForwarderClient {
         final List<WireEvent> wireEventList = getWireEventList(records);
         final WireEvents wireEvents = new WireEvents(wireEventList, pluginId, pipelineName);
 
-        try {
-            return objectMapper.writeValueAsBytes(wireEvents);
-        } catch (JsonProcessingException e) {
+        try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             final ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)) {
+            objectOutputStream.writeObject(wireEvents);
+            return byteArrayOutputStream.toByteArray();
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

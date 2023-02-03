@@ -5,7 +5,6 @@ name: Data Prepper Trace Analytics Raw Span Compatibility End-to-end test with G
 
 on:
   push:
-    branches: [ main ]
   pull_request:
   workflow_dispatch:
 

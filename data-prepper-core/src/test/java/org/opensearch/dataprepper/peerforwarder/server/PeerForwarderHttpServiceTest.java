@@ -40,6 +40,9 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -128,7 +131,7 @@ class PeerForwarderHttpServiceTest {
 
     @Test
     void test_doPost_with_bad_HTTP_request_should_return_BAD_REQUEST() throws ExecutionException, InterruptedException {
-        when(responseHandler.handleException(any(JsonProcessingException.class), anyString())).thenReturn(HttpResponse.of(HttpStatus.BAD_REQUEST));
+        when(responseHandler.handleException(any(IOException.class), anyString())).thenReturn(HttpResponse.of(HttpStatus.BAD_REQUEST));
         final AggregatedHttpRequest aggregatedHttpRequest = generateBadHTTPRequest();
 
         final PeerForwarderHttpService objectUnderTest = createObjectUnderTest();
@@ -180,9 +183,14 @@ class PeerForwarderHttpServiceTest {
 
         final WireEvents wireEvents = new WireEvents(wireEventList, PLUGIN_ID, PIPELINE_NAME);
 
-        String content = objectMapper.writeValueAsString(wireEvents);
-        HttpData httpData = HttpData.ofUtf8(content);
-        return HttpRequest.of(requestHeaders, httpData).aggregate().get();
+        try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+             final ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)) {
+            objectOutputStream.writeObject(wireEvents);
+            final HttpData httpData = HttpData.copyOf(byteArrayOutputStream.toByteArray());
+            return HttpRequest.of(requestHeaders, httpData).aggregate().get();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private AggregatedHttpRequest generateBadHTTPRequest() throws ExecutionException, InterruptedException {

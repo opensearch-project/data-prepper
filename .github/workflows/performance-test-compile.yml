@@ -5,7 +5,6 @@ name: Performance Tests Compile
 
 on:
   push:
-    branches: [ main ]
     paths:
       - 'performance-test/**'
       - '*gradle*'

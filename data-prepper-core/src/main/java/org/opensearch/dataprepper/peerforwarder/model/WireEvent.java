@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.peerforwarder.model;
 
 import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
 
@@ -15,7 +16,7 @@ import java.util.Map;
  *
  * @since 2.0
  */
-public class WireEvent {
+public class WireEvent implements Serializable {
     private String eventType;
     private Instant eventTimeReceived;
     private Map<String, Object> eventAttributes;

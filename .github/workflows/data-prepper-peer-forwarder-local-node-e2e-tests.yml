@@ -5,7 +5,6 @@ name: Data Prepper Local Node Peer Forwarder End-to-end test with Gradle
 
 on:
   push:
-    branches: [ main ]
   pull_request:
   workflow_dispatch:
 

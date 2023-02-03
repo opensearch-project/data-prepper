@@ -27,7 +27,10 @@ import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -73,9 +76,10 @@ public class PeerForwarderHttpService {
 
         WireEvents wireEvents;
         final HttpData content = aggregatedHttpRequest.content();
-        try {
-            wireEvents = objectMapper.readValue(content.array(), WireEvents.class);
-        } catch (IOException e) {
+        try (final InputStream inputStream = new ByteArrayInputStream(content.array());
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            wireEvents = (WireEvents) objectInputStream.readObject();
+        } catch (IOException | ClassNotFoundException e) {
             final String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
             LOG.error(message, e);
             return responseHandler.handleException(e, message);

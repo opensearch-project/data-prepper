@@ -5,7 +5,6 @@ name: Data Prepper Trace Analytics Raw Span Peer Forwarder End-to-end test with 
 
 on:
   push:
-    branches: [ main ]
   pull_request:
   workflow_dispatch:
 
