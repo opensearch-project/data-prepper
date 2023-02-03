@@ -35,7 +35,7 @@ public class DefaultEventMetadata implements EventMetadata {
 
         this.timeReceived = builder.timeReceived == null ? Instant.now() : builder.timeReceived;
 
-        this.attributes = builder.attributes == null ? new ImmutableMap.Builder<String, Object>().build() : ImmutableMap.copyOf(builder.attributes);
+        this.attributes = builder.attributes == null ? ImmutableMap.of() : ImmutableMap.copyOf(builder.attributes);
     }
 
     @Override
