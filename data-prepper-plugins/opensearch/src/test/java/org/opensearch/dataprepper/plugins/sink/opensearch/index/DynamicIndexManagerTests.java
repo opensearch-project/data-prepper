@@ -39,6 +39,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.Assert.assertThrows;
 import org.apache.commons.lang3.RandomStringUtils;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink.DEFAULT_FALLBACK_VALUE;
 
 public class DynamicIndexManagerTests {
 
@@ -115,7 +116,21 @@ public class DynamicIndexManagerTests {
         when(mockIndexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
-        final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
+        final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias, null));
+        assertThat(expectedIndexAlias, equalTo(indexName));
+    }
+
+    @Test
+    public void dynamicIndexBasicTestWithMissingField() throws IOException {
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
+        String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DEFAULT_FALLBACK_VALUE);
+        innerIndexManager = mock(IndexManager.class);
+        when(mockIndexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+        when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
+        JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID+ID, DYNAMIC)).build();
+        final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias, DEFAULT_FALLBACK_VALUE));
         assertThat(expectedIndexAlias, equalTo(indexName));
     }
 
@@ -130,7 +145,7 @@ public class DynamicIndexManagerTests {
         when(mockIndexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
-        final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
+        final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias, null));
         assertThat(expectedIndexAlias, equalTo(indexName));
     }
 
@@ -147,7 +162,7 @@ public class DynamicIndexManagerTests {
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
         // Try multiple times to make sure the getIndexManager is not called more than once and cached values are returned
         for (int i = 0; i < 10; i++) {
-            final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
+            final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias, null));
             assertThat(expectedIndexAlias, equalTo(indexName));
             verify(mockIndexManagerFactory, times(1)).getIndexManager(eq(IndexType.CUSTOM), eq(restHighLevelClient), eq(openSearchSinkConfiguration), anyString());
         }
@@ -156,7 +171,7 @@ public class DynamicIndexManagerTests {
         when(mockIndexManagerFactory.getIndexManager(IndexType.CUSTOM, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
         event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, NEW_DYNAMIC)).build();
-        final String newIndexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
+        final String newIndexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias, null));
         // When a new index is used, verify that getIndexManager is called again
         verify(mockIndexManagerFactory, times(2)).getIndexManager(eq(IndexType.CUSTOM), eq(restHighLevelClient), eq(openSearchSinkConfiguration), anyString());
         assertThat(expectedIndexAlias, equalTo(newIndexName));
@@ -169,6 +184,6 @@ public class DynamicIndexManagerTests {
         String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
 
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(RandomStringUtils.randomAlphabetic(10), DYNAMIC)).build();
-        assertThrows(IOException.class, () -> dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias)));
+        assertThrows(IOException.class, () -> dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias, null)));
     }
 }
