@@ -74,15 +74,11 @@ subprojects {
         assemble.dependsOn(installTaskName)
 
         //Adds one task per supported architecture for downloading appropriate JDK e.g. downloadarm64JDK
-        tasks.create("${downloadJDKTask}") {
-            doLast {
-                download {
-                    src jdkSources.get(platform + '_' + architecture)
-                    dest "${buildDir}/${platform}${architecture}/openjdk/openjdk.tar.gz"
-                    overwrite false
-                }
-            }
-        }
+        tasks.create("${downloadJDKTask}", Download, {
+            src jdkSources.get(platform + '_' + architecture)
+            dest "${buildDir}/${platform}${architecture}/openjdk/openjdk.tar.gz"
+            overwrite false
+        })
     }
 
     tasks.withType(Zip) {
@@ -172,7 +168,6 @@ task uploadArchives {
 
 task buildTar {
     subprojects.each { dependsOn ':release:archives:' + it.name + ':' + it.name + 'Tar' }
-
 }
 
 task buildArchives {
