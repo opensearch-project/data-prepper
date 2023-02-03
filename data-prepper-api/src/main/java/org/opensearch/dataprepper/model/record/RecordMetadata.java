@@ -15,6 +15,8 @@ import java.util.Map;
  */
 @Deprecated
 public class RecordMetadata {
+    private static final RecordMetadata DEFAULT_METADATA = new RecordMetadata();
+
     //forcing it to a concrete type to show that I want it to be Immutable
     private final ImmutableMap<String, Object> metadata;
 
@@ -62,7 +64,7 @@ public class RecordMetadata {
      * @return an empty MetadataRecords object.
      */
     public static RecordMetadata defaultMetadata() {
-        return new RecordMetadata();
+        return DEFAULT_METADATA;
     }
 
     /**
