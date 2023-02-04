@@ -33,18 +33,18 @@ class CustomTagsMeterFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"test-pipeline.grok.**", "**.grok.**", "**.*Errors.*", "**.count"})
+    @ValueSource(strings = {"test-pipeline.grok.**", "**.grok.**", "**.*Errors.*", "**.count", "**"})
     void testMapShouldAddTagsIfRegexMatches(final String regex) {
         final CustomTagsMeterFilter objectUnderTest = createObjectUnderTest(regex);
 
         final Meter.Id testMeterId = new Meter.Id(testMetricName, Tags.empty(), null, null, Meter.Type.COUNTER);
         final Meter.Id testMeterIdWithTags = objectUnderTest.map(testMeterId);
 
-        final List<Tag> expectedTags = List.of(Tag.of(SERVICE_NAME, getServiceNameForMetrics()), Tag.of(testFilterKey, testFilterValue));
+        final List<Tag> expectedTags = List.of(Tag.of(testFilterKey, testFilterValue));
 
         assertThat(testMeterIdWithTags, notNullValue());
         System.out.println(testMeterIdWithTags);
-        assertThat(testMeterIdWithTags.getTags().size(), equalTo(2));
+        assertThat(testMeterIdWithTags.getTags().size(), equalTo(1));
         assertThat(testMeterIdWithTags.getTags(), equalTo(expectedTags));
     }
 

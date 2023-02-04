@@ -7,8 +7,10 @@ package org.opensearch.dataprepper.parser.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class MetricTagFilter {
     @JsonProperty("pattern")
@@ -30,6 +32,6 @@ public class MetricTagFilter {
     }
 
     public Map<String, String> getTags() {
-        return tags;
+        return Objects.requireNonNullElseGet(tags, HashMap::new);
     }
 }

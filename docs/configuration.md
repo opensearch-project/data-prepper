@@ -86,7 +86,7 @@ Data Prepper allows the following properties to be configured:
     * alias for this property is `metricRegistries`, which is deprecated and planned for removal
 * `metric_tags`: map of metric tag key-value pairs applied as common metric tags to meter registries. Defaults to empty map. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metric_tags`, the value will overwrite those set through the above mechanism.
     * alias for this property is `metricTags`, which is deprecated and planned for removal
-* `metric_tag_filters`: list of pattern and tags. For each metric, only tags from the first pattern which matches to metric name will be added to the metric when processed in order configured. If none of the patterns match them tags from `metricTags` will be applied. Defaults to empty list. * alias for this property is `metricTagFilters`, which is deprecated and planned for removal
+* `metric_tag_filters`: list of pattern and tags. For each metric, only tags from the first pattern which matches to metric name will be added to the metric when processed in order configured. If none of the patterns match them tags from `metricTags` will be applied. Defaults to empty list.
     * `pattern`: A string representing the Ant-style pattern of the metrics to match. Path separator for Ant Path is "." which is the separator used in all the metrics. You can find more on Ant-style path patterns [here](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/util/AntPathMatcher.html).
     * `tags`: A map of key-value pairs applied to metrics that match with pattern. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metricTags`, the value will overwrite those set through the above mechanism.
 Example Data Prepper configuration file (data-prepper-config.yaml) with SSL enabled:
@@ -153,7 +153,7 @@ For Data Prepper before 2.0:
 ```
 
 If your `data-prepper-config.yaml` has SSL enabled, and you are using your own keystore, it will need to be mounted as a Docker volume as well. Note that the mount path should correspond with
-the `key_store_file_path` field from your `data-prepper-config.yaml`. It is recommended to mount to `/usr/share/data-prepper/config/data-prepper-config.yaml` (for Data Prepper 2.0 or above) or `/usr/share/data-prepper/data-prepper-config.yaml` (for Data Prepper before 2.0) to ensure that the path exists in the Docker image.
+the `keyStoreFilePath` field from your `data-prepper-config.yaml`. It is recommended to mount to `/usr/share/data-prepper/config/data-prepper-config.yaml` (for Data Prepper 2.0 or above) or `/usr/share/data-prepper/data-prepper-config.yaml` (for Data Prepper before 2.0) to ensure that the path exists in the Docker image.
 To do so, add the argument below to the `docker run` command.
 
 ```

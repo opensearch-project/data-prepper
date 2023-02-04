@@ -36,11 +36,9 @@ public class CustomTagsMeterFilter implements MeterFilter {
     public Meter.Id map(final Meter.Id id) {
         for (MetricTagFilter metricTagFilter: metricTagFilters) {
             final String metricRegex = metricTagFilter.getPattern();
-            final Map<String, String> metricFilterTagsWithServiceName = new HashMap<>(metricTagFilter.getTags());
-            metricFilterTagsWithServiceName.putIfAbsent(SERVICE_NAME, getServiceNameForMetrics());
 
             if (ANT_PATH_MATCHER.match(metricRegex, id.getName())) {
-                return MeterFilter.commonTags(metricFilterTagsWithServiceName.entrySet().stream().map(e -> Tag.of(e.getKey(), e.getValue()))
+                return MeterFilter.commonTags(metricTagFilter.getTags().entrySet().stream().map(e -> Tag.of(e.getKey(), e.getValue()))
                         .collect(Collectors.toList())).map(id);
             }
         }
