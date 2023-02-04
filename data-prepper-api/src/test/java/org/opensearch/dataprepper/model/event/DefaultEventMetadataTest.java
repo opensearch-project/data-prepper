@@ -6,23 +6,30 @@
 package org.opensearch.dataprepper.model.event;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.allOf;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class DefaultEventMetadataTest {
 
@@ -109,7 +116,7 @@ public class DefaultEventMetadataTest {
 
         final Instant before = Instant.now();
 
-        EventMetadata result = DefaultEventMetadata.builder()
+        final EventMetadata result = DefaultEventMetadata.builder()
                 .withEventType(testEventType)
                 .build();
 
@@ -145,5 +152,107 @@ public class DefaultEventMetadataTest {
         final DefaultEventMetadata.Builder builder = DefaultEventMetadata.builder()
                 .withEventType("");
         assertThrows(IllegalArgumentException.class, builder::build);
+    }
+
+    @Test
+    void fromEventMetadata_returns_matching_EventMetadata() {
+        final EventMetadata originalMetadata = mock(EventMetadata.class);
+
+        final String eventType = UUID.randomUUID().toString();
+        final Instant timeReceived = Instant.now();
+        final Map<String, Object> attributes = Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+
+        when(originalMetadata.getEventType()).thenReturn(eventType);
+        when(originalMetadata.getTimeReceived()).thenReturn(timeReceived);
+        when(originalMetadata.getAttributes()).thenReturn(attributes);
+
+        final EventMetadata copiedMetadata = DefaultEventMetadata.fromEventMetadata(originalMetadata);
+
+        assertThat(copiedMetadata, notNullValue());
+        assertThat(copiedMetadata.getEventType(), equalTo(eventType));
+        assertThat(copiedMetadata.getTimeReceived(), equalTo(timeReceived));
+        assertThat(copiedMetadata.getAttributes(), equalTo(attributes));
+        assertThat(copiedMetadata.getAttributes(), not(sameInstance(attributes)));
+    }
+
+    @Nested
+    class EqualsAndHashCodeAndToString {
+        private String eventType;
+        private Instant timeReceived;
+        private String attributeKey;
+        private String attributeValue;
+        private DefaultEventMetadata event;
+
+        @BeforeEach
+        void setUp() {
+            eventType = UUID.randomUUID().toString();
+            timeReceived = Instant.now();
+            attributeKey = UUID.randomUUID().toString();
+            attributeValue = UUID.randomUUID().toString();
+
+            event = DefaultEventMetadata.builder()
+                    .withEventType(eventType)
+                    .withTimeReceived(timeReceived)
+                    .withAttributes(Collections.singletonMap(attributeKey, attributeValue))
+                    .build();
+
+        }
+
+        @Test
+        void equals_returns_false_for_null() {
+            assertThat(event.equals(null), equalTo(false));
+        }
+
+        @Test
+        void equals_on_same_instance_returns_true() {
+            assertThat(event, equalTo(event));
+        }
+
+        @Test
+        void equals_returns_true_for_two_instances_with_same_value() {
+            final DefaultEventMetadata otherEvent = DefaultEventMetadata.builder()
+                    .withEventType(eventType)
+                    .withTimeReceived(timeReceived)
+                    .withAttributes(Collections.singletonMap(attributeKey, attributeValue))
+                    .build();
+
+            assertThat(event, equalTo(otherEvent));
+        }
+
+        @Test
+        void hashCode_are_equal_for_two_instances_with_same_value() {
+            final DefaultEventMetadata otherEvent = DefaultEventMetadata.builder()
+                    .withEventType(eventType)
+                    .withTimeReceived(timeReceived)
+                    .withAttributes(Collections.singletonMap(attributeKey, attributeValue))
+                    .build();
+
+            assertThat(event.hashCode(), equalTo(otherEvent.hashCode()));
+        }
+
+        @Test
+        void equals_returns_false_for_two_instances_with_different_eventType() {
+            final DefaultEventMetadata otherEvent = DefaultEventMetadata.builder()
+                    .withEventType(UUID.randomUUID().toString())
+                    .withTimeReceived(timeReceived)
+                    .withAttributes(Collections.singletonMap(attributeKey, attributeValue))
+                    .build();
+
+            assertThat(event, not(equalTo(otherEvent)));
+        }
+
+        @Test
+        void toString_has_all_values() {
+            final String string = event.toString();
+
+            assertThat(string, notNullValue());
+            assertThat(string, allOf(
+                    containsString("DefaultEventMetadata"),
+                    containsString(eventType),
+                    containsString(timeReceived.toString()),
+                    containsString(attributeKey),
+                    containsString(attributeValue)
+            ));
+        }
     }
 }

@@ -5,16 +5,16 @@
 
 package org.opensearch.dataprepper.model.trace;
 
-import org.junit.jupiter.api.Nested;
-import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -29,7 +29,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -686,5 +688,38 @@ public class JacksonSpanTest {
             assertThat(jacksonSpan.toMap().get("endTime"), equalTo(endTime));
             assertThat(jacksonSpan.toMap().get("durationInNanos"), equalTo(durationInNanos));
         }
+    }
+
+    @Test
+    void fromSpan_with_a_Jackson_Span() {
+        final JacksonEvent createdEvent = JacksonSpan.fromSpan(jacksonSpan);
+
+        assertThat(createdEvent, notNullValue());
+        assertThat(createdEvent, not(sameInstance(jacksonSpan)));
+
+        assertThat(createdEvent.toMap(), equalTo(jacksonSpan.toMap()));
+
+        assertThat(createdEvent.getMetadata(), notNullValue());
+        assertThat(createdEvent.getMetadata(), not(sameInstance(jacksonSpan.getMetadata())));
+        assertThat(createdEvent.getMetadata(), equalTo(jacksonSpan.getMetadata()));
+    }
+
+    @Test
+    void fromSpan_with_a_non_JacksonSpan() {
+        final EventMetadata eventMetadata = mock(EventMetadata.class);
+        final Span originalSpan = mock(Span.class);
+        when(originalSpan.toMap()).thenReturn(jacksonSpan.toMap());
+        when(originalSpan.getMetadata()).thenReturn(eventMetadata);
+        when(eventMetadata.getEventType()).thenReturn("TRACE");
+
+        final JacksonSpan createdEvent = JacksonSpan.fromSpan(originalSpan);
+
+        assertThat(createdEvent, notNullValue());
+
+        assertThat(createdEvent.toMap(), equalTo(jacksonSpan.toMap()));
+
+        assertThat(createdEvent.getMetadata(), notNullValue());
+        assertThat(createdEvent.getMetadata(), not(sameInstance(jacksonSpan.getMetadata())));
+        assertThat(createdEvent.getMetadata().getEventType(), equalTo("TRACE"));
     }
 }
