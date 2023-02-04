@@ -72,24 +72,24 @@ This sample pipeline creates a source to receive trace data and outputs transfor
 Data Prepper allows the following properties to be configured:
 
 * `ssl`: boolean indicating TLS should be used for server APIs. Defaults to `true`
-* `keyStoreFilePath`: string path to a .jks or .p12 keystore file. Required if `ssl` is `true`
-* `keyStorePassword` string password for keystore. Optional, defaults to empty string
-* `privateKeyPassword` string password for private key within keystore. Optional, defaults to empty string
-* `serverPort`: integer port number to use for server APIs. Defaults to `4900`
-* `metricRegistries`: list of metrics registries for publishing the generated metrics. Defaults to Prometheus; Prometheus and CloudWatch are currently supported.
-* `metricTags`: map of metric tag key-value pairs applied as common metric tags to meter registries. Defaults to empty map. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metricTags`, the value will overwrite those set through the above mechanism.
+* `key_store_file_path`: string path to a .jks or .p12 keystore file. Required if `ssl` is `true`
+* `key_store_password` string password for keystore. Optional, defaults to empty string
+* `private_key_password` string password for private key within keystore. Optional, defaults to empty string
+* `server_port`: integer port number to use for server APIs. Defaults to `4900`
+* `metric_registries`: list of metrics registries for publishing the generated metrics. Defaults to Prometheus; Prometheus and CloudWatch are currently supported.
+* `metric_tags`: map of metric tag key-value pairs applied as common metric tags to meter registries. Defaults to empty map. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metric_tags`, the value will overwrite those set through the above mechanism.
 
 Example Data Prepper configuration file (data-prepper-config.yaml) with SSL enabled:
 
 ```yaml
 ssl: true
-keyStoreFilePath: "/usr/share/data-prepper/keystore.p12"
-keyStorePassword: "password"
-privateKeyPassword: "password"
-serverPort: 4900
-metricRegistries: [Prometheus]
-metricTags:
-  customKey: customValue
+key_store_file_path: "/usr/share/data-prepper/keystore.p12"
+key_store_password: "password"
+private_key_password: "password"
+server_port: 4900
+metric_registries: [Prometheus]
+metric_tags:
+  custom_key: custom_value
 ```
 
 The Data Prepper Docker image runs with SSL enabled using a default self-signed certificate. 
@@ -139,7 +139,7 @@ For Data Prepper before 2.0:
 ```
 
 If your `data-prepper-config.yaml` has SSL enabled, and you are using your own keystore, it will need to be mounted as a Docker volume as well. Note that the mount path should correspond with
-the `keyStoreFilePath` field from your `data-prepper-config.yaml`. It is recommended to mount to `/usr/share/data-prepper/config/data-prepper-config.yaml` (for Data Prepper 2.0 or above) or `/usr/share/data-prepper/data-prepper-config.yaml` (for Data Prepper before 2.0) to ensure that the path exists in the Docker image.
+the `key_store_file_path` field from your `data-prepper-config.yaml`. It is recommended to mount to `/usr/share/data-prepper/config/data-prepper-config.yaml` (for Data Prepper 2.0 or above) or `/usr/share/data-prepper/data-prepper-config.yaml` (for Data Prepper before 2.0) to ensure that the path exists in the Docker image.
 To do so, add the argument below to the `docker run` command.
 
 ```

@@ -1,2 +1,2 @@
 ssl: false
-metricRegistries: [CloudWatch]
+metric_registries: [CloudWatch]
