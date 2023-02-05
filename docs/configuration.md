@@ -73,11 +73,17 @@ Data Prepper allows the following properties to be configured:
 
 * `ssl`: boolean indicating TLS should be used for server APIs. Defaults to `true`
 * `key_store_file_path`: string path to a .jks or .p12 keystore file. Required if `ssl` is `true`
+    * alias for this property is `keyStoreFilePath`, which is deprecated and planned for removal
 * `key_store_password` string password for keystore. Optional, defaults to empty string
+    * alias for this property is `keyStorePassword`, which is deprecated and planned for removal
 * `private_key_password` string password for private key within keystore. Optional, defaults to empty string
+    * alias for this property is `privateKeyPassword`, which is deprecated and planned for removal
 * `server_port`: integer port number to use for server APIs. Defaults to `4900`
+    * alias for this property is `serverPort`, which is deprecated and planned for removal
 * `metric_registries`: list of metrics registries for publishing the generated metrics. Defaults to Prometheus; Prometheus and CloudWatch are currently supported.
+    * alias for this property is `metricRegistries`, which is deprecated and planned for removal
 * `metric_tags`: map of metric tag key-value pairs applied as common metric tags to meter registries. Defaults to empty map. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metric_tags`, the value will overwrite those set through the above mechanism.
+    * alias for this property is `metricTags`, which is deprecated and planned for removal
 
 Example Data Prepper configuration file (data-prepper-config.yaml) with SSL enabled:
 
