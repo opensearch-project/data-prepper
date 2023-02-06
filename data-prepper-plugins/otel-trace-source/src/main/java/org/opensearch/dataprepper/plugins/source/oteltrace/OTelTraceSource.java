@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
+import com.linecorp.armeria.common.util.BlockingTaskExecutor;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
@@ -39,7 +40,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 @DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
@@ -52,15 +52,12 @@ public class OTelTraceSource implements Source<Record<Object>> {
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
+    private final String pipelineName;
 
     @DataPrepperPluginConstructor
     public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
                            final PipelineDescription pipelineDescription) {
-        oTelTraceSourceConfig.validateAndInitializeCertAndKeyFileInS3();
-        this.oTelTraceSourceConfig = oTelTraceSourceConfig;
-        this.pluginMetrics = pluginMetrics;
-        this.certificateProviderFactory = new CertificateProviderFactory(oTelTraceSourceConfig);
-        this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
+        this(oTelTraceSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelTraceSourceConfig), pipelineDescription);
     }
 
     // accessible only in the same package for unit test
@@ -71,6 +68,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
         this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
+        this.pipelineName = pipelineDescription.getPipelineName();
     }
 
     @Override
@@ -147,9 +145,11 @@ public class OTelTraceSource implements Source<Record<Object>> {
             }
 
             sb.maxNumConnections(oTelTraceSourceConfig.getMaxConnectionCount());
-            sb.blockingTaskExecutor(
-                    Executors.newScheduledThreadPool(oTelTraceSourceConfig.getThreadCount()),
-                    true);
+            final BlockingTaskExecutor blockingTaskExecutor = BlockingTaskExecutor.builder()
+                    .numThreads(oTelTraceSourceConfig.getThreadCount())
+                    .threadNamePrefix(pipelineName + "-otel_trace")
+                    .build();
+            sb.blockingTaskExecutor(blockingTaskExecutor, true);
 
             server = sb.build();
         }
