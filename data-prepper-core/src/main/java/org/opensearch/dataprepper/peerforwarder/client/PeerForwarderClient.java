@@ -16,7 +16,6 @@ import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,7 +80,7 @@ public class PeerForwarderClient {
     }
 
     private byte[] getSerializedJsonBytes(final Collection<Record<Event>> records, final String pluginId, final String pipelineName) {
-        final List<WireEvent> wireEventList = getWireEventList(records);
+        final List<Event> wireEventList = getWireEventList(records);
         final WireEvents wireEvents = new WireEvents(wireEventList, pluginId, pipelineName);
 
         try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -93,23 +92,14 @@ public class PeerForwarderClient {
         }
     }
 
-    private List<WireEvent> getWireEventList(final Collection<Record<Event>> records) {
-        final List<WireEvent> wireEventList = new ArrayList<>();
+    private List<Event> getWireEventList(final Collection<Record<Event>> records) {
+        final List<Event> wireEventList = new ArrayList<>();
 
         for (final Record<Event> record : records) {
             final Event event = record.getData();
-            wireEventList.add(getWireEvent(event));
+            wireEventList.add(event);
         }
         return wireEventList;
-    }
-
-    private WireEvent getWireEvent(final Event event) {
-        return new WireEvent(
-                event.getMetadata().getEventType(),
-                event.getMetadata().getTimeReceived(),
-                event.getMetadata().getAttributes(),
-                event
-        );
     }
 
     private CompletableFuture<AggregatedHttpResponse> processHttpRequest(final WebClient client, final byte[] content) {

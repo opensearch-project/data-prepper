@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.peerforwarder.server;
 
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +19,6 @@ import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
-import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,15 +120,7 @@ public class PeerForwarderHttpService {
                 .get(destinationPipelineName).get(destinationPluginId);
     }
 
-    private Record<Event> transformEvent(final WireEvent wireEvent) {
-        return new Record<>(wireEvent.getEventData());
-    }
-
-    private DefaultEventMetadata getEventMetadata(final WireEvent wireEvent) {
-        return DefaultEventMetadata.builder()
-                .withEventType(wireEvent.getEventType())
-                .withTimeReceived(wireEvent.getEventTimeReceived())
-                .withAttributes(wireEvent.getEventAttributes())
-                .build();
+    private Record<Event> transformEvent(final Event event) {
+        return new Record<>(event);
     }
 }

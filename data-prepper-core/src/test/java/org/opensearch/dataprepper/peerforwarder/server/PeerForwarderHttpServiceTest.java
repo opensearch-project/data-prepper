@@ -37,7 +37,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
-import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.ByteArrayOutputStream;
@@ -172,14 +171,7 @@ class PeerForwarderHttpServiceTest {
 
         final List<Record<Event>> records = generateBatchRecords(numRecords);
 
-        final List<WireEvent> wireEventList = records.stream().map(record -> {
-            final WireEvent wireEvent = new WireEvent(record.getData().getMetadata().getEventType(),
-                event.getMetadata().getTimeReceived(),
-                event.getMetadata().getAttributes(),
-                event);
-
-            return wireEvent;
-        }).collect(Collectors.toList());
+        final List<Event> wireEventList = records.stream().map(Record::getData).collect(Collectors.toList());
 
         final WireEvents wireEvents = new WireEvents(wireEventList, PLUGIN_ID, PIPELINE_NAME);
 
