@@ -150,7 +150,7 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
         int recordsRead = 0;
 
         if (timeoutInMillis == 0) {
-            final T record = pollForBufferEntry(5, TimeUnit.SECONDS);
+            final T record = pollForBufferEntry(5, TimeUnit.MILLISECONDS);
             if (record != null) { //record can be null, avoiding adding nulls
                 records.add(record);
                 recordsRead++;

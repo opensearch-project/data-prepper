@@ -67,7 +67,7 @@ service-map-pipeline:
 ```
 This sample pipeline creates a source to receive trace data and outputs transformed data to stdout. 
 
-* `delay`(Optional): An `int` representing the maximum duration in milliseconds to retrieve records from the buffer. If the buffer's specified batch_size has not been reached before this duration is exceeded, a partial batch is used. If this value is set to 0, all available records up to the batch size will be immediately returned. If the buffer is empty, the buffer will block for up to 5 seconds to wait for records. Default value is `3000`.
+* `delay`(Optional): An `int` representing the maximum duration in milliseconds to retrieve records from the buffer. If the buffer's specified batch_size has not been reached before this duration is exceeded, a partial batch is used. If this value is set to 0, all available records up to the batch size will be immediately returned. If the buffer is empty, the buffer will block for up to 5 milliseconds to wait for records. Default value is `3000`.
 * `workers`(Optional): An `int` representing the number of ProcessWorker threads for the pipeline.  Default value is `1`.
 
 ## Server Configuration
