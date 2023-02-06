@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -29,16 +29,16 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
  * the keys of the
  * most recently handled Event.
  * 
- * @since 1.3
+ * @since 2.2
  */
-@DataPrepperPlugin(name = "merge_all", pluginType = AggregateAction.class, pluginConfigurationType = MergeAllAggregateActionConfig.class)
-public class MergeAllAggregateAction implements AggregateAction {
+@DataPrepperPlugin(name = "append", pluginType = AggregateAction.class, pluginConfigurationType = AppendAggregateActionConfig.class)
+public class AppendAggregateAction implements AggregateAction {
     static final String EVENT_TYPE = "event";
-    public final Map<String, String> dataTypeMap;
+    public final List<String> keysToAppend;
 
     @DataPrepperPluginConstructor
-    public MergeAllAggregateAction(final MergeAllAggregateActionConfig mergeAllAggregateActionConfig) {
-        this.dataTypeMap = mergeAllAggregateActionConfig.getDataTypes();
+    public AppendAggregateAction(final AppendAggregateActionConfig appendAggregateActionConfig) {
+        this.keysToAppend = appendAggregateActionConfig.getKeysToAppend();
     }
 
     /*
@@ -53,31 +53,21 @@ public class MergeAllAggregateAction implements AggregateAction {
         final GroupState groupState = aggregateActionInput.getGroupState();
         if (groupState.size() == 0) {
             groupState.putAll(event.toMap());
+            return AggregateActionResponse.nullEventResponse();
         }
         Set<String> eventKeys = event.toMap().keySet();
         for (String key : eventKeys) {
-            if (!this.dataTypeMap.containsKey(key)) {
+            if (this.keysToAppend !=null && !this.keysToAppend.contains(key)) {
                 continue;
             }
-            Object value = null;
-            String dataType = this.dataTypeMap.get(key);
-            switch (dataType) {
-                case "integer":
-                    value = event.get(key, Integer.class);
-                    break;
-
-                case "string":
-                    value = event.get(key, String.class);
-                    break;
-            }
-
+            Object value = event.get(key, Object.class);
             Object valueFromGroupState = groupState.getOrDefault(key, value);
             List<Object> listValues = null;
             if (valueFromGroupState instanceof List) {
                 listValues = (List) valueFromGroupState;
                 listValues.add(value);
             } else {
-                if (!value.equals(valueFromGroupState)) {
+                if (!Objects.equals(value, valueFromGroupState)) {
                     listValues = new ArrayList<>();
                     listValues.add(valueFromGroupState);
                     listValues.add(value);

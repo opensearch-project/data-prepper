@@ -5,17 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
-import java.util.Map;
+import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class MergeAllAggregateActionConfig {
+public class AppendAggregateActionConfig {
 
-    @JsonProperty("data_types")
-    Map<String, String> dataTypes;
+    @JsonProperty("keys_to_append")
+    List<String> keysToAppend;
 
-    public Map<String, String> getDataTypes() {
-        return dataTypes;
+    public List<String> getKeysToAppend() {
+        return keysToAppend;
     }
 
 }
