@@ -48,13 +48,13 @@ When run, the processor will parse the messages and extracts the values for the 
         Where `deviation_from_expected` is a list of deviations for each of the keys from their corresponding expected values and `grade` is the anomaly grade indicating the severity of the anomaly
 
 #### Options
-* `shingleSize` - shingle size to be used in the ML algorithm
+* `shingle_size` - shingle size to be used in the ML algorithm
   * Default: `4`
   * Range: 1 - 60
-* `sampleSize` - sample size size to be used in the ML algorithm
+* `sample_size` - sample size size to be used in the ML algorithm
   * Default: `256`
   * Range: 100 - 2500
-* `timeDecay` - time decay value to be used in the ML algorithm. Used as (timeDecay/SampleSize) in the ML algorithm
+* `time_decay` - time decay value to be used in the ML algorithm. Used as (timeDecay/SampleSize) in the ML algorithm
   * Default: `0.1`
   * Range: 0 - 1.0
 * `type` - Type of data that is being sent to the algorithm
