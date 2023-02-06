@@ -206,7 +206,7 @@ class MicrometerMetricPublisherTest {
         final Map<SdkMetric<?>, List<MetricRecord<?>>> metrics = new HashMap<>();
         metrics.put(sdkMetric, List.of(metricRecordMock, serviceIdMetricRecord, operationNameMetricRecord));
 
-        final DefaultMetricCollection childMetricCollection = new DefaultMetricCollection("Collection Name", metrics, null);
+        final DefaultMetricCollection childMetricCollection = new DefaultMetricCollection("Child Collection Name", metrics, null);
         final DefaultMetricCollection metricCollection = new DefaultMetricCollection("Collection Name", metrics, List.of(childMetricCollection));
 
         final MicrometerMetricPublisher objectUnderTest = createObjectUnderTest();

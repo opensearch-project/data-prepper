@@ -34,10 +34,10 @@ public class MicrometerMetricPublisher implements MetricPublisher {
                 .filter(metricRecord -> DEFAULT_DIMENSIONS.contains(metricRecord.metric()))
                 .collect(Collectors.toMap(metricRecord -> metricRecord.metric().name(), metricRecord -> metricRecord.value().toString()));
 
-        addMetricsToPluginMetrics(metricCollection, dimensions);
-        metricCollection.children().forEach(
-                child -> addMetricsToPluginMetrics(child, dimensions)
-        );
+        final String serviceIdValue = dimensions.get(SERVICE_ID);
+        final String operationNameValue = dimensions.get(OPERATION_NAME);
+
+        addMetricsToPluginMetrics(metricCollection, serviceIdValue, operationNameValue);
     }
 
     @Override
@@ -45,9 +45,12 @@ public class MicrometerMetricPublisher implements MetricPublisher {
 
     }
 
-    private void addMetricsToPluginMetrics(final MetricCollection metricCollection, final Map<String, String> dimensions) {
-        final String serviceIdValue = dimensions.get(SERVICE_ID);
-        final String operationNameValue = dimensions.get(OPERATION_NAME);
+    private void addMetricsToPluginMetrics(final MetricCollection metricCollection,
+                                           final String serviceIdValue,
+                                           final String operationNameValue) {
+        metricCollection.children().forEach(
+                child -> addMetricsToPluginMetrics(child, serviceIdValue, operationNameValue)
+        );
 
         metricCollection.forEach(metricRecord -> {
             final Class<?> metricValueClass = metricRecord.metric().valueClass();
