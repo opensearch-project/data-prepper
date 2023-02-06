@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.parser.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
@@ -41,20 +42,35 @@ public class DataPrepperConfiguration {
 
     public DataPrepperConfiguration() {}
 
-    // TODO: camel case to snake eyes in JsonProperty
     @JsonCreator
     public DataPrepperConfiguration(
             @JsonProperty("ssl") final Boolean ssl,
-            @JsonProperty("keyStoreFilePath") final String keyStoreFilePath,
-            @JsonProperty("keyStorePassword") final String keyStorePassword,
-            @JsonProperty("privateKeyPassword") final String privateKeyPassword,
-            @JsonProperty("serverPort") final String serverPort,
-            @JsonProperty("metricRegistries") final List<MetricRegistryType> metricRegistries,
+            @JsonProperty("key_store_file_path")
+            @JsonAlias("keyStoreFilePath")
+            final String keyStoreFilePath,
+            @JsonProperty("key_store_password")
+            @JsonAlias("keyStorePassword")
+            final String keyStorePassword,
+            @JsonProperty("private_key_password")
+            @JsonAlias("privateKeyPassword")
+            final String privateKeyPassword,
+            @JsonProperty("server_port")
+            @JsonAlias("serverPort")
+            final String serverPort,
+            @JsonProperty("metric_registries")
+            @JsonAlias("metricRegistries")
+            final List<MetricRegistryType> metricRegistries,
             @JsonProperty("authentication") final PluginModel authentication,
-            @JsonProperty("metricTags") final Map<String, String> metricTags,
+            @JsonProperty("metric_tags")
+            @JsonAlias("metricTags")
+            final Map<String, String> metricTags,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
-            @JsonProperty("processorShutdownTimeout") final Duration processorShutdownTimeout,
-            @JsonProperty("sinkShutdownTimeout") final Duration sinkShutdownTimeout,
+            @JsonProperty("processor_shutdown_timeout")
+            @JsonAlias("processorShutdownTimeout")
+            final Duration processorShutdownTimeout,
+            @JsonProperty("sink_shutdown_timeout")
+            @JsonAlias("sinkShutdownTimeout")
+            final Duration sinkShutdownTimeout,
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig
             ) {
         this.authentication = authentication;

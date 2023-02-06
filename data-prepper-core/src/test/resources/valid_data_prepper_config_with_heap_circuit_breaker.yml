@@ -1,4 +1,4 @@
-serverPort: 1234
+server_port: 1234
 ssl: true
 
 circuit_breakers:
