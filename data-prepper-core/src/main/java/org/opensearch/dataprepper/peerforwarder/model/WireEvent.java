@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder.model;
 
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 
 import java.io.Serializable;
@@ -20,7 +21,7 @@ public class WireEvent implements Serializable {
     private String eventType;
     private Instant eventTimeReceived;
     private Map<String, Object> eventAttributes;
-    private String eventData;
+    private Event eventData;
 
     public WireEvent() {
     }
@@ -30,7 +31,7 @@ public class WireEvent implements Serializable {
     public WireEvent(final String eventType,
                      final Instant eventTimeReceived,
                      final Map<String, Object> eventAttributes,
-                     final String eventData) {
+                     final Event eventData) {
         this.eventType = eventType;
         this.eventTimeReceived = eventTimeReceived;
         this.eventAttributes = eventAttributes;
@@ -49,7 +50,7 @@ public class WireEvent implements Serializable {
         return eventAttributes;
     }
 
-    public String getEventData() {
+    public Event getEventData() {
         return eventData;
     }
 }

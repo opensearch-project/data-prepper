@@ -108,7 +108,7 @@ public class PeerForwarderClient {
                 event.getMetadata().getEventType(),
                 event.getMetadata().getTimeReceived(),
                 event.getMetadata().getAttributes(),
-                event.toJsonString()
+                event
         );
     }
 

@@ -176,7 +176,7 @@ class PeerForwarderHttpServiceTest {
             final WireEvent wireEvent = new WireEvent(record.getData().getMetadata().getEventType(),
                 event.getMetadata().getTimeReceived(),
                 event.getMetadata().getAttributes(),
-                event.toJsonString());
+                event);
 
             return wireEvent;
         }).collect(Collectors.toList());

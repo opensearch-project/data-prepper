@@ -9,7 +9,6 @@ import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
@@ -18,7 +17,6 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.annotation.Post;
 import io.micrometer.core.instrument.Timer;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
@@ -125,21 +123,7 @@ public class PeerForwarderHttpService {
     }
 
     private Record<Event> transformEvent(final WireEvent wireEvent) {
-        final DefaultEventMetadata eventMetadata = getEventMetadata(wireEvent);
-        Event event;
-
-        if (wireEvent.getEventType().equalsIgnoreCase(TRACE_EVENT_TYPE)) {
-            event = JacksonSpan.builder()
-                    .withJsonData(wireEvent.getEventData())
-                    .withEventMetadata(eventMetadata)
-                    .build();
-        } else {
-            event = JacksonEvent.builder()
-                    .withData(wireEvent.getEventData())
-                    .withEventMetadata(eventMetadata)
-                    .build();
-        }
-        return new Record<>(event);
+        return new Record<>(wireEvent.getEventData());
     }
 
     private DefaultEventMetadata getEventMetadata(final WireEvent wireEvent) {
