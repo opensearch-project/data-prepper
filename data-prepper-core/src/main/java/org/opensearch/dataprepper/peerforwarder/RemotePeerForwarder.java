@@ -227,10 +227,11 @@ class RemotePeerForwarder implements PeerForwarder {
     }
 
     private void forwardBatchedRecords() {
-        final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> futuresMap = peerBatchingQueueMap.keySet().stream()
-                .map(this::forwardRecordsForIp)
-                .flatMap(map -> map.entrySet().stream())
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> futuresMap = new HashMap<>();
+        peerBatchingQueueMap.forEach((ipAddress, records) -> {
+            final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> futuresForIp = forwardRecordsForIp(ipAddress);
+            futuresMap.putAll(futuresForIp);
+        });
 
         final CompletableFuture<Void> compositeFuture = CompletableFuture.allOf(futuresMap.keySet().toArray(CompletableFuture[]::new));
         try {
