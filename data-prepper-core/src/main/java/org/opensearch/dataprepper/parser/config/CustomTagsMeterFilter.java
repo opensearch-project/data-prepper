@@ -13,6 +13,7 @@ import org.springframework.util.AntPathMatcher;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.DataPrepper.getServiceNameForMetrics;
@@ -38,8 +39,12 @@ public class CustomTagsMeterFilter implements MeterFilter {
             final String metricRegex = metricTagFilter.getPattern();
 
             if (ANT_PATH_MATCHER.match(metricRegex, id.getName())) {
-                return MeterFilter.commonTags(metricTagFilter.getTags().entrySet().stream().map(e -> Tag.of(e.getKey(), e.getValue()))
-                        .collect(Collectors.toList())).map(id);
+                final Set<Map.Entry<String, String>> metricFilterTags = metricTagFilter.getTags().entrySet();
+                final List<Tag> tagList = metricFilterTags.stream().map(
+                        tag -> Tag.of(tag.getKey(), tag.getValue())
+                ).collect(Collectors.toList());
+
+                return MeterFilter.commonTags(tagList).map(id);
             }
         }
         return MeterFilter.commonTags(metricTagsWithServiceName.entrySet().stream().map(e -> Tag.of(e.getKey(), e.getValue()))

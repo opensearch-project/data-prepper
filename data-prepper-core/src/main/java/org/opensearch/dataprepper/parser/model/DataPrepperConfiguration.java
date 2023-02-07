@@ -67,8 +67,7 @@ public class DataPrepperConfiguration {
             @JsonProperty("metric_tags")
             @JsonAlias("metricTags")
             final Map<String, String> metricTags,
-            @JsonProperty("metricTagFilters")
-            @JsonAlias("metric_tag_filters")
+            @JsonProperty("metric_tag_filters")
             final List<MetricTagFilter> metricTagFilters,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
             @JsonProperty("processor_shutdown_timeout")
@@ -165,7 +164,7 @@ public class DataPrepperConfiguration {
     private void setMetricTags(final Map<String, String> metricTags) {
         if (metricTags != null) {
             if (metricTags.size() > MAX_TAGS_NUMBER) {
-                throw new IllegalArgumentException("metricTags cannot be more than 3");
+                throw new IllegalArgumentException("metricTags cannot be more than " + MAX_TAGS_NUMBER);
             }
             this.metricTags = metricTags;
         }
@@ -176,7 +175,9 @@ public class DataPrepperConfiguration {
             metricTagFilters.forEach(
                     metricTagFilter -> {
                         if (metricTagFilter.getTags() != null && metricTagFilter.getTags().size() > MAX_TAGS_NUMBER) {
-                            throw new IllegalArgumentException("Tags cannot be more than 3 for each filter");
+                            throw new IllegalArgumentException(
+                                    String.format("Each metric tag filter may have no more than %s tags.", MAX_TAGS_NUMBER)
+                            );
                         }
                     }
             );

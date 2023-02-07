@@ -15,7 +15,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.opensearch.dataprepper.DataPrepper.getServiceNameForMetrics;
 import static org.opensearch.dataprepper.metrics.MetricNames.SERVICE_NAME;
@@ -43,9 +45,10 @@ class CustomTagsMeterFilterTest {
         final List<Tag> expectedTags = List.of(Tag.of(testFilterKey, testFilterValue));
 
         assertThat(testMeterIdWithTags, notNullValue());
-        System.out.println(testMeterIdWithTags);
-        assertThat(testMeterIdWithTags.getTags().size(), equalTo(1));
-        assertThat(testMeterIdWithTags.getTags(), equalTo(expectedTags));
+        assertThat(testMeterIdWithTags.getTags(), allOf(
+                hasSize(1),
+                equalTo(expectedTags)
+        ));
     }
 
     @ParameterizedTest
@@ -59,9 +62,10 @@ class CustomTagsMeterFilterTest {
         final List<Tag> expectedTags = List.of(Tag.of(SERVICE_NAME, getServiceNameForMetrics()), Tag.of(testTagKey, testTagValue));
 
         assertThat(testMeterIdWithTags, notNullValue());
-        System.out.println(testMeterIdWithTags);
-        assertThat(testMeterIdWithTags.getTags().size(), equalTo(2));
-        assertThat(testMeterIdWithTags.getTags(), equalTo(expectedTags));
+        assertThat(testMeterIdWithTags.getTags(), allOf(
+                hasSize(2),
+                equalTo(expectedTags)
+        ));
     }
 
 }

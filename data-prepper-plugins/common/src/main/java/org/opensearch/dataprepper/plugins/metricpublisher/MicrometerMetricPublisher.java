@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.metricpublisher;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.metrics.CoreMetric;
 import software.amazon.awssdk.metrics.MetricCollection;
 import software.amazon.awssdk.metrics.MetricPublisher;
@@ -18,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class MicrometerMetricPublisher implements MetricPublisher {
+    private static Logger LOG = LoggerFactory.getLogger(MicrometerMetricPublisher.class);
     private static final String SERVICE_ID = "ServiceId";
     private static final String OPERATION_NAME = "OperationName";
     private static final Set<SdkMetric<String>> DEFAULT_DIMENSIONS = Set.of(CoreMetric.SERVICE_ID, CoreMetric.OPERATION_NAME);
@@ -69,6 +72,8 @@ public class MicrometerMetricPublisher implements MetricPublisher {
                 final double metricValue = Boolean.TRUE.equals(booleanValue) ? 1.0 : 0.0;
                 pluginMetrics.counterWithTags(metricName, SERVICE_ID, serviceIdValue, OPERATION_NAME, operationNameValue)
                         .increment(metricValue);
+            } else {
+                LOG.trace(String.format("Ignoring %s metric. Only metrics with value Class Duration, Number, and Boolean are published.", metricName));
             }
         });
     }

@@ -1,5 +1,5 @@
 ssl: false
-metricTagFilters:
-  - pattern: "aws.sdk.*"
+metric_tag_filters:
+  - pattern: "aws.sdk.**"
     tags:
       tag1: value1

@@ -134,7 +134,7 @@ public class DataPrepperConfigurationTests {
         assertThat(dataPrepperConfiguration, notNullValue());
         assertThat(dataPrepperConfiguration.getMetricTagFilters(), notNullValue());
         assertThat(dataPrepperConfiguration.getMetricTagFilters().size(), equalTo(1));
-        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getPattern(), equalTo("aws.sdk.*"));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getPattern(), equalTo("aws.sdk.**"));
         assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags().size(), equalTo(1));
         assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags(), equalTo(Map.of("tag1", "value1")));
     }
