@@ -5,10 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp.certificate;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
+import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
 import org.opensearch.dataprepper.plugins.source.loghttp.HTTPSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,11 +62,14 @@ public class CertificateProviderFactory {
                     .retryPolicy(retryPolicy)
                     .build();
 
+            final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
+
             final AcmClient awsCertificateManager = AcmClient.builder()
                     .region(Region.of(httpSourceConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(clientConfig)
                     .httpClientBuilder(ApacheHttpClient.builder())
+                    .overrideConfiguration(metricPublisher -> metricPublisher.addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics)))
                     .build();
 
             return new ACMCertificateProvider(awsCertificateManager,
