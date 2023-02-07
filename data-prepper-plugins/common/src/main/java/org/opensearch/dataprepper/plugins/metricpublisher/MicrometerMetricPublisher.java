@@ -73,7 +73,7 @@ public class MicrometerMetricPublisher implements MetricPublisher {
                 pluginMetrics.counterWithTags(metricName, SERVICE_ID, serviceIdValue, OPERATION_NAME, operationNameValue)
                         .increment(metricValue);
             } else {
-                LOG.trace(String.format("Ignoring %s metric. Only metrics with value Class Duration, Number, and Boolean are published.", metricName));
+                LOG.trace("Ignoring {} metric. Only metrics with value Class Duration, Number, and Boolean are published.", metricName);
             }
         });
     }
