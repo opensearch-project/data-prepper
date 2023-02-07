@@ -134,12 +134,10 @@ public class AbstractSinkTest {
         }
 
         @Override
-        public void doInitialize() throws Exception {
+        public void doInitialize() {
             // make this check for smaller number so that test finishes sooner
             if (++initCount == NUMBER_OF_RETRIES/200) {
                 initialized = true;
-            } else {
-                throw new RuntimeException("Not initialized");
             }
         }
 
