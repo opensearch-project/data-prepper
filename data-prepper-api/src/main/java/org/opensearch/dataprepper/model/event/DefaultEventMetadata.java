@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableMap;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -38,6 +39,12 @@ public class DefaultEventMetadata implements EventMetadata {
         this.attributes = builder.attributes == null ? ImmutableMap.of() : ImmutableMap.copyOf(builder.attributes);
     }
 
+    private DefaultEventMetadata(final EventMetadata eventMetadata) {
+        this.eventType = eventMetadata.getEventType();
+        this.timeReceived = eventMetadata.getTimeReceived();
+        this.attributes = ImmutableMap.copyOf(eventMetadata.getAttributes());
+    }
+
     @Override
     public String getEventType() {
         return eventType;
@@ -53,6 +60,30 @@ public class DefaultEventMetadata implements EventMetadata {
         return attributes;
     }
 
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        final DefaultEventMetadata that = (DefaultEventMetadata) o;
+        return Objects.equals(eventType, that.eventType)
+                && Objects.equals(timeReceived, that.timeReceived)
+                && Objects.equals(attributes, that.attributes);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(eventType, timeReceived, attributes);
+    }
+
+    @Override
+    public String toString() {
+        return "DefaultEventMetadata{" +
+                "eventType='" + eventType + '\'' +
+                ", timeReceived=" + timeReceived +
+                ", attributes=" + attributes +
+                '}';
+    }
+
     /**
      * Constructs an empty builder.
      * @return a builder
@@ -60,6 +91,10 @@ public class DefaultEventMetadata implements EventMetadata {
      */
     public static Builder builder() {
         return new Builder();
+    }
+
+    static EventMetadata fromEventMetadata(final EventMetadata eventMetadata) {
+        return new DefaultEventMetadata(eventMetadata);
     }
 
     /**

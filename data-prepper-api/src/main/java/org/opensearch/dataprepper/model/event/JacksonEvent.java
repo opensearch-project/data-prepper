@@ -39,12 +39,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * For example using the key "/fizz/buzz" would allow a user to retrieve the number 42 using {@link #get(String, Class)} from the nested structure below.
  * Additionally, a key structure without a prefixed "/" will access the same value: "fizz/buzz"
  * <p>
- *     {
- *         "foo": "bar"
- *         "fizz": {
- *             "buzz": 42
- *         }
- *     }
+ * {
+ * "foo": "bar"
+ * "fizz": {
+ * "buzz": 42
+ * }
+ * }
  *
  * @since 1.2
  */
@@ -58,7 +58,8 @@ public class JacksonEvent implements Event {
             .registerModule(new JavaTimeModule())
             .registerModule(new Jdk8Module()); // required for using Optional with Jackson. Ref: https://github.com/FasterXML/jackson-modules-java8
 
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {};
+    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<Map<String, Object>>() {
+    };
 
     private final EventMetadata eventMetadata;
 
@@ -83,6 +84,11 @@ public class JacksonEvent implements Event {
         }
 
         this.jsonNode = getInitialJsonNode(builder.data);
+    }
+
+    protected JacksonEvent(final JacksonEvent otherEvent) {
+        this.jsonNode = otherEvent.jsonNode.deepCopy();
+        this.eventMetadata = DefaultEventMetadata.fromEventMetadata(otherEvent.eventMetadata);
     }
 
     public static Event fromMessage(String message) {
@@ -112,7 +118,8 @@ public class JacksonEvent implements Event {
 
     /**
      * Adds or updates the key with a given value in the Event.
-     * @param key where the value will be set
+     *
+     * @param key   where the value will be set
      * @param value value to set the key to
      * @since 1.2
      */
@@ -157,7 +164,8 @@ public class JacksonEvent implements Event {
 
     /**
      * Retrieves the value of type clazz from the key.
-     * @param key the value to retrieve from
+     *
+     * @param key   the value to retrieve from
      * @param clazz the return type of the value
      * @return the value
      * @throws RuntimeException if it is unable to map the value to the provided clazz
@@ -192,7 +200,8 @@ public class JacksonEvent implements Event {
 
     /**
      * Retrieves the given key from the Event as a List
-     * @param key the value to retrieve from
+     *
+     * @param key   the value to retrieve from
      * @param clazz the return type of elements in the list
      * @return a List of clazz
      * @throws RuntimeException if it is unable to map the elements in the list to the provided clazz
@@ -260,6 +269,7 @@ public class JacksonEvent implements Event {
      * returns a string with formatted parts replaced by their values. The input
      * string may contain parts with format "${.../.../...}" which are replaced
      * by their value in the event
+     *
      * @param format string with format
      * @throws RuntimeException if the format is incorrect or the value is not a string
      */
@@ -269,22 +279,22 @@ public class JacksonEvent implements Event {
         String result = "";
         int position = 0;
         while ((position = format.indexOf("${", fromIndex)) != -1) {
-          int endPosition = format.indexOf("}", position+1);
-          if (endPosition == -1) {
-            throw new RuntimeException("index name not properly formed");
-          }
-          result += format.substring(fromIndex, position);
-          String name = format.substring(position+2, endPosition);
-          Object val = this.get(name, Object.class);
-	  if (val == null) {
-	    return null;
-	  }
-          result += val.toString();
-          fromIndex = endPosition+1;
+            int endPosition = format.indexOf("}", position + 1);
+            if (endPosition == -1) {
+                throw new RuntimeException("index name not properly formed");
+            }
+            result += format.substring(fromIndex, position);
+            String name = format.substring(position + 2, endPosition);
+            Object val = this.get(name, Object.class);
+            if (val == null) {
+                return null;
+            }
+            result += val.toString();
+            fromIndex = endPosition + 1;
         }
-	if (fromIndex < format.length()) {
+        if (fromIndex < format.length()) {
             result += format.substring(fromIndex);
-	}
+        }
         return result;
     }
 
@@ -371,19 +381,33 @@ public class JacksonEvent implements Event {
 
     /**
      * Constructs an empty builder.
+     *
      * @return a builder
      * @since 1.2
      */
     public static Builder builder() {
         return new Builder() {
-            @Override public Builder getThis() {
+            @Override
+            public Builder getThis() {
                 return this;
             }
         };
     }
 
+    public static JacksonEvent fromEvent(final Event event) {
+        if (event instanceof JacksonEvent) {
+            return new JacksonEvent((JacksonEvent) event);
+        } else {
+            return JacksonEvent.builder()
+                    .withData(event.toMap())
+                    .withEventMetadata(event.getMetadata())
+                    .build();
+        }
+    }
+
     /**
      * Builder for creating {@link JacksonEvent}.
+     *
      * @since 1.2
      */
     public abstract static class Builder<T extends Builder<T>> {
@@ -398,6 +422,7 @@ public class JacksonEvent implements Event {
 
         /**
          * Sets the event type for the metadata if a {@link #withEventMetadata} is not used.
+         *
          * @param eventType the event type
          * @since 1.2
          */
@@ -408,6 +433,7 @@ public class JacksonEvent implements Event {
 
         /**
          * Sets the attributes for the metadata if a {@link #withEventMetadata} is not used.
+         *
          * @param eventMetadataAttributes the attributes
          * @since 1.2
          */
@@ -418,6 +444,7 @@ public class JacksonEvent implements Event {
 
         /**
          * Sets the time received for the metadata if a {@link #withEventMetadata} is not used.
+         *
          * @param timeReceived the time an event was received
          * @since 1.2
          */
@@ -428,6 +455,7 @@ public class JacksonEvent implements Event {
 
         /**
          * Sets the metadata.
+         *
          * @param eventMetadata the metadata
          * @since 1.2
          */
@@ -438,6 +466,7 @@ public class JacksonEvent implements Event {
 
         /**
          * Sets the data of the event.
+         *
          * @param data the data
          * @since 1.2
          */
@@ -448,6 +477,7 @@ public class JacksonEvent implements Event {
 
         /**
          * Returns a newly created {@link JacksonEvent}.
+         *
          * @return an event
          * @since 1.2
          */
