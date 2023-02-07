@@ -35,7 +35,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.stream.Collectors;
 
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
@@ -229,8 +228,7 @@ class RemotePeerForwarder implements PeerForwarder {
     private void forwardBatchedRecords() {
         final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> futuresMap = new HashMap<>();
         peerBatchingQueueMap.forEach((ipAddress, records) -> {
-            final Map<CompletableFuture<AggregatedHttpResponse>, List<Record<Event>>> futuresForIp = forwardRecordsForIp(ipAddress);
-            futuresMap.putAll(futuresForIp);
+            futuresMap.putAll(forwardRecordsForIp(ipAddress));
         });
 
         final CompletableFuture<Void> compositeFuture = CompletableFuture.allOf(futuresMap.keySet().toArray(CompletableFuture[]::new));
