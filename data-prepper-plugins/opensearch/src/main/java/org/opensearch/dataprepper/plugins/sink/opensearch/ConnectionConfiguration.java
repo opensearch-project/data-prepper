@@ -70,6 +70,7 @@ public class ConnectionConfiguration {
   public static final String CONNECT_TIMEOUT = "connect_timeout";
   public static final String CERT_PATH = "cert";
   public static final String INSECURE = "insecure";
+  public static final String AWS_OPTION = "aws";
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
@@ -174,8 +175,22 @@ public class ConnectionConfiguration {
       builder = builder.withConnectTimeout(connectTimeout);
     }
 
-    builder.withAwsSigv4(pluginSetting.getBooleanOrDefault(AWS_SIGV4, false));
-    if (builder.awsSigv4) {
+    Map<String, Object> awsOption = pluginSetting.getTypedMap(AWS_OPTION, String.class, Object.class);
+    boolean awsOptionUsed = false;
+    builder.withAwsSigv4(false);
+    if (awsOption != null && !awsOption.isEmpty()) {
+        awsOptionUsed = true;
+        builder.withAwsSigv4(true);
+        builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
+        builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
+        builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
+    }
+    boolean awsSigv4 = pluginSetting.getBooleanOrDefault(AWS_SIGV4, false);
+    if (awsSigv4) {
+      if (awsOptionUsed) {
+        throw new RuntimeException(String.format("{} option cannot be used along with {} option", AWS_SIGV4, AWS_OPTION));
+      }
+      builder.withAwsSigv4(true);
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
       builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
       builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
