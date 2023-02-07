@@ -127,6 +127,24 @@ public class DataPrepperConfigurationTests {
     }
 
     @Test
+    void testConfigWithValidMetricTagFilters() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
+                TestDataProvider.VALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.getMetricTagFilters(), notNullValue());
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().size(), equalTo(1));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getPattern(), equalTo("aws.sdk.**"));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags().size(), equalTo(1));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags(), equalTo(Map.of("tag1", "value1")));
+    }
+
+    @Test
+    void testInvalidConfigWithMoreThan3Tags() {
+        assertThrows(ValueInstantiationException.class, () -> makeConfig(TestDataProvider.INVALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER));
+    }
+
+    @Test
     void testConfigWithValidProcessorShutdownTimeout() throws IOException {
         final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
                 TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_PROCESSOR_SHUTDOWN_TIMEOUT);
