@@ -159,11 +159,9 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 
 ### <a name="aws_configuration">AWS Configuration</a>
 
-The AWS configuration is the same for both SQS and S3.
-
 * `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
-* `sts_role_arn` (Optional) : The AWS STS role to assume for requests to SQS and S3. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
-* `aws_sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
+* `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
+* `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
 
 ## Metrics
 ### Management Disabled Index Type
