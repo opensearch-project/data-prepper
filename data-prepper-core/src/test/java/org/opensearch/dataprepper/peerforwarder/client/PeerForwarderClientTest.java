@@ -37,7 +37,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
-//import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
+import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
+//import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -75,7 +77,10 @@ class PeerForwarderClientTest {
     private static final String TEST_PIPELINE_NAME = "test_pipeline_name";
     private static final String TEST_ADDRESS = "test_address";
 
-    private ObjectMapper objectMapper;
+    @Mock
+    private JavaPeerForwarderCodec javaPeerForwarderCodec;
+    @Mock
+    private JacksonPeerForwarderCodec jacksonPeerForwarderCodec;
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -96,8 +101,6 @@ class PeerForwarderClientTest {
         clientRequestForwardingLatencyTimer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
         when(pluginMetrics.counter(REQUESTS)).thenReturn(requestsCounter);
         when(pluginMetrics.timer(CLIENT_REQUEST_FORWARDING_LATENCY)).thenReturn(clientRequestForwardingLatencyTimer);
-        objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule());
 
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
     }
@@ -107,9 +110,10 @@ class PeerForwarderClientTest {
         verifyNoMoreInteractions(requestsCounter);
     }
 
-    private PeerForwarderClient createObjectUnderTest(final ObjectMapper objectMapper) {
+    private PeerForwarderClient createObjectUnderTest() {
         when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(200);
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory,
+                javaPeerForwarderCodec, jacksonPeerForwarderCodec, pluginMetrics);
     }
 
     @Test
@@ -124,7 +128,7 @@ class PeerForwarderClientTest {
         final WebClient testClient = getTestClient(String.valueOf(address.getPort()));
         when(peerClientPool.getClient(anyString())).thenReturn(testClient);
 
-        final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
+        final PeerForwarderClient peerForwarderClient = createObjectUnderTest();
 
         final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseFuture =
                 peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(),
@@ -142,7 +146,7 @@ class PeerForwarderClientTest {
 //    @Test
 //    void test_serializeRecordsAndSendHttpRequest_with_bad_wireEvents_should_throw() throws JsonProcessingException {
 //        ObjectMapper objectMapper = mock(ObjectMapper.class);
-//        when(objectMapper.writeValueAsBytes(isA(WireEvents.class))).thenThrow(JsonProcessingException.class);
+//        when(objectMapper.writeValueAsBytes(isA(PeerForwardingEvents.class))).thenThrow(JsonProcessingException.class);
 //
 //        final PeerForwarderClient objectUnderTest = createObjectUnderTest(objectMapper);
 //
@@ -164,7 +168,7 @@ class PeerForwarderClientTest {
         when(peerClientPool.getClient(anyString())).thenReturn(webClient);
         when(webClient.post(anyString(), any(byte[].class))).thenReturn(HttpResponse.ofJson(CompletableFuture.class));
 
-        final PeerForwarderClient peerForwarderClient = createObjectUnderTest(objectMapper);
+        final PeerForwarderClient peerForwarderClient = createObjectUnderTest();
         final Collection<Record<Event>> records = generateBatchRecords(1);
 
         for (int i = 0; i < requestCount; i++) {

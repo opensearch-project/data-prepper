@@ -37,6 +37,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
+import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.ByteArrayOutputStream;
@@ -72,10 +75,19 @@ class PeerForwarderHttpServiceTest {
     private static final int TEST_BUFFER_CAPACITY = 3;
     private static final int TEST_BATCH_SIZE = 3;
 
-    private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new JavaTimeModule());
+
     private final PeerForwarderReceiveBuffer peerForwarderReceiveBuffer =
             new PeerForwarderReceiveBuffer(TEST_BATCH_SIZE, TEST_BUFFER_CAPACITY);
+
+    @Mock
+    private JavaPeerForwarderCodec javaPeerForwarderCodec;
+    @Mock
+    private PeerForwardingEvents peerForwardingEvents;
+
+    @Mock
+    private JacksonPeerForwarderCodec jacksonPeerForwarderCodec;
+    @Mock
+    private WireEvents wireEvents;
 
     @Mock
     private PeerForwarderProvider peerForwarderProvider;
@@ -107,7 +119,8 @@ class PeerForwarderHttpServiceTest {
     }
 
     private PeerForwarderHttpService createObjectUnderTest() {
-        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper, pluginMetrics);
+        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration,
+                javaPeerForwarderCodec, jacksonPeerForwarderCodec, pluginMetrics);
     }
 
 
@@ -173,11 +186,11 @@ class PeerForwarderHttpServiceTest {
 
         final List<Event> wireEventList = records.stream().map(Record::getData).collect(Collectors.toList());
 
-        final WireEvents wireEvents = new WireEvents(wireEventList, PLUGIN_ID, PIPELINE_NAME);
+        final PeerForwardingEvents peerForwardingEvents = new PeerForwardingEvents(wireEventList, PLUGIN_ID, PIPELINE_NAME);
 
         try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
              final ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)) {
-            objectOutputStream.writeObject(wireEvents);
+            objectOutputStream.writeObject(peerForwardingEvents);
             final HttpData httpData = HttpData.copyOf(byteArrayOutputStream.toByteArray());
             return HttpRequest.of(requestHeaders, httpData).aggregate().get();
         } catch (IOException e) {

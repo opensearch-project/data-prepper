@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.peerforwarder.client;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import io.micrometer.core.instrument.Counter;
@@ -16,6 +15,10 @@ import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
+import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
 
@@ -38,7 +42,9 @@ public class PeerForwarderClient {
     static final String CLIENT_REQUEST_FORWARDING_LATENCY = "clientRequestForwardingLatency";
 
     private final PeerForwarderClientFactory peerForwarderClientFactory;
-    private final ObjectMapper objectMapper;
+    private final PeerForwarderConfiguration peerForwarderConfiguration;
+    private final JavaPeerForwarderCodec javaPeerForwarderCodec;
+    private final JacksonPeerForwarderCodec jacksonPeerForwarderCodec;
     private final ExecutorService executorService;
     private final Counter requestsCounter;
     private final Timer clientRequestForwardingLatencyTimer;
@@ -47,10 +53,13 @@ public class PeerForwarderClient {
 
     public PeerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                final PeerForwarderClientFactory peerForwarderClientFactory,
-                               final ObjectMapper objectMapper,
+                               final JavaPeerForwarderCodec javaPeerForwarderCodec,
+                               final JacksonPeerForwarderCodec jacksonPeerForwarderCodec,
                                final PluginMetrics pluginMetrics) {
+        this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerForwarderClientFactory = peerForwarderClientFactory;
-        this.objectMapper = objectMapper;
+        this.javaPeerForwarderCodec = javaPeerForwarderCodec;
+        this.jacksonPeerForwarderCodec = jacksonPeerForwarderCodec;
         executorService = Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount());
         requestsCounter = pluginMetrics.counter(REQUESTS);
         clientRequestForwardingLatencyTimer = pluginMetrics.timer(CLIENT_REQUEST_FORWARDING_LATENCY);
@@ -80,26 +89,41 @@ public class PeerForwarderClient {
     }
 
     private byte[] getSerializedJsonBytes(final Collection<Record<Event>> records, final String pluginId, final String pipelineName) {
-        final List<Event> wireEventList = getWireEventList(records);
-        final WireEvents wireEvents = new WireEvents(wireEventList, pluginId, pipelineName);
-
-        try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-             final ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)) {
-            objectOutputStream.writeObject(wireEvents);
-            return byteArrayOutputStream.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        if (peerForwarderConfiguration.getBinaryCodec()) {
+            final List<Event> eventList = records.stream().map(Record::getData).collect(Collectors.toList());
+            final PeerForwardingEvents peerForwardingEvents = new PeerForwardingEvents(eventList, pluginId, pipelineName);
+            try {
+                return javaPeerForwarderCodec.serialize(peerForwardingEvents);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            final WireEvents wireEvents = new WireEvents(getWireEventList(records), pluginId, pipelineName);
+            try {
+                return jacksonPeerForwarderCodec.serialize(wireEvents);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
-    private List<Event> getWireEventList(final Collection<Record<Event>> records) {
-        final List<Event> wireEventList = new ArrayList<>();
+    private List<WireEvent> getWireEventList(final Collection<Record<Event>> records) {
+        final List<WireEvent> wireEventList = new ArrayList<>();
 
         for (final Record<Event> record : records) {
             final Event event = record.getData();
-            wireEventList.add(event);
+            wireEventList.add(getWireEvent(event));
         }
         return wireEventList;
+    }
+
+    private WireEvent getWireEvent(final Event event) {
+        return new WireEvent(
+                event.getMetadata().getEventType(),
+                event.getMetadata().getTimeReceived(),
+                event.getMetadata().getAttributes(),
+                event.toJsonString()
+        );
     }
 
     private CompletableFuture<AggregatedHttpResponse> processHttpRequest(final WebClient client, final byte[] content) {

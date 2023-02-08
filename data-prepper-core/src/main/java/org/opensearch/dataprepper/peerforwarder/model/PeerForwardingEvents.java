@@ -5,30 +5,32 @@
 
 package org.opensearch.dataprepper.peerforwarder.model;
 
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarder;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
- * A class to serialize lsit of {@link WireEvent} and destination plugin ID used by {@link PeerForwarder}
+ * A class to serialize list of {@link Event} and destination plugin ID used by {@link PeerForwarder}
  *
  * @since 2.0
  */
-public class WireEvents {
-    private List<WireEvent> events;
+public class PeerForwardingEvents implements Serializable {
+    private List<Event> events;
     private String destinationPluginId;
     private String destinationPipelineName;
 
-    public WireEvents() {
+    public PeerForwardingEvents() {
     }
 
-    public WireEvents(final List<WireEvent> events, final String destinationPluginId, final String destinationPipelineName) {
+    public PeerForwardingEvents(final List<Event> events, final String destinationPluginId, final String destinationPipelineName) {
         this.events = events;
         this.destinationPluginId = destinationPluginId;
         this.destinationPipelineName = destinationPipelineName;
     }
 
-    public List<WireEvent> getEvents() {
+    public List<Event> getEvents() {
         return events;
     }
 
