@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -45,5 +46,13 @@ public class SinkThreadTest {
         when(sink.isReady()).thenReturn(false).thenReturn(true);
         sinkThread.run();
         verify(sink, times(8)).isReady();
+        when(sink.isReady()).thenReturn(false).thenReturn(true);
+        try {
+            lenient().doAnswer((i) -> {
+                throw new InterruptedException("Fake interrupt");
+            }).when(sink).doInitialize();
+            sinkThread.run();
+            verify(sink, times(7)).doInitialize();
+        } catch (Exception e){}
     }
 }
