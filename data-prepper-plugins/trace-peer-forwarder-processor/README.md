@@ -9,7 +9,7 @@ So, the event will be forwarded once in each pipeline. Using this processor even
 ## Basic Usage
 To get started with trace peer forwarder, create the following `pipeline.yaml` along with [Peer Forwarder](https://github.com/opensearch-project/data-prepper/blob/main/docs/peer_forwarder.md) in `data-prepper-config.yaml`
 
-```
+```yaml
 otel-trace-pipeline:
   delay: "100"
   source:
