@@ -102,19 +102,22 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   @Override
-  public void doInitialize() throws IOException {
+  public void doInitialize() {
     try {
         doInitializeInternal();
     } catch (IOException e) {
-        LOG.warn("Failed to initialize OpenSearch sink " + e.getMessage());
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error - " + e.getCause());
     } catch (InvalidPluginConfigurationException e) {
+        LOG.error("Failed to initialize OpenSearch sink.");
         this.shutdown();
         throw new RuntimeException(e.getMessage(), e);
     } catch (Exception e) {
         if (!BulkRetryStrategy.canRetry(e)) {
+            LOG.error("Failed to initialize OpenSearch sink.");
             this.shutdown();
             throw e;
         }
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error - " + e.getCause());
     }
   }
 

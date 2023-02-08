@@ -30,14 +30,13 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
         retryThread = null;
     }
 
-    public abstract void doInitialize() throws Exception;
+    public abstract void doInitialize();
 
     @Override
     public void initialize() {
-        try {
-            doInitialize();
-        } catch (Exception e) {
-        }
+        // Derived class supposed to catch retryable exceptions and throw
+        // the exceptions which are not retryable.
+        doInitialize();
         if (!isReady() && retryThread == null) {
             retryThread = new Thread(new SinkThread(this, NUMBER_OF_RETRIES));
             retryThread.start();
