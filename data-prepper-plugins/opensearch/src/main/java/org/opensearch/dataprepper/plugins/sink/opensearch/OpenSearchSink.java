@@ -107,6 +107,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         doInitializeInternal();
     } catch (IOException e) {
         LOG.warn("Failed to initialize OpenSearch sink, retrying. Error - " + e.getCause());
+        closeFiles();
     } catch (InvalidPluginConfigurationException e) {
         LOG.error("Failed to initialize OpenSearch sink.");
         this.shutdown();
@@ -118,6 +119,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             throw e;
         }
         LOG.warn("Failed to initialize OpenSearch sink, retrying. Error - " + e.getCause());
+        closeFiles();
     }
   }
 
@@ -252,9 +254,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
   }
 
-  @Override
-  public void shutdown() {
-    super.shutdown();
+  private void closeFiles() {
     // Close the client. This closes the low-level client which will close it for both high-level clients.
     if (restHighLevelClient != null) {
       try {
@@ -270,5 +270,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         LOG.error(e.getMessage(), e);
       }
     }
+  }
+
+  @Override
+  public void shutdown() {
+    super.shutdown();
+    closeFiles();
   }
 }

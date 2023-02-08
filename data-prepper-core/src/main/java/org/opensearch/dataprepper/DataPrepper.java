@@ -94,7 +94,8 @@ public class DataPrepper {
             }
         }
         if (waitingPipelineNames.size() > 0) {
-            LOG.info("One or more Pipelines are not ready even after {} retries.", numRetries);
+            LOG.info("One or more Pipelines are not ready even after {} retries. Shutting down pipelines", numRetries);
+            shutdown();
             throw new RuntimeException("Failed to start pipelines");
         }
         transformationPipelines.forEach((name, pipeline) -> {
