@@ -19,11 +19,11 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.15'
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation("io.opentelemetry.proto:opentelemetry-proto:${versionMap.opentelemetryProto}") {
+    implementation(libs.opentelemetry.proto) {
         exclude group: 'com.google.protobuf', module: 'protobuf-java'
     }
-    implementation "com.google.protobuf:protobuf-java:${versionMap.protobufJava}"
-    testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+    implementation libs.protobuf.core
+    testImplementation testLibs.mockito.inline
 }
 
 jacocoTestCoverageVerification {

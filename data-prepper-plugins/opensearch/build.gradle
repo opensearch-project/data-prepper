@@ -5,7 +5,7 @@
 
 buildscript {
     ext {
-        opensearchVersion = System.getProperty('opensearch.version', "${versionMap.opensearchVersion}")
+        opensearchVersion = System.getProperty('opensearch.version', "${libs.versions.opensearch.get()}")
     }
 
     repositories {

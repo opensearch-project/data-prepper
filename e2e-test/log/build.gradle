@@ -92,7 +92,7 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
  * OpenSearch Docker tasks
  */
 task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = "opensearchproject/opensearch:${versionMap.opensearchVersion}"
+    image = "opensearchproject/opensearch:${libs.versions.opensearch.get()}"
 }
 
 task createOpenSearchDockerContainer(type: DockerCreateContainer) {
@@ -190,7 +190,7 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:common')
     integrationTestImplementation project(':data-prepper-plugins:log-generator-source')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
-    integrationTestImplementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
+    integrationTestImplementation libs.armeria.core
     integrationTestImplementation "org.awaitility:awaitility:4.1.1"
-    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
+    integrationTestImplementation libs.opensearch.rhlc
 }
