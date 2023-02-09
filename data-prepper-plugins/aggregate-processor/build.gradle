@@ -16,10 +16,10 @@ dependencies {
     implementation project(':data-prepper-plugins:otel-metrics-raw-processor')
     implementation 'com.google.guava:guava:23.0'
     implementation "org.apache.commons:commons-lang3:3.12.0"
-    implementation "io.opentelemetry.proto:opentelemetry-proto:${versionMap.opentelemetryProto}"
+    implementation libs.opentelemetry.proto
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
-    testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+    testImplementation testLibs.mockito.inline
 }
 
 jacocoTestCoverageVerification {
