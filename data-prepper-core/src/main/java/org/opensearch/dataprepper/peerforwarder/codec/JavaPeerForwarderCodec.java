@@ -9,7 +9,7 @@ import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-public class JavaPeerForwarderCodec implements PeerForwarderCodec<PeerForwardingEvents> {
+public class JavaPeerForwarderCodec implements PeerForwarderCodec {
 
     @Override
     public byte[] serialize(final PeerForwardingEvents events) throws IOException {

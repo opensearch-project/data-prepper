@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderF
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
 import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
@@ -102,8 +103,10 @@ class PeerForwarder_ClientServerIT {
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final CertificateProviderFactory certificateProviderFactory,
             final PeerForwarderProvider peerForwarderProvider) {
+        final PeerForwarderCodec peerForwarderCodec = peerForwarderConfiguration.getBinaryCodec()?
+                javaPeerForwarderCodec : jacksonPeerForwarderCodec;
         final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(pluginMetrics), peerForwarderProvider, peerForwarderConfiguration,
-                javaPeerForwarderCodec, jacksonPeerForwarderCodec, pluginMetrics);
+                peerForwarderCodec, pluginMetrics);
         Objects.requireNonNull(peerForwarderConfiguration, "Nested classes must supply peerForwarderConfiguration");
         Objects.requireNonNull(certificateProviderFactory, "Nested classes must supply certificateProviderFactory");
         final PeerForwarderHttpServerProvider serverProvider = new PeerForwarderHttpServerProvider(peerForwarderConfiguration,
@@ -130,8 +133,9 @@ class PeerForwarder_ClientServerIT {
         final PeerClientPool peerClientPool = new PeerClientPool();
         final PeerForwarderClientFactory peerForwarderClientFactory = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
         peerForwarderClientFactory.setPeerClientPool();
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory,
-                javaPeerForwarderCodec, jacksonPeerForwarderCodec, pluginMetrics);
+        final PeerForwarderCodec peerForwarderCodec = peerForwarderConfiguration.getBinaryCodec()?
+                javaPeerForwarderCodec : jacksonPeerForwarderCodec;
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, peerForwarderCodec, pluginMetrics);
     }
 
     private Collection<Record<Event>> getServerSideRecords(final PeerForwarderProvider peerForwarderProvider) {

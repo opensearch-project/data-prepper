@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.peerforwarder.client;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -33,10 +34,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerClientPool;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderClientFactory;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
-import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
-import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
-import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -55,11 +54,9 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
@@ -75,9 +72,7 @@ class PeerForwarderClientTest {
     private static final String TEST_ADDRESS = "test_address";
 
     @Mock
-    private JavaPeerForwarderCodec javaPeerForwarderCodec;
-    @Mock
-    private JacksonPeerForwarderCodec jacksonPeerForwarderCodec;
+    private PeerForwarderCodec peerForwarderCodec;
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -94,9 +89,8 @@ class PeerForwarderClientTest {
     private NoopTimer clientRequestForwardingLatencyTimer;
 
     @BeforeEach
-    void setUp() throws IOException {
-        lenient().when(javaPeerForwarderCodec.serialize(any(PeerForwardingEvents.class))).thenReturn(new byte[10]);
-        lenient().when(jacksonPeerForwarderCodec.serialize(any(WireEvents.class))).thenReturn(new byte[10]);
+    void setUp() throws Exception {
+        when(peerForwarderCodec.serialize(any(PeerForwardingEvents.class))).thenReturn(new byte[10]);
         clientRequestForwardingLatencyTimer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
         when(pluginMetrics.counter(REQUESTS)).thenReturn(requestsCounter);
         when(pluginMetrics.timer(CLIENT_REQUEST_FORWARDING_LATENCY)).thenReturn(clientRequestForwardingLatencyTimer);
@@ -109,16 +103,14 @@ class PeerForwarderClientTest {
         verifyNoMoreInteractions(requestsCounter);
     }
 
-    private PeerForwarderClient createObjectUnderTest(final boolean binaryCodec) {
-        when(peerForwarderConfiguration.getBinaryCodec()).thenReturn(binaryCodec);
+    private PeerForwarderClient createObjectUnderTest() {
         when(peerForwarderConfiguration.getClientThreadCount()).thenReturn(200);
         return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory,
-                javaPeerForwarderCodec, jacksonPeerForwarderCodec, pluginMetrics);
+                peerForwarderCodec, pluginMetrics);
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return(final boolean binaryCodec)
+    @Test
+    void test_serializeRecordsAndSendHttpRequest_with_actual_client_and_server_should_return()
             throws ExecutionException, InterruptedException {
         when(peerForwarderClientFactory.setPeerClientPool()).thenReturn(peerClientPool);
 
@@ -130,7 +122,7 @@ class PeerForwarderClientTest {
         final WebClient testClient = getTestClient(String.valueOf(address.getPort()));
         when(peerClientPool.getClient(anyString())).thenReturn(testClient);
 
-        final PeerForwarderClient peerForwarderClient = createObjectUnderTest(binaryCodec);
+        final PeerForwarderClient peerForwarderClient = createObjectUnderTest();
 
         final CompletableFuture<AggregatedHttpResponse> aggregatedHttpResponseFuture =
                 peerForwarderClient.serializeRecordsAndSendHttpRequest(generateBatchRecords(1), address.toString(),
@@ -142,11 +134,6 @@ class PeerForwarderClientTest {
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.OK));
         server.stop(0);
 
-        if (binaryCodec) {
-            verifyNoInteractions(jacksonPeerForwarderCodec);
-        } else {
-            verifyNoInteractions(javaPeerForwarderCodec);
-        }
         verify(requestsCounter).increment();
     }
 
@@ -159,7 +146,7 @@ class PeerForwarderClientTest {
         when(peerClientPool.getClient(anyString())).thenReturn(webClient);
         when(webClient.post(anyString(), any(byte[].class))).thenReturn(HttpResponse.ofJson(CompletableFuture.class));
 
-        final PeerForwarderClient peerForwarderClient = createObjectUnderTest(true);
+        final PeerForwarderClient peerForwarderClient = createObjectUnderTest();
         final Collection<Record<Event>> records = generateBatchRecords(1);
 
         for (int i = 0; i < requestCount; i++) {

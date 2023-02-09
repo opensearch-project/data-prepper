@@ -1,7 +1,9 @@
 package org.opensearch.dataprepper.peerforwarder.codec;
 
-public interface PeerForwarderCodec<T> {
-    byte[] serialize(T events) throws Exception;
+import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
 
-    T deserialize(byte[] bytes) throws Exception;
+public interface PeerForwarderCodec {
+    byte[] serialize(PeerForwardingEvents peerForwardingEvents) throws Exception;
+
+    PeerForwardingEvents deserialize(byte[] bytes) throws Exception;
 }

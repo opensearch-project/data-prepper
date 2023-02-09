@@ -7,9 +7,7 @@ package org.opensearch.dataprepper.peerforwarder.server;
 
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.HttpData;
@@ -17,19 +15,14 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.server.annotation.Post;
 import io.micrometer.core.instrument.Timer;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
-import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
-import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
-import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
-import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -43,7 +36,6 @@ import java.util.stream.Collectors;
  */
 public class PeerForwarderHttpService {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderHttpService.class);
-    private static final String TRACE_EVENT_TYPE = "TRACE";
     static final String SERVER_REQUEST_PROCESSING_LATENCY = "serverRequestProcessingLatency";
     static final String RECORDS_RECEIVED_FROM_PEERS = "recordsReceivedFromPeers";
     private static final double BUFFER_TIMEOUT_FRACTION = 0.8;
@@ -51,22 +43,19 @@ public class PeerForwarderHttpService {
     private final ResponseHandler responseHandler;
     private final PeerForwarderProvider peerForwarderProvider;
     private final PeerForwarderConfiguration peerForwarderConfiguration;
-    private final JavaPeerForwarderCodec javaPeerForwarderCodec;
-    private final JacksonPeerForwarderCodec jacksonPeerForwarderCodec;
+    private final PeerForwarderCodec peerForwarderCodec;
     private final Timer serverRequestProcessingLatencyTimer;
     private final Counter recordsReceivedFromPeersCounter;
 
     public PeerForwarderHttpService(final ResponseHandler responseHandler,
                                     final PeerForwarderProvider peerForwarderProvider,
                                     final PeerForwarderConfiguration peerForwarderConfiguration,
-                                    final JavaPeerForwarderCodec javaPeerForwarderCodec,
-                                    final JacksonPeerForwarderCodec jacksonPeerForwarderCodec,
+                                    final PeerForwarderCodec peerForwarderCodec,
                                     final PluginMetrics pluginMetrics) {
         this.responseHandler = responseHandler;
         this.peerForwarderProvider = peerForwarderProvider;
         this.peerForwarderConfiguration = peerForwarderConfiguration;
-        this.javaPeerForwarderCodec = javaPeerForwarderCodec;
-        this.jacksonPeerForwarderCodec = jacksonPeerForwarderCodec;
+        this.peerForwarderCodec = peerForwarderCodec;
         serverRequestProcessingLatencyTimer = pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY);
         recordsReceivedFromPeersCounter = pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS);
     }
@@ -83,33 +72,17 @@ public class PeerForwarderHttpService {
         final List<Event> events = new ArrayList<>();
         final String destinationPluginId;
         final String destinationPipelineName;
-        if (peerForwarderConfiguration.getBinaryCodec()) {
-            try {
-                peerForwardingEvents = javaPeerForwarderCodec.deserialize(content.array());
-                destinationPluginId = peerForwardingEvents.getDestinationPluginId();
-                destinationPipelineName = peerForwardingEvents.getDestinationPipelineName();
-                if (peerForwardingEvents.getEvents() != null) {
-                    events.addAll(peerForwardingEvents.getEvents());
-                }
-            } catch (IOException | ClassNotFoundException e) {
-                final String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
-                LOG.error(message, e);
-                return responseHandler.handleException(e, message);
+        try {
+            peerForwardingEvents = peerForwarderCodec.deserialize(content.array());
+            destinationPluginId = peerForwardingEvents.getDestinationPluginId();
+            destinationPipelineName = peerForwardingEvents.getDestinationPipelineName();
+            if (peerForwardingEvents.getEvents() != null) {
+                events.addAll(peerForwardingEvents.getEvents());
             }
-        } else {
-            try {
-                final WireEvents wireEvents = jacksonPeerForwarderCodec.deserialize(content.array());
-                destinationPluginId = wireEvents.getDestinationPluginId();
-                destinationPipelineName = wireEvents.getDestinationPipelineName();
-                if (wireEvents.getEvents() != null) {
-                    events.addAll(wireEvents.getEvents().stream().map(this::transformEvent)
-                            .collect(Collectors.toList()));
-                }
-            } catch (IOException e) {
-                final String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
-                LOG.error(message, e);
-                return responseHandler.handleException(e, message);
-            }
+        } catch (Exception e) {
+            final String message = "Failed to write the request content due to bad request data format. Needs to be JSON object";
+            LOG.error(message, e);
+            return responseHandler.handleException(e, message);
         }
 
         try {
@@ -147,31 +120,5 @@ public class PeerForwarderHttpService {
 
         return pipelinePeerForwarderReceiveBufferMap
                 .get(destinationPipelineName).get(destinationPluginId);
-    }
-
-    private Event transformEvent(final WireEvent wireEvent) {
-        final DefaultEventMetadata eventMetadata = getEventMetadata(wireEvent);
-        Event event;
-
-        if (wireEvent.getEventType().equalsIgnoreCase(TRACE_EVENT_TYPE)) {
-            event = JacksonSpan.builder()
-                    .withJsonData(wireEvent.getEventData())
-                    .withEventMetadata(eventMetadata)
-                    .build();
-        } else {
-            event = JacksonEvent.builder()
-                    .withData(wireEvent.getEventData())
-                    .withEventMetadata(eventMetadata)
-                    .build();
-        }
-        return event;
-    }
-
-    private DefaultEventMetadata getEventMetadata(final WireEvent wireEvent) {
-        return DefaultEventMetadata.builder()
-                .withEventType(wireEvent.getEventType())
-                .withTimeReceived(wireEvent.getEventTimeReceived())
-                .withAttributes(wireEvent.getEventAttributes())
-                .build();
     }
 }
