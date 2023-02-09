@@ -132,6 +132,7 @@ public class PeerForwarderConfiguration {
         setFailedForwardingRequestLocalWriteTimeout(failedForwardingRequestLocalWriteTimeout);
         setForwardingBatchSize(forwardingBatchSize);
         setForwardingBatchTimeout(forwardingBatchTimeout);
+        setBinaryCodec(binaryCodec);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
     }

@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.peerforwarder.server;
 
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.event.Event;
@@ -14,23 +16,16 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.linecorp.armeria.common.AggregatedHttpRequest;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
-import com.linecorp.armeria.common.HttpMethod;
-import com.linecorp.armeria.common.HttpRequest;
 import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
-import com.linecorp.armeria.common.MediaType;
-import com.linecorp.armeria.common.RequestHeaders;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.noop.NoopTimer;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -40,14 +35,11 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
+import org.opensearch.dataprepper.peerforwarder.model.WireEvent;
 import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,18 +50,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PEER_FORWARDING_URI;
 import static org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService.RECORDS_RECEIVED_FROM_PEERS;
 import static org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService.SERVER_REQUEST_PROCESSING_LATENCY;
 
 @ExtendWith(MockitoExtension.class)
 class PeerForwarderHttpServiceTest {
-    private static final String MESSAGE_KEY = "key";
-    private static final String MESSAGE = "message";
-    private static final String LOG = "LOG";
     private static final String PLUGIN_ID = "plugin_id";
     private static final String PIPELINE_NAME = "pipeline_name";
     private static final int TEST_BUFFER_CAPACITY = 3;
@@ -81,13 +70,21 @@ class PeerForwarderHttpServiceTest {
 
     @Mock
     private JavaPeerForwarderCodec javaPeerForwarderCodec;
+
     @Mock
     private PeerForwardingEvents peerForwardingEvents;
 
     @Mock
     private JacksonPeerForwarderCodec jacksonPeerForwarderCodec;
+
     @Mock
     private WireEvents wireEvents;
+
+    @Mock
+    private AggregatedHttpRequest aggregatedHttpRequest;
+
+    @Mock
+    private HttpData httpData;
 
     @Mock
     private PeerForwarderProvider peerForwarderProvider;
@@ -107,7 +104,24 @@ class PeerForwarderHttpServiceTest {
     private Timer serverRequestProcessingLatencyTimer;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException, ClassNotFoundException {
+        final List<Event> events = generateEvents(1);
+        lenient().when(jacksonPeerForwarderCodec.deserialize(any())).thenReturn(wireEvents);
+        lenient().when(wireEvents.getEvents()).thenReturn(
+                events.stream().map(event1 -> new WireEvent(
+                        event1.getMetadata().getEventType(),
+                        event1.getMetadata().getTimeReceived(),
+                        event1.getMetadata().getAttributes(),
+                        event1.toJsonString()
+                        )).collect(Collectors.toList()));
+        lenient().when(wireEvents.getDestinationPluginId()).thenReturn(PLUGIN_ID);
+        lenient().when(wireEvents.getDestinationPipelineName()).thenReturn(PIPELINE_NAME);
+        lenient().when(javaPeerForwarderCodec.deserialize(any())).thenReturn(peerForwardingEvents);
+        lenient().when(peerForwardingEvents.getEvents()).thenReturn(events);
+        lenient().when(peerForwardingEvents.getDestinationPluginId()).thenReturn(PLUGIN_ID);
+        lenient().when(peerForwardingEvents.getDestinationPipelineName()).thenReturn(PIPELINE_NAME);
+        when(aggregatedHttpRequest.content()).thenReturn(httpData);
+        when(httpData.array()).thenReturn(new byte[10]);
         serverRequestProcessingLatencyTimer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
         when(pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY)).thenReturn(serverRequestProcessingLatencyTimer);
         when(pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS)).thenReturn(recordsReceivedFromPeersCounter);
@@ -124,13 +138,13 @@ class PeerForwarderHttpServiceTest {
     }
 
 
-    @Test
-    void test_doPost_with_HTTP_request_should_return_OK() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void test_doPost_with_HTTP_request_should_return_OK(final boolean binaryCodec) throws Exception {
+        when(peerForwarderConfiguration.getBinaryCodec()).thenReturn(binaryCodec);
         final HashMap<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
         pipelinePeerForwarderReceiveBufferMap.put(PIPELINE_NAME, Map.of(PLUGIN_ID, peerForwarderReceiveBuffer));
         when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(pipelinePeerForwarderReceiveBufferMap);
-
-        final AggregatedHttpRequest aggregatedHttpRequest = generateRandomValidHTTPRequest(1);
 
         final PeerForwarderHttpService objectUnderTest = createObjectUnderTest();
 
@@ -141,10 +155,14 @@ class PeerForwarderHttpServiceTest {
         verify(recordsReceivedFromPeersCounter).increment(1);
     }
 
-    @Test
-    void test_doPost_with_bad_HTTP_request_should_return_BAD_REQUEST() throws ExecutionException, InterruptedException {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void test_doPost_with_bad_HTTP_request_should_return_BAD_REQUEST(final boolean binaryCodec)
+            throws ExecutionException, InterruptedException, IOException, ClassNotFoundException {
+        when(peerForwarderConfiguration.getBinaryCodec()).thenReturn(binaryCodec);
         when(responseHandler.handleException(any(IOException.class), anyString())).thenReturn(HttpResponse.of(HttpStatus.BAD_REQUEST));
-        final AggregatedHttpRequest aggregatedHttpRequest = generateBadHTTPRequest();
+        lenient().when(jacksonPeerForwarderCodec.deserialize(any())).thenThrow(new IOException());
+        lenient().when(javaPeerForwarderCodec.deserialize(any())).thenThrow(new IOException());
 
         final PeerForwarderHttpService objectUnderTest = createObjectUnderTest();
 
@@ -153,14 +171,25 @@ class PeerForwarderHttpServiceTest {
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.BAD_REQUEST));
     }
 
-    @Test
-    void test_doPost_with_HTTP_request_size_greater_than_buffer_size_should_return_REQUEST_ENTITY_TOO_LARGE() throws ExecutionException, JsonProcessingException, InterruptedException {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void test_doPost_with_HTTP_request_size_greater_than_buffer_size_should_return_REQUEST_ENTITY_TOO_LARGE(
+            final boolean binaryCodec) throws ExecutionException, JsonProcessingException, InterruptedException {
+        when(peerForwarderConfiguration.getBinaryCodec()).thenReturn(binaryCodec);
+        final List<Event> events = generateEvents(TEST_BUFFER_CAPACITY + 1);
+        lenient().when(wireEvents.getEvents()).thenReturn(
+                events.stream().map(event1 -> new WireEvent(
+                        event1.getMetadata().getEventType(),
+                        event1.getMetadata().getTimeReceived(),
+                        event1.getMetadata().getAttributes(),
+                        event1.toJsonString()
+                )).collect(Collectors.toList()));
+        lenient().when(peerForwardingEvents.getEvents()).thenReturn(events);
         when(responseHandler.handleException(any(SizeOverflowException.class), anyString())).thenReturn(HttpResponse.of(HttpStatus.REQUEST_ENTITY_TOO_LARGE));
         final HashMap<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> pipelinePeerForwarderReceiveBufferMap = new HashMap<>();
         pipelinePeerForwarderReceiveBufferMap.put(PIPELINE_NAME, Map.of(PLUGIN_ID, peerForwarderReceiveBuffer));
         when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(pipelinePeerForwarderReceiveBufferMap);
 
-        final AggregatedHttpRequest aggregatedHttpRequest = generateRandomValidHTTPRequest(TEST_BUFFER_CAPACITY + 1);
         final PeerForwarderHttpService objectUnderTest = createObjectUnderTest();
 
         final AggregatedHttpResponse aggregatedHttpResponse = objectUnderTest.doPost(aggregatedHttpRequest).aggregate().get();
@@ -168,56 +197,15 @@ class PeerForwarderHttpServiceTest {
         assertThat(aggregatedHttpResponse.status(), equalTo(HttpStatus.REQUEST_ENTITY_TOO_LARGE));
     }
 
-    private AggregatedHttpRequest generateRandomValidHTTPRequest(final int numRecords) throws JsonProcessingException,
-            ExecutionException, InterruptedException {
-        RequestHeaders requestHeaders = RequestHeaders.builder()
-                .contentType(MediaType.JSON)
-                .method(HttpMethod.POST)
-                .path(DEFAULT_PEER_FORWARDING_URI)
-                .build();
-
-        final JacksonEvent event = JacksonEvent.builder()
-                .withTimeReceived(Instant.now())
-                .withData(Collections.singletonMap(MESSAGE_KEY, MESSAGE))
-                .withEventType(LOG)
-                .build();
-
-        final List<Record<Event>> records = generateBatchRecords(numRecords);
-
-        final List<Event> wireEventList = records.stream().map(Record::getData).collect(Collectors.toList());
-
-        final PeerForwardingEvents peerForwardingEvents = new PeerForwardingEvents(wireEventList, PLUGIN_ID, PIPELINE_NAME);
-
-        try (final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-             final ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream)) {
-            objectOutputStream.writeObject(peerForwardingEvents);
-            final HttpData httpData = HttpData.copyOf(byteArrayOutputStream.toByteArray());
-            return HttpRequest.of(requestHeaders, httpData).aggregate().get();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private AggregatedHttpRequest generateBadHTTPRequest() throws ExecutionException, InterruptedException {
-        RequestHeaders requestHeaders = RequestHeaders.builder()
-                .contentType(MediaType.JSON)
-                .method(HttpMethod.POST)
-                .path(DEFAULT_PEER_FORWARDING_URI)
-                .build();
-        HttpData httpData = HttpData.ofUtf8("{");
-        return HttpRequest.of(requestHeaders, httpData).aggregate().get();
-    }
-
-    private List<Record<Event>> generateBatchRecords(final int numRecords) {
-        final List<Record<Event>> results = new ArrayList<>();
-        for (int i = 0; i < numRecords; i++) {
+    private List<Event> generateEvents(final int numEvents) {
+        final List<Event> events = new ArrayList<>();
+        for (int i = 0; i < numEvents; i++) {
             final Map<String, String> eventData = new HashMap<>();
             eventData.put("key1", "value");
             eventData.put("key2", "value");
             final JacksonEvent event = JacksonLog.builder().withData(eventData).withEventType("LOG").build();
-            results.add(new Record<>(event));
+            events.add(event);
         }
-        return results;
+        return events;
     }
-
 }

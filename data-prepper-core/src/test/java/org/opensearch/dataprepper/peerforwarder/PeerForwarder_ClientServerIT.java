@@ -150,9 +150,8 @@ class PeerForwarder_ClientServerIT {
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
 
-        @BeforeEach
-        void setUp() {
-            peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.UNAUTHENTICATED, true);
+        void setUpServer(final boolean binaryCodec) {
+            peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
@@ -169,8 +168,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_server(final boolean binaryCodec) throws ExecutionException, InterruptedException {
-            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
+            setUpServer(binaryCodec);
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
             final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
@@ -186,6 +184,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_server_when_client_does_not_expect_SSL_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
@@ -204,6 +203,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_an_unknown_server_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     true, ForwardingAuthentication.UNAUTHENTICATED,
                     ALTERNATE_SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, false, false, binaryCodec);
@@ -224,6 +224,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_server_with_fingerprint_verification(final boolean binaryCodec) throws ExecutionException, InterruptedException {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                         true, ForwardingAuthentication.UNAUTHENTICATED, SSL_CERTIFICATE_FILE, SSL_KEY_FILE,
                     false, true, binaryCodec);
@@ -243,6 +244,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_with_fingerprint_verification_to_unknown_server_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     true, ForwardingAuthentication.UNAUTHENTICATED, ALTERNATE_SSL_CERTIFICATE_FILE,
                     ALTERNATE_SSL_KEY_FILE, false, true, binaryCodec);
@@ -267,9 +269,9 @@ class PeerForwarder_ClientServerIT {
         private PeerForwarderConfiguration peerForwarderConfiguration;
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
-        @BeforeEach
-        void setUp() {
-            peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED, true);
+
+        void setUpServer(final boolean binaryCodec) {
+            peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
@@ -286,8 +288,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_server(final boolean binaryCodec) throws ExecutionException, InterruptedException {
-            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
+            setUpServer(binaryCodec);
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
             final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
@@ -303,6 +304,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_server_when_expecting_SSL_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     true, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
@@ -326,9 +328,9 @@ class PeerForwarder_ClientServerIT {
         private PeerForwarderConfiguration peerForwarderConfiguration;
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
-        @BeforeEach
-        void setUp() {
-            peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.MUTUAL_TLS, true);
+
+        void setUpServer(final boolean binaryCodec) {
+            peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.MUTUAL_TLS, binaryCodec);
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
@@ -345,8 +347,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_server(final boolean binaryCodec) throws ExecutionException, InterruptedException {
-            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.MUTUAL_TLS, binaryCodec);
+            setUpServer(binaryCodec);
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
             final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
@@ -362,6 +363,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_server_when_client_has_no_certificate_closes(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
@@ -380,6 +382,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_server_when_client_has_unknown_certificate_key_closes(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE,
                     true, false, binaryCodec);
@@ -399,6 +402,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_to_an_unknown_server_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE,
                     true, false, binaryCodec);
@@ -420,6 +424,7 @@ class PeerForwarder_ClientServerIT {
         @ValueSource(booleans = {true, false})
         void send_Events_to_server_with_fingerprint_verification(final boolean binaryCodec)
                 throws ExecutionException, InterruptedException {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, false, true,
                     binaryCodec);
@@ -439,6 +444,7 @@ class PeerForwarder_ClientServerIT {
         @ParameterizedTest
         @ValueSource(booleans = {true, false})
         void send_Events_with_fingerprint_verification_to_unknown_server_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
                     true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE,
                     false, true, binaryCodec);

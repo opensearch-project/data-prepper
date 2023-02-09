@@ -5,7 +5,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
-import org.opensearch.dataprepper.peerforwarder.model.WireEvents;
 
 import java.io.IOException;
 import java.util.ArrayList;
