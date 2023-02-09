@@ -94,7 +94,7 @@ def removeDataPrepperDockerContainer(final DockerStopContainer stopDataPrepperDo
  * OpenSearch Docker tasks
  */
 task pullOpenSearchDockerImage(type: DockerPullImage) {
-    image = "opensearchproject/opensearch:${versionMap.opensearchVersion}"
+    image = "opensearchproject/opensearch:${libs.versions.opensearch.get()}"
 }
 
 task createOpenSearchDockerContainer(type: DockerCreateContainer) {
@@ -205,10 +205,10 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation project(':data-prepper-plugins:otel-trace-group-processor')
     integrationTestImplementation 'org.awaitility:awaitility:4.2.0'
-    integrationTestImplementation "io.opentelemetry.proto:opentelemetry-proto:${versionMap.opentelemetryProto}"
-    integrationTestImplementation "com.google.protobuf:protobuf-java-util:${versionMap.protobufJavaUtil}"
-    integrationTestImplementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
-    integrationTestImplementation "com.linecorp.armeria:armeria-grpc:${versionMap.armeriaGrpc}"
-    integrationTestImplementation "org.opensearch.client:opensearch-rest-high-level-client:${versionMap.opensearchVersion}"
+    integrationTestImplementation libs.opentelemetry.proto
+    integrationTestImplementation libs.protobuf.util
+    integrationTestImplementation libs.armeria.core
+    integrationTestImplementation libs.armeria.grpc
+    integrationTestImplementation libs.opensearch.rhlc
     integrationTestImplementation 'com.fasterxml.jackson.core:jackson-databind'
 }

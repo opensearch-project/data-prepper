@@ -20,7 +20,7 @@ dependencies {
     implementation 'io.micrometer:micrometer-core'
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation 'commons-io:commons-io:2.11.0'
-    testImplementation "org.mockito:mockito-inline:${versionMap.mockito}"
+    testImplementation testLibs.mockito.inline
 }
 
 jacocoTestCoverageVerification {
