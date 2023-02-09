@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_DRAIN_TIMEOUT;
 
 import org.opensearch.dataprepper.TestDataProvider;
@@ -65,6 +66,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(500));
         assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(1500));
         assertThat(peerForwarderConfiguration.getForwardingBatchTimeout(), equalTo(DEFAULT_FORWARDING_BATCH_TIMEOUT));
+        assertThat(peerForwarderConfiguration.getBinaryCodec(), equalTo(true));
     }
 
     @Test
@@ -96,6 +98,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(15));
         assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(2500));
         assertThat(peerForwarderConfiguration.getForwardingBatchTimeout(), equalTo(Duration.of(5, ChronoUnit.SECONDS)));
+        assertThat(peerForwarderConfiguration.getBinaryCodec(), equalTo(false));
     }
 
     @Test

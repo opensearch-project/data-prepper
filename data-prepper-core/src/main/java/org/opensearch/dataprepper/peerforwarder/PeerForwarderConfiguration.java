@@ -99,7 +99,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("failed_forwarding_requests_local_write_timeout") final Integer failedForwardingRequestLocalWriteTimeout,
             @JsonProperty("forwarding_batch_size") final Integer forwardingBatchSize,
             @JsonProperty("forwarding_batch_timeout") final Duration forwardingBatchTimeout,
-            @JsonProperty("binary_codec") final boolean binaryCodec
+            @JsonProperty("binary_codec") final Boolean binaryCodec
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
@@ -132,7 +132,7 @@ public class PeerForwarderConfiguration {
         setFailedForwardingRequestLocalWriteTimeout(failedForwardingRequestLocalWriteTimeout);
         setForwardingBatchSize(forwardingBatchSize);
         setForwardingBatchTimeout(forwardingBatchTimeout);
-        setBinaryCodec(binaryCodec);
+        setBinaryCodec(binaryCodec == null || binaryCodec);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
     }
