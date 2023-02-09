@@ -5,6 +5,7 @@ name: Data Prepper Trace Analytics Service Map Peer Forwarder End-to-end test wi
 
 on:
   push:
+    branches: [ main ]
   pull_request:
   workflow_dispatch:
 

@@ -5,6 +5,7 @@ name: Data Prepper OpenSearchSink integration tests with Open Distro
 
 on:
   push:
+    branches: [ main ]
     paths:
       - 'data-prepper-plugins/opensearch/**'
       - '*gradle*'

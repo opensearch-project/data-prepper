@@ -5,6 +5,7 @@ name: Data Prepper Static List Peer Forwarder with SSL and mTLS End-to-end test 
 
 on:
   push:
+    branches: [ main ]
   pull_request:
   workflow_dispatch:
 

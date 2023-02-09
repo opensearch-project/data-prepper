@@ -5,6 +5,7 @@ name: Staging Resources CDK App Check
 
 on:
   push:
+    branches: [ main ]
     paths:
       - 'release/staging-resources-cdk/**'
   pull_request:
