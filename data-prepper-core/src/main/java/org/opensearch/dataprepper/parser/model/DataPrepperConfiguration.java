@@ -7,12 +7,15 @@ package org.opensearch.dataprepper.parser.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +36,7 @@ public class DataPrepperConfiguration {
     private PluginModel authentication;
     private CircuitBreakerConfig circuitBreakerConfig;
     private Map<String, String> metricTags = new HashMap<>();
+    private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
@@ -41,20 +45,37 @@ public class DataPrepperConfiguration {
 
     public DataPrepperConfiguration() {}
 
-    // TODO: camel case to snake eyes in JsonProperty
     @JsonCreator
     public DataPrepperConfiguration(
             @JsonProperty("ssl") final Boolean ssl,
-            @JsonProperty("keyStoreFilePath") final String keyStoreFilePath,
-            @JsonProperty("keyStorePassword") final String keyStorePassword,
-            @JsonProperty("privateKeyPassword") final String privateKeyPassword,
-            @JsonProperty("serverPort") final String serverPort,
-            @JsonProperty("metricRegistries") final List<MetricRegistryType> metricRegistries,
+            @JsonProperty("key_store_file_path")
+            @JsonAlias("keyStoreFilePath")
+            final String keyStoreFilePath,
+            @JsonProperty("key_store_password")
+            @JsonAlias("keyStorePassword")
+            final String keyStorePassword,
+            @JsonProperty("private_key_password")
+            @JsonAlias("privateKeyPassword")
+            final String privateKeyPassword,
+            @JsonProperty("server_port")
+            @JsonAlias("serverPort")
+            final String serverPort,
+            @JsonProperty("metric_registries")
+            @JsonAlias("metricRegistries")
+            final List<MetricRegistryType> metricRegistries,
             @JsonProperty("authentication") final PluginModel authentication,
-            @JsonProperty("metricTags") final Map<String, String> metricTags,
+            @JsonProperty("metric_tags")
+            @JsonAlias("metricTags")
+            final Map<String, String> metricTags,
+            @JsonProperty("metric_tag_filters")
+            final List<MetricTagFilter> metricTagFilters,
             @JsonProperty("peer_forwarder") final PeerForwarderConfiguration peerForwarderConfiguration,
-            @JsonProperty("processorShutdownTimeout") final Duration processorShutdownTimeout,
-            @JsonProperty("sinkShutdownTimeout") final Duration sinkShutdownTimeout,
+            @JsonProperty("processor_shutdown_timeout")
+            @JsonAlias("processorShutdownTimeout")
+            final Duration processorShutdownTimeout,
+            @JsonProperty("sink_shutdown_timeout")
+            @JsonAlias("sinkShutdownTimeout")
+            final Duration sinkShutdownTimeout,
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig
             ) {
         this.authentication = authentication;
@@ -65,6 +86,7 @@ public class DataPrepperConfiguration {
         this.privateKeyPassword = privateKeyPassword != null ? privateKeyPassword : "";
         this.metricRegistries = metricRegistries != null && !metricRegistries.isEmpty() ? metricRegistries : DEFAULT_METRIC_REGISTRY_TYPE;
         setMetricTags(metricTags);
+        setMetricTagFilters(metricTagFilters);
         setServerPort(serverPort);
         this.peerForwarderConfiguration = peerForwarderConfiguration;
 
@@ -107,6 +129,10 @@ public class DataPrepperConfiguration {
         return metricTags;
     }
 
+    public List<MetricTagFilter> getMetricTagFilters() {
+        return metricTagFilters;
+    }
+
     private void setSsl(final Boolean ssl) {
         if (ssl != null) {
             this.ssl = ssl;
@@ -138,9 +164,24 @@ public class DataPrepperConfiguration {
     private void setMetricTags(final Map<String, String> metricTags) {
         if (metricTags != null) {
             if (metricTags.size() > MAX_TAGS_NUMBER) {
-                throw new IllegalArgumentException("metricTags cannot be more than 3");
+                throw new IllegalArgumentException("metricTags cannot be more than " + MAX_TAGS_NUMBER);
             }
             this.metricTags = metricTags;
+        }
+    }
+
+    public void setMetricTagFilters(final List<MetricTagFilter> metricTagFilters) {
+        if (metricTagFilters != null) {
+            metricTagFilters.forEach(
+                    metricTagFilter -> {
+                        if (metricTagFilter.getTags() != null && metricTagFilter.getTags().size() > MAX_TAGS_NUMBER) {
+                            throw new IllegalArgumentException(
+                                    String.format("Each metric tag filter may have no more than %s tags.", MAX_TAGS_NUMBER)
+                            );
+                        }
+                    }
+            );
+            this.metricTagFilters = metricTagFilters;
         }
     }
 

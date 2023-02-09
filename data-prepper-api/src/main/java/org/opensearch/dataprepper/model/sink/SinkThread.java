@@ -21,7 +21,7 @@ class SinkThread implements Runnable {
             try {
                 Thread.sleep(1000);
                 sink.doInitialize();
-            } catch (Exception e){}
+            } catch (InterruptedException e){}
         }
     }
 }

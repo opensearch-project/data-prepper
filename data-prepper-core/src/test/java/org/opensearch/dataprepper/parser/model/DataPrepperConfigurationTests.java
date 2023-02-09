@@ -97,6 +97,24 @@ public class DataPrepperConfigurationTests {
     }
 
     @Test
+    void testConfigurationWithCamelCaseOptions() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration =
+                makeConfig(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_CAMEL_CASE_OPTIONS);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.getAuthentication(), notNullValue());
+        assertThat(dataPrepperConfiguration.getAuthentication().getPluginName(), equalTo("http_basic"));
+        assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), notNullValue());
+        assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), hasKey("username"));
+        assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), hasKey("password"));
+        final Map<String, String> metricTags = dataPrepperConfiguration.getMetricTags();
+        assertThat(metricTags, notNullValue());
+        assertThat(metricTags.get("testKey1"), equalTo("testValue1"));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes().size(), Matchers.equalTo(1));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.CloudWatch));
+    }
+
+    @Test
     void testConfigWithValidMetricTags() throws IOException {
         final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
                 TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS);
@@ -106,6 +124,24 @@ public class DataPrepperConfigurationTests {
         assertThat(metricTags, notNullValue());
         assertThat(metricTags.get("testKey1"), equalTo("testValue1"));
         assertThat(metricTags.get("testKey2"), equalTo("testValue2"));
+    }
+
+    @Test
+    void testConfigWithValidMetricTagFilters() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
+                TestDataProvider.VALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.getMetricTagFilters(), notNullValue());
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().size(), equalTo(1));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getPattern(), equalTo("aws.sdk.**"));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags().size(), equalTo(1));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags(), equalTo(Map.of("tag1", "value1")));
+    }
+
+    @Test
+    void testInvalidConfigWithMoreThan3Tags() {
+        assertThrows(ValueInstantiationException.class, () -> makeConfig(TestDataProvider.INVALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER));
     }
 
     @Test

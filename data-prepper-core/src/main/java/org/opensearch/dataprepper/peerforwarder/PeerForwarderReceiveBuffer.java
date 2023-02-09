@@ -84,22 +84,47 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> implements Buffer<T
         }
     }
 
+    // TODO - consolidate duplicate logic in BlockingBuffer
     @Override
     public Map.Entry<Collection<T>, CheckpointState> read(final int timeoutInMillis) {
-        final List<T> records = new ArrayList<>();
+        final List<T> records = new ArrayList<>(batchSize);
+        int recordsRead = 0;
 
         if (timeoutInMillis == 0) {
-            blockingQueue.drainTo(records, batchSize);
+            final T record = pollForBufferEntry(5, TimeUnit.MILLISECONDS);
+            if (record != null) { //record can be null, avoiding adding nulls
+                records.add(record);
+                recordsRead++;
+            }
+
+            recordsRead += blockingQueue.drainTo(records, batchSize - 1);
         } else {
             final Stopwatch stopwatch = Stopwatch.createStarted();
             while (stopwatch.elapsed(TimeUnit.MILLISECONDS) < timeoutInMillis && records.size() < batchSize) {
-                blockingQueue.drainTo(records, batchSize - records.size());
+                final T record = pollForBufferEntry(timeoutInMillis, TimeUnit.MILLISECONDS);
+                if (record != null) { //record can be null, avoiding adding nulls
+                    records.add(record);
+                    recordsRead++;
+                }
+
+                if (recordsRead < batchSize) {
+                    recordsRead += blockingQueue.drainTo(records, batchSize - recordsRead);
+                }
             }
         }
 
-        final CheckpointState checkpointState = new CheckpointState(records.size());
+        final CheckpointState checkpointState = new CheckpointState(recordsRead);
         recordsInFlight += checkpointState.getNumRecordsToBeChecked();
         return new AbstractMap.SimpleEntry<>(records, checkpointState);
+    }
+
+    private T pollForBufferEntry(final int timeoutValue, final TimeUnit timeoutUnit) {
+        try {
+            return blockingQueue.poll(timeoutValue, timeoutUnit);
+        } catch (InterruptedException e) {
+            LOG.info("Peer forwarder buffer - Interrupt received while reading from buffer");
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

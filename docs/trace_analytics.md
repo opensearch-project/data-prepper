@@ -87,12 +87,12 @@ otel-trace-pipeline:
        # buffer_size is the number of ExportTraceRequest from otel-collector the data prepper should hold in memeory. 
        # We recommend to keep the same buffer_size for all pipelines. 
        # Make sure you configure sufficient heap
-       # default value is 512
-       buffer_size: 512
+       # default value is 12800
+       buffer_size: 25600
        # This is the maximum number of request each worker thread will process within the delay.
-       # Default is 8.
+       # Default is 200.
        # Make sure buffer_size >= workers * batch_size
-       batch_size: 8
+       batch_size: 400
   sink:
     - pipeline:
         name: "raw-pipeline"
@@ -110,12 +110,13 @@ raw-pipeline:
       bounded_blocking:
          # Configure the same value as in otel-trace-pipeline
          # Make sure you configure sufficient heap
-         # default value is 512
-         buffer_size: 512
+         # default value is 12800
+         buffer_size: 25600
+         # This is the maximum number of request each worker thread will process within the delay.
+         # Default is 200.
+         # Make sure buffer_size >= workers * batch_size
          # The raw processor does bulk request to your OpenSearch sink, so configure the batch_size higher.
-         # If you use the recommended otel-collector setup each ExportTraceRequest could contain max 50 spans. https://github.com/opensearch-project/data-prepper/tree/v0.7.x/deployment/aws
-         # With 64 as batch size each worker thread could process upto 3200 spans (64 * 50)
-         batch_size: 64
+         batch_size: 3200
   processor:
     - otel_trace_raw:
     - otel_trace_group:
@@ -161,12 +162,12 @@ service-map-pipeline:
          # buffer_size is the number of ExportTraceRequest from otel-collector the data prepper should hold in memeory. 
          # We recommend to keep the same buffer_size for all pipelines. 
          # Make sure you configure sufficient heap
-         # default value is 512
-         buffer_size: 512
+         # default value is 12800
+         buffer_size: 25600
          # This is the maximum number of request each worker thread will process within the delay.
-         # Default is 8.
+         # Default is 200.
          # Make sure buffer_size >= workers * batch_size
-         batch_size: 8
+         batch_size: 400
   sink:
     - opensearch:
         hosts: [ "https://localhost:9200" ]

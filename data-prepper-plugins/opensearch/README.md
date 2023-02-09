@@ -78,6 +78,8 @@ Default is null.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
 
+- `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details. If this option is present, `aws_` options are not expected to be present. If any of `aws_` options are present along with this, error is thrown.
+
 - `socket_timeout`(optional): An integer value indicates the timeout in milliseconds for waiting for data (or, put differently, a maximum period inactivity between two consecutive data packets). A timeout value of zero is interpreted as an infinite timeout. If this timeout value is either negative or not set, the underlying Apache HttpClient would rely on operating system settings for managing socket timeouts.
 
 - `connect_timeout`(optional): An integer value indicates the timeout in milliseconds used when requesting a connection from the connection manager. A timeout value of zero is interpreted as an infinite timeout. If this timeout value is either negative or not set, the underlying Apache HttpClient would rely on operating system settings for managing connection timeouts.
@@ -155,6 +157,13 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 
 - `trace_analytics_service_map`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
 
+### <a name="aws_configuration">AWS Configuration</a>
+
+* `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
+* `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
+* `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
+
+## Metrics
 ### Management Disabled Index Type
 
 Normally Data Prepper manages the indices it needs within OpenSearch. When `index_type` is set to

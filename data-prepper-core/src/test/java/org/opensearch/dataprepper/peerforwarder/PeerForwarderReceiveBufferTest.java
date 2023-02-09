@@ -18,6 +18,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -31,6 +33,7 @@ class PeerForwarderReceiveBufferTest {
     private static final int TEST_BUFFER_SIZE = 13;
     private static final int TEST_WRITE_TIMEOUT = 100;
     private static final int TEST_BATCH_READ_TIMEOUT = 5_000;
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     PeerForwarderReceiveBuffer<Record<String>> createObjectUnderTest(final int bufferSize) {
         return new PeerForwarderReceiveBuffer<>(bufferSize, TEST_BATCH_SIZE);
@@ -186,6 +189,56 @@ class PeerForwarderReceiveBufferTest {
         peerForwarderReceiveBuffer.read(TEST_BATCH_READ_TIMEOUT);
 
         Assertions.assertFalse(peerForwarderReceiveBuffer.isEmpty());
+    }
+
+    @Test
+    void testNonZeroBatchDelayReturnsAllRecords() throws Exception {
+        final PeerForwarderReceiveBuffer<Record<String>> peerForwarderReceiveBuffer = createObjectUnderTest(TEST_BUFFER_SIZE);
+        assertThat(peerForwarderReceiveBuffer, notNullValue());
+
+        final Collection<Record<String>> testRecords = generateBatchRecords(1);
+        peerForwarderReceiveBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+
+        final Collection<Record<String>> testRecords2 = generateBatchRecords(1);
+        EXECUTOR.submit(() -> {
+            try {
+                Thread.sleep(1000);
+                peerForwarderReceiveBuffer.writeAll(testRecords2, TEST_WRITE_TIMEOUT);
+            } catch (final Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = peerForwarderReceiveBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Collection<Record<String>> records = readResult.getKey();
+        final CheckpointState checkpointState = readResult.getValue();
+        assertThat(records.size(), is(2));
+        assertThat(checkpointState.getNumRecordsToBeChecked(), is(2));
+    }
+
+    @Test
+    void testZeroBatchDelayReturnsAvailableRecords() throws Exception {
+        final PeerForwarderReceiveBuffer<Record<String>> peerForwarderReceiveBuffer = createObjectUnderTest(TEST_BUFFER_SIZE);
+        assertThat(peerForwarderReceiveBuffer, notNullValue());
+
+        final Collection<Record<String>> testRecords = generateBatchRecords(1);
+        peerForwarderReceiveBuffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+
+        final Collection<Record<String>> testRecords2 = generateBatchRecords(1);
+        EXECUTOR.submit(() -> {
+            try {
+                Thread.sleep(1000);
+                peerForwarderReceiveBuffer.writeAll(testRecords2, TEST_WRITE_TIMEOUT);
+            } catch (final Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = peerForwarderReceiveBuffer.read(0);
+        final Collection<Record<String>> records = readResult.getKey();
+        final CheckpointState checkpointState = readResult.getValue();
+        assertThat(records.size(), is(1));
+        assertThat(checkpointState.getNumRecordsToBeChecked(), is(1));
     }
 
     private Collection<Record<String>> generateBatchRecords(final int numRecords) {
