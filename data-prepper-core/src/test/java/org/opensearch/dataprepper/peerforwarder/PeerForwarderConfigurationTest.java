@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_DRAIN_TIMEOUT;
 
 import org.opensearch.dataprepper.TestDataProvider;
