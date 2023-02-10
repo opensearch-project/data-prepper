@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -19,7 +20,7 @@ import java.util.Map;
  * <p>
  * @since 1.2
  */
-public interface Event {
+public interface Event extends Serializable {
 
     /**
      * Adds or updates the key with a given value in the Event
