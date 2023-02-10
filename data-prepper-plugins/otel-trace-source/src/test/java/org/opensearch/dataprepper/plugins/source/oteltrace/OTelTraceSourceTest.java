@@ -112,6 +112,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 
 @ExtendWith(MockitoExtension.class)
@@ -150,6 +152,7 @@ public class OTelTraceSourceTest {
 
     private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
+    @Mock(lenient = true)
     private OTelTraceSourceConfig oTelTraceSourceConfig;
     private PluginMetrics pluginMetrics;
     private PipelineDescription pipelineDescription;
@@ -183,14 +186,8 @@ public class OTelTraceSourceTest {
     }
 
     private void configureObjectUnderTest() {
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("request_timeout", 5);
-        settingsMap.put(SSL, false);
-        pluginSetting = new PluginSetting("otel_trace", settingsMap);
-        pluginSetting.setPipelineName("pipeline");
         pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
 
-        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
@@ -211,6 +208,12 @@ public class OTelTraceSourceTest {
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
 
         lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
+
+        when(oTelTraceSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
+        when(oTelTraceSourceConfig.isSsl()).thenReturn(false);
+        when(oTelTraceSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
+        when(oTelTraceSourceConfig.getMaxConnectionCount()).thenReturn(10);
+        when(oTelTraceSourceConfig.getThreadCount()).thenReturn(5);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
