@@ -3,7 +3,7 @@
 This stateful processor groups Events together based on the values of the [identification_keys](#identification_keys) provided, and performs a configurable [action](#action) on each group. You can use existing actions, or you can create your own actions as Java code to perform custom aggregations.
 It is a great way to reduce unnecessary log volume and create aggregated logs over time.
 
-## Usage
+## Basic Usage
 
 The following pipeline configuration will aggregate Events based on the entries with keys `sourceIp`, `destinationIp`, and `port`. It uses the [remove_duplicates](#remove_duplicates) action. 
 While not necessary, a great way to set up the Aggregate Processor [identification_keys](#identification_keys) is with the [Grok Processor](../grok-processor/README.md) as shown below.

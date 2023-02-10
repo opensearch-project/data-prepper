@@ -1,11 +1,11 @@
 # Anomaly Detector Processor
 
-This is a processor that takes structured data and runs anomaly detection algorithm on user configured fields in the data. The data needs to be a number(integer or real) for the anomaly detection algorithm to detect anomalies. The anomaly detector processor supports the following ML algorithms to detect anomalies
- - random-cut-forest
-It is recommended that the anomaly detector processor is deployed after aggregate processor in a pipeline for best results because aggregate processor aggregates events with same keys onto the same host.
+This is a processor that takes structured data and runs anomaly detection algorithm on user configured fields in the data. The data needs to be a number(integer or real) for the anomaly detection algorithm to detect anomalies. It is recommended that the anomaly detector processor is deployed after aggregate processor in a pipeline for best results because aggregate processor aggregates events with same keys onto the same host.
 
 ## Basic Usage
-To get started, create the following `pipeline.yaml`.
+
+To get started, create the following `pipeline.yaml`. This following pipeline configuration will look for anomalies in the `latency` field in the events passed to the processor. It uses `random_cut_forest` mode to detect anomalies.
+
 ```yaml
 ad-pipeline:
   source:

@@ -103,7 +103,7 @@ a scale parameter, offset and list of bucket counts:
     ],
     "scale" : -3,
     "negativeOffset" : 0,
-    "positiveOffset : 1
+    "positiveOffset" : 1
 ```
 
 The `exponential_histogram_max_allowed_scale` parameter defines the maximum allowed scale for the exponential histogram. Increasing this parameter will increase potential
