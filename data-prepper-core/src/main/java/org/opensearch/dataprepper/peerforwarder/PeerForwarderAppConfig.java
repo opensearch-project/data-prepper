@@ -12,6 +12,9 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
+import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
@@ -77,10 +80,11 @@ class PeerForwarderAppConfig {
     @Bean
     public PeerForwarderClient peerForwarderClient(final PeerForwarderConfiguration peerForwarderConfiguration,
                                                    final PeerForwarderClientFactory peerForwarderClientFactory,
-                                                   @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper,
+                                                   final PeerForwarderCodec peerForwarderCodec,
                                                    @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics
     ) {
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
+        return new PeerForwarderClient(
+                peerForwarderConfiguration, peerForwarderClientFactory, peerForwarderCodec, pluginMetrics);
     }
 
     @Bean
@@ -97,14 +101,23 @@ class PeerForwarderAppConfig {
     }
 
     @Bean
+    public PeerForwarderCodec peerForwarderCodec(
+            final PeerForwarderConfiguration peerForwarderConfiguration,
+            @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper) {
+        return peerForwarderConfiguration.getBinaryCodec() ?
+                new JavaPeerForwarderCodec() : new JacksonPeerForwarderCodec(objectMapper);
+    }
+
+    @Bean
     public PeerForwarderHttpService peerForwarderHttpService(
             final ResponseHandler responseHandler,
             final PeerForwarderProvider peerForwarderProvider,
             final PeerForwarderConfiguration peerForwarderConfiguration,
-            @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper,
+            final PeerForwarderCodec peerForwarderCodec,
             @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics
     ) {
-        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration, objectMapper, pluginMetrics);
+        return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration,
+                peerForwarderCodec, pluginMetrics);
     }
 
     @Bean
