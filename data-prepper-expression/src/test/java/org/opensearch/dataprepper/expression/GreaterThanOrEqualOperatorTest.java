@@ -47,28 +47,59 @@ class GreaterThanOrEqualOperatorTest {
         assertThat(objectUnderTest.evaluate(2, 1), is(true));
         assertThat(objectUnderTest.evaluate(1, 2), is(false));
         assertThat(objectUnderTest.evaluate(1, 1), is(true));
-        assertThat(objectUnderTest.evaluate(2f, 1), is(true));
-        assertThat(objectUnderTest.evaluate(1f, 2), is(false));
-        assertThat(objectUnderTest.evaluate(1f, 1), is(true));
         assertThat(objectUnderTest.evaluate(2, 1f), is(true));
         assertThat(objectUnderTest.evaluate(1, 2f), is(false));
         assertThat(objectUnderTest.evaluate(1, 1f), is(true));
+        assertThat(objectUnderTest.evaluate(2, 1L), is(true));
+        assertThat(objectUnderTest.evaluate(1, 2L), is(false));
+        assertThat(objectUnderTest.evaluate(1, 1L), is(true));
+        assertThat(objectUnderTest.evaluate(2, 1.0), is(true));
+        assertThat(objectUnderTest.evaluate(1, 2.0), is(false));
+        assertThat(objectUnderTest.evaluate(1, 1.0), is(true));
+
+        assertThat(objectUnderTest.evaluate(2f, 1), is(true));
+        assertThat(objectUnderTest.evaluate(1f, 2), is(false));
+        assertThat(objectUnderTest.evaluate(1f, 1), is(true));
         assertThat(objectUnderTest.evaluate(2f, 1f), is(true));
         assertThat(objectUnderTest.evaluate(1f, 2f), is(false));
         assertThat(objectUnderTest.evaluate(1f, 1f), is(true));
+        assertThat(objectUnderTest.evaluate(2f, 1L), is(true));
+        assertThat(objectUnderTest.evaluate(1f, 2L), is(false));
+        assertThat(objectUnderTest.evaluate(1f, 1L), is(true));
+        assertThat(objectUnderTest.evaluate(2f, 1.0), is(true));
+        assertThat(objectUnderTest.evaluate(1f, 2.0), is(false));
+        assertThat(objectUnderTest.evaluate(1f, 1.0), is(true));
+
+        assertThat(objectUnderTest.evaluate(2L, 1), is(true));
+        assertThat(objectUnderTest.evaluate(1L, 2), is(false));
+        assertThat(objectUnderTest.evaluate(1L, 1), is(true));
+        assertThat(objectUnderTest.evaluate(2L, 1f), is(true));
+        assertThat(objectUnderTest.evaluate(1L, 2f), is(false));
+        assertThat(objectUnderTest.evaluate(1L, 1f), is(true));
+        assertThat(objectUnderTest.evaluate(2L, 1L), is(true));
+        assertThat(objectUnderTest.evaluate(1L, 2L), is(false));
+        assertThat(objectUnderTest.evaluate(1L, 1L), is(true));
+        assertThat(objectUnderTest.evaluate(2L, 1.0), is(true));
+        assertThat(objectUnderTest.evaluate(1L, 2.0), is(false));
+        assertThat(objectUnderTest.evaluate(1L, 1.0), is(true));
+
+        assertThat(objectUnderTest.evaluate(2.0, 1), is(true));
+        assertThat(objectUnderTest.evaluate(1.0, 2), is(false));
+        assertThat(objectUnderTest.evaluate(1.0, 1), is(true));
+        assertThat(objectUnderTest.evaluate(2.0, 1f), is(true));
+        assertThat(objectUnderTest.evaluate(1.0, 2f), is(false));
+        assertThat(objectUnderTest.evaluate(1.0, 1f), is(true));
+        assertThat(objectUnderTest.evaluate(2.0, 1L), is(true));
+        assertThat(objectUnderTest.evaluate(1.0, 2L), is(false));
+        assertThat(objectUnderTest.evaluate(1.0, 1L), is(true));
+        assertThat(objectUnderTest.evaluate(2.0, 1.0), is(true));
+        assertThat(objectUnderTest.evaluate(1.0, 2.0), is(false));
+        assertThat(objectUnderTest.evaluate(1.0, 1.0), is(true));
     }
 
     @Test
     void testEvalInValidArgLength() {
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1));
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 2, 3));
-    }
-
-    @Test
-    void testEvalInValidArgType() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1L, 1));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1.0, 1));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 1L));
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 1.0));
     }
 }
