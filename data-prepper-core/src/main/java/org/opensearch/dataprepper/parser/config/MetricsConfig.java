@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.parser.config;
 
 import org.opensearch.dataprepper.meter.EMFLoggingMeterRegistry;
+import org.opensearch.dataprepper.meter.JvmMemoryAggregateMetrics;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.MetricRegistryType;
 import org.opensearch.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;
@@ -72,6 +73,11 @@ public class MetricsConfig {
     @Bean
     public JvmThreadMetrics jvmThreadMetrics() {
         return new JvmThreadMetrics();
+    }
+
+    @Bean
+    public JvmMemoryAggregateMetrics jvmMemoryAggregateMetrics() {
+        return new JvmMemoryAggregateMetrics();
     }
 
     private void configureMetricRegistry(final Map<String, String> metricTags,
