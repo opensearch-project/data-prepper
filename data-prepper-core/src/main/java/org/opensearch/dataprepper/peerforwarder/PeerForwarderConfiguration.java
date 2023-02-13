@@ -62,6 +62,7 @@ public class PeerForwarderConfiguration {
     private Integer failedForwardingRequestLocalWriteTimeout = 500;
     private Integer forwardingBatchSize = 1500;
     private Duration forwardingBatchTimeout = DEFAULT_FORWARDING_BATCH_TIMEOUT;
+    private boolean binaryCodec = true;
 
     public PeerForwarderConfiguration() {}
 
@@ -97,7 +98,8 @@ public class PeerForwarderConfiguration {
             @JsonProperty("drain_timeout") final Duration drainTimeout,
             @JsonProperty("failed_forwarding_requests_local_write_timeout") final Integer failedForwardingRequestLocalWriteTimeout,
             @JsonProperty("forwarding_batch_size") final Integer forwardingBatchSize,
-            @JsonProperty("forwarding_batch_timeout") final Duration forwardingBatchTimeout
+            @JsonProperty("forwarding_batch_timeout") final Duration forwardingBatchTimeout,
+            @JsonProperty("binary_codec") final Boolean binaryCodec
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
@@ -130,6 +132,7 @@ public class PeerForwarderConfiguration {
         setFailedForwardingRequestLocalWriteTimeout(failedForwardingRequestLocalWriteTimeout);
         setForwardingBatchSize(forwardingBatchSize);
         setForwardingBatchTimeout(forwardingBatchTimeout);
+        setBinaryCodec(binaryCodec == null || binaryCodec);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
     }
@@ -244,6 +247,10 @@ public class PeerForwarderConfiguration {
 
     public Duration getForwardingBatchTimeout() {
         return forwardingBatchTimeout;
+    }
+
+    public boolean getBinaryCodec() {
+        return binaryCodec;
     }
 
     private void setServerPort(final Integer serverPort) {
@@ -525,5 +532,9 @@ public class PeerForwarderConfiguration {
             }
             this.forwardingBatchTimeout = forwardingBatchTimeout;
         }
+    }
+
+    private void setBinaryCodec(final boolean binaryCodec) {
+        this.binaryCodec = binaryCodec;
     }
 }

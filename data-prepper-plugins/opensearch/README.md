@@ -90,7 +90,7 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management-disabled`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
 
 ```
     APM trace analytics raw span data type example:
