@@ -22,7 +22,7 @@ source:
 ## Configurations
 
 * port (Optional) => An `int` between 0 and 65535 represents the port source is running on. Default is ```2021```.
-* path (Optional) => A `string` which represents the URI path for log ingestion, and it should start with `/`. Path can contain `${PIPELINE_NAME}` placeholder which will be replaced with pipeline name. Default value is `/log/ingest`.
+* path (Optional) => A `string` which represents the URI path for log ingestion, and it should start with `/`. Path can contain `${pipelineName}` placeholder which will be replaced with pipeline name. Default value is `/log/ingest`.
 * health_check_service (Optional) => A `boolean` that determines if a `/health` endpoint on the defined port will be home to a health check. Default is `false`
 * unauthenticated_health_check (Optional) => A `boolean` that determines if the health endpoint will require authentication. This option is ignored if no authentication is defined. Default is `false`
 * request_timeout (Optional) => An `int` larger than 0 represents request timeout in millis. Default is ```10_000```. 

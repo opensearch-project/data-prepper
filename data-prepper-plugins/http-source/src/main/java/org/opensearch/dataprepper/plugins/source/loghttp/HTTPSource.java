@@ -40,6 +40,7 @@ import java.util.function.Function;
 @DataPrepperPlugin(name = "http", pluginType = Source.class, pluginConfigurationType = HTTPSourceConfig.class)
 public class HTTPSource implements Source<Record<Log>> {
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
+    private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
 
     private final HTTPSourceConfig sourceConfig;
@@ -122,7 +123,7 @@ public class HTTPSource implements Source<Record<Log>> {
                     maxPendingRequests, blockingTaskExecutor.getQueue());
             final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
 
-            final String httpSourcePath = sourceConfig.getPath().replace("${PIPELINE_NAME}", pipelineName);
+            final String httpSourcePath = sourceConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
             sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
             final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
             sb.annotatedService(httpSourcePath, logHTTPService);

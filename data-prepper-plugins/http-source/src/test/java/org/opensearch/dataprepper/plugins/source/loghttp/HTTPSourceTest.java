@@ -542,7 +542,7 @@ class HTTPSourceTest {
     void testHTTPSJsonResponse_with_custom_path_along_with_placeholder() {
         reset(sourceConfig);
         when(sourceConfig.getPort()).thenReturn(2021);
-        when(sourceConfig.getPath()).thenReturn("/${PIPELINE_NAME}/test");
+        when(sourceConfig.getPath()).thenReturn("/${pipelineName}/test");
         when(sourceConfig.getThreadCount()).thenReturn(200);
         when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
         when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
