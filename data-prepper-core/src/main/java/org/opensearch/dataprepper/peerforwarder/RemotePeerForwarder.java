@@ -38,7 +38,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 class RemotePeerForwarder implements PeerForwarder {
     private static final Logger LOG = LoggerFactory.getLogger(RemotePeerForwarder.class);
-    private static final int BATCH_QUEUE_DEPTH = 1;
 
     static final String RECORDS_ACTUALLY_PROCESSED_LOCALLY = "recordsActuallyProcessedLocally";
     static final String RECORDS_TO_BE_PROCESSED_LOCALLY = "recordsToBeProcessedLocally";
@@ -69,6 +68,7 @@ class RemotePeerForwarder implements PeerForwarder {
     private final Integer batchDelay;
     private final Integer failedForwardingRequestLocalWriteTimeout;
     private final Integer forwardingBatchSize;
+    private final Integer forwardingBatchQueueDepth;
     private final Duration forwardingBatchTimeout;
     private final Integer pipelineWorkerThreads;
 
@@ -82,6 +82,7 @@ class RemotePeerForwarder implements PeerForwarder {
                         final Integer batchDelay,
                         final Integer failedForwardingRequestLocalWriteTimeout,
                         final Integer forwardingBatchSize,
+                        final Integer forwardingBatchQueueDepth,
                         final Duration forwardingBatchTimeout,
                         final Integer pipelineWorkerThreads) {
         this.peerForwarderClient = peerForwarderClient;
@@ -93,6 +94,7 @@ class RemotePeerForwarder implements PeerForwarder {
         this.batchDelay = batchDelay;
         this.failedForwardingRequestLocalWriteTimeout = failedForwardingRequestLocalWriteTimeout;
         this.forwardingBatchSize = forwardingBatchSize;
+        this.forwardingBatchQueueDepth = forwardingBatchQueueDepth;
         this.forwardingBatchTimeout = forwardingBatchTimeout;
         this.pipelineWorkerThreads = pipelineWorkerThreads;
         peerBatchingQueueMap = new ConcurrentHashMap<>();
@@ -209,7 +211,7 @@ class RemotePeerForwarder implements PeerForwarder {
     }
 
     private List<Record<Event>> populateBatchingQueue(final String destinationIp, final List<Record<Event>> records) {
-        peerBatchingQueueMap.putIfAbsent(destinationIp, new LinkedBlockingQueue<>(forwardingBatchSize * pipelineWorkerThreads * BATCH_QUEUE_DEPTH));
+        peerBatchingQueueMap.putIfAbsent(destinationIp, new LinkedBlockingQueue<>(forwardingBatchSize * pipelineWorkerThreads * forwardingBatchQueueDepth));
         peerBatchingLastFlushTimeMap.putIfAbsent(destinationIp, System.currentTimeMillis());
 
         final List<Record<Event>> recordsFailedToBatch = new ArrayList<>();
@@ -222,6 +224,10 @@ class RemotePeerForwarder implements PeerForwarder {
             }
         }
 
+        final int numberOfRecordsFailedToBatch = recordsFailedToBatch.size();
+        if (numberOfRecordsFailedToBatch > 0) {
+            LOG.warn("Failed to add {} records to the batching queue, processing locally.", numberOfRecordsFailedToBatch);
+        }
         return recordsFailedToBatch;
     }
 
