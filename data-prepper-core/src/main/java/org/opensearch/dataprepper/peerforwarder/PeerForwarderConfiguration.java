@@ -535,7 +535,7 @@ public class PeerForwarderConfiguration {
     private void setForwardingBatchQueueDepth(final Integer forwardingBatchQueueDepth) {
         if (forwardingBatchQueueDepth != null) {
             if (forwardingBatchQueueDepth <= 0) {
-                throw new IllegalArgumentException("Forwarding batch size must be greater than 1.");
+                throw new IllegalArgumentException("Forwarding batch size must be a positive integer.");
             }
             this.forwardingBatchQueueDepth = forwardingBatchQueueDepth;
         }
