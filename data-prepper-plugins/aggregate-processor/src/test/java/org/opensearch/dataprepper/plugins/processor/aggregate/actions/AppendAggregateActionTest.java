@@ -22,7 +22,9 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTes
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
 /*
- *Expected aggregated event from two events
+ *Expected aggregated event from two events with empty keysToAppend
+ *Default behaviour is to have the first event and then for subsequent events only append values if keys match.
+ *
  *FIRST EVENT
  *
  *{
@@ -51,19 +53,15 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
  *
  * AGGREGATED EVENT
  *{
- *    "firstString": "firstEventString",
- *    "firstArray": [ 1, 2, 3 ],
- *    "secondString": "secondEventString",
+ *    "matchingNumberArray": [20, 21, 22, 23, 24, 25, 23, 24, 25],
  *    "matchingNumberEqual": 38947,
- *    "matchingStringEqual": "equalString",
- *    "secondNumber": 2,
+ *    "matchingString": ["StringFromFirstEvent", "StringFromSecondEvent"],
  *    "matchingNumber": [10, 11],
- *    "matchingNumberArray": [20, 21, 22, 23, 24, 25],
- *    "matchingString": "StringFromSecondEvent",
- *    "matchingStringArray": [
- *        ["String1", "String2", "String3", "String4"]
- *    ]
- * }
+ *    "matchingStringArray": ["String1", "String2", "String3", "String4", "String3", "String4"],
+ *    "firstArray": [1, 2, 3],
+ *    "firstString": "firstEventString",
+ *    "matchingStringEqual": "equalString"
+ *}
  */
 public class AppendAggregateActionTest {
 
@@ -164,6 +162,7 @@ public class AppendAggregateActionTest {
 
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
+        System.out.println(groupState);
         assertThat(groupState, equalTo(expectedGroupState));
     }
 
