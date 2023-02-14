@@ -35,16 +35,41 @@ class OperatorConfigurationTest {
     private static Stream<Arguments> validTestArgProvider() {
         return Stream.of(
                 Arguments.of(10, 10, true),
+                Arguments.of(10, 10L, true),
                 Arguments.of(10, 10.0f, true),
-                Arguments.of(-10.0f, -10, true),
-                Arguments.of(3.14f, 3.14f, true),
+                Arguments.of(10, 10.0, true),
                 Arguments.of(10, 150, false),
+                Arguments.of(10, 150L, false),
                 Arguments.of(10, 10.05f, false),
+                Arguments.of(10, 10.05, false),
+
+                Arguments.of(-10.0f, -10, true),
+                Arguments.of(-10.0f, -10L, true),
+                Arguments.of(3.14f, 3.14f, true),
+                Arguments.of(3.14f, 3.14, true),
                 Arguments.of(-10.0f, -150, false),
+                Arguments.of(-10.0f, -150L, false),
                 Arguments.of(3.14f, 3.154f, false),
-                Arguments.of(3.14f, 3.14, false),
-                Arguments.of(10, 10.0, false),
-                Arguments.of(1.0, 1.0, true),
+                Arguments.of(3.14f, 3.154, false),
+
+                Arguments.of(10L, 10, true),
+                Arguments.of(10L, 10L, true),
+                Arguments.of(10L, 10.0f, true),
+                Arguments.of(10L, 10.0, true),
+                Arguments.of(10L, 150, false),
+                Arguments.of(10L, 150L, false),
+                Arguments.of(10L, 10.05f, false),
+                Arguments.of(10L, 10.05, false),
+
+                Arguments.of(-10.0, -10, true),
+                Arguments.of(-10.0, -10L, true),
+                Arguments.of(3.14, 3.14f, true),
+                Arguments.of(3.14, 3.14, true),
+                Arguments.of(-10.0, -150, false),
+                Arguments.of(3.14, 3.154f, false),
+                Arguments.of(-10.0, -150L, false),
+                Arguments.of(3.14, 3.154, false),
+
                 Arguments.of(2000000000, 2000000000, true),
                 Arguments.of(2000000000, 2000000000.1f, true),
                 Arguments.of(new TestObject("1"), new TestObject("1"), true),
@@ -52,6 +77,7 @@ class OperatorConfigurationTest {
                 Arguments.of(new TestObject("1"), new TestObject("3"), false),
                 Arguments.of(null, new TestObject("1"), false),
                 Arguments.of(new TestObject("1"), null, false),
+                Arguments.of(10, 'a', false),
                 Arguments.of(null, null, true)
         );
     }
