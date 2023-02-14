@@ -26,6 +26,8 @@ dependencyResolutionManagement {
             library('opentelemetry-proto', 'io.opentelemetry.proto', 'opentelemetry-proto').versionRef('opentelemetry')
             version('opensearch', '1.3.7')
             library('opensearch-rhlc', 'org.opensearch.client', 'opensearch-rest-high-level-client').versionRef('opensearch')
+            version('guava', '31.1-jre')
+            library('guava-core', 'com.google.guava', 'guava').versionRef('guava')
         }
         testLibs {
             version('junit', '5.8.2')

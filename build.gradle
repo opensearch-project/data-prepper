@@ -83,7 +83,7 @@ subprojects {
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.14.1')
         implementation platform('io.micrometer:micrometer-bom:1.9.4')
-        implementation "com.google.guava:guava:${versionMap.guava}"
+        implementation libs.guava.core
         implementation 'org.slf4j:slf4j-api:2.0.5'
         testImplementation testLibs.bundles.junit
         testImplementation testLibs.bundles.mockito
