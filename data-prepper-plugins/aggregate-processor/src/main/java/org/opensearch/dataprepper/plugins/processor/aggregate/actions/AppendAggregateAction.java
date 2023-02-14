@@ -5,11 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -25,10 +21,10 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
  * action will add the unique keys of each smaller Event to the overall
  * groupState,
  * and will create a combined Event from the groupState on concludeGroup. If
- * smaller Events have the same keys, then these keys will be overwritten with
- * the keys of the
- * most recently handled Event.
- * 
+ * smaller Events have the same keys, then the value for those keys would be appended in group state.
+ * The append action is controlled by the keys_to_append field in config. If this field is not empty,
+ * the append action will choose only the listed keys.
+ *
  * @since 2.2
  */
 @DataPrepperPlugin(name = "append", pluginType = AggregateAction.class, pluginConfigurationType = AppendAggregateActionConfig.class)
@@ -43,7 +39,7 @@ public class AppendAggregateAction implements AggregateAction {
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction#
      * handleEvent(org.opensearch.dataprepper.model.event.Event,
      * org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput)
@@ -55,27 +51,27 @@ public class AppendAggregateAction implements AggregateAction {
             groupState.putAll(event.toMap());
             return AggregateActionResponse.nullEventResponse();
         }
-        Set<String> eventKeys = event.toMap().keySet();
-        for (String key : eventKeys) {
-            if (this.keysToAppend !=null && !this.keysToAppend.contains(key)) {
-                continue;
-            }
-            Object value = event.get(key, Object.class);
-            Object valueFromGroupState = groupState.getOrDefault(key, value);
-            List<Object> listValues = null;
-            if (valueFromGroupState instanceof List) {
-                listValues = (List) valueFromGroupState;
-                listValues.add(value);
-            } else {
-                if (!Objects.equals(value, valueFromGroupState)) {
-                    listValues = new ArrayList<>();
-                    listValues.add(valueFromGroupState);
-                    listValues.add(value);
-                    groupState.put(key, listValues);
+        consumeEvent(groupState, event);
+        return AggregateActionResponse.nullEventResponse();
+    }
+
+    private void consumeEvent(GroupState groupState, Event event) {
+        event.toMap().forEach((key, value) -> {
+            if (this.keysToAppend == null || keysToAppend.isEmpty() || this.keysToAppend.contains(key)) {
+                Object valueFromGroupState = groupState.getOrDefault(key, value);
+                if (valueFromGroupState instanceof List) {
+                    if (value instanceof List) {
+                        ((List) valueFromGroupState).addAll((List) value);
+                    } else {
+                        ((List) valueFromGroupState).add(value);
+                    }
+                } else {
+                    if (!Objects.equals(value, valueFromGroupState)) {
+                        groupState.put(key, Arrays.asList(valueFromGroupState, value));
+                    }
                 }
             }
-        }
-        return AggregateActionResponse.nullEventResponse();
+        });
     }
 
     @Override
