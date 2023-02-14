@@ -124,7 +124,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
      * @return List containing root span, along with any child spans that have already been processed.
      */
     private List<Span> processRootSpan(final Span parentSpan) {
-        final TraceGroup traceGroup = new TraceGroup.TraceGroupBuilder().setFromSpan(parentSpan).build();
+        final TraceGroup traceGroup = TraceGroup.fromSpan(parentSpan);
         final String parentSpanTraceId = parentSpan.getTraceId();
         traceIdTraceGroupCache.put(parentSpanTraceId, traceGroup);
 
