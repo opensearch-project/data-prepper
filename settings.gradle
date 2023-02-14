@@ -15,7 +15,7 @@ rootProject.name = 'opensearch-data-prepper'
 dependencyResolutionManagement {
     versionCatalogs {
         libs {
-            version('armeria', '1.20.3')
+            version('armeria', '1.22.1')
             library('armeria-core', 'com.linecorp.armeria', 'armeria').versionRef('armeria')
             library('armeria-grpc', 'com.linecorp.armeria', 'armeria-grpc').versionRef('armeria')
             library('armeria-junit', 'com.linecorp.armeria', 'armeria-junit5').versionRef('armeria')
