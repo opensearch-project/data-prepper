@@ -1,4 +1,4 @@
-package com.kafka.consumer;
+package org.opensearch.dataprepper.plugins.config;
 
 import java.util.Properties;
 

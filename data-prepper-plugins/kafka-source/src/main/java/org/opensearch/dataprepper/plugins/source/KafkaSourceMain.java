@@ -1,4 +1,4 @@
-package com.kafka.consumer;
+package org.opensearch.dataprepper.plugins.source;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

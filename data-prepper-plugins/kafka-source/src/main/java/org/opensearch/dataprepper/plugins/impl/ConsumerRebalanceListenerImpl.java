@@ -1,4 +1,4 @@
-package com.kafka.consumer;
+package org.opensearch.dataprepper.plugins.impl;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
