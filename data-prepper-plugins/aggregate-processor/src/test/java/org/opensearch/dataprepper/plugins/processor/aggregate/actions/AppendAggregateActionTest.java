@@ -21,48 +21,6 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionRes
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
-/*
- *Expected aggregated event from two events with empty keysToAppend
- *Default behaviour is to have the first event and then for subsequent events only append values if keys match.
- *
- *FIRST EVENT
- *
- *{
- *    "firstString" : "firstEventString"  ,
- *    "firstArray" : [1, 2, 3] ,
- *    "matchingNumber" : 10  ,
- *    "matchingNumberEqual" : 38947,
- *    "matchingStringEqual" : "equalString",
- *    "matchingNumberArray" : [20,21,22] ,
- *    "matchingString" : "StringFromFirstEvent"  ,
- *    "matchingStringArray" : ["String1", "String2"]
- *}
- *
- *SECOND EVENT
- *
- *{
- *    "secondString" : "secondEventString" ,
- *    "secondNumber" : 2 ,
- *    "matchingNumber" : 11 ,
- *    "matchingNumberEqual" : 38947,
- *    "matchingStringEqual" : "equalString",
- *    "matchingNumberArray" : [23,24,25],
- *    "matchingString" : "StringFromSecondEvent" ,
- *    "matchingStringArray" : ["String3", "String4"]
- *}
- *
- * AGGREGATED EVENT
- *{
- *    "matchingNumberArray": [20, 21, 22, 23, 24, 25, 23, 24, 25],
- *    "matchingNumberEqual": 38947,
- *    "matchingString": ["StringFromFirstEvent", "StringFromSecondEvent"],
- *    "matchingNumber": [10, 11],
- *    "matchingStringArray": ["String1", "String2", "String3", "String4", "String3", "String4"],
- *    "firstArray": [1, 2, 3],
- *    "firstString": "firstEventString",
- *    "matchingStringEqual": "equalString"
- *}
- */
 public class AppendAggregateActionTest {
 
     private AggregateAction appendAggregateAction;
@@ -74,29 +32,34 @@ public class AppendAggregateActionTest {
         events = new ArrayList<>();
         eventMaps = new ArrayList<>();
 
+        // { "firstString": "firstEventString", "firstArray": [1, 2, 3], "firstNumber": 1, "matchingNumber": 10, "matchingNumberEqual": 38947, "matchingStringEqual": "equalString", "matchingNumberArray": [20,21,22], "matchingNumberArrayEqual": [20,21,22], "matchingString": "StringFromFirstEvent", "matchingStringArray": ["String1", "String2"],  "matchingDeepArray": [[30,31,32]]}
         final Map<String, Object> firstEventMap = new HashMap<>();
         firstEventMap.put("firstString", "firstEventString");
         firstEventMap.put("firstArray", Arrays.asList(1, 2, 3));
-
         firstEventMap.put("matchingNumber", 10);
         firstEventMap.put("matchingNumberEqual", 38947);
         firstEventMap.put("matchingNumberArray", Arrays.asList(20, 21, 22));
+        firstEventMap.put("matchingNumberArrayEqual", Arrays.asList(20, 21, 22));
         firstEventMap.put("matchingString", "StringFromFirstEvent");
         firstEventMap.put("matchingStringEqual", "equalString");
         firstEventMap.put("matchingStringArray", Arrays.asList("String1", "String2"));
+        firstEventMap.put("matchingDeepArray", Arrays.asList(Arrays.asList(30, 31, 32)));
         eventMaps.add(firstEventMap);
         events.add(buildEventFromMap(firstEventMap));
 
+        // { "secondString": "secondEventString", "secondArray": [4, 5, 6], "secondNumber": 2, "matchingNumber": 11, "matchingNumberEqual": 38947, "matchingStringEqual": "equalString", "matchingNumberArray": [23,24,25], "matchingNumberArrayEqual": [20,21,22], "matchingString": "StringFromSecondEvent", "matchingStringArray": ["String3", "String4"], "matchingDeepArray": [[30,31,32]]}
         final Map<String, Object> secondEventMap = new HashMap<>();
         secondEventMap.put("secondString", "secondEventString");
+        secondEventMap.put("secondArray", Arrays.asList(4, 5, 6));
         secondEventMap.put("secondNumber", 2);
-
         secondEventMap.put("matchingNumber", 11);
         secondEventMap.put("matchingNumberEqual", 38947);
         secondEventMap.put("matchingNumberArray", Arrays.asList(23, 24, 25));
+        secondEventMap.put("matchingNumberArrayEqual", Arrays.asList(20, 21, 22));
         secondEventMap.put("matchingString", "StringFromSecondEvent");
         secondEventMap.put("matchingStringEqual", "equalString");
         secondEventMap.put("matchingStringArray", Arrays.asList("String3", "String4"));
+        secondEventMap.put("matchingDeepArray", Arrays.asList(Arrays.asList(30, 31, 32)));
         eventMaps.add(secondEventMap);
         events.add(buildEventFromMap(secondEventMap));
     }
@@ -152,18 +115,15 @@ public class AppendAggregateActionTest {
         appendAggregateAction = createObjectUnderTest(appendAggregateActionConfig);
 
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
-        final GroupState groupState = aggregateActionInput.getGroupState();
-        groupState.putAll(events.get(0).toMap());
-
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
-
-        expectedGroupState.putAll(groupState);
+        expectedGroupState.putAll(events.get(0).toMap());
         consumeEvent(events.get(1), expectedGroupState, testKeysToAppend);
-
+        // Handle first event
+        appendAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        // Handle second event
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
-        System.out.println(groupState);
-        assertThat(groupState, equalTo(expectedGroupState));
+        assertThat(aggregateActionInput.getGroupState(), equalTo(expectedGroupState));
     }
 
     @Test
@@ -175,17 +135,15 @@ public class AppendAggregateActionTest {
         appendAggregateAction = createObjectUnderTest(appendAggregateActionConfig);
 
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
-        final GroupState groupState = aggregateActionInput.getGroupState();
-        groupState.putAll(events.get(0).toMap());
-
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
-
-        expectedGroupState.putAll(groupState);
+        expectedGroupState.putAll(events.get(0).toMap());
         consumeEvent(events.get(1), expectedGroupState, testKeysToAppend);
-
+        // Handle first event
+        appendAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        // Handle second event
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
-        assertThat(groupState, equalTo(expectedGroupState));
+        assertThat(aggregateActionInput.getGroupState(), equalTo(expectedGroupState));
     }
 
 
@@ -200,9 +158,10 @@ public class AppendAggregateActionTest {
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
         expectedGroupState.putAll(events.get(0).toMap());
-
         consumeEvent(events.get(1), expectedGroupState, testKeysToAppend);
+        // Handle first event
         appendAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        // Handle second event
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(aggregateActionInput.getGroupState(), equalTo(expectedGroupState));
@@ -219,9 +178,10 @@ public class AppendAggregateActionTest {
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
         expectedGroupState.putAll(events.get(0).toMap());
-
         consumeEvent(events.get(1), expectedGroupState, testKeysToAppend);
+        // Handle first event
         appendAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        // Handle second event
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(aggregateActionInput.getGroupState(), equalTo(expectedGroupState));
@@ -238,9 +198,10 @@ public class AppendAggregateActionTest {
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
         expectedGroupState.putAll(events.get(0).toMap());
-
         consumeEvent(events.get(1), expectedGroupState, testKeysToAppend);
+        // Handle first event
         appendAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        // Handle second event
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(aggregateActionInput.getGroupState(), equalTo(expectedGroupState));
@@ -257,9 +218,10 @@ public class AppendAggregateActionTest {
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
         expectedGroupState.putAll(events.get(0).toMap());
-
         consumeEvent(events.get(1), expectedGroupState, testKeysToAppend);
+        // Handle first event
         appendAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        // Handle second event
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(aggregateActionInput.getGroupState(), equalTo(expectedGroupState));
@@ -276,9 +238,10 @@ public class AppendAggregateActionTest {
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
         expectedGroupState.putAll(events.get(0).toMap());
-
         consumeEvent(events.get(1), expectedGroupState, testKeysToAppend);
+        // Handle first event
         appendAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        // Handle second event
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(aggregateActionInput.getGroupState(), equalTo(expectedGroupState));
@@ -295,9 +258,10 @@ public class AppendAggregateActionTest {
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState expectedGroupState = new AggregateActionTestUtils.TestGroupState();
         expectedGroupState.putAll(events.get(0).toMap());
-
         consumeEvent(events.get(1), expectedGroupState, testKeysToAppend);
+        // Handle first event
         appendAggregateAction.handleEvent(events.get(0), aggregateActionInput);
+        // Handle second event
         final AggregateActionResponse aggregateActionResponse = appendAggregateAction.handleEvent(events.get(1), aggregateActionInput);
         assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         assertThat(aggregateActionInput.getGroupState(), equalTo(expectedGroupState));

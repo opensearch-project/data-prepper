@@ -56,6 +56,7 @@ public class AppendAggregateAction implements AggregateAction {
     }
 
     private void consumeEvent(GroupState groupState, Event event) {
+        // For each key in event if the key is defined in keysToAppend, then merge the values in groupState.
         event.toMap().forEach((key, value) -> {
             if (this.keysToAppend == null || keysToAppend.isEmpty() || this.keysToAppend.contains(key)) {
                 Object valueFromGroupState = groupState.getOrDefault(key, value);

@@ -39,6 +39,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
 * `action` (Required): The action to be performed for each group. One of the existing [Aggregate Actions](#available-aggregate-actions) must be provided.
     * [remove_duplicates](#remove_duplicates)
     * [put_all](#put_all)
+    * [append](#append)
     * [count](#count)
     * [histogram](#histogram)
     * [rate_limiter](#rate_limiter)
@@ -78,6 +79,22 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200, "bytes": 1000, "http_verb": "GET" }
       ```
+
+### <a name="append"></a>
+* `append`: Combine Events belonging to the same group by merging values of common keys into a list. All Events that make up the combined Event will be dropped.
+  * It supports the following config option
+    * `keys_to_append` (Optional): Name of keys to check for merging. Default action is to look for all keys. 
+  * Given the following two Events with `identification_keys: ["sourceIp", "destination_ip"]` and `keys_to_append` unset:
+    ```json lines
+      { "firstString": "firstEventString", "firstArray": [1, 2, 3], "firstNumber": 1, "matchingNumber": 10, "matchingNumberEqual": 38947, "matchingStringEqual": "equalString", "matchingNumberArray": [20,21,22], "matchingNumberArrayEqual": [20,21,22], "matchingString": "StringFromFirstEvent", "matchingStringArray": ["String1", "String2"],  "matchingDeepArray": [[30,31,32]]}
+      { "secondString": "secondEventString", "secondArray": [4, 5, 6], "secondNumber": 2, "matchingNumber": 11, "matchingNumberEqual": 38947, "matchingStringEqual": "equalString", "matchingNumberArray": [23,24,25], "matchingNumberArrayEqual": [20,21,22], "matchingString": "StringFromSecondEvent", "matchingStringArray": ["String3", "String4"], "matchingDeepArray": [[30,31,32]]}
+    ```
+    The following Event will be created and processed by the rest of the pipeline when the group is concluded:
+    ```json
+      { "firstString": "firstEventString", "firstArray": [1, 2, 3], "firstNumber": 1, "matchingNumber": [10, 11], "matchingNumberEqual": 38947, "matchingStringEqual": "equalString", "matchingNumberArray": [20, 21, 22, 23, 24, 25], "matchingNumberArrayEqual": [20, 21, 22, 20, 21, 22], "matchingString": ["StringFromFirstEvent", "StringFromSecondEvent"], "matchingStringArray": ["String1", "String2", "String3", "String4"], "matchingDeepArray": [[30, 31, 32], [30, 31, 32]]}
+    ```
+    Notice that it has all the fields from the first event. It appended the values from second event only if the field was also present in the first event.
+    The values in a list are merely appended, so there can be duplicates. 
 
 ### <a name="count"></a>
 * `count`: Count Events belonging to the same group and generate a new event with values of the identification keys and the count, indicating the number of events. All Events that make up the combined Event will be dropped.
