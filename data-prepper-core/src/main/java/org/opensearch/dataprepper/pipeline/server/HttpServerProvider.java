@@ -15,14 +15,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.inject.Provider;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLParameters;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
 @Named
-public class HttpServerProvider implements Provider<HttpServer> {
+public class HttpServerProvider {
     private static final Logger LOG = LoggerFactory.getLogger(HttpServerProvider.class);
 
     private final DataPrepperConfiguration dataPrepperConfiguration;
