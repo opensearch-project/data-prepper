@@ -14,6 +14,7 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
+import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -89,12 +90,12 @@ public class OTelTraceGrpcService extends TraceServiceGrpc.TraceServiceImplBase 
             return;
         }
 
-        Collection<Span> spans;
+        final Collection<Span> spans;
 
         try {
             spans = oTelProtoDecoder.parseExportTraceServiceRequest(request);
-        } catch (Exception e) {
-            LOG.error("Failed to parse the request due to:", request, e);
+        } catch (final Exception e) {
+            LOG.warn(DataPrepperMarkers.SENSITIVE, "Failed to parse request with error '{}'. Request body: {}.", e.getMessage(), request);
             badRequestsCounter.increment();
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asException());
             return;
