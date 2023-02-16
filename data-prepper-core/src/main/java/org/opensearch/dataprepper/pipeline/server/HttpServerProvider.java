@@ -32,7 +32,6 @@ public class HttpServerProvider implements Provider<HttpServer> {
         this.dataPrepperConfiguration = dataPrepperConfiguration;
     }
 
-    @Override
     public HttpServer get() {
         final InetSocketAddress socketAddress = new InetSocketAddress(dataPrepperConfiguration.getServerPort());
         try {
