@@ -531,6 +531,7 @@ class PeerForwarder_ClientServerIT {
                 null,
                 null,
                 null,
+                null,
                 binaryCodec
         );
     }

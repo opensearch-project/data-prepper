@@ -64,6 +64,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(500));
         assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(1500));
+        assertThat(peerForwarderConfiguration.getForwardingBatchQueueDepth(), equalTo(1));
         assertThat(peerForwarderConfiguration.getForwardingBatchTimeout(), equalTo(DEFAULT_FORWARDING_BATCH_TIMEOUT));
         assertThat(peerForwarderConfiguration.getBinaryCodec(), equalTo(true));
     }
@@ -96,6 +97,7 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
         assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(15));
         assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(2500));
+        assertThat(peerForwarderConfiguration.getForwardingBatchQueueDepth(), equalTo(3));
         assertThat(peerForwarderConfiguration.getForwardingBatchTimeout(), equalTo(Duration.of(5, ChronoUnit.SECONDS)));
         assertThat(peerForwarderConfiguration.getBinaryCodec(), equalTo(false));
     }

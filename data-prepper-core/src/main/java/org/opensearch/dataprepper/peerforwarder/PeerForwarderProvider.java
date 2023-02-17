@@ -58,6 +58,7 @@ public class PeerForwarderProvider {
                     peerForwarderConfiguration.getBatchDelay(),
                     peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(),
                     peerForwarderConfiguration.getForwardingBatchSize(),
+                    peerForwarderConfiguration.getForwardingBatchQueueDepth(),
                     peerForwarderConfiguration.getForwardingBatchTimeout(),
                     pipelineWorkerThreads
             );
