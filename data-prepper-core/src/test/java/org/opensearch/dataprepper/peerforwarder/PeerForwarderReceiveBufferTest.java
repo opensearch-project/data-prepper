@@ -34,9 +34,11 @@ class PeerForwarderReceiveBufferTest {
     private static final int TEST_WRITE_TIMEOUT = 100;
     private static final int TEST_BATCH_READ_TIMEOUT = 5_000;
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final String PIPELINE_NAME = UUID.randomUUID().toString();
+    private static final String PLUGIN_ID = UUID.randomUUID().toString();
 
     PeerForwarderReceiveBuffer<Record<String>> createObjectUnderTest(final int bufferSize) {
-        return new PeerForwarderReceiveBuffer<>(bufferSize, TEST_BATCH_SIZE);
+        return new PeerForwarderReceiveBuffer<>(bufferSize, TEST_BATCH_SIZE, PIPELINE_NAME, PLUGIN_ID);
     }
 
     @Test
