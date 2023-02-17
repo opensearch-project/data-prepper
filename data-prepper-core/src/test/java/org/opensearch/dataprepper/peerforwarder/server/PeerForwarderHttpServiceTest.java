@@ -60,7 +60,7 @@ class PeerForwarderHttpServiceTest {
 
 
     private final PeerForwarderReceiveBuffer peerForwarderReceiveBuffer =
-            new PeerForwarderReceiveBuffer(TEST_BATCH_SIZE, TEST_BUFFER_CAPACITY);
+            new PeerForwarderReceiveBuffer(TEST_BATCH_SIZE, TEST_BUFFER_CAPACITY, PIPELINE_NAME, PLUGIN_ID);
 
     @Mock
     private PeerForwarderCodec peerForwarderCodec;

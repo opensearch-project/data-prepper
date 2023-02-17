@@ -72,6 +72,8 @@ class RemotePeerForwarderTest {
     private static final int FORWARDING_BATCH_SIZE = 5;
     private static final Duration FORWARDING_BATCH_TIMEOUT = Duration.of(3, ChronoUnit.SECONDS);
     private static final int PIPELINE_WORKER_THREADS = 3;
+    private static final String PIPELINE_NAME = UUID.randomUUID().toString();
+    private static final String PLUGIN_ID = UUID.randomUUID().toString();
 
     @Mock
     private PeerForwarderClient peerForwarderClient;
@@ -116,7 +118,7 @@ class RemotePeerForwarderTest {
         pipelineName = UUID.randomUUID().toString();
         pluginId = UUID.randomUUID().toString();
         identificationKeys = generateIdentificationKeys();
-        peerForwarderReceiveBuffer = new PeerForwarderReceiveBuffer<>(TEST_BUFFER_CAPACITY, TEST_BATCH_SIZE);
+        peerForwarderReceiveBuffer = new PeerForwarderReceiveBuffer<>(TEST_BUFFER_CAPACITY, TEST_BATCH_SIZE, PIPELINE_NAME, PLUGIN_ID);
 
         when(pluginMetrics.counter(RECORDS_TO_BE_PROCESSED_LOCALLY)).thenReturn(recordsToBeProcessedLocallyCounter);
         when(pluginMetrics.counter(RECORDS_ACTUALLY_PROCESSED_LOCALLY)).thenReturn(recordsActuallyProcessedLocallyCounter);
