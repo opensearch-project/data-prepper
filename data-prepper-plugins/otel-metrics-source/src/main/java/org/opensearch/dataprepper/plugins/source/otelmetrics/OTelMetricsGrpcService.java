@@ -9,6 +9,8 @@ import io.grpc.Context;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
@@ -25,12 +27,18 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
+    public static final String SUCCESS_REQUESTS = "successRequests";
+    public static final String PAYLOAD_SIZE = "payloadSize";
+    public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
 
     private final int bufferWriteTimeoutInMillis;
     private final Buffer<Record<ExportMetricsServiceRequest>> buffer;
 
     private final Counter requestTimeoutCounter;
     private final Counter requestsReceivedCounter;
+    private final Counter successRequestsCounter;
+    private final DistributionSummary payloadSizeSummary;
+    private final Timer requestProcessDuration;
 
 
     public OTelMetricsGrpcService(int bufferWriteTimeoutInMillis,
@@ -41,12 +49,20 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
         requestTimeoutCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
+        successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
+        payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
+        requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
     }
 
 
     @Override
-    public void export(ExportMetricsServiceRequest request, StreamObserver<ExportMetricsServiceResponse> responseObserver) {
+    public void export(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
+        requestProcessDuration.record(() -> processRequest(request, responseObserver));
+    }
+
+    private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
         requestsReceivedCounter.increment();
+        payloadSizeSummary.record(request.getSerializedSize());
 
         if (Context.current().isCancelled()) {
             requestTimeoutCounter.increment();
@@ -56,6 +72,7 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
         try {
             buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+            successRequestsCounter.increment();
             responseObserver.onNext(ExportMetricsServiceResponse.newBuilder().build());
             responseObserver.onCompleted();
         } catch (TimeoutException e) {
