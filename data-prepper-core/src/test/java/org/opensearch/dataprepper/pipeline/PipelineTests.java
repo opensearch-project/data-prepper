@@ -323,7 +323,7 @@ class PipelineTests {
                 FutureHelper.awaitFuturesIndefinitely(futures);
 
                 for (Sink sink : sinks) {
-                    verify(sink).output(records);
+                    verify(sink).output(records, true);
                 }
             }
 
@@ -375,10 +375,10 @@ class PipelineTests {
 
                 FutureHelper.awaitFuturesIndefinitely(futures);
 
-                verify(routedSink).output(records);
+                verify(routedSink).output(records, true);
 
                 for (Sink sink : unroutedSinks) {
-                    verify(sink, never()).output(records);
+                    verify(sink, never()).output(records, false);
                 }
             }
         }

@@ -76,7 +76,7 @@ class FileSinkTests {
     void testValidFilePathStringRecord() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
         Assertions.assertTrue(fileSink.isReady());
-        fileSink.output(TEST_STRING_RECORDS);
+        fileSink.output(TEST_STRING_RECORDS, false);
         fileSink.shutdown();
 
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
@@ -90,7 +90,7 @@ class FileSinkTests {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
         Assertions.assertTrue(fileSink.isReady());
         final TestObject testObject = new TestObject();
-        fileSink.output(Collections.singleton(new Record<>(testObject)));
+        fileSink.output(Collections.singleton(new Record<>(testObject)), false);
         fileSink.shutdown();
 
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
@@ -101,7 +101,7 @@ class FileSinkTests {
     void testValidFilePath() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
         Assertions.assertTrue(fileSink.isReady());
-        fileSink.output(TEST_RECORDS);
+        fileSink.output(TEST_RECORDS, false);
         fileSink.shutdown();
 
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
@@ -113,8 +113,8 @@ class FileSinkTests {
     void testMultipleCallsToOutput() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
         Assertions.assertTrue(fileSink.isReady());
-        fileSink.output(Collections.singletonList(TEST_RECORDS.get(0)));
-        fileSink.output(Collections.singletonList(TEST_RECORDS.get(1)));
+        fileSink.output(Collections.singletonList(TEST_RECORDS.get(0)), false);
+        fileSink.output(Collections.singletonList(TEST_RECORDS.get(1)), false);
         fileSink.shutdown();
 
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
@@ -126,9 +126,9 @@ class FileSinkTests {
     void testCallingOutputAfterShutdownDoesNotWrite() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
         Assertions.assertTrue(fileSink.isReady());
-        fileSink.output(Collections.singletonList(TEST_RECORDS.get(0)));
+        fileSink.output(Collections.singletonList(TEST_RECORDS.get(0)), false);
         fileSink.shutdown();
-        fileSink.output(Collections.singletonList(TEST_RECORDS.get(1)));
+        fileSink.output(Collections.singletonList(TEST_RECORDS.get(1)), false);
 
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
         assertThat(outputData, containsString(TEST_DATA_1));

@@ -160,7 +160,7 @@ public class PipelineConnectorTest {
 
     @Test(expected = RuntimeException.class)
     public void testOutputWithoutBufferInitialized() {
-        sut.output(recordList);
+        sut.output(recordList, false);
     }
 
     @Test(expected = RuntimeException.class)
@@ -168,7 +168,7 @@ public class PipelineConnectorTest {
         sut.start(buffer);
         sut.stop();
 
-        sut.output(recordList);
+        sut.output(recordList, false);
     }
 
     @Test
@@ -177,7 +177,7 @@ public class PipelineConnectorTest {
 
         sut.start(buffer);
 
-        sut.output(recordList);
+        sut.output(recordList, false);
 
         verify(buffer, times(2)).write(eq(RECORD), anyInt());
     }
@@ -186,7 +186,7 @@ public class PipelineConnectorTest {
     public void testOutputSuccess() throws Exception {
         sut.start(buffer);
 
-        sut.output(recordList);
+        sut.output(recordList, false);
 
         verify(buffer).write(eq(RECORD), anyInt());
     }
@@ -195,7 +195,7 @@ public class PipelineConnectorTest {
     public void testEventBufferOutputSuccess() throws Exception {
         eut.start(eventBuffer);
 
-        eut.output(eventRecordList);
+        eut.output(eventRecordList, true);
 
         Map.Entry<Collection<Record<Event>>, CheckpointState> ent = eventBuffer.read(1);
         ArrayList<Record<Event>> records = new ArrayList<>(ent.getKey());
@@ -215,7 +215,7 @@ public class PipelineConnectorTest {
     public void testSpanBufferOutputSuccess() throws Exception {
         sput.start(spanBuffer);
 
-        sput.output(spanRecordList);
+        sput.output(spanRecordList, true);
 
         Map.Entry<Collection<Record<JacksonSpan>>, CheckpointState> ent = spanBuffer.doRead(10000);
         ArrayList<Record<JacksonSpan>> records = new ArrayList<>(ent.getKey());
@@ -233,7 +233,7 @@ public class PipelineConnectorTest {
         sut.setSinkPipelineName(SINK_PIPELINE_NAME);
 
         try {
-            sut.output(recordList);
+            sut.output(recordList, false);
         } catch (Exception e) {
             assertTrue(e.getMessage().contains(SINK_PIPELINE_NAME));
         }

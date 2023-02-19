@@ -20,7 +20,7 @@ public interface Sink<T extends Record<?>> {
      *
      * @param records the records to write to the sink.
      */
-    void output(Collection<T> records);
+    void output(Collection<T> records, boolean copyFlag);
 
     /**
      * Prepare sink for shutdown, by cleaning up resources and threads.

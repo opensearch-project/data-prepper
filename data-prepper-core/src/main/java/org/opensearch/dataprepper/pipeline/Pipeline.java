@@ -255,9 +255,16 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        router.route(records, sinks, (sink, events) ->
-                sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
+        final List<DataFlowComponent<Sink>> firstSink = sinks.subList(0,1);
+        final List<DataFlowComponent<Sink>> remainingSinks = sinks.subList(1, sinksSize);
+        router.route(records, firstSink, (sink, events) ->
+                sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events, false), null))
         );
+        if (remainingSinks.size() > 0) {
+            router.route(records, remainingSinks, (sink, events) ->
+                    sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events, true), null))
+            );
+        }
         return sinkFutures;
     }
 }

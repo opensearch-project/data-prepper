@@ -61,7 +61,7 @@ public class FileSink implements Sink<Record<Object>> {
     }
 
     @Override
-    public void output(final Collection<Record<Object>> records) {
+    public void output(final Collection<Record<Object>> records, boolean copyFlag) {
 
         lock.lock();
         try {

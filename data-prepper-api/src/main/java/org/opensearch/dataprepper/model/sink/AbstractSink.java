@@ -49,7 +49,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
      * @param records the records to write to the sink.
      */
     @Override
-    public void output(Collection<T> records) {
+    public void output(Collection<T> records, boolean copyFlag) {
         recordsInCounter.increment(records.size()*1.0);
         timeElapsedTimer.record(() -> doOutput(records));
     }
