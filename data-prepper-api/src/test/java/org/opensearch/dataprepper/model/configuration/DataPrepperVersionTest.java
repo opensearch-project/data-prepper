@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -176,5 +177,16 @@ public class DataPrepperVersionTest {
     public void testToString_fullVersion() {
         final DataPrepperVersion result = DataPrepperVersion.parse("7.0");
         assertThat(result.toString(), is(equalTo("7.0")));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1", "2.0", "3.14", "105435"})
+    public void testHashCode_areEqualForSameVersion(final String version) {
+
+        final DataPrepperVersion dpVersionA = DataPrepperVersion.parse(version);
+        final int hashCodeA = dpVersionA.hashCode();
+        final DataPrepperVersion dpVersionB = DataPrepperVersion.parse(version);
+        final int hashCodeB = dpVersionB.hashCode();
+        assertThat(hashCodeA, is(equalTo(hashCodeB)));
     }
 }

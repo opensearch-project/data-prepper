@@ -98,4 +98,9 @@ public class DataPrepperVersion {
 
         return String.format(FULL_FORMAT, this.majorVersion, this.minorVersion);
     }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.majorVersion, this.minorVersion);
+    }
 }
