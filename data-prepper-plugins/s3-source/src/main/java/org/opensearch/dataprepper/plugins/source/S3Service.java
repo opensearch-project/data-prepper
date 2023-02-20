@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
@@ -32,7 +33,9 @@ public class S3Service {
     private final PluginMetrics pluginMetrics;
     private final BucketOwnerProvider bucketOwnerProvider;
     private final S3ObjectWorker s3ObjectWorker;
-
+    //Issue#1971-Start
+    private final S3AsyncClient s3AsyncClient;
+    //Issue#1971-Start
     S3Service(final S3SourceConfig s3SourceConfig,
               final Buffer<Record<Event>> buffer,
               final Codec codec,
@@ -44,10 +47,14 @@ public class S3Service {
         this.pluginMetrics = pluginMetrics;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.s3Client = createS3Client();
+        this.s3AsyncClient = createS3AsyncClient();
         this.compressionEngine = s3SourceConfig.getCompression().getEngine();
         final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(s3SourceConfig.getMetadataRootKey());
-        this.s3ObjectWorker = new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider,
+        //Issue#1971-Start
+        S3SelectObjectWorker s3SelectObjectWorker = new S3SelectObjectWorker(s3AsyncClient, s3SourceConfig, pluginMetrics);
+        this.s3ObjectWorker = new S3ObjectWorker(s3Client,s3SourceConfig,s3SelectObjectWorker, buffer, compressionEngine, codec, bucketOwnerProvider,
                 s3SourceConfig.getBufferTimeout(), s3SourceConfig.getNumberOfRecordsToAccumulate(), eventMetadataModifier, pluginMetrics);
+        //Issue#1971-End
     }
 
     void addS3Object(final S3ObjectReference s3ObjectReference) {
@@ -68,4 +75,20 @@ public class S3Service {
                         .build())
                 .build();
     }
+    //Issue#1971-Start
+    /**
+     * Create a S3AsyncClient Object for S3 Select query
+     * @return a S3AsyncClient Object
+     */
+    private S3AsyncClient createS3AsyncClient() {
+        LOG.info("Creating S3 Async client");
+        return S3AsyncClient.builder()
+                .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
+                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
+                .overrideConfiguration(ClientOverrideConfiguration.builder()
+                        .retryPolicy(RetryPolicy.builder().numRetries(5).build())
+                        .build())
+                .build();
+    }
+    //Issue#1971-End
 }

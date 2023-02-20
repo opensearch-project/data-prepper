@@ -61,8 +61,21 @@ class S3ObjectWorker {
     private final DistributionSummary s3ObjectSizeSummary;
     private final DistributionSummary s3ObjectSizeProcessedSummary;
     private final DistributionSummary s3ObjectEventsSummary;
+    
+    //Issue#1971-Start
+  	private final S3SelectObjectWorker s3SelectObjectWorker;
+  	private final S3SourceConfig s3SourceConfig;
+  	static final String S3_SELECT_OBJECT_SUCCEEDED_METRIC_NAME = "s3SelectRecordsSucceeded";
+  	static final String S3_SELECT_TIME_ELAPSED_METRIC_NAME = "s3SelectReadTimeElapsed";
+  	private final Timer s3SelectReadTimer;
+  	private final Counter s3SelectRecordsSucceeded;
+  	//Issue#1971-End
 
     public S3ObjectWorker(final S3Client s3Client,
+    					  //Issue#1971-Start
+    					  final S3SourceConfig s3SourceConfig,
+    					  final S3SelectObjectWorker s3SelectObjectWorker,
+    					  //Issue#1971-End
                           final Buffer<Record<Event>> buffer,
                           final CompressionEngine compressionEngine,
                           final Codec codec,
@@ -88,6 +101,13 @@ class S3ObjectWorker {
         s3ObjectSizeSummary = pluginMetrics.summary(S3_OBJECTS_SIZE);
         s3ObjectSizeProcessedSummary = pluginMetrics.summary(S3_OBJECTS_SIZE_PROCESSED);
         s3ObjectEventsSummary = pluginMetrics.summary(S3_OBJECTS_EVENTS);
+        
+        //Issue#1971-Start
+      	this.s3SelectObjectWorker = s3SelectObjectWorker;
+      	this.s3SourceConfig = s3SourceConfig;
+      	s3SelectReadTimer = pluginMetrics.timer(S3_SELECT_TIME_ELAPSED_METRIC_NAME);
+		s3SelectRecordsSucceeded = pluginMetrics.counter(S3_SELECT_OBJECT_SUCCEEDED_METRIC_NAME);
+      	//Issue#1971-End
     }
 
     void parseS3Object(final S3ObjectReference s3ObjectReference) throws IOException {
@@ -99,21 +119,35 @@ class S3ObjectWorker {
                 .build();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
-        try {
-            s3ObjectReadTimer.recordCallable((Callable<Void>) () -> {
-                doParseObject(s3ObjectReference, getObjectRequest, bufferAccumulator);
-
-                return null;
-            });
-        } catch (final IOException | RuntimeException e) {
-            throw e;
-        } catch (final Exception e) {
-            // doParseObject does not throw Exception, only IOException or RuntimeException. But, Callable has Exception as a checked
-            // exception on the interface. This catch block thus should not be reached, but in case it is, wrap it.
-            throw new RuntimeException(e);
-        }
-
-        s3ObjectsSucceededCounter.increment();
+        //Issue#1971-Start
+		if (null != s3SourceConfig.getS3SelectOptions()) {
+			try {
+				s3SelectReadTimer.recordCallable((Callable<Void>) () -> {
+					s3SelectObjectWorker.selectObjectFromS3(s3ObjectReference, bufferAccumulator);
+					s3SelectRecordsSucceeded.increment();
+					return null;
+				});
+			} catch (final IOException | RuntimeException e) {
+				throw e;
+			} catch (final Exception e) {
+				throw new RuntimeException(e);
+			}
+		} else {
+				try {
+					s3ObjectReadTimer.recordCallable((Callable<Void>) () -> {
+						doParseObject(s3ObjectReference, getObjectRequest, bufferAccumulator);
+						return null;
+					});
+				} catch (final IOException | RuntimeException e) {
+					throw e;
+				} catch (final Exception e) {
+					// doParseObject does not throw Exception, only IOException or RuntimeException. But, Callable has Exception as a checked
+					// exception on the interface. This catch block thus should not be reached, but, in case it is, wrap it.
+					throw new RuntimeException(e);
+				}
+				s3ObjectsSucceededCounter.increment();
+			}
+		//Issue#1971-End
     }
 
     private void doParseObject(final S3ObjectReference s3ObjectReference, final GetObjectRequest getObjectRequest, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
