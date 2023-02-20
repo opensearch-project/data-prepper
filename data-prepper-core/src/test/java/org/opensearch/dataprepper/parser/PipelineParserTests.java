@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -150,6 +151,27 @@ class PipelineParserTests {
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(),
                 equalTo("Invalid configuration, expected source test-pipeline-1 for pipeline test-pipeline-2 is missing"));
+    }
+
+    @Test
+    void parseConfiguration_with_incompatible_version_should_throw() {
+        final PipelineParser pipelineParser =
+            createObjectUnderTest(TestDataProvider.INCOMPATIBLE_VERSION_CONFIG_FILE);
+
+        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
+        assertThat(actualException.getMessage(),
+            equalTo(String.format("The version: 1.0 is not compatible with the current version: %s", DataPrepperVersion.getCurrentVersion())));
+    }
+
+    @Test
+    void parseConfiguration_with_compatible_version() {
+        final PipelineParser pipelineParser =
+            createObjectUnderTest(TestDataProvider.COMPATIBLE_VERSION_CONFIG_FILE);
+        final Map<String, Pipeline> connectedPipelines = pipelineParser.parseConfiguration();
+        assertThat(connectedPipelines.size(), equalTo(1));
+        verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
+        verify(dataPrepperConfiguration).getSinkShutdownTimeout();
+        verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
     }
 
     @Test
