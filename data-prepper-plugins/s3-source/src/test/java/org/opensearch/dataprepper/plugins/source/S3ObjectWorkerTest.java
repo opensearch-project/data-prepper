@@ -26,6 +26,7 @@ import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -66,6 +67,12 @@ class S3ObjectWorkerTest {
 
     @Mock
     private S3Client s3Client;
+    
+    @Mock
+    private S3AsyncClient s3AsyncClient;
+    
+    @Mock
+    private S3SelectObjectWorker s3SelectObjectWorker;
 
     @Mock
     private Buffer<Record<Event>> buffer;
@@ -105,6 +112,8 @@ class S3ObjectWorkerTest {
     private DistributionSummary s3ObjectEventsSummary;
     @Mock
     private BiConsumer<Event, S3ObjectReference> eventConsumer;
+    @Mock
+    private S3SourceConfig s3SourceConfig;
 
     private String bucketName;
     private String key;
@@ -157,7 +166,7 @@ class S3ObjectWorkerTest {
     }
 
     private S3ObjectWorker createObjectUnderTest() {
-        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, bufferTimeout, recordsToAccumulate, eventConsumer, pluginMetrics);
+        return new S3ObjectWorker(s3Client,s3SourceConfig,s3SelectObjectWorker, buffer, compressionEngine, codec, bucketOwnerProvider, bufferTimeout, recordsToAccumulate, eventConsumer, pluginMetrics);
     }
 
     @Test

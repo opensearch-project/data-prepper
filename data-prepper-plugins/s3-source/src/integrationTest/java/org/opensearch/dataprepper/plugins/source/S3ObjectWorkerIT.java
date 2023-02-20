@@ -63,12 +63,34 @@ class S3ObjectWorkerIT {
     private PluginMetrics pluginMetrics;
     private BucketOwnerProvider bucketOwnerProvider;
     private EventMetadataModifier eventMetadataModifier;
+    private S3SourceConfig s3SourceConfig;
+    private S3SelectObjectWorker s3SelectObjectWorker;
 
     @BeforeEach
     void setUp() {
         s3Client = S3Client.builder()
                 .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
+        bucket = System.getProperty("tests.s3source.bucket");
+        s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
+        eventMetadataModifier = new EventMetadataModifier(S3SourceConfig.DEFAULT_METADATA_ROOT_KEY);
+
+        buffer = mock(Buffer.class);
+        recordsReceived = 0;
+
+        pluginMetrics = mock(PluginMetrics.class);
+        final Counter counter = mock(Counter.class);
+        final DistributionSummary distributionSummary = mock(DistributionSummary.class);
+        final Timer timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        when(pluginMetrics.summary(anyString())).thenReturn(distributionSummary);
+        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+
+        bucketOwnerProvider = b -> Optional.empty();
+    }
+    
+    @BeforeEach
+    void setupAsyncClient(){
         bucket = System.getProperty("tests.s3source.bucket");
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
         eventMetadataModifier = new EventMetadataModifier(S3SourceConfig.DEFAULT_METADATA_ROOT_KEY);
@@ -106,7 +128,7 @@ class S3ObjectWorkerIT {
     }
 
     private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
-        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, eventMetadataModifier, pluginMetrics);
+        return new S3ObjectWorker(s3Client,s3SourceConfig,s3SelectObjectWorker, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, eventMetadataModifier, pluginMetrics);
     }
 
     @ParameterizedTest
