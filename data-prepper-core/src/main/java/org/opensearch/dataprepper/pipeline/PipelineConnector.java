@@ -9,10 +9,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,34 +60,11 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     }
 
     @Override
-    public void output(final Collection<T> records, boolean copyFlag) {
+    public void output(final Collection<T> records) {
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
-                if (copyFlag) {
-                    if (record.getData() instanceof JacksonSpan) {
-                        try {
-                            final Span spanEvent = (Span) record.getData();
-                            Span newSpanEvent = JacksonSpan.fromSpan(spanEvent);
-                            record = (T) (new Record<>(newSpanEvent));
-                        } catch (Exception ex) {
-                            LOG.error("PipelineConnector [{}-{}]:  exception while duplicating the event [{}]",
-                                    sinkPipelineName, sourcePipelineName, ex);
-                        }
-                    } else if (record.getData() instanceof Event) {
-                        try {
-                            final Event recordEvent = (Event) record.getData();
-                            Event newRecordEvent = JacksonEvent.fromEvent(recordEvent);
-                            record = (T) (new Record<>(newRecordEvent));
-                        } catch (Exception ex) {
-                            LOG.error("PipelineConnector [{}-{}]:  exception while duplicating the event [{}]",
-                                    sinkPipelineName, sourcePipelineName, ex);
-                        }
-                    }
-                }
-
                 while (true) {
                     try {
-                        System.out.println("Record = "+ record);
                         buffer.write(record, DEFAULT_WRITE_TIMEOUT);
                         break;
                     } catch (TimeoutException ex) {

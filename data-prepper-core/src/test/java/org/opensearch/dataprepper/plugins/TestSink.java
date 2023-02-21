@@ -31,7 +31,7 @@ public class TestSink implements Sink<Record<String>> {
     }
 
     @Override
-    public void output(Collection<Record<String>> records, boolean copyFlag) {
+    public void output(Collection<Record<String>> records) {
         if(failSinkForTest) {
             throw new RuntimeException("Sink is expected to fail");
         }

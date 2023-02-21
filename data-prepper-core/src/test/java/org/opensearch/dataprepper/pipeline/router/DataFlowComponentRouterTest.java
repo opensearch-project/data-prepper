@@ -29,6 +29,9 @@ import java.util.stream.IntStream;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(MockitoExtension.class)
 class DataFlowComponentRouterTest {
@@ -72,8 +75,12 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
 
+            assertEquals(usedRecords.size(), recordsIn.size());
+            for (Record record: recordsIn) {
+                assertTrue(usedRecords.contains(record));
+            }
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
 
@@ -83,7 +90,11 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> allWithRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(UUID.randomUUID().toString())));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, allWithRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, allWithRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), recordsIn.size());
+            for (Record record: recordsIn) {
+                assertTrue(usedRecords.contains(record));
+            }
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -94,7 +105,8 @@ class DataFlowComponentRouterTest {
 
             final Map<Record, Set<String>> noMatchingRoutes = Collections.emptyMap();
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), recordsIn.size());
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -121,7 +133,8 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), 0);
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
@@ -131,7 +144,8 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(UUID.randomUUID().toString())));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), 0);
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
@@ -142,7 +156,11 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> allMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(knownRoute)));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), recordsIn.size());
+            for (Record record: recordsIn) {
+                assertTrue(usedRecords.contains(record));
+            }
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -160,7 +178,11 @@ class DataFlowComponentRouterTest {
                 applyRoute = !applyRoute;
             }
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, someMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, someMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), expectedRecords.size());
+            for (Record record: expectedRecords) {
+                assertTrue(usedRecords.contains(record));
+            }
 
             verify(componentRecordsConsumer).accept(testComponent, expectedRecords);
         }
@@ -171,7 +193,8 @@ class DataFlowComponentRouterTest {
 
             final Map<Record, Set<String>> noMatchingRoutes = Collections.emptyMap();
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), 0);
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -199,7 +222,8 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), 0);
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
@@ -209,7 +233,8 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(UUID.randomUUID().toString())));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), 0);
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
@@ -220,7 +245,11 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> allMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(knownRoute)));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), recordsIn.size());
+            for (Record record: recordsIn) {
+                assertTrue(usedRecords.contains(record));
+            }
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -238,7 +267,11 @@ class DataFlowComponentRouterTest {
                 applyRoute = !applyRoute;
             }
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, someMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, someMatchingRoutes, componentRecordsConsumer);
+            assertEquals(usedRecords.size(), expectedRecords.size());
+            for (Record record: expectedRecords) {
+                assertTrue(usedRecords.contains(record));
+            }
 
             verify(componentRecordsConsumer).accept(testComponent, expectedRecords);
         }
@@ -249,8 +282,9 @@ class DataFlowComponentRouterTest {
 
             final Map<Record, Set<String>> noMatchingRoutes = Collections.emptyMap();
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            Set<Record> usedRecords = createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
 
+            assertEquals(usedRecords.size(), 0);
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
 

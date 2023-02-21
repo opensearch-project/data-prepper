@@ -32,7 +32,7 @@ public class StdOutSink implements Sink<Record<Object>> {
     }
 
     @Override
-    public void output(final Collection<Record<Object>> records, boolean copyFlag) {
+    public void output(final Collection<Record<Object>> records) {
         for (final Record<Object> record : records) {
             checkTypeAndPrintObject(record.getData());
         }

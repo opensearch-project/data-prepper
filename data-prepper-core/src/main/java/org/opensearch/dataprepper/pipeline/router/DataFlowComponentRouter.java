@@ -13,6 +13,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.function.BiConsumer;
 
 /**
@@ -21,16 +22,18 @@ import java.util.function.BiConsumer;
  */
 class DataFlowComponentRouter {
 
-    <C> void route(final Collection<Record> allRecords,
+    <C> Set<Record> route(final Collection<Record> allRecords,
                    final DataFlowComponent<C> dataFlowComponent,
                    final Map<Record, Set<String>> recordsToRoutes,
                    final BiConsumer<C, Collection<Record>> componentRecordsConsumer) {
 
         final Collection<Record> recordsForComponent;
         final Set<String> dataFlowComponentRoutes =  dataFlowComponent.getRoutes();
+        Set<Record> usedRecords = new HashSet<Record>();
 
         if (dataFlowComponentRoutes.isEmpty()) {
             recordsForComponent = allRecords;
+            usedRecords.addAll(allRecords);
         } else {
             recordsForComponent = new ArrayList<>();
             for (Record event : allRecords) {
@@ -39,9 +42,11 @@ class DataFlowComponentRouter {
 
                 if (routesForEvent.stream().anyMatch(dataFlowComponentRoutes::contains)) {
                     recordsForComponent.add(event);
+                    usedRecords.add(event);
                 }
             }
         }
         componentRecordsConsumer.accept(dataFlowComponent.getComponent(), recordsForComponent);
+        return usedRecords;
     }
 }

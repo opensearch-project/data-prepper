@@ -52,7 +52,7 @@ public class StdOutSinkTests {
     @Test
     public void testSinkWithEvents() {
         final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
-        stdOutSink.output(testRecords, false);
+        stdOutSink.output(testRecords);
         stdOutSink.shutdown();
     }
 
@@ -60,7 +60,7 @@ public class StdOutSinkTests {
     @Test
     public void testSinkWithCustomType() {
         final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
-        stdOutSink.output(Collections.singletonList(new Record<Object>(new TestObject())), false);
+        stdOutSink.output(Collections.singletonList(new Record<Object>(new TestObject())));
     }
 
     private static class TestObject {

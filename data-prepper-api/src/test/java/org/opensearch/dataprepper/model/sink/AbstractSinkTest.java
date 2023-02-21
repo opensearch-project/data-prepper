@@ -37,7 +37,7 @@ public class AbstractSinkTest {
                 new Record<>(UUID.randomUUID().toString()),
                 new Record<>(UUID.randomUUID().toString()),
                 new Record<>(UUID.randomUUID().toString())
-        ), false);
+        ));
 
         final List<Measurement> recordsInMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(pipelineName).add(sinkName).add(MetricNames.RECORDS_IN).toString());
