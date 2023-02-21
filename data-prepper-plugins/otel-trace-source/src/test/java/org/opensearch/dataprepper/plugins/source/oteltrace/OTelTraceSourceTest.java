@@ -185,6 +185,18 @@ public class OTelTraceSourceTest {
         assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
+    private static void assertStatusCode200AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
+        assertThat("Http Status", response.status(), is(HttpStatus.OK));
+        assertThat("Http Response Throwable", throwable, is(nullValue()));
+
+        final List<String> headerKeys = response.headers()
+                .stream()
+                .map(Map.Entry::getKey)
+                .map(AsciiString::toString)
+                .collect(Collectors.toList());
+        assertThat("Response Header Keys", headerKeys, not(contains("server")));
+    }
+
     private void configureObjectUnderTest() {
         pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
 
@@ -228,7 +240,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    void testHttpFullJson() throws InvalidProtocolBufferException {
+    void testHttpFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
         configureObjectUnderTest();
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
@@ -256,7 +268,28 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    void testHttpsFullJson() throws InvalidProtocolBufferException {
+    void testHttpFullJsonWithCustomPathAndUnframedRequests() throws InvalidProtocolBufferException {
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelTraceSourceConfig.getPath()).thenReturn("${pipelineName}/v1/traces");
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/traces";
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21890")
+                                .method(HttpMethod.POST)
+                                .path(transformedPath)
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(createExportTraceRequest()).getBytes()))
+                .aggregate()
+                .whenComplete(OTelTraceSourceTest::assertStatusCode200AndNoServerHeaders)
+                .join();
+    }
+
+    @Test
+    void testHttpsFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
 
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put("request_timeout", 5);
@@ -836,6 +869,27 @@ public class OTelTraceSourceTest {
 
     @Test
     void gRPC_request_writes_to_buffer_with_successful_response() throws Exception {
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+        final ExportTraceServiceResponse exportResponse = client.export(createExportTraceRequest());
+        assertThat(exportResponse, notNullValue());
+
+        final ArgumentCaptor<Collection<Record<Object>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
+
+        final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
+        assertThat(actualBufferWrites, notNullValue());
+        assertThat(actualBufferWrites, hasSize(1));
+    }
+
+    @Test
+    void gRPC_request_writes_to_buffer_with_successful_response_with_custom_path() throws Exception {
+        when(oTelTraceSourceConfig.getPath()).thenReturn("testPath");
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+
         configureObjectUnderTest();
         SOURCE.start(buffer);
 
