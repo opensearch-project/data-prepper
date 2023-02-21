@@ -1,5 +1,5 @@
 
-version: "1.0" #outdated version since the compatibility check was introduced.
+version: "3005.0" #far out future version.
 test-pipeline-1:
   source:
     stdin:

@@ -75,10 +75,9 @@ This sample pipeline creates a source to receive trace data and outputs transfor
 
 The pipeline configuration file now supports an optional `version` attribute. This can help users ensure the pipeline configuration
 used is compatible with the running data prepper version. Data Prepper now compares the version supplied in the confirmation at start
-time and will throw an exception if the version in the pipeline is not compatible with the running Data Prepper version. 
+time and will throw an exception if the version in the pipeline is greater than the running Data Prepper version. 
 This attribute can be specified with a shorthand format with only the major version (i.e. `2`) or major and minor version
-(i.e. `2.1`). Data prepper will conclude equivalent versions, any shorthand format version with equivalent major version, 
-and an equivalent major version with a previously released minor version are compatible.
+(i.e. `2.1`).
 
 #### Version Compatibility Matrix
 
@@ -88,8 +87,8 @@ and an equivalent major version with a previously released minor version are com
 | 2.1                  | 2.1 | true       |
 | 2.1                  | 2.0 | true       |
 | 2.1                  | null | true       |
-| 2.1                  | 1.5 | false      |
-| 2.1                  | 1 | false      |
+| 2.1                  | 1.5 | true       |
+| 2.1                  | 1 | true       |
 | 2.1                  | 3.0 | false      |
 | 2.1                  | 3 | false      |
 
