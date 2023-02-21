@@ -13,12 +13,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
+import org.opensearch.dataprepper.pipeline.PipelineConnector;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -29,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.equalTo;
 
 @ExtendWith(MockitoExtension.class)
 class RouterTest {
@@ -41,6 +44,8 @@ class RouterTest {
     private Collection<DataFlowComponent<TestComponent>> dataFlowComponents;
     @Mock
     private BiConsumer<TestComponent, Collection<Record>> componentRecordsConsumer;
+    @Mock
+    private BiConsumer<PipelineConnector, Collection<Record>> pipelineComponentRecordsConsumer;
 
     private Collection<Record> recordsIn;
 
@@ -112,7 +117,7 @@ class RouterTest {
 
             createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
 
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, componentRecordsConsumer);
         }
 
         @Test
@@ -127,7 +132,7 @@ class RouterTest {
             createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, componentRecordsConsumer);
             }
         }
     }
@@ -158,7 +163,7 @@ class RouterTest {
 
             createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
 
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, componentRecordsConsumer);
         }
 
         @Test
@@ -173,9 +178,21 @@ class RouterTest {
             createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, componentRecordsConsumer);
             }
         }
 
+        @Test
+        void route_with_one_DataFlowComponents_And_PipelineConnector() {
+
+            Collection<DataFlowComponent<PipelineConnector>> pipelineDataFlowComponents;
+            pipelineDataFlowComponents = new ArrayList<>();
+            final DataFlowComponent<PipelineConnector> dataFlowComponent = mock(DataFlowComponent.class);
+            pipelineDataFlowComponents.add(dataFlowComponent);
+
+            createObjectUnderTest().route(recordsIn, pipelineDataFlowComponents, pipelineComponentRecordsConsumer);
+
+            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, pipelineComponentRecordsConsumer);
+        }
     }
 }
