@@ -47,6 +47,8 @@ public class TestDataProvider {
     public static final String SINGLE_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/single-pipeline";
     public static final String EMPTY_PIPELINE_DIRECTOTRY = "src/test/resources/no-pipelines";
     public static final String VALID_MULTIPLE_SINKS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
+    public static final String INCOMPATIBLE_VERSION_CONFIG_FILE = "src/test/resources/incompatible_version.yml";
+    public static final String COMPATIBLE_VERSION_CONFIG_FILE = "src/test/resources/compatible_version.yml";
     public static final String VALID_MULTIPLE_PROCESSERS_CONFIG_FILE = "src/test/resources/valid_multiple_processors.yml";
     public static final String NO_PIPELINES_EXECUTE_CONFIG_FILE = "src/test/resources/no_pipelines_to_execute.yml";
     public static final String VALID_DATA_PREPPER_CONFIG_FILE = "src/test/resources/valid_data_prepper_config.yml";
