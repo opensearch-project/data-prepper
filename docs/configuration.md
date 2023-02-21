@@ -34,6 +34,7 @@ Additionally, Log4j 2 configuration file is read from `config/log4j2.properties`
 Example Pipeline configuration file (pipelines.yaml):
 
 ```yaml
+version: 2
 entry-pipeline:
   workers: 4
   delay: "100"
@@ -69,6 +70,28 @@ This sample pipeline creates a source to receive trace data and outputs transfor
 
 * `delay`(Optional): An `int` representing the maximum duration in milliseconds to retrieve records from the buffer. If the buffer's specified batch_size has not been reached before this duration is exceeded, a partial batch is used. If this value is set to 0, all available records up to the batch size will be immediately returned. If the buffer is empty, the buffer will block for up to 5 milliseconds to wait for records. Default value is `3000`.
 * `workers`(Optional): An `int` representing the number of ProcessWorker threads for the pipeline.  Default value is `1`.
+
+### Versioning
+
+The pipeline configuration file now supports an optional `version` attribute. This can help users ensure the pipeline configuration
+used is compatible with the running data prepper version. Data Prepper now compares the version supplied in the confirmation at start
+time and will throw an exception if the version in the pipeline is not compatible with the running Data Prepper version. 
+This attribute can be specified with a shorthand format with only the major version (i.e. `2`) or major and minor version
+(i.e. `2.1`). Data prepper will conclude equivalent versions, any shorthand format version with equivalent major version, 
+and an equivalent major version with a previously released minor version are compatible.
+
+#### Version Compatibility Matrix
+
+| Data Prepper Version | Pipeline Configuration Version | Compatible |
+|----------------------| ---- |------------|
+| 2.1                  | 2 | true       |
+| 2.1                  | 2.1 | true       |
+| 2.1                  | 2.0 | true       |
+| 2.1                  | null | true       |
+| 2.1                  | 1.5 | false      |
+| 2.1                  | 1 | false      |
+| 2.1                  | 3.0 | false      |
+| 2.1                  | 3 | false      |
 
 ## Server Configuration
 Data Prepper allows the following properties to be configured:
