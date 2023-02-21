@@ -58,9 +58,8 @@ public class DataPrepperVersion {
     /**
      * Determines if the provided Data Prepper Version is compatible with this.
      *
-     * The initial implementation is a basic implementation that enforces equivalent versions, any shorthand format version
-     * compared with full format with equivalent major versions and equivalent major version but the comparing minor version
-     * is less than this minor version are compatible.
+     * The initial implementation is a basic implementation that will return true only when the comparing version is
+     * less than or equal to this version.
      *
      * @param o - the other DataPrepperVersion to compare with
      * @return return true if the versions are compatible, otherwise false
@@ -68,11 +67,11 @@ public class DataPrepperVersion {
      */
     public boolean compatibleWith(DataPrepperVersion o) {
 
-        if (this.majorVersion != o.getMajorVersion()) {
+        if (this.majorVersion < o.getMajorVersion()) {
             return false;
         }
 
-        if (this.minorVersion != null && o.getMinorVersion().isPresent()) {
+        if ((this.majorVersion == o.majorVersion) && (this.minorVersion != null && o.getMinorVersion().isPresent())) {
             if (!this.minorVersion.equals(o.getMinorVersion().get())) {
                 return this.minorVersion > o.getMinorVersion().get();
             }
