@@ -13,7 +13,6 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -62,7 +61,11 @@ public class DataPrepperVersionTest {
             Arguments.of("1.4", "1.2"),
             Arguments.of("342.0", "342.0"),
             Arguments.of("342.8", "342.8"),
-            Arguments.of("13", "13")
+            Arguments.of("13", "13"),
+            Arguments.of("13", "2.0"),
+            Arguments.of("7.0", "5"),
+            Arguments.of("42.0", "34.0"),
+            Arguments.of("13", "11")
         );
     }
 
@@ -83,11 +86,7 @@ public class DataPrepperVersionTest {
             Arguments.of("2.0", "5"),
             Arguments.of("42.0", "343.0"),
             Arguments.of("42.0", "42.1"),
-            Arguments.of("13", "15"),
-            Arguments.of("13", "2.0"),
-            Arguments.of("7.0", "5"),
-            Arguments.of("42.0", "34.0"),
-            Arguments.of("13", "11")
+            Arguments.of("13", "15")
         );
     }
 

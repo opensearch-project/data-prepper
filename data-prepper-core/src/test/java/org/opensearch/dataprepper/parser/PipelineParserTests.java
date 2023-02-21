@@ -160,7 +160,7 @@ class PipelineParserTests {
 
         final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
         assertThat(actualException.getMessage(),
-            equalTo(String.format("The version: 1.0 is not compatible with the current version: %s", DataPrepperVersion.getCurrentVersion())));
+            equalTo(String.format("The version: 3005.0 is not compatible with the current version: %s", DataPrepperVersion.getCurrentVersion())));
     }
 
     @Test
