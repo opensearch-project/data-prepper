@@ -10,7 +10,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'opensearch-data-prepper'
+rootProject.name = 'data-prepper'
 
 include 'data-prepper-api'
 include 'data-prepper-plugins'
@@ -58,4 +58,4 @@ include 'release:docker'
 include 'release:maven'
 include 'e2e-test:peerforwarder'
 include 'rss-source'
-
+include 'data-prepper-plugins:kafka-source'

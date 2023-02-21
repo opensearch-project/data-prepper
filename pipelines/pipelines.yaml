@@ -1,0 +1,12 @@
+log-pipeline:
+  source:
+    kafka:
+      bootstrapservers: localhost:9092
+      groupId: DPKafkaProj
+      enableautocommit: true
+      enableautocommitinterval: 1000
+      sessiontimeout: 30000
+      keyDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+      valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+  sink:
+    - stdout:

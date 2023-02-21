@@ -9,16 +9,7 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-api')
-    implementation project(':data-prepper-plugins:blocking-buffer')
-    implementation project(':data-prepper-plugins:common')
-    implementation project(':data-prepper-plugins:armeria-common')
-    implementation "com.linecorp.armeria:armeria:${versionMap.armeria}"
-    implementation 'commons-io:commons-io:2.11.0'
-    implementation 'software.amazon.awssdk:acm'
-    implementation 'software.amazon.awssdk:s3'
-    implementation 'software.amazon.awssdk:apache-client'
-    testImplementation project(':data-prepper-api').sourceSets.test.output
-    testImplementation 'org.assertj:assertj-core:3.23.1'
+    implementation 'org.apache.kafka:kafka-clients:3.0.0'
 }
 
 jacocoTestCoverageVerification {
