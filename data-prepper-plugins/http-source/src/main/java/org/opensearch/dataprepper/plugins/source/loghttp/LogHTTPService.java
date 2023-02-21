@@ -98,7 +98,6 @@ public class LogHTTPService {
                 .withData(json)
                 .getThis()
                 .build();
-        System.out.println("http source...event.."+log);
 
         return new Record<>(log);
     }
