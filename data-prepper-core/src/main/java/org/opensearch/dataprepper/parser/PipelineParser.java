@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.parser;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
@@ -89,6 +90,9 @@ public class PipelineParser {
             final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(mergedPipelineConfigurationFiles,
                     PipelinesDataFlowModel.class);
 
+            final DataPrepperVersion version = pipelinesDataFlowModel.getDataPrepperVersion();
+            validateDataPrepperVersion(version);
+
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
                     .stream()
                     .collect(Collectors.toMap(
@@ -110,6 +114,14 @@ public class PipelineParser {
         } catch (IOException e) {
             LOG.error("Failed to parse the configuration file {}", pipelineConfigurationFileLocation);
             throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
+        }
+    }
+
+    private void validateDataPrepperVersion(final DataPrepperVersion version) {
+        if (Objects.nonNull(version) && !DataPrepperVersion.getCurrentVersion().compatibleWith(version)) {
+            LOG.error("The version: {} is not compatible with the current version: {}", version, DataPrepperVersion.getCurrentVersion());
+            throw new ParseException(format("The version: %s is not compatible with the current version: %s",
+                version, DataPrepperVersion.getCurrentVersion()));
         }
     }
 
