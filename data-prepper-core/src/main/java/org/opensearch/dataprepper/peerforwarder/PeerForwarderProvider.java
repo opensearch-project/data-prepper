@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Executors;
 
 public class PeerForwarderProvider {
 
@@ -58,8 +57,8 @@ public class PeerForwarderProvider {
                     pluginMetrics,
                     peerForwarderConfiguration.getBatchDelay(),
                     peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(),
-                    Executors.newFixedThreadPool(peerForwarderConfiguration.getClientThreadCount()),
                     peerForwarderConfiguration.getForwardingBatchSize(),
+                    peerForwarderConfiguration.getForwardingBatchQueueDepth(),
                     peerForwarderConfiguration.getForwardingBatchTimeout(),
                     pipelineWorkerThreads
             );
@@ -71,7 +70,7 @@ public class PeerForwarderProvider {
 
     private PeerForwarderReceiveBuffer<Record<Event>> createBufferPerPipelineProcessor(final String pipelineName, final String pluginId) {
         final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer = new
-                PeerForwarderReceiveBuffer<>(peerForwarderConfiguration.getBufferSize(), peerForwarderConfiguration.getBatchSize());
+                PeerForwarderReceiveBuffer<>(peerForwarderConfiguration.getBufferSize(), peerForwarderConfiguration.getBatchSize(), pipelineName, pluginId);
 
         final Map<String, PeerForwarderReceiveBuffer<Record<Event>>> pluginsBufferMap =
                 pipelinePeerForwarderReceiveBufferMap.computeIfAbsent(pipelineName, k -> new HashMap<>());

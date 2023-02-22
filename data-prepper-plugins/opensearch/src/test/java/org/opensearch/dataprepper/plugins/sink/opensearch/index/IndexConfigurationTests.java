@@ -5,20 +5,25 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import org.apache.commons.io.IOUtils;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectAttributesRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectAttributesResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import static org.apache.commons.io.FileUtils.ONE_MB;
 import static org.mockito.ArgumentMatchers.any;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -84,12 +89,17 @@ public class IndexConfigurationTests {
         final String testTemplateFilePath = "s3://folder/file.json";
         final String testS3AwsRegion = "us-east-2";
         final String testS3StsRoleArn = "arn:aws:iam::123456789:user/user-role";
+        final String fileContent = "{}";
+        final long CONTENT_LENGTH = 3 * ONE_MB;
 
         final S3Client s3Client = mock(S3Client.class);
-        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(null);
 
-        final GetObjectAttributesResponse getObjectAttributesResponse = GetObjectAttributesResponse.builder().objectSize(100L).build();
-        when(s3Client.getObjectAttributes(any(GetObjectAttributesRequest.class))).thenReturn(getObjectAttributesResponse);
+        final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
+        final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
+                GetObjectResponse.builder().contentLength(CONTENT_LENGTH).build(),
+                AbortableInputStream.create(fileObjectStream)
+        );
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(fileInputStream);
 
         final String testIndexAlias = UUID.randomUUID().toString();
         IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()

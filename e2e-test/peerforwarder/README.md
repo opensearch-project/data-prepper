@@ -23,3 +23,14 @@ or from project root directory
 ```
 ./gradlew :e2e-test:peerforwarder:staticAggregateEndToEndTest
 ```
+
+## Log Ingestion Pipeline metrics End-to-end test using Static list Node Peer Forwarding
+
+Run from current directory
+```
+./gradlew :staticLogMetricsEndToEndTest
+```
+or from project root directory
+```
+./gradlew :e2e-test:peerforwarder:staticLogMetricsEndToEndTest
+```

@@ -5,8 +5,9 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.google.common.util.concurrent.AtomicDouble;
 import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.record.Record;
 import com.google.common.base.Stopwatch;
@@ -31,24 +32,32 @@ import static java.lang.String.format;
  *
  * @since 2.0
  */
-public class PeerForwarderReceiveBuffer<T extends Record<?>> implements Buffer<T> {
+public class PeerForwarderReceiveBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(PeerForwarderReceiveBuffer.class);
+
+    private static final String CORE_PEER_FORWARDER_COMPONENT = "core.peerForwarder";
+    private static final String BUFFER_ID_FORMAT = "%s.%s";
+    private static final String BUFFER_USAGE_METRIC = "bufferUsage";
 
     private final int bufferSize;
     private final int batchSize;
     private final Semaphore capacitySemaphore;
     private final LinkedBlockingQueue<T> blockingQueue;
     private int recordsInFlight = 0;
+    private final AtomicDouble bufferUsage;
 
-    public PeerForwarderReceiveBuffer(final int bufferSize, final int batchSize) {
+    public PeerForwarderReceiveBuffer(final int bufferSize, final int batchSize, final String pipelineName, final String pluginId) {
+        super(String.format(BUFFER_ID_FORMAT, pipelineName, pluginId), CORE_PEER_FORWARDER_COMPONENT);
         this.bufferSize = bufferSize;
         this.batchSize = batchSize;
         this.blockingQueue = new LinkedBlockingQueue<>(bufferSize);
         this.capacitySemaphore = new Semaphore(bufferSize);
+
+        bufferUsage = pluginMetrics.gauge(BUFFER_USAGE_METRIC, new AtomicDouble());
     }
 
     @Override
-    public void write(final T record, final int timeoutInMillis) throws TimeoutException {
+    public void doWrite(final T record, final int timeoutInMillis) throws TimeoutException {
         try {
             final boolean permitAcquired = capacitySemaphore.tryAcquire(timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!permitAcquired) {
@@ -62,7 +71,7 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> implements Buffer<T
     }
 
     @Override
-    public void writeAll(final Collection<T> records, final int timeoutInMillis) throws Exception {
+    public void doWriteAll(final Collection<T> records, final int timeoutInMillis) throws Exception {
         final int size = records.size();
         if (size > bufferSize) {
             throw new SizeOverflowException(format("Peer forwarder buffer capacity too small for the size of records: %d", size));
@@ -84,26 +93,60 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> implements Buffer<T
         }
     }
 
+    // TODO - consolidate duplicate logic in BlockingBuffer
     @Override
-    public Map.Entry<Collection<T>, CheckpointState> read(final int timeoutInMillis) {
-        final List<T> records = new ArrayList<>();
+    public Map.Entry<Collection<T>, CheckpointState> doRead(final int timeoutInMillis) {
+        final List<T> records = new ArrayList<>(batchSize);
+        int recordsRead = 0;
 
         if (timeoutInMillis == 0) {
-            blockingQueue.drainTo(records, batchSize);
+            final T record = pollForBufferEntry(5, TimeUnit.MILLISECONDS);
+            if (record != null) { //record can be null, avoiding adding nulls
+                records.add(record);
+                recordsRead++;
+            }
+
+            recordsRead += blockingQueue.drainTo(records, batchSize - 1);
         } else {
             final Stopwatch stopwatch = Stopwatch.createStarted();
             while (stopwatch.elapsed(TimeUnit.MILLISECONDS) < timeoutInMillis && records.size() < batchSize) {
-                blockingQueue.drainTo(records, batchSize - records.size());
+                final T record = pollForBufferEntry(timeoutInMillis, TimeUnit.MILLISECONDS);
+                if (record != null) { //record can be null, avoiding adding nulls
+                    records.add(record);
+                    recordsRead++;
+                }
+
+                if (recordsRead < batchSize) {
+                    recordsRead += blockingQueue.drainTo(records, batchSize - recordsRead);
+                }
             }
         }
 
-        final CheckpointState checkpointState = new CheckpointState(records.size());
+        final CheckpointState checkpointState = new CheckpointState(recordsRead);
         recordsInFlight += checkpointState.getNumRecordsToBeChecked();
         return new AbstractMap.SimpleEntry<>(records, checkpointState);
     }
 
+    private T pollForBufferEntry(final int timeoutValue, final TimeUnit timeoutUnit) {
+        try {
+            return blockingQueue.poll(timeoutValue, timeoutUnit);
+        } catch (InterruptedException e) {
+            LOG.info("Peer forwarder buffer - Interrupt received while reading from buffer");
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
-    public void checkpoint(final CheckpointState checkpointState) {
+    protected void postProcess(final Long recordsInBuffer) {
+        // adding bounds to address race conditions and reporting negative buffer usage
+        final Double nonNegativeTotalRecords = recordsInBuffer.doubleValue() < 0 ? 0 : recordsInBuffer.doubleValue();
+        final Double boundedTotalRecords = nonNegativeTotalRecords > bufferSize ? bufferSize : nonNegativeTotalRecords;
+        final Double usage = boundedTotalRecords / bufferSize * 100;
+        bufferUsage.set(usage);
+    }
+
+    @Override
+    public void doCheckpoint(final CheckpointState checkpointState) {
         final int numCheckedRecords = checkpointState.getNumRecordsToBeChecked();
         capacitySemaphore.release(numCheckedRecords);
         recordsInFlight -= checkpointState.getNumRecordsToBeChecked();

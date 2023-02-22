@@ -55,34 +55,37 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     }
 
     @Override
+    public void initialize() {
+    }
+
+    @Override
+    public boolean isReady() {
+        return true;
+    }
+
+    @Override
     public void output(final Collection<T> records) {
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
-		if(record.getData() instanceof JacksonSpan) {
-		    try {
-		        final Span spanEvent = (Span)record.getData();
-			Span newSpanEvent = JacksonSpan.builder()
-				  .withData(spanEvent.toMap())
-				  .withEventMetadata(spanEvent.getMetadata())
-			          .build(); 
-			record = (T) (new Record<>(newSpanEvent));
-		    } catch (Exception ex) {
+                if (record.getData() instanceof JacksonSpan) {
+                    try {
+                        final Span spanEvent = (Span) record.getData();
+                        Span newSpanEvent = JacksonSpan.fromSpan(spanEvent);
+                        record = (T) (new Record<>(newSpanEvent));
+                    } catch (Exception ex) {
                         LOG.error("PipelineConnector [{}-{}]:  exception while duplicating the event [{}]",
                                 sinkPipelineName, sourcePipelineName, ex);
                     }
-		} else if(record.getData() instanceof Event) {
-		    try {
-		        final Event recordEvent = (Event)record.getData();
-			Event newRecordEvent = JacksonEvent.builder() 
-			          .withData(recordEvent.toMap()) 
-				  .withEventMetadata(recordEvent.getMetadata()) 
-			          .build(); 
-			record = (T) (new Record<>(newRecordEvent));
-		    } catch (Exception ex) {
+                } else if (record.getData() instanceof Event) {
+                    try {
+                        final Event recordEvent = (Event) record.getData();
+                        Event newRecordEvent = JacksonEvent.fromEvent(recordEvent);
+                        record = (T) (new Record<>(newRecordEvent));
+                    } catch (Exception ex) {
                         LOG.error("PipelineConnector [{}-{}]:  exception while duplicating the event [{}]",
                                 sinkPipelineName, sourcePipelineName, ex);
                     }
-		}
+                }
 
                 while (true) {
                     try {

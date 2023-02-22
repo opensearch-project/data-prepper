@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.metrics.v1.InstrumentationLibraryMetrics;
@@ -16,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -27,9 +30,12 @@ import org.opensearch.dataprepper.model.record.Record;
 import java.util.Collections;
 import java.util.concurrent.TimeoutException;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -49,16 +55,22 @@ public class OTelMetricsGrpcServiceTest {
     private final int bufferWriteTimeoutInMillis = 100000;
 
     @Mock
-    Counter requestsReceivedCounter;
+    private Counter requestsReceivedCounter;
     @Mock
-    Counter timeoutCounter;
+    private Counter timeoutCounter;
     @Mock
-    StreamObserver responseObserver;
+    private Counter successRequestsCounter;
     @Mock
-    Buffer buffer;
+    private DistributionSummary payloadSize;
+    @Mock
+    private Timer requestProcessDuration;
+    @Mock
+    private StreamObserver responseObserver;
+    @Mock
+    private Buffer buffer;
 
     @Captor
-    ArgumentCaptor<Record> recordCaptor;
+    private ArgumentCaptor<Record> recordCaptor;
 
     private OTelMetricsGrpcService sut;
 
@@ -71,6 +83,13 @@ public class OTelMetricsGrpcServiceTest {
 
         when(mockPluginMetrics.counter(OTelMetricsGrpcService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
         when(mockPluginMetrics.counter(OTelMetricsGrpcService.REQUEST_TIMEOUTS)).thenReturn(timeoutCounter);
+        when(mockPluginMetrics.counter(OTelMetricsGrpcService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
+        when(mockPluginMetrics.summary(OTelMetricsGrpcService.PAYLOAD_SIZE)).thenReturn(payloadSize);
+        when(mockPluginMetrics.timer(OTelMetricsGrpcService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
+        doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(0).run();
+            return null;
+        }).when(requestProcessDuration).record(ArgumentMatchers.<Runnable>any());
 
         sut = new OTelMetricsGrpcService(bufferWriteTimeoutInMillis, buffer, mockPluginMetrics);
     }
@@ -83,7 +102,13 @@ public class OTelMetricsGrpcServiceTest {
         verify(responseObserver, times(1)).onNext(ExportMetricsServiceResponse.newBuilder().build());
         verify(responseObserver, times(1)).onCompleted();
         verify(requestsReceivedCounter, times(1)).increment();
+        verify(successRequestsCounter, times(1)).increment();
         verifyNoInteractions(timeoutCounter);
+
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSize, times(1)).record(payloadLengthCaptor.capture());
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(METRICS_REQUEST.getSerializedSize()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
 
         Record capturedRecord = recordCaptor.getValue();
         assertEquals(METRICS_REQUEST, capturedRecord.getData());
@@ -100,5 +125,11 @@ public class OTelMetricsGrpcServiceTest {
         verify(responseObserver, times(0)).onCompleted();
         verify(timeoutCounter, times(1)).increment();
         verify(requestsReceivedCounter, times(1)).increment();
+        verifyNoInteractions(successRequestsCounter);
+
+        final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(payloadSize, times(1)).record(payloadLengthCaptor.capture());
+        assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(METRICS_REQUEST.getSerializedSize()));
+        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
     }
 }

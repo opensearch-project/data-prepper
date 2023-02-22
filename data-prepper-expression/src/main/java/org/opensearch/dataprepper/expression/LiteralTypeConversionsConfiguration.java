@@ -21,6 +21,7 @@ class LiteralTypeConversionsConfiguration {
             Boolean.class, Function.identity(),
             Integer.class, Function.identity(),
             Float.class, Function.identity(),
+            Long.class, Function.identity(),
             Double.class, o -> ((Double) o).floatValue()
         );
     }

@@ -37,6 +37,10 @@ class ParseTreeCoercionService {
                 final String nodeStringValueWithQuotesStripped = nodeStringValue.substring(1, nodeStringValue.length() - 1);
                 return nodeStringValueWithQuotesStripped;
             case DataPrepperExpressionParser.Integer:
+                Long longValue = Long.valueOf(nodeStringValue);
+                if (longValue > Integer.MAX_VALUE || longValue < Integer.MIN_VALUE) {
+                    return longValue;
+                }
                 return Integer.valueOf(nodeStringValue);
             case DataPrepperExpressionParser.Float:
                 return Float.valueOf(nodeStringValue);

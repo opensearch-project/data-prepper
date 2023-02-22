@@ -30,14 +30,14 @@ GET /metrics/prometheus
 POST /metrics/prometheus
 ```
 * returns a scrape of the Data Prepper metrics in Prometheus text format. This API is available provided
-      `metricsRegistries` parameter in data prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one
+      `metrics_registries` parameter in data prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one
       of the registry
 
 ```
 GET /metrics/sys
 POST /metrics/sys
 ```
-* returns JVM metrics in Prometheus text format. This API is available provided `metricsRegistries` parameter in data
+* returns JVM metrics in Prometheus text format. This API is available provided `metrics_registries` parameter in data
       prepper configuration file `data-prepper-config.yaml` has `Prometheus` as one of the registry
 
 ## Configuring the Server
@@ -57,9 +57,9 @@ with the following:
 
 ```yaml
 ssl: true
-keyStoreFilePath: "/usr/share/data-prepper/keystore.p12"
-keyStorePassword: "secret"
-privateKeyPassword: "secret"
+key_store_file_path: "/usr/share/data-prepper/keystore.p12"
+key_store_password: "secret"
+private_key_password: "secret"
 ```
 
 For more information on configuring your Data Prepper server with SSL, see [Server Configuration](https://github.com/opensearch-project/data-prepper/blob/main/docs/configuration.md#server-configuration). 
@@ -101,8 +101,8 @@ It is supported by `service_map_stateful`, `otel_trace_raw` and `aggregate` proc
 When the DataPrepper `shutdown` API is invoked, the sink and processor `ExecutorService`'s are given time to gracefully shutdown and clear any in-flight data. The default graceful shutdown timeout for these `ExecutorService`'s is 10 seconds. This can be configured with the following optional parameters:
 
 ```yaml
-processorShutdownTimeout: "PT15M"
-sinkShutdownTimeout: 30s
+processor_shutdown_timeout: "PT15M"
+sink_shutdown_timeout: 30s
 ```
 
 The values for these parameters are parsed into a `Duration` object via the [DataPrepperDurationDeserializer](https://github.com/opensearch-project/data-prepper/tree/main/data-prepper-core/src/main/java/org/opensearch/dataprepper/parser/DataPrepperDurationDeserializer.java).

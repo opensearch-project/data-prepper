@@ -7,10 +7,12 @@ package com.amazon.dataprepper.plugins.source.otellogs.certificate;
 
 import com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.acm.ACMCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.s3.S3CertificateProvider;
+import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -39,11 +41,16 @@ public class CertificateProviderFactory {
             final ClientOverrideConfiguration clientConfig = ClientOverrideConfiguration.builder()
                     .retryPolicy(RetryMode.STANDARD)
                     .build();
+
+            final PluginMetrics awsSdkMetrics = PluginMetrics.fromNames("sdk", "aws");
+
             final AcmClient awsCertificateManager = AcmClient.builder()
                     .region(Region.of(oTelLogsSourceConfig.getAwsRegion()))
                     .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(clientConfig)
+                    .overrideConfiguration(metricPublisher -> metricPublisher.addMetricPublisher(new MicrometerMetricPublisher(awsSdkMetrics)))
                     .build();
+
             return new ACMCertificateProvider(awsCertificateManager, oTelLogsSourceConfig.getAcmCertificateArn(),
                     oTelLogsSourceConfig.getAcmCertIssueTimeOutMillis(), oTelLogsSourceConfig.getAcmPrivateKeyPassword());
         } else if (oTelLogsSourceConfig.isSslCertAndKeyFileInS3()) {

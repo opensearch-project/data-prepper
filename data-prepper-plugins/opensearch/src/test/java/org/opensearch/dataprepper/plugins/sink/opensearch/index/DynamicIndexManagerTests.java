@@ -5,8 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
@@ -36,6 +34,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import static org.junit.Assert.assertThrows;
+import org.apache.commons.lang3.RandomStringUtils;
 
 public class DynamicIndexManagerTests {
 
@@ -157,5 +160,15 @@ public class DynamicIndexManagerTests {
         // When a new index is used, verify that getIndexManager is called again
         verify(mockIndexManagerFactory, times(2)).getIndexManager(eq(IndexType.CUSTOM), eq(restHighLevelClient), eq(openSearchSinkConfiguration), anyString());
         assertThat(expectedIndexAlias, equalTo(newIndexName));
+    }
+
+    @Test
+    public void missingDynamicIndexTest() throws IOException {
+        when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
+
+        JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(RandomStringUtils.randomAlphabetic(10), DYNAMIC)).build();
+        assertThrows(IOException.class, () -> dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias)));
     }
 }

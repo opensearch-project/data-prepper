@@ -36,12 +36,14 @@ task benchmarkTests {
     // TODO add benchmark test and enable
 }
 
-task buildMain {
-    dependsOn ':data-prepper-main:build'
+task assembleMain {
+    dependsOn ':data-prepper-core:assemble'
+    dependsOn ':data-prepper-plugins:assemble'
+    dependsOn ':data-prepper-main:assemble'
 }
 
 task releasePrerequisites {
-    dependsOn 'buildMain'
+    dependsOn 'assembleMain'
     dependsOn 'endToEndTests'
     dependsOn 'benchmarkTests'
 }

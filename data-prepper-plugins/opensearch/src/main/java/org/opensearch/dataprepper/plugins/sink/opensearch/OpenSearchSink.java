@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -44,7 +46,9 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
@@ -53,6 +57,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String BULKREQUEST_LATENCY = "bulkRequestLatency";
   public static final String BULKREQUEST_ERRORS = "bulkRequestErrors";
   public static final String BULKREQUEST_SIZE_BYTES = "bulkRequestSizeBytes";
+  public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
 
@@ -69,17 +74,21 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String routingField;
   private final String action;
   private String configuredIndexAlias;
+  private final ReentrantLock lock;
 
   private final Timer bulkRequestTimer;
   private final Counter bulkRequestErrorsCounter;
+  private final Counter dynamicIndexDroppedEvents;
   private final DistributionSummary bulkRequestSizeBytesSummary;
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
+  private volatile boolean initialized;
 
   public OpenSearchSink(final PluginSetting pluginSetting) {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
+    dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
     bulkRequestSizeBytesSummary = pluginMetrics.summary(BULKREQUEST_SIZE_BYTES);
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
@@ -89,16 +98,33 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory();
+    this.initialized = false;
+    this.lock = new ReentrantLock(true);
+  }
 
+  @Override
+  public void doInitialize() {
     try {
-      initialize();
-    } catch (final IOException e) {
-      this.shutdown();
-      throw new RuntimeException(e.getMessage(), e);
+        doInitializeInternal();
+    } catch (IOException e) {
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error {}", (Objects.isNull(e.getCause()) ? e : e.getCause()));
+        closeFiles();
+    } catch (InvalidPluginConfigurationException e) {
+        LOG.error("Failed to initialize OpenSearch sink.");
+        this.shutdown();
+        throw new RuntimeException(e.getMessage(), e);
+    } catch (Exception e) {
+        if (!BulkRetryStrategy.canRetry(e)) {
+            LOG.error("Failed to initialize OpenSearch sink.");
+            this.shutdown();
+            throw e;
+        }
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error {}", (Objects.isNull(e.getCause()) ? e : e.getCause()));
+        closeFiles();
     }
   }
 
-  public void initialize() throws IOException {
+  private void doInitializeInternal() throws IOException {
     LOG.info("Initializing OpenSearch sink");
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
@@ -117,9 +143,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             this::logFailure,
             pluginMetrics,
             bulkRequestSupplier);
-    LOG.info("Initialized OpenSearch sink");
 
     objectMapper = new ObjectMapper();
+    this.initialized = true;
+    LOG.info("Initialized OpenSearch sink");
+  }
+
+  @Override
+  public boolean isReady() {
+    return initialized;
   }
 
   @Override
@@ -139,7 +171,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName));
       } catch (IOException e) {
-	  continue;
+          dynamicIndexDroppedEvents.increment();
+          continue;
       }
 
       BulkOperation bulkOperation;
@@ -222,8 +255,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
   }
 
-  @Override
-  public void shutdown() {
+  private void closeFiles() {
     // Close the client. This closes the low-level client which will close it for both high-level clients.
     if (restHighLevelClient != null) {
       try {
@@ -239,5 +271,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         LOG.error(e.getMessage(), e);
       }
     }
+  }
+
+  @Override
+  public void shutdown() {
+    super.shutdown();
+    closeFiles();
   }
 }

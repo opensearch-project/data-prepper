@@ -83,19 +83,10 @@ subprojects {
     dependencies {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.14.1')
         implementation platform('io.micrometer:micrometer-bom:1.9.4')
-        implementation 'com.google.guava:guava:31.1-jre'
+        implementation libs.guava.core
         implementation 'org.slf4j:slf4j-api:2.0.5'
-        testImplementation platform("org.junit:junit-bom:${versionMap.junitJupiter}")
-        testImplementation 'org.junit.jupiter:junit-jupiter'
-        testImplementation 'org.junit.vintage:junit-vintage-engine'
-        testImplementation "org.mockito:mockito-core:${versionMap.mockito}"
-        testImplementation "org.mockito:mockito-junit-jupiter:${versionMap.mockito}"
-        implementation "software.amazon.randomcutforest:randomcutforest-testutils:3.0.0"
-        implementation "software.amazon.randomcutforest:randomcutforest-core:3.0.0"
-        implementation "software.amazon.randomcutforest:randomcutforest-examples:3.0.0"
-        implementation "software.amazon.randomcutforest:randomcutforest-parkservices:3.0.0"
-        implementation "software.amazon.randomcutforest:randomcutforest-serialization-json:1.0"
-
+        testImplementation testLibs.bundles.junit
+        testImplementation testLibs.bundles.mockito
         testImplementation 'org.hamcrest:hamcrest:2.2'
         testImplementation 'org.awaitility:awaitility:4.2.0'
         constraints {

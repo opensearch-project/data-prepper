@@ -211,6 +211,61 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testCreateClientWithAWSOption() {
+        final String headerName1 = UUID.randomUUID().toString();
+        final String headerValue1 = UUID.randomUUID().toString();
+        final String headerName2 = UUID.randomUUID().toString();
+        final String headerValue2 = UUID.randomUUID().toString();
+        final String testArn = "arn:aws:iam::123456789012:iam-role";
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+
+        assertThat(connectionConfiguration, notNullValue());
+        assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+
+        final StsClient stsClient = mock(StsClient.class);
+        final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
+        when(assumeRoleRequestBuilder.roleSessionName(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.roleArn(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.overrideConfiguration(any(Consumer.class)))
+                .thenReturn(assumeRoleRequestBuilder);
+
+        final StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
+        when(stsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(stsClientBuilder);
+        when(stsClientBuilder.build()).thenReturn(stsClient);
+
+        try(final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+            final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class)) {
+
+            assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
+            stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+            connectionConfiguration.createClient();
+        }
+
+        final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
+
+        verify(assumeRoleRequestBuilder).overrideConfiguration(configurationCaptor.capture());
+        verify(assumeRoleRequestBuilder).roleArn(testArn);
+        verify(assumeRoleRequestBuilder).roleSessionName(anyString());
+        verify(assumeRoleRequestBuilder).build();
+        verifyNoMoreInteractions(assumeRoleRequestBuilder);
+
+        final Consumer<AwsRequestOverrideConfiguration.Builder> actualOverride = configurationCaptor.getValue();
+
+        final AwsRequestOverrideConfiguration.Builder configurationBuilder = mock(AwsRequestOverrideConfiguration.Builder.class);
+        actualOverride.accept(configurationBuilder);
+        verify(configurationBuilder).putHeader(headerName1, headerValue1);
+        verify(configurationBuilder).putHeader(headerName2, headerValue2);
+        verifyNoMoreInteractions(configurationBuilder);
+    }
+
+
+    @Test
     void testCreateClientWithAWSSigV4AndHeaderOverrides() {
         final String headerName1 = UUID.randomUUID().toString();
         final String headerValue1 = UUID.randomUUID().toString();
@@ -392,6 +447,29 @@ class ConnectionConfigurationTests {
             metadata.put("aws_region", awsRegion);
         }
         metadata.put("aws_sts_role_arn", awsStsRoleArn);
+        metadata.put("cert", certPath);
+        metadata.put("insecure", insecure);
+        return metadata;
+    }
+
+
+    private Map<String, Object> generateConfigurationMetadataWithAwsOption(
+            final List<String> hosts, final String username, final String password,
+            final Integer connectTimeout, final Integer socketTimeout, final boolean awsSigv4, final String awsRegion,
+            final String awsStsRoleArn, final String certPath, final boolean insecure, Map<String, String> headerOverridesMap) {
+        final Map<String, Object> metadata = new HashMap<>();
+        final Map<String, Object> awsOptionMetadata = new HashMap<>();
+        metadata.put("hosts", hosts);
+        metadata.put("username", username);
+        metadata.put("password", password);
+        metadata.put("connect_timeout", connectTimeout);
+        metadata.put("socket_timeout", socketTimeout);
+        if (awsRegion != null) {
+            awsOptionMetadata.put("region", awsRegion);
+        }
+        awsOptionMetadata.put("sts_role_arn", awsStsRoleArn);
+        awsOptionMetadata.put("sts_header_overrides", headerOverridesMap);
+        metadata.put("aws", awsOptionMetadata);
         metadata.put("cert", certPath);
         metadata.put("insecure", insecure);
         return metadata;

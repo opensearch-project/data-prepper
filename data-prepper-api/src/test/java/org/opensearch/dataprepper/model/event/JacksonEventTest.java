@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -25,8 +26,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 public class JacksonEventTest {
@@ -459,17 +463,17 @@ public class JacksonEventTest {
 
     @ParameterizedTest
     @CsvSource({
-        "test-string, test-string",
-        "test-${foo}-string, test-bar-string",
-        "test-string-${foo}, test-string-bar",
-        "${foo}-test-string, bar-test-string",
-        "test-${info/ids/id}-string, test-idx-string",
-        "test-string-${info/ids/id}, test-string-idx",
-        "${info/ids/id}-test-string, idx-test-string",
-        "${info/ids/id}-test-string-${foo}, idx-test-string-bar",
-        "${info/ids/id}-test-${foo}-string, idx-test-bar-string",
-        "${info/ids/id}-${foo}-test-string, idx-bar-test-string",
-        "${info/ids/id}${foo}-test-string, idxbar-test-string",
+            "test-string, test-string",
+            "test-${foo}-string, test-bar-string",
+            "test-string-${foo}, test-string-bar",
+            "${foo}-test-string, bar-test-string",
+            "test-${info/ids/id}-string, test-idx-string",
+            "test-string-${info/ids/id}, test-string-idx",
+            "${info/ids/id}-test-string, idx-test-string",
+            "${info/ids/id}-test-string-${foo}, idx-test-string-bar",
+            "${info/ids/id}-test-${foo}-string, idx-test-bar-string",
+            "${info/ids/id}-${foo}-test-string, idx-bar-test-string",
+            "${info/ids/id}${foo}-test-string, idxbar-test-string",
     })
     public void testBuild_withFormatString(String formattedString, String finalString) {
 
@@ -486,8 +490,8 @@ public class JacksonEventTest {
 
     @ParameterizedTest
     @CsvSource({
-        "test-${foo}-string, test-123-string",
-        "${info/ids/id}-${foo}-test-string, true-123-test-string",
+            "test-${foo}-string, test-123-string",
+            "${info/ids/id}-${foo}-test-string, true-123-test-string",
     })
     public void testBuild_withFormatStringWithIntegerBoolean(String formattedString, String finalString) {
 
@@ -537,6 +541,64 @@ public class JacksonEventTest {
                 .getThis();
 
         assertThrows(IllegalArgumentException.class, () -> builder.build());
+    }
+
+    @Test
+    void fromEvent_with_a_JacksonEvent() {
+        final Map<String, Object> dataObject = createComplexDataMap();
+
+        final JacksonEvent originalEvent = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(dataObject)
+                .build();
+
+        final JacksonEvent createdEvent = JacksonEvent.fromEvent(originalEvent);
+
+        assertThat(createdEvent, notNullValue());
+        assertThat(createdEvent, not(sameInstance(originalEvent)));
+
+        assertThat(createdEvent.toMap(), equalTo(dataObject));
+        assertThat(createdEvent.getJsonNode(), not(sameInstance(originalEvent.getJsonNode())));
+
+        assertThat(createdEvent.getMetadata(), notNullValue());
+        assertThat(createdEvent.getMetadata(), not(sameInstance(originalEvent.getMetadata())));
+        assertThat(createdEvent.getMetadata(), equalTo(originalEvent.getMetadata()));
+    }
+
+    @Test
+    void fromEvent_with_a_non_JacksonEvent() {
+        final Map<String, Object> dataObject = createComplexDataMap();
+
+        final EventMetadata eventMetadata = mock(EventMetadata.class);
+        final Event originalEvent = mock(Event.class);
+        when(originalEvent.toMap()).thenReturn(dataObject);
+        when(originalEvent.getMetadata()).thenReturn(eventMetadata);
+
+        final JacksonEvent createdEvent = JacksonEvent.fromEvent(originalEvent);
+
+        assertThat(createdEvent, notNullValue());
+        assertThat(createdEvent, not(sameInstance(originalEvent)));
+
+        assertThat(createdEvent.toMap(), equalTo(dataObject));
+
+        assertThat(createdEvent.getMetadata(), notNullValue());
+        assertThat(createdEvent.getMetadata(), equalTo(eventMetadata));
+    }
+
+    private static Map<String, Object> createComplexDataMap() {
+        final Map<String, Object> dataObject = new HashMap<>();
+        final int fullDepth = 6;
+        final Random random = new Random();
+        Map<String, Object> currentObject = dataObject;
+        for (int depth = 0; depth < fullDepth; depth++) {
+            currentObject.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+            currentObject.put(UUID.randomUUID().toString(), random.nextInt(10_000) + 1000);
+
+            final Map<String, Object> nextObject = new HashMap<>();
+            currentObject.put(UUID.randomUUID().toString(), nextObject);
+            currentObject = nextObject;
+        }
+        return dataObject;
     }
 
 }

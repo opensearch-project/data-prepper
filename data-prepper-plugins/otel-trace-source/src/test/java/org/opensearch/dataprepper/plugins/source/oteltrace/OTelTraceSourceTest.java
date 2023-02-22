@@ -5,16 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
@@ -31,24 +27,41 @@ import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import io.opentelemetry.proto.trace.v1.InstrumentationLibrarySpans;
 import io.opentelemetry.proto.trace.v1.ResourceSpans;
+import io.opentelemetry.proto.trace.v1.Span;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
-import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
@@ -59,41 +72,54 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 
 @ExtendWith(MockitoExtension.class)
 public class OTelTraceSourceTest {
 
+    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21890/";
     @Mock
     private ServerBuilder serverBuilder;
 
@@ -126,13 +152,15 @@ public class OTelTraceSourceTest {
 
     private PluginSetting pluginSetting;
     private PluginSetting testPluginSetting;
+    @Mock(lenient = true)
     private OTelTraceSourceConfig oTelTraceSourceConfig;
     private PluginMetrics pluginMetrics;
     private PipelineDescription pipelineDescription;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private BlockingBuffer<Record<Object>> buffer;
+    @Mock
+    private Buffer<Record<Object>> buffer;
 
     private static final String TEST_PIPELINE_NAME = "test_pipeline";
     private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
@@ -157,22 +185,9 @@ public class OTelTraceSourceTest {
         assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
-    private BlockingBuffer<Record<Object>> getBuffer() {
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("buffer_size", 1);
-        integerHashMap.put("batch_size", 1);
-        return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
-    }
-
     private void configureObjectUnderTest() {
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("request_timeout", 5);
-        settingsMap.put(SSL, false);
-        pluginSetting = new PluginSetting("otel_trace", settingsMap);
-        pluginSetting.setPipelineName("pipeline");
         pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
 
-        oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
@@ -194,10 +209,15 @@ public class OTelTraceSourceTest {
 
         lenient().when(authenticationProvider.getHttpAuthenticationService()).thenCallRealMethod();
 
+        when(oTelTraceSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
+        when(oTelTraceSourceConfig.isSsl()).thenReturn(false);
+        when(oTelTraceSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
+        when(oTelTraceSourceConfig.getMaxConnectionCount()).thenReturn(10);
+        when(oTelTraceSourceConfig.getThreadCount()).thenReturn(5);
+
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
         configureObjectUnderTest();
-        buffer = getBuffer();
         pipelineDescription = mock(PipelineDescription.class);
         lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
     }
@@ -250,7 +270,6 @@ public class OTelTraceSourceTest {
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelTraceSourceConfig.class);
         SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
 
-        buffer = getBuffer();
         SOURCE.start(buffer);
 
         WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
@@ -814,4 +833,101 @@ public class OTelTraceSourceTest {
             assertTrue(Thread.interrupted());
         }
     }
+
+    @Test
+    void gRPC_request_writes_to_buffer_with_successful_response() throws Exception {
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+        final ExportTraceServiceResponse exportResponse = client.export(createExportTraceRequest());
+        assertThat(exportResponse, notNullValue());
+
+        final ArgumentCaptor<Collection<Record<Object>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
+
+        final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
+        assertThat(actualBufferWrites, notNullValue());
+        assertThat(actualBufferWrites, hasSize(1));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(BufferExceptionToStatusArgumentsProvider.class)
+    void gRPC_request_returns_expected_status_for_exceptions_from_buffer(
+            final Class<Exception> bufferExceptionClass,
+            final Status.Code expectedStatusCode) throws Exception {
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+
+        doThrow(bufferExceptionClass)
+                .when(buffer)
+                .writeAll(anyCollection(), anyInt());
+        final ExportTraceServiceRequest exportTraceRequest = createExportTraceRequest();
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportTraceRequest));
+
+        assertThat(actualException.getStatus(), notNullValue());
+        assertThat(actualException.getStatus().getCode(), equalTo(expectedStatusCode));
+    }
+
+    @Test
+    void gRPC_request_throws_InvalidArgument_for_malformed_trace_data() {
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+
+        final ExportTraceServiceRequest exportTraceRequest = createInvalidExportTraceRequest();
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportTraceRequest));
+
+        assertThat(actualException.getStatus(), notNullValue());
+        assertThat(actualException.getStatus().getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
+
+        verifyNoInteractions(buffer);
+    }
+
+    static class BufferExceptionToStatusArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
+            return Stream.of(
+                    arguments(TimeoutException.class, Status.Code.RESOURCE_EXHAUSTED),
+                    arguments(SizeOverflowException.class, Status.Code.RESOURCE_EXHAUSTED),
+                    arguments(Exception.class, Status.Code.INTERNAL),
+                    arguments(RuntimeException.class, Status.Code.INTERNAL)
+            );
+        }
+    }
+
+    private ExportTraceServiceRequest createInvalidExportTraceRequest() {
+        final io.opentelemetry.proto.trace.v1.Span testSpan = Span.newBuilder()
+                .setTraceState("SUCCESS").build();
+        final ExportTraceServiceRequest successRequest = ExportTraceServiceRequest.newBuilder()
+                .addResourceSpans(ResourceSpans.newBuilder()
+                        .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder().addSpans(testSpan)).build())
+                .build();
+
+        return successRequest;
+    }
+
+    private ExportTraceServiceRequest createExportTraceRequest() {
+        final io.opentelemetry.proto.trace.v1.Span testSpan = Span.newBuilder()
+                .setTraceId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
+                .setSpanId(ByteString.copyFromUtf8(UUID.randomUUID().toString()))
+                .setName(UUID.randomUUID().toString())
+                .setKind(Span.SpanKind.SPAN_KIND_SERVER)
+                .setStartTimeUnixNano(100)
+                .setEndTimeUnixNano(101)
+                .setTraceState("SUCCESS").build();
+        final ExportTraceServiceRequest successRequest = ExportTraceServiceRequest.newBuilder()
+                .addResourceSpans(ResourceSpans.newBuilder()
+                        .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder().addSpans(testSpan)).build())
+                .build();
+
+        return successRequest;
+    }
+
 }
