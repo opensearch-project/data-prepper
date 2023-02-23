@@ -69,7 +69,7 @@ public class SqsWorker implements Runnable {
     @Override
     public void run() {
 
-        while (true) {
+        while (!Thread.currentThread().isInterrupted()) {
             int messagesProcessed = 0;
             try {
                 messagesProcessed = processSqsMessages();
