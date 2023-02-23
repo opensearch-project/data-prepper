@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 
@@ -31,7 +30,7 @@ class DataFlowComponentRouter {
         final Set<String> dataFlowComponentRoutes =  dataFlowComponent.getRoutes();
 
         if (dataFlowComponentRoutes.isEmpty()) {
-            recordsForComponent = Objects.isNull(getRecordStrategy) ? allRecords : getRecordStrategy.getAllRecords(allRecords);
+            recordsForComponent = getRecordStrategy.getAllRecords(allRecords);
         } else {
             recordsForComponent = new ArrayList<>();
             for (Record record : allRecords) {
@@ -39,7 +38,7 @@ class DataFlowComponentRouter {
                         .getOrDefault(record, Collections.emptySet());
 
                 if (routesForEvent.stream().anyMatch(dataFlowComponentRoutes::contains)) {
-                    recordsForComponent.add(Objects.isNull(getRecordStrategy) ? record : getRecordStrategy.getRecord(record));
+                    recordsForComponent.add(getRecordStrategy.getRecord(record));
                 }
             }
         }

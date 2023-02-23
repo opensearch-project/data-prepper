@@ -13,7 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
-import org.opensearch.dataprepper.pipeline.PipelineConnector;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -30,10 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.times;
-import static org.junit.Assert.assertFalse;
 
 @ExtendWith(MockitoExtension.class)
 class RouterTest {
@@ -44,14 +40,10 @@ class RouterTest {
     @Mock
     private DataFlowComponentRouter dataFlowComponentRouter;
     private Collection<DataFlowComponent<TestComponent>> dataFlowComponents;
-    private Collection<DataFlowComponent<PipelineConnector>> pipelineDataFlowComponents;
     @Mock
     private BiConsumer<TestComponent, Collection<Record>> componentRecordsConsumer;
     @Mock
-    private BiConsumer<PipelineConnector, Collection<Record>> pipelineComponentRecordsConsumer;
-
-    @Mock
-    private DataFlowComponent<PipelineConnector> pipelineDataFlowComponent;
+    private RouterGetRecordStrategy getRecordStrategy;
 
     private Collection<Record> recordsIn;
 
@@ -62,6 +54,7 @@ class RouterTest {
     void setUp() {
         recordsIn = Collections.emptyList();
         dataFlowComponents = Collections.emptyList();
+        getRecordStrategy = mock(RouterGetRecordStrategy.class);
     }
 
     private Router createObjectUnderTest() {
@@ -78,11 +71,18 @@ class RouterTest {
     void route_throws_if_records_is_null() {
         final Router objectUnderTest = createObjectUnderTest();
 
-        assertThrows(NullPointerException.class, () -> objectUnderTest.route(null, dataFlowComponents, null, componentRecordsConsumer));
+        assertThrows(NullPointerException.class, () -> objectUnderTest.route(null, dataFlowComponents, getRecordStrategy, componentRecordsConsumer));
     }
 
     @Test
     void route_throws_if_dataFlowComponents_is_null() {
+        final Router objectUnderTest = createObjectUnderTest();
+
+        assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, null, getRecordStrategy, componentRecordsConsumer));
+    }
+
+    @Test
+    void route_throws_if_getRecordStrategy_is_null() {
         final Router objectUnderTest = createObjectUnderTest();
 
         assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, null, null, componentRecordsConsumer));
@@ -92,7 +92,7 @@ class RouterTest {
     void route_throws_if_componentRecordsConsumer_is_null() {
         final Router objectUnderTest = createObjectUnderTest();
 
-        assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, dataFlowComponents, null, null));
+        assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, dataFlowComponents, getRecordStrategy, null));
     }
 
     @Nested
@@ -113,7 +113,7 @@ class RouterTest {
 
         @Test
         void route_with_empty_DataFlowComponent() {
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, null, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
         }
 
         @Test
@@ -121,9 +121,9 @@ class RouterTest {
             DataFlowComponent<TestComponent> dataFlowComponent = mock(DataFlowComponent.class);
             dataFlowComponents = Collections.singletonList(dataFlowComponent);
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, null, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, componentRecordsConsumer);
+            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
         }
 
         @Test
@@ -135,10 +135,10 @@ class RouterTest {
                 dataFlowComponents.add(dataFlowComponent);
             }
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, null, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
             }
         }
     }
@@ -167,9 +167,9 @@ class RouterTest {
             DataFlowComponent<TestComponent> dataFlowComponent = mock(DataFlowComponent.class);
             dataFlowComponents = Collections.singletonList(dataFlowComponent);
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, null, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, componentRecordsConsumer);
+            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
         }
 
         @Test
@@ -181,24 +181,11 @@ class RouterTest {
                 dataFlowComponents.add(dataFlowComponent);
             }
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, null, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
             }
-        }
-
-        @Test
-        void route_with_one_DataFlowComponents_And_PipelineConnector() {
-
-            Collection<DataFlowComponent<PipelineConnector>> pipelineDataFlowComponents;
-            pipelineDataFlowComponents = new ArrayList<>();
-            final DataFlowComponent<PipelineConnector> dataFlowComponent = mock(DataFlowComponent.class);
-            pipelineDataFlowComponents.add(dataFlowComponent);
-
-            createObjectUnderTest().route(recordsIn, pipelineDataFlowComponents, null, pipelineComponentRecordsConsumer);
-
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, null, pipelineComponentRecordsConsumer);
         }
 
         @Test
@@ -208,33 +195,8 @@ class RouterTest {
             for (int i = 0; i < 5; i++) {
                 dataFlowComponents.add(dataFlowComponent);
             }
-            RouterCopyRecordStrategy routerCopyRecordStrategy = new RouterCopyRecordStrategy(dataFlowComponents);
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, routerCopyRecordStrategy, componentRecordsConsumer);
-            verify(dataFlowComponentRouter, times(5)).route(recordsIn, dataFlowComponent, recordsToRoutes, routerCopyRecordStrategy, componentRecordsConsumer);
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, routerCopyRecordStrategy, (sink, recordsOut) -> {
-                Set<Record> recordsInSet =  recordsIn.stream().collect(Collectors.toSet());
-                Set<Record> recordsOutSet =  recordsOut.stream().collect(Collectors.toSet());
-                assertThat(recordsInSet.size(), equalTo(recordsOutSet.size()));
-                assertThat(recordsInSet, equalTo(recordsOutSet));
-            });
-        }
-
-        @Test
-        void route_with_multiple_pipeline_DataFlowComponents_And_Strategy() {
-            pipelineDataFlowComponent = mock(DataFlowComponent.class);
-            when(pipelineDataFlowComponent.getComponent()).thenReturn(new PipelineConnector());
-            pipelineDataFlowComponents = new ArrayList<>();
-            for (int i = 0; i < 5; i++) {
-                pipelineDataFlowComponents.add(pipelineDataFlowComponent);
-            }
-            RouterCopyRecordStrategy routerCopyRecordStrategy = new RouterCopyRecordStrategy(pipelineDataFlowComponents);
-            createObjectUnderTest().route(recordsIn, pipelineDataFlowComponents, routerCopyRecordStrategy, pipelineComponentRecordsConsumer);
-            verify(dataFlowComponentRouter, times(5)).route(recordsIn, pipelineDataFlowComponent, recordsToRoutes, routerCopyRecordStrategy, pipelineComponentRecordsConsumer);
-            createObjectUnderTest().route(recordsIn, pipelineDataFlowComponents, routerCopyRecordStrategy, (sink, recordsOut) -> {
-                Set<Record> recordsOutSet =  recordsOut.stream().collect(Collectors.toSet());
-                assertThat(recordsIn.size(), equalTo(recordsOutSet.size()));
-                recordsIn.forEach(recordIn -> assertFalse(recordsOutSet.contains(recordIn)));
-            });
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
+            verify(dataFlowComponentRouter, times(5)).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
         }
     }
 }

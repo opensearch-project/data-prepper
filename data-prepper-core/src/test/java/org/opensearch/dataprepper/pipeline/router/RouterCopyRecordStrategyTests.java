@@ -27,8 +27,10 @@ import java.util.stream.IntStream;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.Assert.assertFalse;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -55,6 +57,11 @@ public class RouterCopyRecordStrategyTests {
     }
 
     @Test
+    void test_invalid_argument() {
+        assertThrows(NullPointerException.class, () -> createObjectUnderTest(null));
+    }
+
+    @Test
     void test_with_one_data_flow_component() {
         DataFlowComponent<TestComponent> dataFlowComponent = mock(DataFlowComponent.class);
         Collection<DataFlowComponent<TestComponent>> dataFlowComponents
@@ -63,9 +70,9 @@ public class RouterCopyRecordStrategyTests {
         final RouterGetRecordStrategy getRecordStrategy = createObjectUnderTest(dataFlowComponents);
         Record firstRecord = recordsIn.iterator().next();
         Record recordOut = getRecordStrategy.getRecord(firstRecord);
-        assertThat(recordOut, equalTo(firstRecord));
+        assertThat(recordOut, sameInstance(firstRecord));
         recordOut = getRecordStrategy.getRecord(firstRecord);
-        assertThat(recordOut, equalTo(firstRecord));
+        assertThat(recordOut, sameInstance(firstRecord));
         Collection<Record> recordsOut = getRecordStrategy.getAllRecords(recordsIn);
         assertThat(recordsOut.size(), equalTo(recordsIn.size()));
         assertThat(recordsIn.stream().collect(Collectors.toSet()), equalTo(recordsOut.stream().collect(Collectors.toSet())));
@@ -80,9 +87,9 @@ public class RouterCopyRecordStrategyTests {
         final RouterGetRecordStrategy getRecordStrategy = createObjectUnderTest(dataFlowComponents);
         Record firstRecord = recordsIn.iterator().next();
         Record recordOut = getRecordStrategy.getRecord(firstRecord);
-        assertThat(recordOut, equalTo(firstRecord));
+        assertThat(recordOut, sameInstance(firstRecord));
         recordOut = getRecordStrategy.getRecord(firstRecord);
-        assertThat(recordOut, equalTo(firstRecord));
+        assertThat(recordOut, sameInstance(firstRecord));
         Collection<Record> recordsOut = getRecordStrategy.getAllRecords(recordsIn);
         assertThat(recordsOut.size(), equalTo(recordsIn.size()));
         assertThat(recordsIn.stream().collect(Collectors.toSet()), equalTo(recordsOut.stream().collect(Collectors.toSet())));
@@ -112,9 +119,9 @@ public class RouterCopyRecordStrategyTests {
         final RouterGetRecordStrategy getRecordStrategy = createObjectUnderTest(dataFlowComponents);
         Record firstRecord = recordsIn.iterator().next();
         Record recordOut = getRecordStrategy.getRecord(firstRecord);
-        assertThat(recordOut, equalTo(firstRecord));
+        assertThat(recordOut, sameInstance(firstRecord));
         recordOut = getRecordStrategy.getRecord(firstRecord);
-        assertThat(recordOut, not(equalTo(firstRecord)));
+        assertThat(recordOut, not(sameInstance(firstRecord)));
         Collection<Record> recordsOut = getRecordStrategy.getAllRecords(recordsIn);
         assertThat(recordsOut.size(), equalTo(recordsIn.size()));
         /* Repeat the test to make sure the records are copied second time */
