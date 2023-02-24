@@ -95,7 +95,10 @@ public class OTelTraceSource implements Source<Record<Object>> {
             final List<ServerInterceptor> serverInterceptors = getAuthenticationInterceptor();
 
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
-                    .builder();
+                    .builder()
+                    .addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors))
+                    .useClientTimeoutHeader(false)
+                    .useBlockingTaskExecutor(true);
 
             final MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> methodDescriptor = TraceServiceGrpc.getExportMethod();
             final String oTelTraceSourcePath = oTelTraceSourceConfig.getPath();
@@ -104,12 +107,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
                 grpcServiceBuilder.addService(transformedOTelTraceSourcePath,
                         ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors), methodDescriptor);
             }
-            grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors));
-
-
-
-            grpcServiceBuilder.useClientTimeoutHeader(false);
-            grpcServiceBuilder.useBlockingTaskExecutor(true);
 
             if (oTelTraceSourceConfig.hasHealthCheck()) {
                 LOG.info("Health check is enabled");
@@ -226,7 +223,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         } else {
             authenticationPluginSetting = new PluginSetting(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
-        authenticationPluginSetting.setPipelineName(pipelineDescription.getPipelineName());
+        authenticationPluginSetting.setPipelineName(pipelineName);
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
     }
 }

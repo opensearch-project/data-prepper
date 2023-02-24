@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
+    static final String PATH = "path";
     static final String SSL = "ssl";
     static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
     static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
@@ -43,6 +44,9 @@ public class OTelMetricsSourceConfig {
 
     @JsonProperty(PORT)
     private int port = DEFAULT_PORT;
+
+    @JsonProperty(PATH)
+    private String path;
 
     @JsonProperty(HEALTH_CHECK_SERVICE)
     private boolean healthCheck = DEFAULT_HEALTH_CHECK;
@@ -128,6 +132,10 @@ public class OTelMetricsSourceConfig {
 
     public int getPort() {
         return port;
+    }
+
+    public String getPath() {
+        return path;
     }
 
     public boolean hasHealthCheck() {
