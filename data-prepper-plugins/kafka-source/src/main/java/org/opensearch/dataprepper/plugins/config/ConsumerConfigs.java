@@ -1,34 +1,33 @@
 package org.opensearch.dataprepper.plugins.config;
 
+
 import java.util.Properties;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.opensearch.dataprepper.plugins.source.KafkaSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ConsumerConfigs {
+public final class ConsumerConfigs {
 	
 	private static final Logger logger = LoggerFactory.getLogger(ConsumerConfigs.class);
-	public static final String BOOT_STRAP_SERVER = "localhost:9092";
-	public static final Integer NUM_OF_PARTITIONS = 2;
-	public static final Integer CONSUMER_COUNT = 2;
-	public static final String TOPIC_NAME = "mytopic";
 	
-	public static Properties getConfigs(String consumerGroupId) {
-			
-		Properties props = new Properties();
+	public Properties getConsumerProperties(KafkaSourceConfig sourceConfig) {
 		
-		props.setProperty("bootstrap.servers", BOOT_STRAP_SERVER);
-        props.setProperty("group.id", consumerGroupId);
-        props.setProperty("enable.auto.commit", "false");
-        props.setProperty("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.setProperty("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest");
-        
-        logger.info("Consumer configurations set successfully...");
-        return props;
+		Properties props = new Properties();
+		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, sourceConfig.getBootstrapservers());
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, sourceConfig.getGroupId());
+		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, sourceConfig.getEnableautocommit());
+		props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, sourceConfig.getEnableautocommitinterval());
+		props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, sourceConfig.getSessiontimeout());
+		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, sourceConfig.getKeyDeserializer());
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, sourceConfig.getValueDeserializer());
+		
+
+		return props;
+		
 		
 		
 	}
-
+	
 }
