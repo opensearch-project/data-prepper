@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
-import org.opensearch.dataprepper.plugins.source.codec.JsonCodec;
+import org.opensearch.dataprepper.plugins.jsoninputcodec.JsonInputCodec;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -48,8 +48,8 @@ class JsonRecordsGenerator implements RecordsGenerator {
     }
 
     @Override
-    public Codec getCodec() {
-        return new JsonCodec();
+    public InputCodec getCodec() {
+        return new JsonInputCodec();
     }
 
     @Override

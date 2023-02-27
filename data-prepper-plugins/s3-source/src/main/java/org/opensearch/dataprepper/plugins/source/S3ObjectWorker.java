@@ -11,9 +11,9 @@ import io.micrometer.core.instrument.Timer;
 import org.apache.commons.compress.utils.CountingInputStream;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
@@ -48,7 +48,7 @@ class S3ObjectWorker {
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
     private final CompressionEngine compressionEngine;
-    private final Codec codec;
+    private final InputCodec codec;
     private final BucketOwnerProvider bucketOwnerProvider;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
@@ -65,7 +65,7 @@ class S3ObjectWorker {
     public S3ObjectWorker(final S3Client s3Client,
                           final Buffer<Record<Event>> buffer,
                           final CompressionEngine compressionEngine,
-                          final Codec codec,
+                          final InputCodec codec,
                           final BucketOwnerProvider bucketOwnerProvider,
                           final Duration bufferTimeout,
                           final int numberOfRecordsToAccumulate,

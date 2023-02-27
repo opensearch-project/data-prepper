@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.newlineinputcodec;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
@@ -13,7 +13,7 @@ import java.util.Objects;
 /**
  * Configuration class for the newline delimited codec.
  */
-public class NewlineDelimitedConfig {
+public class NewlineDelimitedInputConfig {
     private int skipLines = 0;
 
     @JsonProperty("header_destination")

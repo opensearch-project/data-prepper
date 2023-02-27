@@ -3,11 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.csvinputcodec;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvParser;
@@ -20,30 +17,23 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class CsvCodecTest {
@@ -51,9 +41,9 @@ public class CsvCodecTest {
     private CsvCodecConfig config;
     @Mock
     private Consumer<Record<Event>> eventConsumer;
-    private CsvCodec csvCodec;
-    private CsvCodec createObjectUnderTest() {
-        return new CsvCodec(config);
+    private CsvInputCodec csvCodec;
+    private CsvInputCodec createObjectUnderTest() {
+        return new CsvInputCodec(config);
     }
 
     @BeforeEach

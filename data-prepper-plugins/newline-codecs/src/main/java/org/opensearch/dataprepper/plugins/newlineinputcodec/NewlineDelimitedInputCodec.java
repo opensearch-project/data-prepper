@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.newlineinputcodec;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
@@ -20,14 +21,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-@DataPrepperPlugin(name = "newline", pluginType = Codec.class, pluginConfigurationType = NewlineDelimitedConfig.class)
-public class NewlineDelimitedCodec implements Codec {
+@DataPrepperPlugin(name = "Newline", pluginType = InputCodec.class, pluginConfigurationType = NewlineDelimitedInputConfig.class)
+public class NewlineDelimitedInputCodec implements InputCodec {
     private static final String MESSAGE_FIELD_NAME = "message";
     private final int skipLines;
     private final String headerDestination;
 
     @DataPrepperPluginConstructor
-    public NewlineDelimitedCodec(final NewlineDelimitedConfig config) {
+    public NewlineDelimitedInputCodec(final NewlineDelimitedInputConfig config) {
         Objects.requireNonNull(config);
         skipLines = config.getSkipLines();
 

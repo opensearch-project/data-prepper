@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
-import org.opensearch.dataprepper.plugins.source.codec.NewlineDelimitedCodec;
-import org.opensearch.dataprepper.plugins.source.codec.NewlineDelimitedConfig;
+import org.opensearch.dataprepper.plugins.newlineinputcodec.NewlineDelimitedInputCodec;
+import org.opensearch.dataprepper.plugins.newlineinputcodec.NewlineDelimitedInputConfig;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -38,8 +38,8 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
     }
 
     @Override
-    public Codec getCodec() {
-        return new NewlineDelimitedCodec(new NewlineDelimitedConfig());
+    public InputCodec getCodec() {
+        return new NewlineDelimitedInputCodec(new NewlineDelimitedInputConfig());
     }
 
     @Override

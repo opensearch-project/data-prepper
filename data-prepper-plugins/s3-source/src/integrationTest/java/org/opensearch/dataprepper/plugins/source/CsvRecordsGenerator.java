@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
-import org.opensearch.dataprepper.plugins.source.codec.CsvCodec;
-import org.opensearch.dataprepper.plugins.source.codec.CsvCodecConfig;
+import org.opensearch.dataprepper.plugins.csvinputcodec.CsvCodecConfig;
+import org.opensearch.dataprepper.plugins.csvinputcodec.CsvInputCodec;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -37,9 +37,9 @@ class CsvRecordsGenerator implements RecordsGenerator {
     }
 
     @Override
-    public Codec getCodec() {
+    public InputCodec getCodec() {
         CsvCodecConfig config = csvCodecConfigWithAutogenerateHeader();
-        return new CsvCodec(config);
+        return new CsvInputCodec(config);
     }
 
     /**
