@@ -3,18 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.csvinputcodec;
 
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvReadException;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,15 +30,15 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * An implementation of {@link Codec} which parses CSV records into fields.
+ * An implementation of {@link InputCodec} which parses CSV records into fields.
  */
-@DataPrepperPlugin(name = "csv", pluginType = Codec.class, pluginConfigurationType = CsvCodecConfig.class)
-public class CsvCodec implements Codec {
-    private static final Logger LOG = LoggerFactory.getLogger(CsvCodec.class);
+@DataPrepperPlugin(name = "Csv", pluginType = InputCodec.class, pluginConfigurationType = CsvCodecConfig.class)
+public class CsvInputCodec implements InputCodec {
+    private static final Logger LOG = LoggerFactory.getLogger(CsvInputCodec.class);
     private final CsvCodecConfig config;
 
     @DataPrepperPluginConstructor
-    public CsvCodec(final CsvCodecConfig config) {
+    public CsvInputCodec(CsvCodecConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
     }

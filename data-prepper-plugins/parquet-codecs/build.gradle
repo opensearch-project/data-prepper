@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+}
+
+
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io'}
+}
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation 'org.apache.parquet:parquet-hadoop:1.12.0'
+    implementation 'org.apache.hadoop:hadoop-common:3.3.3'
+    implementation 'org.apache.parquet:parquet-avro:1.10.1'
+    implementation("org.apache.avro:avro:1.9.0")
+    implementation 'org.apache.hadoop:hadoop-core:1.2.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation project(':data-prepper-test-common')
+}
+
+test {
+    useJUnitPlatform()
+}

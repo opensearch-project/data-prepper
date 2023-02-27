@@ -7,9 +7,9 @@ package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ public class S3Service {
     private final S3SourceConfig s3SourceConfig;
     private final Buffer<Record<Event>> buffer;
     private final S3Client s3Client;
-    private final Codec codec;
+    private final InputCodec codec;
     private final CompressionEngine compressionEngine;
     private final PluginMetrics pluginMetrics;
     private final BucketOwnerProvider bucketOwnerProvider;
@@ -35,7 +35,7 @@ public class S3Service {
 
     S3Service(final S3SourceConfig s3SourceConfig,
               final Buffer<Record<Event>> buffer,
-              final Codec codec,
+              final InputCodec codec,
               final PluginMetrics pluginMetrics,
               final BucketOwnerProvider bucketOwnerProvider) {
         this.s3SourceConfig = s3SourceConfig;

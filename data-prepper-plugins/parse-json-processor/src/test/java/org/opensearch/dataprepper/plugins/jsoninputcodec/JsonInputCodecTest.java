@@ -3,11 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.jsoninputcodec;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,18 +16,15 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -40,12 +34,9 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.*;
 
-class JsonCodecTest {
+class JsonInputCodecTest {
 
     private ObjectMapper objectMapper;
     private Consumer<Record<Event>> eventConsumer;
@@ -57,13 +48,13 @@ class JsonCodecTest {
         eventConsumer = mock(Consumer.class);
     }
 
-    private JsonCodec createObjectUnderTest() {
-        return new JsonCodec();
+    private JsonInputCodec createObjectUnderTest() {
+        return new JsonInputCodec();
     }
 
     @Test
     void parse_with_null_InputStream_throws() {
-        final JsonCodec objectUnderTest = createObjectUnderTest();
+        final JsonInputCodec objectUnderTest = createObjectUnderTest();
 
         assertThrows(NullPointerException.class, () ->
                 objectUnderTest.parse(null, eventConsumer));
@@ -73,7 +64,7 @@ class JsonCodecTest {
 
     @Test
     void parse_with_null_Consumer_throws() {
-        final JsonCodec objectUnderTest = createObjectUnderTest();
+        final JsonInputCodec objectUnderTest = createObjectUnderTest();
 
         final InputStream inputStream = mock(InputStream.class);
         assertThrows(NullPointerException.class, () ->
@@ -103,6 +94,7 @@ class JsonCodecTest {
     @Test
     void parse_with_InputStream_with_object_and_no_array_does_not_call_Consumer() throws IOException {
         final Map<String, Object> jsonWithoutList = Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        System.out.printf(jsonWithoutList.values().toString());
 
         createObjectUnderTest().parse(createInputStream(jsonWithoutList), eventConsumer);
 
