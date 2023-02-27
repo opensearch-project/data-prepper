@@ -23,6 +23,8 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 /**
  * A simple String implementation of {@link Processor} which generates new Records with uppercase or lowercase content. The current
  * simpler implementation does not handle errors (if any).
@@ -76,7 +78,7 @@ public class StringProcessor implements Processor<Record<Event>, Record<Event>> 
                         .build();
                 modifiedRecords.add(new Record<>(newRecordEvent));
             } catch (JsonProcessingException e) {
-                LOG.error("Unable to process Event data: {}", eventJson, e);
+                LOG.error(EVENT, "Unable to process Event data: {}", eventJson, e);
             }
         }
         return modifiedRecords;

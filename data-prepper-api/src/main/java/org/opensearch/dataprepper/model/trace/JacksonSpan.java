@@ -7,13 +7,13 @@ package org.opensearch.dataprepper.model.trace;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -59,12 +59,17 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     private static final ObjectMapper mapper = new ObjectMapper()
             .registerModule(new JavaTimeModule());
-    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
+    private static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {
+    };
 
     protected JacksonSpan(final Builder builder) {
         super(builder);
 
         checkArgument(this.getMetadata().getEventType().equals("TRACE"), "eventType must be of type Trace");
+    }
+
+    private JacksonSpan(final JacksonSpan otherSpan) {
+        super(otherSpan);
     }
 
     @Override
@@ -171,6 +176,17 @@ public class JacksonSpan extends JacksonEvent implements Span {
         return new Builder();
     }
 
+    public static JacksonSpan fromSpan(final Span span) {
+        if (span instanceof JacksonSpan) {
+            return new JacksonSpan((JacksonSpan) span);
+        } else {
+            return JacksonSpan.builder()
+                    .withData(span.toMap())
+                    .withEventMetadata(span.getMetadata())
+                    .build();
+        }
+    }
+
     @Override
     public String toJsonString() {
         final ObjectNode attributesNode = (ObjectNode) getJsonNode().get("attributes");
@@ -190,6 +206,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
     /**
      * Builder for creating {@link JacksonSpan}
+     *
      * @since 1.2
      */
     public static class Builder extends JacksonEvent.Builder<Builder> {
@@ -207,6 +224,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the data of the event.
+         *
          * @param data JSON representation of the data
          * @since 2.0
          */
@@ -221,6 +239,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the data of the event.
+         *
          * @param data the data
          * @since 2.0
          */
@@ -232,6 +251,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the metadata.
+         *
          * @param eventMetadata the metadata
          * @since 2.0
          */
@@ -243,6 +263,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the span id.
+         *
          * @param spanId
          * @since 1.2
          */
@@ -253,6 +274,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the trace id for the span.
+         *
          * @param traceId
          * @since 1.2
          */
@@ -263,6 +285,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the trace state
+         *
          * @param traceState
          * @since 1.2
          */
@@ -273,6 +296,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the parent span id.
+         *
          * @param parentSpanId
          * @since 1.2
          */
@@ -283,6 +307,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the span name
+         *
          * @param name
          * @since 1.2
          */
@@ -293,6 +318,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the type of span
+         *
          * @param kind
          * @since 1.2
          */
@@ -303,6 +329,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the start time of the span
+         *
          * @param startTime
          * @since 1.2
          */
@@ -313,6 +340,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the end time of the span
+         *
          * @param endTime
          * @since 1.2
          */
@@ -323,6 +351,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Optional - sets the attributes for {@link JacksonSpan}. Default is an empty map.
+         *
          * @param attributes the attributes to associate with this event.
          * @since 1.2
          */
@@ -333,6 +362,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Optional - sets the dropped attribute count for {@link JacksonSpan}. Default is 0.
+         *
          * @param droppedAttributesCount the total number of dropped attributes
          * @since 1.2
          */
@@ -343,6 +373,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Optional - sets the events for {@link JacksonSpan}. Default is an empty list.
+         *
          * @param events the events to associate.
          * @since 1.2
          */
@@ -353,6 +384,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Optional - sets the dropped events count for {@link JacksonSpan}. Default is 0.
+         *
          * @param droppedEventsCount the total number of dropped events
          * @since 1.2
          */
@@ -363,6 +395,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Optional - sets the links for {@link JacksonSpan}. Default is an empty list.
+         *
          * @param links the links to associate.
          * @since 1.2
          */
@@ -373,6 +406,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Optional - sets the dropped links count for {@link JacksonSpan}. Default is 0.
+         *
          * @param droppedLinksCount the total number of dropped links
          * @since 1.2
          */
@@ -383,6 +417,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the trace group name
+         *
          * @param traceGroup
          * @since 1.2
          */
@@ -393,6 +428,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the duration of the span
+         *
          * @param durationInNanos
          * @since 1.2
          */
@@ -403,6 +439,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the trace group fields
+         *
          * @param traceGroupFields
          * @since 1.2
          */
@@ -413,6 +450,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Sets the service name of the span
+         *
          * @param serviceName
          * @since 1.3
          */
@@ -423,6 +461,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
 
         /**
          * Returns a newly created {@link JacksonSpan}
+         *
          * @return a JacksonSpan
          * @since 1.2
          */
@@ -443,7 +482,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
             REQUIRED_NON_EMPTY_KEYS.forEach(key -> {
                 final String value = (String) data.get(key);
                 checkNotNull(value, key + " cannot be null");
-                checkArgument(!value.isEmpty(),  key + " cannot be an empty string");
+                checkArgument(!value.isEmpty(), key + " cannot be an empty string");
             });
 
             REQUIRED_NON_NULL_KEYS.forEach(key -> {

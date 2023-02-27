@@ -38,12 +38,11 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.singletonList(SUM_KEY);
 
 
-    protected JacksonHistogram(JacksonHistogram.Builder builder) {
-        super(builder);
+    protected JacksonHistogram(JacksonHistogram.Builder builder, boolean flattenAttributes) {
+        super(builder, flattenAttributes);
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
-
     public static JacksonHistogram.Builder builder() {
         return new JacksonHistogram.Builder();
     }
@@ -230,13 +229,22 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
          * @since 1.4
          */
         public JacksonHistogram build() {
+            return build(true);
+        }
+
+        /**
+         * Returns a newly created {@link JacksonHistogram}
+         * @return a JacksonHistogram
+         * @since 2.1
+         */
+        public JacksonHistogram build(boolean flattenAttributes) {
             this.withData(data);
             this.withEventKind(KIND.HISTOGRAM.toString());
             this.withEventType(EventType.METRIC.toString());
             checkAndSetDefaultValues();
             new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
 
-            return new JacksonHistogram(this);
+            return new JacksonHistogram(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {

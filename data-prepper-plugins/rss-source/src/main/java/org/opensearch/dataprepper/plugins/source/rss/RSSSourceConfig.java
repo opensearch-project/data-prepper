@@ -18,7 +18,7 @@ public class RSSSourceConfig {
     @NotBlank(message = "RSS Feed URL cannot be null or empty")
     private String url;
 
-    @JsonProperty("pollingFrequency")
+    @JsonProperty("polling_frequency")
     private Duration pollingFrequency = DEFAULT_POLLING_FREQUENCY;
 
     public String getUrl() {

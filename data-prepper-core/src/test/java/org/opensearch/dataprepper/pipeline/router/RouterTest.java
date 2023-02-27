@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class RouterTest {
@@ -41,6 +42,8 @@ class RouterTest {
     private Collection<DataFlowComponent<TestComponent>> dataFlowComponents;
     @Mock
     private BiConsumer<TestComponent, Collection<Record>> componentRecordsConsumer;
+    @Mock
+    private RouterGetRecordStrategy getRecordStrategy;
 
     private Collection<Record> recordsIn;
 
@@ -51,6 +54,7 @@ class RouterTest {
     void setUp() {
         recordsIn = Collections.emptyList();
         dataFlowComponents = Collections.emptyList();
+        getRecordStrategy = mock(RouterGetRecordStrategy.class);
     }
 
     private Router createObjectUnderTest() {
@@ -67,21 +71,28 @@ class RouterTest {
     void route_throws_if_records_is_null() {
         final Router objectUnderTest = createObjectUnderTest();
 
-        assertThrows(NullPointerException.class, () -> objectUnderTest.route(null, dataFlowComponents, componentRecordsConsumer));
+        assertThrows(NullPointerException.class, () -> objectUnderTest.route(null, dataFlowComponents, getRecordStrategy, componentRecordsConsumer));
     }
 
     @Test
     void route_throws_if_dataFlowComponents_is_null() {
         final Router objectUnderTest = createObjectUnderTest();
 
-        assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, null, componentRecordsConsumer));
+        assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, null, getRecordStrategy, componentRecordsConsumer));
+    }
+
+    @Test
+    void route_throws_if_getRecordStrategy_is_null() {
+        final Router objectUnderTest = createObjectUnderTest();
+
+        assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, null, null, componentRecordsConsumer));
     }
 
     @Test
     void route_throws_if_componentRecordsConsumer_is_null() {
         final Router objectUnderTest = createObjectUnderTest();
 
-        assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, dataFlowComponents, null));
+        assertThrows(NullPointerException.class, () -> objectUnderTest.route(recordsIn, dataFlowComponents, getRecordStrategy, null));
     }
 
     @Nested
@@ -102,7 +113,7 @@ class RouterTest {
 
         @Test
         void route_with_empty_DataFlowComponent() {
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
         }
 
         @Test
@@ -110,9 +121,9 @@ class RouterTest {
             DataFlowComponent<TestComponent> dataFlowComponent = mock(DataFlowComponent.class);
             dataFlowComponents = Collections.singletonList(dataFlowComponent);
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
         }
 
         @Test
@@ -124,10 +135,10 @@ class RouterTest {
                 dataFlowComponents.add(dataFlowComponent);
             }
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
             }
         }
     }
@@ -156,9 +167,9 @@ class RouterTest {
             DataFlowComponent<TestComponent> dataFlowComponent = mock(DataFlowComponent.class);
             dataFlowComponents = Collections.singletonList(dataFlowComponent);
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
-            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+            verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
         }
 
         @Test
@@ -170,12 +181,22 @@ class RouterTest {
                 dataFlowComponents.add(dataFlowComponent);
             }
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponents, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
 
             for (DataFlowComponent<TestComponent> dataFlowComponent : dataFlowComponents) {
-                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+                verify(dataFlowComponentRouter).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
             }
         }
 
+        @Test
+        void route_with_multiple_DataFlowComponents_And_Strategy() {
+            final DataFlowComponent dataFlowComponent = mock(DataFlowComponent.class);
+            dataFlowComponents = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                dataFlowComponents.add(dataFlowComponent);
+            }
+            createObjectUnderTest().route(recordsIn, dataFlowComponents, getRecordStrategy, componentRecordsConsumer);
+            verify(dataFlowComponentRouter, times(5)).route(recordsIn, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
+        }
     }
 }

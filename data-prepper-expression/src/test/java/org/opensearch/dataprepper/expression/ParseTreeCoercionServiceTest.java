@@ -77,6 +77,23 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
+    void testCoerceTerminalNodeLongType() {
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Integer);
+        final Long testLong = new Random().nextLong() + (long) Integer.MAX_VALUE;
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn(String.valueOf(testLong));
+        final Event testEvent = createTestEvent(new HashMap<>());
+        final Object result = objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent);
+        assertThat(result, instanceOf(Long.class));
+        assertThat(result, equalTo(testLong));
+        when(terminalNode.getText()).thenReturn(String.valueOf(-testLong));
+        final Event negativeTestEvent = createTestEvent(new HashMap<>());
+        final Object negativeResult = objectUnderTest.coercePrimaryTerminalNode(terminalNode, negativeTestEvent);
+        assertThat(negativeResult, instanceOf(Long.class));
+        assertThat(negativeResult, equalTo(-testLong));
+    }
+
+    @Test
     void testCoerceTerminalNodeFloatType() {
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Float);
         final Float testFloat = new Random().nextFloat();
@@ -240,6 +257,7 @@ class ParseTreeCoercionServiceTest {
     private static Stream<Arguments> provideSupportedJsonPointerValues() {
         return Stream.of(
                 Arguments.of(1000),
+                Arguments.of(1234512345000L),
                 Arguments.of(true),
                 Arguments.of("test value"),
                 Arguments.of(1.1f),
@@ -249,6 +267,6 @@ class ParseTreeCoercionServiceTest {
     }
 
     private static Stream<Arguments> provideUnSupportedJsonPointerValues() {
-        return Stream.of(Arguments.of(Long.MAX_VALUE));
+        return Stream.of(Arguments.of(new HashMap<>()));
     }
 }

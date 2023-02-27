@@ -48,6 +48,9 @@ public class DynamicIndexManager implements IndexManager {
 
     @Override
     public String getIndexName(final String dynamicIndexAlias) throws IOException {
+        if (dynamicIndexAlias == null) {
+            throw new IOException("index alias is null");
+        }
         String fullIndexAlias = AbstractIndexManager.getIndexAliasWithDate(dynamicIndexAlias);
         IndexManager indexManager = indexManagerCache.getIfPresent(fullIndexAlias);
         if (indexManager == null) {

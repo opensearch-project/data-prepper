@@ -26,9 +26,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 
 @ExtendWith(MockitoExtension.class)
 class DataFlowComponentRouterTest {
@@ -39,6 +43,8 @@ class DataFlowComponentRouterTest {
     private TestComponent testComponent;
     @Mock
     private BiConsumer<TestComponent, Collection<Record>> componentRecordsConsumer;
+    @Mock
+    private RouterGetRecordStrategy getRecordStrategy;
 
     private Collection<Record> recordsIn;
 
@@ -48,11 +54,28 @@ class DataFlowComponentRouterTest {
     @BeforeEach
     void setUp() {
         recordsIn = Collections.emptyList();
-        when(dataFlowComponent.getComponent()).thenReturn(testComponent);
+        lenient().when(dataFlowComponent.getComponent()).thenReturn(testComponent);
+        getRecordStrategy = mock(RouterGetRecordStrategy.class);
+        lenient().when(getRecordStrategy.getRecord(any())).thenAnswer(a -> a.getArgument(0));
+        lenient().when(getRecordStrategy.getAllRecords(anyCollection())).thenAnswer(a -> a.getArgument(0));
     }
 
     private DataFlowComponentRouter createObjectUnderTest() {
         return new DataFlowComponentRouter();
+    }
+
+    @Test
+    void route_with_null_strategy_throws() {
+        getRecordStrategy = null;
+        assertThrows(NullPointerException.class, () -> createObjectUnderTest().route(recordsIn, dataFlowComponent, null, getRecordStrategy, componentRecordsConsumer));
+    }
+
+    @Test
+    void route_with_null_strategy_throws_no_matching_routes() {
+        getRecordStrategy = null;
+        final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
+                .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
+        assertThrows(NullPointerException.class, () -> createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer));
     }
 
     @Nested
@@ -72,18 +95,17 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
-
 
         @Test
         void route_all_Events_when_all_have_routes() {
             final Map<Record, Set<String>> allWithRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(UUID.randomUUID().toString())));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, allWithRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, allWithRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -94,7 +116,7 @@ class DataFlowComponentRouterTest {
 
             final Map<Record, Set<String>> noMatchingRoutes = Collections.emptyMap();
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -121,7 +143,7 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
@@ -131,7 +153,7 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(UUID.randomUUID().toString())));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
@@ -142,7 +164,7 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> allMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(knownRoute)));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -160,7 +182,7 @@ class DataFlowComponentRouterTest {
                 applyRoute = !applyRoute;
             }
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, someMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, someMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, expectedRecords);
         }
@@ -171,7 +193,7 @@ class DataFlowComponentRouterTest {
 
             final Map<Record, Set<String>> noMatchingRoutes = Collections.emptyMap();
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -199,7 +221,7 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.emptySet()));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
@@ -209,7 +231,7 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> noMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(UUID.randomUUID().toString())));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, Collections.emptyList());
         }
@@ -220,7 +242,7 @@ class DataFlowComponentRouterTest {
             final Map<Record, Set<String>> allMatchingRoutes = recordsIn.stream()
                     .collect(Collectors.toMap(Function.identity(), r -> Collections.singleton(knownRoute)));
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, allMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }
@@ -238,7 +260,7 @@ class DataFlowComponentRouterTest {
                 applyRoute = !applyRoute;
             }
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, someMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, someMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, expectedRecords);
         }
@@ -249,7 +271,7 @@ class DataFlowComponentRouterTest {
 
             final Map<Record, Set<String>> noMatchingRoutes = Collections.emptyMap();
 
-            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, componentRecordsConsumer);
+            createObjectUnderTest().route(recordsIn, dataFlowComponent, noMatchingRoutes, getRecordStrategy, componentRecordsConsumer);
 
             verify(componentRecordsConsumer).accept(testComponent, recordsIn);
         }

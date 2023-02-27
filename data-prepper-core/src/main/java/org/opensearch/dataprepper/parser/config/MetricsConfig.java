@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.parser.config;
 
 import org.opensearch.dataprepper.meter.EMFLoggingMeterRegistry;
+import org.opensearch.dataprepper.meter.JvmMemoryAggregateMetrics;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.MetricRegistryType;
 import org.opensearch.dataprepper.pipeline.server.CloudWatchMeterRegistryProvider;
@@ -14,7 +15,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.micrometer.cloudwatch2.CloudWatchMeterRegistry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -32,13 +32,8 @@ import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
-
-import static org.opensearch.dataprepper.DataPrepper.getServiceNameForMetrics;
-import static org.opensearch.dataprepper.metrics.MetricNames.SERVICE_NAME;
 
 @Configuration
 public class MetricsConfig {
@@ -80,22 +75,24 @@ public class MetricsConfig {
         return new JvmThreadMetrics();
     }
 
-    private void configureMetricRegistry(final Map<String, String> metricTags, final MeterRegistry meterRegistry) {
-        final Map<String, String> metricTagsWithServiceName = new HashMap<>(metricTags);
-        metricTagsWithServiceName.putIfAbsent(SERVICE_NAME, getServiceNameForMetrics());
-        meterRegistry.config()
-                .commonTags(
-                        metricTagsWithServiceName.entrySet().stream().map(e -> Tag.of(e.getKey(), e.getValue()))
-                                .collect(Collectors.toList())
-                );
+    @Bean
+    public JvmMemoryAggregateMetrics jvmMemoryAggregateMetrics() {
+        return new JvmMemoryAggregateMetrics();
+    }
 
+    private void configureMetricRegistry(final Map<String, String> metricTags,
+                                         final List<MetricTagFilter> metricTagFilters,
+                                         final MeterRegistry meterRegistry) {
+        meterRegistry.config().meterFilter(new CustomTagsMeterFilter(metricTags, metricTagFilters));
     }
 
     @Bean
     public PrometheusMeterRegistry prometheusMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.Prometheus)) {
             final PrometheusMeterRegistry meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-            configureMetricRegistry(dataPrepperConfiguration.getMetricTags(), meterRegistry);
+            configureMetricRegistry(
+                    dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(), meterRegistry
+            );
 
             return meterRegistry;
         }
@@ -129,7 +126,9 @@ public class MetricsConfig {
 
             try {
                 final CloudWatchMeterRegistry meterRegistry = cloudWatchMeterRegistryProvider.getCloudWatchMeterRegistry();
-                configureMetricRegistry(dataPrepperConfiguration.getMetricTags(), meterRegistry);
+                configureMetricRegistry(
+                        dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(), meterRegistry
+                );
 
                 return meterRegistry;
             } catch (final SdkClientException e) {
@@ -146,7 +145,9 @@ public class MetricsConfig {
     public EMFLoggingMeterRegistry emfLoggingMeterRegistry(final DataPrepperConfiguration dataPrepperConfiguration) {
         if (dataPrepperConfiguration.getMetricRegistryTypes().contains(MetricRegistryType.EmbeddedMetricsFormat)) {
             final EMFLoggingMeterRegistry meterRegistry = new EMFLoggingMeterRegistry();
-            configureMetricRegistry(dataPrepperConfiguration.getMetricTags(), meterRegistry);
+            configureMetricRegistry(
+                    dataPrepperConfiguration.getMetricTags(), dataPrepperConfiguration.getMetricTagFilters(), meterRegistry
+            );
             return meterRegistry;
         } else {
             return null;

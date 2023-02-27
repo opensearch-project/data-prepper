@@ -60,6 +60,7 @@ public class MetricsPluginHistogramTest {
     public void init() {
         PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
         testsettings.setPipelineName("testpipeline");
+        when(config.getFlattenAttributesFlag()).thenReturn(true);
         rawProcessor = new OTelMetricsRawProcessor(testsettings, config);
     }
 
@@ -90,8 +91,25 @@ public class MetricsPluginHistogramTest {
         Record<? extends Metric> record = processedRecords.get(0);
         ObjectMapper objectMapper = new ObjectMapper();
         Map<Object, Object> map = objectMapper.readValue(record.getData().toJsonString(), Map.class);
+    
+        assertThat(map).doesNotContainKey("attributes");
 
         assertHistogramProcessing(map, Collections.emptyList());
+    }
+
+    @Test
+    public void testWithConfigFlagDisabledAndNoFlattenedAttributes() throws JsonProcessingException {
+        PluginSetting testsettings = new PluginSetting("testsettings", Collections.emptyMap());
+        testsettings.setPipelineName("testpipeline");
+        when(config.getFlattenAttributesFlag()).thenReturn(false);
+        rawProcessor = new OTelMetricsRawProcessor(testsettings, config);
+        Histogram histogram = Histogram.newBuilder().addDataPoints(HISTOGRAM_DATA_POINT).build();
+
+        List<Record<? extends Metric>> processedRecords = (List<Record<? extends Metric>>) rawProcessor.doExecute(Collections.singletonList(new Record<>(fillServiceRequest(histogram))));
+        Record<? extends Metric> record = processedRecords.get(0);
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<Object, Object> map = objectMapper.readValue(record.getData().toJsonString(), Map.class);
+        assertThat(map).containsKey("attributes");
     }
 
     private ExportMetricsServiceRequest fillServiceRequest(Histogram histogram) {

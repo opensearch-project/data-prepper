@@ -35,4 +35,14 @@ public class InMemorySink implements Sink<Record<Event>> {
     public void shutdown() {
 
     }
+
+    @Override
+    public void initialize() {
+
+    }
+
+    @Override
+    public boolean isReady() {
+        return true;
+    }
 }

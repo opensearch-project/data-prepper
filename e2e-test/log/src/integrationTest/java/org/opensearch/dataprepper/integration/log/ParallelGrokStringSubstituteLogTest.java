@@ -23,7 +23,6 @@ import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
-import org.opensearch.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
 
@@ -45,9 +44,8 @@ public class ParallelGrokStringSubstituteLogTest {
     private static final int HTTP_SOURCE_PORT = 2021;
     private static final String GROK_INDEX_NAME = "test-grok-index";
     private static final String SUBSTITUTE_INDEX_NAME = "test-substitute-index";
-    private static final String testString = "firstword secondword thirdword";
+    private static final String TEST_STRING = "firstword secondword thirdword";
 
-    private final ApacheLogFaker apacheLogFaker = new ApacheLogFaker();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
@@ -56,10 +54,10 @@ public class ParallelGrokStringSubstituteLogTest {
         sendHttpRequestToSource(HTTP_SOURCE_PORT, generateRandomApacheLogHttpData());
         // Verify data in OpenSearch backend
         final RestHighLevelClient restHighLevelClient = prepareOpenSearchRestHighLevelClient();
-        final List<Map<String, Object>> retrievedDocs = new ArrayList<>();
+
         // Wait for data to flow through pipeline and be indexed by ES
-        await().atMost(20, TimeUnit.SECONDS).untilAsserted(
-                () -> {
+        await().atMost(20, TimeUnit.SECONDS)
+                .untilAsserted(() -> {
                     refreshIndices(restHighLevelClient);
                     final SearchRequest grokRequest = new SearchRequest(GROK_INDEX_NAME);
                     final SearchRequest substRequest = new SearchRequest(SUBSTITUTE_INDEX_NAME);
@@ -69,24 +67,28 @@ public class ParallelGrokStringSubstituteLogTest {
                     substRequest.source(
                             SearchSourceBuilder.searchSource().size(100)
                     );
+                    // Verify documents from grok index
                     final SearchResponse grokResponse = restHighLevelClient.search(grokRequest, RequestOptions.DEFAULT);
                     final List<Map<String, Object>> grokSources = getSourcesFromSearchHits(grokResponse.getHits());
-                    Assert.assertEquals(1, grokSources.size());
-		    Map<String, Object> grokSource = grokSources.get(0);
-                    Assert.assertEquals(4, grokSource.size());
-		    Assert.assertEquals(grokSource.get("message"), testString);
-		    String[] words = testString.split(" ");
-		    Assert.assertEquals(grokSource.get("word1"), words[0]);
-		    Assert.assertEquals(grokSource.get("word2"), words[1]);
-		    Assert.assertEquals(grokSource.get("word3"), words[2]);
 
+                    Assert.assertEquals(1, grokSources.size());
+                    Map<String, Object> grokSource = grokSources.get(0);
+                    Assert.assertEquals(4, grokSource.size());
+                    Assert.assertEquals(TEST_STRING, grokSource.get("message"));
+                    String[] words = TEST_STRING.split(" ");
+                    Assert.assertEquals(words[0], grokSource.get("word1"));
+                    Assert.assertEquals(words[1], grokSource.get("word2"));
+                    Assert.assertEquals(words[2], grokSource.get("word3"));
+
+                    // Verify documents from substitute index
                     final SearchResponse substResponse = restHighLevelClient.search(substRequest, RequestOptions.DEFAULT);
                     final List<Map<String, Object>> substSources = getSourcesFromSearchHits(substResponse.getHits());
+
                     Assert.assertEquals(1, substSources.size());
-		    Map<String, Object> substSource = substSources.get(0);
+                    Map<String, Object> substSource = substSources.get(0);
                     Assert.assertEquals(1, substSource.size());
-		    String expectedString = testString.replace("word", "WORD");
-		    Assert.assertEquals(substSource.get("message"), expectedString);
+                    String expectedString = TEST_STRING.replace("word", "WORD");
+                    Assert.assertEquals(expectedString, substSource.get("message"));
                 }
         );
     }
@@ -136,7 +138,7 @@ public class ParallelGrokStringSubstituteLogTest {
 
     private HttpData generateRandomApacheLogHttpData() throws JsonProcessingException {
         final List<Map<String, Object>> jsonArray = new ArrayList<>();
-        final Map<String, Object> logObj = Map.of("message", testString);
+        final Map<String, Object> logObj = Map.of("message", TEST_STRING);
         jsonArray.add(logObj);
         final String jsonData = objectMapper.writeValueAsString(jsonArray);
         return HttpData.ofUtf8(jsonData);

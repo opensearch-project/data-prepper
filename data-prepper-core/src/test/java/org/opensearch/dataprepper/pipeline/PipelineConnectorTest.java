@@ -16,8 +16,6 @@ import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.DefaultLink;
 import org.opensearch.dataprepper.model.trace.DefaultSpanEvent;
 
-
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.Assert.assertThat;
 
@@ -40,11 +38,14 @@ import java.util.Map;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.concurrent.TimeoutException;
+
 import com.google.common.collect.ImmutableMap;
 
 
 import static org.junit.Assert.assertTrue;
+
 import org.junit.jupiter.api.Assertions;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -63,20 +64,20 @@ public class PipelineConnectorTest {
     private static final String SINK_PIPELINE_NAME = "SINK_PIPELINE_NAME";
     private final String testKey = UUID.randomUUID().toString();
     private final String testValue = UUID.randomUUID().toString();
-    private static final String TEST_TRACE_ID =  UUID.randomUUID().toString();
-    private static final String TEST_SPAN_ID =  UUID.randomUUID().toString();
-    private static final String TEST_TRACE_STATE =  UUID.randomUUID().toString();
-    private static final String TEST_PARENT_SPAN_ID =  UUID.randomUUID().toString();
-    private static final String TEST_NAME =  UUID.randomUUID().toString();
-    private static final String TEST_KIND =  UUID.randomUUID().toString();
-    private static final String TEST_START_TIME =  UUID.randomUUID().toString();
-    private static final String TEST_END_TIME =  UUID.randomUUID().toString();
+    private static final String TEST_TRACE_ID = UUID.randomUUID().toString();
+    private static final String TEST_SPAN_ID = UUID.randomUUID().toString();
+    private static final String TEST_TRACE_STATE = UUID.randomUUID().toString();
+    private static final String TEST_PARENT_SPAN_ID = UUID.randomUUID().toString();
+    private static final String TEST_NAME = UUID.randomUUID().toString();
+    private static final String TEST_KIND = UUID.randomUUID().toString();
+    private static final String TEST_START_TIME = UUID.randomUUID().toString();
+    private static final String TEST_END_TIME = UUID.randomUUID().toString();
     private static final Map<String, Object> TEST_ATTRIBUTES = ImmutableMap.of("key1", new Date().getTime(), "key2", UUID.randomUUID().toString());
     private static final Integer TEST_DROPPED_ATTRIBUTES_COUNT = 8;
-    private static final Integer TEST_DROPPED_EVENTS_COUNT =  45;
-    private static final Integer TEST_DROPPED_LINKS_COUNT =  21;
-    private static final String TEST_TRACE_GROUP =  UUID.randomUUID().toString();
-    private static final Long TEST_DURATION_IN_NANOS =  537L;
+    private static final Integer TEST_DROPPED_EVENTS_COUNT = 45;
+    private static final Integer TEST_DROPPED_LINKS_COUNT = 21;
+    private static final String TEST_TRACE_GROUP = UUID.randomUUID().toString();
+    private static final Long TEST_DURATION_IN_NANOS = 537L;
     private static final String TEST_SERVICE_NAME = UUID.randomUUID().toString();
 
     @Mock
@@ -96,20 +97,19 @@ public class PipelineConnectorTest {
     private DefaultSpanEvent defaultSpanEvent;
 
 
-
     @Before
     public void setup() {
         recordList = Collections.singletonList(RECORD);
         sut = new PipelineConnector<>();
 
-	final Event event = JacksonEvent.builder()
-			.withEventType("event")
-			.withData(Collections.singletonMap(testKey, testValue))
-			.build();
-	EVENT_RECORD = new Record<>(event);
+        final Event event = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(Collections.singletonMap(testKey, testValue))
+                .build();
+        EVENT_RECORD = new Record<>(event);
         eventRecordList = Collections.singletonList(EVENT_RECORD);
-	final Queue<Record<Event>> bufferQueue = new LinkedList<>();
-	eventBuffer = new TestBuffer(bufferQueue, 1);
+        final Queue<Record<Event>> bufferQueue = new LinkedList<>();
+        eventBuffer = new TestBuffer(bufferQueue, 1);
         eut = new PipelineConnector<>();
 
         defaultSpanEvent = DefaultSpanEvent.builder()
@@ -128,7 +128,7 @@ public class PipelineConnectorTest {
                 .withStatusCode(201)
                 .withEndTime("the End")
                 .build();
-	final JacksonSpan span = JacksonSpan.builder()
+        final JacksonSpan span = JacksonSpan.builder()
                 .withSpanId(TEST_SPAN_ID)
                 .withTraceId(TEST_TRACE_ID)
                 .withTraceState(TEST_TRACE_STATE)
@@ -147,11 +147,11 @@ public class PipelineConnectorTest {
                 .withTraceGroup(TEST_TRACE_GROUP)
                 .withDurationInNanos(TEST_DURATION_IN_NANOS)
                 .withTraceGroupFields(defaultTraceGroupFields)
-		.build();
+                .build();
 
-	SPAN_RECORD = new Record<>(span);
+        SPAN_RECORD = new Record<>(span);
         spanRecordList = Collections.singletonList(SPAN_RECORD);
-	spanBuffer = new BlockingBuffer<>("Pipeline1");
+        spanBuffer = new BlockingBuffer<>("Pipeline1");
         sput = new PipelineConnector<>();
 
     }
@@ -195,18 +195,18 @@ public class PipelineConnectorTest {
 
         eut.output(eventRecordList);
 
-	Map.Entry<Collection<Record<Event>>, CheckpointState> ent = eventBuffer.read(1);
-	ArrayList<Record<Event>> records = new ArrayList<>(ent.getKey());
-	// Make sure the records are different
-	assertThat(eventRecordList.get(0), not(sameInstance(records.get(0))));
-	// Make sure the events are different
-	Event event1 = eventRecordList.get(0).getData();
-	Event event2 = records.get(0).getData();
-	assertThat(event1, not(sameInstance(event2)));
-	event1.toMap().forEach((k, v)-> Assertions.assertEquals(event2.get(k, String.class), v));
-	event1.toMap().forEach((k, v)-> Assertions.assertEquals(k, testKey));
-	event1.toMap().forEach((k, v)-> Assertions.assertEquals(v, testValue));
-	
+        Map.Entry<Collection<Record<Event>>, CheckpointState> ent = eventBuffer.read(1);
+        ArrayList<Record<Event>> records = new ArrayList<>(ent.getKey());
+        // Make sure the records are same
+        assertThat(eventRecordList.get(0), sameInstance(records.get(0)));
+        // Make sure the events are same
+        Event event1 = eventRecordList.get(0).getData();
+        Event event2 = records.get(0).getData();
+        assertThat(event1, sameInstance(event2));
+        event1.toMap().forEach((k, v) -> Assertions.assertEquals(event2.get(k, String.class), v));
+        event1.toMap().forEach((k, v) -> Assertions.assertEquals(k, testKey));
+        event1.toMap().forEach((k, v) -> Assertions.assertEquals(v, testValue));
+
     }
 
     @Test
@@ -215,15 +215,15 @@ public class PipelineConnectorTest {
 
         sput.output(spanRecordList);
 
-	Map.Entry<Collection<Record<JacksonSpan>>, CheckpointState> ent = spanBuffer.doRead(10000);
-	ArrayList<Record<JacksonSpan>> records = new ArrayList<>(ent.getKey());
-	// Make sure the records are different
-	assertThat(spanRecordList.get(0), not(sameInstance(records.get(0))));
-	// Make sure the spans are different
-	JacksonSpan span1 = spanRecordList.get(0).getData();
-	JacksonSpan span2 = records.get(0).getData();
-	assertThat(span1, not(sameInstance(span2)));
-	span1.toMap().forEach((k, v) -> Assertions.assertEquals(span2.toMap().get(k), v));
+        Map.Entry<Collection<Record<JacksonSpan>>, CheckpointState> ent = spanBuffer.doRead(10000);
+        ArrayList<Record<JacksonSpan>> records = new ArrayList<>(ent.getKey());
+        // Make sure the records are same
+        assertThat(spanRecordList.get(0), sameInstance(records.get(0)));
+        // Make sure the spans are same
+        JacksonSpan span1 = spanRecordList.get(0).getData();
+        JacksonSpan span2 = records.get(0).getData();
+        assertThat(span1, sameInstance(span2));
+        span1.toMap().forEach((k, v) -> Assertions.assertEquals(span2.toMap().get(k), v));
     }
 
     @Test

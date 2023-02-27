@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.event.Event;
@@ -20,9 +22,11 @@ import com.linecorp.armeria.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
+import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
+import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
@@ -37,8 +41,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -55,13 +62,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * works.
  */
 class PeerForwarder_ClientServerIT {
-
+    private static final int PIPELINE_WORKER_THREADS = new Random().nextInt(10) + 1;
     private static final String LOCALHOST = "127.0.0.1";
     private static final String SSL_CERTIFICATE_FILE = "src/test/resources/test-crt.crt";
     private static final String SSL_KEY_FILE = "src/test/resources/test-key.key";
     private static final String ALTERNATE_SSL_CERTIFICATE_FILE = "src/test/resources/test-alternate-crt.crt";
     private static final String ALTERNATE_SSL_KEY_FILE = "src/test/resources/test-alternate-key.key";
     private ObjectMapper objectMapper;
+    private JavaPeerForwarderCodec javaPeerForwarderCodec;
+    private JacksonPeerForwarderCodec jacksonPeerForwarderCodec;
     private String pipelineName;
     private String pluginId;
     private List<Record<Event>> outgoingRecords;
@@ -71,6 +80,8 @@ class PeerForwarder_ClientServerIT {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        javaPeerForwarderCodec = new JavaPeerForwarderCodec();
+        jacksonPeerForwarderCodec = new JacksonPeerForwarderCodec(objectMapper);
 
         outgoingRecords = IntStream.range(0, 5)
                 .mapToObj(i -> UUID.randomUUID().toString())
@@ -92,7 +103,10 @@ class PeerForwarder_ClientServerIT {
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final CertificateProviderFactory certificateProviderFactory,
             final PeerForwarderProvider peerForwarderProvider) {
-        final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(pluginMetrics), peerForwarderProvider, peerForwarderConfiguration, objectMapper, pluginMetrics);
+        final PeerForwarderCodec peerForwarderCodec = peerForwarderConfiguration.getBinaryCodec()?
+                javaPeerForwarderCodec : jacksonPeerForwarderCodec;
+        final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(pluginMetrics), peerForwarderProvider, peerForwarderConfiguration,
+                peerForwarderCodec, pluginMetrics);
         Objects.requireNonNull(peerForwarderConfiguration, "Nested classes must supply peerForwarderConfiguration");
         Objects.requireNonNull(certificateProviderFactory, "Nested classes must supply certificateProviderFactory");
         final PeerForwarderHttpServerProvider serverProvider = new PeerForwarderHttpServerProvider(peerForwarderConfiguration,
@@ -119,7 +133,9 @@ class PeerForwarder_ClientServerIT {
         final PeerClientPool peerClientPool = new PeerClientPool();
         final PeerForwarderClientFactory peerForwarderClientFactory = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
         peerForwarderClientFactory.setPeerClientPool();
-        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, objectMapper, pluginMetrics);
+        final PeerForwarderCodec peerForwarderCodec = peerForwarderConfiguration.getBinaryCodec()?
+                javaPeerForwarderCodec : jacksonPeerForwarderCodec;
+        return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, peerForwarderCodec, pluginMetrics);
     }
 
     private Collection<Record<Event>> getServerSideRecords(final PeerForwarderProvider peerForwarderProvider) {
@@ -138,13 +154,12 @@ class PeerForwarder_ClientServerIT {
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
 
-        @BeforeEach
-        void setUp() {
-            peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.UNAUTHENTICATED);
+        void setUpServer(final boolean binaryCodec) {
+            peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -154,94 +169,97 @@ class PeerForwarder_ClientServerIT {
             server.stop();
         }
 
-        @Test
-        void send_Events_to_server() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server(final boolean binaryCodec) throws ExecutionException, InterruptedException {
+            setUpServer(binaryCodec);
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
+                    client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final AggregatedHttpResponse httpResponse = httpResponseFuture.get();
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
-            assertThat(receivedRecords, notNullValue());
-            assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
-
-            final Set<String> receivedMessages = new HashSet<>();
-            for (Record receivedRecord : receivedRecords) {
-                assertThat(receivedRecord, notNullValue());
-                assertThat(receivedRecord.getData(), instanceOf(Event.class));
-                final Event event = (Event) receivedRecord.getData();
-                final String message = event.get("message", String.class);
-                assertThat(message, notNullValue());
-                receivedMessages.add(message);
-            }
-
-            assertThat(receivedMessages, equalTo(expectedMessages));
+            validatePeerForwarderBufferRecords(receivedRecords);
         }
 
-        @Test
-        void send_Events_to_server_when_client_does_not_expect_SSL_should_throw() {
-            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED);
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server_when_client_does_not_expect_SSL_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                    false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(ClosedSessionException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final ExecutionException actualException = assertThrows(ExecutionException.class,
+                    () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
+
+            assertThat(actualException.getCause(), instanceOf(ClosedSessionException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords, is(empty()));
         }
 
-        @Test
-        void send_Events_to_an_unknown_server_should_throw() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_an_unknown_server_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.UNAUTHENTICATED, ALTERNATE_SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, false, false);
+                    true, ForwardingAuthentication.UNAUTHENTICATED,
+                    ALTERNATE_SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, false, false, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final ExecutionException actualException = assertThrows(ExecutionException.class,
+                    () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
+
+            assertThat(actualException.getCause(), instanceOf(UnprocessedRequestException.class));
+            assertThat(actualException.getCause().getCause(), instanceOf(SSLHandshakeException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords, is(empty()));
         }
 
-        @Test
-        void send_Events_to_server_with_fingerprint_verification() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server_with_fingerprint_verification(final boolean binaryCodec) throws ExecutionException, InterruptedException {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                        true, ForwardingAuthentication.UNAUTHENTICATED, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, false, true);
+                        true, ForwardingAuthentication.UNAUTHENTICATED, SSL_CERTIFICATE_FILE, SSL_KEY_FILE,
+                    false, true, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
+                    client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final AggregatedHttpResponse httpResponse = httpResponseFuture.get();
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
-            assertThat(receivedRecords, notNullValue());
-            assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
-
-            final Set<String> receivedMessages = new HashSet<>();
-            for (Record receivedRecord : receivedRecords) {
-                assertThat(receivedRecord, notNullValue());
-                assertThat(receivedRecord.getData(), instanceOf(Event.class));
-                final Event event = (Event) receivedRecord.getData();
-                final String message = event.get("message", String.class);
-                assertThat(message, notNullValue());
-                receivedMessages.add(message);
-            }
-
-            assertThat(receivedMessages, equalTo(expectedMessages));
+            validatePeerForwarderBufferRecords(receivedRecords);
         }
 
-        @Test
-        void send_Events_with_fingerprint_verification_to_unknown_server_should_throw() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_with_fingerprint_verification_to_unknown_server_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.UNAUTHENTICATED, ALTERNATE_SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, false, true);
+                    true, ForwardingAuthentication.UNAUTHENTICATED, ALTERNATE_SSL_CERTIFICATE_FILE,
+                    ALTERNATE_SSL_KEY_FILE, false, true, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final ExecutionException actualException = assertThrows(ExecutionException.class,
+                    () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
+
+            assertThat(actualException.getCause(), instanceOf(UnprocessedRequestException.class));
+            assertThat(actualException.getCause().getCause(), instanceOf(SSLHandshakeException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
@@ -256,13 +274,12 @@ class PeerForwarder_ClientServerIT {
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
 
-        @BeforeEach
-        void setUp() {
-            peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED);
+        void setUpServer(final boolean binaryCodec) {
+            peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -272,40 +289,36 @@ class PeerForwarder_ClientServerIT {
             server.stop();
         }
 
-        @Test
-        void send_Events_to_server() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server(final boolean binaryCodec) throws ExecutionException, InterruptedException {
+            setUpServer(binaryCodec);
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
+                    client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final AggregatedHttpResponse httpResponse = httpResponseFuture.get();
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
-            assertThat(receivedRecords, notNullValue());
-            assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
-
-            final Set<String> receivedMessages = new HashSet<>();
-            for (Record receivedRecord : receivedRecords) {
-                assertThat(receivedRecord, notNullValue());
-                assertThat(receivedRecord.getData(), instanceOf(Event.class));
-                final Event event = (Event) receivedRecord.getData();
-                final String message = event.get("message", String.class);
-                assertThat(message, notNullValue());
-                receivedMessages.add(message);
-            }
-
-            assertThat(receivedMessages, equalTo(expectedMessages));
+            validatePeerForwarderBufferRecords(receivedRecords);
         }
 
-        @Test
-        void send_Events_to_server_when_expecting_SSL_should_throw() {
-            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.UNAUTHENTICATED);
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server_when_expecting_SSL_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                    true, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final UnprocessedRequestException actualException = assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final ExecutionException actualException = assertThrows(ExecutionException.class,
+                    () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
 
-            assertThat(actualException.getCause(), instanceOf(SSLHandshakeException.class));
+            assertThat(actualException.getCause(), instanceOf(UnprocessedRequestException.class));
+            assertThat(actualException.getCause().getCause(), instanceOf(SSLHandshakeException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
@@ -320,13 +333,12 @@ class PeerForwarder_ClientServerIT {
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
 
-        @BeforeEach
-        void setUp() {
-            peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.MUTUAL_TLS);
+        void setUpServer(final boolean binaryCodec) {
+            peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.MUTUAL_TLS, binaryCodec);
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
-            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()));
+            peerForwarderProvider.register(pipelineName, pluginId, Collections.singleton(UUID.randomUUID().toString()), PIPELINE_WORKER_THREADS);
             server = createServer(peerForwarderConfiguration, certificateProviderFactory, peerForwarderProvider);
             server.start();
         }
@@ -336,107 +348,118 @@ class PeerForwarder_ClientServerIT {
             server.stop();
         }
 
-        @Test
-        void send_Events_to_server() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server(final boolean binaryCodec) throws ExecutionException, InterruptedException {
+            setUpServer(binaryCodec);
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
+                    client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final AggregatedHttpResponse httpResponse = httpResponseFuture.get();
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
-            assertThat(receivedRecords, notNullValue());
-            assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
-
-            final Set<String> receivedMessages = new HashSet<>();
-            for (Record receivedRecord : receivedRecords) {
-                assertThat(receivedRecord, notNullValue());
-                assertThat(receivedRecord.getData(), instanceOf(Event.class));
-                final Event event = (Event) receivedRecord.getData();
-                final String message = event.get("message", String.class);
-                assertThat(message, notNullValue());
-                receivedMessages.add(message);
-            }
-
-            assertThat(receivedMessages, equalTo(expectedMessages));
+            validatePeerForwarderBufferRecords(receivedRecords);
         }
 
-        @Test
-        void send_Events_to_server_when_client_has_no_certificate_closes() {
-            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED);
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server_when_client_has_no_certificate_closes(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
+            final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
+                    false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(ClosedSessionException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final ExecutionException actualException = assertThrows(ExecutionException.class,
+                    () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
+
+            assertThat(actualException.getCause(), instanceOf(ClosedSessionException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords, is(empty()));
         }
 
-        @Test
-        void send_Events_to_server_when_client_has_unknown_certificate_key_closes() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server_when_client_has_unknown_certificate_key_closes(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE, true, false);
+                    true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, ALTERNATE_SSL_KEY_FILE,
+                    true, false, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
-            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final ExecutionException actualException = assertThrows(ExecutionException.class,
+                    () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
+
+            assertThat(actualException.getCause(), instanceOf(UnprocessedRequestException.class));
+            assertThat(actualException.getCause().getCause(), instanceOf(SSLHandshakeException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords, is(empty()));
         }
 
-        @Test
-        void send_Events_to_an_unknown_server_should_throw() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_an_unknown_server_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true, false);
+                    true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE,
+                    true, false, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final ExecutionException actualException = assertThrows(ExecutionException.class,
+                    () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
+
+            assertThat(actualException.getCause(), instanceOf(UnprocessedRequestException.class));
+            assertThat(actualException.getCause().getCause(), instanceOf(SSLHandshakeException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
             assertThat(receivedRecords, is(empty()));
         }
 
-        @Test
-        void send_Events_to_server_with_fingerprint_verification() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_to_server_with_fingerprint_verification(final boolean binaryCodec)
+                throws ExecutionException, InterruptedException {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, false, true);
+                    true, ForwardingAuthentication.MUTUAL_TLS, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, false, true,
+                    binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            final AggregatedHttpResponse httpResponse = client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final CompletableFuture<AggregatedHttpResponse> httpResponseFuture =
+                    client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName);
+            final AggregatedHttpResponse httpResponse = httpResponseFuture.get();
 
             assertThat(httpResponse.status(), equalTo(HttpStatus.OK));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
-            assertThat(receivedRecords, notNullValue());
-            assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
-
-            final Set<String> receivedMessages = new HashSet<>();
-            for (Record receivedRecord : receivedRecords) {
-                assertThat(receivedRecord, notNullValue());
-                assertThat(receivedRecord.getData(), instanceOf(Event.class));
-                final Event event = (Event) receivedRecord.getData();
-                final String message = event.get("message", String.class);
-                assertThat(message, notNullValue());
-                receivedMessages.add(message);
-            }
-
-            assertThat(receivedMessages, equalTo(expectedMessages));
+            validatePeerForwarderBufferRecords(receivedRecords);
         }
 
-        @Test
-        void send_Events_with_fingerprint_verification_to_unknown_server_should_throw() {
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void send_Events_with_fingerprint_verification_to_unknown_server_should_throw(final boolean binaryCodec) {
+            setUpServer(binaryCodec);
             final PeerForwarderConfiguration peerForwarderConfiguration = createConfiguration(
-                    true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE, false, true);
+                    true, ForwardingAuthentication.MUTUAL_TLS, ALTERNATE_SSL_CERTIFICATE_FILE, SSL_KEY_FILE,
+                    false, true, binaryCodec);
 
             final PeerForwarderClient client = createClient(peerForwarderConfiguration);
 
-            assertThrows(UnprocessedRequestException.class, () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName));
+            final ExecutionException actualException = assertThrows(ExecutionException.class,
+                    () -> client.serializeRecordsAndSendHttpRequest(outgoingRecords, LOCALHOST, pluginId, pipelineName).get());
+
+            assertThat(actualException.getCause(), instanceOf(UnprocessedRequestException.class));
+            assertThat(actualException.getCause().getCause(), instanceOf(SSLHandshakeException.class));
 
             final Collection<Record<Event>> receivedRecords = getServerSideRecords(peerForwarderProvider);
             assertThat(receivedRecords, notNullValue());
@@ -444,8 +467,27 @@ class PeerForwarder_ClientServerIT {
         }
     }
 
-    private PeerForwarderConfiguration createConfiguration(final boolean ssl, final ForwardingAuthentication authentication) {
-        return createConfiguration(ssl, authentication, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true, false);
+    private void validatePeerForwarderBufferRecords(final Collection<Record<Event>> receivedRecords) {
+        assertThat(receivedRecords, notNullValue());
+        assertThat(receivedRecords.size(), equalTo(outgoingRecords.size()));
+
+        final Set<String> receivedMessages = new HashSet<>();
+        for (Record receivedRecord : receivedRecords) {
+            assertThat(receivedRecord, notNullValue());
+            assertThat(receivedRecord.getData(), instanceOf(Event.class));
+            final Event event = (Event) receivedRecord.getData();
+            final String message = event.get("message", String.class);
+            assertThat(message, notNullValue());
+            receivedMessages.add(message);
+        }
+
+        assertThat(receivedMessages, equalTo(expectedMessages));
+    }
+
+    private PeerForwarderConfiguration createConfiguration(final boolean ssl,
+                                                           final ForwardingAuthentication authentication,
+                                                           final boolean binaryCodec) {
+        return createConfiguration(ssl, authentication, SSL_CERTIFICATE_FILE, SSL_KEY_FILE, true, false, binaryCodec);
     }
 
     private PeerForwarderConfiguration createConfiguration(
@@ -454,11 +496,13 @@ class PeerForwarder_ClientServerIT {
             final String sslCertificateFile,
             final String sslKeyFile,
             final boolean sslDisableVerification,
-            final boolean sslFingerprintVerificationOnly) {
+            final boolean sslFingerprintVerificationOnly,
+            final boolean binaryCodec) {
         final Map<String, Object> authenticationMap = Collections.singletonMap(authentication.getName(), null);
         return new PeerForwarderConfiguration(
                 4994,
                 10_000,
+                60_000,
                 200,
                 500,
                 1024,
@@ -481,8 +525,14 @@ class PeerForwarder_ClientServerIT {
                 List.of("127.0.0.1"),
                 200,
                 48,
+                3000,
                 512,
-                null
+                null,
+                null,
+                null,
+                null,
+                null,
+                binaryCodec
         );
     }
 }

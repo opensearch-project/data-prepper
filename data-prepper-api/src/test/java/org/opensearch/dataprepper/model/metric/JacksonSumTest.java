@@ -15,6 +15,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -151,4 +152,26 @@ public class JacksonSumTest {
         assertThat(url, is(equalTo(TEST_SCHEMA_URL)));
     }
 
+    @Test
+    public void testSumJsonToString() {
+        String attrKey = UUID.randomUUID().toString();
+        String attrVal = UUID.randomUUID().toString();
+        final Map<String, Object> attributes = Map.of(attrKey, attrVal);
+        sum.put("attributes", attributes);
+        final String resultAttr = sum.toJsonString();
+        String attrString = String.format("\"attributes\":{\"%s\":\"%s\"}", attrKey, attrVal);
+        assertThat(resultAttr.indexOf(attrString), equalTo(-1));
+    }
+
+    @Test
+    public void testSumJsonToStringWithAttributes() {
+        sum = builder.build(false);
+        String attrKey = UUID.randomUUID().toString();
+        String attrVal = UUID.randomUUID().toString();
+        final Map<String, Object> attributes = Map.of(attrKey, attrVal);
+        sum.put("attributes", attributes);
+        final String resultAttr = sum.toJsonString();
+        String attrString = String.format("\"attributes\":{\"%s\":\"%s\"}", attrKey, attrVal);
+        assertThat(resultAttr.indexOf(attrString), not(equalTo(-1)));
+    }
 }

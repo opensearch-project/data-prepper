@@ -17,6 +17,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -118,9 +119,18 @@ class ConditionalExpressionEvaluatorIT {
     }
 
     private static Stream<Arguments> validExpressionArguments() {
+        final String key = "status_code";
+        final Long value = 200L;
+        Map<Object, Object> eventMap = Collections.singletonMap(key, value);
+        Event longEvent = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(eventMap)
+                .build();
+
         return Stream.of(
                 Arguments.of("true", event("{}"), true),
                 Arguments.of("/status_code == 200", event("{\"status_code\": 200}"), true),
+                Arguments.of("/status_code == 200", longEvent, true),
                 Arguments.of("/status_code != 300", event("{\"status_code\": 200}"), true),
                 Arguments.of("/status_code == 200", event("{}"), false),
                 Arguments.of("/success == /status_code", event("{\"success\": true, \"status_code\": 200}"), false),
@@ -131,7 +141,7 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("/status_code < 300", event("{\"status_code\": 200}"), true),
                 Arguments.of("/status_code != null", event("{\"status_code\": 200}"), true),
                 Arguments.of("null != /status_code", event("{\"status_code\": 200}"), true),
-		Arguments.of("/status_code == null", event("{\"status_code\": null}"), true),
+                Arguments.of("/status_code == null", event("{\"status_code\": null}"), true),
                 Arguments.of("/response == null", event("{\"status_code\": 200}"), true),
                 Arguments.of("null == /response", event("{\"status_code\": 200}"), true),
                 Arguments.of("/response != null", event("{\"status_code\": 200}"), false),
@@ -149,6 +159,7 @@ class ConditionalExpressionEvaluatorIT {
                         escapedJsonPointer(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS) + " == true",
                         complexEvent(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS, true),
                         true),
+                Arguments.of("/durationInNanos > 5000000000", event("{\"durationInNanos\": 6000000000}"), true),
                 Arguments.of("/response == \"OK\"", event("{\"response\": \"OK\"}"), true)
         );
     }

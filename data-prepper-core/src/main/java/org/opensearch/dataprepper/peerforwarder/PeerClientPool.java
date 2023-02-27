@@ -25,7 +25,7 @@ public class PeerClientPool {
     private final Map<String, WebClient> peerClients;
 
     private int port;
-    private int clientTimeoutSeconds = 3;
+    private int clientTimeoutMillis = 60_000;
     private boolean ssl;
     private Certificate certificate;
     private boolean sslDisableVerification;
@@ -36,8 +36,8 @@ public class PeerClientPool {
         peerClients = new ConcurrentHashMap<>();
     }
 
-    public void setClientTimeoutSeconds(int clientTimeoutSeconds) {
-        this.clientTimeoutSeconds = clientTimeoutSeconds;
+    public void setClientTimeoutMillis(int clientTimeoutMillis) {
+        this.clientTimeoutMillis = clientTimeoutMillis;
     }
 
     public void setSsl(boolean ssl) {
@@ -72,7 +72,8 @@ public class PeerClientPool {
         final String protocol = ssl ? HTTPS : HTTP;
 
         ClientBuilder clientBuilder = Clients.builder(String.format("%s://%s:%s/", protocol, ipAddress, port))
-                .writeTimeout(Duration.ofSeconds(clientTimeoutSeconds));
+                .writeTimeout(Duration.ofMillis(clientTimeoutMillis))
+                .responseTimeout(Duration.ofMillis(clientTimeoutMillis));
 
         if (ssl) {
             final ClientFactoryBuilder clientFactoryBuilder = ClientFactory.builder();

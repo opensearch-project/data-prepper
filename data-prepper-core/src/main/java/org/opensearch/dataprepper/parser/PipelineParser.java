@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.parser;
 
+import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
@@ -61,6 +63,7 @@ public class PipelineParser {
     private final String pipelineConfigurationFileLocation;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
+    private final CircuitBreakerManager circuitBreakerManager;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
     private final PeerForwarderProvider peerForwarderProvider;
@@ -69,12 +72,14 @@ public class PipelineParser {
                           final PluginFactory pluginFactory,
                           final PeerForwarderProvider peerForwarderProvider,
                           final RouterFactory routerFactory,
-                          final DataPrepperConfiguration dataPrepperConfiguration) {
+                          final DataPrepperConfiguration dataPrepperConfiguration,
+                          final CircuitBreakerManager circuitBreakerManager) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
         this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
+        this.circuitBreakerManager = circuitBreakerManager;
     }
 
     /**
@@ -84,6 +89,9 @@ public class PipelineParser {
         try (final InputStream mergedPipelineConfigurationFiles = mergePipelineConfigurationFiles()) {
             final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(mergedPipelineConfigurationFiles,
                     PipelinesDataFlowModel.class);
+
+            final DataPrepperVersion version = pipelinesDataFlowModel.getDataPrepperVersion();
+            validateDataPrepperVersion(version);
 
             final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
                     .stream()
@@ -106,6 +114,14 @@ public class PipelineParser {
         } catch (IOException e) {
             LOG.error("Failed to parse the configuration file {}", pipelineConfigurationFileLocation);
             throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
+        }
+    }
+
+    private void validateDataPrepperVersion(final DataPrepperVersion version) {
+        if (Objects.nonNull(version) && !DataPrepperVersion.getCurrentVersion().compatibleWith(version)) {
+            LOG.error("The version: {} is not compatible with the current version: {}", version, DataPrepperVersion.getCurrentVersion());
+            throw new ParseException(format("The version: %s is not compatible with the current version: %s",
+                version, DataPrepperVersion.getCurrentVersion()));
         }
     }
 
@@ -158,7 +174,7 @@ public class PipelineParser {
                     pluginFactory.loadPlugin(Source.class, sourceSetting));
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
-            final Buffer buffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
+            final Buffer pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
 
             LOG.info("Building processors for the pipeline [{}]", pipelineName);
             final int processorThreads = pipelineConfiguration.getWorkers();
@@ -172,7 +188,7 @@ public class PipelineParser {
                         final List<Processor> processors = processorComponentList.stream().map(IdentifiedComponent::getComponent).collect(Collectors.toList());
                         if (!processors.isEmpty() && processors.get(0) instanceof RequiresPeerForwarding) {
                             return PeerForwardingProcessorDecorator.decorateProcessors(
-                                    processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName()
+                                    processors, peerForwarderProvider, pipelineName, processorComponentList.get(0).getName(), pipelineConfiguration.getWorkers()
                             );
                         }
                         return processors;
@@ -187,11 +203,22 @@ public class PipelineParser {
 
             final List<Buffer> secondaryBuffers = getSecondaryBuffers();
             LOG.info("Constructing MultiBufferDecorator with [{}] secondary buffers for pipeline [{}]", secondaryBuffers.size(), pipelineName);
-            final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(buffer, secondaryBuffers);
+            final MultiBufferDecorator multiBufferDecorator = new MultiBufferDecorator(pipelineDefinedBuffer, secondaryBuffers);
+
+
+            final Buffer buffer;
+            if(source instanceof PipelineConnector) {
+                buffer = multiBufferDecorator;
+            } else {
+                buffer = circuitBreakerManager.getGlobalCircuitBreaker()
+                        .map(circuitBreaker -> new CircuitBreakingBuffer<>(multiBufferDecorator, circuitBreaker))
+                        .map(b -> (Buffer)b)
+                        .orElseGet(() -> multiBufferDecorator);
+            }
 
             final Router router = routerFactory.createRouter(pipelineConfiguration.getRoutes());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, multiBufferDecorator, decoratedProcessorSets, sinks, router, processorThreads, readBatchDelay,
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, router, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
             pipelineMap.put(pipelineName, pipeline);

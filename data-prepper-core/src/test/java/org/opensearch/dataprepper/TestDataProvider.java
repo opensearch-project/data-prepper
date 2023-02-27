@@ -47,11 +47,14 @@ public class TestDataProvider {
     public static final String SINGLE_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/single-pipeline";
     public static final String EMPTY_PIPELINE_DIRECTOTRY = "src/test/resources/no-pipelines";
     public static final String VALID_MULTIPLE_SINKS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
+    public static final String INCOMPATIBLE_VERSION_CONFIG_FILE = "src/test/resources/incompatible_version.yml";
+    public static final String COMPATIBLE_VERSION_CONFIG_FILE = "src/test/resources/compatible_version.yml";
     public static final String VALID_MULTIPLE_PROCESSERS_CONFIG_FILE = "src/test/resources/valid_multiple_processors.yml";
     public static final String NO_PIPELINES_EXECUTE_CONFIG_FILE = "src/test/resources/no_pipelines_to_execute.yml";
     public static final String VALID_DATA_PREPPER_CONFIG_FILE = "src/test/resources/valid_data_prepper_config.yml";
     public static final String VALID_DATA_PREPPER_CONFIG_FILE_WITH_TLS = "src/test/resources/valid_data_prepper_config_with_tls.yml";
     public static final String VALID_DATA_PREPPER_CONFIG_FILE_WITH_BASIC_AUTHENTICATION = "src/test/resources/valid_data_prepper_config_with_basic_authentication.yml";
+    public static final String VALID_DATA_PREPPER_CONFIG_FILE_WITH_CAMEL_CASE_OPTIONS = "src/test/resources/valid_data_prepper_config_with_camel_case_options.yml";
     public static final String VALID_DATA_PREPPER_DEFAULT_LOG4J_CONFIG_FILE = "src/test/resources/valid_data_prepper_config_default_log4j.yml";
     public static final String VALID_DATA_PREPPER_SOME_DEFAULT_CONFIG_FILE = "src/test/resources/valid_data_prepper_some_default_config.yml";
     public static final String VALID_DATA_PREPPER_CLOUDWATCH_METRICS_CONFIG_FILE = "src/test/resources/valid_data_prepper_cloudwatch_metrics_config.yml";
@@ -88,7 +91,10 @@ public class TestDataProvider {
     public static final String INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_dns_without_domain_name_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_BAD_DRAIN_TIMEOUT = "src/test/resources/invalid_peer_forwarder_with_bad_drain_timeout.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_NEGATIVE_DRAIN_TIMEOUT = "src/test/resources/invalid_peer_forwarder_with_negative_drain_timeout.yml";
+    public static final String INVALID_PEER_FORWARDER_WITH_ZERO_LOCAL_WRITE_TIMEOUT = "src/test/resources/invalid_peer_forwarder_with_zero_local_write_timeout.yml";
     public static final String VALID_PEER_FORWARDER_WITH_ACM_SSL_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_config_with_acm_ssl.yml";
+    public static final String VALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER = "src/test/resources/valid_data_prepper_config_with_metric_filter.yml";
+    public static final String INVALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER = "src/test/resources/invalid_data_prepper_config_with_metric_filter.yml";
 
 
 

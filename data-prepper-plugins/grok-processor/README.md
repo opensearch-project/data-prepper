@@ -9,7 +9,7 @@ The full set of default patterns can be found [here](https://github.com/thekrakk
 `patterns_definitions` or `patterns_directories` configuration settings. When debugging custom patterns, the [Grok Debugger](https://grokdebug.herokuapp.com/) 
 can be extremely helpful.
 
-## Basic Grok Usage
+## Basic Usage
 
 To get started with grok using Data Prepper, create the following `pipeline.yaml`.
 ```yaml

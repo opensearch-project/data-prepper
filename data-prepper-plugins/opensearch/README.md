@@ -74,7 +74,11 @@ Default is null.
 
 - `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon OpenSearch Service. If not provided the plugin will use the default credentials.
 
+- `aws_sts_header_overrides`: An optional map of header overrides to make when assuming the IAM role for the sink plugin.
+
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
+
+- `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details. If this option is present, `aws_` options are not expected to be present. If any of `aws_` options are present along with this, error is thrown.
 
 - `socket_timeout`(optional): An integer value indicates the timeout in milliseconds for waiting for data (or, put differently, a maximum period inactivity between two consecutive data packets). A timeout value of zero is interpreted as an infinite timeout. If this timeout value is either negative or not set, the underlying Apache HttpClient would rely on operating system settings for managing socket timeouts.
 
@@ -86,7 +90,7 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management-disabled`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
 
 ```
     APM trace analytics raw span data type example:
@@ -124,7 +128,7 @@ Default is null.
   * This index name can also be a plain string plus a date-time pattern as a suffix, such as `application-%{yyyy.MM.dd}`, `my-index-name-%{yyyy.MM.dd.HH}`. When OpenSearch Sink is sending data to OpenSearch, the date-time pattern will be replaced by actual UTC time. The pattern supports all the symbols that represent one hour or above and are listed in [Java DateTimeFormatter](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html). For example, with an index pattern like `my-index-name-%{yyyy.MM.dd}`, a new index is created for each day such as `my-index-name-2022.01.25`. For another example, with an index pattern like `my-index-name-%{yyyy.MM.dd.HH}`, a new index is created for each hour such as `my-index-name-2022.01.25.13`.
   * This index name can also be a formatted string (with or without date-time pattern suffix), such as `my-${index}-name`. When OpenSearchSink is sending data to OpenSearch, the format portion "${index}" will be replaced by it's value in the event that is being processed. The format may also be like "${index1/index2/index3}" in which case the field "index1/index2/index3" is searched in the event and replaced by its value.
 
-- <a name="template_file"></a>`template_file`(optional): A json file path to be read as index template for custom data ingestion. The json file content should be the json value of
+- <a name="template_file"></a>`template_file`(optional): A json file path or AWS S3 URI to be read as index template for custom data ingestion. The json file content should be the json value of
 `"template"` key in the json content of OpenSearch [Index templates API](https://opensearch.org/docs/latest/opensearch/index-templates/), 
 e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-plugins/opensearch/src/main/resources/otel-v1-apm-span-index-template.json)
 
@@ -143,12 +147,23 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 
 - `routing_field` (optional): A string of routing field which is used as hash for generating sharding id for the document when it is stored in the OpenSearch. Each incoming record is searched for this field and if it is present, it is used as the routing field for the document, if it is not present, default routing mechanism used by the OpenSearch when storing the document. Standard Data Prepper Json pointer syntax is used for retrieving the value. If the field has "/" in it then the incoming record is searched in the json sub-objects instead of just in the root of the json object. For example, if the field is specified as `info/id`, then the root of the event is searched for `info` and if it is found, then `id` is searched inside it. The value specified for `id` is used as the routing id
 
-- `ism_policy_file` (optional): A String of absolute file path for an ISM (Index State Management) policy JSON file. This policy file is effective only when there is no built-in policy file for the index type. For example, `custom` index type is currently the only one without a built-in policy file, thus it would use the policy file here if it's provided through this parameter. OpenSearch documentation has more about [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/)
+- `ism_policy_file` (optional): A String of absolute file path or AWS S3 URI for an ISM (Index State Management) policy JSON file. This policy file is effective only when there is no built-in policy file for the index type. For example, `custom` index type is currently the only one without a built-in policy file, thus it would use the policy file here if it's provided through this parameter. OpenSearch documentation has more about [ISM policies.](https://opensearch.org/docs/latest/im-plugin/ism/policies/)
+
+- `s3_aws_region` (optional): A String represents the region of S3 bucket to read `template_file` or `ism_policy_file`, e.g. us-west-2. Only applies to Amazon OpenSearch Service. Defaults to `us-east-1`.
+
+- `s3_aws_sts_role_arn` (optional): An IAM role arn which the sink plugin will assume to read `template_file` or `ism_policy_file` from S3. If not provided the plugin will use the default credentials.
 
 - `trace_analytics_raw`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
 
 - `trace_analytics_service_map`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
 
+### <a name="aws_configuration">AWS Configuration</a>
+
+* `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
+* `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
+* `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
+
+## Metrics
 ### Management Disabled Index Type
 
 Normally Data Prepper manages the indices it needs within OpenSearch. When `index_type` is set to
@@ -167,7 +182,7 @@ is explicitly mapped by your index template.
 
 ## Metrics
 
-Besides common metrics in [AbstractSink](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/sink/AbstractSink.java), OpenSearch sink introduces the following custom metrics.
+Besides common metrics in [AbstractSink](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/sink/AbstractSink.java), OpenSearch sink introduces the following custom metrics.
 
 ### Timer
 
@@ -179,6 +194,14 @@ Besides common metrics in [AbstractSink](https://github.com/opensearch-project/d
 - `documentsSuccess`: measures number of documents successfully sent to ES by bulk requests including retries.
 - `documentsSuccessFirstAttempt`: measures number of documents successfully sent to ES by bulk requests on first attempt.
 - `documentErrors`: measures number of documents failed to be sent by bulk requests.
+- `bulkRequestFailed`: measures number of bulk requests failed at the request level.
+- `bulkRequestNumberOfRetries`: measures number of times bulk requests are retried.
+- `bulkBadRequestErrors`: measures number of errors due to bad bulk requests. `RestStatus` values of `BAD_REQUEST`, `EXPECTATION_FAILED`, `UNPROCESSABLE_ENTITY`, `FAILED_DEPENDENCY`, and `NOT_ACCEPTABLE` are mapped to this errors counter.
+- `bulkRequestNotAllowedErrors`: measures number of errors due to requests that are not allowed. `RestStatus` values of `UNAUTHORIZED`, `FORBIDDEN`, `PAYMENT_REQUIRED`, `METHOD_NOT_ALLOWED`, `PROXY_AUTHENTICATION`, `LOCKED`, and `TOO_MANY_REQUESTS` are mapped to this errors counter.
+- `bulkRequestInvalidInputErrors`: measures number of errors due to requests with invalid input. `RestStatus` values of `REQUEST_ENTITY_TOO_LARGE`, `REQUEST_URI_TOO_LONG`, `REQUESTED_RANGE_NOT_SATISFIED`, `LENGTH_REQUIRED`, `PRECONDITION_FAILED`, `UNSUPPORTED_MEDIA_TYPE`, and `CONFLICT` are mapped to this errors counter.
+- `bulkRequestNotFoundErrors`: measures number of errors due to resource/URI not found. `RestStatus` values of `NOT_FOUND` and `GONE` are mapped to this errors counter.
+- `bulkRequestTimeoutErrors`: measures number of requests failed with timeout error. `RestStatus` value of `REQUEST_TIMEOUT` is mapped to this errors counter.
+- `bulkRequestServerErrors`: measures the number of requests failed with 5xx errors. `RestStatus` value of 500-599 are mapped to this errors counter.
 
 ### Distribution Summary
 - `bulkRequestSizeBytes`: measures the distribution of bulk request's payload sizes in bytes.

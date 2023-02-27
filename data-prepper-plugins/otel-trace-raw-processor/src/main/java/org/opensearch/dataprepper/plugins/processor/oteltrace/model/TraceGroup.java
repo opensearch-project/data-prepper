@@ -13,6 +13,11 @@ public class TraceGroup {
 
     private final TraceGroupFields traceGroupFields;
 
+    private TraceGroup(final String traceGroup, final TraceGroupFields traceGroupFields) {
+        this.traceGroup = traceGroup;
+        this.traceGroupFields = traceGroupFields;
+    }
+
     public String getTraceGroup() {
         return traceGroup;
     }
@@ -21,33 +26,7 @@ public class TraceGroup {
         return traceGroupFields;
     }
 
-    TraceGroup(final TraceGroupBuilder traceGroupBuilder) {
-        traceGroup = traceGroupBuilder.traceGroup;
-        traceGroupFields = traceGroupBuilder.traceGroupFields;
-    }
-
-    public static class TraceGroupBuilder {
-        private String traceGroup;
-        private TraceGroupFields traceGroupFields;
-
-        public TraceGroupBuilder setTraceGroup(final String traceGroup) {
-            this.traceGroup = traceGroup;
-            return this;
-        }
-
-        public TraceGroupBuilder setTraceGroupFields(final TraceGroupFields traceGroupFields) {
-            this.traceGroupFields = traceGroupFields;
-            return this;
-        }
-
-        public TraceGroup build() {
-            return new TraceGroup(this);
-        }
-
-        public TraceGroupBuilder setFromSpan(final Span span) {
-            return this
-                    .setTraceGroup(span.getTraceGroup())
-                    .setTraceGroupFields(span.getTraceGroupFields());
-        }
+    public static TraceGroup fromSpan(final Span span) {
+        return new TraceGroup(span.getTraceGroup(), span.getTraceGroupFields());
     }
 }

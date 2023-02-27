@@ -9,10 +9,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.trace.Span;
-import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,35 +51,18 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     }
 
     @Override
+    public void initialize() {
+    }
+
+    @Override
+    public boolean isReady() {
+        return true;
+    }
+
+    @Override
     public void output(final Collection<T> records) {
         if (buffer != null && !isStopRequested.get()) {
             for (T record : records) {
-		if(record.getData() instanceof JacksonSpan) {
-		    try {
-		        final Span spanEvent = (Span)record.getData();
-			Span newSpanEvent = JacksonSpan.builder()
-				  .withData(spanEvent.toMap())
-				  .withEventMetadata(spanEvent.getMetadata())
-			          .build(); 
-			record = (T) (new Record<>(newSpanEvent));
-		    } catch (Exception ex) {
-                        LOG.error("PipelineConnector [{}-{}]:  exception while duplicating the event [{}]",
-                                sinkPipelineName, sourcePipelineName, ex);
-                    }
-		} else if(record.getData() instanceof Event) {
-		    try {
-		        final Event recordEvent = (Event)record.getData();
-			Event newRecordEvent = JacksonEvent.builder() 
-			          .withData(recordEvent.toMap()) 
-				  .withEventMetadata(recordEvent.getMetadata()) 
-			          .build(); 
-			record = (T) (new Record<>(newRecordEvent));
-		    } catch (Exception ex) {
-                        LOG.error("PipelineConnector [{}-{}]:  exception while duplicating the event [{}]",
-                                sinkPipelineName, sourcePipelineName, ex);
-                    }
-		}
-
                 while (true) {
                     try {
                         buffer.write(record, DEFAULT_WRITE_TIMEOUT);
