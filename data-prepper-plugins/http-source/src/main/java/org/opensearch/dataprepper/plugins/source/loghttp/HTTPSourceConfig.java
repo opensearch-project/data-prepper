@@ -35,6 +35,9 @@ public class HTTPSourceConfig {
     @Max(65535)
     private int port = DEFAULT_PORT;
 
+    @JsonProperty("path")
+    private String path = DEFAULT_LOG_INGEST_URI;
+
     @JsonProperty("request_timeout")
     @Min(2)
     private int requestTimeoutInMillis = DEFAULT_REQUEST_TIMEOUT_MS;
@@ -89,6 +92,11 @@ public class HTTPSourceConfig {
                 sslKeyFile.toLowerCase().startsWith(S3_PREFIX);
     }
 
+    @AssertTrue(message = "path should start with /")
+    boolean isPathValid() {
+        return path.startsWith("/");
+    }
+
     @AssertTrue(message = "ssl_certificate_file cannot be a empty or null when ssl is enabled")
     boolean isSslCertificateFileValid() {
         if (ssl && !useAcmCertificateForSsl) {
@@ -129,6 +137,10 @@ public class HTTPSourceConfig {
 
     public int getPort() {
         return port;
+    }
+
+    public String getPath() {
+        return path;
     }
 
     public int getRequestTimeoutInMillis() {
