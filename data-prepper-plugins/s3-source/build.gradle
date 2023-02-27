@@ -13,6 +13,10 @@ repositories {
 
 dependencies {
     implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:parquet-codecs')
+    implementation project(':data-prepper-plugins:csv-processor')
+    implementation project(':data-prepper-plugins:parse-json-processor')
+    implementation project(':data-prepper-plugins:newline-codecs')
     implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
