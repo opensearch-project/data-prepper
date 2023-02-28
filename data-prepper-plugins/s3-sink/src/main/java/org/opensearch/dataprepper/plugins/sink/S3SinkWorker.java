@@ -8,14 +8,11 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.NavigableSet;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.commons.lang3.time.StopWatch;
 import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 import org.opensearch.dataprepper.model.event.Event;
-//import org.opensearch.dataprepper.plugins.sink.stream.InMemoryAccumulator;
-//import org.opensearch.dataprepper.plugins.sink.stream.LocalFileAccumulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,7 +109,6 @@ public class S3SinkWorker implements Runnable {
 					"In-Memory snapshot info : Byte_count = {} Bytes \t Event_count = {} Records \t Event_collection_duration = {} sec & \t Number of stream {}",
 					byteCount, eventCount, eventCollectionDuration, streamCount);
 
-			//new InMemoryAccumulator(inMemoryEventMap, streamCount, s3SinkService, s3SinkConfig).doAccumulate();
 		} catch (Exception e) {
 			LOG.error("Exception while storing recoreds into In-Memory", e);
 		}
@@ -143,9 +139,6 @@ public class S3SinkWorker implements Runnable {
 			LOG.info(
 					"Local-File snapshot info : Byte_count = {} Bytes, \t Event_count = {} Records  \n & Event_collection_duration = {} Sec",
 					byteCount, eventCount, eventCollectionDuration);
-
-			//new LocalFileAccumulator(localFileEventSet, s3SinkService, s3SinkConfig).doAccumulate();
-
 		} catch (Exception e) {
 			LOG.error("Exception while storing recoreds into Local-file", e);
 		} finally {
