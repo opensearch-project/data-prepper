@@ -18,7 +18,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import java.util.Map;
 import java.util.UUID;
 
-/*
+/**
     An implementation class AWS Authentication configuration
  */
 public class AwsAuthenticationOptions {

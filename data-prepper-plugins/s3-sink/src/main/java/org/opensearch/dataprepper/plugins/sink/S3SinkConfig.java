@@ -13,7 +13,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
-/*
+/**
     An implementation class of s3 sink configuration
  */
 public class S3SinkConfig {

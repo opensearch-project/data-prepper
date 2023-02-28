@@ -10,7 +10,9 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.s3.S3Client;
-
+/**
+ * Create s3 client
+ */
 public class S3SinkService {
 	
 	private static final Logger LOG = LoggerFactory.getLogger(S3SinkService.class);

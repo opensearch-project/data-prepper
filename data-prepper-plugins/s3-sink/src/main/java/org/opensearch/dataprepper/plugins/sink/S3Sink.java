@@ -40,7 +40,6 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 	private static boolean isStopRequested;
 	
 	private final Codec codec;
-	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	/**
 	 * 

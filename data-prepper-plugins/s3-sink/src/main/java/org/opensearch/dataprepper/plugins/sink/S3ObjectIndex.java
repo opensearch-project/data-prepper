@@ -17,6 +17,7 @@ import java.util.regex.Pattern;
 
 /**
  * Reference to an S3 object key Index patterns.
+ * 
  */
 
 public class S3ObjectIndex {

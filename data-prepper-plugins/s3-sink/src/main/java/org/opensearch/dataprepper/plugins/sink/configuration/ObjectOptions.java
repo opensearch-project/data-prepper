@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 
-/*
+/**
     An implementation class of Threshold configuration Options
  */
 public class ObjectOptions {

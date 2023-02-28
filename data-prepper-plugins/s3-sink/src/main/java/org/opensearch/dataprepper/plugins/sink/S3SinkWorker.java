@@ -115,7 +115,7 @@ public class S3SinkWorker implements Runnable {
 					"In-Memory snapshot info : Byte_count = {} Bytes \t Event_count = {} Records \t Event_collection_duration = {} sec & \t Number of stream {}",
 					byteCount, eventCount, eventCollectionDuration, streamCount);
 
-			new InMemoryAccumulator(inMemoryEventMap, streamCount, s3SinkService, s3SinkConfig).doAccumulate();
+			//new InMemoryAccumulator(inMemoryEventMap, streamCount, s3SinkService, s3SinkConfig).doAccumulate();
 		} catch (Exception e) {
 			LOG.error("Exception while storing recoreds into In-Memory", e);
 		}
@@ -147,7 +147,7 @@ public class S3SinkWorker implements Runnable {
 					"Local-File snapshot info : Byte_count = {} Bytes, \t Event_count = {} Records  \n & Event_collection_duration = {} Sec",
 					byteCount, eventCount, eventCollectionDuration);
 
-			new LocalFileAccumulator(localFileEventSet, s3SinkService, s3SinkConfig).doAccumulate();
+			//new LocalFileAccumulator(localFileEventSet, s3SinkService, s3SinkConfig).doAccumulate();
 
 		} catch (Exception e) {
 			LOG.error("Exception while storing recoreds into Local-file", e);

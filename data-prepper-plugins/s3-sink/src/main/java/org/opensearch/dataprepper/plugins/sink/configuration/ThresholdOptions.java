@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 
-/*
+/**
     An implementation class of s3 index configuration Options
  */
 public class ThresholdOptions {
