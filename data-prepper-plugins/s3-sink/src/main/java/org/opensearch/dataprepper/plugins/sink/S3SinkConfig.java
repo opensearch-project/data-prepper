@@ -1,21 +1,96 @@
-package org.opensearch.dataprepper.plugins.sink;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-import org.opensearch.dataprepper.plugins.sink.configuration.SinkAwsAuthenticationOptions;
+package org.opensearch.dataprepper.plugins.sink;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.configuration.ObjectOptions;
+import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
+/*
+    An implementation class of s3 sink configuration
+ */
 public class S3SinkConfig {
 
-	@JsonProperty("sink_aws")
+    @JsonProperty("aws")
+    @NotNull
+    @Valid
+    private AwsAuthenticationOptions awsAuthenticationOptions;
+
+    @JsonProperty("threshold")
+    @NotNull
+    private ThresholdOptions thresholdOptions;
+
+    @JsonProperty("object")
+    @NotNull
+    private ObjectOptions objectOptions;
+
+   	@JsonProperty("codec")
 	@NotNull
-	@Valid
-	private SinkAwsAuthenticationOptions sinkAwsAuthenticationOptions;
+    private PluginModel codec;
 
-	public SinkAwsAuthenticationOptions getSinkAwsAuthenticationOptions() {
-		return sinkAwsAuthenticationOptions;
+    @JsonProperty("temporary_storage")
+    @NotNull
+    private String temporaryStorage;
+
+    @JsonProperty("bucket")
+    @NotNull
+    private String bucketName;
+
+    @JsonProperty("key_path_prefix")
+    @NotNull
+    private String keyPathPrefix;
+
+    /*
+        Aws Authentication configuration Options
+     */
+    public AwsAuthenticationOptions getAwsAuthenticationOptions() {
+        return awsAuthenticationOptions;
+    }
+
+    /*
+        Threshold configuration Options
+     */
+    public ThresholdOptions getThresholdOptions() {
+        return thresholdOptions;
+    }
+
+    /*
+        s3 index configuration Options
+     */
+    public ObjectOptions getObjectOptions() {
+        return objectOptions;
+    }
+
+    /*
+        sink codec configuration Options
+     */
+    public PluginModel getCodec() { return codec; }
+
+    /*
+        s3 index path configuration Option
+     */
+    public String getKeyPathPrefix() {
+        return keyPathPrefix;
+    }
+
+    /*
+        s3 bucket name configuration Option
+     */
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    /*
+        Temporary storage location configuration Options
+     */
+    public String getTemporaryStorage() {
+		return temporaryStorage;
 	}
-
 }
