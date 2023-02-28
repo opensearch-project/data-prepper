@@ -62,7 +62,7 @@ public class MultithreadedConsumer implements Runnable, ConsumerRebalanceListene
 
 	@Override
 	public void run() {
-		logger.info("Start reading ConsumerId:{}, Consumer Group: {}", consumerId, consumerGroupId);
+		logger.info("Start reading ConsumerID:{}, Consumer Group: {}", consumerId, consumerGroupId);
 		try {
 			if (!sourceConfig.getTopicName().isEmpty() && isTopicAvailable(sourceConfig.getTopicName())) {
 				consumer.subscribe(Collections.singletonList(sourceConfig.getTopicName()), this);

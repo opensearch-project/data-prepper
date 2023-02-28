@@ -10,7 +10,7 @@ log-pipeline:
       value_deserializer: org.apache.kafka.common.serialization.StringDeserializer
       schema_type: string
       topic_name: my-topic
-      max_retry_attempts: 3
+      max_retry_attempts: 5
       auto_offset_reset: earliest
   sink:
     - stdout:

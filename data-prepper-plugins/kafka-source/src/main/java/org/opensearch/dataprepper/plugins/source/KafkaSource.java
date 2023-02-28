@@ -80,7 +80,6 @@ public class KafkaSource implements Source<Record<Event>> {
 		props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, sourceConfig.getEnableAutoCommitInterval());
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, sourceConfig.getAutoOffsetReset());
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, sourceConfig.getBootStrapServers());
-		// props.put(ConsumerConfig.CLIENT_ID_CONFIG, "");
 		// props.put(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG, "");
 		props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, sourceConfig.getEnableAutoCommit());
 		// props.put(ConsumerConfig.EXCLUDE_INTERNAL_TOPICS_CONFIG, "");
