@@ -1,0 +1,21 @@
+simple-sample-pipeline:
+  workers: 4
+  delay: "5000"
+  source:
+    random:
+  sink:
+    - s3:
+        aws:
+          region: us-east-1
+          sts_role_arn: arn:aws:iam::701869769844 :role/s3-full-access
+        bucket: dataprepper
+        key_path_prefix: logdata
+        object:
+          file_pattern: logs-${yyyy-MM-dd}
+        threshold:
+          event_count: 200
+          byte_capacity: 2500
+          event_collection_duration: 20
+        codec: 
+          json:
+        temporary_storage: local_file

@@ -91,4 +91,5 @@ include 'release:docker'
 include 'release:maven'
 include 'e2e-test:peerforwarder'
 include 'rss-source'
+include 'data-prepper-plugins:s3-sink'
 
