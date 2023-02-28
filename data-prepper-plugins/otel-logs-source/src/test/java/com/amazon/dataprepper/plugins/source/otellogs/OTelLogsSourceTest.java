@@ -307,6 +307,70 @@ class OTelLogsSourceTest {
     }
 
     @Test
+    void testHttpFullJsonWithCustomPathAndAuthHeader_with_successful_response() throws InvalidProtocolBufferException {
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelLogsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelLogsSourceConfig.getPath()).thenReturn(TEST_PATH);
+
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String encodeToString = Base64.getEncoder()
+                .encodeToString(String.format("%s:%s", USERNAME, PASSWORD).getBytes(StandardCharsets.UTF_8));
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/logs";
+
+        WebClient.of().prepare()
+                .post("http://127.0.0.1:21892" + transformedPath)
+                .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportLogsRequest()).getBytes())
+                .header("Authorization", "Basic " + encodeToString)
+                .execute()
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpFullJsonWithCustomPathAndAuthHeader_with_unsuccessful_response() throws InvalidProtocolBufferException {
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelLogsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelLogsSourceConfig.getPath()).thenReturn(TEST_PATH);
+
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/logs";
+
+        WebClient.of().prepare()
+                .post("http://127.0.0.1:21892" + transformedPath)
+                .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportLogsRequest()).getBytes())
+                .execute()
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNAUTHORIZED, throwable))
+                .join();
+    }
+
+    @Test
     void testServerStartCertFileSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
@@ -666,8 +730,8 @@ class OTelLogsSourceTest {
         doThrow(bufferExceptionClass)
                 .when(buffer)
                 .writeAll(anyCollection(), anyInt());
-        final ExportLogsServiceRequest exportTraceRequest = createExportLogsRequest();
-        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportTraceRequest));
+        final ExportLogsServiceRequest exportLogsRequest = createExportLogsRequest();
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportLogsRequest));
 
         assertThat(actualException.getStatus(), notNullValue());
         assertThat(actualException.getStatus().getCode(), equalTo(expectedStatusCode));
