@@ -34,7 +34,8 @@ public class PeerForwarderProvider {
         this.pluginMetrics = pluginMetrics;
     }
 
-    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys) {
+    public PeerForwarder register(final String pipelineName, final String pluginId, final Set<String> identificationKeys,
+                                  final Integer pipelineWorkerThreads) {
         if (pipelinePeerForwarderReceiveBufferMap.containsKey(pipelineName) &&
                 pipelinePeerForwarderReceiveBufferMap.get(pipelineName).containsKey(pluginId)) {
             throw new RuntimeException("Data Prepper 2.0 will only support a single peer-forwarder per pipeline/plugin type");
@@ -47,7 +48,19 @@ public class PeerForwarderProvider {
                 hashRing = peerForwarderClientFactory.createHashRing();
             }
             return new RemotePeerForwarder(
-                    peerForwarderClient, hashRing, peerForwarderReceiveBuffer, pipelineName, pluginId, identificationKeys, pluginMetrics
+                    peerForwarderClient,
+                    hashRing,
+                    peerForwarderReceiveBuffer,
+                    pipelineName,
+                    pluginId,
+                    identificationKeys,
+                    pluginMetrics,
+                    peerForwarderConfiguration.getBatchDelay(),
+                    peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(),
+                    peerForwarderConfiguration.getForwardingBatchSize(),
+                    peerForwarderConfiguration.getForwardingBatchQueueDepth(),
+                    peerForwarderConfiguration.getForwardingBatchTimeout(),
+                    pipelineWorkerThreads
             );
         }
         else {
@@ -57,7 +70,7 @@ public class PeerForwarderProvider {
 
     private PeerForwarderReceiveBuffer<Record<Event>> createBufferPerPipelineProcessor(final String pipelineName, final String pluginId) {
         final PeerForwarderReceiveBuffer<Record<Event>> peerForwarderReceiveBuffer = new
-                PeerForwarderReceiveBuffer<>(peerForwarderConfiguration.getBufferSize(), peerForwarderConfiguration.getBatchSize());
+                PeerForwarderReceiveBuffer<>(peerForwarderConfiguration.getBufferSize(), peerForwarderConfiguration.getBatchSize(), pipelineName, pluginId);
 
         final Map<String, PeerForwarderReceiveBuffer<Record<Event>>> pluginsBufferMap =
                 pipelinePeerForwarderReceiveBufferMap.computeIfAbsent(pipelineName, k -> new HashMap<>());

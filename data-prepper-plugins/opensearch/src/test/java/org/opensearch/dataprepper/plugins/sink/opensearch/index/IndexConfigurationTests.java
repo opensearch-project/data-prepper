@@ -5,19 +5,32 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import org.apache.commons.io.IOUtils;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.junit.Test;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.http.AbortableInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
+import static org.apache.commons.io.FileUtils.ONE_MB;
+import static org.mockito.ArgumentMatchers.any;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
@@ -69,6 +82,38 @@ public class IndexConfigurationTests {
                 .withBulkSize(-1)
                 .build();
         assertEquals(-1, indexConfiguration.getBulkSize());
+    }
+
+    @Test
+    public void testValidCustom_from_s3() {
+        final String testTemplateFilePath = "s3://folder/file.json";
+        final String testS3AwsRegion = "us-east-2";
+        final String testS3StsRoleArn = "arn:aws:iam::123456789:user/user-role";
+        final String fileContent = "{}";
+        final long CONTENT_LENGTH = 3 * ONE_MB;
+
+        final S3Client s3Client = mock(S3Client.class);
+
+        final InputStream fileObjectStream = IOUtils.toInputStream(fileContent, StandardCharsets.UTF_8);
+        final ResponseInputStream<GetObjectResponse> fileInputStream = new ResponseInputStream<>(
+                GetObjectResponse.builder().contentLength(CONTENT_LENGTH).build(),
+                AbortableInputStream.create(fileObjectStream)
+        );
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(fileInputStream);
+
+        final String testIndexAlias = UUID.randomUUID().toString();
+        IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexAlias(testIndexAlias)
+                .withTemplateFile(testTemplateFilePath)
+                .withS3AwsRegion(testS3AwsRegion)
+                .withS3AWSStsRoleArn(testS3StsRoleArn)
+                .withS3Client(s3Client)
+                .build();
+
+        assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
+        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+        assertEquals(testS3AwsRegion, indexConfiguration.getS3AwsRegion());
+        assertEquals(testS3StsRoleArn, indexConfiguration.getS3AwsStsRoleArn());
     }
 
     @Test

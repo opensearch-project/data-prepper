@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
 
@@ -12,7 +13,7 @@ import java.util.Map;
  * The event metadata contains internal event fields. These fields are used only within Data Prepper, and are not passed down to Sinks.
  * @since 1.2
  */
-public interface EventMetadata {
+public interface EventMetadata extends Serializable {
 
     /**
      * Retrieves the type of event

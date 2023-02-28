@@ -1,2 +1,2 @@
 ssl: false
-metricRegistries: [Prometheus, CloudWatch]
+metric_registries: [Prometheus, CloudWatch]

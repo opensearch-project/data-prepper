@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
@@ -157,6 +158,29 @@ public class JacksonSummaryTest {
     public void testGetSchemaUrl() {
         final String url = summary.getSchemaUrl();
         assertThat(url, Matchers.is(Matchers.equalTo(TEST_SCHEMA_URL)));
+    }
+    
+    @Test
+    public void testSummaryJsonToString() {
+        String attrKey = UUID.randomUUID().toString();
+        String attrVal = UUID.randomUUID().toString();
+        final Map<String, Object> attributes = Map.of(attrKey, attrVal);
+        summary.put("attributes", attributes);
+        final String resultAttr = summary.toJsonString();
+        String attrString = String.format("\"attributes\":{\"%s\":\"%s\"}", attrKey, attrVal);
+        assertThat(resultAttr.indexOf(attrString), equalTo(-1));
+    }
+
+    @Test
+    public void testSummaryJsonToStringWithAttributes() {
+        summary = builder.build(false);
+        String attrKey = UUID.randomUUID().toString();
+        String attrVal = UUID.randomUUID().toString();
+        final Map<String, Object> attributes = Map.of(attrKey, attrVal);
+        summary.put("attributes", attributes);
+        final String resultAttr = summary.toJsonString();
+        String attrString = String.format("\"attributes\":{\"%s\":\"%s\"}", attrKey, attrVal);
+        assertThat(resultAttr.indexOf(attrString), not(equalTo(-1)));
     }
 
 }

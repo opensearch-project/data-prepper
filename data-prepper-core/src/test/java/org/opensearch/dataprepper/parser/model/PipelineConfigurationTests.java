@@ -198,9 +198,9 @@ class PipelineConfigurationTests {
         when(pipelineModel.getProcessors()).thenReturn(processors);
         when(pipelineModel.getSinks()).thenReturn(sinks);
         when(pipelineModel.getWorkers()).thenReturn(TestDataProvider.TEST_WORKERS);
-        when(pipelineModel.getReadBatchDelay()).thenReturn(0);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(-1);
         final IllegalArgumentException actual = assertThrows(IllegalArgumentException.class, () -> new PipelineConfiguration(pipelineModel));
-        assertThat(actual.getMessage(), equalTo("Invalid configuration, delay cannot be 0"));
+        assertThat(actual.getMessage(), equalTo("Invalid configuration, delay must be a non-negative integer."));
     }
 
     @Test

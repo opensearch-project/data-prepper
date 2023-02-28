@@ -12,3 +12,14 @@ or from project root directory
 ```
 ./gradlew :e2e-test:log:basicLogEndToEndTest
 ```
+
+## Parallel Grok and string substitute End-to-End test
+
+Run from current directory
+```
+./gradlew :parallelGrokStringSubstituteTest
+```
+or from project root directory
+```
+./gradlew :e2e-test:log:parallelGrokStringSubstituteTest
+```

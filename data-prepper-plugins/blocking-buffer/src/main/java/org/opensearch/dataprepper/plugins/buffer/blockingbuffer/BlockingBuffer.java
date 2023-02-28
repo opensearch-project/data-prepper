@@ -146,24 +146,43 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
      */
     @Override
     public Map.Entry<Collection<T>, CheckpointState> doRead(int timeoutInMillis) {
-        final List<T> records = new ArrayList<>();
-        final Stopwatch stopwatch = Stopwatch.createStarted();
-        try {
+        final List<T> records = new ArrayList<>(batchSize);
+        int recordsRead = 0;
+
+        if (timeoutInMillis == 0) {
+            final T record = pollForBufferEntry(5, TimeUnit.MILLISECONDS);
+            if (record != null) { //record can be null, avoiding adding nulls
+                records.add(record);
+                recordsRead++;
+            }
+
+            recordsRead += blockingQueue.drainTo(records, batchSize - 1);
+        } else {
+            final Stopwatch stopwatch = Stopwatch.createStarted();
             while (stopwatch.elapsed(TimeUnit.MILLISECONDS) < timeoutInMillis && records.size() < batchSize) {
-                final T record = blockingQueue.poll(timeoutInMillis, TimeUnit.MILLISECONDS);
+                final T record = pollForBufferEntry(timeoutInMillis, TimeUnit.MILLISECONDS);
                 if (record != null) { //record can be null, avoiding adding nulls
                     records.add(record);
+                    recordsRead++;
                 }
-                if (records.size() < batchSize) {
-                    blockingQueue.drainTo(records, batchSize - records.size());
+
+                if (recordsRead < batchSize) {
+                    recordsRead += blockingQueue.drainTo(records, batchSize - recordsRead);
                 }
             }
-        } catch (InterruptedException ex) {
-            LOG.info("Pipeline [{}] - Interrupt received while reading from buffer", pipelineName);
-            throw new RuntimeException(ex);
         }
-        final CheckpointState checkpointState = new CheckpointState(records.size());
+
+        final CheckpointState checkpointState = new CheckpointState(recordsRead);
         return new AbstractMap.SimpleEntry<>(records, checkpointState);
+    }
+
+    private T pollForBufferEntry(final int timeoutValue, final TimeUnit timeoutUnit) {
+        try {
+            return blockingQueue.poll(timeoutValue, timeoutUnit);
+        } catch (InterruptedException e) {
+            LOG.info("Pipeline [{}] - Interrupt received while reading from buffer", pipelineName);
+            throw new RuntimeException(e);
+        }
     }
 
     /**

@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.parser.model;
 
 import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -33,7 +35,9 @@ import static org.hamcrest.Matchers.isA;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DataPrepperConfigurationTests {
-    private static SimpleModule simpleModule = new SimpleModule().addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
+    private static SimpleModule simpleModule = new SimpleModule()
+            .addDeserializer(Duration.class, new DataPrepperDurationDeserializer())
+            .addDeserializer(ByteCount.class, new ByteCountDeserializer());
     private static ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory()).registerModule(simpleModule);
 
     private static DataPrepperConfiguration makeConfig(String filePath) throws IOException {
@@ -93,6 +97,24 @@ public class DataPrepperConfigurationTests {
     }
 
     @Test
+    void testConfigurationWithCamelCaseOptions() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration =
+                makeConfig(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_CAMEL_CASE_OPTIONS);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.getAuthentication(), notNullValue());
+        assertThat(dataPrepperConfiguration.getAuthentication().getPluginName(), equalTo("http_basic"));
+        assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), notNullValue());
+        assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), hasKey("username"));
+        assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), hasKey("password"));
+        final Map<String, String> metricTags = dataPrepperConfiguration.getMetricTags();
+        assertThat(metricTags, notNullValue());
+        assertThat(metricTags.get("testKey1"), equalTo("testValue1"));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes().size(), Matchers.equalTo(1));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.CloudWatch));
+    }
+
+    @Test
     void testConfigWithValidMetricTags() throws IOException {
         final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
                 TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_TAGS);
@@ -102,6 +124,24 @@ public class DataPrepperConfigurationTests {
         assertThat(metricTags, notNullValue());
         assertThat(metricTags.get("testKey1"), equalTo("testValue1"));
         assertThat(metricTags.get("testKey2"), equalTo("testValue2"));
+    }
+
+    @Test
+    void testConfigWithValidMetricTagFilters() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
+                TestDataProvider.VALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.getMetricTagFilters(), notNullValue());
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().size(), equalTo(1));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getPattern(), equalTo("aws.sdk.**"));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags().size(), equalTo(1));
+        assertThat(dataPrepperConfiguration.getMetricTagFilters().get(0).getTags(), equalTo(Map.of("tag1", "value1")));
+    }
+
+    @Test
+    void testInvalidConfigWithMoreThan3Tags() {
+        assertThrows(ValueInstantiationException.class, () -> makeConfig(TestDataProvider.INVALID_DATA_PREPPER_CONFIG_WITH_METRIC_FILTER));
     }
 
     @Test
@@ -181,5 +221,15 @@ public class DataPrepperConfigurationTests {
     })
     void testConfigWithNegativeShutdownTimeout(final String configFile) {
         assertThrows(ValueInstantiationException.class, () -> makeConfig(configFile));
+    }
+
+    @Test
+    void testConfigWithHeapCircuitBreaker() throws IOException {
+        final DataPrepperConfiguration config = makeConfig("src/test/resources/valid_data_prepper_config_with_heap_circuit_breaker.yml");
+        assertThat(config, notNullValue());
+        assertThat(config.getCircuitBreakerConfig(), notNullValue());
+        assertThat(config.getCircuitBreakerConfig().getHeapConfig(), notNullValue());
+        assertThat(config.getCircuitBreakerConfig().getHeapConfig().getUsage(), notNullValue());
+        assertThat(config.getCircuitBreakerConfig().getHeapConfig().getUsage().getBytes(), Matchers.equalTo(2_684_354_560L));
     }
 }

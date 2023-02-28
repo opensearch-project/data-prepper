@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -17,6 +18,11 @@ import org.opensearch.client.RequestOptions;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -27,6 +33,7 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -34,17 +41,20 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 class IsmPolicyManagement implements IsmPolicyManagementStrategy {
+    private static final Logger LOG = LoggerFactory.getLogger(IsmPolicyManagement.class);
 
     // TODO: replace with new _opensearch API
     private static final String POLICY_MANAGEMENT_ENDPOINT = "/_opendistro/_ism/policies/";
     public static final String DEFAULT_INDEX_SUFFIX = "-000001";
     private static final String POLICY_FILE_ROOT_KEY = "policy";
     private static final String POLICY_FILE_ISM_TEMPLATE_KEY = "ism_template";
+    private static final String S3_PREFIX = "s3://";
 
     private final RestHighLevelClient restHighLevelClient;
     private final String policyName;
     private final String policyFile;
     private final String policyFileWithoutIsmTemplate;
+    private S3Client s3Client;
 
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
@@ -62,7 +72,8 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
 
     public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
                                final String policyName,
-                               final String policyFile) {
+                               final String policyFile,
+                               final S3Client s3Client) {
         checkNotNull(restHighLevelClient);
         checkArgument(StringUtils.isNotEmpty(policyName));
         checkArgument(StringUtils.isNotEmpty(policyFile));
@@ -70,6 +81,7 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         this.policyName = policyName;
         this.policyFile = policyFile;
         this.policyFileWithoutIsmTemplate = null;
+        this.s3Client = s3Client;
     }
 
     @Override
@@ -142,14 +154,43 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     private String retrievePolicyJsonString(final String fileName) throws IOException {
+        if (fileName.startsWith(S3_PREFIX)) {
+            final String ismPolicyJsonString = retrievePolicyJsonStringFromS3(fileName);
+            if (ismPolicyJsonString != null) {
+                return ismPolicyJsonString;
+            }
+            else {
+                throw new RuntimeException("Error encountered while processing ISM policy provided from S3.");
+            }
+        } else {
+            return retrievePolicyJsonStringFromFile(fileName);
+        }
+    }
+
+    private String retrievePolicyJsonStringFromS3(final String fileName) throws IOException {
+        String ismPolicy = null;
+        final FileReader s3FileReader = new S3FileReader(s3Client);
+        try (final InputStream inputStream = s3FileReader.readFile(fileName)) {
+            final Map<String, Object> stringObjectMap = new ObjectMapper().readValue(inputStream, new TypeReference<>() {
+            });
+            ismPolicy = new ObjectMapper().writeValueAsString(stringObjectMap);
+        } catch (JsonProcessingException e) {
+            LOG.info("Error encountered while processing JSON content in ISM policy file from S3.");
+        }
+
+        return ismPolicy;
+    }
+
+        private String retrievePolicyJsonStringFromFile(final String fileName) throws IOException {
+        final StringBuilder policyJsonBuffer = new StringBuilder();
         final File file = new File(fileName);
         final URL policyFileUrl;
+
         if (file.isAbsolute()) {
             policyFileUrl = file.toURI().toURL();
         } else {
             policyFileUrl = getClass().getClassLoader().getResource(fileName);
         }
-        final StringBuilder policyJsonBuffer = new StringBuilder();
         try (final InputStream inputStream = policyFileUrl.openStream();
              final BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
             reader.lines().forEach(line -> policyJsonBuffer.append(line).append("\n"));
@@ -157,7 +198,7 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         return policyJsonBuffer.toString();
     }
 
-    private Request createPolicyRequestFromFile(final String endPoint, final String policyJsonString) throws IOException {
+    private Request createPolicyRequestFromFile(final String endPoint, final String policyJsonString) {
         final Request request = new Request(HttpMethod.PUT, endPoint);
         request.setJsonEntity(policyJsonString);
         return request;

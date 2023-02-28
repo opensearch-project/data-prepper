@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
@@ -50,10 +53,9 @@ public class ServiceMapRelationship {
      */
     private String hashId;
 
-    public ServiceMapRelationship() {
-    }
+    private ServiceMapRelationship() { }
 
-    private ServiceMapRelationship(String serviceName, String kind, Endpoint destination, Endpoint target, String traceGroupName) {
+    private ServiceMapRelationship(final String serviceName, final String kind, final Endpoint destination, final Endpoint target, final String traceGroupName) {
         this.serviceName = serviceName;
         this.kind = kind;
         this.destination = destination;
@@ -92,61 +94,31 @@ public class ServiceMapRelationship {
         return serviceName;
     }
 
-    public void setServiceName(String serviceName) {
-        this.serviceName = serviceName;
-    }
-
     public String getKind() {
         return kind;
-    }
-
-    public void setKind(String kind) {
-        this.kind = kind;
     }
 
     public Endpoint getDestination() {
         return destination;
     }
 
-    public void setDestination(Endpoint destination) {
-        if(destination != null && target != null) {
-            throw new RuntimeException("Cannot set both target and destination.");
-        }
-        this.destination = destination;
-    }
-
     public Endpoint getTarget() {
         return target;
-    }
-
-    public void setTarget(Endpoint target) {
-        if(target != null && destination != null) {
-            throw new RuntimeException("Cannot set both target and destination.");
-        }
-        this.target = target;
     }
 
     public String getTraceGroupName() {
         return traceGroupName;
     }
 
-    public void setTraceGroupName(String traceGroupName) {
-        this.traceGroupName = traceGroupName;
-    }
-
     public String getHashId() {
         return hashId;
     }
 
-    public void setHashId(String hashId) {
-        this.hashId = hashId;
-    }
-
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ServiceMapRelationship that = (ServiceMapRelationship) o;
+        final ServiceMapRelationship that = (ServiceMapRelationship) o;
         return Objects.equals(serviceName, that.serviceName) &&
                 Objects.equals(kind, that.kind) &&
                 Objects.equals(destination, that.destination) &&
@@ -175,7 +147,7 @@ public class ServiceMapRelationship {
         if(THREAD_LOCAL_MESSAGE_DIGEST.get() == null) {
             try {
                 THREAD_LOCAL_MESSAGE_DIGEST.set(MessageDigest.getInstance(MD5));
-            } catch (NoSuchAlgorithmException e) {
+            } catch (final NoSuchAlgorithmException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -186,21 +158,22 @@ public class ServiceMapRelationship {
 
     /**
      * The endpoint follows the URL spec.
-     *
+     * <p>
      * Example, https://paymentservice/makePayment.
-     *
+     * <p>
      *  domain: paymentservice
      *  resource: makePayment
-     *
+     * <p>
      *
      */
     public static class Endpoint {
-        private String resource;
-        private String domain;
+        private final String resource;
+        private final String domain;
 
-        public Endpoint(){}
-
-        public Endpoint(final String resource, final String domain) {
+        @JsonCreator
+        public Endpoint(
+                @JsonProperty("resource") final String resource,
+                @JsonProperty("domain") final String domain) {
             this.resource = resource;
             this.domain = domain;
         }
@@ -209,23 +182,15 @@ public class ServiceMapRelationship {
             return resource;
         }
 
-        public void setResource(String resource) {
-            this.resource = resource;
-        }
-
         public String getDomain() {
             return domain;
         }
 
-        public void setDomain(String domain) {
-            this.domain = domain;
-        }
-
         @Override
-        public boolean equals(Object o) {
+        public boolean equals(final Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            Endpoint endpoint = (Endpoint) o;
+            final Endpoint endpoint = (Endpoint) o;
             return Objects.equals(resource, endpoint.resource) &&
                     Objects.equals(domain, endpoint.domain);
         }

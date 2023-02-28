@@ -75,6 +75,7 @@ class FileSinkTests {
     @Test
     void testValidFilePathStringRecord() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
+        Assertions.assertTrue(fileSink.isReady());
         fileSink.output(TEST_STRING_RECORDS);
         fileSink.shutdown();
 
@@ -87,6 +88,7 @@ class FileSinkTests {
     @Test
     void testValidFilePathCustomTypeRecord() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
+        Assertions.assertTrue(fileSink.isReady());
         final TestObject testObject = new TestObject();
         fileSink.output(Collections.singleton(new Record<>(testObject)));
         fileSink.shutdown();
@@ -98,6 +100,7 @@ class FileSinkTests {
     @Test
     void testValidFilePath() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
+        Assertions.assertTrue(fileSink.isReady());
         fileSink.output(TEST_RECORDS);
         fileSink.shutdown();
 
@@ -109,6 +112,7 @@ class FileSinkTests {
     @Test
     void testMultipleCallsToOutput() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
+        Assertions.assertTrue(fileSink.isReady());
         fileSink.output(Collections.singletonList(TEST_RECORDS.get(0)));
         fileSink.output(Collections.singletonList(TEST_RECORDS.get(1)));
         fileSink.shutdown();
@@ -121,6 +125,7 @@ class FileSinkTests {
     @Test
     void testCallingOutputAfterShutdownDoesNotWrite() throws IOException {
         final FileSink fileSink = new FileSink(completePluginSettingForFileSink(TEST_OUTPUT_FILE.getPath()));
+        Assertions.assertTrue(fileSink.isReady());
         fileSink.output(Collections.singletonList(TEST_RECORDS.get(0)));
         fileSink.shutdown();
         fileSink.output(Collections.singletonList(TEST_RECORDS.get(1)));
@@ -128,6 +133,11 @@ class FileSinkTests {
         final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
         assertThat(outputData, containsString(TEST_DATA_1));
         assertThat(outputData, not(containsString(TEST_DATA_2)));
+    }
+
+    @Test
+    void testWithDefaultFile() throws IOException {
+        assertThrows(RuntimeException.class, () -> new FileSink((String)null));
     }
 
     private PluginSetting completePluginSettingForFileSink(final String filepath) {

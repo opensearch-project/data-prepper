@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.buffer.blockingbuffer;
 
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -29,6 +30,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.StringJoiner;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
@@ -50,6 +53,7 @@ public class BlockingBufferTests {
     private static final int TEST_BUFFER_SIZE = 13;
     private static final int TEST_WRITE_TIMEOUT = 1_00;
     private static final int TEST_BATCH_READ_TIMEOUT = 5_000;
+    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     @BeforeEach
     public void setup() {
@@ -190,8 +194,9 @@ public class BlockingBufferTests {
         assertThat(readResult.getKey().size(), is(0));
     }
 
-    @Test
-    public void testBatchRead() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {0, TEST_BATCH_READ_TIMEOUT})
+    public void testBatchRead(final int readTimeout) throws Exception {
         final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
         final BlockingBuffer<Record<String>> blockingBuffer = new BlockingBuffer<>(completePluginSetting);
         assertThat(blockingBuffer, notNullValue());
@@ -201,7 +206,7 @@ public class BlockingBufferTests {
             blockingBuffer.write(record, TEST_WRITE_TIMEOUT);
         }
         verifyBufferUsageMetric(38.46153846153847);
-        final Map.Entry<Collection<Record<String>>, CheckpointState> partialReadResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> partialReadResult = blockingBuffer.read(readTimeout);
         final Collection<Record<String>> partialRecords = partialReadResult.getKey();
         final CheckpointState partialCheckpointState = partialReadResult.getValue();
         final int expectedBatchSize = (Integer) completePluginSetting.getAttributeFromSettings(ATTRIBUTE_BATCH_SIZE);
@@ -213,7 +218,7 @@ public class BlockingBufferTests {
             i++;
         }
         verifyBufferUsageMetric(15.384615384615385);
-        final Map.Entry<Collection<Record<String>>, CheckpointState> finalReadResult = blockingBuffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Map.Entry<Collection<Record<String>>, CheckpointState> finalReadResult = blockingBuffer.read(readTimeout);
         final Collection<Record<String>> finalBatch = finalReadResult.getKey();
         final CheckpointState finalCheckpointState = finalReadResult.getValue();
         assertThat(finalBatch.size(), is(testSize - expectedBatchSize));
@@ -244,6 +249,58 @@ public class BlockingBufferTests {
 
         assertFalse(blockingBuffer.isEmpty());
         verifyBufferUsageMetric(7.6923076923076925);
+    }
+
+    @Test
+    void testNonZeroBatchDelayReturnsAllRecords() throws Exception {
+        final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
+        final BlockingBuffer<Record<String>> buffer = new BlockingBuffer<>(completePluginSetting);
+        assertThat(buffer, notNullValue());
+
+        final Collection<Record<String>> testRecords = generateBatchRecords(1);
+        buffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+
+        final Collection<Record<String>> testRecords2 = generateBatchRecords(1);
+        EXECUTOR.submit(() -> {
+            try {
+                Thread.sleep(1000);
+                buffer.writeAll(testRecords2, TEST_WRITE_TIMEOUT);
+            } catch (final Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = buffer.read(TEST_BATCH_READ_TIMEOUT);
+        final Collection<Record<String>> records = readResult.getKey();
+        final CheckpointState checkpointState = readResult.getValue();
+        assertThat(records.size(), is(2));
+        assertThat(checkpointState.getNumRecordsToBeChecked(), is(2));
+    }
+
+    @Test
+    void testZeroBatchDelayReturnsAvailableRecords() throws Exception {
+        final PluginSetting completePluginSetting = completePluginSettingForBlockingBuffer();
+        final BlockingBuffer<Record<String>> buffer = new BlockingBuffer<>(completePluginSetting);
+        assertThat(buffer, notNullValue());
+
+        final Collection<Record<String>> testRecords = generateBatchRecords(1);
+        buffer.writeAll(testRecords, TEST_WRITE_TIMEOUT);
+
+        final Collection<Record<String>> testRecords2 = generateBatchRecords(1);
+        EXECUTOR.submit(() -> {
+            try {
+                Thread.sleep(1000);
+                buffer.writeAll(testRecords2, TEST_WRITE_TIMEOUT);
+            } catch (final Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        final Map.Entry<Collection<Record<String>>, CheckpointState> readResult = buffer.read(0);
+        final Collection<Record<String>> records = readResult.getKey();
+        final CheckpointState checkpointState = readResult.getValue();
+        assertThat(records.size(), is(1));
+        assertThat(checkpointState.getNumRecordsToBeChecked(), is(1));
     }
 
     @ParameterizedTest

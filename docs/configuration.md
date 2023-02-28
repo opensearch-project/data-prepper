@@ -34,6 +34,7 @@ Additionally, Log4j 2 configuration file is read from `config/log4j2.properties`
 Example Pipeline configuration file (pipelines.yaml):
 
 ```yaml
+version: 2
 entry-pipeline:
   workers: 4
   delay: "100"
@@ -67,29 +68,64 @@ service-map-pipeline:
 ```
 This sample pipeline creates a source to receive trace data and outputs transformed data to stdout. 
 
+* `delay`(Optional): An `int` representing the maximum duration in milliseconds to retrieve records from the buffer. If the buffer's specified batch_size has not been reached before this duration is exceeded, a partial batch is used. If this value is set to 0, all available records up to the batch size will be immediately returned. If the buffer is empty, the buffer will block for up to 5 milliseconds to wait for records. Default value is `3000`.
+* `workers`(Optional): An `int` representing the number of ProcessWorker threads for the pipeline.  Default value is `1`.
+
+### Versioning
+
+The pipeline configuration file now supports an optional `version` attribute. This can help users ensure the pipeline configuration
+used is compatible with the running data prepper version. Data Prepper now compares the version supplied in the confirmation at start
+time and will throw an exception if the version in the pipeline is greater than the running Data Prepper version. 
+This attribute can be specified with a shorthand format with only the major version (i.e. `2`) or major and minor version
+(i.e. `2.1`).
+
+#### Version Compatibility Matrix
+
+| Data Prepper Version | Pipeline Configuration Version | Compatible |
+|----------------------| ---- |------------|
+| 2.1                  | 2 | true       |
+| 2.1                  | 2.1 | true       |
+| 2.1                  | 2.0 | true       |
+| 2.1                  | null | true       |
+| 2.1                  | 1.5 | true       |
+| 2.1                  | 1 | true       |
+| 2.1                  | 3.0 | false      |
+| 2.1                  | 3 | false      |
 
 ## Server Configuration
 Data Prepper allows the following properties to be configured:
 
 * `ssl`: boolean indicating TLS should be used for server APIs. Defaults to `true`
-* `keyStoreFilePath`: string path to a .jks or .p12 keystore file. Required if `ssl` is `true`
-* `keyStorePassword` string password for keystore. Optional, defaults to empty string
-* `privateKeyPassword` string password for private key within keystore. Optional, defaults to empty string
-* `serverPort`: integer port number to use for server APIs. Defaults to `4900`
-* `metricRegistries`: list of metrics registries for publishing the generated metrics. Defaults to Prometheus; Prometheus and CloudWatch are currently supported.
-* `metricTags`: map of metric tag key-value pairs applied as common metric tags to meter registries. Defaults to empty map. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metricTags`, the value will overwrite those set through the above mechanism.
-
+* `key_store_file_path`: string path to a .jks or .p12 keystore file. Required if `ssl` is `true`
+    * alias for this property is `keyStoreFilePath`, which is deprecated and planned for removal
+* `key_store_password` string password for keystore. Optional, defaults to empty string
+    * alias for this property is `keyStorePassword`, which is deprecated and planned for removal
+* `private_key_password` string password for private key within keystore. Optional, defaults to empty string
+    * alias for this property is `privateKeyPassword`, which is deprecated and planned for removal
+* `server_port`: integer port number to use for server APIs. Defaults to `4900`
+    * alias for this property is `serverPort`, which is deprecated and planned for removal
+* `metric_registries`: list of metrics registries for publishing the generated metrics. Defaults to Prometheus; Prometheus and CloudWatch are currently supported.
+    * alias for this property is `metricRegistries`, which is deprecated and planned for removal
+* `metric_tags`: map of metric tag key-value pairs applied as common metric tags to meter registries. Defaults to empty map. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metric_tags`, the value will overwrite those set through the above mechanism.
+    * alias for this property is `metricTags`, which is deprecated and planned for removal
+* `metric_tag_filters`: list of pattern and tags. For each metric, only tags from the first pattern which matches to metric name will be added to the metric when processed in order configured. If none of the patterns match them tags from `metricTags` will be applied. Defaults to empty list.
+    * `pattern`: A string representing the Ant-style pattern of the metrics to match. Path separator for Ant Path is "." which is the separator used in all the metrics. You can find more on Ant-style path patterns [here](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/util/AntPathMatcher.html).
+    * `tags`: A map of key-value pairs applied to metrics that match with pattern. The maximum number of pairs is limited to 3. Note that `serviceName` is a reserved tag key with `DataPrepper` as default tag value. Its value could also be set through the environment variable `DATAPREPPER_SERVICE_NAME`. If `serviceName` is defined in `metricTags`, the value will overwrite those set through the above mechanism.
 Example Data Prepper configuration file (data-prepper-config.yaml) with SSL enabled:
 
 ```yaml
 ssl: true
-keyStoreFilePath: "/usr/share/data-prepper/keystore.p12"
-keyStorePassword: "password"
-privateKeyPassword: "password"
-serverPort: 4900
-metricRegistries: [Prometheus]
-metricTags:
-  customKey: customValue
+key_store_file_path: "/usr/share/data-prepper/keystore.p12"
+key_store_password: "password"
+private_key_password: "password"
+server_port: 4900
+metric_registries: [Prometheus]
+metric_tags:
+  custom_key: custom_value
+metric_tag_filters:
+  - pattern: "test-pipeline.grok.**"
+    tags:
+      custom_key: custom_value
 ```
 
 The Data Prepper Docker image runs with SSL enabled using a default self-signed certificate. 
@@ -145,6 +181,28 @@ To do so, add the argument below to the `docker run` command.
 ```
  -v /full/path/to/keystore.p12:/usr/share/data-prepper/keystore.p12
 ```
+
+## Circuit Breakers
+
+Data Prepper supports circuit breakers which will interrupt adding objects
+to the buffer when certain conditions are met.
+
+### Heap
+
+Heap circuit breaker: When the JVM heap usage reaches a configurable size stop accepting requests to buffers.
+
+Configuration
+
+```yaml
+circuit_breakers:
+  heap:
+    usage: 6.5gb
+    reset: 2s
+```
+
+* `usage` - float - The absolute value of JVM memory which will trip the circuit breaker. This can be defined with bytes (`b`), kilobytes (`kb`), megabytes (`mb`), or gigabytes (`gb`).
+* `reset` - Duration - The time between when the circuit is tripped and the next attempt to validate will occur. Defaults to 1s.
+* `check_interval` - Duration - The time between checks of the heap usage. Defaults to 500ms.
 
 ## Deprecated Pipeline Configuration Support
 Starting in Data Prepper 1.3.0, Prepper plugins were renamed to Processors. The use of the prepper or processor name in pipeline configuration files is still supported. However, the use of both processor and prepper in the same configuration file is **not** supported.
