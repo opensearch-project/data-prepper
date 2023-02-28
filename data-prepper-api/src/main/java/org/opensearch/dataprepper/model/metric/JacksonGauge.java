@@ -28,9 +28,8 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.singletonList(VALUE_KEY);
 
-
-    protected JacksonGauge(Builder builder) {
-        super(builder);
+    protected JacksonGauge(Builder builder, boolean flattenAttributes) {
+        super(builder, flattenAttributes);
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
 
@@ -73,12 +72,21 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
          * @since 1.4
          */
         public JacksonGauge build() {
+            return build(true);
+        }
+
+        /**
+         * Returns a newly created {@link JacksonGauge}
+         * @return a JacksonGauge
+         * @since 2.1
+         */
+        public JacksonGauge build(boolean flattenAttributes) {
             this.withEventKind(Metric.KIND.GAUGE.toString());
             this.withData(data);
             this.withEventType(EventType.METRIC.toString());
             checkAndSetDefaultValues();
             new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
-            return new JacksonGauge(this);
+            return new JacksonGauge(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {

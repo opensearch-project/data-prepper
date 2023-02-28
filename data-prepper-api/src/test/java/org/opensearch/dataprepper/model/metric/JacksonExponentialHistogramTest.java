@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.anEmptyMap;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -253,5 +254,22 @@ public class JacksonExponentialHistogramTest {
         String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/exponentialHistogram.json"));
         String expected = String.format(file, TEST_START_TIME, TEST_TIME, value, TEST_KEY1_TIME, TEST_KEY2);
         JSONAssert.assertEquals(expected, result, false);
+        final Map<String, Object> attributes = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        histogram.put("attributes", attributes);
+        final String resultAttr = histogram.toJsonString();
+        assertThat(resultAttr.indexOf("attributes"), equalTo(-1));
+    }
+
+    @Test
+    public void testHistogramToJsonStringWithAttributes() throws JSONException {
+        histogram = builder.build(false);
+        histogram.put("foo", "bar");
+        final String value = UUID.randomUUID().toString();
+        histogram.put("testObject", new TestObject(value));
+        histogram.put("list", Arrays.asList(1, 4, 5));
+        final Map<String, Object> attributes = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        histogram.put("attributes", attributes);
+        final String resultAttr = histogram.toJsonString();
+        assertThat(resultAttr.indexOf("attributes"), not(equalTo(-1)));
     }
 }

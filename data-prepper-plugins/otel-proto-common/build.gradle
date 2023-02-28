@@ -9,8 +9,8 @@ plugins {
 
 dependencies {
     implementation project(':data-prepper-api')
-    implementation "io.opentelemetry.proto:opentelemetry-proto:${versionMap.opentelemetryProto}"
-    implementation "com.google.protobuf:protobuf-java-util:${versionMap.protobufJavaUtil}"
+    implementation libs.opentelemetry.proto
+    implementation libs.protobuf.util
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation "org.apache.commons:commons-lang3:3.12.0"

@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.parser.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -29,7 +31,9 @@ public class DataPrepperAppConfiguration {
         if (dataPrepperConfigFileLocation != null) {
             final File configurationFile = new File(dataPrepperConfigFileLocation);
             try {
-                final SimpleModule simpleModule = new SimpleModule().addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
+                final SimpleModule simpleModule = new SimpleModule()
+                        .addDeserializer(Duration.class, new DataPrepperDurationDeserializer())
+                        .addDeserializer(ByteCount.class, new ByteCountDeserializer());
                 objectMapper.registerModule(simpleModule);
                 return objectMapper.readValue(configurationFile, DataPrepperConfiguration.class);
             } catch (final IOException e) {

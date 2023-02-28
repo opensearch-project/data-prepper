@@ -33,13 +33,13 @@ public class RandomCutForestModeConfig {
 
     public static final Set<String> validTypes = new HashSet<>(Set.of(RandomCutForestType.METRICS.toString()));
 
-    @JsonProperty("shingleSize")
+    @JsonProperty("shingle_size")
     private int shingleSize = DEFAULT_SHINGLE_SIZE;
 
-    @JsonProperty("sampleSize")
+    @JsonProperty("sample_size")
     private int sampleSize = DEFAULT_SAMPLE_SIZE;
 
-    @JsonProperty("timeDecay")
+    @JsonProperty("time_decay")
     private double timeDecay = DEFAULT_TIME_DECAY;
 
     public int getShingleSize() {

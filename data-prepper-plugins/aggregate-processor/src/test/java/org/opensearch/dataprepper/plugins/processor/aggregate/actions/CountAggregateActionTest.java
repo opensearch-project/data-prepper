@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.metric.JacksonMetric;
 import org.junit.jupiter.api.extension.ExtendWith; 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasKey;
@@ -99,6 +101,8 @@ public class CountAggregateActionTest {
         expectedEventMap.put("unit", "1");
         expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
         assertThat(result.get().toMap().get("attributes"), equalTo(eventMap));
+        JacksonMetric metric = (JacksonMetric) result.get();
+        assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
         assertThat(result.get().toMap(), hasKey("startTime"));
         assertThat(result.get().toMap(), hasKey("time"));
     }

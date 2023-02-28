@@ -15,6 +15,8 @@ import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
 import org.opensearch.dataprepper.pipeline.router.Router;
+import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
+import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -158,6 +160,18 @@ public class Pipeline {
         return readBatchTimeoutInMillis;
     }
 
+    public boolean isReady() {
+        for (final Sink sink: getSinks()) {
+            if (!sink.isReady()) {
+                LOG.info("Pipeline [{}] - sink is not ready for execution, retrying", name);
+                sink.initialize();
+                if (!sink.isReady()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
     /**
      * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Processor} on the
      * read data and outputs to {@link Sink}.
@@ -243,7 +257,8 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        router.route(records, sinks, (sink, events) ->
+        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(sinks);
+        router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
         );
         return sinkFutures;

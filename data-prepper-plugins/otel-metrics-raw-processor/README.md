@@ -18,6 +18,7 @@ It is possible to create explicit representations of histogram buckets and their
         calculate_histogram_buckets: true
         calculate_exponential_histogram_buckets: true
         exponential_histogram_max_allowed_scale: 10
+        flatten_attributes: false
 ```
 
 There are three possible parameters: `calculate_histogram_buckets`, `calculate_exponential_histogram_buckets` and `exponential_histogram_max_allowed_scale`
@@ -25,6 +26,7 @@ If `calculate_histogram_buckets` and `calculate_exponential_histogram_buckets` a
 If `exponential_histogram_max_allowed_scale` is not provided it defaults to 10.
 
 If `calculate_histogram_buckets` is not set to `false`, the following JSON will be added to every histogram JSON:
+If `flatten_attributes` is set to `false`, the json string format of the metrics will keep the attributes field as is, and if it is set to `true`, the fleds in attributes field are put in the parent json object. Default is `true`
 
 ```json
  "buckets": [
@@ -101,7 +103,7 @@ a scale parameter, offset and list of bucket counts:
     ],
     "scale" : -3,
     "negativeOffset" : 0,
-    "positiveOffset : 1
+    "positiveOffset" : 1
 ```
 
 The `exponential_histogram_max_allowed_scale` parameter defines the maximum allowed scale for the exponential histogram. Increasing this parameter will increase potential
@@ -111,7 +113,7 @@ All exponential histograms that have a scale that is above the configured parame
 **Note**: the absolute scale value is used for comparison, so a scale of -11 will be treated equally to 11 and thus exceed the configured value of 10 - and be discarded.
 
 ## Metrics
-This plugin uses all common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java), and does not currently introduce custom metrics.
+This plugin uses all common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/processor/AbstractProcessor.java), and does not currently introduce custom metrics.
 
 ## Developer Guide
 This plugin is compatible with Java 8. See 

@@ -39,8 +39,8 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
     private static final List<String> REQUIRED_NON_NULL_KEYS = Collections.singletonList(SUM_KEY);
 
 
-    protected JacksonExponentialHistogram(JacksonExponentialHistogram.Builder builder) {
-        super(builder);
+    protected JacksonExponentialHistogram(JacksonExponentialHistogram.Builder builder, boolean flattenAttributes) {
+        super(builder, flattenAttributes);
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
@@ -256,13 +256,23 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
          * @since 1.4
          */
         public JacksonExponentialHistogram build() {
+            return build(true);
+        }
+
+        /**
+         * Returns a newly created {@link JacksonExponentialHistogram}
+         *
+         * @return a JacksonExponentialHistogram
+         * @since 2.1
+         */
+        public JacksonExponentialHistogram build(boolean flattenAttributes) {
             this.withData(data);
             this.withEventKind(KIND.EXPONENTIAL_HISTOGRAM.toString());
             this.withEventType(EventType.METRIC.toString());
             checkAndSetDefaultValues();
             new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
 
-            return new JacksonExponentialHistogram(this);
+            return new JacksonExponentialHistogram(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {

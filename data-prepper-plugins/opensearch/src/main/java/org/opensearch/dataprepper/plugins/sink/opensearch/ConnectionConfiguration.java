@@ -47,6 +47,7 @@ import java.security.cert.CertificateFactory;
 import java.time.Duration;
 import java.time.temporal.ValueRange;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -69,9 +70,11 @@ public class ConnectionConfiguration {
   public static final String CONNECT_TIMEOUT = "connect_timeout";
   public static final String CERT_PATH = "cert";
   public static final String INSECURE = "insecure";
+  public static final String AWS_OPTION = "aws";
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
+  public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
   public static final String PROXY = "proxy";
 
   /**
@@ -90,6 +93,7 @@ public class ConnectionConfiguration {
   private final boolean awsSigv4;
   private final String awsRegion;
   private final String awsStsRoleArn;
+  private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
   private final String pipelineName;
 
@@ -144,6 +148,7 @@ public class ConnectionConfiguration {
     this.awsSigv4 = builder.awsSigv4;
     this.awsRegion = builder.awsRegion;
     this.awsStsRoleArn = builder.awsStsRoleArn;
+    this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
     this.pipelineName = builder.pipelineName;
   }
@@ -170,10 +175,25 @@ public class ConnectionConfiguration {
       builder = builder.withConnectTimeout(connectTimeout);
     }
 
-    builder.withAwsSigv4(pluginSetting.getBooleanOrDefault(AWS_SIGV4, false));
-    if (builder.awsSigv4) {
+    Map<String, Object> awsOption = pluginSetting.getTypedMap(AWS_OPTION, String.class, Object.class);
+    boolean awsOptionUsed = false;
+    builder.withAwsSigv4(false);
+    if (awsOption != null && !awsOption.isEmpty()) {
+        awsOptionUsed = true;
+        builder.withAwsSigv4(true);
+        builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
+        builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
+        builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
+    }
+    boolean awsSigv4 = pluginSetting.getBooleanOrDefault(AWS_SIGV4, false);
+    if (awsSigv4) {
+      if (awsOptionUsed) {
+        throw new RuntimeException(String.format("{} option cannot be used along with {} option", AWS_SIGV4, AWS_OPTION));
+      }
+      builder.withAwsSigv4(true);
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
       builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
+      builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
     }
 
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
@@ -229,15 +249,20 @@ public class ConnectionConfiguration {
     //if not follow regular credentials process
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
     final Aws4Signer aws4Signer = Aws4Signer.create();
-    AwsCredentialsProvider credentialsProvider;
+    final AwsCredentialsProvider credentialsProvider;
     if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
+      AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
+              .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
+              .roleArn(awsStsRoleArn);
+
+      if(awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
+        assumeRoleRequestBuilder = assumeRoleRequestBuilder
+                .overrideConfiguration(configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
+      }
+
       credentialsProvider = StsAssumeRoleCredentialsProvider.builder()
               .stsClient(getStsClient())
-              .refreshRequest(AssumeRoleRequest.builder()
-                      .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID()
-                              .toString())
-                      .roleArn(awsStsRoleArn)
-                      .build())
+              .refreshRequest(assumeRoleRequestBuilder.build())
               .build();
     } else {
       credentialsProvider = DefaultCredentialsProvider.create();
@@ -353,6 +378,7 @@ public class ConnectionConfiguration {
     private boolean awsSigv4;
     private String awsRegion;
     private String awsStsRoleArn;
+    private Map<String, String> awsStsHeaderOverrides;
     private Optional<String> proxy = Optional.empty();
     private String pipelineName;
 
@@ -419,6 +445,13 @@ public class ConnectionConfiguration {
         }
       }
       this.awsStsRoleArn = awsStsRoleArn;
+      return this;
+    }
+
+    public Builder withAwsStsHeaderOverrides(final Map<String, String> headerOverrides) {
+      if(headerOverrides != null && !headerOverrides.isEmpty()) {
+        this.awsStsHeaderOverrides = headerOverrides;
+      }
       return this;
     }
 

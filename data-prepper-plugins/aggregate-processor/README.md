@@ -3,7 +3,7 @@
 This stateful processor groups Events together based on the values of the [identification_keys](#identification_keys) provided, and performs a configurable [action](#action) on each group. You can use existing actions, or you can create your own actions as Java code to perform custom aggregations.
 It is a great way to reduce unnecessary log volume and create aggregated logs over time.
 
-## Usage
+## Basic Usage
 
 The following pipeline configuration will aggregate Events based on the entries with keys `sourceIp`, `destinationIp`, and `port`. It uses the [remove_duplicates](#remove_duplicates) action. 
 While not necessary, a great way to set up the Aggregate Processor [identification_keys](#identification_keys) is with the [Grok Processor](../grok-processor/README.md) as shown below.
@@ -41,6 +41,8 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [put_all](#put_all)
     * [count](#count)
     * [histogram](#histogram)
+    * [rate_limiter](#rate_limiter)
+    * [percent_sampler](#percent_sampler)
 ### <a name="group_duration"></a>
 * `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
 
@@ -120,7 +122,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
        * `output_format`: format of the aggregated event.
          * `otel_metrics` - Default output format. Outputs in otel metrics SUM type with count as value
          * `raw` - generates JSON with `count_key` field with count as value and `start_time_key` field with aggregation start time as value
-    * Given the following four Events with `identification_keys: ["sourceIp", "destination_ip", "request"]`,  `key` as "latency", `buckets as `[0.0, 0.25, 0.5]` :
+    * Given the following four Events with `identification_keys: ["sourceIp", "destination_ip", "request"]`,  `key` as "latency", `buckets` as `[0.0, 0.25, 0.5]` :
       ```json
           { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "request" : "/index.html", "latency": 0.2 }
           { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "request" : "/index.html", "latency": 0.55}
@@ -136,9 +138,44 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
         {"request":"/index.html","aggr._max":0.55,"aggr._min":0.15,"aggr._buckets":[0.0, 0.25, 0.5],"sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "aggr._bucket_counts":[0,2,1,1],"aggr._count":4,"aggr._key":"latency","aggr._startTime":"2022-12-14T06:39:06.081Z","aggr._sum":1.15}
       ```
 
+### <a name="rate_limiter"></a>
+* `rate_limiter`: Processes the events and controls the number of events aggregated per second. By default, the processor blocks if more events than allowed by the configured number of events are received. This behavior can be overwritten with a config option which drops any excess events received in a given time period.
+    * It supports the following config options
+       * `events_per_second`: Number of events allowed per second
+       * `when_exceeds`: indicates what action to be taken when more number of events than the number of events allowed per second are received. Default value is `block` which means the processor blocks after max number allowed per second are allowed until the next time period. Other option is `drop` which drops the excess events received in the time period.
+    * When the following three events arrive with in one second and the `events_per_second` is set 1 and `when_exceeds` set to `drop`
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 1000 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "http_verb": "GET" }
+      ```
+      The following Event will be allowed, and no event is generated when the group is concluded
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "status": 200 }
+      ```
+    * When the three events arrive with in one second and the `events_per_second` is set 1 and `when_exceeds` is set to `block`, all three events are allowed.
+
+
+### <a name="percent_sampler"></a>
+* `percent_sampler`: Processes the events and controls the number of events aggregated based on the configuration. Only specified `percent` of the events are allowed and the rest are dropped.
+    * It supports the following config options
+       * `percent`: percent of events to be allowed during aggregation window
+    * When the following three events arrive with in one second and the `percent` is set 50
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 2500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 1000 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 3100 }
+      ```
+      The following Events will be allowed, and no event is generated when the group is concluded
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 3100 }
+      ```
+
 ## Creating New Aggregate Actions
 
-It is easy to create custom Aggregate Actions to be used by the Aggregate Processor. To do so, create a new class that implements the [AggregateAction interface](src/main/java/com/amazon/dataprepper/plugins/processor/aggregate/AggregateAction.java).
+It is easy to create custom Aggregate Actions to be used by the Aggregate Processor. To do so, create a new class that implements the [AggregateAction interface](src/main/java/org/opensearch/dataprepper/plugins/processor/aggregate/AggregateAction.java).
 The interface has the following signature:
 
 ```
@@ -157,7 +194,7 @@ public interface AggregateAction {
 ```
 
 The `AggregateActionInput` that is passed to the functions of the interface contains a method `getGroupState()`, which returns a `GroupState` Object that can be operated on like a java `Map`. 
-For actual examples, take a closer look at the code for some existing AggregateActions [here](src/main/java/com/amazon/dataprepper/plugins/processor/aggregate/actions).
+For actual examples, take a closer look at the code for some existing AggregateActions [here](src/main/java/org/opensearch/dataprepper/plugins/processor/aggregate/actions).
 
 ## State
 
@@ -166,7 +203,7 @@ This functionality is on the Data Prepper Roadmap.
 
 ## Metrics
 
-Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java), the Aggregate Processor introduces the following custom metrics.
+Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/processor/AbstractProcessor.java), the Aggregate Processor introduces the following custom metrics.
 
 **Counter**
 

@@ -21,6 +21,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -161,7 +162,7 @@ class JacksonGaugeTest {
         assertThrows(IllegalArgumentException.class, builder::build);
     }
 
-   @Test
+    @Test
     public void testGaugeToJsonString() throws JSONException {
         gauge.put("foo", "bar");
         final String value = UUID.randomUUID().toString();
@@ -172,6 +173,31 @@ class JacksonGaugeTest {
         String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/gauge.json"));
         String expected = String.format(file, value, TEST_TIME_KEY1, TEST_KEY2);
         JSONAssert.assertEquals(expected, result, false);
+        String attrKey = UUID.randomUUID().toString();
+        String attrVal = UUID.randomUUID().toString();
+        final Map<String, Object> attributes = Map.of(attrKey, attrVal);
+        gauge.put("attributes", attributes);
+        final String resultAttr = gauge.toJsonString();
+        String attrString = String.format("\"attributes\":{\"%s\":\"%s\"}", attrKey, attrVal);
+        assertThat(resultAttr.indexOf(attrString), equalTo(-1));
+    }
+
+    @Test
+    public void testGaugeToJsonStringWithAttributes() throws JSONException {
+        gauge = builder.build(false);
+        gauge.put("foo", "bar");
+        final String value = UUID.randomUUID().toString();
+        gauge.put("testObject", new TestObject(value));
+        gauge.put("list", Arrays.asList(1, 4, 5));
+
+        String attrKey = UUID.randomUUID().toString();
+        String attrVal = UUID.randomUUID().toString();
+        final Map<String, Object> attributes = Map.of(attrKey, attrVal);
+        gauge.put("attributes", attributes);
+        final String resultAttr = gauge.toJsonString();
+        String attrString = String.format("\"attributes\":{\"%s\":\"%s\"}", attrKey, attrVal);
+        assertThat(resultAttr.indexOf(attrString), not(equalTo(-1)));
+
     }
 
     @Test

@@ -42,6 +42,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
+
 @DataPrepperPlugin(name = "otel_trace_group", pluginType = Processor.class)
 public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Record<Span>> {
 
@@ -99,7 +101,7 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
                 } catch (Exception e) {
                     recordsOut.add(record);
                     recordsOutMissingTraceGroupCounter.increment();
-                    LOG.error("Failed to process the span: [{}]", record.getData(), e);
+                    LOG.error(EVENT, "Failed to process the span: [{}]", record.getData(), e);
                 }
             } else {
                 recordsOut.add(record);

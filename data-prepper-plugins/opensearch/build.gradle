@@ -5,7 +5,7 @@
 
 buildscript {
     ext {
-        opensearchVersion = System.getProperty('opensearch.version', "${versionMap.opensearchVersion}")
+        opensearchVersion = System.getProperty('opensearch.version', "${libs.versions.opensearch.get()}")
     }
 
     repositories {
@@ -39,10 +39,10 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation "org.opensearch.client:opensearch-rest-high-level-client:${opensearchVersion}"
     implementation "org.opensearch.client:opensearch-rest-client:${opensearchVersion}"
-    implementation 'org.opensearch.client:opensearch-java:2.1.0'
+    implementation 'org.opensearch.client:opensearch-java:2.2.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation 'com.google.guava:guava:23.0'
+    implementation libs.guava.core
     implementation 'javax.ws.rs:javax.ws.rs-api:2.1.1'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:http-client-spi'
@@ -54,11 +54,13 @@ dependencies {
     implementation 'software.amazon.awssdk:url-connection-client'
     implementation 'software.amazon.awssdk:arns'
     implementation 'io.micrometer:micrometer-core'
+    implementation 'software.amazon.awssdk:s3'
     implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation 'software.amazon.awssdk:apache-client'
     testImplementation 'commons-io:commons-io:2.11.0'
-    testImplementation 'net.bytebuddy:byte-buddy:1.12.18'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.12.18'
-    testImplementation 'org.slf4j:slf4j-simple:2.0.5'
+    testImplementation 'net.bytebuddy:byte-buddy:1.12.22'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.12.22'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.6'
 }
 
 sourceSets {

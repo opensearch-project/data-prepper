@@ -22,11 +22,13 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_FORWARDING_BATCH_TIMEOUT;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PRIVATE_KEY_FILE_PATH;
 
 class PeerForwarderConfigurationTest {
@@ -44,6 +46,7 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.getServerPort(), equalTo(4994));
         assertThat(peerForwarderConfiguration.getRequestTimeout(), equalTo(10_000));
+        assertThat(peerForwarderConfiguration.getClientTimeout(), equalTo(60_000));
         assertThat(peerForwarderConfiguration.getServerThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(500));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(1024));
@@ -55,9 +58,15 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getDiscoveryMode(), equalTo(DiscoveryMode.LOCAL_NODE));
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(200));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(48));
+        assertThat(peerForwarderConfiguration.getBatchDelay(), equalTo(3_000));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(512));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
+        assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(500));
+        assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(1500));
+        assertThat(peerForwarderConfiguration.getForwardingBatchQueueDepth(), equalTo(1));
+        assertThat(peerForwarderConfiguration.getForwardingBatchTimeout(), equalTo(DEFAULT_FORWARDING_BATCH_TIMEOUT));
+        assertThat(peerForwarderConfiguration.getBinaryCodec(), equalTo(true));
     }
 
     @Test
@@ -66,6 +75,7 @@ class PeerForwarderConfigurationTest {
 
         assertThat(peerForwarderConfiguration.getServerPort(), equalTo(21895));
         assertThat(peerForwarderConfiguration.getRequestTimeout(), equalTo(1000));
+        assertThat(peerForwarderConfiguration.getClientTimeout(), equalTo(50));
         assertThat(peerForwarderConfiguration.getServerThreadCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getMaxConnectionCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getMaxPendingRequests(), equalTo(512));
@@ -81,9 +91,15 @@ class PeerForwarderConfigurationTest {
         assertThat(peerForwarderConfiguration.getAwsCloudMapServiceName(), equalTo(null));
         assertThat(peerForwarderConfiguration.getClientThreadCount(), equalTo(100));
         assertThat(peerForwarderConfiguration.getBatchSize(), equalTo(100));
+        assertThat(peerForwarderConfiguration.getBatchDelay(), equalTo(10));
         assertThat(peerForwarderConfiguration.getBufferSize(), equalTo(100));
         assertThat(peerForwarderConfiguration.getAuthentication(), equalTo(ForwardingAuthentication.UNAUTHENTICATED));
         assertThat(peerForwarderConfiguration.getDrainTimeout(), equalTo(DEFAULT_DRAIN_TIMEOUT));
+        assertThat(peerForwarderConfiguration.getFailedForwardingRequestLocalWriteTimeout(), equalTo(15));
+        assertThat(peerForwarderConfiguration.getForwardingBatchSize(), equalTo(2500));
+        assertThat(peerForwarderConfiguration.getForwardingBatchQueueDepth(), equalTo(3));
+        assertThat(peerForwarderConfiguration.getForwardingBatchTimeout(), equalTo(Duration.of(5, ChronoUnit.SECONDS)));
+        assertThat(peerForwarderConfiguration.getBinaryCodec(), equalTo(false));
     }
 
     @Test
@@ -169,6 +185,7 @@ class PeerForwarderConfigurationTest {
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_CLOUD_MAP_WITHOUT_REGION_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_DNS_WITHOUT_DOMAIN_NAME_CONFIG_FILE,
             TestDataProvider.INVALID_PEER_FORWARDER_WITH_NEGATIVE_DRAIN_TIMEOUT,
+            TestDataProvider.INVALID_PEER_FORWARDER_WITH_ZERO_LOCAL_WRITE_TIMEOUT,
             "src/test/resources/invalid_peer_forwarder_config_with_many_authentication.yml",
             "src/test/resources/invalid_peer_forwarder_config_with_mutual_tls_not_ssl.yml"
     })

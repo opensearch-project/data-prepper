@@ -5,9 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.StsClientBuilder;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -16,15 +23,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Consumer;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
-public class ConnectionConfigurationTests {
+class ConnectionConfigurationTests {
     private static final String PROXY_PARAMETER = "proxy";
     private final List<String> TEST_HOSTS = Collections.singletonList("http://localhost:9200");
     private final String TEST_USERNAME = "admin";
@@ -35,7 +54,7 @@ public class ConnectionConfigurationTests {
     private final String TEST_CERT_PATH = Objects.requireNonNull(getClass().getClassLoader().getResource("test-ca.pem")).getFile();
 
     @Test
-    public void testReadConnectionConfigurationDefault() {
+    void testReadConnectionConfigurationDefault() {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -51,7 +70,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientDefault() throws IOException {
+    void testCreateClientDefault() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -62,7 +81,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testReadConnectionConfigurationNoCert() {
+    void testReadConnectionConfigurationNoCert() {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -77,7 +96,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientNoCert() throws IOException {
+    void testCreateClientNoCert() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -88,7 +107,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientInsecure() throws IOException {
+    void testCreateClientInsecure() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, true);
         final ConnectionConfiguration connectionConfiguration =
@@ -99,7 +118,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientWithCertPath() throws IOException {
+    void testCreateClientWithCertPath() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -110,7 +129,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientWithAWSSigV4AndRegion() throws IOException {
+    void testCreateClientWithAWSSigV4AndRegion() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, true, "us-west-2", null, null, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -120,7 +139,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientWithAWSSigV4DefaultRegion() throws IOException {
+    void testCreateClientWithAWSSigV4DefaultRegion() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, true, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -131,7 +150,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientWithAWSSigV4AndInsecure() throws IOException {
+    void testCreateClientWithAWSSigV4AndInsecure() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, true, null, null, null, true);
         final ConnectionConfiguration connectionConfiguration =
@@ -142,7 +161,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientWithAWSSigV4AndCertPath() throws IOException {
+    void testCreateClientWithAWSSigV4AndCertPath() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, true, null, null, TEST_CERT_PATH, false);
         final ConnectionConfiguration connectionConfiguration =
@@ -153,19 +172,155 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClientWithAWSSigV4AndSTSRole() throws IOException {
+    void testCreateClientWithAWSSigV4AndSTSRole() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertEquals("us-east-1", connectionConfiguration.getAwsRegion());
-        assertTrue(connectionConfiguration.isAwsSigv4());
-        assertEquals("arn:aws:iam::123456789012:iam-role", connectionConfiguration.getAwsStsRoleArn());
-        assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
+        assertThat(connectionConfiguration, notNullValue());
+        assertThat(connectionConfiguration.getAwsRegion(), equalTo("us-east-1"));
+        assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+        assertThat(connectionConfiguration.getPipelineName(), equalTo(TEST_PIPELINE_NAME));
+
+        final StsClient stsClient = mock(StsClient.class);
+        final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
+        when(assumeRoleRequestBuilder.roleSessionName(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.roleArn(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.overrideConfiguration(any(Consumer.class)))
+                .thenReturn(assumeRoleRequestBuilder);
+
+        final StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
+        when(stsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(stsClientBuilder);
+        when(stsClientBuilder.build()).thenReturn(stsClient);
+
+        try(final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+            final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class)) {
+
+            assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
+            stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+            connectionConfiguration.createClient();
+        }
+
+        verify(assumeRoleRequestBuilder).roleArn("arn:aws:iam::123456789012:iam-role");
+        verify(assumeRoleRequestBuilder).roleSessionName(anyString());
+        verify(assumeRoleRequestBuilder).build();
+        verifyNoMoreInteractions(assumeRoleRequestBuilder);
     }
 
     @Test
-    public void testCreateClient_WithValidHttpProxy_HostIP() throws IOException {
+    void testCreateClientWithAWSOption() {
+        final String headerName1 = UUID.randomUUID().toString();
+        final String headerValue1 = UUID.randomUUID().toString();
+        final String headerName2 = UUID.randomUUID().toString();
+        final String headerValue2 = UUID.randomUUID().toString();
+        final String testArn = "arn:aws:iam::123456789012:iam-role";
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+
+        assertThat(connectionConfiguration, notNullValue());
+        assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+
+        final StsClient stsClient = mock(StsClient.class);
+        final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
+        when(assumeRoleRequestBuilder.roleSessionName(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.roleArn(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.overrideConfiguration(any(Consumer.class)))
+                .thenReturn(assumeRoleRequestBuilder);
+
+        final StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
+        when(stsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(stsClientBuilder);
+        when(stsClientBuilder.build()).thenReturn(stsClient);
+
+        try(final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+            final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class)) {
+
+            assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
+            stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+            connectionConfiguration.createClient();
+        }
+
+        final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
+
+        verify(assumeRoleRequestBuilder).overrideConfiguration(configurationCaptor.capture());
+        verify(assumeRoleRequestBuilder).roleArn(testArn);
+        verify(assumeRoleRequestBuilder).roleSessionName(anyString());
+        verify(assumeRoleRequestBuilder).build();
+        verifyNoMoreInteractions(assumeRoleRequestBuilder);
+
+        final Consumer<AwsRequestOverrideConfiguration.Builder> actualOverride = configurationCaptor.getValue();
+
+        final AwsRequestOverrideConfiguration.Builder configurationBuilder = mock(AwsRequestOverrideConfiguration.Builder.class);
+        actualOverride.accept(configurationBuilder);
+        verify(configurationBuilder).putHeader(headerName1, headerValue1);
+        verify(configurationBuilder).putHeader(headerName2, headerValue2);
+        verifyNoMoreInteractions(configurationBuilder);
+    }
+
+
+    @Test
+    void testCreateClientWithAWSSigV4AndHeaderOverrides() {
+        final String headerName1 = UUID.randomUUID().toString();
+        final String headerValue1 = UUID.randomUUID().toString();
+        final String headerName2 = UUID.randomUUID().toString();
+        final String headerValue2 = UUID.randomUUID().toString();
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
+        configurationMetadata.put("aws_sts_header_overrides", Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+
+        assertThat(connectionConfiguration, notNullValue());
+        assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+
+        final StsClient stsClient = mock(StsClient.class);
+        final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
+        when(assumeRoleRequestBuilder.roleSessionName(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.roleArn(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.overrideConfiguration(any(Consumer.class)))
+                .thenReturn(assumeRoleRequestBuilder);
+
+        final StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
+        when(stsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(stsClientBuilder);
+        when(stsClientBuilder.build()).thenReturn(stsClient);
+
+        try(final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+            final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class)) {
+
+            assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
+            stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+            connectionConfiguration.createClient();
+        }
+
+        final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
+
+        verify(assumeRoleRequestBuilder).overrideConfiguration(configurationCaptor.capture());
+        verify(assumeRoleRequestBuilder).roleArn("arn:aws:iam::123456789012:iam-role");
+        verify(assumeRoleRequestBuilder).roleSessionName(anyString());
+        verify(assumeRoleRequestBuilder).build();
+        verifyNoMoreInteractions(assumeRoleRequestBuilder);
+
+        final Consumer<AwsRequestOverrideConfiguration.Builder> actualOverride = configurationCaptor.getValue();
+
+        final AwsRequestOverrideConfiguration.Builder configurationBuilder = mock(AwsRequestOverrideConfiguration.Builder.class);
+        actualOverride.accept(configurationBuilder);
+        verify(configurationBuilder).putHeader(headerName1, headerValue1);
+        verify(configurationBuilder).putHeader(headerName2, headerValue2);
+        verifyNoMoreInteractions(configurationBuilder);
+    }
+
+    @Test
+    void testCreateClient_WithValidHttpProxy_HostIP() throws IOException {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "121.121.121.121:80";
@@ -180,7 +335,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClient_WithValidHttpProxy_HostName() throws IOException {
+    void testCreateClient_WithValidHttpProxy_HostName() throws IOException {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:80";
@@ -195,7 +350,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClient_WithValidHttpProxy_SchemeProvided() throws IOException {
+    void testCreateClient_WithValidHttpProxy_SchemeProvided() throws IOException {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "http://example.com:4350";
@@ -210,7 +365,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClient_WithInvalidHttpProxy_InvalidPort() {
+    void testCreateClient_WithInvalidHttpProxy_InvalidPort() {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:port";
@@ -223,7 +378,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClient_WithInvalidHttpProxy_NoPort() {
+    void testCreateClient_WithInvalidHttpProxy_NoPort() {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com";
@@ -235,7 +390,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClient_WithInvalidHttpProxy_PortNotInRange() {
+    void testCreateClient_WithInvalidHttpProxy_PortNotInRange() {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:888888";
@@ -247,7 +402,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClient_WithInvalidHttpProxy_NotHttp() {
+    void testCreateClient_WithInvalidHttpProxy_NotHttp() {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "socket://example.com:port";
@@ -260,7 +415,7 @@ public class ConnectionConfigurationTests {
     }
 
     @Test
-    public void testCreateClient_WithConnectionConfigurationBuilder_ProxyOptionalObjectShouldNotBeNull() throws IOException {
+    void testCreateClient_WithConnectionConfigurationBuilder_ProxyOptionalObjectShouldNotBeNull() throws IOException {
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(TEST_HOSTS);
         final ConnectionConfiguration connectionConfiguration = builder.build();
         assertEquals(Optional.empty(), connectionConfiguration.getProxy());
@@ -292,6 +447,29 @@ public class ConnectionConfigurationTests {
             metadata.put("aws_region", awsRegion);
         }
         metadata.put("aws_sts_role_arn", awsStsRoleArn);
+        metadata.put("cert", certPath);
+        metadata.put("insecure", insecure);
+        return metadata;
+    }
+
+
+    private Map<String, Object> generateConfigurationMetadataWithAwsOption(
+            final List<String> hosts, final String username, final String password,
+            final Integer connectTimeout, final Integer socketTimeout, final boolean awsSigv4, final String awsRegion,
+            final String awsStsRoleArn, final String certPath, final boolean insecure, Map<String, String> headerOverridesMap) {
+        final Map<String, Object> metadata = new HashMap<>();
+        final Map<String, Object> awsOptionMetadata = new HashMap<>();
+        metadata.put("hosts", hosts);
+        metadata.put("username", username);
+        metadata.put("password", password);
+        metadata.put("connect_timeout", connectTimeout);
+        metadata.put("socket_timeout", socketTimeout);
+        if (awsRegion != null) {
+            awsOptionMetadata.put("region", awsRegion);
+        }
+        awsOptionMetadata.put("sts_role_arn", awsStsRoleArn);
+        awsOptionMetadata.put("sts_header_overrides", headerOverridesMap);
+        metadata.put("aws", awsOptionMetadata);
         metadata.put("cert", certPath);
         metadata.put("insecure", insecure);
         return metadata;

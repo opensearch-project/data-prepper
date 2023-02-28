@@ -15,7 +15,6 @@ import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
 import io.netty.util.AsciiString;
-import org.junit.Assert;
 import org.junit.Test;
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
 import org.opensearch.action.search.SearchRequest;
@@ -31,11 +30,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -43,11 +42,12 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 
 public class EndToEndLogMetricsTest {
     private static final int HTTP_SOURCE_PORT_1 = 2021;
@@ -59,6 +59,8 @@ public class EndToEndLogMetricsTest {
     private static final String DESTINATION_IP_1 = "8.8.8.8";
     private static final String DESTINATION_IP_2 = "12.12.13.13";
     private static final int TOTAL_EVENTS = 40;
+    public static final String SOURCE_IP_KEY = "sourceIp";
+    public static final String DESTINATION_IP_KEY = "destinationIp";
     private double expectedMin = Float.MAX_VALUE;
     private double expectedMax = -Float.MAX_VALUE;
     private double expectedSum = 0;
@@ -81,7 +83,7 @@ public class EndToEndLogMetricsTest {
             }
         }
         int latencyIdx = 0;
-        for (int i = 0; i < TOTAL_EVENTS/4; i++) {
+        for (int i = 0; i < TOTAL_EVENTS / 4; i++) {
             sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_1, latencies[latencyIdx++], CUSTOM_KEY_1, "POST"));
             sendHttpRequestToSource(HTTP_SOURCE_PORT_1, generateRandomApacheLogHttpData(DESTINATION_IP_2, latencies[latencyIdx++], CUSTOM_KEY_2, String.valueOf(random.nextInt())));
             sendHttpRequestToSource(HTTP_SOURCE_PORT_2, generateRandomApacheLogHttpData(DESTINATION_IP_1, latencies[latencyIdx++], CUSTOM_KEY_2, String.valueOf(random.nextInt())));
@@ -105,15 +107,20 @@ public class EndToEndLogMetricsTest {
                     );
                     final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
                     final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
-                    Assert.assertTrue(foundSources.size() >=2 && foundSources.size() <= 4);
+                    assertThat(foundSources.size(), equalTo(2));
                     retrievedDocs.addAll(foundSources);
                 }
         );
 
-        Assert.assertTrue(retrievedDocs.size() >=2 && retrievedDocs.size() <= 4);
+        verifyDocuments(retrievedDocs);
+    }
+
+    private void verifyDocuments(List<Map<String, Object>> retrievedDocs) {
         // Verify original and aggregated keys from retrieved docs
         final List<String> expectedDocKeys = Arrays.asList(
-                "sourceIp", "destinationIp", "histogram_key", "kind", "name", "description", "min", "max", "count", "sum", "time");
+                "kind", "name", "description", "unit", "min", "max", "count", "sum", "time", "startTime", "attributes",
+                "buckets", "bucketCountsList", "bucketCounts",  "explicitBoundsCount", "explicitBounds", "aggregationTemporality");
+        final List<String> attributeKeys = Arrays.asList(DESTINATION_IP_KEY, SOURCE_IP_KEY, "histogram_key", "aggr._duration");
         double receivedMin = Float.MAX_VALUE;
         double receivedMax = -Float.MAX_VALUE;
         double receivedSum = 0.0;
@@ -121,14 +128,14 @@ public class EndToEndLogMetricsTest {
         for (Map<String, Object> retrievedDoc: retrievedDocs) {
             for (String key: expectedDocKeys) {
                 assertThat(retrievedDoc, hasKey(key));
-                if (key.equals("histogram_key")) {
-                    Assert.assertThat((String)retrievedDoc.get("histogram_key"), equalTo("latency"));
-                }
                 if (key.equals("kind")) {
-                    Assert.assertThat((String)retrievedDoc.get("kind"), equalTo("HISTOGRAM"));
+                    assertThat((String)retrievedDoc.get("kind"), equalTo("HISTOGRAM"));
                 }
                 if (key.equals("explicitBoundsCount")) {
-                    Assert.assertThat((String)retrievedDoc.get("explicitBoundsCount"), equalTo(5));
+                    assertThat(retrievedDoc.get("explicitBoundsCount"), equalTo(5));
+                }
+                if (key.equals("bucketCounts")) {
+                    assertThat(retrievedDoc.get("bucketCounts"), equalTo(6));
                 }
                 if (key.equals("min")) {
                     double minVal = (double)retrievedDoc.get("min");
@@ -149,11 +156,22 @@ public class EndToEndLogMetricsTest {
                     receivedCount += (int)retrievedDoc.get("count");
                 }
             }
+
+            final Map<String, Object> attributes = (Map<String, Object>) retrievedDoc.get("attributes");
+            assertThat(attributes, notNullValue());
+            assertThat(attributes.size(), equalTo(4));
+
+            for (String attributeKey: attributeKeys) {
+                assertThat(attributes.containsKey(attributeKey), equalTo(true));
+            }
+            assertThat((String)attributes.get("histogram_key"), equalTo("latency"));
+            assertThat((String)attributes.get(SOURCE_IP_KEY), equalTo(SOURCE_IP));
         }
-        Assert.assertThat(expectedMin, equalTo(receivedMin));
-        Assert.assertThat(expectedMax, equalTo(receivedMax));
-        Assert.assertThat(TOTAL_EVENTS, equalTo(receivedCount));
-        Assert.assertThat(expectedSum, closeTo(receivedSum, 0.1));
+
+        assertThat(TOTAL_EVENTS, equalTo(receivedCount));
+        assertThat(expectedMin, equalTo(receivedMin));
+        assertThat(expectedMax, equalTo(receivedMax));
+        assertThat(expectedSum, closeTo(receivedSum, 0.1));
     }
 
     private RestHighLevelClient prepareOpenSearchRestHighLevelClient() {
@@ -205,8 +223,8 @@ public class EndToEndLogMetricsTest {
         logObj.put("date", System.currentTimeMillis());
         logObj.put("log", apacheLogFaker.generateRandomExtendedApacheLog());
         logObj.put("latency", latency);
-        logObj.put("sourceIp", SOURCE_IP);
-        logObj.put("destinationIp", destinationIp);
+        logObj.put(SOURCE_IP_KEY, SOURCE_IP);
+        logObj.put(DESTINATION_IP_KEY, destinationIp);
         logObj.put(customKey, customValue);
         jsonArray.add(logObj);
 

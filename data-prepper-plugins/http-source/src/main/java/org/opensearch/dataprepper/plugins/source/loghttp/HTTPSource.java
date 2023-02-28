@@ -40,11 +40,13 @@ import java.util.function.Function;
 @DataPrepperPlugin(name = "http", pluginType = Source.class, pluginConfigurationType = HTTPSourceConfig.class)
 public class HTTPSource implements Source<Record<Log>> {
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSource.class);
+    private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
 
     private final HTTPSourceConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
     private final ArmeriaHttpAuthenticationProvider authenticationProvider;
+    private final String pipelineName;
     private Server server;
     private final PluginMetrics pluginMetrics;
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
@@ -54,7 +56,8 @@ public class HTTPSource implements Source<Record<Log>> {
                       final PipelineDescription pipelineDescription) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
-        certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
+        this.pipelineName = pipelineDescription.getPipelineName();
+        this.certificateProviderFactory = new CertificateProviderFactory(sourceConfig);
         final PluginModel authenticationConfiguration = sourceConfig.getAuthentication();
         final PluginSetting authenticationPluginSetting;
 
@@ -70,7 +73,7 @@ public class HTTPSource implements Source<Record<Log>> {
             authenticationPluginSetting =
                     new PluginSetting(ArmeriaHttpAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
-        authenticationPluginSetting.setPipelineName(pipelineDescription.getPipelineName());
+        authenticationPluginSetting.setPipelineName(pipelineName);
         authenticationProvider = pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, authenticationPluginSetting);
     }
 
@@ -119,10 +122,11 @@ public class HTTPSource implements Source<Record<Log>> {
             final LogThrottlingStrategy logThrottlingStrategy = new LogThrottlingStrategy(
                     maxPendingRequests, blockingTaskExecutor.getQueue());
             final LogThrottlingRejectHandler logThrottlingRejectHandler = new LogThrottlingRejectHandler(maxPendingRequests, pluginMetrics);
-            // TODO: allow customization on URI path for log ingestion
-            sb.decorator(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
+
+            final String httpSourcePath = sourceConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
+            sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
             final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
-            sb.annotatedService(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, logHTTPService);
+            sb.annotatedService(httpSourcePath, logHTTPService);
 
             if (sourceConfig.hasHealthCheckService()) {
                 LOG.info("HTTP source health check is enabled");

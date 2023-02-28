@@ -1,0 +1,6 @@
+server_port: 1234
+ssl: true
+
+circuit_breakers:
+  heap:
+    usage: 2.5gb

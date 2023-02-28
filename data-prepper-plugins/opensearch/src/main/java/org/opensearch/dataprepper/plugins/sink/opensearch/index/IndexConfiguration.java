@@ -10,11 +10,15 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
+import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
+import software.amazon.awssdk.arns.Arn;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,6 +40,8 @@ public class IndexConfiguration {
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
     public static final String ACTION = "action";
+    public static final String S3_AWS_REGION = "s3_aws_region";
+    public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
 
     private IndexType indexType;
     private final String indexAlias;
@@ -45,12 +51,20 @@ public class IndexConfiguration {
     private final long bulkSize;
     private final Optional<String> ismPolicyFile;
     private final String action;
+    private final String s3AwsRegion;
+    private final String s3AwsStsRoleArn;
+    private final S3Client s3Client;
 
-    private static final Logger LOG = LoggerFactory.getLogger(IndexManager.class);
+    private static final String S3_PREFIX = "s3://";
+    private static final String DEFAULT_AWS_REGION = "us-east-1";
 
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
         determineIndexType(builder);
+
+        this.s3AwsRegion = builder.s3AwsRegion;
+        this.s3AwsStsRoleArn = builder.s3AwsStsRoleArn;
+        this.s3Client = builder.s3Client;
 
         this.indexTemplate = readIndexTemplate(builder.templateFile, indexType);
 
@@ -130,6 +144,17 @@ public class IndexConfiguration {
 
         builder.withAction(pluginSetting.getStringOrDefault(ACTION, BulkAction.INDEX.toString()));
 
+        if ((builder.templateFile != null && builder.templateFile.startsWith(S3_PREFIX))
+            || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
+            builder.withS3AwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
+            builder.withS3AWSStsRoleArn(pluginSetting.getStringOrDefault(S3_AWS_STS_ROLE_ARN, null));
+
+            final S3ClientProvider clientProvider = new S3ClientProvider(builder.s3AwsRegion, builder.s3AwsStsRoleArn);
+            builder.withS3Client(clientProvider.buildS3Client());
+        }
+
+
+
         return builder.build();
     }
 
@@ -165,6 +190,14 @@ public class IndexConfiguration {
         return action;
     }
 
+    public String getS3AwsRegion() {
+        return s3AwsRegion;
+    }
+
+    public String getS3AwsStsRoleArn() {
+        return s3AwsStsRoleArn;
+    }
+
     /**
      * This method is used in the creation of IndexConfiguration object. It takes in the template file path
      * or index type and returns the index template read from the file or specific to index type or returns an
@@ -177,6 +210,7 @@ public class IndexConfiguration {
     private Map<String, Object> readIndexTemplate(final String templateFile, final IndexType indexType) {
         try {
             URL templateURL = null;
+            InputStream s3TemplateFile = null;
             if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
                 templateURL = getClass().getClassLoader()
                         .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
@@ -184,10 +218,18 @@ public class IndexConfiguration {
                 templateURL = getClass().getClassLoader()
                         .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
-                templateURL = new File(templateFile).toURI().toURL();
+                if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
+                    FileReader s3FileReader = new S3FileReader(s3Client);
+                    s3TemplateFile = s3FileReader.readFile(templateFile);
+                } else {
+                    templateURL = new File(templateFile).toURI().toURL();
+                }
             }
             if (templateURL != null) {
                 return new ObjectMapper().readValue(templateURL, new TypeReference<Map<String, Object>>() {
+                });
+            } else if (s3TemplateFile != null) {
+                return new ObjectMapper().readValue(s3TemplateFile, new TypeReference<Map<String, Object>>() {
                 });
             } else {
                 return new HashMap<>();
@@ -208,6 +250,9 @@ public class IndexConfiguration {
         private long bulkSize = DEFAULT_BULK_SIZE;
         private Optional<String> ismPolicyFile;
         private String action;
+        private String s3AwsRegion;
+        private String s3AwsStsRoleArn;
+        private S3Client s3Client;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -263,6 +308,31 @@ public class IndexConfiguration {
         public Builder withAction(final String action) {
             checkArgument(EnumUtils.isValidEnumIgnoreCase(BulkAction.class, action), "action must be one of the following: " +  BulkAction.values());
             this.action = action;
+            return this;
+        }
+
+        public Builder withS3AwsRegion(final String s3AwsRegion) {
+            checkNotNull(s3AwsRegion, "s3AwsRegion cannot be null");
+            this.s3AwsRegion = s3AwsRegion;
+            return this;
+        }
+
+        public Builder withS3AWSStsRoleArn(final String s3AwsStsRoleArn) {
+            checkArgument(s3AwsStsRoleArn == null || s3AwsStsRoleArn.length() <= 2048, "s3AwsStsRoleArn length cannot exceed 2048");
+            if(s3AwsStsRoleArn != null) {
+                try {
+                    Arn.fromString(s3AwsStsRoleArn);
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Invalid ARN format for s3AwsStsRoleArn");
+                }
+            }
+            this.s3AwsStsRoleArn = s3AwsStsRoleArn;
+            return this;
+        }
+
+        public Builder withS3Client(final S3Client s3Client) {
+            checkArgument(s3Client != null);
+            this.s3Client = s3Client;
             return this;
         }
 

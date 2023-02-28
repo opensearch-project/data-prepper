@@ -24,12 +24,15 @@ import java.util.Map;
 public class PeerForwarderConfiguration {
     public static final String DEFAULT_PEER_FORWARDING_URI = "/event/forward";
     public static final Duration DEFAULT_DRAIN_TIMEOUT = Duration.ofSeconds(10L);
+    public static final Duration DEFAULT_FORWARDING_BATCH_TIMEOUT = Duration.ofSeconds(3L);
     public static final String DEFAULT_CERTIFICATE_FILE_PATH = "config/default_certificate.pem";
     public static final String DEFAULT_PRIVATE_KEY_FILE_PATH = "config/default_private_key.pem";
     private static final String S3_PREFIX = "s3://";
+    private static final int MAX_FORWARDING_BATCH_SIZE = 15000;
 
     private Integer serverPort = 4994;
     private Integer requestTimeout = 10_000;
+    private Integer clientTimeout = 60_000;
     private Integer serverThreadCount = 200;
     private Integer maxConnectionCount = 500;
     private Integer maxPendingRequests = 1024;
@@ -52,9 +55,15 @@ public class PeerForwarderConfiguration {
     private List<String> staticEndpoints = new ArrayList<>();
     private Integer clientThreadCount = 200;
     private Integer batchSize = 48;
+    private Integer batchDelay = 3_000;
     private Integer bufferSize = 512;
     private boolean sslCertAndKeyFileInS3 = false;
     private Duration drainTimeout = DEFAULT_DRAIN_TIMEOUT;
+    private Integer failedForwardingRequestLocalWriteTimeout = 500;
+    private Integer forwardingBatchSize = 1500;
+    private Integer forwardingBatchQueueDepth = 1;
+    private Duration forwardingBatchTimeout = DEFAULT_FORWARDING_BATCH_TIMEOUT;
+    private boolean binaryCodec = true;
 
     public PeerForwarderConfiguration() {}
 
@@ -62,6 +71,7 @@ public class PeerForwarderConfiguration {
     public PeerForwarderConfiguration (
             @JsonProperty("port") final Integer serverPort,
             @JsonProperty("request_timeout") final Integer requestTimeout,
+            @JsonProperty("client_timeout") final Integer clientTimeout,
             @JsonProperty("server_thread_count") final Integer serverThreadCount,
             @JsonProperty("max_connection_count") final Integer maxConnectionCount,
             @JsonProperty("max_pending_requests") final Integer maxPendingRequests,
@@ -84,11 +94,18 @@ public class PeerForwarderConfiguration {
             @JsonProperty("static_endpoints") final List<String> staticEndpoints,
             @JsonProperty("client_thread_count") final Integer clientThreadCount,
             @JsonProperty("batch_size") final Integer batchSize,
+            @JsonProperty("batch_delay") final Integer batchDelay,
             @JsonProperty("buffer_size") final Integer bufferSize,
-            @JsonProperty("drain_timeout") final Duration drainTimeout
+            @JsonProperty("drain_timeout") final Duration drainTimeout,
+            @JsonProperty("failed_forwarding_requests_local_write_timeout") final Integer failedForwardingRequestLocalWriteTimeout,
+            @JsonProperty("forwarding_batch_size") final Integer forwardingBatchSize,
+            @JsonProperty("forwarding_batch_queue_depth") final Integer forwardingBatchQueueDepth,
+            @JsonProperty("forwarding_batch_timeout") final Duration forwardingBatchTimeout,
+            @JsonProperty("binary_codec") final Boolean binaryCodec
     ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
+        setClientTimeout(clientTimeout);
         setServerThreadCount(serverThreadCount);
         setMaxConnectionCount(maxConnectionCount);
         setMaxPendingRequests(maxPendingRequests);
@@ -111,8 +128,14 @@ public class PeerForwarderConfiguration {
         setStaticEndpoints(staticEndpoints);
         setClientThreadCount(clientThreadCount);
         setBatchSize(batchSize);
+        setBatchDelay(batchDelay);
         setBufferSize(bufferSize);
         setDrainTimeout(drainTimeout);
+        setFailedForwardingRequestLocalWriteTimeout(failedForwardingRequestLocalWriteTimeout);
+        setForwardingBatchSize(forwardingBatchSize);
+        setForwardingBatchQueueDepth(forwardingBatchQueueDepth);
+        setForwardingBatchTimeout(forwardingBatchTimeout);
+        setBinaryCodec(binaryCodec == null || binaryCodec);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
     }
@@ -123,6 +146,10 @@ public class PeerForwarderConfiguration {
 
     public int getRequestTimeout() {
         return requestTimeout;
+    }
+
+    public int getClientTimeout() {
+        return clientTimeout;
     }
 
     public int getServerThreadCount() {
@@ -201,12 +228,36 @@ public class PeerForwarderConfiguration {
         return batchSize;
     }
 
+    public Integer getBatchDelay() {
+        return batchDelay;
+    }
+
     public int getBufferSize() {
         return bufferSize;
     }
 
     public Duration getDrainTimeout() {
         return drainTimeout;
+    }
+
+    public Integer getFailedForwardingRequestLocalWriteTimeout() {
+        return failedForwardingRequestLocalWriteTimeout;
+    }
+
+    public Integer getForwardingBatchSize() {
+        return forwardingBatchSize;
+    }
+
+    public Integer getForwardingBatchQueueDepth() {
+        return forwardingBatchQueueDepth;
+    }
+
+    public Duration getForwardingBatchTimeout() {
+        return forwardingBatchTimeout;
+    }
+
+    public boolean getBinaryCodec() {
+        return binaryCodec;
     }
 
     private void setServerPort(final Integer serverPort) {
@@ -220,10 +271,19 @@ public class PeerForwarderConfiguration {
 
     private void setRequestTimeout(final Integer requestTimeout) {
         if (requestTimeout!= null) {
-            if (requestTimeout <= 0) {
-                throw new IllegalArgumentException("Request timeout must be a positive integer.");
+            if (requestTimeout <= 1) {
+                throw new IllegalArgumentException("Request timeout must be a positive integer greater than 1.");
             }
             this.requestTimeout = requestTimeout;
+        }
+    }
+
+    private void setClientTimeout(final Integer clientTimeout) {
+        if (clientTimeout != null) {
+            if (clientTimeout <= 0) {
+                throw new IllegalArgumentException("Client timeout must be a positive integer.");
+            }
+            this.clientTimeout = clientTimeout;
         }
     }
 
@@ -411,6 +471,15 @@ public class PeerForwarderConfiguration {
         }
     }
 
+    private void setBatchDelay(final Integer batchDelay) {
+        if (batchDelay != null) {
+            if (batchDelay < 0) {
+                throw new IllegalArgumentException("Batch delay must be a non-negative integer.");
+            }
+            this.batchDelay = batchDelay;
+        }
+    }
+
     private void setBufferSize(final Integer bufferSize) {
         if (bufferSize != null) {
             if (bufferSize <= 0) {
@@ -443,5 +512,45 @@ public class PeerForwarderConfiguration {
             }
             this.drainTimeout = drainTimeout;
         }
+    }
+
+    private void setFailedForwardingRequestLocalWriteTimeout(final Integer failedForwardingRequestLocalWriteTimeout) {
+        if (failedForwardingRequestLocalWriteTimeout != null) {
+            if (failedForwardingRequestLocalWriteTimeout <= 0) {
+                throw new IllegalArgumentException("Failed forwarding requests local write timeout must be a positive integer.");
+            }
+            this.failedForwardingRequestLocalWriteTimeout = failedForwardingRequestLocalWriteTimeout;
+        }
+    }
+
+    private void setForwardingBatchSize(final Integer forwardingBatchSize) {
+        if (forwardingBatchSize != null) {
+            if (forwardingBatchSize <= 0 || forwardingBatchSize > MAX_FORWARDING_BATCH_SIZE) {
+                throw new IllegalArgumentException("Forwarding batch size must be between 1 and 3000 inclusive.");
+            }
+            this.forwardingBatchSize = forwardingBatchSize;
+        }
+    }
+
+    private void setForwardingBatchQueueDepth(final Integer forwardingBatchQueueDepth) {
+        if (forwardingBatchQueueDepth != null) {
+            if (forwardingBatchQueueDepth <= 0) {
+                throw new IllegalArgumentException("Forwarding batch queue depth must be a positive integer.");
+            }
+            this.forwardingBatchQueueDepth = forwardingBatchQueueDepth;
+        }
+    }
+
+    private void setForwardingBatchTimeout(final Duration forwardingBatchTimeout) {
+        if (forwardingBatchTimeout != null) {
+            if (forwardingBatchTimeout.isNegative()) {
+                throw new IllegalArgumentException("Forwarding batch timeout must be non-negative.");
+            }
+            this.forwardingBatchTimeout = forwardingBatchTimeout;
+        }
+    }
+
+    private void setBinaryCodec(final boolean binaryCodec) {
+        this.binaryCodec = binaryCodec;
     }
 }

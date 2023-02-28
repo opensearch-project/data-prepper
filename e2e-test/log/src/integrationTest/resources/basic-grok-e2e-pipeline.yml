@@ -1,6 +1,7 @@
 grok-pipeline:
   source:
     http:
+      path: "/${pipelineName}/logs"
   processor:
     - grok:
         match:

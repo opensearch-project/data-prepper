@@ -43,6 +43,15 @@ public class TestSink implements Sink<Record<String>> {
         isShutdown = true;
     }
 
+    @Override
+    public void initialize() {
+    }
+
+    @Override
+    public boolean isReady() {
+        return true;
+    }
+
     public List<Record<String>> getCollectedRecords() {
         return collectedRecords;
     }

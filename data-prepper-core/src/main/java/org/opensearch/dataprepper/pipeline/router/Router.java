@@ -10,8 +10,8 @@ import org.opensearch.dataprepper.parser.DataFlowComponent;
 
 import java.util.Collection;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 /**
@@ -29,6 +29,7 @@ public class Router {
     public <C> void route(
             final Collection<Record> allRecords,
             final Collection<DataFlowComponent<C>> dataFlowComponents,
+            final RouterGetRecordStrategy getRecordStrategy,
             final BiConsumer<C, Collection<Record>> componentRecordsConsumer) {
 
         Objects.requireNonNull(allRecords);
@@ -38,7 +39,7 @@ public class Router {
         final Map<Record, Set<String>> recordsToRoutes = routeEventEvaluator.evaluateEventRoutes(allRecords);
 
         for (DataFlowComponent<C> dataFlowComponent : dataFlowComponents) {
-            dataFlowComponentRouter.route(allRecords, dataFlowComponent, recordsToRoutes, componentRecordsConsumer);
+            dataFlowComponentRouter.route(allRecords, dataFlowComponent, recordsToRoutes, getRecordStrategy, componentRecordsConsumer);
         }
     }
 }

@@ -87,7 +87,7 @@ And will parse it into the following. (Note that since `delete_header` is `true`
 
 ## Metrics
 
-Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/com/amazon/dataprepper/model/processor/AbstractProcessor.java), the CSV Processor includes the following custom metric.
+Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-project/data-prepper/blob/main/data-prepper-api/src/main/java/org/opensearch/dataprepper/model/processor/AbstractProcessor.java), the CSV Processor includes the following custom metric.
 
 **Counter**
 

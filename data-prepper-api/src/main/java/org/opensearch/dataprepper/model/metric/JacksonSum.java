@@ -29,8 +29,8 @@ public class JacksonSum extends JacksonMetric implements Sum {
     private static final List<String> REQUIRED_NON_EMPTY_KEYS = Arrays.asList(NAME_KEY, KIND_KEY, TIME_KEY);
     private static final List<String> REQUIRED_NON_NULL_KEYS = Arrays.asList(VALUE_KEY, IS_MONOTONIC_KEY);
 
-    protected JacksonSum(JacksonSum.Builder builder) {
-        super(builder);
+    protected JacksonSum(JacksonSum.Builder builder, boolean flattenAttributes) {
+        super(builder, flattenAttributes);
 
         checkArgument(this.getMetadata().getEventType().equals(EventType.METRIC.toString()), "eventType must be of type Metric");
     }
@@ -102,18 +102,27 @@ public class JacksonSum extends JacksonMetric implements Sum {
         }
 
         /**
-         * Returns a newly created
+         * Returns a newly created {@link JacksonSum}
          * @return a JacksonSum
          * @since 1.4
          */
         public JacksonSum build() {
+            return build(true);
+        }
+
+        /**
+         * Returns a newly created {@link JacksonSum}
+         * @return a JacksonSum
+         * @since 2.1
+         */
+        public JacksonSum build(boolean flattenAttributes) {
             this.withData(data);
             this.withEventType(EventType.METRIC.toString());
             this.withEventKind(Metric.KIND.SUM.toString());
 
             checkAndSetDefaultValues();
             new ParameterValidator().validate(REQUIRED_KEYS, REQUIRED_NON_EMPTY_KEYS, REQUIRED_NON_NULL_KEYS, data);
-            return new JacksonSum(this);
+            return new JacksonSum(this, flattenAttributes);
         }
 
         private void checkAndSetDefaultValues() {
