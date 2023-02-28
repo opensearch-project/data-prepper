@@ -7,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 public class KafkaSourceConfig {
 	
 	public static final Integer NUM_OF_PARTITIONS = 2;
-	public static final Integer CONSUMER_COUNT = 2;
+	public static final Integer CONSUMER_COUNT = 3;
 	public static final Long MAX_FETCH_TIME = 4000L;
 	public static final String CONSUMER_GROUP_NAME = "kafka-consumer-group";
 	public static final Long THREAD_WAITING_MILLI_SEC = 1000L;
