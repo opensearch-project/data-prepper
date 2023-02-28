@@ -96,7 +96,7 @@ public class EndToEndBasicLogTest {
                         .scheme(SessionProtocol.HTTP)
                         .authority(String.format("127.0.0.1:%d", port))
                         .method(HttpMethod.POST)
-                        .path("/log/ingest")
+                        .path("/grok-pipeline/logs")
                         .contentType(MediaType.JSON_UTF_8)
                         .build(),
                 httpData)

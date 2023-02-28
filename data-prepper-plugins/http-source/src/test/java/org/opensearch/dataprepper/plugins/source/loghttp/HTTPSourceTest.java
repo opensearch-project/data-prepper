@@ -170,6 +170,7 @@ class HTTPSourceTest {
 
         sourceConfig = mock(HTTPSourceConfig.class);
         lenient().when(sourceConfig.getPort()).thenReturn(2021);
+        lenient().when(sourceConfig.getPath()).thenReturn(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI);
         lenient().when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(10_000);
         lenient().when(sourceConfig.getThreadCount()).thenReturn(200);
         lenient().when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
@@ -512,6 +513,7 @@ class HTTPSourceTest {
     void testHTTPSJsonResponse() {
         reset(sourceConfig);
         when(sourceConfig.getPort()).thenReturn(2021);
+        when(sourceConfig.getPath()).thenReturn(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI);
         when(sourceConfig.getThreadCount()).thenReturn(200);
         when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
         when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
@@ -532,6 +534,38 @@ class HTTPSourceTest {
                         .contentType(MediaType.JSON_UTF_8)
                         .build(),
                 HttpData.ofUtf8("[{\"log\": \"somelog\"}]"))
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+    }
+
+    @Test
+    void testHTTPSJsonResponse_with_custom_path_along_with_placeholder() {
+        reset(sourceConfig);
+        when(sourceConfig.getPort()).thenReturn(2021);
+        when(sourceConfig.getPath()).thenReturn("/${pipelineName}/test");
+        when(sourceConfig.getThreadCount()).thenReturn(200);
+        when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
+        when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
+        when(sourceConfig.getRequestTimeoutInMillis()).thenReturn(200);
+        when(sourceConfig.isSsl()).thenReturn(true);
+
+        when(sourceConfig.getSslCertificateFile()).thenReturn(TEST_SSL_CERTIFICATE_FILE);
+        when(sourceConfig.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+
+        testBuffer = getBuffer();
+        HTTPSourceUnderTest.start(testBuffer);
+
+        final String path = "/" + TEST_PIPELINE_NAME + "/test";
+
+        WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTPS)
+                                .authority("127.0.0.1:2021")
+                                .method(HttpMethod.POST)
+                                .path(path)
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.ofUtf8("[{\"log\": \"somelog\"}]"))
                 .aggregate()
                 .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
     }
