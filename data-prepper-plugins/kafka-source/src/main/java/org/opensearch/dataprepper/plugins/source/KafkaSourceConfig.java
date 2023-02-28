@@ -8,22 +8,20 @@ public class KafkaSourceConfig {
 	
 	public static final Integer NUM_OF_PARTITIONS = 2;
 	public static final Integer CONSUMER_COUNT = 2;
-	public static final String TOPIC_NAME = "my-topic";
-	public static final String CONSUMER_GROUP_NAME = "test-consumer-group";
-	public static final Long THREAD_WAITING_MILLI_SEC = 3000L;
-	
-	private final String security_inter_broker_protocol="PLAIN";
-	private final String sasl_mechanism="PLAIN";
+	public static final Long MAX_FETCH_TIME = 4000L;
+	public static final String CONSUMER_GROUP_NAME = "kafka-consumer-group";
+	public static final Long THREAD_WAITING_MILLI_SEC = 1000L;
+	public static final String COMMIT_FAILURE_MSG = "Failed to commit record. Will try again in the future...";
+	public static final String CLOSING_CONSUMER_MSG= "Closing the Consumer...";
 	
 	    @JsonProperty("bootstrap_servers")
 	    @NotNull
-	    private String bootstrapservers;
-
-
-		public String getBootstrapservers() {
-			return bootstrapservers;
-		}
+	    private String bootStrapServers;
 		
+		public String getBootStrapServers() {
+			return bootStrapServers;
+		}
+
 		@JsonProperty("group_id")
 	    private String groupId;
 
@@ -32,31 +30,66 @@ public class KafkaSourceConfig {
 			return groupId;
 		}
 		
+		@JsonProperty("topic_name")
+		@NotNull
+	    private String topicName;
+		
+
+		public String getTopicName() {
+			return topicName;
+		}
+
+		public void setTopicName(String topicName) {
+			this.topicName = topicName;
+		}
+		
+		@JsonProperty("max_retry_attempts")
+	    private Integer maxRetryAttempts;
+
+		public Integer getMaxRetryAttempts() {
+			return maxRetryAttempts;
+		}
+
+		public void setMaxRetryAttempts(Integer maxRetryAttempts) {
+			this.maxRetryAttempts = maxRetryAttempts;
+		}
+
+		@JsonProperty("schema_type")
+		@NotNull
+	    private String schemaType;
+		
+
+		public String getSchemaType() {
+			return schemaType;
+		}
+
+		public void setSchemaType(String schemaType) {
+			this.schemaType = schemaType;
+		}
+
 		@JsonProperty("enable_autocommit")
 		@NotNull
-	    private String enableautocommit;
-
-
-		public String getEnableautocommit() {
-			return enableautocommit;
+	    private String enableAutoCommit;
+		
+		public String getEnableAutoCommit() {
+			return enableAutoCommit;
 		}
-	 
+
 		@JsonProperty("enable_autocommit_interval")
-	    private String enableautocommitinterval;
+	    private String enableAutoCommitInterval;
 
-
-		public String getEnableautocommitinterval() {
-			return enableautocommitinterval;
-		}
 		
+		public String getEnableAutoCommitInterval() {
+			return enableAutoCommitInterval;
+		}
+
 		@JsonProperty("session_timeout")
-	    private String sessiontimeout;
-
-
-		public String getSessiontimeout() {
-			return sessiontimeout;
-		}
+	    private String sessionTimeOut;
 		
+		public String getSessionTimeOut() {
+			return sessionTimeOut;
+		}
+
 		@JsonProperty("key_deserializer")
 		@NotNull
 	    private String keyDeserializer;
@@ -82,11 +115,17 @@ public class KafkaSourceConfig {
 		        return securityProtocol;
 		}
 		
-		public String getSecurityInterBrokerProtocol() {
-		    return security_inter_broker_protocol;
-		} 
-		
-		public String getSaslMechanism() {
-		    return sasl_mechanism;
+		@JsonProperty("auto_offset_reset")
+		private String autoOffsetReset;
+
+
+		public String getAutoOffsetReset() {
+			return autoOffsetReset;
 		}
+
+		public void setAutoOffsetReset(String autoOffsetReset) {
+			this.autoOffsetReset = autoOffsetReset;
+		}
+		
+		
 }

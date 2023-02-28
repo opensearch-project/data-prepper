@@ -1,12 +1,16 @@
 log-pipeline:
   source:
     kafka:
-      bootstrapservers: localhost:9092
-      groupId: DPKafkaProj
-      enableautocommit: true
-      enableautocommitinterval: 1000
-      sessiontimeout: 30000
-      keyDeserializer: org.apache.kafka.common.serialization.StringDeserializer
-      valueDeserializer: org.apache.kafka.common.serialization.StringDeserializer
+      bootstrap_servers: localhost:9092
+      group_id: DPKafkaProj
+      enable_autocommit: false
+      enable_autocommit_interval: 1000
+      session_timeout: 30000
+      key_deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value_deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      schema_type: string
+      topic_name: my-topic
+      max_retry_attempts: 5
+      auto_offset_reset: earliest
   sink:
     - stdout:
