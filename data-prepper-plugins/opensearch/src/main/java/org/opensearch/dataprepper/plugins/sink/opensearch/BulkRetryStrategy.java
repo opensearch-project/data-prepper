@@ -94,6 +94,7 @@ public final class BulkRetryStrategy {
     private final BiConsumer<BulkOperation, Throwable> logFailure;
     private final PluginMetrics pluginMetrics;
     private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
+    private final int maxRetries;
 
     private final Counter sentDocumentsCounter;
     private final Counter sentDocumentsOnFirstAttemptCounter;
@@ -110,11 +111,13 @@ public final class BulkRetryStrategy {
     public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperation, BulkRequest>, BulkResponse> requestFunction,
                              final BiConsumer<BulkOperation, Throwable> logFailure,
                              final PluginMetrics pluginMetrics,
+                             final int maxRetries,
                              final Supplier<AccumulatingBulkRequest> bulkRequestSupplier) {
         this.requestFunction = requestFunction;
         this.logFailure = logFailure;
         this.pluginMetrics = pluginMetrics;
         this.bulkRequestSupplier = bulkRequestSupplier;
+        this.maxRetries = maxRetries;
 
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
@@ -154,6 +157,7 @@ public final class BulkRetryStrategy {
 
     private void handleRetry(final AccumulatingBulkRequest request, final BulkResponse response,
                              final BackOffUtils backOffUtils, final boolean firstAttempt) throws InterruptedException {
+        int retryCount = request.incrementAndGetRetryCount();
         final AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
         if (backOffUtils.hasNext()) {
             // Wait for backOff duration
@@ -161,7 +165,7 @@ public final class BulkRetryStrategy {
             final BulkResponse bulkResponse;
             try {
                 bulkResponse = requestFunction.apply(bulkRequestForRetry);
-            } catch (final Exception e) {
+            } catch (Exception e) {
                 if (e instanceof OpenSearchException) {
                     int status = ((OpenSearchException) e).status().getStatus();
                     if (NOT_ALLOWED_ERRORS.contains(status)) {
@@ -179,10 +183,13 @@ public final class BulkRetryStrategy {
                     }
                 }
 
-                if (canRetry(e)) {
+                if (canRetry(e) && retryCount < maxRetries) {
                     handleRetry(bulkRequestForRetry, null, backOffUtils, false);
                     bulkRequestNumberOfRetries.increment();
                 } else {
+                    if (canRetry(e) && retryCount >= maxRetries) {
+                        e = new RuntimeException(String.format("Number of retries reached the limit of max retries(configured value %d)", maxRetries));
+                    }
                     handleFailures(bulkRequestForRetry, e);
                     bulkRequestFailedCounter.increment();
                 }

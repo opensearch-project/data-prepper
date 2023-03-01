@@ -138,10 +138,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
     openSearchClient = new OpenSearchClient(transport);
     bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+    final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
             this::logFailure,
             pluginMetrics,
+            maxRetries,
             bulkRequestSupplier);
 
     objectMapper = new ObjectMapper();
