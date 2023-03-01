@@ -59,7 +59,7 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation 'commons-io:commons-io:2.11.0'
     testImplementation 'net.bytebuddy:byte-buddy:1.12.22'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.12.22'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.0'
     testImplementation 'org.slf4j:slf4j-simple:2.0.6'
 }
 
