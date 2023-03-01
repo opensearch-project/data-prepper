@@ -5,10 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
+import org.opensearch.dataprepper.plugins.source.exception.SqsRetriesExhaustedException;
 import org.opensearch.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import org.opensearch.dataprepper.plugins.source.filter.S3EventFilter;
 import io.micrometer.core.instrument.Counter;
@@ -37,6 +39,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.opensearch.dataprepper.plugins.source.SqsWorker.SQS_MESSAGES_DELETED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.SqsWorker.SQS_MESSAGES_FAILED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.SqsWorker.SQS_MESSAGES_RECEIVED_METRIC_NAME;
@@ -62,6 +66,7 @@ class SqsWorkerTest {
     private S3SourceConfig s3SourceConfig;
     private S3EventFilter objectCreatedFilter;
     private PluginMetrics pluginMetrics;
+    private Backoff backoff;
     private Counter sqsMessagesReceivedCounter;
     private Counter sqsMessagesDeletedCounter;
     private Counter sqsMessagesFailedCounter;
@@ -73,6 +78,7 @@ class SqsWorkerTest {
         s3Service = mock(S3Service.class);
         s3SourceConfig = mock(S3SourceConfig.class);
         objectCreatedFilter = new ObjectCreatedFilter();
+        backoff = mock(Backoff.class);
 
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
@@ -99,7 +105,7 @@ class SqsWorkerTest {
         when(pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME)).thenReturn(sqsMessagesFailedCounter);
         when(pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(sqsMessageDelayTimer);
 
-        sqsWorker = new SqsWorker(sqsClient, s3Service, s3SourceConfig, pluginMetrics);
+        sqsWorker = new SqsWorker(sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
     }
 
     @AfterEach
@@ -180,6 +186,21 @@ class SqsWorkerTest {
         final int messagesProcessed = sqsWorker.processSqsMessages();
         assertThat(messagesProcessed, equalTo(0));
         verify(sqsClient, never()).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+    }
+
+    @Test
+    void processSqsMessages_should_return_zero_messages_with_backoff_when_a_SqsException_is_thrown() {
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(SqsException.class);
+        final int messagesProcessed = sqsWorker.processSqsMessages();
+        verify(backoff).nextDelayMillis(anyInt());
+        assertThat(messagesProcessed, equalTo(0));
+    }
+
+    @Test
+    void processSqsMessages_should_throw_when_a_SqsException_is_thrown_with_max_retries() {
+        when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(SqsException.class);
+        when(backoff.nextDelayMillis(anyInt())).thenReturn((long) -1);
+        assertThrows(SqsRetriesExhaustedException.class, () -> sqsWorker.processSqsMessages());
     }
 
     @ParameterizedTest

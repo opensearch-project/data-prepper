@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +15,9 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
+    static final int ONE_SECOND = 1000;
+    static final int THIRTY_MINUTES = 30 * 60 * 1000;
+    static final double TWENTY_PERCENT = 0.25;
 
     private final S3SourceConfig s3SourceConfig;
     private final S3Service s3Accessor;
@@ -32,7 +36,9 @@ public class SqsService {
     }
 
     public void start() {
-        sqsWorkerThread = new Thread(new SqsWorker(sqsClient, s3Accessor, s3SourceConfig, pluginMetrics));
+        final Backoff backoff = Backoff.exponential(ONE_SECOND, THIRTY_MINUTES).withJitter(TWENTY_PERCENT)
+                .withMaxAttempts(Integer.MAX_VALUE);
+        sqsWorkerThread = new Thread(new SqsWorker(sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
         sqsWorkerThread.start();
     }
 
