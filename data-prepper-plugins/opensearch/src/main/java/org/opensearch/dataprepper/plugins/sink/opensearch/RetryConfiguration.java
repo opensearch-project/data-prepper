@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3DLQWriter;
 import software.amazon.awssdk.services.s3.S3Client;
