@@ -4,6 +4,7 @@
  */
 
 dependencies {
+    implementation "io.krakens:java-grok:0.1.9"
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
