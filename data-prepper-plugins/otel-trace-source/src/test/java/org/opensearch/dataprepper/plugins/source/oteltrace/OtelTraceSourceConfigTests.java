@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -22,7 +24,7 @@ import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourc
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.DEFAULT_THREAD_COUNT;
 
-public class OtelTraceSourceConfigTests {
+class OtelTraceSourceConfigTests {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String PLUGIN_NAME = "otel_trace_source";
     private static final String TEST_KEY_CERT = "test.crt";
@@ -36,7 +38,7 @@ public class OtelTraceSourceConfigTests {
     private static final int TEST_MAX_CONNECTION_COUNT = 999;
 
     @Test
-    public void testDefault() {
+    void testDefault() {
 
         // Prepare
         final OTelTraceSourceConfig otelTraceSourceConfig = new OTelTraceSourceConfig();
@@ -57,7 +59,7 @@ public class OtelTraceSourceConfigTests {
     }
 
     @Test
-    public void testHttpHealthCheckWithUnframedRequestEnabled() {
+    void testHttpHealthCheckWithUnframedRequestEnabled() {
         // Prepare
         final Map<String, Object> settings = new HashMap<>();
         settings.put(OTelTraceSourceConfig.ENABLE_UNFRAMED_REQUESTS, "true");
@@ -75,7 +77,7 @@ public class OtelTraceSourceConfigTests {
     }
 
     @Test
-    public void testHttpHealthCheckWithUnframedRequestDisabled() {
+    void testHttpHealthCheckWithUnframedRequestDisabled() {
         // Prepare
         final Map<String, Object> settings = new HashMap<>();
         settings.put(OTelTraceSourceConfig.ENABLE_UNFRAMED_REQUESTS, "false");
@@ -93,11 +95,12 @@ public class OtelTraceSourceConfigTests {
     }
 
     @Test
-    public void testValidConfigWithoutS3CertAndKey() {
+    void testValidConfigWithoutS3CertAndKey() {
         // Prepare
         final PluginSetting validPluginSetting = completePluginSettingForOtelTraceSource(
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_PORT,
+                null,
                 true,
                 true,
                 false,
@@ -126,11 +129,12 @@ public class OtelTraceSourceConfigTests {
     }
 
     @Test
-    public void testValidConfigWithS3CertAndKey() {
+    void testValidConfigWithS3CertAndKey() {
         // Prepare
         final PluginSetting validPluginSettingWithS3CertAndKey = completePluginSettingForOtelTraceSource(
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -160,11 +164,13 @@ public class OtelTraceSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithNullKeyCert() {
+    void testInvalidConfigWithNullKeyCert() {
         // Prepare
         final PluginSetting sslNullKeyCertPluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
-                DEFAULT_PORT, false,
+                DEFAULT_PORT,
+                null,
+                false,
                 false,
                 false,
                 true, null,
@@ -180,11 +186,12 @@ public class OtelTraceSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithEmptyKeyCert() {
+    void testInvalidConfigWithEmptyKeyCert() {
         // Prepare
         final PluginSetting sslEmptyKeyCertPluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -202,11 +209,12 @@ public class OtelTraceSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithEmptyKeyFile() {
+    void testInvalidConfigWithEmptyKeyFile() {
         // Prepare
         final PluginSetting sslEmptyKeyFilePluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -222,8 +230,32 @@ public class OtelTraceSourceConfigTests {
         assertThrows(IllegalArgumentException.class, otelTraceSourceConfig::validateAndInitializeCertAndKeyFileInS3);
     }
 
+    @Test
+    void testValidConfigWithCustomPath() {
+        final String testPath = "testPath";
+        // Prepare
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelTraceSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                testPath,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelTraceSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelTraceSourceConfig.class);
+
+        // When/Then
+        assertThat(otelTraceSourceConfig.getPath(), equalTo(testPath));
+    }
+
     private PluginSetting completePluginSettingForOtelTraceSource(final int requestTimeoutInMillis,
                                                                   final int port,
+                                                                  final String path,
                                                                   final boolean healthCheck,
                                                                   final boolean protoReflectionService,
                                                                   final boolean enableUnframedRequests,
@@ -235,6 +267,7 @@ public class OtelTraceSourceConfigTests {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(OTelTraceSourceConfig.REQUEST_TIMEOUT, requestTimeoutInMillis);
         settings.put(OTelTraceSourceConfig.PORT, port);
+        settings.put(OTelTraceSourceConfig.PATH, path);
         settings.put(OTelTraceSourceConfig.HEALTH_CHECK_SERVICE, healthCheck);
         settings.put(OTelTraceSourceConfig.PROTO_REFLECTION_SERVICE, protoReflectionService);
         settings.put(OTelTraceSourceConfig.ENABLE_UNFRAMED_REQUESTS, enableUnframedRequests);
