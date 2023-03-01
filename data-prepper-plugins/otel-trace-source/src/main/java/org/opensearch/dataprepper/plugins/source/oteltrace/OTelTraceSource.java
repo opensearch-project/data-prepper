@@ -12,9 +12,13 @@ import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
+import io.grpc.MethodDescriptor;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -47,12 +51,14 @@ public class OTelTraceSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     public static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
+    private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
+
     private final OTelTraceSourceConfig oTelTraceSourceConfig;
-    private Server server;
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
     private final String pipelineName;
+    private Server server;
 
     @DataPrepperPluginConstructor
     public OTelTraceSource(final OTelTraceSourceConfig oTelTraceSourceConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory,
@@ -93,6 +99,14 @@ public class OTelTraceSource implements Source<Record<Object>> {
                     .addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors))
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true);
+
+            final MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> methodDescriptor = TraceServiceGrpc.getExportMethod();
+            final String oTelTraceSourcePath = oTelTraceSourceConfig.getPath();
+            if (oTelTraceSourcePath != null) {
+                final String transformedOTelTraceSourcePath = oTelTraceSourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
+                grpcServiceBuilder.addService(transformedOTelTraceSourcePath,
+                        ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors), methodDescriptor);
+            }
 
             if (oTelTraceSourceConfig.hasHealthCheck()) {
                 LOG.info("Health check is enabled");
@@ -209,7 +223,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         } else {
             authenticationPluginSetting = new PluginSetting(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
-        authenticationPluginSetting.setPipelineName(pipelineDescription.getPipelineName());
+        authenticationPluginSetting.setPipelineName(pipelineName);
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
     }
 }
