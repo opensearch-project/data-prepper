@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.pipeline.common.TestProcessor;
 import org.opensearch.dataprepper.pipeline.router.Router;
+import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
 import org.opensearch.dataprepper.plugins.TestSink;
 import org.opensearch.dataprepper.plugins.TestSource;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
@@ -284,7 +285,7 @@ class PipelineTests {
             createObjectUnderTest().publishToSinks(records);
 
             verify(router)
-                    .route(anyCollection(), eq(dataFlowComponents), any(BiConsumer.class));
+                    .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
         }
 
         @Nested
@@ -297,11 +298,11 @@ class PipelineTests {
                     dataFlowComponents
                             .stream()
                             .map(DataFlowComponent::getComponent)
-                            .forEach(sink -> a.<BiConsumer<Sink, Collection<Record>>>getArgument(2).accept(sink, records));
+                            .forEach(sink -> a.<BiConsumer<Sink, Collection<Record>>>getArgument(3).accept(sink, records));
                     return a;
                 })
                         .when(router)
-                        .route(anyCollection(), eq(dataFlowComponents), any(BiConsumer.class));
+                        .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
             }
 
             @Test
@@ -342,11 +343,11 @@ class PipelineTests {
 
                 doAnswer(a -> {
                     Collection<Record> records = a.getArgument(0);
-                    a.<BiConsumer<Sink, Collection<Record>>>getArgument(2).accept(routedSink, records);
+                    a.<BiConsumer<Sink, Collection<Record>>>getArgument(3).accept(routedSink, records);
                     return a;
                 })
                         .when(router)
-                        .route(anyCollection(), eq(dataFlowComponents), any(BiConsumer.class));
+                        .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
 
                 unroutedSinks = dataFlowComponents
                         .stream()

@@ -29,7 +29,7 @@ dependencies {
     implementation "org.bouncycastle:bcpkix-jdk15on:1.70"
     testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation testLibs.mockito.inline
-    testImplementation 'org.slf4j:slf4j-simple:2.0.5'
+    testImplementation 'org.slf4j:slf4j-simple:2.0.6'
     testImplementation("commons-io:commons-io:2.10.0")
 }
 
