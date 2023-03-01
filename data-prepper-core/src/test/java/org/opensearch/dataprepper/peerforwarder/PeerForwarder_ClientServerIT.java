@@ -5,15 +5,7 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.linecorp.armeria.client.UnprocessedRequestException;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.ClosedSessionException;
@@ -22,8 +14,16 @@ import com.linecorp.armeria.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
+import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodecAppConfig;
 import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.peerforwarder.server.RemotePeerForwarderServer;
 import org.opensearch.dataprepper.peerforwarder.server.ResponseHandler;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import javax.net.ssl.SSLHandshakeException;
 import java.util.Collection;
@@ -71,18 +72,16 @@ class PeerForwarder_ClientServerIT {
     private ObjectMapper objectMapper;
     private JavaPeerForwarderCodec javaPeerForwarderCodec;
     private JacksonPeerForwarderCodec jacksonPeerForwarderCodec;
+    private PeerForwarderConfiguration peerForwarderConfiguration;
     private String pipelineName;
     private String pluginId;
     private List<Record<Event>> outgoingRecords;
     private Set<String> expectedMessages;
     private PluginMetrics pluginMetrics;
+    private AnnotationConfigApplicationContext applicationContext;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-        javaPeerForwarderCodec = new JavaPeerForwarderCodec();
-        jacksonPeerForwarderCodec = new JacksonPeerForwarderCodec(objectMapper);
-
         outgoingRecords = IntStream.range(0, 5)
                 .mapToObj(i -> UUID.randomUUID().toString())
                 .map(JacksonEvent::fromMessage)
@@ -99,12 +98,20 @@ class PeerForwarder_ClientServerIT {
                 .collect(Collectors.toSet());
     }
 
+    private void setupApplicationContext() {
+        applicationContext = new AnnotationConfigApplicationContext();
+
+        applicationContext.scan(PeerForwarderCodecAppConfig.class.getPackage().getName());
+        applicationContext.registerBean("peerForwarderConfiguration", PeerForwarderConfiguration.class, () -> peerForwarderConfiguration);
+        applicationContext.refresh();
+    }
+
+
     private PeerForwarderServer createServer(
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final CertificateProviderFactory certificateProviderFactory,
             final PeerForwarderProvider peerForwarderProvider) {
-        final PeerForwarderCodec peerForwarderCodec = peerForwarderConfiguration.getBinaryCodec()?
-                javaPeerForwarderCodec : jacksonPeerForwarderCodec;
+        final PeerForwarderCodec peerForwarderCodec = applicationContext.getBean(PeerForwarderCodec.class);
         final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(pluginMetrics), peerForwarderProvider, peerForwarderConfiguration,
                 peerForwarderCodec, pluginMetrics);
         Objects.requireNonNull(peerForwarderConfiguration, "Nested classes must supply peerForwarderConfiguration");
@@ -133,8 +140,7 @@ class PeerForwarder_ClientServerIT {
         final PeerClientPool peerClientPool = new PeerClientPool();
         final PeerForwarderClientFactory peerForwarderClientFactory = new PeerForwarderClientFactory(peerForwarderConfiguration, peerClientPool, certificateProviderFactory, pluginMetrics);
         peerForwarderClientFactory.setPeerClientPool();
-        final PeerForwarderCodec peerForwarderCodec = peerForwarderConfiguration.getBinaryCodec()?
-                javaPeerForwarderCodec : jacksonPeerForwarderCodec;
+        final PeerForwarderCodec peerForwarderCodec = applicationContext.getBean(PeerForwarderCodec.class);
         return new PeerForwarderClient(peerForwarderConfiguration, peerForwarderClientFactory, peerForwarderCodec, pluginMetrics);
     }
 
@@ -149,13 +155,13 @@ class PeerForwarder_ClientServerIT {
 
     @Nested
     class WithSSL {
-
-        private PeerForwarderConfiguration peerForwarderConfiguration;
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
 
         void setUpServer(final boolean binaryCodec) {
             peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
+
+            setupApplicationContext();
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
@@ -269,13 +275,13 @@ class PeerForwarder_ClientServerIT {
 
     @Nested
     class WithoutSSL {
-
-        private PeerForwarderConfiguration peerForwarderConfiguration;
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
 
         void setUpServer(final boolean binaryCodec) {
             peerForwarderConfiguration = createConfiguration(false, ForwardingAuthentication.UNAUTHENTICATED, binaryCodec);
+
+            setupApplicationContext();
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
@@ -328,13 +334,13 @@ class PeerForwarder_ClientServerIT {
 
     @Nested
     class WithMutualTls {
-
-        private PeerForwarderConfiguration peerForwarderConfiguration;
         private PeerForwarderServer server;
         private PeerForwarderProvider peerForwarderProvider;
 
         void setUpServer(final boolean binaryCodec) {
             peerForwarderConfiguration = createConfiguration(true, ForwardingAuthentication.MUTUAL_TLS, binaryCodec);
+
+            setupApplicationContext();
 
             final CertificateProviderFactory certificateProviderFactory = new CertificateProviderFactory(peerForwarderConfiguration);
             peerForwarderProvider = createPeerForwarderProvider(peerForwarderConfiguration, certificateProviderFactory);
