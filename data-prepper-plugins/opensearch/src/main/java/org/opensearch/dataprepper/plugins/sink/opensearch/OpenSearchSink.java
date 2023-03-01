@@ -61,7 +61,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
 
-  private BufferedWriter dlqWriter;
+  private DLQWriter dlqWriter;
   private final OpenSearchSinkConfiguration openSearchSinkConfig;
   private final IndexManagerFactory indexManagerFactory;
   private RestHighLevelClient restHighLevelClient;
@@ -129,10 +129,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
     indexManager = indexManagerFactory.getIndexManager(indexType, restHighLevelClient, openSearchSinkConfig, configuredIndexAlias);
-    final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
-    if (dlqFile != null) {
-      dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-    }
+    dlqWriter = openSearchSinkConfig.getRetryConfiguration().createDLQWriter();
     indexManager.setupIndex();
 
     OpenSearchTransport transport = new RestClientTransport(restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
