@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.csvinputcodec;
+package org.opensearch.dataprepper.plugins.codec.csv;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
@@ -14,7 +14,7 @@ import java.util.Objects;
 /**
  * Configuration class for {@link CsvInputCodec}.
  */
-public class CsvCodecConfig {
+public class CsvInputCodecConfig {
     static final String DEFAULT_DELIMITER = ",";
     static final String DEFAULT_QUOTE_CHARACTER = "\""; // double quote
     static final Boolean DEFAULT_DETECT_HEADER = true;

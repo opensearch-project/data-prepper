@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.newlineinputcodec.NewlineDelimitedInputCodec;
-import org.opensearch.dataprepper.plugins.newlineinputcodec.NewlineDelimitedInputConfig;
+import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputCodec;
+import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputConfig;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
