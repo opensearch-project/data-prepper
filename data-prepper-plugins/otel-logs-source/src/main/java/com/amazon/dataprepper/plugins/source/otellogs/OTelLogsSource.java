@@ -93,7 +93,6 @@ public class OTelLogsSource implements Source<Record<Object>> {
 
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
-                    .addService(ServerInterceptors.intercept(oTelLogsGrpcService, serverInterceptors))
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true);
 
@@ -103,6 +102,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
                 final String transformedOTelLogsSourcePath = oTelLogsSourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
                 grpcServiceBuilder.addService(transformedOTelLogsSourcePath,
                         ServerInterceptors.intercept(oTelLogsGrpcService, serverInterceptors), methodDescriptor);
+            } else {
+                grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelLogsGrpcService, serverInterceptors));
             }
 
             if (oTelLogsSourceConfig.hasHealthCheck()) {
