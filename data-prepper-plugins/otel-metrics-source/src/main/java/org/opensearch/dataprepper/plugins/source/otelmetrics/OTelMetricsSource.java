@@ -94,7 +94,6 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
 
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
-                    .addService(ServerInterceptors.intercept(oTelMetricsGrpcService, serverInterceptors))
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true);
 
@@ -104,6 +103,8 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
                 final String transformedOTelMetricsSourcePath = oTelMetricsSourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
                 grpcServiceBuilder.addService(transformedOTelMetricsSourcePath,
                         ServerInterceptors.intercept(oTelMetricsGrpcService, serverInterceptors), methodDescriptor);
+            } else {
+                grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelMetricsGrpcService, serverInterceptors));
             }
 
             if (oTelMetricsSourceConfig.hasHealthCheck()) {
