@@ -22,5 +22,3 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `url` (Required) : The RSS feed URL to read from.
 * `polling_frequency` (Optional) : Duration - The frequency to retrieve the RSS feed data. Defaults to 5 minutes.
-
-
