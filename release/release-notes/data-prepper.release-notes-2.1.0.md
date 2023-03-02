@@ -51,7 +51,7 @@
 [#2290](https://github.com/opensearch-project/data-prepper/pull/2290))
 
 ### Bug Fixes
-* Fix logging ([#2113](https://github.com/opensearch-project/data-prepper/pull/2113))
+* Fix logging by updating related packages for SLF4J 2.0 ([#2113](https://github.com/opensearch-project/data-prepper/pull/2113))
 * Fix null pointer exception in remote peer forwarding ([#2124](https://github.com/opensearch-project/data-prepper/pull/2124))
 * Fix Data Prepper to not terminate on invalid open telemetry metric/trace data ([#2176](https://github.com/opensearch-project/data-prepper/pull/2176))
 * Fix Armeria exception when under pressure ([#2274](https://github.com/opensearch-project/data-prepper/pull/2274))
