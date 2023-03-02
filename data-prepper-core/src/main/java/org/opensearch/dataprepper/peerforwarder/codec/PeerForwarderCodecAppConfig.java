@@ -44,7 +44,15 @@ public class PeerForwarderCodecAppConfig {
 
         final String pattern =
                 "java.lang.Object;" +
-                        "java.util.*;" +
+                        "java.util.Collections*;" +
+                        "java.util.ArrayList*;" +
+                        "java.util.LinkedList*;" +
+                        "java.util.Map*;" +
+                        "java.util.HashMap*;" +
+                        "java.util.LinkedHashMap*;" +
+                        "java.util.HashSet*;" +
+                        "java.util.LinkedHashSet*;" +
+                        "java.util.Date*;" +
                         "java.time.*;" +
                         "com.fasterxml.jackson.databind.node.*;" +
                         "org.opensearch.dataprepper.peerforwarder.model.*;" +

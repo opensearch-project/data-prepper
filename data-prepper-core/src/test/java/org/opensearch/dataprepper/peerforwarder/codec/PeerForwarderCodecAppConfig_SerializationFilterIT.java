@@ -40,7 +40,15 @@ import java.io.ObjectOutputStream;
 import java.lang.reflect.Modifier;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -241,7 +249,8 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
             return Stream.of(
                     arguments(new LinkedBlockingQueue<>()),
                     arguments(new ArrayBlockingQueue<>(1)),
-                    arguments(Pattern.compile("[1-9]"))
+                    arguments(Pattern.compile("[1-9]")),
+                    arguments(Calendar.getInstance())
             );
         }
     }
@@ -252,7 +261,18 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
             return Stream.of(
                     arguments(UUID.randomUUID().toString()),
                     arguments(Collections.singletonList(UUID.randomUUID().toString())),
+                    arguments(Collections.singleton(UUID.randomUUID().toString())),
                     arguments(Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString())),
+                    arguments(new ArrayList<>()),
+                    arguments(new LinkedList<>()),
+                    arguments(new HashMap<>()),
+                    arguments(new LinkedHashMap<>()),
+                    arguments(new HashSet<>()),
+                    arguments(new LinkedHashSet<>()),
+                    arguments(Collections.unmodifiableList(new ArrayList<>())),
+                    arguments(Collections.unmodifiableMap(new HashMap<>())),
+                    arguments(Collections.unmodifiableSet(new HashSet<>())),
+                    arguments(new Date()),
                     arguments(Instant.now()),
                     arguments(Duration.ofMinutes(5)),
                     arguments(DefaultEventMetadata.builder().withEventType(UUID.randomUUID().toString()).build())
