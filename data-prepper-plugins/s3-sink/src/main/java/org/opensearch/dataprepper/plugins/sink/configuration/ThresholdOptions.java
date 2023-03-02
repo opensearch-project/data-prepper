@@ -6,15 +6,16 @@
 package org.opensearch.dataprepper.plugins.sink.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.validation.constraints.NotNull;
 
-/*
+/**
     An implementation class of s3 index configuration Options
  */
 public class ThresholdOptions {
-    static final int DEFAULT_EVENT_COUNT = 1000;
-    private static final long DEFAULT_BYTE_CAPACITY = 5000000;
-    private static final long DEFAULT_TIMEOUT = 60;
+    static final int DEFAULT_EVENT_COUNT = 200;
+    private static final long DEFAULT_BYTE_CAPACITY = 2500;
+    private static final long DEFAULT_TIMEOUT = 20;
 
     @JsonProperty("event_count")
     @NotNull

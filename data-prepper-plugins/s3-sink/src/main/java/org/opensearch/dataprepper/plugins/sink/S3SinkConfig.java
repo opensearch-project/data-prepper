@@ -18,6 +18,11 @@ import jakarta.validation.constraints.NotNull;
  */
 public class S3SinkConfig {
 
+    static final String DEFAULT_BUCKET_NAME = "dataprepper";
+    static final String DEFAULT_PATH_PREFIX = "logdata";
+
+    static final String DEFAULT_TEMP_STORAGE = "local_file";
+
     @JsonProperty("aws")
     @NotNull
     @Valid
@@ -37,15 +42,15 @@ public class S3SinkConfig {
 
     @JsonProperty("temporary_storage")
     @NotNull
-    private String temporaryStorage;
+    private String temporaryStorage = DEFAULT_TEMP_STORAGE;
 
     @JsonProperty("bucket")
     @NotNull
-    private String bucketName;
+    private String bucketName = DEFAULT_BUCKET_NAME;
 
     @JsonProperty("key_path_prefix")
     @NotNull
-    private String keyPathPrefix;
+    private String keyPathPrefix = DEFAULT_PATH_PREFIX;
 
     /*
         Aws Authentication configuration Options

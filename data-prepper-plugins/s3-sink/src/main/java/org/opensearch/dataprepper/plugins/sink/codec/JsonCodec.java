@@ -5,15 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.sink.codec;
 
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.event.Event;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.dataprepper.model.record.Record;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collection;
 import java.util.Objects;
+
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * An implementation of {@link Codec} which serializes to JSON.
@@ -61,6 +62,6 @@ public class JsonCodec implements Codec {
         Objects.requireNonNull(event);
 
         objectMapper.writeValue(outputStream, event.toJsonString());
-
+        
     }
 }

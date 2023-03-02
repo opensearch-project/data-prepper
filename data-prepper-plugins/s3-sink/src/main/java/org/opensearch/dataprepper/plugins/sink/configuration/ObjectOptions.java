@@ -6,13 +6,14 @@
 package org.opensearch.dataprepper.plugins.sink.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.validation.constraints.NotNull;
 
-/*
+/**
     An implementation class of Threshold configuration Options
  */
 public class ObjectOptions {
-    private static final String DEFAULT_KEY_PATTERN = "logs-${YYYY-MM-DD hh:mm:ss}";
+    private static final String DEFAULT_KEY_PATTERN = "logs-${yyyy-MM-dd hh:mm:ss}";
 
     @JsonProperty("file_pattern")
     @NotNull

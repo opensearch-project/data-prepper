@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.sink.codec;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collection;
+
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 
 /**
  * A codec parsing data through an output stream. Each implementation of this class should
@@ -29,4 +29,5 @@ public interface Codec {
     void parse(OutputStream outputStream, Record<Event> eventCollection) throws IOException;
 
     void parse(OutputStream outputStream, Event event) throws IOException;
+    
 }
