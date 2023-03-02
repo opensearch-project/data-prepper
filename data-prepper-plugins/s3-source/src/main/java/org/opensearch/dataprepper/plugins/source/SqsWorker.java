@@ -119,18 +119,18 @@ public class SqsWorker implements Runnable {
             failedAttemptCount = 0;
             return messages;
         } catch (final SqsException e) {
-            retryWithBackoff(e);
+            LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
+            applyBackoff();
             return Collections.emptyList();
         }
     }
 
-    private void retryWithBackoff(final SqsException sqsException) {
+    private void applyBackoff() {
         final long delayMillis = standardBackoff.nextDelayMillis(++failedAttemptCount);
         if (delayMillis < 0) {
             Thread.currentThread().interrupt();
             throw new SqsRetriesExhaustedException("SQS retries exhausted. Make sure that SQS configuration is valid and queue exists.");
         }
-        LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", sqsException.getMessage());
         try {
             Thread.sleep(delayMillis);
         } catch (final InterruptedException e){
