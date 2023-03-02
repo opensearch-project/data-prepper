@@ -41,6 +41,7 @@
 * Support for complex document ID and routing ID ([#1966](https://github.com/opensearch-project/data-prepper/pull/1966))
 * Add PluginMetrics in the Auth Plugin for HTTP, OTEL and Metrics Source ([#2023](https://github.com/opensearch-project/data-prepper/pull/2023))
 * Support Long type in expressions ([#2265](https://github.com/opensearch-project/data-prepper/pull/2265))
+* Add backoff for SQS in S3 source to reduce logging ([#2326](https://github.com/opensearch-project/data-prepper/pull/2326))
 * Add several performance improvement changes ([#2190](https://github.com/opensearch-project/data-prepper/pull/2190),
 [#2228](https://github.com/opensearch-project/data-prepper/pull/2228),
 [#2238](https://github.com/opensearch-project/data-prepper/pull/2238),
