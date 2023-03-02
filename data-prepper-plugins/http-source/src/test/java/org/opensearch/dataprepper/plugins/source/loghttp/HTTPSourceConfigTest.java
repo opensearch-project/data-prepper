@@ -24,6 +24,7 @@ public class HTTPSourceConfigTest {
 
         // When/Then
         assertEquals(HTTPSourceConfig.DEFAULT_PORT, sourceConfig.getPort());
+        assertEquals(HTTPSourceConfig.DEFAULT_LOG_INGEST_URI, sourceConfig.getPath());
         assertEquals(HTTPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS, sourceConfig.getRequestTimeoutInMillis());
         assertEquals(HTTPSourceConfig.DEFAULT_THREAD_COUNT, sourceConfig.getThreadCount());
         assertEquals(HTTPSourceConfig.DEFAULT_MAX_CONNECTION_COUNT, sourceConfig.getMaxConnectionCount());
@@ -224,6 +225,25 @@ public class HTTPSourceConfigTest {
 
             assertThat(objectUnderTest.isAcmCertificateArnValid(), equalTo(true));
         }
+    }
+
+    @Test
+    void getPath_should_return_correct_path() throws NoSuchFieldException, IllegalAccessException {
+        final HTTPSourceConfig objectUnderTest = new HTTPSourceConfig();
+
+        reflectivelySetField(objectUnderTest, "path", "/my/custom/path");
+
+        assertThat(objectUnderTest.isPathValid(), equalTo(true));
+        assertThat(objectUnderTest.getPath(), equalTo("/my/custom/path"));
+    }
+
+    @Test
+    void isPathValid_should_return_false_for_invalid_path() throws NoSuchFieldException, IllegalAccessException {
+        final HTTPSourceConfig objectUnderTest = new HTTPSourceConfig();
+
+        reflectivelySetField(objectUnderTest, "path", "my/custom/path");
+
+        assertThat(objectUnderTest.isPathValid(), equalTo(false));
     }
 
         private void reflectivelySetField(final HTTPSourceConfig httpSourceConfig, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {

@@ -53,6 +53,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -72,6 +73,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -117,9 +119,22 @@ import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourc
 import static org.opensearch.dataprepper.plugins.source.oteltrace.OTelTraceSourceConfig.SSL;
 
 @ExtendWith(MockitoExtension.class)
-public class OTelTraceSourceTest {
-
+class OTelTraceSourceTest {
     private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21890/";
+    private static final String USERNAME = "test_user";
+    private static final String PASSWORD = "test_password";
+    private static final String TEST_PATH = "${pipelineName}/v1/traces";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String TEST_PIPELINE_NAME = "test_pipeline";
+    private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
+            .addResourceSpans(ResourceSpans.newBuilder()
+                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
+                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("SUCCESS").build())).build()).build();
+    private static final ExportTraceServiceRequest FAILURE_REQUEST = ExportTraceServiceRequest.newBuilder()
+            .addResourceSpans(ResourceSpans.newBuilder()
+                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
+                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
+
     @Mock
     private ServerBuilder serverBuilder;
 
@@ -150,48 +165,20 @@ public class OTelTraceSourceTest {
     @Mock
     private GrpcBasicAuthenticationProvider authenticationProvider;
 
-    private PluginSetting pluginSetting;
-    private PluginSetting testPluginSetting;
     @Mock(lenient = true)
     private OTelTraceSourceConfig oTelTraceSourceConfig;
-    private PluginMetrics pluginMetrics;
-    private PipelineDescription pipelineDescription;
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Mock
     private Buffer<Record<Object>> buffer;
 
-    private static final String TEST_PIPELINE_NAME = "test_pipeline";
-    private static final ExportTraceServiceRequest SUCCESS_REQUEST = ExportTraceServiceRequest.newBuilder()
-            .addResourceSpans(ResourceSpans.newBuilder()
-                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
-                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("SUCCESS").build())).build()).build();
+    @Mock
+    private HttpBasicAuthenticationConfig httpBasicAuthenticationConfig;
+
+    private PluginSetting pluginSetting;
+    private PluginSetting testPluginSetting;
+    private PluginMetrics pluginMetrics;
+    private PipelineDescription pipelineDescription;
     private OTelTraceSource SOURCE;
-    private static final ExportTraceServiceRequest FAILURE_REQUEST = ExportTraceServiceRequest.newBuilder()
-            .addResourceSpans(ResourceSpans.newBuilder()
-                    .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder()
-                            .addSpans(io.opentelemetry.proto.trace.v1.Span.newBuilder().setTraceState("FAILURE").build())).build()).build();
-
-    private static void assertStatusCode415AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
-        assertThat("Http Status", response.status(), is(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
-        assertThat("Http Response Throwable", throwable, is(nullValue()));
-
-        final List<String> headerKeys = response.headers()
-                .stream()
-                .map(Map.Entry::getKey)
-                .map(AsciiString::toString)
-                .collect(Collectors.toList());
-        assertThat("Response Header Keys", headerKeys, not(contains("server")));
-    }
-
-    private void configureObjectUnderTest() {
-        pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
-
-        pipelineDescription = mock(PipelineDescription.class);
-        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-    }
 
     @BeforeEach
     public void beforeEach() {
@@ -227,8 +214,16 @@ public class OTelTraceSourceTest {
         SOURCE.stop();
     }
 
+    private void configureObjectUnderTest() {
+        pluginMetrics = PluginMetrics.fromNames("otel_trace", "pipeline");
+
+        pipelineDescription = mock(PipelineDescription.class);
+        when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
+        SOURCE = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+    }
+
     @Test
-    void testHttpFullJson() throws InvalidProtocolBufferException {
+    void testHttpFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
         configureObjectUnderTest();
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
@@ -240,7 +235,7 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -251,12 +246,12 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
     }
 
     @Test
-    void testHttpsFullJson() throws InvalidProtocolBufferException {
+    void testHttpsFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
 
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put("request_timeout", 5);
@@ -281,7 +276,7 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(SUCCESS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
         WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTPS)
@@ -292,12 +287,12 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(FAILURE_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
     }
 
     @Test
-    void testHttpFullBytes() {
+    void testHttpFullBytesWithNonUnframedRequests() {
         configureObjectUnderTest();
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
@@ -309,7 +304,7 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(SUCCESS_REQUEST.toByteArray()))
                 .aggregate()
-                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -320,12 +315,116 @@ public class OTelTraceSourceTest {
                         .build(),
                 HttpData.copyOf(FAILURE_REQUEST.toByteArray()))
                 .aggregate()
-                .whenComplete(OTelTraceSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
     }
 
     @Test
-    public void testServerStartCertFileSuccess() throws IOException {
+    void testHttpFullJsonWithUnframedRequests() throws InvalidProtocolBufferException {
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21890")
+                                .method(HttpMethod.POST)
+                                .path("/opentelemetry.proto.collector.trace.v1.TraceService/Export")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(createExportTraceRequest()).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpFullJsonWithCustomPathAndUnframedRequests() throws InvalidProtocolBufferException {
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelTraceSourceConfig.getPath()).thenReturn(TEST_PATH);
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/traces";
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21890")
+                                .method(HttpMethod.POST)
+                                .path(transformedPath)
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(createExportTraceRequest()).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpFullJsonWithCustomPathAndAuthHeader_with_successful_response() throws InvalidProtocolBufferException {
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelTraceSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelTraceSourceConfig.getPath()).thenReturn(TEST_PATH);
+
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String encodeToString = Base64.getEncoder()
+                .encodeToString(String.format("%s:%s", USERNAME, PASSWORD).getBytes(StandardCharsets.UTF_8));
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/traces";
+
+        WebClient.of().prepare()
+                .post("http://127.0.0.1:21890" + transformedPath)
+                .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportTraceRequest()).getBytes())
+                .header("Authorization", "Basic " + encodeToString)
+                .execute()
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpFullJsonWithCustomPathAndAuthHeader_with_unsuccessful_response() throws InvalidProtocolBufferException {
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelTraceSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelTraceSourceConfig.getPath()).thenReturn(TEST_PATH);
+
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/traces";
+
+        WebClient.of().prepare()
+                .post("http://127.0.0.1:21890" + transformedPath)
+                .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportTraceRequest()).getBytes())
+                .execute()
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNAUTHORIZED, throwable))
+                .join();
+    }
+
+    @Test
+    void testServerStartCertFileSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
@@ -359,7 +458,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testServerStartACMCertSuccess() throws IOException {
+    void testServerStartACMCertSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
@@ -565,7 +664,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testHealthCheckUnauthNotAllowed() {
+    void testHealthCheckUnauthNotAllowed() {
         // Prepare
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put(SSL, false);
@@ -595,13 +694,14 @@ public class OTelTraceSourceTest {
                         .path("/health")
                         .build())
                 .aggregate()
-                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNAUTHORIZED, throwable))
+                .join();
 
         source.stop();
     }
 
     @Test
-    public void testHealthCheckUnauthAllowed() {
+    void testHealthCheckUnauthAllowed() {
         // Prepare
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put(SSL, false);
@@ -631,24 +731,13 @@ public class OTelTraceSourceTest {
                         .path("/health")
                         .build())
                 .aggregate()
-                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable)).join();
 
         source.stop();
     }
 
-    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus expectedStatus) {
-        assertThat("Http Status", response.status(), equalTo(expectedStatus));
-
-        final List<String> headerKeys = response.headers()
-                .stream()
-                .map(Map.Entry::getKey)
-                .map(AsciiString::toString)
-                .collect(Collectors.toList());
-        assertThat("Response Header Keys", headerKeys, not(contains("server")));
-    }
-
     @Test
-    public void testOptionalHttpAuthServiceNotInPlace() {
+    void testOptionalHttpAuthServiceNotInPlace() {
         when(server.stop()).thenReturn(completableFuture);
 
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -661,7 +750,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testOptionalHttpAuthServiceInPlace() {
+    void testOptionalHttpAuthServiceInPlace() {
         final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
 
         final Map<String, Object> settingsMap = new HashMap<>();
@@ -688,7 +777,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testOptionalHttpAuthServiceInPlaceWithUnauthenticatedDisabled() {
+    void testOptionalHttpAuthServiceInPlaceWithUnauthenticatedDisabled() {
         final Optional<Function<? super HttpService, ? extends HttpService>> function = Optional.of(httpService -> httpService);
 
         final Map<String, Object> settingsMap = new HashMap<>();
@@ -715,7 +804,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testDoubleStart() {
+    void testDoubleStart() {
         // starting server
         SOURCE.start(buffer);
         // double start server
@@ -723,7 +812,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testRunAnotherSourceWithSamePort() {
+    void testRunAnotherSourceWithSamePort() {
         // starting server
         SOURCE.start(buffer);
 
@@ -736,7 +825,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testStartWithEmptyBuffer() {
+    void testStartWithEmptyBuffer() {
         testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
         oTelTraceSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelTraceSourceConfig.class);
@@ -745,7 +834,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
+    void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -758,7 +847,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
+    void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -773,7 +862,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
+    void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -788,7 +877,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
+    void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -802,7 +891,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
+    void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -819,7 +908,7 @@ public class OTelTraceSourceTest {
     }
 
     @Test
-    public void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
+    void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelTraceSource source = new OTelTraceSource(oTelTraceSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -836,6 +925,61 @@ public class OTelTraceSourceTest {
 
     @Test
     void gRPC_request_writes_to_buffer_with_successful_response() throws Exception {
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+        final ExportTraceServiceResponse exportResponse = client.export(createExportTraceRequest());
+        assertThat(exportResponse, notNullValue());
+
+        final ArgumentCaptor<Collection<Record<Object>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
+
+        final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
+        assertThat(actualBufferWrites, notNullValue());
+        assertThat(actualBufferWrites, hasSize(1));
+    }
+
+    @Test
+    void gRPC_with_auth_request_writes_to_buffer_with_successful_response() throws Exception {
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelTraceSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String encodeToString = Base64.getEncoder()
+                .encodeToString(String.format("%s:%s", USERNAME, PASSWORD).getBytes(StandardCharsets.UTF_8));
+
+        final TraceServiceGrpc.TraceServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .addHeader("Authorization", "Basic " + encodeToString)
+                .build(TraceServiceGrpc.TraceServiceBlockingStub.class);
+        final ExportTraceServiceResponse exportResponse = client.export(createExportTraceRequest());
+        assertThat(exportResponse, notNullValue());
+
+        final ArgumentCaptor<Collection<Record<Object>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
+
+        final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
+        assertThat(actualBufferWrites, notNullValue());
+        assertThat(actualBufferWrites, hasSize(1));
+    }
+
+    @Test
+    void gRPC_request_writes_to_buffer_with_successful_response_with_custom_path() throws Exception {
+        when(oTelTraceSourceConfig.getPath()).thenReturn(TEST_PATH);
+        when(oTelTraceSourceConfig.enableUnframedRequests()).thenReturn(true);
+
         configureObjectUnderTest();
         SOURCE.start(buffer);
 
@@ -922,12 +1066,25 @@ public class OTelTraceSourceTest {
                 .setStartTimeUnixNano(100)
                 .setEndTimeUnixNano(101)
                 .setTraceState("SUCCESS").build();
-        final ExportTraceServiceRequest successRequest = ExportTraceServiceRequest.newBuilder()
+
+        return ExportTraceServiceRequest.newBuilder()
                 .addResourceSpans(ResourceSpans.newBuilder()
                         .addInstrumentationLibrarySpans(InstrumentationLibrarySpans.newBuilder().addSpans(testSpan)).build())
                 .build();
+    }
 
-        return successRequest;
+    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response,
+                                                    final HttpStatus expectedStatus,
+                                                    final Throwable throwable) {
+        assertThat("Http Status", response.status(), equalTo(expectedStatus));
+        assertThat("Http Response Throwable", throwable, is(nullValue()));
+
+        final List<String> headerKeys = response.headers()
+                .stream()
+                .map(Map.Entry::getKey)
+                .map(AsciiString::toString)
+                .collect(Collectors.toList());
+        assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
 }

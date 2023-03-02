@@ -5,15 +5,10 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.peerforwarder.client.PeerForwarderClient;
-import org.opensearch.dataprepper.peerforwarder.codec.JacksonPeerForwarderCodec;
-import org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpServerProvider;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
@@ -24,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.yaml.snakeyaml.LoaderOptions;
 
 @Configuration
 class PeerForwarderAppConfig {
@@ -34,17 +28,6 @@ class PeerForwarderAppConfig {
     @Bean(name = "peerForwarderMetrics")
     public PluginMetrics pluginMetrics() {
         return PluginMetrics.fromNames(COMPONENT_ID, COMPONENT_SCOPE);
-    }
-
-    @Bean(name = "peerForwarderObjectMapper")
-    public ObjectMapper objectMapper() {
-        final JavaTimeModule javaTimeModule = new JavaTimeModule();
-        final LoaderOptions loaderOptions = new LoaderOptions();
-        loaderOptions.setCodePointLimit(10 * 1024 * 1024); // 10MB
-        final YAMLFactory yamlFactory = YAMLFactory.builder()
-                .loaderOptions(loaderOptions)
-                .build();
-        return new ObjectMapper(yamlFactory).registerModule(javaTimeModule);
     }
 
     @Bean
@@ -98,14 +81,6 @@ class PeerForwarderAppConfig {
     @Bean
     public ResponseHandler responseHandler(@Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics) {
         return new ResponseHandler(pluginMetrics);
-    }
-
-    @Bean
-    public PeerForwarderCodec peerForwarderCodec(
-            final PeerForwarderConfiguration peerForwarderConfiguration,
-            @Qualifier("peerForwarderObjectMapper") final ObjectMapper objectMapper) {
-        return peerForwarderConfiguration.getBinaryCodec() ?
-                new JavaPeerForwarderCodec() : new JacksonPeerForwarderCodec(objectMapper);
     }
 
     @Bean
