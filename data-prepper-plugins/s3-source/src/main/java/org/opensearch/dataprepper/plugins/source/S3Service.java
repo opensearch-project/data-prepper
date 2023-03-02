@@ -17,23 +17,23 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
 
 import java.io.IOException;
-import java.util.function.BiConsumer;
 
 public class S3Service {
     private static final Logger LOG = LoggerFactory.getLogger(S3Service.class);
 
     private final S3SourceConfig s3SourceConfig;
     private final Buffer<Record<Event>> buffer;
-    private final S3Client s3Client;
     private final Codec codec;
     private final CompressionEngine compressionEngine;
     private final PluginMetrics pluginMetrics;
     private final BucketOwnerProvider bucketOwnerProvider;
-    private final S3ObjectWorker s3ObjectWorker;
+    private final S3ObjectHandler s3ObjectHandler;
 
-    S3Service(final S3SourceConfig s3SourceConfig,
+    S3Service(final S3ObjectHandler s3ObjectHandler,
+    		  final S3SourceConfig s3SourceConfig,
               final Buffer<Record<Event>> buffer,
               final Codec codec,
               final PluginMetrics pluginMetrics,
@@ -43,17 +43,20 @@ public class S3Service {
         this.codec = codec;
         this.pluginMetrics = pluginMetrics;
         this.bucketOwnerProvider = bucketOwnerProvider;
-        this.s3Client = createS3Client();
         this.compressionEngine = s3SourceConfig.getCompression().getEngine();
-        final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(s3SourceConfig.getMetadataRootKey());
-        this.s3ObjectWorker = new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider,
-                s3SourceConfig.getBufferTimeout(), s3SourceConfig.getNumberOfRecordsToAccumulate(), eventMetadataModifier, pluginMetrics);
+        this.s3ObjectHandler =s3ObjectHandler;
     }
 
     void addS3Object(final S3ObjectReference s3ObjectReference) {
-        try {
-            s3ObjectWorker.parseS3Object(s3ObjectReference);
-        } catch (final IOException e) {
+//    	TODO: if conditional check not implemented here. 
+//    	then we need to put some extra efforts to incorporate the changes 
+		try {
+			if (s3ObjectHandler instanceof S3ObjectWorker) {
+				s3ObjectHandler.parseS3Object(s3ObjectReference,createS3Client());
+			} else {
+				s3ObjectHandler.parseS3Object(s3ObjectReference,createS3AsyncClient());
+			}
+		} catch (final IOException e) {
             LOG.error("Unable to read S3 object from S3ObjectReference = {}", s3ObjectReference, e);
         }
     }
@@ -68,4 +71,20 @@ public class S3Service {
                         .build())
                 .build();
     }
+
+    /**
+     * Create a S3AsyncClient Object for S3 Select query
+     * @return a S3AsyncClient Object
+     */
+    S3AsyncClient createS3AsyncClient() {
+        LOG.info("Creating S3 Async client");
+        return S3AsyncClient.builder()
+                .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
+                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
+                .overrideConfiguration(ClientOverrideConfiguration.builder()
+                        .retryPolicy(RetryPolicy.builder().numRetries(5).build())
+                        .build())
+                .build();
+    }
+
 }

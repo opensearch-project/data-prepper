@@ -106,7 +106,7 @@ class S3ObjectWorkerIT {
     }
 
     private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
-        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, eventMetadataModifier, pluginMetrics);
+        return new S3ObjectWorker(buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, eventMetadataModifier, pluginMetrics);
     }
 
     @ParameterizedTest
@@ -141,7 +141,7 @@ class S3ObjectWorkerIT {
 
     private void parseObject(final String key, final S3ObjectWorker objectUnderTest) throws IOException {
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        objectUnderTest.parseS3Object(s3ObjectReference);
+        objectUnderTest.parseS3Object(s3ObjectReference,s3Client);
     }
 
     static class IntegrationTestArguments implements ArgumentsProvider {

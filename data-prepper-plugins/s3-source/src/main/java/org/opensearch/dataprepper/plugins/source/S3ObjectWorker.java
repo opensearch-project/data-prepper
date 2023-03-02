@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.SdkClient;
 import software.amazon.awssdk.http.HttpStatusCode;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -34,7 +35,7 @@ import java.util.function.BiConsumer;
  * Class responsible for taking an {@link S3ObjectReference} and creating all the necessary {@link Event}
  * objects in the Data Prepper {@link Buffer}.
  */
-class S3ObjectWorker {
+class S3ObjectWorker implements S3ObjectHandler {
     private static final Logger LOG = LoggerFactory.getLogger(S3ObjectWorker.class);
     static final String S3_OBJECTS_FAILED_METRIC_NAME = "s3ObjectsFailed";
     static final String S3_OBJECTS_FAILED_NOT_FOUND_METRIC_NAME = "s3ObjectsNotFound";
@@ -45,7 +46,7 @@ class S3ObjectWorker {
     static final String S3_OBJECTS_SIZE_PROCESSED = "s3ObjectProcessedBytes";
     static final String S3_OBJECTS_EVENTS = "s3ObjectsEvents";
 
-    private final S3Client s3Client;
+    private S3Client s3Client ;
     private final Buffer<Record<Event>> buffer;
     private final CompressionEngine compressionEngine;
     private final Codec codec;
@@ -62,8 +63,7 @@ class S3ObjectWorker {
     private final DistributionSummary s3ObjectSizeProcessedSummary;
     private final DistributionSummary s3ObjectEventsSummary;
 
-    public S3ObjectWorker(final S3Client s3Client,
-                          final Buffer<Record<Event>> buffer,
+    public S3ObjectWorker(final Buffer<Record<Event>> buffer,
                           final CompressionEngine compressionEngine,
                           final Codec codec,
                           final BucketOwnerProvider bucketOwnerProvider,
@@ -71,7 +71,6 @@ class S3ObjectWorker {
                           final int numberOfRecordsToAccumulate,
                           final BiConsumer<Event, S3ObjectReference> eventConsumer,
                           final PluginMetrics pluginMetrics) {
-        this.s3Client = s3Client;
         this.buffer = buffer;
         this.compressionEngine = compressionEngine;
         this.codec = codec;
@@ -90,7 +89,8 @@ class S3ObjectWorker {
         s3ObjectEventsSummary = pluginMetrics.summary(S3_OBJECTS_EVENTS);
     }
 
-    void parseS3Object(final S3ObjectReference s3ObjectReference) throws IOException {
+    public void parseS3Object(final S3ObjectReference s3ObjectReference,final SdkClient sdkClient) throws IOException {
+        this.s3Client = (S3Client)sdkClient;
         final GetObjectRequest.Builder getObjectBuilder = GetObjectRequest.builder()
                 .bucket(s3ObjectReference.getBucketName())
                 .key(s3ObjectReference.getKey());

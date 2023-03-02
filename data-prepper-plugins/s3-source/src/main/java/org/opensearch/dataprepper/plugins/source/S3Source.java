@@ -16,8 +16,12 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
+
+import java.util.Optional;
+import java.util.function.BiConsumer;
 
 @DataPrepperPlugin(name = "s3", pluginType = Source.class, pluginConfigurationType = S3SourceConfig.class)
 public class S3Source implements Source<Record<Event>> {
@@ -47,7 +51,22 @@ public class S3Source implements Source<Record<Event>> {
         final ConfigBucketOwnerProviderFactory configBucketOwnerProviderFactory = new ConfigBucketOwnerProviderFactory();
         final BucketOwnerProvider bucketOwnerProvider = configBucketOwnerProviderFactory.createBucketOwnerProvider(s3SourceConfig);
 
-        final S3Service s3Service = new S3Service(s3SourceConfig, buffer, codec, pluginMetrics, bucketOwnerProvider);
+        Optional<S3SelectOptions> s3SelectOptional = Optional.ofNullable(s3SourceConfig.getS3SelectOptions());
+
+        final S3ObjectHandler s3Handler;
+		if (s3SelectOptional.isPresent()) {
+			s3Handler = new S3SelectObjectWorker(buffer, s3SourceConfig.getNumberOfRecordsToAccumulate(),
+					s3SourceConfig.getBufferTimeout(), pluginMetrics, s3SelectOptional.get().getQueryStatement(),
+					s3SelectOptional.get().getS3SelectSerializationFormatOption().name());
+		} else {
+			final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(
+					s3SourceConfig.getMetadataRootKey());
+			s3Handler = new S3ObjectWorker(buffer, s3SourceConfig.getCompression().getEngine(), codec,
+					bucketOwnerProvider, s3SourceConfig.getBufferTimeout(),
+					s3SourceConfig.getNumberOfRecordsToAccumulate(), eventMetadataModifier, pluginMetrics);
+		}
+        final S3Service s3Service = new S3Service(s3Handler,s3SourceConfig, buffer, codec, pluginMetrics, bucketOwnerProvider);
+
         sqsService = new SqsService(s3SourceConfig, s3Service, pluginMetrics);
 
         sqsService.start();

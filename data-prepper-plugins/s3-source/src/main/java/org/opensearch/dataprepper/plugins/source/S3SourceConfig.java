@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -56,7 +57,9 @@ public class S3SourceConfig {
 
     @JsonProperty("metadata_root_key")
     private String metadataRootKey = DEFAULT_METADATA_ROOT_KEY;
-
+    @JsonProperty("s3_select")
+    private S3SelectOptions s3SelectOptions;
+  
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }
@@ -96,4 +99,7 @@ public class S3SourceConfig {
     public String getMetadataRootKey() {
         return metadataRootKey;
     }
+	public S3SelectOptions getS3SelectOptions() {
+		return s3SelectOptions;
+	}
 }
