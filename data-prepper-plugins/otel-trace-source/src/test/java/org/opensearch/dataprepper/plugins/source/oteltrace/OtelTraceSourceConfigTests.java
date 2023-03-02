@@ -232,7 +232,7 @@ class OtelTraceSourceConfigTests {
 
     @Test
     void testValidConfigWithCustomPath() {
-        final String testPath = "testPath";
+        final String testPath = "/testPath";
         // Prepare
         final PluginSetting customPathPluginSetting = completePluginSettingForOtelTraceSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
@@ -251,6 +251,31 @@ class OtelTraceSourceConfigTests {
 
         // When/Then
         assertThat(otelTraceSourceConfig.getPath(), equalTo(testPath));
+        assertThat(otelTraceSourceConfig.isPathValid(), equalTo(true));
+    }
+
+    @Test
+    void testInValidConfigWithCustomPath() {
+        final String testPath = "invalidPath";
+        // Prepare
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelTraceSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                testPath,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelTraceSourceConfig otelTraceSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelTraceSourceConfig.class);
+
+        // When/Then
+        assertThat(otelTraceSourceConfig.getPath(), equalTo(testPath));
+        assertThat(otelTraceSourceConfig.isPathValid(), equalTo(false));
     }
 
     private PluginSetting completePluginSettingForOtelTraceSource(final int requestTimeoutInMillis,

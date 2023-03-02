@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
@@ -46,6 +48,7 @@ public class OTelTraceSourceConfig {
     private int port = DEFAULT_PORT;
 
     @JsonProperty(PATH)
+    @Size(min = 1, message = "path length should be at least 1")
     private String path;
 
     @JsonProperty(HEALTH_CHECK_SERVICE)
@@ -94,6 +97,11 @@ public class OTelTraceSourceConfig {
 
     @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
     private boolean unauthenticatedHealthCheck = false;
+
+    @AssertTrue(message = "path should start with /")
+    boolean isPathValid() {
+        return path == null || path.startsWith("/");
+    }
 
     public void validateAndInitializeCertAndKeyFileInS3() {
         boolean certAndKeyFileInS3 = false;
