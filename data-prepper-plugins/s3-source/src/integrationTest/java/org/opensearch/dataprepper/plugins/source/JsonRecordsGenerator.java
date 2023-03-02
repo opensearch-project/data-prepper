@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.jsoninputcodec.JsonInputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.JsonInputCodec;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
