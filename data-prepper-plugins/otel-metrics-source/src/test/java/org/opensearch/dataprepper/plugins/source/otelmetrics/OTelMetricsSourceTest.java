@@ -913,23 +913,19 @@ class OTelMetricsSourceTest {
     }
 
     @Test
-    void gRPC_request_writes_to_buffer_with_successful_response_with_custom_path() throws Exception {
+    void gRPC_request_with_custom_path_throws_when_written_to_default_path() {
         when(oTelMetricsSourceConfig.getPath()).thenReturn(TEST_PATH);
         when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
 
+        configureObjectUnderTest();
         SOURCE.start(buffer);
 
         final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
                 .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
-        final ExportMetricsServiceResponse exportResponse = client.export(createExportMetricsRequest());
-        assertThat(exportResponse, notNullValue());
 
-        final ArgumentCaptor<Record<ExportMetricsServiceRequest>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Record.class);
-        verify(buffer).write(bufferWriteArgumentCaptor.capture(), anyInt());
-
-        final Record<ExportMetricsServiceRequest> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
-        assertThat(actualBufferWrites, notNullValue());
-        assertThat(actualBufferWrites.getData().getResourceMetricsCount(), equalTo(1));
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
+        assertThat(actualException.getStatus(), notNullValue());
+        assertThat(actualException.getStatus().getCode(), equalTo(Status.UNIMPLEMENTED.getCode()));
     }
 
     @ParameterizedTest
