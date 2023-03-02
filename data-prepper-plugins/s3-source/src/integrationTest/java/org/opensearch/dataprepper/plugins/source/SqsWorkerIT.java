@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
@@ -44,6 +45,7 @@ class SqsWorkerIT {
     private PluginMetrics pluginMetrics;
     private S3ObjectGenerator s3ObjectGenerator;
     private String bucket;
+    private Backoff backoff;
 
     @BeforeEach
     void setUp() {
@@ -56,6 +58,9 @@ class SqsWorkerIT {
         sqsClient = SqsClient.builder()
                 .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
+
+        backoff = Backoff.exponential(SqsService.INITIAL_DELAY, SqsService.MAXIMUM_DELAY).withJitter(SqsService.JITTER_RATE)
+                .withMaxAttempts(Integer.MAX_VALUE);
 
         s3SourceConfig = mock(S3SourceConfig.class);
         s3Service = mock(S3Service.class);
@@ -79,7 +84,7 @@ class SqsWorkerIT {
     }
 
     private SqsWorker createObjectUnderTest() {
-        return new SqsWorker(sqsClient, s3Service, s3SourceConfig, pluginMetrics);
+        return new SqsWorker(sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
     }
 
     @AfterEach
