@@ -59,7 +59,7 @@ class SqsWorkerIT {
                 .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
 
-        backoff = Backoff.exponential(SqsService.ONE_SECOND, SqsService.THIRTY_MINUTES).withJitter(SqsService.TWENTY_PERCENT)
+        backoff = Backoff.exponential(SqsService.INITIAL_DELAY, SqsService.MAXIMUM_DELAY).withJitter(SqsService.JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
 
         s3SourceConfig = mock(S3SourceConfig.class);

@@ -15,9 +15,9 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
-    static final int ONE_SECOND = 1000;
-    static final int THIRTY_MINUTES = 30 * 60 * 1000;
-    static final double TWENTY_PERCENT = 0.25;
+    static final int INITIAL_DELAY = 1000;
+    static final int MAXIMUM_DELAY = 30 * 60 * 1000;
+    static final double JITTER_RATE = 0.20;
 
     private final S3SourceConfig s3SourceConfig;
     private final S3Service s3Accessor;
@@ -36,7 +36,7 @@ public class SqsService {
     }
 
     public void start() {
-        final Backoff backoff = Backoff.exponential(ONE_SECOND, THIRTY_MINUTES).withJitter(TWENTY_PERCENT)
+        final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
         sqsWorkerThread = new Thread(new SqsWorker(sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
         sqsWorkerThread.start();

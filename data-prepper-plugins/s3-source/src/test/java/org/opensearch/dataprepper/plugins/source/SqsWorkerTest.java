@@ -192,7 +192,7 @@ class SqsWorkerTest {
     void processSqsMessages_should_return_zero_messages_with_backoff_when_a_SqsException_is_thrown() {
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(SqsException.class);
         final int messagesProcessed = sqsWorker.processSqsMessages();
-        verify(backoff).nextDelayMillis(anyInt());
+        verify(backoff).nextDelayMillis(1);
         assertThat(messagesProcessed, equalTo(0));
     }
 
