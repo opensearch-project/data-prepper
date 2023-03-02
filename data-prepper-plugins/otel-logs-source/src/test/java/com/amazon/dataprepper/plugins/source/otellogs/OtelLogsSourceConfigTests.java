@@ -20,6 +20,7 @@ import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfi
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.ENABLE_UNFRAMED_REQUESTS;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.HEALTH_CHECK_SERVICE;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.MAX_CONNECTION_COUNT;
+import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PATH;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PORT;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PROTO_REFLECTION_SERVICE;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.REQUEST_TIMEOUT;
@@ -27,13 +28,15 @@ import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfi
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_CERT_FILE;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_FILE;
 import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.THREAD_COUNT;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
-public class OtelLogsSourceConfigTests {
+class OtelLogsSourceConfigTests {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String PLUGIN_NAME = "otel_logs_source";
     private static final String TEST_KEY_CERT = "test.crt";
@@ -47,7 +50,7 @@ public class OtelLogsSourceConfigTests {
     private static final int TEST_MAX_CONNECTION_COUNT = 999;
 
     @Test
-    public void testDefault() {
+    void testDefault() {
 
         // Prepare
         final OTelLogsSourceConfig otelLogsSourceConfig = new OTelLogsSourceConfig();
@@ -67,11 +70,12 @@ public class OtelLogsSourceConfigTests {
     }
 
     @Test
-    public void testValidConfigWithoutS3CertAndKey() {
+    void testValidConfigWithoutS3CertAndKey() {
         // Prepare
         final PluginSetting validPluginSetting = completePluginSettingForOtelLogsSource(
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_PORT,
+                null,
                 true,
                 true,
                 false,
@@ -99,11 +103,12 @@ public class OtelLogsSourceConfigTests {
     }
 
     @Test
-    public void testValidConfigWithS3CertAndKey() {
+    void testValidConfigWithS3CertAndKey() {
         // Prepare
         final PluginSetting validPluginSettingWithS3CertAndKey = completePluginSettingForOtelLogsSource(
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -132,11 +137,13 @@ public class OtelLogsSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithNullKeyCert() {
+    void testInvalidConfigWithNullKeyCert() {
         // Prepare
         final PluginSetting sslNullKeyCertPluginSetting = completePluginSettingForOtelLogsSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
-                DEFAULT_PORT, false,
+                DEFAULT_PORT,
+                null,
+                false,
                 false,
                 false,
                 true, null,
@@ -152,11 +159,12 @@ public class OtelLogsSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithEmptyKeyCert() {
+    void testInvalidConfigWithEmptyKeyCert() {
         // Prepare
         final PluginSetting sslEmptyKeyCertPluginSetting = completePluginSettingForOtelLogsSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -174,11 +182,12 @@ public class OtelLogsSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithEmptyKeyFile() {
+    void testInvalidConfigWithEmptyKeyFile() {
         // Prepare
         final PluginSetting sslEmptyKeyFilePluginSetting = completePluginSettingForOtelLogsSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -194,8 +203,32 @@ public class OtelLogsSourceConfigTests {
         assertThrows(IllegalArgumentException.class, otelLogsSourceConfig::validateAndInitializeCertAndKeyFileInS3);
     }
 
+    @Test
+    void testValidConfigWithCustomPath() {
+        final String testPath = "testPath";
+        // Prepare
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelLogsSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                testPath,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelLogsSourceConfig oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelLogsSourceConfig.class);
+
+        // When/Then
+        assertThat(oTelLogsSourceConfig.getPath(), equalTo(testPath));
+    }
+
     private PluginSetting completePluginSettingForOtelLogsSource(final int requestTimeoutInMillis,
                                                                  final int port,
+                                                                 final String path,
                                                                  final boolean healthCheck,
                                                                  final boolean protoReflectionService,
                                                                  final boolean enableUnframedRequests,
@@ -207,6 +240,7 @@ public class OtelLogsSourceConfigTests {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(REQUEST_TIMEOUT, requestTimeoutInMillis);
         settings.put(PORT, port);
+        settings.put(PATH, path);
         settings.put(HEALTH_CHECK_SERVICE, healthCheck);
         settings.put(PROTO_REFLECTION_SERVICE, protoReflectionService);
         settings.put(ENABLE_UNFRAMED_REQUESTS, enableUnframedRequests);

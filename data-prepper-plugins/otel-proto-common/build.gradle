@@ -16,5 +16,5 @@ dependencies {
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation 'commons-codec:commons-codec:1.15'
     testImplementation "org.hamcrest:hamcrest:2.2"
-    testImplementation 'org.assertj:assertj-core:3.22.0'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
 }

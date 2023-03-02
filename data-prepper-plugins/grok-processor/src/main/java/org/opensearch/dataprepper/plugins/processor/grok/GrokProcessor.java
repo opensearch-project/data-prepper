@@ -37,7 +37,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -109,8 +108,6 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
      */
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
-        final List<Record<Event>> recordsOut = new LinkedList<>();
-
         for (final Record<Event> record : records) {
             try {
                 final Event event = record.getData();
@@ -121,27 +118,21 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                     runWithTimeout(() -> grokProcessingTime.record(() -> matchAndMerge(event)));
                 }
 
-                final Record<Event> grokkedRecord = new Record<>(event, record.getMetadata());
-                recordsOut.add(grokkedRecord);
             } catch (TimeoutException e) {
                 LOG.error(EVENT, "Matching on record [{}] took longer than [{}] and timed out", record.getData(), grokProcessorConfig.getTimeoutMillis());
-                recordsOut.add(record);
                 grokProcessingTimeoutsCounter.increment();
             } catch (ExecutionException e) {
                 LOG.error(EVENT, "An exception occurred while matching on record [{}]", record.getData(), e);
-                recordsOut.add(record);
                 grokProcessingErrorsCounter.increment();
             } catch (InterruptedException e) {
                 LOG.error(EVENT, "Matching on record [{}] was interrupted", record.getData(), e);
-                recordsOut.add(record);
                 grokProcessingErrorsCounter.increment();
             } catch (RuntimeException e) {
                 LOG.error(EVENT, "Unknown exception occurred when matching record [{}]", record.getData(), e);
-                recordsOut.add(record);
                 grokProcessingErrorsCounter.increment();
             }
          }
-        return recordsOut;
+        return records;
     }
 
     @Override
