@@ -35,8 +35,8 @@ public class S3ObjectIndex {
 
     S3ObjectIndex() { }
 
-    /*
-        Create Index with date,time with UniqueID prepended.
+    /**
+     *   Create Index with date,time with UniqueID prepended.
      */
     public static String getIndexAliasWithDate(final String indexAlias) {
         DateTimeFormatter dateFormatter = getDatePatternFormatter(indexAlias);
@@ -44,8 +44,8 @@ public class S3ObjectIndex {
         return indexAlias.replaceAll(TIME_PATTERN_REGULAR_EXPRESSION, "") + suffix + UUID.randomUUID();
     }
 
-    /*
-        Validate the index with the regular expression pattern. Throws exception if validation fails
+    /**
+     *   Validate the index with the regular expression pattern. Throws exception if validation fails
      */
     public static DateTimeFormatter getDatePatternFormatter(final String indexAlias) {
         final Pattern pattern = Pattern.compile(TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION);
@@ -66,18 +66,18 @@ public class S3ObjectIndex {
         return null;
     }
 
-    /*
-     Data Prepper only allows time pattern as a suffix.
-    */
+    /**
+     *  Data Prepper only allows time pattern as a suffix.
+     */
     private static void validateTimePatternIsAtTheEnd(final String indexAlias, final String timePattern) {
         if (!indexAlias.endsWith(timePattern + "}")) {
             throw new IllegalArgumentException("Time pattern can only be a suffix of an index.");
         }
     }
 
-    /*
+    /**
      * Special characters can cause failures in creating indexes.
-     * */
+     */
     private static final Set<Character> INVALID_CHARS = Set.of('#', '\\', '/', '*', '?', '"', '<', '>', '|', ',', ':');
     public static void validateNoSpecialCharsInTimePattern(String timePattern) {
         boolean containsInvalidCharacter = timePattern.chars()
@@ -88,7 +88,7 @@ public class S3ObjectIndex {
         }
     }
 
-    /*
+    /**
      * Validates the time pattern, support creating indexes with time patterns that are too granular hour, minute and second
      */
     private static final Set<Character> UNSUPPORTED_TIME_GRANULARITY_CHARS = Set.of('A', 'n', 'N');
@@ -102,8 +102,8 @@ public class S3ObjectIndex {
         }
     }
 
-    /*
-        Returns the current UTC Date and Time
+    /**
+     *   Returns the current UTC Date and Time
      */
     public static ZonedDateTime getCurrentUtcTime() {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);

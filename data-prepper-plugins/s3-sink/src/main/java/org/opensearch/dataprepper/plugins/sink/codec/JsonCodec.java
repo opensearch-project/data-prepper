@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class JsonCodec implements Codec {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    /*
+    /**
      * Generates a serialized json string of the Events
      */
 
@@ -40,7 +40,7 @@ public class JsonCodec implements Codec {
         objectMapper.writeValue(outputStream, recordEventData.toString());
     }
 
-    /*
+    /**
      * Generates a serialized json string of the Events 
      */
     @Override

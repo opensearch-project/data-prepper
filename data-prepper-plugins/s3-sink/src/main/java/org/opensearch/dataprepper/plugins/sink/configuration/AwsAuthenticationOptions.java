@@ -20,7 +20,7 @@ import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 /**
-    An implementation class AWS Authentication configuration
+ *   An implementation class AWS Authentication configuration
  */
 public class AwsAuthenticationOptions {
     @JsonProperty("region")
@@ -35,15 +35,15 @@ public class AwsAuthenticationOptions {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
-    /*
-        AWS Region configuration
+    /**
+     *   AWS Region configuration
      */
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
 
-    /*
-        Aws Credentials Provider configuration
+    /**
+     *   Aws Credentials Provider configuration
      */
     public AwsCredentialsProvider authenticateAwsConfiguration() {
 

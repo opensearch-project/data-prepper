@@ -25,40 +25,39 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Implementation class of s3-sink plugin
- *
  */
 @DataPrepperPlugin(name = "s3", pluginType = Sink.class, pluginConfigurationType = S3SinkConfig.class)
 public class S3Sink extends AbstractSink<Record<Event>> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(S3Sink.class);
-	private static final int EVENT_QUEUE_SIZE = 100000;
-	private static final String IN_MEMORY = "in_memory";
-	private static final String LOCAL_FILE = "local_file";
-	
-	private final S3SinkConfig s3SinkConfig;
-	private S3SinkWorker worker;
-	private SinkAccumulator accumulator;
+    private static final Logger LOG = LoggerFactory.getLogger(S3Sink.class);
+    private static final int EVENT_QUEUE_SIZE = 100000;
+    private static final String IN_MEMORY = "in_memory";
+    private static final String LOCAL_FILE = "local_file";
+
+    private final S3SinkConfig s3SinkConfig;
+    private S3SinkWorker worker;
+    private SinkAccumulator accumulator;
 	private final Codec codec;
+	private final String storageType;
 	private volatile boolean initialized;
 	private static BlockingQueue<Event> eventQueue;
-	private static boolean isStopRequested;
+	private static volatile boolean isStopRequested;
 	private Thread workerThread;
-	
-	
 
 	/**
-	 * 
 	 * @param pluginSetting
 	 * @param s3SinkConfig
 	 * @param pluginFactory
 	 */
 	@DataPrepperPluginConstructor
-	public S3Sink(PluginSetting pluginSetting, final S3SinkConfig s3SinkConfig, final PluginFactory pluginFactory) {
+    public S3Sink(final PluginSetting pluginSetting, final S3SinkConfig s3SinkConfig, final PluginFactory pluginFactory) {
 		super(pluginSetting);
 		this.s3SinkConfig = s3SinkConfig;
+		storageType = s3SinkConfig.getTemporaryStorage();
 		final PluginModel codecConfiguration = s3SinkConfig.getCodec();
-		final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
-		codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
+        final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
+				codecConfiguration.getPluginSettings());
+        codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
 		initialized = Boolean.FALSE;
 	}
 
@@ -72,11 +71,11 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 		try {
 			doInitializeInternal();
 		} catch (InvalidPluginConfigurationException e) {
-			LOG.error("Failed to initialize S3-Sink.");
+			LOG.error("Failed to initialize S3-Sink.", e);
 			this.shutdown();
 			throw new RuntimeException(e.getMessage(), e);
 		} catch (Exception e) {
-			LOG.warn("Failed to initialize S3-Sink, retrying. Error - {} \n {}", e.getMessage(), e.getCause());
+			LOG.warn("Failed to initialize S3-Sink, retrying. Error - {} ", e.getMessage(), e);
 		}
 	}
 
@@ -96,7 +95,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 		if (records.isEmpty()) {
 			return;
 		}
-		
+
 		for (final Record<Event> recordData : records) {
 			Event event = recordData.getData();
 			getEventQueue().add(event);
@@ -120,13 +119,16 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 	public static boolean isStopRequested() {
 		return isStopRequested;
 	}
-	
+
+	/**
+	 * This {@link S3SinkWorkerRunner} keep listing event from {@link doOutput}
+	 */
 	private class S3SinkWorkerRunner implements Runnable {
 		@Override
 		public void run() {
 			try {
 				while (!S3Sink.isStopRequested()) {
-					if (s3SinkConfig.getTemporaryStorage().equalsIgnoreCase(IN_MEMORY)) {
+					if (storageType.equalsIgnoreCase(IN_MEMORY)) {
 						accumulator = worker.inMemmoryAccumulator();
 					} else {
 						accumulator = worker.localFileAccumulator();
@@ -134,9 +136,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 					accumulator.doAccumulate();
 				}
 			} catch (Exception e) {
-				e.printStackTrace();
-				LOG.error("Exception in S3Sink : \n Error message {} \n Exception cause {}", e.getMessage(),
-						e.getCause(), e);
+				LOG.error("Exception while runing S3SinkWorkerRunner : ", e);
 			}
 		}
 	}

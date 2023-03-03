@@ -4,6 +4,9 @@
  */
 package org.opensearch.dataprepper.plugins.sink.accumulator;
 
+/**
+ * {@link SinkAccumulator} Accumulate buffer records
+ */
 public interface SinkAccumulator {
 
 	void doAccumulate();

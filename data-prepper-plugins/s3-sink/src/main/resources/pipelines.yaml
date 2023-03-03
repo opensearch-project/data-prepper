@@ -13,9 +13,9 @@ simple-sample-pipeline:
         object:
           file_pattern: logs-${yyyy-MM-dd}
         threshold:
-          event_count: 200
-          byte_capacity: 2500
-          event_collection_duration: 20
+          event_count: 2000
+          byte_capacity: 50mb
+          event_collection_duration: PT2M
         codec: 
           json:
         temporary_storage: local_file

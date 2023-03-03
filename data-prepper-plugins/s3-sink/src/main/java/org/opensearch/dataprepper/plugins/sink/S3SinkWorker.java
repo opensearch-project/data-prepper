@@ -16,6 +16,9 @@ import org.mapdb.DB;
 import org.mapdb.DBMaker;
 import org.mapdb.Serializer;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryAccumulator;
+import org.opensearch.dataprepper.plugins.sink.accumulator.LocalFileAccumulator;
 import org.opensearch.dataprepper.plugins.sink.accumulator.SinkAccumulator;
 import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.slf4j.Logger;
@@ -30,31 +33,41 @@ import org.slf4j.LoggerFactory;
  * numEvents(event_count) must be always divided by 100 completely without any
  * remnant.
  * 
- * Ex. 1) if numEvents = 100  then numStreams = 2 and eventsPerChunk = 50 
+ * {@code LOAD_FACTOR} required to divide collections of records (numEvents)
+ * into streams
+ * 
+ * Ex. 1) if numEvents = 100 then numStreams = 2 and eventsPerChunk = 50 
  *     2) if numEvents = 1000 then numStreams = 20 and eventsPerChunk = 50
  */
 public class S3SinkWorker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(S3SinkWorker.class);
+	/**
+	 * {@code LOAD_FACTOR} required to divide collections of records into streams
+	 */
 	private static final float LOAD_FACTOR = 0.02f;
 	private final S3SinkService s3SinkService;
 	private final S3SinkConfig s3SinkConfig;
 	private final Codec codec;
 	private SinkAccumulator accumulator;
 	private final int numEvents;
-	private int numStreams;
+	private final ByteCount byteCapacity;
+	private final long duration;
+	private final int numStreams;
 	private final int eventsPerChunk;
 	
 	/**
-	 * 
 	 * @param s3SinkService
 	 * @param s3SinkConfig
 	 */
 	public S3SinkWorker(final S3SinkService s3SinkService, final S3SinkConfig s3SinkConfig, final Codec codec) {
-		this.numEvents = s3SinkConfig.getThresholdOptions().getEeventCount();
 		this.s3SinkService = s3SinkService;
 		this.s3SinkConfig = s3SinkConfig;
 		this.codec = codec;
+		numEvents = s3SinkConfig.getThresholdOptions().getEventCount();
+		byteCapacity = s3SinkConfig.getThresholdOptions().getByteCapacity();
+		duration = s3SinkConfig.getThresholdOptions().getEventCollectionDuration().getSeconds();
+		
 		numStreams = (int) (numEvents * LOAD_FACTOR);
 		eventsPerChunk = numEvents / numStreams;
 	}
@@ -91,13 +104,16 @@ public class S3SinkWorker {
 					streamCount++;
 				} else {
 					// Once threshold reached then No more streaming required per snapshot, hence
-					// terminate the streaming(outer) loop
+					// stop the streaming(outer) loop
 					break;
 				}
 			}
 
 			LOG.info(
-					"In-Memory snapshot info : Byte_count = {} Bytes \t Event_count = {} Records \t Event_collection_duration = {} sec & \t Number of stream {}",
+					"In-Memory snapshot info : Byte_count = {} Bytes "
+					+ "\t Event_count = {} Records "
+					+ "\t Event_collection_duration = {} sec & "
+					+ "\t Number of stream {}",
 					byteCount, eventCount, eventCollectionDuration, streamCount);
 
 			//accumulator = new InMemoryAccumulator(inMemoryEventMap, streamCount, s3SinkService, s3SinkConfig);
@@ -133,7 +149,9 @@ public class S3SinkWorker {
 			}
 			db.commit();
 			LOG.info(
-					"Local-File snapshot info : Byte_count = {} Bytes, \t Event_count = {} Records  \n & Event_collection_duration = {} Sec",
+					"Local-File snapshot info : Byte_count = {} Bytes, "
+					+ "\t Event_count = {} Records  "
+					+ "\t & Event_collection_duration = {} Sec",
 					byteCount, eventCount, eventCollectionDuration);
 			//accumulator = new LocalFileAccumulator(localFileEventSet, s3SinkService, s3SinkConfig, db);
 		} catch (Exception e) {
@@ -146,7 +164,7 @@ public class S3SinkWorker {
 	 * Bunch of events based on thresholds set in the configuration. The Thresholds
 	 * such as events count, bytes capacity and data collection duration.
 	 * 
-	 * @param i
+	 * @param eventCount
 	 * @param watch
 	 * @param byteCount
 	 * @return
@@ -154,8 +172,8 @@ public class S3SinkWorker {
 	private boolean thresholdsCheck(int eventCount, StopWatch watch, int byteCount) {
 		boolean flag = Boolean.FALSE;
 		flag = eventCount < numEvents
-				&& watch.getTime(TimeUnit.SECONDS) < s3SinkConfig.getThresholdOptions().getEventCollectionDuration()
-				&& byteCount < s3SinkConfig.getThresholdOptions().getByteCapacity();
+				&& watch.getTime(TimeUnit.SECONDS) < duration
+				&& byteCount < byteCapacity.getBytes();
 		return flag;
 	}
 }

@@ -20,6 +20,9 @@ public class S3SinkService {
 	private final S3SinkConfig s3SinkConfig;
 	private final S3Client s3Client;
 	
+	/**
+	 * @param s3SinkConfig
+	 */
 	S3SinkService(final S3SinkConfig s3SinkConfig){
 		this.s3SinkConfig = s3SinkConfig;
 		this.s3Client = createS3Client();
@@ -37,6 +40,9 @@ public class S3SinkService {
                 .build();
     }
 	
+	/**
+	 * @return s3Client object
+	 */
 	public S3Client getS3Client() {
 		return s3Client;
 	}
