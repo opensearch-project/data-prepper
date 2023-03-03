@@ -6,12 +6,15 @@
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class OTelMetricsSourceConfig {
     static final String REQUEST_TIMEOUT = "request_timeout";
     static final String PORT = "port";
+    static final String PATH = "path";
     static final String SSL = "ssl";
     static final String USE_ACM_CERT_FOR_SSL = "useAcmCertForSSL";
     static final String ACM_CERT_ISSUE_TIME_OUT_MILLIS = "acmCertIssueTimeOutMillis";
@@ -43,6 +46,10 @@ public class OTelMetricsSourceConfig {
 
     @JsonProperty(PORT)
     private int port = DEFAULT_PORT;
+
+    @JsonProperty(PATH)
+    @Size(min = 1, message = "path length should be at least 1")
+    private String path;
 
     @JsonProperty(HEALTH_CHECK_SERVICE)
     private boolean healthCheck = DEFAULT_HEALTH_CHECK;
@@ -91,6 +98,11 @@ public class OTelMetricsSourceConfig {
     @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
     private boolean unauthenticatedHealthCheck = false;
 
+    @AssertTrue(message = "path should start with /")
+    boolean isPathValid() {
+        return path == null || path.startsWith("/");
+    }
+
     public void validateAndInitializeCertAndKeyFileInS3() {
         boolean certAndKeyFileInS3 = false;
         if (useAcmCertForSSL) {
@@ -128,6 +140,10 @@ public class OTelMetricsSourceConfig {
 
     public int getPort() {
         return port;
+    }
+
+    public String getPath() {
+        return path;
     }
 
     public boolean hasHealthCheck() {
