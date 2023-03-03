@@ -51,14 +51,10 @@ import software.amazon.awssdk.services.s3.model.SelectObjectContentRequest;
 public class S3SelectObjectWorker implements S3ObjectHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3SelectObjectWorker.class);
-    static final int S3_SELECT_INTERNAL_SERVER_ERROR = 500;
-    static final int S3_SELECT_SERVER_BUSY = 503;
-    static final int RETRY_SLEEP_TIME = 10 * 1000;
-    static final int RETRY_SELECT_OBJECT_ITERATIONS = 3;
-    static final String S3_SELECT_OBJECTS_SIZE_PROCESSED = "s3SelectProcessedBytes";
-    static final String S3_SELECT_OBJECT_FAILED_METRIC_NAME = "s3SelectObjectsFailed";
-    static final String S3_OBJECTS_SUCCEEDED_METRIC_NAME = "s3SelectRecordsSucceeded";
-    static final String S3_SELECT_EVENTS = "s3SelectObjectsEvents";
+    static final String S3_OBJECTS_SIZE_PROCESSED = "s3ObjectProcessedBytes";
+    static final String S3_OBJECTS_FAILED_METRIC_NAME = "s3ObjectsFailed";
+    static final String S3_OBJECTS_SUCCEEDED_METRIC_NAME = "s3ObjectsSucceeded";
+    static final String S3_OBJECTS_EVENTS = "s3ObjectsEvents";
     static final String S3_BUCKET_NAME = "bucket";
     static final String S3_OBJECT_KEY = "key";
     static final String S3_BUCKET_REFERENCE_NAME = "s3";
@@ -82,9 +78,9 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         this.buffer = buffer;
         this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
         this.bufferTimeout = bufferTimeout;
-        s3SelectSizeProcessedSummary = pluginMetrics.summary(S3_SELECT_OBJECTS_SIZE_PROCESSED);
-        s3SelectEventsSummary = pluginMetrics.summary(S3_SELECT_EVENTS);
-        s3SelectFailedCounter = pluginMetrics.counter(S3_SELECT_OBJECT_FAILED_METRIC_NAME);
+        s3SelectSizeProcessedSummary = pluginMetrics.summary(S3_OBJECTS_SIZE_PROCESSED);
+        s3SelectEventsSummary = pluginMetrics.summary(S3_OBJECTS_EVENTS);
+        s3SelectFailedCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_METRIC_NAME);
         s3ObjectsSucceededCounter = pluginMetrics.counter(S3_OBJECTS_SUCCEEDED_METRIC_NAME);
         this.query = query;
         this.dataSerilizationFormat = dataSerilizationFormat;
