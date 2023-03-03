@@ -37,8 +37,6 @@ public class DefaultLink implements Link {
         checkArgument(!builder.spanId.isEmpty(), "spanId cannot be an empty String");
         this.spanId = builder.spanId;
 
-        checkNotNull(builder.traceState, "traceState cannot be null");
-        checkArgument(!builder.traceState.isEmpty(), "traceState cannot be an empty String");
         this.traceState = builder.traceState;
 
         this.attributes = builder.attributes == null ? new HashMap<>() : builder.attributes;
