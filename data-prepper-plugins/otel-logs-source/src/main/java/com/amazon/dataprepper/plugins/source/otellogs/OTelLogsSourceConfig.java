@@ -7,6 +7,8 @@ package com.amazon.dataprepper.plugins.source.otellogs;
 
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
@@ -46,6 +48,7 @@ public class OTelLogsSourceConfig {
     private int port = DEFAULT_PORT;
 
     @JsonProperty(PATH)
+    @Size(min = 1, message = "path length should be at least 1")
     private String path;
 
     @JsonProperty(HEALTH_CHECK_SERVICE)
@@ -91,6 +94,11 @@ public class OTelLogsSourceConfig {
 
     @JsonProperty("authentication")
     private PluginModel authentication;
+
+    @AssertTrue(message = "path should start with /")
+    boolean isPathValid() {
+        return path == null || path.startsWith("/");
+    }
 
     public void validateAndInitializeCertAndKeyFileInS3() {
         boolean certAndKeyFileInS3 = false;

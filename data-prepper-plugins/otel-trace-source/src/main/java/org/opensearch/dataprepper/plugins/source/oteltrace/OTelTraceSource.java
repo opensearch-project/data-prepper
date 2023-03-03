@@ -96,7 +96,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
-                    .addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors))
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true);
 
@@ -106,6 +105,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
                 final String transformedOTelTraceSourcePath = oTelTraceSourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
                 grpcServiceBuilder.addService(transformedOTelTraceSourcePath,
                         ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors), methodDescriptor);
+            } else {
+                grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelTraceGrpcService, serverInterceptors));
             }
 
             if (oTelTraceSourceConfig.hasHealthCheck()) {
