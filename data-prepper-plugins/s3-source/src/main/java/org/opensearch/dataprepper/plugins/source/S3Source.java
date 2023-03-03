@@ -65,7 +65,7 @@ public class S3Source implements Source<Record<Event>> {
 					bucketOwnerProvider, s3SourceConfig.getBufferTimeout(),
 					s3SourceConfig.getNumberOfRecordsToAccumulate(), eventMetadataModifier, pluginMetrics);
 		}
-        final S3Service s3Service = new S3Service(s3Handler,s3SourceConfig, buffer, codec, pluginMetrics, bucketOwnerProvider);
+        final S3Service s3Service = new S3Service(s3Handler,s3SourceConfig);
 
         sqsService = new SqsService(s3SourceConfig, s3Service, pluginMetrics);
 

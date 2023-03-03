@@ -5,13 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
-import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
-import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
@@ -25,25 +18,11 @@ public class S3Service {
     private static final Logger LOG = LoggerFactory.getLogger(S3Service.class);
 
     private final S3SourceConfig s3SourceConfig;
-    private final Buffer<Record<Event>> buffer;
-    private final Codec codec;
-    private final CompressionEngine compressionEngine;
-    private final PluginMetrics pluginMetrics;
-    private final BucketOwnerProvider bucketOwnerProvider;
     private final S3ObjectHandler s3ObjectHandler;
 
     S3Service(final S3ObjectHandler s3ObjectHandler,
-    		  final S3SourceConfig s3SourceConfig,
-              final Buffer<Record<Event>> buffer,
-              final Codec codec,
-              final PluginMetrics pluginMetrics,
-              final BucketOwnerProvider bucketOwnerProvider) {
+    		  final S3SourceConfig s3SourceConfig) {
         this.s3SourceConfig = s3SourceConfig;
-        this.buffer = buffer;
-        this.codec = codec;
-        this.pluginMetrics = pluginMetrics;
-        this.bucketOwnerProvider = bucketOwnerProvider;
-        this.compressionEngine = s3SourceConfig.getCompression().getEngine();
         this.s3ObjectHandler =s3ObjectHandler;
     }
 
