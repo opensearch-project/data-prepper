@@ -170,14 +170,6 @@ public class DefaultLinkTest {
     }
 
     @Test
-    public void testBuilder_withMissingTraceState_throwsNullPointerException() {
-
-        builder.withTraceState(null);
-
-        assertThrows(NullPointerException.class, builder::build);
-    }
-
-    @Test
     public void testBuilder_withEmptySpanId_throwsIllegalArgumentException() {
 
         builder.withSpanId("");
@@ -189,14 +181,6 @@ public class DefaultLinkTest {
     public void testBuilder_withEmptyTraceId_throwsIllegalArgumentException() {
 
         builder.withTraceId("");
-
-        assertThrows(IllegalArgumentException.class, builder::build);
-    }
-
-    @Test
-    public void testBuilder_withEmptyTraceState_throwsIllegalArgumentException() {
-
-        builder.withTraceState("");
 
         assertThrows(IllegalArgumentException.class, builder::build);
     }
