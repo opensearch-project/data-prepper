@@ -102,8 +102,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         final SelectObjectContentRequest s3Request = getS3SelectObjRequest(s3ObjectReference, inputSerialization);
 
         final S3SelectResponseHandler responseHandler = new S3SelectResponseHandler();
-        final S3SelectResponseHandler responseHand = callS3SelectObject(s3Request, responseHandler, s3ObjectReference,
-                bufferAccumulator);
+        final S3SelectResponseHandler responseHand = callS3SelectObject(s3Request, responseHandler);
         List<SelectObjectContentEventStream> receivedEvents = responseHand.getReceivedEvents();
         if (!receivedEvents.isEmpty()) {
                 inputStreamList = getInputStreamFromResponseHeader(responseHand);
@@ -142,8 +141,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     }
 
     private S3SelectResponseHandler callS3SelectObject(final SelectObjectContentRequest s3Request,
-            final S3SelectResponseHandler responseHandler, final S3ObjectReference s3ObjectReference,
-            final BufferAccumulator<Record<Event>> bufferAccumulator) {
+            final S3SelectResponseHandler responseHandler) {
         try {
             s3AsyncClient.selectObjectContent(s3Request, responseHandler).get();
         } catch (final Exception ex) {
