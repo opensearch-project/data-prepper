@@ -696,7 +696,7 @@ class OTelLogsSourceTest {
     }
 
     @Test
-    void gRPC_request_writes_to_buffer_with_successful_response_with_custom_path() throws Exception {
+    void gRPC_request_with_custom_path_throws_when_written_to_default_path() {
         when(oTelLogsSourceConfig.getPath()).thenReturn(TEST_PATH);
         when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
 
@@ -705,15 +705,10 @@ class OTelLogsSourceTest {
 
         final LogsServiceGrpc.LogsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
                 .build(LogsServiceGrpc.LogsServiceBlockingStub.class);
-        final ExportLogsServiceResponse exportResponse = client.export(createExportLogsRequest());
-        assertThat(exportResponse, notNullValue());
 
-        final ArgumentCaptor<Collection<Record<Object>>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Collection.class);
-        verify(buffer).writeAll(bufferWriteArgumentCaptor.capture(), anyInt());
-
-        final Collection<Record<Object>> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
-        assertThat(actualBufferWrites, notNullValue());
-        assertThat(actualBufferWrites, hasSize(1));
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportLogsRequest()));
+        assertThat(actualException.getStatus(), notNullValue());
+        assertThat(actualException.getStatus().getCode(), equalTo(Status.UNIMPLEMENTED.getCode()));
     }
 
     @ParameterizedTest

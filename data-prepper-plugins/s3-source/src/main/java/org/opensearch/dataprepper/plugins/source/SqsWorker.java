@@ -6,11 +6,13 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
+import org.opensearch.dataprepper.plugins.source.exception.SqsRetriesExhaustedException;
 import org.opensearch.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import org.opensearch.dataprepper.plugins.source.filter.S3EventFilter;
 import org.slf4j.Logger;
@@ -49,16 +51,21 @@ public class SqsWorker implements Runnable {
     private final Counter sqsMessagesDeletedCounter;
     private final Counter sqsMessagesFailedCounter;
     private final Timer sqsMessageDelayTimer;
+    private final Backoff standardBackoff;
+    private int failedAttemptCount;
 
     public SqsWorker(final SqsClient sqsClient,
                      final S3Service s3Service,
                      final S3SourceConfig s3SourceConfig,
-                     final PluginMetrics pluginMetrics) {
+                     final PluginMetrics pluginMetrics,
+                     final Backoff backoff) {
         this.sqsClient = sqsClient;
         this.s3Service = s3Service;
         this.s3SourceConfig = s3SourceConfig;
+        this.standardBackoff = backoff;
         sqsOptions = s3SourceConfig.getSqsOptions();
         objectCreatedFilter = new ObjectCreatedFilter();
+        failedAttemptCount = 0;
 
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
@@ -108,10 +115,26 @@ public class SqsWorker implements Runnable {
     private List<Message> getMessagesFromSqs() {
         try {
             final ReceiveMessageRequest receiveMessageRequest = createReceiveMessageRequest();
-            return sqsClient.receiveMessage(receiveMessageRequest).messages();
-        } catch (SqsException e) {
-            LOG.error("Error reading from SQS: {}", e.getMessage());
+            final List<Message> messages = sqsClient.receiveMessage(receiveMessageRequest).messages();
+            failedAttemptCount = 0;
+            return messages;
+        } catch (final SqsException e) {
+            LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
+            applyBackoff();
             return Collections.emptyList();
+        }
+    }
+
+    private void applyBackoff() {
+        final long delayMillis = standardBackoff.nextDelayMillis(++failedAttemptCount);
+        if (delayMillis < 0) {
+            Thread.currentThread().interrupt();
+            throw new SqsRetriesExhaustedException("SQS retries exhausted. Make sure that SQS configuration is valid and queue exists.");
+        }
+        try {
+            Thread.sleep(delayMillis);
+        } catch (final InterruptedException e){
+            LOG.error("Thread is interrupted while polling SQS with retry.", e);
         }
     }
 
