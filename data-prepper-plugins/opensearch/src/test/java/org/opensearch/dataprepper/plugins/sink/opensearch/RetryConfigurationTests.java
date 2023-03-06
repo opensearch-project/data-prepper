@@ -13,6 +13,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 public class RetryConfigurationTests {
     @Test
@@ -20,6 +21,12 @@ public class RetryConfigurationTests {
         final RetryConfiguration retryConfiguration = new RetryConfiguration.Builder().build();
         assertNull(retryConfiguration.getDlqFile());
         assertEquals(retryConfiguration.getMaxRetries(), Integer.MAX_VALUE);
+    }
+
+    @Test
+    public void testReadRetryConfigInvalidMaxRetries() {
+        final RetryConfiguration retryConfiguration = RetryConfiguration.readRetryConfig(generatePluginSetting(null, -1));
+        assertThrows(IllegalArgumentException.class, () -> retryConfiguration.getMaxRetries());
     }
 
     @Test

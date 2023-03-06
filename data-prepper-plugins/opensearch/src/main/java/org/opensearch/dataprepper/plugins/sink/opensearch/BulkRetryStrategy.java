@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -137,7 +138,7 @@ public final class BulkRetryStrategy {
         // TODO: replace with custom backoff policy setting including maximum interval between retries
         final BackOffUtils backOffUtils = new BackOffUtils(
                 BackoffPolicy.exponentialBackoff(TimeValue.timeValueMillis(50), Integer.MAX_VALUE).iterator());
-        handleRetry(bulkRequest, null, backOffUtils, true);
+        handleRetry(bulkRequest, null, backOffUtils);
     }
 
     public boolean canRetry(final BulkResponse response) {
@@ -155,10 +156,39 @@ public final class BulkRetryStrategy {
                         !NON_RETRY_STATUS.contains(((OpenSearchException) e).status().getStatus())));
     }
 
+    private void handleRetriesAndFailures(final AccumulatingBulkRequest bulkRequestForRetry,
+                                          final int retryCount,
+                                          final BackOffUtils backOffUtils,
+                                          final BulkResponse bulkResponse,
+                                          Exception e) throws InterruptedException {
+        boolean doRetry = (Objects.isNull(e)) ? canRetry(bulkResponse) : canRetry(e);
+        if (!Objects.isNull(bulkResponse) && doRetry && retryCount == 1) { // first attempt
+            for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
+                if (bulkItemResponse.error() == null) {
+                    sentDocumentsOnFirstAttemptCounter.increment();
+                }
+            }
+        }
+        if (doRetry && retryCount < maxRetries) {
+            handleRetry(bulkRequestForRetry, bulkResponse, backOffUtils);
+            bulkRequestNumberOfRetries.increment();
+        } else {
+            if (doRetry && retryCount >= maxRetries) {
+                e = new RuntimeException(String.format("Number of retries reached the limit of max retries(configured value %d)", maxRetries));
+            }
+            if (Objects.isNull(e)) {
+                handleFailures(bulkRequestForRetry, bulkResponse.items());
+            } else {
+                handleFailures(bulkRequestForRetry, e);
+            }
+            bulkRequestFailedCounter.increment();
+        }
+    }
+
     private void handleRetry(final AccumulatingBulkRequest request, final BulkResponse response,
-                             final BackOffUtils backOffUtils, final boolean firstAttempt) throws InterruptedException {
-        int retryCount = request.incrementAndGetRetryCount();
+                             final BackOffUtils backOffUtils) throws InterruptedException {
         final AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
+        int retryCount = bulkRequestForRetry.incrementAndGetRetryCount();
         if (backOffUtils.hasNext()) {
             // Wait for backOff duration
             backOffUtils.next();
@@ -182,36 +212,14 @@ public final class BulkRetryStrategy {
                         bulkRequestBadErrors.increment();
                     }
                 }
-
-                if (canRetry(e) && retryCount < maxRetries) {
-                    handleRetry(bulkRequestForRetry, null, backOffUtils, false);
-                    bulkRequestNumberOfRetries.increment();
-                } else {
-                    if (canRetry(e) && retryCount >= maxRetries) {
-                        e = new RuntimeException(String.format("Number of retries reached the limit of max retries(configured value %d)", maxRetries));
-                    }
-                    handleFailures(bulkRequestForRetry, e);
-                    bulkRequestFailedCounter.increment();
-                }
-
+                handleRetriesAndFailures(bulkRequestForRetry, retryCount, backOffUtils, null, e);
                 return;
             }
             if (bulkResponse.errors()) {
-                if (canRetry(bulkResponse)) {
-                    if (firstAttempt) {
-                        for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
-                            if (bulkItemResponse.error() == null) {
-                                sentDocumentsOnFirstAttemptCounter.increment();
-                            }
-                        }
-                    }
-                    handleRetry(bulkRequestForRetry, bulkResponse, backOffUtils, false);
-                } else {
-                    handleFailures(bulkRequestForRetry, bulkResponse.items());
-                }
+                handleRetriesAndFailures(bulkRequestForRetry, retryCount, backOffUtils, bulkResponse, null);
             } else {
                 final int numberOfDocs = bulkRequestForRetry.getOperationsCount();
-                if (firstAttempt) {
+                if (retryCount == 1) {
                     sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
                 }
                 sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
@@ -226,6 +234,9 @@ public final class BulkRetryStrategy {
             return request;
         } else {
             final AccumulatingBulkRequest requestToReissue = bulkRequestSupplier.get();
+            if (request != requestToReissue) {
+                requestToReissue.setRetryCount(request.getRetryCount());
+            }
             int index = 0;
             for (final BulkResponseItem bulkItemResponse : response.items()) {
                 if (bulkItemResponse.error() != null) {

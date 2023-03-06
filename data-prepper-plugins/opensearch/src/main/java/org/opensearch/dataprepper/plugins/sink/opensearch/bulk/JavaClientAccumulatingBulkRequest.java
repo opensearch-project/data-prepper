@@ -65,6 +65,16 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
     }
 
     @Override
+    public int getRetryCount() {
+        return retryCount;
+    }
+
+    @Override
+    public void setRetryCount(int count) {
+        retryCount = count;
+    }
+
+    @Override
     public List<BulkOperation> getOperations() {
         return Collections.unmodifiableList(bulkOperations);
     }

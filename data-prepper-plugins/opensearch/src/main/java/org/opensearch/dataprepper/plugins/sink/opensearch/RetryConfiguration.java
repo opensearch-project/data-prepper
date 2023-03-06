@@ -21,6 +21,9 @@ public class RetryConfiguration {
   }
 
   public int getMaxRetries() {
+    if (maxRetries < 1) {
+        throw new IllegalArgumentException("max_retries must be > 1");
+    }
     return maxRetries;
   }
 
