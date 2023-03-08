@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
@@ -96,6 +98,7 @@ public final class BulkRetryStrategy {
     private final PluginMetrics pluginMetrics;
     private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
     private final int maxRetries;
+    private final Map<AccumulatingBulkRequest<BulkOperation, BulkRequest>, Integer> retryCountMap;
 
     private final Counter sentDocumentsCounter;
     private final Counter sentDocumentsOnFirstAttemptCounter;
@@ -119,6 +122,7 @@ public final class BulkRetryStrategy {
         this.pluginMetrics = pluginMetrics;
         this.bulkRequestSupplier = bulkRequestSupplier;
         this.maxRetries = maxRetries;
+        this.retryCountMap = new HashMap<>();
 
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
@@ -188,7 +192,7 @@ public final class BulkRetryStrategy {
     private void handleRetry(final AccumulatingBulkRequest request, final BulkResponse response,
                              final BackOffUtils backOffUtils) throws InterruptedException {
         final AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
-        int retryCount = bulkRequestForRetry.incrementAndGetRetryCount();
+        int retryCount = retryCountMap.get(bulkRequestForRetry);
         if (backOffUtils.hasNext()) {
             // Wait for backOff duration
             backOffUtils.next();
@@ -223,19 +227,23 @@ public final class BulkRetryStrategy {
                     sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
                 }
                 sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
+                retryCountMap.remove(bulkRequestForRetry);
             }
         }
     }
 
     private AccumulatingBulkRequest<BulkOperation, BulkRequest> createBulkRequestForRetry(
             final AccumulatingBulkRequest<BulkOperation, BulkRequest> request, final BulkResponse response) {
+        int newCount = retryCountMap.containsKey(request) ? (retryCountMap.get(request) + 1) : 1;
         if (response == null) {
+            retryCountMap.put(request, newCount);
             // first attempt or retry due to Exception
             return request;
         } else {
             final AccumulatingBulkRequest requestToReissue = bulkRequestSupplier.get();
             if (request != requestToReissue) {
-                requestToReissue.setRetryCount(request.getRetryCount());
+                retryCountMap.put(requestToReissue, newCount);
+                retryCountMap.remove(request);
             }
             int index = 0;
             for (final BulkResponseItem bulkItemResponse : response.items()) {

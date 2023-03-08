@@ -24,12 +24,6 @@ public interface AccumulatingBulkRequest<O, R> {
 
     int getOperationsCount();
 
-    int incrementAndGetRetryCount();
-
-    void setRetryCount(int count);
-
-    int getRetryCount();
-
     List<O> getOperations();
 
     R getRequest();
