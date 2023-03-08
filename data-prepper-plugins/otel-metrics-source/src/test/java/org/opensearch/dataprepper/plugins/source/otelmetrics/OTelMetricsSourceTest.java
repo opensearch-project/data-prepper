@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.linecorp.armeria.client.ClientFactory;
+import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
@@ -25,9 +26,16 @@ import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
 import io.grpc.BindableService;
 import io.grpc.ServerServiceDefinition;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.netty.util.AsciiString;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
+import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import io.opentelemetry.proto.common.v1.AnyValue;
+import io.opentelemetry.proto.common.v1.KeyValue;
 import io.opentelemetry.proto.metrics.v1.ResourceMetrics;
+import io.opentelemetry.proto.resource.v1.Resource;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -35,12 +43,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -59,39 +73,55 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.SSL;
 
 @ExtendWith(MockitoExtension.class)
-public class OTelMetricsSourceTest {
+class OTelMetricsSourceTest {
+    private static final String GRPC_ENDPOINT = "gproto+http://127.0.0.1:21891/";
+    private static final String TEST_PIPELINE_NAME = "test_pipeline";
+    private static final String USERNAME = "test_user";
+    private static final String PASSWORD = "test_password";
+    private static final String TEST_PATH = "${pipelineName}/v1/metrics";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final ExportMetricsServiceRequest METRICS_REQUEST = ExportMetricsServiceRequest.newBuilder()
+            .addResourceMetrics(ResourceMetrics.newBuilder().build()).build();
 
     @Mock
     private ServerBuilder serverBuilder;
@@ -123,39 +153,20 @@ public class OTelMetricsSourceTest {
     @Mock
     private GrpcBasicAuthenticationProvider authenticationProvider;
 
-    private PluginSetting pluginSetting;
-    private PluginSetting testPluginSetting;
+    @Mock(lenient = true)
     private OTelMetricsSourceConfig oTelMetricsSourceConfig;
-    private PluginMetrics pluginMetrics;
-    private PipelineDescription pipelineDescription;
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
+    @Mock
     private BlockingBuffer<Record<ExportMetricsServiceRequest>> buffer;
 
+    @Mock
+    private HttpBasicAuthenticationConfig httpBasicAuthenticationConfig;
+
+    private PluginSetting pluginSetting;
+    private PluginSetting testPluginSetting;
+    private PluginMetrics pluginMetrics;
+    private PipelineDescription pipelineDescription;
     private OTelMetricsSource SOURCE;
-    private static final String TEST_PIPELINE_NAME = "test_pipeline";
-    private static final ExportMetricsServiceRequest METRICS_REQUEST = ExportMetricsServiceRequest.newBuilder()
-            .addResourceMetrics(ResourceMetrics.newBuilder().build()).build();
-
-    private static void assertStatusCode415AndNoServerHeaders(final AggregatedHttpResponse response, final Throwable throwable) {
-        assertThat("Http Status", response.status(), is(HttpStatus.UNSUPPORTED_MEDIA_TYPE));
-        assertThat("Http Response Throwable", throwable, is(nullValue()));
-
-        final List<String> headerKeys = response.headers()
-                .stream()
-                .map(Map.Entry::getKey)
-                .map(AsciiString::toString)
-                .collect(Collectors.toList());
-        assertThat("Response Header Keys", headerKeys, not(contains("server")));
-    }
-
-    private BlockingBuffer<Record<ExportMetricsServiceRequest>> getBuffer() {
-        final HashMap<String, Object> integerHashMap = new HashMap<>();
-        integerHashMap.put("buffer_size", 1);
-        integerHashMap.put("batch_size", 1);
-        return new BlockingBuffer<>(new PluginSetting("blocking_buffer", integerHashMap));
-    }
 
     @BeforeEach
     public void beforeEach() {
@@ -169,22 +180,19 @@ public class OTelMetricsSourceTest {
         lenient().when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
-
-        final Map<String, Object> settingsMap = new HashMap<>();
-        settingsMap.put("request_timeout", 5);
-        settingsMap.put(SSL, false);
-        pluginSetting = new PluginSetting("otel_metrics", settingsMap);
-        pluginSetting.setPipelineName("pipeline");
         pluginMetrics = PluginMetrics.fromNames("otel_metrics", "pipeline");
 
-        oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+        when(oTelMetricsSourceConfig.getPort()).thenReturn(DEFAULT_PORT);
+        when(oTelMetricsSourceConfig.isSsl()).thenReturn(false);
+        when(oTelMetricsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
+        when(oTelMetricsSourceConfig.getMaxConnectionCount()).thenReturn(10);
+        when(oTelMetricsSourceConfig.getThreadCount()).thenReturn(5);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
         pipelineDescription = mock(PipelineDescription.class);
         when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
         SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        buffer = getBuffer();
     }
 
     @AfterEach
@@ -192,8 +200,12 @@ public class OTelMetricsSourceTest {
         SOURCE.stop();
     }
 
+    private void configureObjectUnderTest() {
+        SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+    }
+
     @Test
-    void testHttpFullJson() throws InvalidProtocolBufferException {
+    void testHttpFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -204,12 +216,12 @@ public class OTelMetricsSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete(OTelMetricsSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
     }
 
     @Test
-    void testHttpsFullJson() throws InvalidProtocolBufferException {
+    void testHttpsFullJsonWithNonUnframedRequests() throws InvalidProtocolBufferException {
 
         final Map<String, Object> settingsMap = new HashMap<>();
         settingsMap.put("request_timeout", 5);
@@ -222,8 +234,6 @@ public class OTelMetricsSourceTest {
 
         oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(pluginSetting.getSettings(), OTelMetricsSourceConfig.class);
         SOURCE = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-
-        buffer = getBuffer();
         SOURCE.start(buffer);
 
         WebClient.builder().factory(ClientFactory.insecure()).build().execute(RequestHeaders.builder()
@@ -235,12 +245,12 @@ public class OTelMetricsSourceTest {
                         .build(),
                 HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes()))
                 .aggregate()
-                .whenComplete(OTelMetricsSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
     }
 
     @Test
-    void testHttpFullBytes() {
+    void testHttpFullBytesWithNonUnframedRequests() {
         SOURCE.start(buffer);
         WebClient.of().execute(RequestHeaders.builder()
                         .scheme(SessionProtocol.HTTP)
@@ -251,12 +261,114 @@ public class OTelMetricsSourceTest {
                         .build(),
                 HttpData.copyOf(METRICS_REQUEST.toByteArray()))
                 .aggregate()
-                .whenComplete(OTelMetricsSourceTest::assertStatusCode415AndNoServerHeaders)
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNSUPPORTED_MEDIA_TYPE, throwable))
                 .join();
     }
 
     @Test
-    public void testServerStartCertFileSuccess() throws IOException {
+    void testHttpFullJsonWithUnframedRequests() throws InvalidProtocolBufferException {
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21891")
+                                .method(HttpMethod.POST)
+                                .path("/opentelemetry.proto.collector.metrics.v1.MetricsService/Export")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpFullJsonWithCustomPathAndUnframedRequests() throws InvalidProtocolBufferException {
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelMetricsSourceConfig.getPath()).thenReturn(TEST_PATH);
+        SOURCE.start(buffer);
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/metrics";
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21891")
+                                .method(HttpMethod.POST)
+                                .path(transformedPath)
+                                .contentType(MediaType.JSON_UTF_8)
+                                .build(),
+                        HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpFullJsonWithCustomPathAndAuthHeader_with_successful_response() throws InvalidProtocolBufferException {
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelMetricsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelMetricsSourceConfig.getPath()).thenReturn(TEST_PATH);
+
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String encodeToString = Base64.getEncoder()
+                .encodeToString(String.format("%s:%s", USERNAME, PASSWORD).getBytes(StandardCharsets.UTF_8));
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/metrics";
+
+        WebClient.of().prepare()
+                .post("http://127.0.0.1:21891" + transformedPath)
+                .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportMetricsRequest()).getBytes())
+                .header("Authorization", "Basic " + encodeToString)
+                .execute()
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpFullJsonWithCustomPathAndAuthHeader_with_unsuccessful_response() throws InvalidProtocolBufferException {
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelMetricsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelMetricsSourceConfig.getPath()).thenReturn(TEST_PATH);
+
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String transformedPath = "/" + TEST_PIPELINE_NAME + "/v1/metrics";
+
+        WebClient.of().prepare()
+                .post("http://127.0.0.1:21891" + transformedPath)
+                .content(MediaType.JSON_UTF_8, JsonFormat.printer().print(createExportMetricsRequest()).getBytes())
+                .execute()
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNAUTHORIZED, throwable))
+                .join();
+    }
+
+    @Test
+    void testServerStartCertFileSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
@@ -290,7 +402,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testServerStartACMCertSuccess() throws IOException {
+    void testServerStartACMCertSuccess() throws IOException {
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
             armeriaServerMock.when(Server::builder).thenReturn(serverBuilder);
             when(server.stop()).thenReturn(completableFuture);
@@ -454,9 +566,8 @@ public class OTelMetricsSourceTest {
                             .path("/health")
                             .build())
                     .aggregate()
-                    .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.UNAUTHORIZED)).join();
-
-            SOURCE.stop();
+                    .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.UNAUTHORIZED, throwable))
+                    .join();
         }
 
         @Test
@@ -474,21 +585,9 @@ public class OTelMetricsSourceTest {
                             .path("/health")
                             .build())
                     .aggregate()
-                    .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
-
-            SOURCE.stop();
+                    .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                    .join();
         }
-    }
-
-    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response, final HttpStatus expectedStatus) {
-        assertThat("Http Status", response.status(), equalTo(expectedStatus));
-
-        final List<String> headerKeys = response.headers()
-                .stream()
-                .map(Map.Entry::getKey)
-                .map(AsciiString::toString)
-                .collect(Collectors.toList());
-        assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 
     @Test
@@ -618,7 +717,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testDoubleStart() {
+    void testDoubleStart() {
         // starting server
         SOURCE.start(buffer);
         // double start server
@@ -626,7 +725,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testRunAnotherSourceWithSamePort() {
+    void testRunAnotherSourceWithSamePort() {
         // starting server
         SOURCE.start(buffer);
 
@@ -639,7 +738,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testStartWithEmptyBuffer() {
+    void testStartWithEmptyBuffer() {
         testPluginSetting = new PluginSetting(null, Collections.singletonMap(SSL, false));
         testPluginSetting.setPipelineName("pipeline");
         oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
@@ -648,7 +747,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
+    void testStartWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -661,7 +760,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
+    void testStartWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -676,7 +775,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testOptionalHttpAuthServiceNotInPlace() {
+    void testOptionalHttpAuthServiceNotInPlace() {
         when(server.stop()).thenReturn(completableFuture);
 
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -689,7 +788,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testOptionalHttpAuthServiceInPlace() {
+    void testOptionalHttpAuthServiceInPlace() {
         when(server.stop()).thenReturn(completableFuture);
 
         try (final MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -701,7 +800,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
+    void testStopWithServerExecutionExceptionNoCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -716,7 +815,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
+    void testStartWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -730,7 +829,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
+    void testStopWithServerExecutionExceptionWithCause() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -747,7 +846,7 @@ public class OTelMetricsSourceTest {
     }
 
     @Test
-    public void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
+    void testStopWithInterruptedException() throws ExecutionException, InterruptedException {
         // Prepare
         final OTelMetricsSource source = new OTelMetricsSource(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         try (MockedStatic<Server> armeriaServerMock = Mockito.mockStatic(Server.class)) {
@@ -760,5 +859,131 @@ public class OTelMetricsSourceTest {
             assertThrows(RuntimeException.class, source::stop);
             assertTrue(Thread.interrupted());
         }
+    }
+
+    @Test
+    void gRPC_request_writes_to_buffer_with_successful_response() throws Exception {
+        SOURCE.start(buffer);
+
+        final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+        final ExportMetricsServiceResponse exportResponse = client.export(createExportMetricsRequest());
+        assertThat(exportResponse, notNullValue());
+
+        final ArgumentCaptor<Record<ExportMetricsServiceRequest>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(buffer).write(bufferWriteArgumentCaptor.capture(), anyInt());
+
+        final Record<ExportMetricsServiceRequest> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
+        assertThat(actualBufferWrites, notNullValue());
+        assertThat(actualBufferWrites.getData().getResourceMetricsCount(), equalTo(1));
+    }
+
+    @Test
+    void gRPC_with_auth_request_writes_to_buffer_with_successful_response() throws Exception {
+        when(httpBasicAuthenticationConfig.getUsername()).thenReturn(USERNAME);
+        when(httpBasicAuthenticationConfig.getPassword()).thenReturn(PASSWORD);
+        final GrpcAuthenticationProvider grpcAuthenticationProvider = new GrpcBasicAuthenticationProvider(httpBasicAuthenticationConfig);
+
+        lenient().when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
+                .thenReturn(grpcAuthenticationProvider);
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelMetricsSourceConfig.getAuthentication()).thenReturn(new PluginModel("http_basic",
+                Map.of(
+                        "username", USERNAME,
+                        "password", PASSWORD
+                )));
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final String encodeToString = Base64.getEncoder()
+                .encodeToString(String.format("%s:%s", USERNAME, PASSWORD).getBytes(StandardCharsets.UTF_8));
+
+        final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .addHeader("Authorization", "Basic " + encodeToString)
+                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+        final ExportMetricsServiceResponse exportResponse = client.export(createExportMetricsRequest());
+        assertThat(exportResponse, notNullValue());
+
+        final ArgumentCaptor<Record<ExportMetricsServiceRequest>> bufferWriteArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(buffer).write(bufferWriteArgumentCaptor.capture(), anyInt());
+
+        final Record<ExportMetricsServiceRequest> actualBufferWrites = bufferWriteArgumentCaptor.getValue();
+        assertThat(actualBufferWrites, notNullValue());
+        assertThat(actualBufferWrites.getData().getResourceMetricsCount(), equalTo(1));
+    }
+
+    @Test
+    void gRPC_request_with_custom_path_throws_when_written_to_default_path() {
+        when(oTelMetricsSourceConfig.getPath()).thenReturn(TEST_PATH);
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+
+        configureObjectUnderTest();
+        SOURCE.start(buffer);
+
+        final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(createExportMetricsRequest()));
+        assertThat(actualException.getStatus(), notNullValue());
+        assertThat(actualException.getStatus().getCode(), equalTo(Status.UNIMPLEMENTED.getCode()));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(BufferExceptionToStatusArgumentsProvider.class)
+    void gRPC_request_returns_expected_status_for_exceptions_from_buffer(
+            final Class<Exception> bufferExceptionClass,
+            final Status.Code expectedStatusCode) throws Exception {
+        SOURCE.start(buffer);
+
+        final MetricsServiceGrpc.MetricsServiceBlockingStub client = Clients.builder(GRPC_ENDPOINT)
+                .build(MetricsServiceGrpc.MetricsServiceBlockingStub.class);
+
+        doThrow(bufferExceptionClass)
+                .when(buffer)
+                .write(any(Record.class), anyInt());
+        final ExportMetricsServiceRequest exportMetricsRequest = createExportMetricsRequest();
+        final StatusRuntimeException actualException = assertThrows(StatusRuntimeException.class, () -> client.export(exportMetricsRequest));
+
+        assertThat(actualException.getStatus(), notNullValue());
+        assertThat(actualException.getStatus().getCode(), equalTo(expectedStatusCode));
+    }
+
+    static class BufferExceptionToStatusArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
+            return Stream.of(
+                    arguments(TimeoutException.class, Status.Code.RESOURCE_EXHAUSTED),
+                    arguments(RuntimeException.class, Status.Code.UNKNOWN)
+            );
+        }
+    }
+
+    private ExportMetricsServiceRequest createExportMetricsRequest() {
+        final Resource resource = Resource.newBuilder()
+                .addAttributes(KeyValue.newBuilder()
+                        .setKey("service.name")
+                        .setValue(AnyValue.newBuilder().setStringValue("service").build())
+                ).build();
+
+        final ResourceMetrics resourceMetrics = ResourceMetrics.newBuilder()
+                .setResource(resource)
+                .build();
+
+        return ExportMetricsServiceRequest.newBuilder()
+                .addResourceMetrics(resourceMetrics).build();
+    }
+
+    private void assertSecureResponseWithStatusCode(final AggregatedHttpResponse response,
+                                                    final HttpStatus expectedStatus,
+                                                    final Throwable throwable) {
+        assertThat("Http Status", response.status(), equalTo(expectedStatus));
+        assertThat("Http Response Throwable", throwable, is(nullValue()));
+
+        final List<String> headerKeys = response.headers()
+                .stream()
+                .map(Map.Entry::getKey)
+                .map(AsciiString::toString)
+                .collect(Collectors.toList());
+        assertThat("Response Header Keys", headerKeys, not(contains("server")));
     }
 }

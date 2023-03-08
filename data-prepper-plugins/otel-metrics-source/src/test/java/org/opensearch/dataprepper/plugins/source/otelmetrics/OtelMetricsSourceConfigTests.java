@@ -12,6 +12,8 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -22,7 +24,7 @@ import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsS
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otelmetrics.OTelMetricsSourceConfig.DEFAULT_THREAD_COUNT;
 
-public class OtelMetricsSourceConfigTests {
+class OtelMetricsSourceConfigTests {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String PLUGIN_NAME = "otel_metrics_source";
     private static final String TEST_KEY_CERT = "test.crt";
@@ -36,7 +38,7 @@ public class OtelMetricsSourceConfigTests {
     private static final int TEST_MAX_CONNECTION_COUNT = 999;
 
     @Test
-    public void testDefault() {
+    void testDefault() {
 
         // Prepare
         final OTelMetricsSourceConfig otelMetricsSourceConfig = new OTelMetricsSourceConfig();
@@ -57,7 +59,7 @@ public class OtelMetricsSourceConfigTests {
     }
 
     @Test
-    public void testHttpHealthCheckWithUnframedRequestEnabled() {
+    void testHttpHealthCheckWithUnframedRequestEnabled() {
         // Prepare
         final Map<String, Object> settings = new HashMap<>();
         settings.put(OTelMetricsSourceConfig.ENABLE_UNFRAMED_REQUESTS, "true");
@@ -75,7 +77,7 @@ public class OtelMetricsSourceConfigTests {
     }
 
     @Test
-    public void testHttpHealthCheckWithUnframedRequestDisabled() {
+    void testHttpHealthCheckWithUnframedRequestDisabled() {
         // Prepare
         final Map<String, Object> settings = new HashMap<>();
         settings.put(OTelMetricsSourceConfig.ENABLE_UNFRAMED_REQUESTS, "false");
@@ -93,11 +95,12 @@ public class OtelMetricsSourceConfigTests {
     }
 
     @Test
-    public void testValidConfigWithoutS3CertAndKey() {
+    void testValidConfigWithoutS3CertAndKey() {
         // Prepare
         final PluginSetting validPluginSetting = completePluginSettingForOtelMetricsSource(
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_PORT,
+                null,
                 true,
                 true,
                 false,
@@ -126,11 +129,12 @@ public class OtelMetricsSourceConfigTests {
     }
 
     @Test
-    public void testValidConfigWithS3CertAndKey() {
+    void testValidConfigWithS3CertAndKey() {
         // Prepare
         final PluginSetting validPluginSettingWithS3CertAndKey = completePluginSettingForOtelMetricsSource(
                 TEST_REQUEST_TIMEOUT_MS,
                 TEST_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -160,11 +164,13 @@ public class OtelMetricsSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithNullKeyCert() {
+    void testInvalidConfigWithNullKeyCert() {
         // Prepare
         final PluginSetting sslNullKeyCertPluginSetting = completePluginSettingForOtelMetricsSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
-                DEFAULT_PORT, false,
+                DEFAULT_PORT,
+                null,
+                false,
                 false,
                 false,
                 true, null,
@@ -180,11 +186,12 @@ public class OtelMetricsSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithEmptyKeyCert() {
+    void testInvalidConfigWithEmptyKeyCert() {
         // Prepare
         final PluginSetting sslEmptyKeyCertPluginSetting = completePluginSettingForOtelMetricsSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -202,11 +209,12 @@ public class OtelMetricsSourceConfigTests {
     }
 
     @Test
-    public void testInvalidConfigWithEmptyKeyFile() {
+    void testInvalidConfigWithEmptyKeyFile() {
         // Prepare
         final PluginSetting sslEmptyKeyFilePluginSetting = completePluginSettingForOtelMetricsSource(
                 DEFAULT_REQUEST_TIMEOUT_MS,
                 DEFAULT_PORT,
+                null,
                 false,
                 false,
                 false,
@@ -222,8 +230,57 @@ public class OtelMetricsSourceConfigTests {
         assertThrows(IllegalArgumentException.class, otelMetricsSourceConfig::validateAndInitializeCertAndKeyFileInS3);
     }
 
+    @Test
+    void testValidConfigWithCustomPath() {
+        final String testPath = "/testPath";
+        // Prepare
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelMetricsSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                testPath,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelMetricsSourceConfig oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+
+        // When/Then
+        assertThat(oTelMetricsSourceConfig.getPath(), equalTo(testPath));
+        assertThat(oTelMetricsSourceConfig.isPathValid(), equalTo(true));
+    }
+
+    @Test
+    void testInValidConfigWithCustomPath() {
+        final String testPath = "invalidPath";
+        // Prepare
+        final PluginSetting customPathPluginSetting = completePluginSettingForOtelMetricsSource(
+                DEFAULT_REQUEST_TIMEOUT_MS,
+                DEFAULT_PORT,
+                testPath,
+                false,
+                false,
+                false,
+                true,
+                TEST_KEY_CERT,
+                "",
+                DEFAULT_THREAD_COUNT,
+                DEFAULT_MAX_CONNECTION_COUNT);
+
+        final OTelMetricsSourceConfig oTelMetricsSourceConfig = OBJECT_MAPPER.convertValue(customPathPluginSetting.getSettings(), OTelMetricsSourceConfig.class);
+
+        // When/Then
+        assertThat(oTelMetricsSourceConfig.getPath(), equalTo(testPath));
+        assertThat(oTelMetricsSourceConfig.isPathValid(), equalTo(false));
+    }
+
     private PluginSetting completePluginSettingForOtelMetricsSource(final int requestTimeoutInMillis,
                                                                     final int port,
+                                                                    final String path,
                                                                     final boolean healthCheck,
                                                                     final boolean protoReflectionService,
                                                                     final boolean enableUnframedRequests,
@@ -235,6 +292,7 @@ public class OtelMetricsSourceConfigTests {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(OTelMetricsSourceConfig.REQUEST_TIMEOUT, requestTimeoutInMillis);
         settings.put(OTelMetricsSourceConfig.PORT, port);
+        settings.put(OTelMetricsSourceConfig.PATH, path);
         settings.put(OTelMetricsSourceConfig.HEALTH_CHECK_SERVICE, healthCheck);
         settings.put(OTelMetricsSourceConfig.PROTO_REFLECTION_SERVICE, protoReflectionService);
         settings.put(OTelMetricsSourceConfig.ENABLE_UNFRAMED_REQUESTS, enableUnframedRequests);

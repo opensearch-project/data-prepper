@@ -11,10 +11,13 @@ import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
+import io.grpc.MethodDescriptor;
 import io.grpc.ServerInterceptor;
 import io.grpc.ServerInterceptors;
 import io.grpc.protobuf.services.ProtoReflectionService;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
+import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
+import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -47,20 +50,19 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsSource.class);
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";
     private static final String REGEX_HEALTH = "regex:^/(?!health$).*$";
+    private static final String PIPELINE_NAME_PLACEHOLDER = "${pipelineName}";
+
     private final OTelMetricsSourceConfig oTelMetricsSourceConfig;
-    private Server server;
+    private final String pipelineName;
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
+    private Server server;
 
     @DataPrepperPluginConstructor
     public OTelMetricsSource(final OTelMetricsSourceConfig oTelMetricsSourceConfig, final PluginMetrics pluginMetrics,
                              final PluginFactory pluginFactory, final PipelineDescription pipelineDescription) {
-        oTelMetricsSourceConfig.validateAndInitializeCertAndKeyFileInS3();
-        this.oTelMetricsSourceConfig = oTelMetricsSourceConfig;
-        this.pluginMetrics = pluginMetrics;
-        this.certificateProviderFactory = new CertificateProviderFactory(oTelMetricsSourceConfig);
-        this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
+        this(oTelMetricsSourceConfig, pluginMetrics, pluginFactory, new CertificateProviderFactory(oTelMetricsSourceConfig), pipelineDescription);
     }
 
     // accessible only in the same package for unit test
@@ -71,6 +73,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
         this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
+        this.pipelineName = pipelineDescription.getPipelineName();
     }
 
     @Override
@@ -91,9 +94,18 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
 
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
-                    .addService(ServerInterceptors.intercept(oTelMetricsGrpcService, serverInterceptors))
                     .useClientTimeoutHeader(false)
                     .useBlockingTaskExecutor(true);
+
+            final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
+            final String oTelMetricsSourcePath = oTelMetricsSourceConfig.getPath();
+            if (oTelMetricsSourcePath != null) {
+                final String transformedOTelMetricsSourcePath = oTelMetricsSourcePath.replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
+                grpcServiceBuilder.addService(transformedOTelMetricsSourcePath,
+                        ServerInterceptors.intercept(oTelMetricsGrpcService, serverInterceptors), methodDescriptor);
+            } else {
+                grpcServiceBuilder.addService(ServerInterceptors.intercept(oTelMetricsGrpcService, serverInterceptors));
+            }
 
             if (oTelMetricsSourceConfig.hasHealthCheck()) {
                 LOG.info("Health check is enabled");
@@ -208,7 +220,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         } else {
             authenticationPluginSetting = new PluginSetting(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
-        authenticationPluginSetting.setPipelineName(pipelineDescription.getPipelineName());
+        authenticationPluginSetting.setPipelineName(pipelineName);
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
     }
 }

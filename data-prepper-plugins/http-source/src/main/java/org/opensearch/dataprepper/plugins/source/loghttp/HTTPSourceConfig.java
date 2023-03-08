@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.micrometer.core.instrument.util.StringUtils;
@@ -36,6 +37,7 @@ public class HTTPSourceConfig {
     private int port = DEFAULT_PORT;
 
     @JsonProperty("path")
+    @Size(min = 1, message = "path length should be at least 1")
     private String path = DEFAULT_LOG_INGEST_URI;
 
     @JsonProperty("request_timeout")
