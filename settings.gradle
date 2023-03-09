@@ -94,4 +94,5 @@ include 'rss-source'
 include 'data-prepper-plugins:json-codec'
 include 'data-prepper-plugins:parquet-codecs'
 include 'data-prepper-plugins:newline-codecs'
+include 'data-prepper-plugins:avro-codecs'
 

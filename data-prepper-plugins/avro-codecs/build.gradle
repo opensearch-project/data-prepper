@@ -1,0 +1,26 @@
+plugins {
+    id 'java'
+}
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+group 'org.opensearch.dataprepper'
+version '2.1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io'}
+}
+
+dependencies {
+    implementation project(path: ':data-prepper-api')
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    // https://mvnrepository.com/artifact/org.apache.avro/avro
+    implementation group: 'org.apache.avro', name: 'avro', version: '1.11.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+test {
+    useJUnitPlatform()
+}
