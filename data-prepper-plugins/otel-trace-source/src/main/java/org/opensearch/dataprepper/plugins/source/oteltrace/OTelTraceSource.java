@@ -224,7 +224,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         } else {
             authenticationPluginSetting = new PluginSetting(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME, Collections.emptyMap());
         }
-        authenticationPluginSetting.setPipelineName(pipelineName);
+        authenticationPluginSetting.setPipelineName(pipelineDescription.getPipelineName());
         return pluginFactory.loadPlugin(GrpcAuthenticationProvider.class, authenticationPluginSetting);
     }
 }
