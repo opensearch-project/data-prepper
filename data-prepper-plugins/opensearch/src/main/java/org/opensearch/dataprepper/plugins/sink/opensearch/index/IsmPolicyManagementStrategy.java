@@ -20,4 +20,6 @@ interface IsmPolicyManagementStrategy {
     boolean checkIfIndexExistsOnServer(final String indexAlias) throws IOException;
 
     CreateIndexRequest getCreateIndexRequest(final String indexAlias);
+
+    org.opensearch.client.opensearch.indices.CreateIndexRequest getCreateIndexRequest2(final String indexAlias);
 }

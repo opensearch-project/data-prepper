@@ -5,6 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.transport.OpenSearchTransport;
+import org.opensearch.client.transport.aws.AwsSdk2Transport;
+import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
@@ -21,6 +26,7 @@ import org.apache.http.ssl.SSLContexts;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
@@ -32,20 +38,39 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
 import software.amazon.awssdk.core.retry.conditions.RetryCondition;
+import software.amazon.awssdk.http.FileStoreTlsKeyManagersProvider;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.TlsKeyManagersProvider;
+import software.amazon.awssdk.http.TlsTrustManagersProvider;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.apache.ProxyConfiguration;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
+import javax.security.auth.x500.X500Principal;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.time.temporal.ValueRange;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -365,6 +390,102 @@ public class ConnectionConfiguration {
     } catch (Exception ex) {
       throw new RuntimeException(ex.getMessage(), ex);
     }
+  }
+
+  public OpenSearchClient createOpenSearchClient() {
+    return new OpenSearchClient(createOpenSearchTransport());
+  }
+
+  private OpenSearchTransport createOpenSearchTransport() {
+    if (awsSigv4) {
+      final AwsCredentialsProvider credentialsProvider;
+      if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
+        AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
+                .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
+                .roleArn(awsStsRoleArn);
+
+        if(awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
+          assumeRoleRequestBuilder = assumeRoleRequestBuilder
+                  .overrideConfiguration(configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
+        }
+
+        credentialsProvider = StsAssumeRoleCredentialsProvider.builder()
+                .stsClient(getStsClient())
+                .refreshRequest(assumeRoleRequestBuilder.build())
+                .build();
+      } else {
+        credentialsProvider = DefaultCredentialsProvider.create();
+      }
+      return new AwsSdk2Transport(ApacheHttpClient.create(), hosts.get(0),
+              "es", Region.of(awsRegion),
+              AwsSdk2TransportOptions.builder().setCredentials(credentialsProvider).build());
+    } else {
+      final RestHighLevelClient restHighLevelClient = createClient();
+      return new RestClientTransport(
+              restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
+    }
+  }
+
+  private SdkHttpClient createSdkHttpClient() {
+    ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
+    if (connectTimeout != null) {
+      apacheHttpClientBuilder.connectionTimeout(Duration.ofMillis(connectTimeout));
+    }
+    if (socketTimeout != null) {
+      apacheHttpClientBuilder.socketTimeout(Duration.ofMillis(socketTimeout));
+    }
+    return apacheHttpClientBuilder.build();
+  }
+
+  private void attachUserCredentials(final ApacheHttpClient.Builder apacheHttpClientBuilder) {
+    final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+    if (username != null) {
+      LOG.info("Using the username provided in the config.");
+      credentialsProvider.setCredentials(
+              AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+    }
+    apacheHttpClientBuilder.credentialsProvider(credentialsProvider);
+    attachSSLContext(apacheHttpClientBuilder);
+    setHttpProxyIfApplicable(apacheHttpClientBuilder);
+  }
+
+  private void attachSSLContext(final ApacheHttpClient.Builder apacheHttpClientBuilder) {
+    TrustManager[] trustManagers = createTrustManagers(certPath);
+    apacheHttpClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
+  }
+
+  private static TrustManager[] createTrustManagers(final Path certPath) {
+    if (certPath != null) {
+      LOG.info("Using the cert provided in the config.");
+      try (InputStream certificateInputStream = Files.newInputStream(certPath)) {
+        final CertificateFactory factory = CertificateFactory.getInstance("X.509");
+        final Certificate trustedCa = factory.generateCertificate(certificateInputStream);
+        final KeyStore trustStore = KeyStore.getInstance("pkcs12");
+        trustStore.load(null, null);
+        trustStore.setCertificateEntry("ca", trustedCa);
+
+        final TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("X509");
+        trustManagerFactory.init(trustStore);
+        return trustManagerFactory.getTrustManagers();
+      } catch (Exception ex) {
+        throw new RuntimeException(ex.getMessage(), ex);
+      }
+    } else {
+      return new TrustManager[] { new X509TrustAllManager() };
+    }
+  }
+
+  private void setHttpProxyIfApplicable(final ApacheHttpClient.Builder apacheHttpClientBuilder) {
+    proxy.ifPresent(
+            p -> {
+              final URI endpoint = URI.create(p);
+              final ProxyConfiguration proxyConfiguration = ProxyConfiguration.builder()
+                      .endpoint(endpoint)
+                      .build();
+              checkProxyPort(endpoint.getPort());
+              apacheHttpClientBuilder.proxyConfiguration(proxyConfiguration);
+            }
+    );
   }
 
   public static class Builder {

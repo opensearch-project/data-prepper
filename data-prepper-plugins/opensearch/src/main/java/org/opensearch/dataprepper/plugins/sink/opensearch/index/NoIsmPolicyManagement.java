@@ -50,4 +50,13 @@ class NoIsmPolicyManagement implements IsmPolicyManagementStrategy {
         final String initialIndexName = indexAlias;
         return new CreateIndexRequest(initialIndexName);
     }
+
+    @Override
+    public org.opensearch.client.opensearch.indices.CreateIndexRequest getCreateIndexRequest2(final String indexAlias) {
+        checkArgument(StringUtils.isNotEmpty(indexAlias));
+        final String initialIndexName = indexAlias;
+        return new org.opensearch.client.opensearch.indices.CreateIndexRequest.Builder()
+                .index(initialIndexName)
+                .build();
+    }
 }

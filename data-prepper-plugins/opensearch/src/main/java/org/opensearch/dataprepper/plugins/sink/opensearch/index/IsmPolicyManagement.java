@@ -153,6 +153,21 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
         return createIndexRequest;
     }
 
+    @Override
+    public org.opensearch.client.opensearch.indices.CreateIndexRequest getCreateIndexRequest2(final String indexAlias) {
+        checkArgument(StringUtils.isNotEmpty(indexAlias));
+        final String initialIndexName = indexAlias + DEFAULT_INDEX_SUFFIX;
+        final org.opensearch.client.opensearch.indices.CreateIndexRequest createIndexRequest
+                = new org.opensearch.client.opensearch.indices.CreateIndexRequest.Builder()
+                .index(initialIndexName).aliases(
+                        indexAlias, new org.opensearch.client.opensearch.indices.Alias.Builder()
+                                .isWriteIndex(true)
+                                .build()
+                )
+                                .build();
+        return createIndexRequest;
+    }
+
     private String retrievePolicyJsonString(final String fileName) throws IOException {
         if (fileName.startsWith(S3_PREFIX)) {
             final String ismPolicyJsonString = retrievePolicyJsonStringFromS3(fileName);
