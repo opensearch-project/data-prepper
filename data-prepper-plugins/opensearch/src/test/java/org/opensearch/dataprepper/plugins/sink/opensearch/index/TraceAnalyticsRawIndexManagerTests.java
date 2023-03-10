@@ -24,6 +24,7 @@ import org.opensearch.client.indices.GetIndexRequest;
 import org.opensearch.client.indices.GetIndexTemplatesRequest;
 import org.opensearch.client.indices.GetIndexTemplatesResponse;
 import org.opensearch.client.indices.PutIndexTemplateRequest;
+import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 
 import java.io.IOException;
@@ -45,7 +46,10 @@ public class TraceAnalyticsRawIndexManagerTests {
 
     private IndexManagerFactory indexManagerFactory;
 
-    private AbstractIndexManager traceAnalyticsRawIndexManager;
+    private AbstractIndexManager2 traceAnalyticsRawIndexManager;
+
+    @Mock
+    private OpenSearchClient openSearchClient;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;
@@ -81,8 +85,8 @@ public class TraceAnalyticsRawIndexManagerTests {
         indexManagerFactory = new IndexManagerFactory();
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
-        traceAnalyticsRawIndexManager = indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW,
-                restHighLevelClient, openSearchSinkConfiguration);
+        traceAnalyticsRawIndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
 
         when(restHighLevelClient.cluster()).thenReturn(cluster);
         when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
@@ -94,7 +98,8 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     public void constructor_NullRestClient() {
         assertThrows(NullPointerException.class, () ->
-                indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW,null, openSearchSinkConfiguration));
+                indexManagerFactory.getIndexManager(
+                        IndexType.TRACE_ANALYTICS_RAW, openSearchClient, null, openSearchSinkConfiguration));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -102,7 +107,8 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     public void constructor_NullConfiguration() {
         assertThrows(NullPointerException.class, () ->
-                indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW, restHighLevelClient, null));
+                indexManagerFactory.getIndexManager(
+                        IndexType.TRACE_ANALYTICS_RAW, openSearchClient, restHighLevelClient, null));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }

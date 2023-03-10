@@ -392,11 +392,11 @@ public class ConnectionConfiguration {
     }
   }
 
-  public OpenSearchClient createOpenSearchClient() {
-    return new OpenSearchClient(createOpenSearchTransport());
+  public OpenSearchClient createOpenSearchClient(final RestHighLevelClient restHighLevelClient) {
+    return new OpenSearchClient(createOpenSearchTransport(restHighLevelClient));
   }
 
-  private OpenSearchTransport createOpenSearchTransport() {
+  private OpenSearchTransport createOpenSearchTransport(final RestHighLevelClient restHighLevelClient) {
     if (awsSigv4) {
       final AwsCredentialsProvider credentialsProvider;
       if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
@@ -420,7 +420,6 @@ public class ConnectionConfiguration {
               "es", Region.of(awsRegion),
               AwsSdk2TransportOptions.builder().setCredentials(credentialsProvider).build());
     } else {
-      final RestHighLevelClient restHighLevelClient = createClient();
       return new RestClientTransport(
               restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
     }

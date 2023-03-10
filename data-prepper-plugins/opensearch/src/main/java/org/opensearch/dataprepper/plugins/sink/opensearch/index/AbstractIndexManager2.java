@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import jakarta.json.stream.JsonParser;
 import org.opensearch.OpenSearchException;
-import org.opensearch.client.indices.IndexTemplateMetadata;
+import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
@@ -28,9 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -54,6 +52,7 @@ public abstract class AbstractIndexManager2 implements IndexManager {
             = "type=invalid_index_name_exception";
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchClient openSearchClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
@@ -72,9 +71,12 @@ public abstract class AbstractIndexManager2 implements IndexManager {
     private Optional<DateTimeFormatter> indexTimeSuffixFormatter;
     private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
-    protected AbstractIndexManager2(final OpenSearchClient openSearchClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration, String indexAlias){
+    protected AbstractIndexManager2(final RestHighLevelClient restHighLevelClient, final OpenSearchClient openSearchClient,
+                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration, String indexAlias){
+        checkNotNull(restHighLevelClient);
         checkNotNull(openSearchClient);
         checkNotNull(openSearchSinkConfiguration);
+        this.restHighLevelClient = restHighLevelClient;
         this.openSearchClient = openSearchClient;
         this.openSearchSinkConfiguration = openSearchSinkConfiguration;
         if (indexAlias == null) {
