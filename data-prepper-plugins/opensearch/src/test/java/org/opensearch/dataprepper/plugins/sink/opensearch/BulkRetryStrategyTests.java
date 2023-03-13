@@ -460,7 +460,7 @@ public class BulkRetryStrategyTests {
 
         private BulkResponse bulkMaxRetriesResponse(final BulkRequest bulkRequest) {
             final int requestSize = bulkRequest.operations().size();
-            assert requestSize == 4;
+            MatcherAssert.assertThat(requestSize, equalTo(4));
             final List<BulkResponseItem> bulkItemResponses = Arrays.asList(
                     internalServerErrorItemResponse(index),
                     tooManyRequestItemResponse(index),

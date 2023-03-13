@@ -223,7 +223,8 @@ public final class BulkRetryStrategy {
                 handleRetriesAndFailures(bulkRequestForRetry, retryCount, backOffUtils, bulkResponse, null);
             } else {
                 final int numberOfDocs = bulkRequestForRetry.getOperationsCount();
-                if (retryCount == 1) {
+                boolean firstAttempt = (retryCount == 1);
+                if (firstAttempt) {
                     sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
                 }
                 sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());

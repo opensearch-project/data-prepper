@@ -19,7 +19,6 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
     private BulkRequest.Builder bulkRequestBuilder;
     private long currentBulkSize = 0L;
     private int operationCount = 0;
-    private int retryCount = 0;
     private BulkRequest builtRequest;
 
     public JavaClientAccumulatingBulkRequest(BulkRequest.Builder bulkRequestBuilder) {
