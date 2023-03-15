@@ -51,6 +51,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -61,6 +62,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
@@ -193,6 +195,32 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
         }
 
         assertThat(actualObject, not(sameInstance(event)));
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(EventNodesArgumentsProvider.class)
+    void filter_will_deserialize_Event_classes_with_nesting(final Object data) throws IOException, ClassNotFoundException {
+        final Event event = JacksonEvent.builder()
+                .withEventType(UUID.randomUUID().toString())
+                .withData(data)
+                .build();
+
+        final PeerForwardingEvents peerForwardingEvents = new PeerForwardingEvents(Collections.singletonList(event), UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        final byte[] serializedBytes = createByteArrayWithObject(peerForwardingEvents);
+
+        final ObjectInputFilter filterUnderTest = createObjectUnderTest();
+
+        assertThat(filterUnderTest, notNullValue());
+
+        final Object actualObject;
+        try (final InputStream inputStream = new ByteArrayInputStream(serializedBytes);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            objectInputStream.setObjectInputFilter(filterUnderTest);
+            actualObject = objectInputStream.readObject();
+        }
+
+        assertThat(actualObject, not(sameInstance(event)));
+        assertThat(actualObject, instanceOf(PeerForwardingEvents.class));
     }
 
     /**
@@ -330,6 +358,28 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
                             .withAttributes(Collections.emptyMap())
                     ),
                     arguments(JacksonDocument.builder())
+            );
+        }
+    }
+
+    static class EventNodesArgumentsProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
+            final Random random = new Random();
+            return Stream.of(
+                    arguments(Collections.emptyMap()),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString())),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), Collections.singletonList(UUID.randomUUID().toString()))),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString()))),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), Collections.singletonMap(UUID.randomUUID().toString(), Collections.singletonList(UUID.randomUUID().toString())))),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), Collections.emptyList())),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), Collections.emptyMap())),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), random.nextInt(100_000))),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), random.nextLong())),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), random.nextDouble())),
+                    arguments(Collections.singletonMap(UUID.randomUUID().toString(), random.nextBoolean())),
+                    arguments(Collections.emptyList()),
+                    arguments(Collections.singletonList(UUID.randomUUID().toString()))
             );
         }
     }
