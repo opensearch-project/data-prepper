@@ -1,0 +1,14 @@
+scan-pipeline:
+  source:
+    s3:
+      notification_type: sqs
+      compression: none
+      codec:
+        parquet:
+      sqs:
+        queue_url: "https://sqs.ap-south-1.amazonaws.com/964498976214/datapreppertest"
+      aws:
+        region: "ap-south-1"
+        sts_role_arn: "arn:aws:iam::964498976214:role/data-prepper-application-role"
+  sink:
+    - stdout:

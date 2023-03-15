@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.codec.parquet;
 
 import net.bytebuddy.utility.RandomString;
 import org.apache.hadoop.fs.FileSystem;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,6 +58,8 @@ class ParquetInputCodecTest {
     private ParquetInputCodec parquetInputCodec;
     private static FileInputStream fileInputStream;
 
+    private static final String INVALID_PARQUET_INPUT_STREAM = "Invalid Parquet Input Stream";
+
     @TempDir
     private static java.nio.file.Path path;
 
@@ -65,7 +68,7 @@ class ParquetInputCodecTest {
     }
 
     @BeforeEach
-    void setup() throws IOException {
+    void setup() {
         parquetInputCodec = createObjectUnderTest();
     }
 
@@ -78,7 +81,7 @@ class ParquetInputCodecTest {
     }
 
     @Test
-    void parse_with_null_Consumer_throws() throws IOException {
+    void parse_with_null_Consumer_throws()  {
         parquetInputCodec = createObjectUnderTest();
 
         final InputStream inputStream = mock(InputStream.class);
@@ -92,6 +95,14 @@ class ParquetInputCodecTest {
         final ByteArrayInputStream emptyInputStream = new ByteArrayInputStream(new byte[]{});
         createObjectUnderTest().parse(emptyInputStream, eventConsumer);
         verifyNoInteractions(eventConsumer);
+    }
+
+    @Test
+    public void parse_with_Invalid_InputStream_then_catches_exception() {
+        Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
+        Assertions.assertDoesNotThrow(()->
+                parquetInputCodec.parse(createInvalidParquetStream(),eventConsumer));
+
     }
 
     @ParameterizedTest
@@ -151,8 +162,7 @@ class ParquetInputCodecTest {
             }
         }
         fileInputStream = new FileInputStream(path.toString());
-        InputStream parquetInputStream = fileInputStream;
-        return parquetInputStream;
+        return fileInputStream;
     }
 
     private static Schema parseSchema() {
@@ -179,5 +189,13 @@ class ParquetInputCodecTest {
             recordList.add(record);
         }
         return recordList;
+    }
+
+    private static InputStream createInvalidParquetStream() {
+        String OS = System.getProperty("os.name").toLowerCase();
+        if (OS.contains("win")) {
+            System.setProperty("hadoop.home.dir", Paths.get("").toAbsolutePath().toString());
+        }
+        return  new ByteArrayInputStream(INVALID_PARQUET_INPUT_STREAM.getBytes());
     }
 }

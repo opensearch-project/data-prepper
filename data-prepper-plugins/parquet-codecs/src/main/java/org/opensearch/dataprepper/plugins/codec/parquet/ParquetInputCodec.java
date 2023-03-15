@@ -53,9 +53,7 @@ public class ParquetInputCodec implements InputCodec {
 
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
-
-        if (inputStream.available() != EMPTY_INPUT_STREAM_VALUE)
-            parseParquetStream(inputStream, eventConsumer);
+        parseParquetStream(inputStream, eventConsumer);
 
     }
 
@@ -92,8 +90,7 @@ public class ParquetInputCodec implements InputCodec {
     }
 
     private MessageType createdParquetSchema(ParquetMetadata parquetMetadata) {
-        final MessageType schema = parquetMetadata.getFileMetaData().getSchema();
-        return schema;
+        return parquetMetadata.getFileMetaData().getSchema();
     }
 
 }
