@@ -7,10 +7,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
-import org.opensearch.client.indices.GetIndexRequest;
 import org.opensearch.client.opensearch.indices.ExistsRequest;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 

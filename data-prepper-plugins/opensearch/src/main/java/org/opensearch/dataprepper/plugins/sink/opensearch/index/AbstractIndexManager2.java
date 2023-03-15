@@ -20,7 +20,6 @@ import org.opensearch.client.opensearch.indices.GetTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetTemplateResponse;
 import org.opensearch.client.opensearch.indices.PutTemplateRequest;
 import org.opensearch.client.opensearch.indices.TemplateMapping;
-import org.opensearch.client.opensearch.indices.get_index_template.IndexTemplateItem;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
