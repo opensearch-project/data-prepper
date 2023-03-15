@@ -243,7 +243,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         final JsonpMapper mapper = openSearchClient._transport().jsonpMapper();
         final JsonParser parser = mapper.jsonProvider().createParser(byteIn);
 
-        final PutTemplateRequest putTemplateRequest = PutTemplateRequestCustomDeserializer.getJsonpDeserializer()
+        final PutTemplateRequest putTemplateRequest = PutTemplateRequestDeserializer.getJsonpDeserializer()
                 .deserialize(parser, mapper);
 
         openSearchClient.indices().putTemplate(putTemplateRequest);
