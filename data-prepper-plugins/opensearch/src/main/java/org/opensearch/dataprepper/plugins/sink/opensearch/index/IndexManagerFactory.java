@@ -84,10 +84,11 @@ public class IndexManagerFactory {
                     s3Client = clientProvider.buildS3Client();
                 }
                 final String indexPolicyName = getIndexPolicyName();
-                this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get(), s3Client);
+                this.ismPolicyManagementStrategy = new IsmPolicyManagement(
+                        openSearchClient, restHighLevelClient, indexPolicyName, ismPolicyFile.get(), s3Client);
             } else {
                 //Policy file doesn't exist
-                this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
+                this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
             }
         }
 
@@ -104,6 +105,7 @@ public class IndexManagerFactory {
                                                     final String indexAlias) {
             super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, indexAlias);
             this.ismPolicyManagementStrategy = new IsmPolicyManagement(
+                    openSearchClient,
                     restHighLevelClient,
                     IndexConstants.RAW_ISM_POLICY,
                     IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE,
@@ -119,7 +121,7 @@ public class IndexManagerFactory {
                                                     final OpenSearchSinkConfiguration openSearchSinkConfiguration,
                                                     final String indexAlias) {
             super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, indexAlias);
-            this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
+            this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
         }
     }
 

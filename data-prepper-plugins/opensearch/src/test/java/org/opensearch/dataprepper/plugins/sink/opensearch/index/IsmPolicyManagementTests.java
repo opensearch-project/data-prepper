@@ -15,6 +15,10 @@ import org.opensearch.client.IndicesClient;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.indices.ExistsRequest;
+import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -50,7 +54,10 @@ public class IsmPolicyManagementTests {
     private RestHighLevelClient restHighLevelClient;
 
     @Mock
-    IndicesClient indicesClient;
+    private OpenSearchClient openSearchClient;
+
+    @Mock
+    OpenSearchIndicesClient openSearchIndicesClient;
 
     @Mock
     private RestClient restClient;
@@ -64,7 +71,9 @@ public class IsmPolicyManagementTests {
     @Before
     public void setup() {
         initMocks(this);
-        ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient,
+        ismPolicyManagementStrategy = new IsmPolicyManagement(
+                openSearchClient,
+                restHighLevelClient,
                 POLICY_NAME,
                 IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE,
                 IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE);
@@ -74,13 +83,17 @@ public class IsmPolicyManagementTests {
     @Test
     public void constructor_NullRestClient() {
         assertThrows(NullPointerException.class, () ->
-                new IsmPolicyManagement(null, POLICY_NAME, IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE));
+                new IsmPolicyManagement(
+                        openSearchClient, null, POLICY_NAME, IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE));
         assertThrows(IllegalArgumentException.class, () ->
-                new IsmPolicyManagement(restHighLevelClient, null, IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE));
+                new IsmPolicyManagement(
+                        openSearchClient, restHighLevelClient, null, IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE));
         assertThrows(IllegalArgumentException.class, () ->
-                new IsmPolicyManagement(restHighLevelClient, POLICY_NAME, null, IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE));
+                new IsmPolicyManagement(
+                        openSearchClient, restHighLevelClient, POLICY_NAME, null, IndexConstants.RAW_ISM_FILE_NO_ISM_TEMPLATE));
         assertThrows(IllegalArgumentException.class, () ->
-                new IsmPolicyManagement(restHighLevelClient, POLICY_NAME, IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, (String) null));
+                new IsmPolicyManagement(
+                        openSearchClient, restHighLevelClient, POLICY_NAME, IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, (String) null));
     }
 
     @Test
@@ -93,7 +106,9 @@ public class IsmPolicyManagementTests {
 
     @Test
     public void checkAndCreatePolicy_OnlyOnePolicyFile_TwoExceptions() throws IOException {
-        ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient,
+        ismPolicyManagementStrategy = new IsmPolicyManagement(
+                openSearchClient,
+                restHighLevelClient,
                 POLICY_NAME,
                 IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, s3Client);
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
@@ -106,7 +121,9 @@ public class IsmPolicyManagementTests {
 
     @Test
     public void checkAndCreatePolicy_OnlyOnePolicyFile_FirstExceptionThenSucceeds() throws IOException {
-        ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient,
+        ismPolicyManagementStrategy = new IsmPolicyManagement(
+                openSearchClient,
+                restHighLevelClient,
                 POLICY_NAME,
                 IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE, s3Client);
         when(restHighLevelClient.getLowLevelClient()).thenReturn(restClient);
@@ -119,7 +136,9 @@ public class IsmPolicyManagementTests {
 
     @Test
     public void checkAndCreatePolicy_with_custom_ism_policy_from_s3() throws IOException {
-        IsmPolicyManagement ismPolicyManagementStrategyWithTemplate = new IsmPolicyManagement(restHighLevelClient,
+        IsmPolicyManagement ismPolicyManagementStrategyWithTemplate = new IsmPolicyManagement(
+                openSearchClient,
+                restHighLevelClient,
                 POLICY_NAME,
                 TEST_ISM_FILE_PATH_S3, s3Client);
 
@@ -173,15 +192,15 @@ public class IsmPolicyManagementTests {
 
     @Test
     public void checkIfIndexExistsOnServer_false() throws IOException {
-        when(restHighLevelClient.indices()).thenReturn(indicesClient);
-        when(indicesClient.existsAlias(any(GetAliasesRequest.class), any())).thenReturn(false);
+        when(openSearchClient.indices()).thenReturn(openSearchIndicesClient);
+        when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(false));
         assertEquals(false, ismPolicyManagementStrategy.checkIfIndexExistsOnServer(INDEX_ALIAS));
     }
 
     @Test
     public void checkIfIndexExistsOnServer_true() throws IOException {
-        when(restHighLevelClient.indices()).thenReturn(indicesClient);
-        when(indicesClient.existsAlias(any(GetAliasesRequest.class), any())).thenReturn(true);
+        when(openSearchClient.indices()).thenReturn(openSearchIndicesClient);
+        when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(true));
         assertEquals(true, ismPolicyManagementStrategy.checkIfIndexExistsOnServer(INDEX_ALIAS));
     }
 

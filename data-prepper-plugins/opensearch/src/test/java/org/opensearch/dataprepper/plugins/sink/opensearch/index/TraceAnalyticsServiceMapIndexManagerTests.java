@@ -10,19 +10,26 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.opensearch.OpenSearchException;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.opensearch.client.ClusterClient;
 import org.opensearch.client.IndicesClient;
-import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.CreateIndexRequest;
-import org.opensearch.client.indices.GetIndexRequest;
-import org.opensearch.client.indices.GetIndexTemplatesRequest;
 import org.opensearch.client.indices.GetIndexTemplatesResponse;
-import org.opensearch.client.indices.PutIndexTemplateRequest;
+import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
+import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import org.opensearch.client.opensearch.cluster.OpenSearchClusterClient;
+import org.opensearch.client.opensearch.indices.ExistsRequest;
+import org.opensearch.client.opensearch.indices.ExistsTemplateRequest;
+import org.opensearch.client.opensearch.indices.GetTemplateRequest;
+import org.opensearch.client.opensearch.indices.GetTemplateResponse;
+import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
+import org.opensearch.client.opensearch.indices.PutTemplateRequest;
+import org.opensearch.client.transport.OpenSearchTransport;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -58,7 +65,13 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     private ClusterClient cluster;
 
     @Mock
+    private OpenSearchClusterClient openSearchClusterClient;
+
+    @Mock
     private ClusterGetSettingsResponse clusterGetSettingsResponse;
+
+    @Mock
+    private GetClusterSettingsResponse getClusterSettingsResponse;
 
     @Mock
     IndexConfiguration indexConfiguration;
@@ -67,7 +80,16 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     IndicesClient indicesClient;
 
     @Mock
+    private OpenSearchIndicesClient openSearchIndicesClient;
+
+    @Mock
     GetIndexTemplatesResponse getIndexTemplatesResponse;
+
+    @Mock
+    GetTemplateResponse getTemplateResponse;
+
+    @Mock
+    private OpenSearchTransport openSearchTransport;
 
     @Before
     public void setup() throws IOException {
@@ -80,11 +102,10 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
                 = indexManagerFactory.getIndexManager(
                         IndexType.TRACE_ANALYTICS_SERVICE_MAP, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
 
-        when(restHighLevelClient.cluster()).thenReturn(cluster);
-        when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
-                .thenReturn(clusterGetSettingsResponse);
-
-        when(restHighLevelClient.indices()).thenReturn(indicesClient);
+        when(openSearchClient.cluster()).thenReturn(openSearchClusterClient);
+        when(openSearchClusterClient.getSettings(any(GetClusterSettingsRequest.class)))
+                .thenReturn(getClusterSettingsResponse);
+        when(openSearchClient.indices()).thenReturn(openSearchIndicesClient);
     }
 
     @Test
@@ -108,10 +129,11 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     @Test
     public void checkISMEnabled_True() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(getClusterSettingsResponse.persistent()).thenReturn(Map.of(
+                IndexConstants.ISM_ENABLED_SETTING, JsonData.of("true")));
         assertEquals(true, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
-        verify(restHighLevelClient).cluster();
-        verify(cluster).getSettings(any(), any());
-        verify(clusterGetSettingsResponse).getSetting(any());
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -119,12 +141,14 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     @Test
     public void checkISMEnabled_False() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
+        when(getClusterSettingsResponse.persistent()).thenReturn(Map.of(
+                IndexConstants.ISM_ENABLED_SETTING, JsonData.of("false")));
         assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
-        verify(restHighLevelClient).cluster();
-        verify(cluster).getSettings(any(), any());
-        verify(clusterGetSettingsResponse).getSetting(any());
+        verify(openSearchClient).cluster();
+        verify(getClusterSettingsResponse, times(2)).persistent();
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
     }
 
 
@@ -137,14 +161,17 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
 
     @Test
     public void checkAndCreateIndexTemplate_NoIndexTemplateOnHost_ISMDisabled() throws IOException {
-        when(indicesClient.existsTemplate(any(), any())).thenReturn(false);
+        when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class))).thenReturn(
+                new BooleanResponse(false));
         traceAnalyticsServiceMapIndexManager.checkAndCreateIndexTemplate(false, null);
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
-        verify(restHighLevelClient, times(2)).indices();
-        verify(indicesClient).existsTemplate(any(), any());
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).existsTemplate(any(ExistsTemplateRequest.class));
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIndexTemplate();
-        verify(indicesClient).putTemplate(any(PutIndexTemplateRequest.class), any());
+        verify(openSearchIndicesClient).putTemplate(any(PutTemplateRequest.class));
     }
 
     @Test
@@ -152,66 +179,73 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         final Map<String, Object> configs = new HashMap<>();
         configs.put("settings", new HashMap<String, String>());
         when(indexConfiguration.getIndexTemplate()).thenReturn(configs);
-        when(indicesClient.existsTemplate(any(), any())).thenReturn(false);
+        when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class))).thenReturn(
+                new BooleanResponse(false));
         traceAnalyticsServiceMapIndexManager.checkAndCreateIndexTemplate(true, null);
         verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
-        verify(restHighLevelClient, times(2)).indices();
-        verify(indicesClient).existsTemplate(any(), any());
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).existsTemplate(any(ExistsTemplateRequest.class));
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration, times(3)).getIndexTemplate();
-        verify(indicesClient).putTemplate(any(PutIndexTemplateRequest.class), any());
+        verify(openSearchIndicesClient).putTemplate(any(PutTemplateRequest.class));
     }
 
     @Test
     public void checkAndCreateIndexTemplate_ZeroIndexTemplateListInResponse() throws IOException {
-        when(indicesClient.existsTemplate(any(), any())).thenReturn(true);
-        when(indicesClient.getIndexTemplate(any(GetIndexTemplatesRequest.class), any())).thenReturn(getIndexTemplatesResponse);
+        when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class))).thenReturn(
+                new BooleanResponse(true));
+        when(openSearchIndicesClient.getTemplate(any(GetTemplateRequest.class))).thenReturn(getTemplateResponse);
 
         try {
             traceAnalyticsServiceMapIndexManager.checkAndCreateIndexTemplate(false, null);
         } catch (final RuntimeException e) {
             verify(openSearchSinkConfiguration).getIndexConfiguration();
-            verify(restHighLevelClient, times(2)).indices();
-            verify(indicesClient).existsTemplate(any(), any());
+            verify(openSearchClient, times(2)).indices();
+            verify(openSearchIndicesClient).existsTemplate(any(ExistsTemplateRequest.class));
             verify(indexConfiguration).getIndexAlias();
-            verify(indicesClient).existsTemplate(any(), any());
-            verify(indicesClient).getIndexTemplate(any(GetIndexTemplatesRequest.class), any());
-            verify(getIndexTemplatesResponse, times(2)).getIndexTemplates();
+            verify(openSearchIndicesClient).getTemplate(any(GetTemplateRequest.class));
+            verify(getTemplateResponse).result();
         }
     }
 
     @Test
     public void checkAndCreateIndex_IndexAlreadyExists() throws IOException {
-        when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(true);
+        when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(true));
         traceAnalyticsServiceMapIndexManager.checkAndCreateIndex();
-        verify(restHighLevelClient).indices();
-        verify(indicesClient).exists(any(GetIndexRequest.class), any());
+        verify(openSearchClient).indices();
+        verify(openSearchIndicesClient).exists(any(ExistsRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
     public void checkAndCreateIndex_NeedToCreateNewIndex() throws IOException {
-        when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(false);
-        when(indicesClient.create(any(CreateIndexRequest.class), any())).thenReturn(null);
+        when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(false));
+        when(openSearchIndicesClient.create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class)))
+                .thenReturn(null);
         traceAnalyticsServiceMapIndexManager.checkAndCreateIndex();
-        verify(restHighLevelClient, times(2)).indices();
-        verify(indicesClient).exists(any(GetIndexRequest.class), any());
-        verify(indicesClient).create(any(CreateIndexRequest.class), any());
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).exists(any(ExistsRequest.class));
+        verify(openSearchIndicesClient).create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
     public void checkAndCreateIndex_CreateNewIndex_Exception() throws IOException {
-        when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(false);
-        when(indicesClient.create(any(CreateIndexRequest.class), any())).thenThrow(new OpenSearchException(""));
+        when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(
+                new BooleanResponse(false));
+        when(openSearchIndicesClient.create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class))).thenThrow(new OpenSearchException(""));
         try {
             traceAnalyticsServiceMapIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
-            verify(restHighLevelClient, times(2)).indices();
-            verify(indicesClient).exists(any(GetIndexRequest.class), any());
-            verify(indicesClient).create(any(CreateIndexRequest.class), any());
+            verify(openSearchClient, times(2)).indices();
+            verify(openSearchIndicesClient).exists(any(ExistsRequest.class));
+            verify(openSearchIndicesClient).create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class));
             verify(openSearchSinkConfiguration).getIndexConfiguration();
             verify(indexConfiguration).getIndexAlias();
         }

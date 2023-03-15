@@ -18,6 +18,10 @@ import org.opensearch.client.RequestOptions;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.CreateIndexRequest;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
+import org.opensearch.client.opensearch.indices.ExistsRequest;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
 import org.slf4j.Logger;
@@ -51,32 +55,39 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     private static final String S3_PREFIX = "s3://";
 
     private final RestHighLevelClient restHighLevelClient;
+    private final OpenSearchClient openSearchClient;
     private final String policyName;
     private final String policyFile;
     private final String policyFileWithoutIsmTemplate;
     private S3Client s3Client;
 
-    public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
+    public IsmPolicyManagement(final OpenSearchClient openSearchClient,
+                               final RestHighLevelClient restHighLevelClient,
                                final String policyName,
                                final String policyFile,
                                final String policyFileWithoutIsmTemplate) {
         checkNotNull(restHighLevelClient);
+        checkNotNull(openSearchClient);
         checkArgument(StringUtils.isNotEmpty(policyName));
         checkArgument(StringUtils.isNotEmpty(policyFile));
         checkArgument(StringUtils.isNotEmpty(policyFileWithoutIsmTemplate));
+        this.openSearchClient = openSearchClient;
         this.restHighLevelClient = restHighLevelClient;
         this.policyName = policyName;
         this.policyFile = policyFile;
         this.policyFileWithoutIsmTemplate = policyFileWithoutIsmTemplate;
     }
 
-    public IsmPolicyManagement(final RestHighLevelClient restHighLevelClient,
+    public IsmPolicyManagement(final OpenSearchClient openSearchClient,
+                               final RestHighLevelClient restHighLevelClient,
                                final String policyName,
                                final String policyFile,
                                final S3Client s3Client) {
         checkNotNull(restHighLevelClient);
+        checkNotNull(openSearchClient);
         checkArgument(StringUtils.isNotEmpty(policyName));
         checkArgument(StringUtils.isNotEmpty(policyFile));
+        this.openSearchClient = openSearchClient;
         this.restHighLevelClient = restHighLevelClient;
         this.policyName = policyName;
         this.policyFile = policyFile;
@@ -141,7 +152,9 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     @Override
     public boolean checkIfIndexExistsOnServer(final String indexAlias) throws IOException {
         checkArgument(StringUtils.isNotEmpty(indexAlias));
-        return restHighLevelClient.indices().existsAlias(new GetAliasesRequest().aliases(indexAlias), RequestOptions.DEFAULT);
+        final BooleanResponse booleanResponse = openSearchClient.indices().existsAlias(
+                new ExistsAliasRequest.Builder().name(indexAlias).build());
+        return booleanResponse.value();
     }
 
     @Override
