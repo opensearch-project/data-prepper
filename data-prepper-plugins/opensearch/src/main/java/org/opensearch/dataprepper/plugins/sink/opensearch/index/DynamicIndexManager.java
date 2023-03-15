@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class DynamicIndexManager extends AbstractIndexManager2 {
+public class DynamicIndexManager extends AbstractIndexManager {
     private Cache<String, IndexManager> indexManagerCache;
     final int CACHE_EXPIRE_AFTER_ACCESS_TIME_MINUTES = 30;
     final int APPROXIMATE_INDEX_MANAGER_SIZE = 32;
@@ -56,7 +56,7 @@ public class DynamicIndexManager extends AbstractIndexManager2 {
         if (dynamicIndexAlias == null) {
             throw new IOException("index alias is null");
         }
-        String fullIndexAlias = AbstractIndexManager2.getIndexAliasWithDate(dynamicIndexAlias);
+        String fullIndexAlias = AbstractIndexManager.getIndexAliasWithDate(dynamicIndexAlias);
         IndexManager indexManager = indexManagerCache.getIfPresent(fullIndexAlias);
         if (indexManager == null) {
             indexManager = indexManagerFactory.getIndexManager(

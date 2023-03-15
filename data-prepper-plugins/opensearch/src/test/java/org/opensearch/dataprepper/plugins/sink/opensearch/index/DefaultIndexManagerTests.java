@@ -59,7 +59,7 @@ public class DefaultIndexManagerTests {
 
     private IndexManagerFactory indexManagerFactory;
 
-    private AbstractIndexManager2 defaultIndexManager;
+    private AbstractIndexManager defaultIndexManager;
 
     @Mock
     private RestHighLevelClient restHighLevelClient;

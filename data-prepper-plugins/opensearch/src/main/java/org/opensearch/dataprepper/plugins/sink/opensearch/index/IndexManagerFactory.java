@@ -17,12 +17,12 @@ import java.util.Optional;
 public class IndexManagerFactory {
     private static final String S3_PREFIX = "s3://";
 
-    public final AbstractIndexManager2 getIndexManager(final IndexType indexType,
+    public final AbstractIndexManager getIndexManager(final IndexType indexType,
                                                       final OpenSearchClient openSearchClient,
                                                       final RestHighLevelClient restHighLevelClient,
                                                       final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
         try {
-            return (AbstractIndexManager2) getIndexManager(
+            return (AbstractIndexManager) getIndexManager(
                     indexType, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, null);
         } catch (IOException e) {
             return null;
@@ -65,7 +65,7 @@ public class IndexManagerFactory {
       return indexAlias.indexOf("${") != -1;
     }
 
-    private static class DefaultIndexManager extends AbstractIndexManager2 {
+    private static class DefaultIndexManager extends AbstractIndexManager {
 
         private static final String POLICY_NAME_SUFFIX = "-policy";
 
@@ -98,7 +98,7 @@ public class IndexManagerFactory {
         }
     }
 
-    private static class TraceAnalyticsRawIndexManager extends AbstractIndexManager2 {
+    private static class TraceAnalyticsRawIndexManager extends AbstractIndexManager {
         public TraceAnalyticsRawIndexManager(final RestHighLevelClient restHighLevelClient,
                                              final OpenSearchClient openSearchClient,
                                              final OpenSearchSinkConfiguration openSearchSinkConfiguration,
@@ -114,7 +114,7 @@ public class IndexManagerFactory {
 
     }
 
-    private static class TraceAnalyticsServiceMapIndexManager extends AbstractIndexManager2 {
+    private static class TraceAnalyticsServiceMapIndexManager extends AbstractIndexManager {
 
         public TraceAnalyticsServiceMapIndexManager(final RestHighLevelClient restHighLevelClient,
                                                     final OpenSearchClient openSearchClient,
@@ -125,7 +125,7 @@ public class IndexManagerFactory {
         }
     }
 
-    private class ManagementDisabledIndexManager extends AbstractIndexManager2 {
+    private class ManagementDisabledIndexManager extends AbstractIndexManager {
         protected ManagementDisabledIndexManager(final RestHighLevelClient restHighLevelClient,
                                                  final OpenSearchClient openSearchClient,
                                                  final OpenSearchSinkConfiguration openSearchSinkConfiguration,

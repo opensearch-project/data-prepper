@@ -52,7 +52,7 @@ public class TraceAnalyticsRawIndexManagerTests {
 
     private IndexManagerFactory indexManagerFactory;
 
-    private AbstractIndexManager2 traceAnalyticsRawIndexManager;
+    private AbstractIndexManager traceAnalyticsRawIndexManager;
 
     @Mock
     private OpenSearchClient openSearchClient;

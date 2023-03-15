@@ -50,7 +50,7 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
 
     private IndexManagerFactory indexManagerFactory;
 
-    private AbstractIndexManager2 traceAnalyticsServiceMapIndexManager;
+    private AbstractIndexManager traceAnalyticsServiceMapIndexManager;
 
     @Mock
     private OpenSearchClient openSearchClient;

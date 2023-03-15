@@ -36,7 +36,7 @@ import org.opensearch.common.xcontent.XContentType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager2;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 
 import javax.ws.rs.HttpMethod;
@@ -156,7 +156,7 @@ public class OpenSearchSinkIT {
     client.performRequest(request);
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
     OpenSearchSink sink = new OpenSearchSink(pluginSetting);
-    Assert.assertThrows(String.format(AbstractIndexManager2.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
+    Assert.assertThrows(String.format(AbstractIndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
             RuntimeException.class, () -> sink.doInitialize());
   }
 

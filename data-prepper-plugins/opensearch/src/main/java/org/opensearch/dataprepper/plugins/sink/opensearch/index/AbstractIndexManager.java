@@ -5,24 +5,30 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
+import jakarta.json.stream.JsonParser;
 import org.opensearch.OpenSearchException;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
-import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.CreateIndexRequest;
-import org.opensearch.client.indices.GetIndexTemplatesRequest;
-import org.opensearch.client.indices.GetIndexTemplatesResponse;
-import org.opensearch.client.indices.IndexTemplateMetadata;
-import org.opensearch.client.indices.IndexTemplatesExistRequest;
-import org.opensearch.client.indices.PutIndexTemplateRequest;
-import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
+import org.opensearch.client.json.JsonpMapper;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
+import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import org.opensearch.client.opensearch.indices.CreateIndexRequest;
+import org.opensearch.client.opensearch.indices.ExistsTemplateRequest;
+import org.opensearch.client.opensearch.indices.GetTemplateRequest;
+import org.opensearch.client.opensearch.indices.GetTemplateResponse;
+import org.opensearch.client.opensearch.indices.PutTemplateRequest;
+import org.opensearch.client.opensearch.indices.TemplateMapping;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -44,7 +50,9 @@ public abstract class AbstractIndexManager implements IndexManager {
     public static final String INVALID_INDEX_ALIAS_ERROR
             = "type=invalid_index_name_exception";
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     protected RestHighLevelClient restHighLevelClient;
+    protected OpenSearchClient openSearchClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
     protected String indexPrefix;
@@ -62,10 +70,13 @@ public abstract class AbstractIndexManager implements IndexManager {
     private Optional<DateTimeFormatter> indexTimeSuffixFormatter;
     private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
-    protected AbstractIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration, String indexAlias){
+    protected AbstractIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchClient openSearchClient,
+                                   final OpenSearchSinkConfiguration openSearchSinkConfiguration, String indexAlias){
         checkNotNull(restHighLevelClient);
+        checkNotNull(openSearchClient);
         checkNotNull(openSearchSinkConfiguration);
         this.restHighLevelClient = restHighLevelClient;
+        this.openSearchClient = openSearchClient;
         this.openSearchSinkConfiguration = openSearchSinkConfiguration;
         if (indexAlias == null) {
             indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
@@ -164,11 +175,24 @@ public abstract class AbstractIndexManager implements IndexManager {
     }
 
     final boolean checkISMEnabled() throws IOException {
-        final ClusterGetSettingsRequest request = new ClusterGetSettingsRequest();
-        request.includeDefaults(true);
-        final ClusterGetSettingsResponse response = restHighLevelClient.cluster().getSettings(request, RequestOptions.DEFAULT);
-        final String enabled = response.getSetting(IndexConstants.ISM_ENABLED_SETTING);
+        final GetClusterSettingsRequest request = new GetClusterSettingsRequest.Builder()
+                .includeDefaults(true)
+                .build();
+        final GetClusterSettingsResponse response = openSearchClient.cluster().getSettings(request);
+        final String enabled = getSetting(response, IndexConstants.ISM_ENABLED_SETTING);
         return enabled != null && enabled.equals("true");
+    }
+
+    private String getSetting(final GetClusterSettingsResponse response, final String setting) {
+        if (response.persistent().containsKey(setting)) {
+            return response.persistent().get(setting).to(String.class);
+        } else if (response.transient_().containsKey(setting)) {
+            return response.transient_().get(setting).to(String.class);
+        } else if (response.defaults().containsKey(setting)) {
+            return response.defaults().get(setting).to(String.class);
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -198,20 +222,31 @@ public abstract class AbstractIndexManager implements IndexManager {
         final String indexTemplateName = indexPrefixWithoutTrailingDash  + "-index-template";
 
         // Check existing index template version - only overwrite if version is less than or does not exist
-        if (!shouldCreateIndexTemplate(indexTemplateName)) {
+        if (!shouldCreateTemplate(indexTemplateName)) {
             return;
         }
-
-        final PutIndexTemplateRequest putIndexTemplateRequest = new PutIndexTemplateRequest(indexTemplateName);
-
-        putIndexTemplateRequest.patterns(ismPolicyManagementStrategy.getIndexPatterns(indexPrefixWithoutTrailingDash));
 
         if (isISMEnabled) {
             attachPolicy(openSearchSinkConfiguration.getIndexConfiguration(), ismPolicyId, indexPrefixWithoutTrailingDash);
         }
 
-        putIndexTemplateRequest.source(openSearchSinkConfiguration.getIndexConfiguration().getIndexTemplate());
-        restHighLevelClient.indices().putTemplate(putIndexTemplateRequest, RequestOptions.DEFAULT);
+        final Map<String, Object> indexTemplateMap = openSearchSinkConfiguration.getIndexConfiguration()
+                .getIndexTemplate();
+        indexTemplateMap.put("name", indexTemplateName);
+        indexTemplateMap.put(
+                "index_patterns", ismPolicyManagementStrategy.getIndexPatterns(indexPrefixWithoutTrailingDash));
+        final String indexTemplateString = OBJECT_MAPPER.writeValueAsString(indexTemplateMap);
+
+        // Parse byte array to Map
+        final ByteArrayInputStream byteIn = new ByteArrayInputStream(
+                indexTemplateString.getBytes(StandardCharsets.UTF_8));
+        final JsonpMapper mapper = openSearchClient._transport().jsonpMapper();
+        final JsonParser parser = mapper.jsonProvider().createParser(byteIn);
+
+        final PutTemplateRequest putTemplateRequest = PutTemplateRequestCustomDeserializer.getJsonpDeserializer()
+                .deserialize(parser, mapper);
+
+        openSearchClient.indices().putTemplate(putTemplateRequest);
     }
 
     final Optional<String> checkAndCreatePolicy() throws IOException {
@@ -224,9 +259,9 @@ public abstract class AbstractIndexManager implements IndexManager {
         final boolean indexExists = ismPolicyManagementStrategy.checkIfIndexExistsOnServer(indexAlias);
 
         if (!indexExists) {
-            final CreateIndexRequest createIndexRequest = ismPolicyManagementStrategy.getCreateIndexRequest(indexAlias);
+            final CreateIndexRequest createIndexRequest = ismPolicyManagementStrategy.getCreateIndexRequest2(indexAlias);
             try {
-                restHighLevelClient.indices().create(createIndexRequest, RequestOptions.DEFAULT);
+                openSearchClient.indices().create(createIndexRequest);
             } catch (OpenSearchException e) {
                 if (e.getMessage().contains("resource_already_exists_exception")) {
                     // Do nothing - likely caused by a race condition where the resource was created
@@ -244,49 +279,53 @@ public abstract class AbstractIndexManager implements IndexManager {
         }
     }
 
-    private Optional<IndexTemplateMetadata> getIndexTemplateMetadata(final String indexTemplateName) throws IOException {
-        final IndexTemplatesExistRequest existsRequest = new IndexTemplatesExistRequest(indexTemplateName);
-        final boolean exists = restHighLevelClient.indices().existsTemplate(existsRequest, RequestOptions.DEFAULT);
-        if (!exists) {
+    private Optional<TemplateMapping> getTemplateMapping(final String templateName) throws IOException {
+        final ExistsTemplateRequest existsTemplateRequest = new ExistsTemplateRequest.Builder()
+                .name(templateName)
+                .build();
+        final BooleanResponse booleanResponse = openSearchClient.indices().existsTemplate(
+                existsTemplateRequest);
+        if (!booleanResponse.value()) {
             return Optional.empty();
         }
 
-        final GetIndexTemplatesRequest request = new GetIndexTemplatesRequest(indexTemplateName);
-        final GetIndexTemplatesResponse response = restHighLevelClient.indices().getIndexTemplate(request, RequestOptions.DEFAULT);
+        final GetTemplateRequest getTemplateRequest = new GetTemplateRequest.Builder()
+                .name(templateName)
+                .build();
+        final GetTemplateResponse response = openSearchClient.indices().getTemplate(getTemplateRequest);
 
-        if (response.getIndexTemplates().size() == 1) {
-            return Optional.of(response.getIndexTemplates().get(0));
+        if (response.result().size() == 1) {
+            return response.result().values().stream().findFirst();
         } else {
-            throw new RuntimeException(String.format("Found multiple index templates (%s) result when querying for %s",
-                    response.getIndexTemplates().size(),
-                    indexTemplateName));
+            throw new RuntimeException(String.format("Found zero or multiple index templates result when querying for %s",
+                    templateName));
         }
     }
 
-    private boolean shouldCreateIndexTemplate(final String indexTemplateName) throws IOException {
-        final Optional<IndexTemplateMetadata> indexTemplateMetadataOptional = getIndexTemplateMetadata(indexTemplateName);
-        if (indexTemplateMetadataOptional.isPresent()) {
-            final Integer existingTemplateVersion = indexTemplateMetadataOptional.get().version();
-            LOG.info("Found version {} for existing index template {}", existingTemplateVersion, indexTemplateName);
+    private boolean shouldCreateTemplate(final String templateName) throws IOException {
+        final Optional<TemplateMapping> templateMappingOptional = getTemplateMapping(templateName);
+        if (templateMappingOptional.isPresent()) {
+            final Long existingTemplateVersion = templateMappingOptional.get().version();
+            LOG.info("Found version {} for existing index template {}", existingTemplateVersion, templateName);
 
             final int newTemplateVersion = (int) openSearchSinkConfiguration.getIndexConfiguration().getIndexTemplate().getOrDefault("version", 0);
 
             if (existingTemplateVersion != null && existingTemplateVersion >= newTemplateVersion) {
                 LOG.info("Index template {} should not be updated, current version {} >= existing version {}",
-                        indexTemplateName,
+                        templateName,
                         existingTemplateVersion,
                         newTemplateVersion);
                 return false;
 
             } else {
                 LOG.info("Index template {} should be updated from version {} to version {}",
-                        indexTemplateName,
+                        templateName,
                         existingTemplateVersion,
                         newTemplateVersion);
                 return true;
             }
         } else {
-            LOG.info("Index template {} does not exist and should be created", indexTemplateName);
+            LOG.info("Index template {} does not exist and should be created", templateName);
             return true;
         }
     }
