@@ -12,6 +12,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,7 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.record.Record;
-import plugins.codec.avro.AvroInputCodec;
+import org.opensearch.dataprepper.plugins.codec.avro.AvroInputCodec;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,6 +53,7 @@ public class AvroInputCodecTest {
 
     private static final String FILE_NAME = "avro-test";
     private static final String FILE_SUFFIX = ".avro";
+    private static final String INVALID_AVRO_INPUT_STREAM = "Invalid Avro Input Stream";
 
     @Mock
     private Consumer<Record<Event>> eventConsumer;
@@ -81,6 +83,14 @@ public class AvroInputCodecTest {
 
         verifyNoInteractions(eventConsumer);
 
+    }
+
+    @Test
+    public void parse_with_Invalid_InputStream_then_catches_exception()  {
+        avroInputCodec=new AvroInputCodec();
+        Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
+        Assertions.assertDoesNotThrow(()->
+                avroInputCodec.parse(createInvalidAvroStream(), eventConsumer));
     }
 
     @Test
@@ -185,6 +195,10 @@ public class AvroInputCodecTest {
                 .name("age").type().intType().noDefault()
                 .endRecord();
 
+    }
+
+    private static InputStream createInvalidAvroStream() {
+        return  new ByteArrayInputStream(INVALID_AVRO_INPUT_STREAM.getBytes());
     }
 
 }

@@ -1,12 +1,10 @@
-plugins {
-    id 'java'
-}
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-group 'org.opensearch.dataprepper'
-version '2.1.0-SNAPSHOT'
+plugins {
+    id 'java'
+}
 
 repositories {
     mavenCentral()

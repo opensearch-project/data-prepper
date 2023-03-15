@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package plugins.codec.avro;
+package org.opensearch.dataprepper.plugins.codec.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
@@ -38,7 +38,6 @@ public class AvroInputCodec implements InputCodec {
     private static final String MESSAGE_FIELD_NAME = "message";
     private static final String FILE_NAME = "avro-data";
     private static final String FILE_SUFFIX = ".avro";
-    private static final int EMPTY_INPUT_STREAM_VALUE = 0;
 
     private static final Logger LOG =  LoggerFactory.getLogger(AvroInputCodec.class);
 
@@ -48,9 +47,7 @@ public class AvroInputCodec implements InputCodec {
 
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
-
-        if(!(inputStream.available() == EMPTY_INPUT_STREAM_VALUE))
-            parseAvroStream(inputStream, eventConsumer);
+        parseAvroStream(inputStream, eventConsumer);
 
     }
 
@@ -62,12 +59,12 @@ public class AvroInputCodec implements InputCodec {
 
         try {
 
-            DatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
-            DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(tempFile, datumReader);
+            DatumReader<GenericRecord> datumReaderForSchema = new GenericDatumReader<>();
+            DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(tempFile, datumReaderForSchema);
             Schema schema = dataFileReader.getSchema();
-            GenericDatumReader<GenericRecord> datumReader1 = new GenericDatumReader<>(schema);
+            GenericDatumReader<GenericRecord> genericDatumReader = new GenericDatumReader<>(schema);
 
-            FileReader<GenericRecord> fileReader = DataFileReader.openReader(tempFile, datumReader1);
+            FileReader<GenericRecord> fileReader = DataFileReader.openReader(tempFile, genericDatumReader);
 
             final Map<String, String> eventData = new HashMap<>();
 
@@ -86,7 +83,7 @@ public class AvroInputCodec implements InputCodec {
             LOG.error("An exception has occurred while parsing avro InputStream ", avroException);
         }
         finally {
-            tempFile.delete();
+           tempFile.delete();
         }
     }
 
