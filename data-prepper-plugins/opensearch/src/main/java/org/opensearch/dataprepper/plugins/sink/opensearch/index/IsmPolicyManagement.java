@@ -11,11 +11,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.micrometer.core.instrument.util.StringUtils;
-import org.opensearch.action.admin.indices.alias.Alias;
 import org.opensearch.client.Request;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.CreateIndexRequest;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
@@ -155,16 +153,7 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     @Override
-    public CreateIndexRequest getCreateIndexRequest(final String indexAlias) {
-        checkArgument(StringUtils.isNotEmpty(indexAlias));
-        final String initialIndexName = indexAlias + DEFAULT_INDEX_SUFFIX;
-        final CreateIndexRequest createIndexRequest = new CreateIndexRequest(initialIndexName);
-        createIndexRequest.alias(new Alias(indexAlias).writeIndex(true));
-        return createIndexRequest;
-    }
-
-    @Override
-    public org.opensearch.client.opensearch.indices.CreateIndexRequest getCreateIndexRequest2(final String indexAlias) {
+    public org.opensearch.client.opensearch.indices.CreateIndexRequest getCreateIndexRequest(final String indexAlias) {
         checkArgument(StringUtils.isNotEmpty(indexAlias));
         final String initialIndexName = indexAlias + DEFAULT_INDEX_SUFFIX;
         final org.opensearch.client.opensearch.indices.CreateIndexRequest createIndexRequest

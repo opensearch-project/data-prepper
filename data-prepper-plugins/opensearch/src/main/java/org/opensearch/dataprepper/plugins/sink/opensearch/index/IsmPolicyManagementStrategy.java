@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import org.opensearch.client.indices.CreateIndexRequest;
+import org.opensearch.client.opensearch.indices.CreateIndexRequest;
 
 import java.io.IOException;
 import java.util.List;
@@ -20,6 +20,4 @@ interface IsmPolicyManagementStrategy {
     boolean checkIfIndexExistsOnServer(final String indexAlias) throws IOException;
 
     CreateIndexRequest getCreateIndexRequest(final String indexAlias);
-
-    org.opensearch.client.opensearch.indices.CreateIndexRequest getCreateIndexRequest2(final String indexAlias);
 }

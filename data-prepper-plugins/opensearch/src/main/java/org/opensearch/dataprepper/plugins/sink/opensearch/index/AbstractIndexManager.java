@@ -259,7 +259,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         final boolean indexExists = ismPolicyManagementStrategy.checkIfIndexExistsOnServer(indexAlias);
 
         if (!indexExists) {
-            final CreateIndexRequest createIndexRequest = ismPolicyManagementStrategy.getCreateIndexRequest2(indexAlias);
+            final CreateIndexRequest createIndexRequest = ismPolicyManagementStrategy.getCreateIndexRequest(indexAlias);
             try {
                 openSearchClient.indices().create(createIndexRequest);
             } catch (OpenSearchException e) {
