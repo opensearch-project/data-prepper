@@ -418,7 +418,10 @@ public class ConnectionConfiguration {
       final String serviceName = awsServerless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
       return new AwsSdk2Transport(ApacheHttpClient.create(), hosts.get(0),
               serviceName, Region.of(awsRegion),
-              AwsSdk2TransportOptions.builder().setCredentials(credentialsProvider).build());
+              AwsSdk2TransportOptions.builder()
+                      .setCredentials(credentialsProvider)
+                      .setMapper(new PreSerializedJsonpMapper())
+                      .build());
     } else {
       return new RestClientTransport(
               restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
