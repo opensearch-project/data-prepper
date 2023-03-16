@@ -18,6 +18,7 @@ import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.GetIndexTemplatesResponse;
 import org.opensearch.client.json.JsonData;
+import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
@@ -49,6 +50,14 @@ import static org.mockito.MockitoAnnotations.initMocks;
 
 public class TraceAnalyticsRawIndexManagerTests {
     private static final String INDEX_ALIAS = "trace-raw-index-alias";
+    private static final JsonpMapper JSONP_MAPPER = new PreSerializedJsonpMapper();
+    private static final Map<String, JsonData> ISM_ENABLED_SETTING = Map.of(
+            "opendistro", JsonData.of(
+                    Map.of("index_state_management", Map.of("enabled", true)), JSONP_MAPPER)
+    );
+    private static final Map<String, JsonData> ISM_DISABLED_SETTING = Map.of(
+            "opendistro", JsonData.of(
+                    Map.of("index_state_management", Map.of("enabled", false)), JSONP_MAPPER));
 
     private IndexManagerFactory indexManagerFactory;
 
@@ -139,8 +148,7 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     public void checkISMEnabled_True() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
-        when(getClusterSettingsResponse.persistent()).thenReturn(Map.of(
-                IndexConstants.ISM_ENABLED_SETTING, JsonData.of("true")));
+        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_ENABLED_SETTING);
         assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
@@ -151,8 +159,7 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     public void checkISMEnabled_False() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.persistent()).thenReturn(Map.of(
-                IndexConstants.ISM_ENABLED_SETTING, JsonData.of("false")));
+        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
         assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();

@@ -5,11 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import com.fasterxml.jackson.core.JsonPointer;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableSet;
 import jakarta.json.stream.JsonParser;
 import org.opensearch.OpenSearchException;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.json.JsonData;
 import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
@@ -33,6 +36,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -179,20 +183,28 @@ public abstract class AbstractIndexManager implements IndexManager {
                 .includeDefaults(true)
                 .build();
         final GetClusterSettingsResponse response = openSearchClient.cluster().getSettings(request);
-        final String enabled = getSetting(response, IndexConstants.ISM_ENABLED_SETTING);
+        final String enabled = getISMEnabled(response);
         return enabled != null && enabled.equals("true");
     }
 
-    private String getSetting(final GetClusterSettingsResponse response, final String setting) {
-        if (response.persistent().containsKey(setting)) {
-            return response.persistent().get(setting).to(String.class);
-        } else if (response.transient_().containsKey(setting)) {
-            return response.transient_().get(setting).to(String.class);
-        } else if (response.defaults().containsKey(setting)) {
-            return response.defaults().get(setting).to(String.class);
+    private String getISMEnabled(final GetClusterSettingsResponse response) {
+        final String[] keyPath = IndexConstants.ISM_ENABLED_SETTING.split("[.]");
+        final String keyPrefix = keyPath[0];
+        final String jsonPtr = JsonPointer.SEPARATOR + String.join(
+                String.valueOf(JsonPointer.SEPARATOR), Arrays.copyOfRange(keyPath, 1, keyPath.length));
+        if (response.persistent().containsKey(keyPrefix)) {
+            return getStringFromJsonPointer(response.persistent().get(keyPrefix), jsonPtr);
+        } else if (response.transient_().containsKey(keyPrefix)) {
+            return getStringFromJsonPointer(response.transient_().get(keyPrefix), jsonPtr);
+        } else if (response.defaults().containsKey(keyPrefix)) {
+            return getStringFromJsonPointer(response.defaults().get(keyPrefix), jsonPtr);
         } else {
             return null;
         }
+    }
+
+    private String getStringFromJsonPointer(final JsonData jsonData, final String jsonPtr) {
+        return jsonData == null ? null : jsonData.to(JsonNode.class).at(jsonPtr).asText();
     }
 
     /**

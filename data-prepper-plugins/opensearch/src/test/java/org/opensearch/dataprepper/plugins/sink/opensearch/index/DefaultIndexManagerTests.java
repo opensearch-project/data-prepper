@@ -15,6 +15,7 @@ import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.json.JsonData;
+import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
@@ -56,6 +57,14 @@ public class DefaultIndexManagerTests {
     private static final String INDEX_ALIAS = "test-index-alias";
     private static final String INDEX_ALIAS_WITH_TIME_PATTERN = INDEX_ALIAS+ "-%{yyyy.MM.dd.HH}";
     private static final Pattern EXPECTED_INDEX_PATTERN = Pattern.compile(INDEX_ALIAS + "-\\d{4}.\\d{2}.\\d{2}.\\d{2}");
+    private static final JsonpMapper JSONP_MAPPER = new PreSerializedJsonpMapper();
+    private static final Map<String, JsonData> ISM_ENABLED_SETTING = Map.of(
+            "opendistro", JsonData.of(
+                    Map.of("index_state_management", Map.of("enabled", true)), JSONP_MAPPER)
+    );
+    private static final Map<String, JsonData> ISM_DISABLED_SETTING = Map.of(
+            "opendistro", JsonData.of(
+                    Map.of("index_state_management", Map.of("enabled", false)), JSONP_MAPPER));
 
     private IndexManagerFactory indexManagerFactory;
 
@@ -293,8 +302,7 @@ public class DefaultIndexManagerTests {
     public void checkISMEnabled_True() throws IOException {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.persistent()).thenReturn(Map.of(
-                IndexConstants.ISM_ENABLED_SETTING, JsonData.of("true")));
+        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_ENABLED_SETTING);
         assertEquals(true, defaultIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
@@ -308,8 +316,7 @@ public class DefaultIndexManagerTests {
     public void checkISMEnabled_False() throws IOException {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.persistent()).thenReturn(Map.of(
-                IndexConstants.ISM_ENABLED_SETTING, JsonData.of("false")));
+        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
         assertEquals(false, defaultIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
