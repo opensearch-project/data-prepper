@@ -136,7 +136,18 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabled_True() throws IOException {
+    public void checkISMEnabledByDefault_True() throws IOException {
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_ENABLED_SETTING);
+        assertEquals(true, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+    }
+
+    @Test
+    public void checkISMEnabledByPersistent_True() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
         when(getClusterSettingsResponse.persistent()).thenReturn(ISM_ENABLED_SETTING);
         assertEquals(true, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
@@ -147,17 +158,48 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabled_False() throws IOException {
+    public void checkISMEnabledByTransient_True() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
+        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_ENABLED_SETTING);
         assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
         verify(openSearchClient).cluster();
-        verify(getClusterSettingsResponse, times(2)).persistent();
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
     }
 
+    @Test
+    public void checkISMEnabledByDefault_False() throws IOException {
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
+        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_DISABLED_SETTING);
+        assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
+        verify(openSearchClient).cluster();
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
+
+    @Test
+    public void checkISMEnabledByPersistent_False() throws IOException {
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
+        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
+        assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
+        verify(openSearchClient).cluster();
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
+
+    @Test
+    public void checkISMEnabledByTransient_False() throws IOException {
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
+        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_DISABLED_SETTING);
+        assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
+        verify(openSearchClient).cluster();
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
 
     @Test
     public void checkAndCreatePolicy() throws IOException {

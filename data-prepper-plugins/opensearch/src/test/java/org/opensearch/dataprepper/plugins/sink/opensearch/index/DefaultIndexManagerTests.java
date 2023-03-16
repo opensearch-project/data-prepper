@@ -302,7 +302,7 @@ public class DefaultIndexManagerTests {
     public void checkISMEnabled_True() throws IOException {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_ENABLED_SETTING);
+        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_ENABLED_SETTING);
         assertEquals(true, defaultIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
@@ -316,7 +316,7 @@ public class DefaultIndexManagerTests {
     public void checkISMEnabled_False() throws IOException {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
+        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_DISABLED_SETTING);
         assertEquals(false, defaultIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();

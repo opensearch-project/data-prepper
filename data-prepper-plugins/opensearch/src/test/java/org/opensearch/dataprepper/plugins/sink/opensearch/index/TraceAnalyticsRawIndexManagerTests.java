@@ -146,7 +146,18 @@ public class TraceAnalyticsRawIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabled_True() throws IOException {
+    public void checkISMEnabledByDefault_True() throws IOException {
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_ENABLED_SETTING);
+        assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
+
+    @Test
+    public void checkISMEnabledByPersistent_True() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
         when(getClusterSettingsResponse.persistent()).thenReturn(ISM_ENABLED_SETTING);
         assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
@@ -157,7 +168,29 @@ public class TraceAnalyticsRawIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabled_False() throws IOException {
+    public void checkISMEnabledByTransient_True() throws IOException {
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_ENABLED_SETTING);
+        assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
+
+    @Test
+    public void checkISMEnabledByDefault_False() throws IOException {
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
+        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_DISABLED_SETTING);
+        assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
+
+    @Test
+    public void checkISMEnabledByPersistent_False() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
         when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
         assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
@@ -165,6 +198,17 @@ public class TraceAnalyticsRawIndexManagerTests {
         verify(indexConfiguration).getIndexAlias();
         verify(openSearchClient).cluster();
         verify(getClusterSettingsResponse, times(2)).persistent();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
+    }
+
+    @Test
+    public void checkISMEnabledByTransient_False() throws IOException {
+        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
+        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_DISABLED_SETTING);
+        assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
+        verify(openSearchSinkConfiguration).getIndexConfiguration();
+        verify(indexConfiguration).getIndexAlias();
+        verify(openSearchClient).cluster();
         verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
     }
 
