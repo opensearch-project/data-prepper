@@ -70,7 +70,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class ConnectionConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
 
-  private static final String SERVICE_NAME = "es";
+  private static final String AOS_SERVICE_NAME = "es";
+  private static final String AOSS_SERVICE_NAME = "aoss";
   private static final String DEFAULT_AWS_REGION = "us-east-1";
   private static final int STS_CLIENT_RETRIES = 10;
   private static final long STS_CLIENT_BASE_BACKOFF_MILLIS = 1000l;
@@ -89,6 +90,7 @@ public class ConnectionConfiguration {
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
   public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
   public static final String PROXY = "proxy";
+  public static final String AWS_SERVERLESS = "aws_serverless";
 
   /**
    * The valid port range per https://tools.ietf.org/html/rfc6335.
@@ -109,6 +111,7 @@ public class ConnectionConfiguration {
   private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
   private final String pipelineName;
+  private final boolean awsServerless;
 
   List<String> getHosts() {
     return hosts;
@@ -150,6 +153,10 @@ public class ConnectionConfiguration {
     return connectTimeout;
   }
 
+  boolean isAwsServerless() {
+    return awsServerless;
+  }
+
   private ConnectionConfiguration(final Builder builder) {
     this.hosts = builder.hosts;
     this.username = builder.username;
@@ -163,6 +170,7 @@ public class ConnectionConfiguration {
     this.awsStsRoleArn = builder.awsStsRoleArn;
     this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
+    this.awsServerless = builder.awsServerless;
     this.pipelineName = builder.pipelineName;
   }
 
@@ -219,6 +227,9 @@ public class ConnectionConfiguration {
     }
     final String proxy = pluginSetting.getStringOrDefault(PROXY, null);
     builder = builder.withProxy(proxy);
+
+    final boolean awsServerless = pluginSetting.getBooleanOrDefault(AWS_SERVERLESS, false);
+    builder = builder.withAwsServerless(awsServerless);
 
     return builder.build();
   }
@@ -280,7 +291,7 @@ public class ConnectionConfiguration {
     } else {
       credentialsProvider = DefaultCredentialsProvider.create();
     }
-    final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
+    final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(AOS_SERVICE_NAME, aws4Signer,
             credentialsProvider, awsRegion);
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
       httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
@@ -404,8 +415,9 @@ public class ConnectionConfiguration {
       } else {
         credentialsProvider = DefaultCredentialsProvider.create();
       }
+      final String serviceName = awsServerless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
       return new AwsSdk2Transport(ApacheHttpClient.create(), hosts.get(0),
-              "es", Region.of(awsRegion),
+              serviceName, Region.of(awsRegion),
               AwsSdk2TransportOptions.builder().setCredentials(credentialsProvider).build());
     } else {
       return new RestClientTransport(
@@ -490,6 +502,8 @@ public class ConnectionConfiguration {
     private Optional<String> proxy = Optional.empty();
     private String pipelineName;
 
+    private boolean awsServerless;
+
 
     public Builder(final List<String> hosts) {
       checkArgument(hosts != null, "hosts cannot be null");
@@ -570,6 +584,11 @@ public class ConnectionConfiguration {
 
     public Builder withPipelineName(final String pipelineName) {
       this.pipelineName = pipelineName;
+      return this;
+    }
+
+    public Builder withAwsServerless(boolean awsServerless) {
+      this.awsServerless = awsServerless;
       return this;
     }
 
