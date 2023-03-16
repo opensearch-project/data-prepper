@@ -416,7 +416,7 @@ public class ConnectionConfiguration {
         credentialsProvider = DefaultCredentialsProvider.create();
       }
       final String serviceName = awsServerless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
-      return new AwsSdk2Transport(ApacheHttpClient.create(), hosts.get(0),
+      return new AwsSdk2Transport(createSdkHttpClient(), hosts.get(0),
               serviceName, Region.of(awsRegion),
               AwsSdk2TransportOptions.builder()
                       .setCredentials(credentialsProvider)
@@ -436,19 +436,9 @@ public class ConnectionConfiguration {
     if (socketTimeout != null) {
       apacheHttpClientBuilder.socketTimeout(Duration.ofMillis(socketTimeout));
     }
-    return apacheHttpClientBuilder.build();
-  }
-
-  private void attachUserCredentials(final ApacheHttpClient.Builder apacheHttpClientBuilder) {
-    final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-    if (username != null) {
-      LOG.info("Using the username provided in the config.");
-      credentialsProvider.setCredentials(
-              AuthScope.ANY, new UsernamePasswordCredentials(username, password));
-    }
-    apacheHttpClientBuilder.credentialsProvider(credentialsProvider);
     attachSSLContext(apacheHttpClientBuilder);
     setHttpProxyIfApplicable(apacheHttpClientBuilder);
+    return apacheHttpClientBuilder.build();
   }
 
   private void attachSSLContext(final ApacheHttpClient.Builder apacheHttpClientBuilder) {

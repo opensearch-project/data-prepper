@@ -9,7 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -77,6 +80,21 @@ class ConnectionConfigurationTests {
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         final RestHighLevelClient client = connectionConfiguration.createClient();
         assertNotNull(client);
+        client.close();
+    }
+
+    @Test
+    void testCreateOpenSearchClientDefault() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(
+                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        assertNotNull(openSearchClient);
+        assertTrue(openSearchClient._transport() instanceof RestClientTransport);
+        assertTrue(openSearchClient._transport().jsonpMapper() instanceof PreSerializedJsonpMapper);
+        openSearchClient.shutdown();
         client.close();
     }
 
