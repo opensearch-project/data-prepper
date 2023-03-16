@@ -102,4 +102,12 @@ public interface Event extends Serializable {
      * @since 2.1
      */
     String formatString(final String format);
+
+    /**
+     * Returns event handle
+     *
+     * @return returns the event handle associated with the event
+     * @since 2.2
+     */
+    EventHandle getEventHandle();
 }
