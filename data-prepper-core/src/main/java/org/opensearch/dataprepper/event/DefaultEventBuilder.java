@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.event;
 import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.event.DefaultBaseEventBuilder;
 
 public class DefaultEventBuilder extends DefaultBaseEventBuilder<Event> implements EventBuilder {
 

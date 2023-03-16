@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import org.opensearch.dataprepper.model.event.BaseEventBuilder;
-import org.opensearch.dataprepper.event.DefaultLogEventBuilder;
 
 public class DefaultEventFactory implements EventFactory {
     @Override

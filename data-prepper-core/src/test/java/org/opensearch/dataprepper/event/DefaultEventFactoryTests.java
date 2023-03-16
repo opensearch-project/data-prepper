@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.event.DefaultLogEventBuilder;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
