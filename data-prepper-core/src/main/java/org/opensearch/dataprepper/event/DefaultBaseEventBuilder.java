@@ -14,7 +14,7 @@ import java.util.Map;
 import java.time.Instant;
 import com.google.common.collect.ImmutableMap;
 
-public abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuilder<T>{
+abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuilder<T>{
     private EventMetadata eventMetadata;
     private Object data;
     private String eventType;

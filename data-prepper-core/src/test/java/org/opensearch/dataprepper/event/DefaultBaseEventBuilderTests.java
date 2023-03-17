@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.event.EventMetadata;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.CoreMatchers.not;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -19,22 +18,22 @@ import java.util.Map;
 import java.time.Instant;
 
 class DefaultBaseEventBuilderTests {
-    private DefaultBaseEventBuilder defaultBaseEventBuilder;
     class TestDefaultBaseEventBuilder extends DefaultBaseEventBuilder {
     }
 
-    @BeforeEach
-    void setup() {
-        defaultBaseEventBuilder = new TestDefaultBaseEventBuilder();
+    private DefaultBaseEventBuilder createObjectUnderTest() {
+        return new TestDefaultBaseEventBuilder();
     }
 
     @Test
     void testDefaultBaseEventBuilder() {
+        DefaultBaseEventBuilder defaultBaseEventBuilder = createObjectUnderTest();
         assertThat(defaultBaseEventBuilder.getTimeReceived(), not(equalTo(null)));
     }
 
     @Test
     void testDefaultBaseEventBuilderWithTypeDataAndAttributes() {
+        DefaultBaseEventBuilder defaultBaseEventBuilder = createObjectUnderTest();
         String testKey = RandomStringUtils.randomAlphabetic(5);
         String testValue = RandomStringUtils.randomAlphabetic(10);
         Map<String, Object> data = Map.of(testKey, testValue);
@@ -56,6 +55,7 @@ class DefaultBaseEventBuilderTests {
 
     @Test
     void testDefaultBaseEventBuilderWithEventMetadata() {
+        DefaultBaseEventBuilder defaultBaseEventBuilder = createObjectUnderTest();
         String testKey = RandomStringUtils.randomAlphabetic(5);
         String testValue = RandomStringUtils.randomAlphabetic(10);
         Map<String, Object> data = Map.of(testKey, testValue);

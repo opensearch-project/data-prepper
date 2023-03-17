@@ -7,5 +7,5 @@ package org.opensearch.dataprepper.event;
 
 import org.opensearch.dataprepper.model.event.EventHandle;
 
-public class DefaultEventHandle implements EventHandle {
+class DefaultEventHandle implements EventHandle {
 }

@@ -17,7 +17,12 @@ import java.util.Collections;
 import java.util.Map;
 
 class DefaultLogEventBuilderTests {
-    DefaultLogEventBuilder defaultLogEventBuilder;
+
+    private DefaultLogEventBuilder createObjectUnderTest(Map<String, Object> attributes, Map<String, Object> data) {
+        return (DefaultLogEventBuilder) new DefaultLogEventBuilder()
+                                        .withEventMetadataAttributes(attributes)
+                                        .withData(data);
+    }
 
     @Test
     void testDefaultLogEventBuilder() {
@@ -25,7 +30,7 @@ class DefaultLogEventBuilderTests {
         String testValue = RandomStringUtils.randomAlphabetic(10);
         Map<String, Object> metadataAttributes = Collections.emptyMap();
         Map<String, Object> data = Map.of(testKey, testValue);
-        defaultLogEventBuilder = (DefaultLogEventBuilder) new DefaultLogEventBuilder().withEventMetadataAttributes(metadataAttributes).withData(data);
+        DefaultLogEventBuilder defaultLogEventBuilder = createObjectUnderTest(metadataAttributes, data);
         JacksonLog log = (JacksonLog)defaultLogEventBuilder.build();
         EventMetadata eventMetadata = log.getMetadata();
         
@@ -33,7 +38,5 @@ class DefaultLogEventBuilderTests {
         assertThat(eventMetadata.getEventType(), equalTo(DefaultLogEventBuilder.LOG_EVENT_TYPE));
         assertThat(eventMetadata.getAttributes(), equalTo(metadataAttributes));
         assertThat(log.toMap(), equalTo(data));
-        
     }
-
 }

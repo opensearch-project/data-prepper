@@ -9,14 +9,18 @@ import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 
-public class DefaultLogEventBuilder extends DefaultBaseEventBuilder<Log> implements LogEventBuilder {
+class DefaultLogEventBuilder extends DefaultBaseEventBuilder<Log> implements LogEventBuilder {
 
     static final String LOG_EVENT_TYPE = "LOG";
+
+    public String getEventType() {
+        return LOG_EVENT_TYPE;
+    }
 
     public Log build() {
         return (Log) JacksonLog.builder()
           .withData(getData())
-          .withEventType(LOG_EVENT_TYPE)
+          .withEventType(getEventType())
           .build();
     }
 }
