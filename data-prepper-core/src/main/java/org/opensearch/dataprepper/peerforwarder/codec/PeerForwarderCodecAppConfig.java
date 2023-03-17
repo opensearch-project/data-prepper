@@ -54,7 +54,9 @@ public class PeerForwarderCodecAppConfig {
                         "java.util.LinkedHashSet*;" +
                         "java.util.Date*;" +
                         "java.time.*;" +
-                        "com.fasterxml.jackson.databind.node.*;" +
+                        "com.fasterxml.jackson.databind.node.NodeSerialization;" +
+                        "com.fasterxml.jackson.databind.node.ObjectNode;" +
+                        "com.fasterxml.jackson.databind.node.ArrayNode;" +
                         "org.opensearch.dataprepper.peerforwarder.model.*;" +
                         baseModelPackage + ".event.*;" +
                         baseModelPackage + ".trace.*;" +
