@@ -232,7 +232,7 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:common')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation project(':data-prepper-plugins:otel-trace-group-processor')
-    integrationTestImplementation 'org.awaitility:awaitility:4.2.0'
+    integrationTestImplementation testLibs.awaitility
     integrationTestImplementation "io.opentelemetry.proto:opentelemetry-proto:${targetOpenTelemetryVersion}"
     integrationTestImplementation libs.protobuf.util
     integrationTestImplementation libs.armeria.core
