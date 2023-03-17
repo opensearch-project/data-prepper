@@ -92,9 +92,8 @@ public class ServiceMapRelationship {
 
     public static ServiceMapRelationship newIsolatedService (
             final String serviceName,
-            final String spanKind,
             final String traceGroupName) {
-        return new ServiceMapRelationship(serviceName, spanKind, null, null, traceGroupName);
+        return new ServiceMapRelationship(serviceName, null, null, null, traceGroupName);
     }
 
     public String getServiceName() {

@@ -319,7 +319,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
                 return;
             }
             final ServiceMapRelationship serviceMapRelationship = ServiceMapRelationship.newIsolatedService(
-                    serviceNodeData.serviceName, null, traceGroupName);
+                    serviceNodeData.serviceName, traceGroupName);
             addServiceMapRelationship(serviceDependencyRecords, serviceMapRelationship);
         });
         LOG.debug("Done adding isolated service nodes");

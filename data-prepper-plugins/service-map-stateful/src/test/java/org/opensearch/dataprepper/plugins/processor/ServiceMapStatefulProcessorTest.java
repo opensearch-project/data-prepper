@@ -345,7 +345,7 @@ public class ServiceMapStatefulProcessorTest {
 
         //Expected relationships
         final ServiceMapRelationship frontend = ServiceMapRelationship.newIsolatedService(
-                FRONTEND_SERVICE, null, traceGroup);
+                FRONTEND_SERVICE, traceGroup);
 
         final Set<ServiceMapRelationship> relationshipsFound = new HashSet<>();
 
