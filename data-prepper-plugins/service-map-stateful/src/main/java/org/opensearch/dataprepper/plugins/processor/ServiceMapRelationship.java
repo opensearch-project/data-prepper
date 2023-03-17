@@ -90,6 +90,13 @@ public class ServiceMapRelationship {
         return new ServiceMapRelationship(serviceName, spanKind, null, new Endpoint(resource, domain), traceGroupName);
     }
 
+    public static ServiceMapRelationship newIsolatedService (
+            final String serviceName,
+            final String spanKind,
+            final String traceGroupName) {
+        return new ServiceMapRelationship(serviceName, spanKind, null, null, traceGroupName);
+    }
+
     public String getServiceName() {
         return serviceName;
     }
