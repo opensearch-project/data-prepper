@@ -31,6 +31,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
@@ -267,6 +268,30 @@ public class IndexConfigurationTests {
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(testBulkSize, indexConfiguration.getBulkSize());
         assertEquals(testIdField, indexConfiguration.getDocumentIdField());
+    }
+
+    @Test
+    public void testReadIndexConfig_awsServerlessDefault() {
+        final String testIndexAlias = "foo";
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                null, testIndexAlias, null, null, null);
+        metadata.put(AWS_SERVERLESS, true);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
+        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+    }
+
+    @Test
+    public void testReadIndexConfig_awsServerlessIndexTypeOverride() {
+        final String testIndexAlias = "foo";
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), testIndexAlias, null, null, null);
+        metadata.put(AWS_SERVERLESS, true);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
+        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
     }
 
     private PluginSetting generatePluginSetting(
