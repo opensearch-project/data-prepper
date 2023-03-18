@@ -161,7 +161,7 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     public void checkISMEnabledByTransient_True() throws IOException {
         when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
         when(getClusterSettingsResponse.transient_()).thenReturn(ISM_ENABLED_SETTING);
-        assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
+        assertEquals(true, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
         verify(openSearchClient).cluster();
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
