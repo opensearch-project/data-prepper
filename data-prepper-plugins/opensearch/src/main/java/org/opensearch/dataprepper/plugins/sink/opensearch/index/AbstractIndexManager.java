@@ -52,7 +52,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     public static final String INDEX_ALIAS_USED_AS_INDEX_ERROR
             = "Invalid alias name [%s], an index exists with the same name as the alias";
     public static final String INVALID_INDEX_ALIAS_ERROR
-            = "type=invalid_index_name_exception";
+            = "invalid_index_name_exception";
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     protected RestHighLevelClient restHighLevelClient;
