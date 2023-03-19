@@ -10,13 +10,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.opensearch.OpenSearchException;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.client.opensearch.cluster.OpenSearchClusterClient;
@@ -105,6 +105,9 @@ public class DefaultIndexManagerTests {
 
     @Mock
     private OpenSearchTransport openSearchTransport;
+
+    @Mock
+    private OpenSearchException openSearchException;
 
     @Before
     public void setup() throws IOException {
@@ -243,7 +246,8 @@ public class DefaultIndexManagerTests {
         final ArgumentCaptor<CreateIndexRequest> createIndexRequestCaptor = ArgumentCaptor.forClass(CreateIndexRequest.class);
         when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(
                 new BooleanResponse(false));
-        when(openSearchIndicesClient.create(createIndexRequestCaptor.capture())).thenThrow(new OpenSearchException(""));
+        when(openSearchException.getMessage()).thenReturn("");
+        when(openSearchIndicesClient.create(createIndexRequestCaptor.capture())).thenThrow(openSearchException);
         try {
             defaultIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
@@ -518,7 +522,8 @@ public class DefaultIndexManagerTests {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
         when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(false));
-        when(openSearchIndicesClient.create(any(CreateIndexRequest.class))).thenThrow(new OpenSearchException(""));
+        when(openSearchException.getMessage()).thenReturn("");
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class))).thenThrow(openSearchException);
         try {
             defaultIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {

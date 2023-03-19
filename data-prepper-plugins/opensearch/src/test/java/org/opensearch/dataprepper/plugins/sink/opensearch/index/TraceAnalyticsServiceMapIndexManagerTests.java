@@ -8,8 +8,10 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.opensearch.OpenSearchException;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
 import org.opensearch.client.ClusterClient;
 import org.opensearch.client.IndicesClient;
@@ -46,6 +48,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
+@ExtendWith(MockitoExtension.class)
 public class TraceAnalyticsServiceMapIndexManagerTests {
     private static final String INDEX_ALIAS = "trace-service-map-index-alias";
     private static final JsonpMapper JSONP_MAPPER = new PreSerializedJsonpMapper();
@@ -99,6 +102,9 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
 
     @Mock
     private OpenSearchTransport openSearchTransport;
+
+    @Mock
+    private OpenSearchException openSearchException;
 
     @Before
     public void setup() throws IOException {
@@ -288,7 +294,9 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     public void checkAndCreateIndex_CreateNewIndex_Exception() throws IOException {
         when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(
                 new BooleanResponse(false));
-        when(openSearchIndicesClient.create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class))).thenThrow(new OpenSearchException(""));
+        when(openSearchException.getMessage()).thenReturn("");
+        when(openSearchIndicesClient.create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class)))
+                .thenThrow(openSearchException);
         try {
             traceAnalyticsServiceMapIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
