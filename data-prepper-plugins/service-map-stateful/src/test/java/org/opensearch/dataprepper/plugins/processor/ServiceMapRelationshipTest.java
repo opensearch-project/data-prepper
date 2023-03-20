@@ -75,6 +75,14 @@ class ServiceMapRelationshipTest {
         }
 
         @Test
+        void newIsolatedService_with_equalTo() {
+            final ServiceMapRelationship objectUnderTest = ServiceMapRelationship.newIsolatedService(serviceName, traceGroupName);
+            final ServiceMapRelationship otherObject = ServiceMapRelationship.newIsolatedService(serviceName, traceGroupName);
+
+            assertThat(objectUnderTest, equalTo(otherObject));
+        }
+
+        @Test
         void newDestinationRelationship_json_serialization_and_deserialization() throws JsonProcessingException {
             final ObjectMapper objectMapper = new ObjectMapper();
             final String jsonString = objectMapper.writeValueAsString(ServiceMapRelationship.newDestinationRelationship(serviceName, kind, domain, resource, traceGroupName));
@@ -104,6 +112,19 @@ class ServiceMapRelationshipTest {
             assertThat(deserializedObject.getTarget(), notNullValue());
             assertThat(deserializedObject.getTarget().getDomain(), equalTo(domain));
             assertThat(deserializedObject.getTarget().getResource(), equalTo(resource));
+        }
+
+        @Test
+        void newIsolatedService_json_serialization_and_deserialization() throws JsonProcessingException {
+            final ObjectMapper objectMapper = new ObjectMapper();
+            final String jsonString = objectMapper.writeValueAsString(ServiceMapRelationship.newIsolatedService(serviceName, traceGroupName));
+
+            final ServiceMapRelationship deserializedObject = objectMapper.readValue(jsonString, ServiceMapRelationship.class);
+
+            assertThat(deserializedObject.getServiceName(), equalTo(serviceName));
+            assertThat(deserializedObject.getTraceGroupName(), equalTo(traceGroupName));
+            assertThat(deserializedObject.getDestination(), nullValue());
+            assertThat(deserializedObject.getTarget(), nullValue());
         }
     }
 }
