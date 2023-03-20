@@ -49,11 +49,11 @@ import software.amazon.awssdk.utils.builder.SdkBuilder;
  * all the necessary {@link Event} objects in the Data Prepper {@link Buffer}.
  */
 public class S3SelectObjectWorker implements S3ObjectHandler {
-	private static final Logger LOG = LoggerFactory.getLogger(S3SelectObjectWorker.class);
-	static final String S3_BUCKET_NAME = "bucket";
-	static final String S3_OBJECT_KEY = "key";
-	static final String S3_BUCKET_REFERENCE_NAME = "s3";
-	private final S3AsyncClient s3AsyncClient;
+    private static final Logger LOG = LoggerFactory.getLogger(S3SelectObjectWorker.class);
+    static final String S3_BUCKET_NAME = "bucket";
+    static final String S3_OBJECT_KEY = "key";
+    static final String S3_BUCKET_REFERENCE_NAME = "s3";
+    private final S3AsyncClient s3AsyncClient;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
     private final Buffer<Record<Event>> buffer;
@@ -91,11 +91,11 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
             throw new IOException(e);
         }
-	}
-	
+    }
+
     private void selectObjectContent(S3ObjectReference s3ObjectReference) throws IOException {
-		final long totalBytesRead;
-		final InputStream inputStreamList;
+        final long totalBytesRead;
+        final InputStream inputStreamList;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
         final InputSerialization inputSerialization = getInputSerializationFormat(serializationFormatOption
                 ,compressionType,fileHeaderInfo);
@@ -106,82 +106,82 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
             throw new IOException("No Records Found.");
         }
         inputStreamList = getInputStreamFromResponseHeader(s3SelectResponseHandler);
-				totalBytesRead = parseCompleteStreamFromResponseHeader(s3ObjectReference, bufferAccumulator,
-						inputStreamList);
+                totalBytesRead = parseCompleteStreamFromResponseHeader(s3ObjectReference, bufferAccumulator,
+                        inputStreamList);
 
         s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary().record(totalBytesRead);
         s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(bufferAccumulator.getTotalWritten());
         s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
         receivedEvents.clear();
-	}
+    }
 
     private InputSerialization getInputSerializationFormat(final S3SelectSerializationFormatOption serializationFormatOption,
                                                            final CompressionType compressionType,
                                                            final FileHeaderInfo fileHeaderInfo) {
-		InputSerialization inputSerialization = null;
+        InputSerialization inputSerialization = null;
         switch (serializationFormatOption) {
-		case CSV:
-			inputSerialization = InputSerialization.builder()
+        case CSV:
+            inputSerialization = InputSerialization.builder()
                         .csv( csv -> csv.fileHeaderInfo(fileHeaderInfo).build()).compressionType(compressionType).build();
-			break;
-		case JSON:
-			inputSerialization = InputSerialization.builder().json(json -> json.type(JSONType.DOCUMENT).build())
+            break;
+        case JSON:
+            inputSerialization = InputSerialization.builder().json(json -> json.type(JSONType.DOCUMENT).build())
                     .compressionType(compressionType).build();
-			break;
-		case PARQUET:
+            break;
+        case PARQUET:
             inputSerialization = InputSerialization.builder().parquet(p -> p.build())
-					.compressionType(CompressionType.NONE).build();
-			break;
-		}
-		return inputSerialization;
-	}
+                    .compressionType(CompressionType.NONE).build();
+            break;
+        }
+        return inputSerialization;
+    }
 
-	private InputStream getInputStreamFromResponseHeader(final S3SelectResponseHandler responseHand) {
-		return responseHand.getReceivedEvents().stream()
-				.filter(e -> e.sdkEventType() == SelectObjectContentEventStream.EventType.RECORDS)
-				.map(e -> ((RecordsEvent) e).payload().asInputStream()).collect(Collectors.toList()).stream()
-				.reduce(SequenceInputStream::new).orElse(null);
-	}
+    private InputStream getInputStreamFromResponseHeader(final S3SelectResponseHandler responseHand) {
+        return responseHand.getReceivedEvents().stream()
+                .filter(e -> e.sdkEventType() == SelectObjectContentEventStream.EventType.RECORDS)
+                .map(e -> ((RecordsEvent) e).payload().asInputStream()).collect(Collectors.toList()).stream()
+                .reduce(SequenceInputStream::new).orElse(null);
+    }
 
-	private SelectObjectContentRequest getS3SelectObjRequest(final S3ObjectReference s3ObjectReference,
-			final InputSerialization inputSerialization) {
-		return SelectObjectContentRequest.builder().bucket(s3ObjectReference.getBucketName())
-				.key(s3ObjectReference.getKey()).expressionType(ExpressionType.SQL)
+    private SelectObjectContentRequest getS3SelectObjRequest(final S3ObjectReference s3ObjectReference,
+            final InputSerialization inputSerialization) {
+        return SelectObjectContentRequest.builder().bucket(s3ObjectReference.getBucketName())
+                .key(s3ObjectReference.getKey()).expressionType(ExpressionType.SQL)
                 .expression(queryStatement)
-				.inputSerialization(inputSerialization)
+                .inputSerialization(inputSerialization)
                 .outputSerialization(outputSerialization -> outputSerialization.json(SdkBuilder::build))
-				.build();
-	}
+                .build();
+    }
 
-	private long parseCompleteStreamFromResponseHeader(final S3ObjectReference s3ObjectReference,
+    private long parseCompleteStreamFromResponseHeader(final S3ObjectReference s3ObjectReference,
             final BufferAccumulator<Record<Event>> bufferAccumulator,final InputStream stream) throws IOException {
-		final AtomicLong totalBytesRead = new AtomicLong(0);
-		try (final CountingInputStream countingInputStream = new CountingInputStream(stream);
-				final InputStreamReader inputStreamReader = new InputStreamReader(countingInputStream);
+        final AtomicLong totalBytesRead = new AtomicLong(0);
+        try (final CountingInputStream countingInputStream = new CountingInputStream(stream);
+                final InputStreamReader inputStreamReader = new InputStreamReader(countingInputStream);
                 final BufferedReader reader = new BufferedReader(inputStreamReader)) {
             Optional<String> selectObjectOptionalString;
-			while ((selectObjectOptionalString = Optional.ofNullable(reader.readLine())).isPresent()) {
+            while ((selectObjectOptionalString = Optional.ofNullable(reader.readLine())).isPresent()) {
                 final Optional<JsonNode> optionalNode = addingS3Reference(s3ObjectReference,
                         getJsonNode(selectObjectOptionalString.get()));
-				if (optionalNode.isPresent()){
-					Record<Event> eventRecord = new Record<>(JacksonLog.builder().withData(optionalNode.get()).build());
+                if (optionalNode.isPresent()){
+                    Record<Event> eventRecord = new Record<>(JacksonLog.builder().withData(optionalNode.get()).build());
                     try{
-					bufferAccumulator.add(eventRecord);
+                    bufferAccumulator.add(eventRecord);
                     }catch(final Exception ex){
                         throw new IOException(ex);
                     }
 
-				}
-			}
-			totalBytesRead.addAndGet(countingInputStream.getByteCount());
-		}
-		try {
-			bufferAccumulator.flush();
+                }
+            }
+            totalBytesRead.addAndGet(countingInputStream.getByteCount());
+        }
+        try {
+            bufferAccumulator.flush();
         } catch (Exception e) {
             throw new IOException(e);
-		}
-		return totalBytesRead.get();
-	}
+        }
+        return totalBytesRead.get();
+    }
 
     private JsonNode getJsonNode(String selectObjectOptionalString) throws JsonProcessingException {
         final JsonNode recordJsonNode;
@@ -193,13 +193,13 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         return recordJsonNode;
     }
 
-	private static ObjectNode getS3BucketObjectReference(final S3ObjectReference s3ObjectReference,
-			final ObjectMapper mapper) {
-		ObjectNode objNode = mapper.createObjectNode();
-		objNode.put(S3_BUCKET_NAME, s3ObjectReference.getBucketName());
-		objNode.put(S3_OBJECT_KEY, s3ObjectReference.getKey());
-		return objNode;
-	}
+    private static ObjectNode getS3BucketObjectReference(final S3ObjectReference s3ObjectReference,
+            final ObjectMapper mapper) {
+        ObjectNode objNode = mapper.createObjectNode();
+        objNode.put(S3_BUCKET_NAME, s3ObjectReference.getBucketName());
+        objNode.put(S3_OBJECT_KEY, s3ObjectReference.getKey());
+        return objNode;
+    }
 
     private String generateColumnHeader(final int columnNumber) {
         return "column" + columnNumber;
@@ -207,26 +207,26 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
 
     private JsonNode csvColumNamesRefactorInCaseNoHeader(String line) {
         final Map<String,String> finalJson = new HashMap<>();
-		try {
+        try {
             final JsonParser jsonParser = jsonFactory.createParser(line);
             final Map<String,String> jsonObject = mapper.readValue(jsonParser, Map.class);
             for(int column =0;column < jsonObject.size();column++){
                 finalJson.put(generateColumnHeader(column+1),jsonObject.get("_"+(column+1)));
             }
-		} catch (final Exception e) {
+        } catch (final Exception e) {
             LOG.error("Failed to refactor the columns names, Record - {}", line, e);
-		}
+        }
         return mapper.valueToTree(finalJson);
-	}
+    }
 
     private Optional<JsonNode> addingS3Reference(final S3ObjectReference s3ObjectReference, JsonNode recordJsonNode) {
-		try {
+        try {
             final JsonNode node = mapper.valueToTree(recordJsonNode);
             ((ObjectNode) node).set(S3_BUCKET_REFERENCE_NAME, getS3BucketObjectReference(s3ObjectReference, mapper));
             return Optional.of(node);
         } catch (final Exception e) {
             LOG.error("Failed to append the S3 reference to the record. Bucket details - {}", recordJsonNode, e);
-		}
+        }
         return Optional.empty();
-	}
+    }
 }
