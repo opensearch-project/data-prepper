@@ -1,3 +1,7 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.source.configuration;
 
 import java.util.Arrays;
@@ -20,11 +24,11 @@ public enum S3SelectSerializationFormatOption {
             ));
 
     S3SelectSerializationFormatOption(final String option) {
-        this.option = option.toLowerCase();
+        this.option = option;
     }
 
     @JsonCreator
     static S3SelectSerializationFormatOption fromOptionValue(final String option) {
-        return OPTIONS_MAP.get(option.toLowerCase());
+        return OPTIONS_MAP.get(option);
     }
 }

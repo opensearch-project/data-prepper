@@ -31,7 +31,6 @@ public class S3SourceConfig {
     private CompressionOption compression = CompressionOption.NONE;
 
     @JsonProperty("codec")
-    @NotNull
     private PluginModel codec;
 
     @JsonProperty("sqs")
@@ -57,10 +56,8 @@ public class S3SourceConfig {
 
     @JsonProperty("metadata_root_key")
     private String metadataRootKey = DEFAULT_METADATA_ROOT_KEY;
-    //Issue#1971-Start
     @JsonProperty("s3_select")
     private S3SelectOptions s3SelectOptions; 
-    //Issue#1971-End
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }
@@ -100,9 +97,7 @@ public class S3SourceConfig {
     public String getMetadataRootKey() {
         return metadataRootKey;
     }
-    //Issue#1971-Start
 	public S3SelectOptions getS3SelectOptions() {
 		return s3SelectOptions;
 	}
-	//Issue#1971-End
 }

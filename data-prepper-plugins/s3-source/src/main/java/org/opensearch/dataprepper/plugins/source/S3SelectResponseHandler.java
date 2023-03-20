@@ -1,3 +1,7 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.source;
 
 import java.util.ArrayList;
@@ -10,6 +14,10 @@ import software.amazon.awssdk.services.s3.model.SelectObjectContentEventStream;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentResponse;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentResponseHandler;
 
+/**
+ * A handler class that will be used for handling the data processing and AWS SDK client exceptions.
+ * This class is derived from <code>SelectObjectContentResponseHandler</code> in the AWS SDKv2 for Java.
+ */
 public class S3SelectResponseHandler implements SelectObjectContentResponseHandler {
     SelectObjectContentResponse response;
     List<SelectObjectContentEventStream> receivedEvents = new ArrayList<>();
@@ -33,7 +41,8 @@ public class S3SelectResponseHandler implements SelectObjectContentResponseHandl
 
     @Override
     public void complete() {
-        LOG.debug("inside complete method");
+        if(exception!=null)
+            LOG.error("Error while downloading data",exception);
     }
 
     public List<SelectObjectContentEventStream> getReceivedEvents() {
