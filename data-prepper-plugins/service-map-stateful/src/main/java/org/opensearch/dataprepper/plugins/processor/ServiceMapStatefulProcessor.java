@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
-import com.google.common.base.Objects;
 import org.apache.commons.codec.DecoderException;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
@@ -28,10 +27,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.Serializable;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.BrokenBarrierException;
@@ -154,9 +155,15 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         if (span.getServiceName() != null) {
             final String serviceName = span.getServiceName();
             final String spanId = span.getSpanId();
-            final String traceId = span.getTraceId();
             final String parentSpanId = span.getParentSpanId();
             final String spanKind = span.getKind();
+            final byte[] traceId;
+            try {
+                traceId = Hex.decodeHex(span.getTraceId());
+            } catch (DecoderException e) {
+                LOG.error("Caught DecoderException when decoding the traceId.", e);
+                return;
+            }
             currentIsolatedServiceNodes.add(new ServiceNodeData(traceId, serviceName));
             try {
                 batchStateData.put(
@@ -164,7 +171,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
                         new ServiceMapStateData(
                                 serviceName,
                                 parentSpanId.isEmpty()? null : Hex.decodeHex(parentSpanId),
-                                Hex.decodeHex(traceId),
+                                traceId,
                                 spanKind,
                                 span.getName()));
             } catch (Exception e) {
@@ -172,7 +179,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
             }
             if (parentSpanId.isEmpty()) {
                 try {
-                    currentTraceGroupWindow.put(Hex.decodeHex(traceId), span.getName());
+                    currentTraceGroupWindow.put(traceId, span.getName());
                 } catch (Exception e) {
                     LOG.error("Caught exception trying to put trace group name", e);
                 }
@@ -232,11 +239,10 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
                     return;
                 }
 
-                final String traceIdString = Hex.encodeHexString(parent.traceId);
-                previousIsolatedServiceNodes.remove(new ServiceNodeData(traceIdString, parent.serviceName));
-                currentIsolatedServiceNodes.remove(new ServiceNodeData(traceIdString, parent.serviceName));
-                previousIsolatedServiceNodes.remove(new ServiceNodeData(traceIdString, child.serviceName));
-                currentIsolatedServiceNodes.remove(new ServiceNodeData(traceIdString, child.serviceName));
+                previousIsolatedServiceNodes.remove(new ServiceNodeData(parent.traceId, parent.serviceName));
+                currentIsolatedServiceNodes.remove(new ServiceNodeData(parent.traceId, parent.serviceName));
+                previousIsolatedServiceNodes.remove(new ServiceNodeData(parent.traceId, child.serviceName));
+                currentIsolatedServiceNodes.remove(new ServiceNodeData(parent.traceId, child.serviceName));
 
                 final ServiceMapRelationship destinationRelationship =
                         ServiceMapRelationship.newDestinationRelationship(parent.serviceName,
@@ -311,15 +317,12 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         LOG.debug("Add isolated service nodes into service-map relationships.");
         previousIsolatedServiceNodes.forEach(serviceNodeData -> {
             final String traceGroupName;
-            try {
-                traceGroupName = getTraceGroupName(Hex.decodeHex(serviceNodeData.traceId));
-            } catch (DecoderException e) {
-                LOG.error("Decoder exception for traceId.");
-                return;
-            }
+            traceGroupName = getTraceGroupName(serviceNodeData.traceId);
             final ServiceMapRelationship serviceMapRelationship = ServiceMapRelationship.newIsolatedService(
                     serviceNodeData.serviceName, traceGroupName);
             addServiceMapRelationship(serviceDependencyRecords, serviceMapRelationship);
+            LOG.debug("Added node {serviceName={}, traceGroupName={}} into service-map relationship.",
+                    serviceNodeData.serviceName, traceGroupName);
         });
         LOG.debug("Done adding isolated service nodes");
     }
@@ -436,9 +439,9 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
 
     private static class ServiceNodeData implements Serializable {
         public String serviceName;
-        public String traceId;
+        public byte[] traceId;
 
-        public ServiceNodeData(final String traceId, final String serviceName) {
+        public ServiceNodeData(final byte[] traceId, final String serviceName) {
             this.traceId = traceId;
             this.serviceName = serviceName;
         }
@@ -447,13 +450,18 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
+
             ServiceNodeData that = (ServiceNodeData) o;
-            return Objects.equal(serviceName, that.serviceName) && Objects.equal(traceId, that.traceId);
+
+            if (!Objects.equals(serviceName, that.serviceName)) return false;
+            return Arrays.equals(traceId, that.traceId);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hashCode(serviceName, traceId);
+            int result = serviceName != null ? serviceName.hashCode() : 0;
+            result = 31 * result + Arrays.hashCode(traceId);
+            return result;
         }
     }
 }
