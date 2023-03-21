@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonFactory;
@@ -63,6 +64,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private final S3ObjectPluginMetrics s3ObjectPluginMetrics;
     private final CompressionType compressionType;
     private final FileHeaderInfo fileHeaderInfo;
+    private final BiConsumer<Event, S3ObjectReference> eventConsumer;
     private final ObjectMapper mapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
     public S3SelectObjectWorker(final S3ObjectRequest s3ObjectRequest) {
@@ -76,6 +78,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         this.s3ObjectPluginMetrics = s3ObjectRequest.getS3ObjectPluginMetrics();
         this.compressionType = s3ObjectRequest.getCompressionType();
         this.fileHeaderInfo = s3ObjectRequest.getFileHeaderInfo();
+        this.eventConsumer = s3ObjectRequest.getEventConsumer();
     }
 
     /**
@@ -166,6 +169,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                 if (optionalNode.isPresent()){
                     Record<Event> eventRecord = new Record<>(JacksonLog.builder().withData(optionalNode.get()).build());
                     try{
+                        eventConsumer.accept(eventRecord.getData(),s3ObjectReference);
                         bufferAccumulator.add(eventRecord);
                     }catch(final Exception ex){
                         throw new IOException(ex);

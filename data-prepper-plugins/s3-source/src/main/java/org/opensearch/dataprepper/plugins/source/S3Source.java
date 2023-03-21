@@ -60,10 +60,12 @@ public class S3Source implements Source<Record<Event>> {
         final S3ObjectHandler s3Handler;
         final S3ObjectRequest.Builder s3ObjectRequestBuilder = new S3ObjectRequest.Builder(buffer, s3SourceConfig.getNumberOfRecordsToAccumulate(),
                 s3SourceConfig.getBufferTimeout(), s3ObjectPluginMetrics);
+        final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(
+                s3SourceConfig.getMetadataRootKey());
         if (s3SelectOptional.isPresent()) {
             S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.queryStatement(s3SelectOptional.get().getQueryStatement())
                     .serializationFormatOption(s3SelectOptional.get().getS3SelectSerializationFormatOption())
-                    .s3AsyncClient(s3ClientBuilderFactory.getS3AsyncClient()).
+                    .s3AsyncClient(s3ClientBuilderFactory.getS3AsyncClient()).eventConsumer(eventMetadataModifier).
                     fileHeaderInfo(FileHeaderInfo.valueOf(s3SelectOptional.get().getCsvFileHeaderInfo().toUpperCase()))
                     .compressionType(CompressionType.valueOf(s3SourceConfig.getCompression().name()))
                     .s3SelectResponseHandler(new S3SelectResponseHandler()).build();
@@ -74,8 +76,6 @@ public class S3Source implements Source<Record<Event>> {
             final PluginModel codecConfiguration = s3SourceConfig.getCodec();
             final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
             final Codec codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
-            final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(
-                    s3SourceConfig.getMetadataRootKey());
             final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.bucketOwnerProvider(bucketOwnerProvider)
                     .eventConsumer(eventMetadataModifier).codec(codec).s3Client(s3ClientBuilderFactory.getS3Client())
                     .compressionEngine(s3SourceConfig.getCompression().getEngine()).build();

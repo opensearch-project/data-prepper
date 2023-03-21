@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -81,6 +82,8 @@ class S3SelectObjectWorkerTest {
 
     @Mock
     private S3ObjectPluginMetrics s3ObjectPluginMetrics;
+    @Mock
+    private BiConsumer<Event, S3ObjectReference> eventConsumer;
 
     public void selectObjectContentResponse(final String responseFormat){
         selectObjectContentEventStreamList = new ArrayList<>();
@@ -114,7 +117,7 @@ class S3SelectObjectWorkerTest {
         when(s3SourceConfig.getS3SelectOptions().getQueryStatement()).thenReturn(queryStatement);
         S3ObjectRequest request = new S3ObjectRequest.Builder(buffer,numberOfRecordsToAccumulate,
                 bufferTimeout,s3ObjectPluginMetrics)
-                .queryStatement(queryStatement)
+                .queryStatement(queryStatement).eventConsumer(eventConsumer)
                 .serializationFormatOption(format).fileHeaderInfo(FileHeaderInfo.NONE)
                 .s3AsyncClient(s3AsyncClient).compressionType(compressionType)
                 .s3SelectResponseHandler(selectResponseHandler).build();

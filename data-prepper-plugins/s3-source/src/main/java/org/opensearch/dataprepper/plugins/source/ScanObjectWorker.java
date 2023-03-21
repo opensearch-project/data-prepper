@@ -82,7 +82,7 @@ public class ScanObjectWorker implements Runnable{
             S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.queryStatement(scanOptionsBuilder.getQuery())
                     .serializationFormatOption(scanOptionsBuilder.getSerializationFormatOption())
                     .s3AsyncClient(s3AsyncClient).compressionType(scanOptionsBuilder.getCompressionType())
-                    .s3SelectResponseHandler(new S3SelectResponseHandler())
+                    .s3SelectResponseHandler(new S3SelectResponseHandler()).eventConsumer(eventMetadataModifier)
                     .fileHeaderInfo(scanOptionsBuilder.getCsvHeaderInfo()).build();
             s3ObjectHandler = new S3SelectObjectWorker(s3ObjectRequest);
         } else {
