@@ -14,17 +14,20 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.RequiresSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.source.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
 
 @DataPrepperPlugin(name = "s3", pluginType = Source.class, pluginConfigurationType = S3SourceConfig.class)
-public class S3Source implements Source<Record<Event>> {
+public class S3Source implements Source<Record<Event>>, RequiresSourceCoordination {
 
     private final PluginMetrics pluginMetrics;
     private final S3SourceConfig s3SourceConfig;
     private final Codec codec;
+    private SourceCoordinator sourceCoordinator;
 
     private SqsService sqsService;
 
@@ -56,5 +59,10 @@ public class S3Source implements Source<Record<Event>> {
     @Override
     public void stop() {
         sqsService.stop();
+    }
+
+    @Override
+    public void setSourceCoordinator(final SourceCoordinator sourceCoordinator) {
+        this.sourceCoordinator = sourceCoordinator;
     }
 }

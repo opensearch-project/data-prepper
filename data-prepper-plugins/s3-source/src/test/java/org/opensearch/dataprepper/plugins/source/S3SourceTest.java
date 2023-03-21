@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.source.SourceCoordinator;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -23,6 +24,7 @@ class S3SourceTest {
     private PluginMetrics pluginMetrics;
     private S3SourceConfig s3SourceConfig;
     private PluginFactory pluginFactory;
+    private SourceCoordinator sourceCoordinator;
 
 
     @BeforeEach
@@ -30,6 +32,7 @@ class S3SourceTest {
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
         s3SourceConfig = mock(S3SourceConfig.class);
         pluginFactory = mock(PluginFactory.class);
+        sourceCoordinator = mock(SourceCoordinator.class);
 
         when(s3SourceConfig.getCodec()).thenReturn(mock(PluginModel.class));
 

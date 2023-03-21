@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.parser.model;
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.parser.ByteCountDeserializer;
+import org.opensearch.dataprepper.parser.model.sourcecoordination.DynamoDBSourceCoordinationStoreConfig;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -94,6 +95,24 @@ public class DataPrepperConfigurationTests {
         assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), notNullValue());
         assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), hasKey("username"));
         assertThat(dataPrepperConfiguration.getAuthentication().getPluginSettings(), hasKey("password"));
+    }
+
+    @Test
+    void testConfigurationWithValidDynamoDbSourceCoordinationConfig() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_SOURCE_COORDINATION);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.ssl(), equalTo(false));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes().size(), Matchers.equalTo(2));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.Prometheus));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.CloudWatch));
+        assertThat(dataPrepperConfiguration.getSourceCoordinationConfig(), notNullValue());
+        assertThat(dataPrepperConfiguration.getSourceCoordinationConfig().getSourceCoordinationStoreConfig(), notNullValue());
+        assertThat(dataPrepperConfiguration.getSourceCoordinationConfig().getSourceCoordinationStoreConfig(), Matchers.instanceOf(DynamoDBSourceCoordinationStoreConfig.class));
+        final DynamoDBSourceCoordinationStoreConfig dynamoDBSourceCoordinationStoreConfig = (DynamoDBSourceCoordinationStoreConfig) dataPrepperConfiguration.getSourceCoordinationConfig().getSourceCoordinationStoreConfig();
+        assertThat(dynamoDBSourceCoordinationStoreConfig.getStoreName(), equalTo("dynamodb"));
+        assertThat(dynamoDBSourceCoordinationStoreConfig.getStoreSettings(), notNullValue());
+        assertThat(dynamoDBSourceCoordinationStoreConfig.getStoreSettings().getTableName(), equalTo("Test"));
     }
 
     @Test

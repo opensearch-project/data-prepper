@@ -5,12 +5,14 @@
 
 package org.opensearch.dataprepper.pipeline;
 
+import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.source.RequiresSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
-import com.google.common.base.Preconditions;
+import org.opensearch.dataprepper.model.source.SourceCoordinator;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
@@ -55,6 +57,7 @@ public class Pipeline {
     private final Duration peerForwarderDrainTimeout;
     private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
+    private final SourceCoordinator sourceCoordinator;
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
@@ -86,7 +89,8 @@ public class Pipeline {
             final int readBatchTimeoutInMillis,
             final Duration processorShutdownTimeout,
             final Duration sinkShutdownTimeout,
-            final Duration peerForwarderDrainTimeout) {
+            final Duration peerForwarderDrainTimeout,
+            final SourceCoordinator sourceCoordinator) {
         Preconditions.checkArgument(processorSets.stream().allMatch(
                 processorSet -> Objects.nonNull(processorSet) && (processorSet.size() == 1 || processorSet.size() == processorThreads)));
         this.name = name;
@@ -106,6 +110,8 @@ public class Pipeline {
         // TODO: allow this to be configurable as well?
         this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
+
+        this.sourceCoordinator = sourceCoordinator;
 
         stopRequested = false;
     }
@@ -179,6 +185,9 @@ public class Pipeline {
     public void execute() {
         LOG.info("Pipeline [{}] - Initiating pipeline execution", name);
         try {
+            if (source instanceof RequiresSourceCoordination) {
+                ((RequiresSourceCoordination) source).setSourceCoordinator(sourceCoordinator);
+            }
             source.start(buffer);
             LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
             for (int i = 0; i < processorThreads; i++) {

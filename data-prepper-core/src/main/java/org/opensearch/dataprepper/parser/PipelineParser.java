@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.source.Source;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import org.opensearch.dataprepper.model.source.SourceCoordinator;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
@@ -30,6 +31,7 @@ import org.opensearch.dataprepper.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
+import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +64,7 @@ public class PipelineParser {
     private static final String ATTRIBUTE_NAME = "name";
     private final String pipelineConfigurationFileLocation;
     private final RouterFactory routerFactory;
+    private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
     private final CircuitBreakerManager circuitBreakerManager;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
@@ -72,12 +75,14 @@ public class PipelineParser {
                           final PluginFactory pluginFactory,
                           final PeerForwarderProvider peerForwarderProvider,
                           final RouterFactory routerFactory,
+                          final SourceCoordinatorFactory sourceCoordinatorFactory,
                           final DataPrepperConfiguration dataPrepperConfiguration,
                           final CircuitBreakerManager circuitBreakerManager) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
+        this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
         this.circuitBreakerManager = circuitBreakerManager;
     }
@@ -173,6 +178,10 @@ public class PipelineParser {
             final Source source = pipelineSource.orElseGet(() ->
                     pluginFactory.loadPlugin(Source.class, sourceSetting));
 
+            final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(dataPrepperConfiguration);
+
+
+
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             final Buffer pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
 
@@ -220,7 +229,7 @@ public class PipelineParser {
 
             final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, router, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
-                    getPeerForwarderDrainTimeout(dataPrepperConfiguration));
+                    getPeerForwarderDrainTimeout(dataPrepperConfiguration), sourceCoordinator);
             pipelineMap.put(pipelineName, pipeline);
         } catch (Exception ex) {
             //If pipeline construction errors out, we will skip that pipeline and proceed

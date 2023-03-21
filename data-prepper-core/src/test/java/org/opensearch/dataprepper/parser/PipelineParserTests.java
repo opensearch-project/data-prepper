@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
+import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
@@ -62,6 +63,9 @@ class PipelineParserTests {
     private RouterFactory routerFactory;
 
     @Mock
+    private SourceCoordinatorFactory sourceCoordinatorFactory;
+
+    @Mock
     private DataPrepperConfiguration dataPrepperConfiguration;
     @Mock
     private PeerForwarderConfiguration peerForwarderConfiguration;
@@ -91,7 +95,7 @@ class PipelineParserTests {
     }
 
     private PipelineParser createObjectUnderTest(final String pipelineConfigurationFileLocation) {
-        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerManager);
+        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, sourceCoordinatorFactory, dataPrepperConfiguration, circuitBreakerManager);
     }
 
     @Test
