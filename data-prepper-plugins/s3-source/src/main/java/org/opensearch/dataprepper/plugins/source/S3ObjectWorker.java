@@ -128,12 +128,12 @@ class S3ObjectWorker {
                     eventConsumer.accept(record.getData(), s3ObjectReference);
                     bufferAccumulator.add(record);
                 } catch (final Exception e) {
-                    LOG.error("Failed writing S3 objects to buffer.", e);
+                    LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
             });
             totalBytesRead = inputStream.getBytesRead();
         } catch (final Exception ex) {
-            LOG.error("Error reading from S3 object: s3ObjectReference={}.", s3ObjectReference, ex);
+            LOG.error("Error reading from S3 object: s3ObjectReference={}. S3 error due to: {}", s3ObjectReference, ex.getMessage());
             s3ObjectsFailedCounter.increment();
             if(ex instanceof S3Exception) {
                 recordS3Exception((S3Exception) ex);

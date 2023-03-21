@@ -304,7 +304,7 @@ class RemotePeerForwarder implements PeerForwarder {
                 peerForwarderReceiveBuffer.writeAll(records, failedForwardingRequestLocalWriteTimeout);
                 recordsActuallyProcessedLocallyCounter.increment(records.size());
             } catch (final Exception e) {
-                LOG.error("Unable to write failed records to local peer forwarder receive buffer due to exception. Dropping {} records.", records.size(), e);
+                LOG.error("Unable to write failed records to local peer forwarder receive buffer due to {}. Dropping {} records.", e.getMessage(), records.size());
             }
 
             recordsFailedForwardingCounter.increment(records.size());
