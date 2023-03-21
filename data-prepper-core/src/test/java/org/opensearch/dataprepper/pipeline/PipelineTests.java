@@ -14,7 +14,9 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.source.UsesSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.source.SourceCoordinator;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.pipeline.common.TestProcessor;
@@ -22,7 +24,9 @@ import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
 import org.opensearch.dataprepper.plugins.TestSink;
 import org.opensearch.dataprepper.plugins.TestSource;
+import org.opensearch.dataprepper.plugins.TestSourceWithCoordination;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -44,10 +48,13 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class PipelineTests {
@@ -56,6 +63,7 @@ class PipelineTests {
     private static final String TEST_PIPELINE_NAME = "test-pipeline";
 
     private Router router;
+    private SourceCoordinatorFactory sourceCoordinatorFactory;
     private Pipeline testPipeline;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
@@ -64,6 +72,7 @@ class PipelineTests {
     @BeforeEach
     void setup() {
         router = mock(Router.class);
+        sourceCoordinatorFactory = mock(SourceCoordinatorFactory.class);
         processorShutdownTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt(10)));
         sinkShutdownTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt(10)));
         peerForwarderDrainTimeout = Duration.ofSeconds(Math.abs(new Random().nextInt(10)));
@@ -83,7 +92,8 @@ class PipelineTests {
         final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, sourceCoordinatorFactory,
+                TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
                 processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
@@ -106,6 +116,7 @@ class PipelineTests {
                 Collections.singletonList(Collections.singletonList(testProcessor)),
                 Collections.singletonList(sinkDataFlowComponent),
                 router,
+                sourceCoordinatorFactory,
                 TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
@@ -129,6 +140,7 @@ class PipelineTests {
                 Collections.singletonList(Collections.singletonList(testProcessor)),
                 Collections.singletonList(sinkDataFlowComponent),
                 router,
+                sourceCoordinatorFactory,
                 TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
@@ -149,7 +161,8 @@ class PipelineTests {
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
         try {
             final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                    Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                    Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, sourceCoordinatorFactory,
+                    TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
                     processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
             testPipeline.execute();
         } catch (Exception ex) {
@@ -167,11 +180,13 @@ class PipelineTests {
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
         try {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                    Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                    Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, sourceCoordinatorFactory,
+                    TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
                     processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
             testPipeline.execute();
             Thread.sleep(TEST_READ_BATCH_TIMEOUT);
         } catch (Exception ex) {
+            verifyNoInteractions(sourceCoordinatorFactory);
             assertThat("Incorrect exception message", ex.getMessage().contains("Sink is expected to fail"));
             assertThat("Exception from sink should trigger shutdown of pipeline", testPipeline.isStopRequested());
         }
@@ -209,6 +224,7 @@ class PipelineTests {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                     Collections.singletonList(Collections.singletonList(testProcessor)), Collections.singletonList(sinkDataFlowComponent),
                     router,
+                    sourceCoordinatorFactory,
                     TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
             testPipeline.execute();
             Thread.sleep(TEST_READ_BATCH_TIMEOUT);
@@ -219,13 +235,37 @@ class PipelineTests {
     }
 
     @Test
+    void testExecuteOnSourceWithRequiredSourceCoordination_sets_source_coordinator() {
+        final Source<Record<String>> testSource = new TestSourceWithCoordination();
+        final Source<Record<String>> sourceSpy = spy(testSource);
+
+        final Sink<Record<String>> testSink = new TestSink();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+
+        final SourceCoordinator sourceCoordinator = mock(SourceCoordinator.class);
+        given(sourceCoordinatorFactory.provideSourceCoordinator(String.class)).willReturn(sourceCoordinator);
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        try {
+            testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                    Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, sourceCoordinatorFactory,
+                    TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                    processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+            testPipeline.execute();
+            Thread.sleep(TEST_READ_BATCH_TIMEOUT);
+        } catch (final InterruptedException e) {
+            verify((UsesSourceCoordination)sourceSpy).getPartitionProgressStateClass();
+            verify((UsesSourceCoordination)sourceSpy).setSourceCoordinator(sourceCoordinator);
+        }
+    }
+
+    @Test
     void testGetSource() {
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink();
         final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
-                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router,
+                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router, sourceCoordinatorFactory,
                 TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
                 processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
 
@@ -241,6 +281,7 @@ class PipelineTests {
         final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
                 Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent),
                 router,
+                sourceCoordinatorFactory,
                 TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
 
         assertEquals(1, testPipeline.getSinks().size());
@@ -275,7 +316,7 @@ class PipelineTests {
 
         private Pipeline createObjectUnderTest() {
             return new Pipeline(TEST_PIPELINE_NAME, mock(Source.class), mock(Buffer.class), Collections.emptyList(),
-                    dataFlowComponents, router,
+                    dataFlowComponents, router, sourceCoordinatorFactory,
                     TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
         }
 

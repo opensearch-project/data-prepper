@@ -5,18 +5,21 @@
 
 package org.opensearch.dataprepper.pipeline;
 
+import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.source.UsesSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
-import com.google.common.base.Preconditions;
+import org.opensearch.dataprepper.model.source.SourceCoordinator;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
+import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +51,8 @@ public class Pipeline {
     private final List<List<Processor>> processorSets;
     private final List<DataFlowComponent<Sink>> sinks;
     private final Router router;
+
+    private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final int processorThreads;
     private final int readBatchTimeoutInMillis;
     private final Duration processorShutdownTimeout;
@@ -82,6 +87,7 @@ public class Pipeline {
             @Nonnull final List<List<Processor>> processorSets,
             @Nonnull final List<DataFlowComponent<Sink>> sinks,
             @Nonnull final Router router,
+            final SourceCoordinatorFactory sourceCoordinatorFactory,
             final int processorThreads,
             final int readBatchTimeoutInMillis,
             final Duration processorShutdownTimeout,
@@ -95,6 +101,7 @@ public class Pipeline {
         this.processorSets = processorSets;
         this.sinks = sinks;
         this.router = router;
+        this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.processorThreads = processorThreads;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
         this.processorShutdownTimeout = processorShutdownTimeout;
@@ -179,6 +186,11 @@ public class Pipeline {
     public void execute() {
         LOG.info("Pipeline [{}] - Initiating pipeline execution", name);
         try {
+            if (source instanceof UsesSourceCoordination) {
+                final Class<?> partionProgressModelClass = ((UsesSourceCoordination) source).getPartitionProgressStateClass();
+                final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(partionProgressModelClass);
+                ((UsesSourceCoordination) source).setSourceCoordinator(sourceCoordinator);
+            }
             source.start(buffer);
             LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
             for (int i = 0; i < processorThreads; i++) {
