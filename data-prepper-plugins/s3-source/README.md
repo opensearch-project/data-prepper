@@ -43,10 +43,64 @@ source:
       sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
 ```
 
+The following configuration shows a minimum configuration for reading content using S3 select service and Scanning from S3 bucket which
+are not compressed.
+
+```
+source-pipeline:
+  source:
+    s3:
+      notification_type: sqs
+      compression: none
+      s3_select:
+        query_statement: "select * from s3object s LIMIT 10000"
+        data_serialization_format: csv
+        csv_file_header: use
+      sqs:
+        queue_url: https://sqs.us-east-2.amazonaws.com/895099425385/data-prepper-testing
+      aws:
+        region: "us-east-2"
+        sts_role_arn: "arn:aws:iam::895099425785:role/data-prepper-s3source-execution-role"
+      scan:
+        start_time: 2023-03-25T10:00:00
+        range: 1d
+        buckets:
+          - bucket:
+              name: my-bucket-1
+              codec:
+                csv:
+              key_path:
+                - my/prefix/a
+                - my/prefix/b
+          - bucket:
+              name: my-bucket-2
+              s3_select:
+                query_statement: "select * from s3object s LIMIT 10000"
+                data_serialization_format: parquet
+              key_path:
+                - my/prefix/a
+
+```
+
 ## Configuration Options
 
 All Duration values are a string that represents a duration. They support ISO_8601 notation string ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms").
 
+* `s3_select` : S3 Select Configuration.
+
+* `query_statement` : Provide s3 select query to process the data using S3 select for the particular bucket.
+
+* `data_serialization_format` : Provide the s3 select file format (csv/json/Apache Parquet) Amazon S3 uses this format to parse object data into records and returns only records that match the specified SQL expression. You must also specify the data serialization format for the response.
+
+* `csv_file_header` : Provide CSV Header example : `use` , `none` , `ignore`.
+
+* `bucket_name` : Provide S3 bucket name.
+
+* `key_prefixes` : Provide Key Names.
+
+* `start_time` : Provide the start time to slurp the data example : `2023-01-23T10:00:00`.
+
+* `range` : Provide the duration to scan the data example : `day` , `week` , `month` , `year`.
 
 * `notification_type` : Must be `sqs`.
 
