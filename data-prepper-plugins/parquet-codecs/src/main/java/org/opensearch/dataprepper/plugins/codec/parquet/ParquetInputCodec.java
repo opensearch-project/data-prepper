@@ -18,6 +18,7 @@ import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
@@ -45,7 +46,8 @@ public class ParquetInputCodec implements InputCodec {
     private static final String MESSAGE_FIELD_NAME = "message";
     private static final String FILE_NAME = "parquet-data";
     private static final String FILE_SUFFIX = ".parquet";
-    private static final int EMPTY_INPUT_STREAM_VALUE = 0;
+
+    private static int fieldIndex;
     private static final Logger LOG = LoggerFactory.getLogger(ParquetInputCodec.class);
 
     @Override
@@ -59,7 +61,7 @@ public class ParquetInputCodec implements InputCodec {
 
     private void parseParquetStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) throws IOException {
 
-        final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
+         final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
         Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
         try (ParquetFileReader parquetFileReader = new ParquetFileReader(HadoopInputFile.fromPath(new Path(tempFile.toURI()), new Configuration()), ParquetReadOptions.builder().build())) {
@@ -76,10 +78,24 @@ public class ParquetInputCodec implements InputCodec {
                 final Map<String, String> eventData = new HashMap<>();
 
                 for (int row = 0; row < rows; row++) {
-                    final SimpleGroup simpleGroup = (SimpleGroup) recordReader.read();
-                    eventData.put(MESSAGE_FIELD_NAME, simpleGroup.toString());
-                    final Event event = JacksonLog.builder().withData(eventData).build();
-                    eventConsumer.accept(new Record<>(event));
+
+                        fieldIndex = 0;
+                        final SimpleGroup simpleGroup = (SimpleGroup) recordReader.read();
+                        for (Type field : schema.getFields()) {
+
+                            try {
+                                eventData.put(field.getName(), simpleGroup.getValueToString(fieldIndex, 0));
+                            }
+                            catch (Exception parquetException){
+                                eventData.put(field.getName(), "unknown");
+                                LOG.error("Unreadable or bad record");
+                            }
+
+                            fieldIndex++;
+
+                        }
+                        final Event event = JacksonLog.builder().withData(eventData).build();
+                        eventConsumer.accept(new Record<>(event));
                 }
             }
         } catch (Exception parquetException) {
