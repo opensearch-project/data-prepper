@@ -416,7 +416,7 @@ public class ConnectionConfiguration {
         credentialsProvider = DefaultCredentialsProvider.create();
       }
       final String serviceName = awsServerless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
-      return new AwsSdk2Transport(createSdkHttpClient(), hosts.get(0),
+      return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).getHostName(),
               serviceName, Region.of(awsRegion),
               AwsSdk2TransportOptions.builder()
                       .setCredentials(credentialsProvider)
