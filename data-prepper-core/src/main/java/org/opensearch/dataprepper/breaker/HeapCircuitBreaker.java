@@ -88,13 +88,13 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
                 System.gc();
                 resetTime = Instant.now().plus(resetPeriod);
                 openGauge.set(OPEN_METRIC_VALUE);
-                LOG.info("Circuit breaker tripped and open. {} used > {} configured", usedMemoryBytes, usageBytes);
+                LOG.info("Circuit breaker tripped and open. {} used memory bytes > {} configured", usedMemoryBytes, usageBytes);
             }
         } else {
             open = false;
             if(previousOpen) {
                 openGauge.set(CLOSED_METRIC_VALUE);
-                LOG.info("Circuit breaker closed. {} used <= {} configured", usedMemoryBytes, usageBytes);
+                LOG.info("Circuit breaker closed. {} used memory bytes <= {} configured", usedMemoryBytes, usageBytes);
             }
         }
     }
