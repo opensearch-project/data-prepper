@@ -63,6 +63,8 @@ public class JacksonEvent implements Event {
 
     private final EventMetadata eventMetadata;
 
+    private EventHandle eventHandle;
+
     private final JsonNode jsonNode;
 
     static final int MAX_KEY_LENGTH = 2048;
@@ -142,6 +144,15 @@ public class JacksonEvent implements Event {
                 }
             }
         }
+    }
+
+    public void setEventHandle(EventHandle handle) {
+        this.eventHandle = handle;
+    }
+
+    @Override
+    public EventHandle getEventHandle() {
+        return eventHandle;
     }
 
     private void setNode(final JsonNode parentNode, final String leafKey, final Object value) {
