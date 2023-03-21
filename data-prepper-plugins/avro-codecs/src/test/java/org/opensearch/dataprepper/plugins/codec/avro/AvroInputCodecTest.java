@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.plugins.codec.avro;
+package org.opensearch.dataprepper.plugins.codec.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -97,7 +97,7 @@ public class AvroInputCodecTest {
     public void parse_with_null_Consumer_throws() {
         avroInputCodec=createObjectUnderTest();
 
-        final InputStream inputStream=mock(InputStream.class);
+        final InputStream inputStream = mock(InputStream.class);
         assertThrows(NullPointerException.class,()->
                 avroInputCodec.parse(inputStream,null));
 
@@ -123,9 +123,9 @@ public class AvroInputCodecTest {
 
         avroInputCodec.parse(inputStream,eventConsumer);
 
-        final ArgumentCaptor<Record<Event>> recordArgumentCaptor=ArgumentCaptor.forClass(Record.class);
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         verify(eventConsumer, times(numberOfRecords)).accept(recordArgumentCaptor.capture());
-        final List<Record<Event>> actualRecords=recordArgumentCaptor.getAllValues();
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         assertThat(actualRecords.size(), equalTo(numberOfRecords));
 
         for (final Record<Event> actualRecord : actualRecords) {
@@ -169,9 +169,9 @@ public class AvroInputCodecTest {
 
     private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
 
-        List<GenericRecord> recordList=new ArrayList<>();
+        List<GenericRecord> recordList = new ArrayList<>();
 
-        Random random=new Random();
+        Random random = new Random();
 
         for(int rows = 0; rows < numberOfRecords; rows++){
 

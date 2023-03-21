@@ -70,7 +70,11 @@ public class AvroInputCodec implements InputCodec {
 
             for (GenericRecord record : fileReader) {
 
-                eventData.put(MESSAGE_FIELD_NAME, record.toString());
+                for(Schema.Field field : schema.getFields()) {
+
+                    eventData.put(field.name(), record.get(field.name()).toString());
+
+                }
                 final Event event = JacksonLog.builder().withData(eventData).build();
                 eventConsumer.accept(new Record<>(event));
 
