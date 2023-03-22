@@ -88,8 +88,8 @@ public abstract class AbstractBuffer<T extends Record<?>> implements Buffer<T> {
      * to perform the actual write
      *
      * @param records          the collection of Record to add
-     * @param timeoutInMillis how long to wait before giving up
-     * @throws Exception
+     * @param timeoutInMillis  how long to wait before giving up
+     * @throws Exception       Exception passed up
      */
     @Override
     public void writeAll(Collection<T> records, int timeoutInMillis) throws Exception {

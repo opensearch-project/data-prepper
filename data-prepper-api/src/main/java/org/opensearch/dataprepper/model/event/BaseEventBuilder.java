@@ -13,6 +13,7 @@ public interface BaseEventBuilder<T extends Event> {
      * Sets the event type for the metadata if a {@link #withEventMetadata} is not used.
      *
      * @param eventType the event type
+     * @return returns the base event builder
      * @since 2.2
      */
     BaseEventBuilder<T> withEventType(final String eventType);
@@ -21,6 +22,7 @@ public interface BaseEventBuilder<T extends Event> {
      * Sets the attributes for the metadata if a {@link #withEventMetadata} is not used.
      *
      * @param eventMetadataAttributes the attributes
+     * @return returns the base event builder
      * @since 2.2
      */
     BaseEventBuilder<T> withEventMetadataAttributes(final Map<String, Object> eventMetadataAttributes);
@@ -29,6 +31,7 @@ public interface BaseEventBuilder<T extends Event> {
      * Sets the time received for the metadata if a {@link #withEventMetadata} is not used.
      *
      * @param timeReceived the time an event was received
+     * @return returns the base event builder
      * @since 2.2
      */
     BaseEventBuilder<T> withTimeReceived(final Instant timeReceived);
@@ -37,6 +40,7 @@ public interface BaseEventBuilder<T extends Event> {
      * Sets the metadata.
      *
      * @param eventMetadata the metadata
+     * @return returns the base event builder
      * @since 2.2
      */
     BaseEventBuilder<T> withEventMetadata(final EventMetadata eventMetadata);
@@ -45,6 +49,7 @@ public interface BaseEventBuilder<T extends Event> {
      * Sets the data of the event.
      *
      * @param data the data
+     * @return returns the base event builder
      * @since 2.2
      */
     BaseEventBuilder<T> withData(final Object data);

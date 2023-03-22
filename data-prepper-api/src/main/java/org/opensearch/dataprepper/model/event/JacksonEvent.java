@@ -435,6 +435,7 @@ public class JacksonEvent implements Event {
          * Sets the event type for the metadata if a {@link #withEventMetadata} is not used.
          *
          * @param eventType the event type
+         * @return returns the builder
          * @since 1.2
          */
         public Builder<T> withEventType(final String eventType) {
@@ -446,6 +447,7 @@ public class JacksonEvent implements Event {
          * Sets the attributes for the metadata if a {@link #withEventMetadata} is not used.
          *
          * @param eventMetadataAttributes the attributes
+         * @return returns the builder
          * @since 1.2
          */
         public Builder<T> withEventMetadataAttributes(final Map<String, Object> eventMetadataAttributes) {
@@ -457,6 +459,7 @@ public class JacksonEvent implements Event {
          * Sets the time received for the metadata if a {@link #withEventMetadata} is not used.
          *
          * @param timeReceived the time an event was received
+         * @return returns the builder
          * @since 1.2
          */
         public Builder<T> withTimeReceived(final Instant timeReceived) {
@@ -468,6 +471,7 @@ public class JacksonEvent implements Event {
          * Sets the metadata.
          *
          * @param eventMetadata the metadata
+         * @return returns the builder
          * @since 1.2
          */
         public Builder<T> withEventMetadata(final EventMetadata eventMetadata) {
@@ -479,6 +483,7 @@ public class JacksonEvent implements Event {
          * Sets the data of the event.
          *
          * @param data the data
+         * @return returns the builder
          * @since 1.2
          */
         public Builder<T> withData(final Object data) {

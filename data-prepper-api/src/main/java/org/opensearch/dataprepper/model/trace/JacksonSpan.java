@@ -226,6 +226,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Sets the data of the event.
          *
          * @param data JSON representation of the data
+         * @return returns the builder
          * @since 2.0
          */
         public Builder withJsonData(final String data) {
@@ -241,6 +242,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Sets the data of the event.
          *
          * @param data the data
+         * @return returns the builder
          * @since 2.0
          */
         @Override
@@ -253,6 +255,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Sets the metadata.
          *
          * @param eventMetadata the metadata
+         * @return returns the builder
          * @since 2.0
          */
         @Override
@@ -264,7 +267,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the span id.
          *
-         * @param spanId
+         * @param spanId span id
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withSpanId(final String spanId) {
@@ -275,7 +279,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the trace id for the span.
          *
-         * @param traceId
+         * @param traceId trace id
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withTraceId(final String traceId) {
@@ -286,7 +291,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the trace state
          *
-         * @param traceState
+         * @param traceState trace state
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withTraceState(final String traceState) {
@@ -297,7 +303,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the parent span id.
          *
-         * @param parentSpanId
+         * @param parentSpanId parent span id
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withParentSpanId(final String parentSpanId) {
@@ -308,7 +315,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the span name
          *
-         * @param name
+         * @param name name
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withName(final String name) {
@@ -319,7 +327,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the type of span
          *
-         * @param kind
+         * @param kind kind
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withKind(final String kind) {
@@ -330,7 +339,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the start time of the span
          *
-         * @param startTime
+         * @param startTime start time
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withStartTime(final String startTime) {
@@ -341,7 +351,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the end time of the span
          *
-         * @param endTime
+         * @param endTime end time
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withEndTime(final String endTime) {
@@ -353,6 +364,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Optional - sets the attributes for {@link JacksonSpan}. Default is an empty map.
          *
          * @param attributes the attributes to associate with this event.
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withAttributes(final Map<String, Object> attributes) {
@@ -364,6 +376,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Optional - sets the dropped attribute count for {@link JacksonSpan}. Default is 0.
          *
          * @param droppedAttributesCount the total number of dropped attributes
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {
@@ -375,6 +388,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Optional - sets the events for {@link JacksonSpan}. Default is an empty list.
          *
          * @param events the events to associate.
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withEvents(final List<? extends SpanEvent> events) {
@@ -386,6 +400,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Optional - sets the dropped events count for {@link JacksonSpan}. Default is 0.
          *
          * @param droppedEventsCount the total number of dropped events
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withDroppedEventsCount(final Integer droppedEventsCount) {
@@ -397,6 +412,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Optional - sets the links for {@link JacksonSpan}. Default is an empty list.
          *
          * @param links the links to associate.
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withLinks(final List<? extends Link> links) {
@@ -408,6 +424,7 @@ public class JacksonSpan extends JacksonEvent implements Span {
          * Optional - sets the dropped links count for {@link JacksonSpan}. Default is 0.
          *
          * @param droppedLinksCount the total number of dropped links
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withDroppedLinksCount(final Integer droppedLinksCount) {
@@ -418,7 +435,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the trace group name
          *
-         * @param traceGroup
+         * @param traceGroup trace group
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withTraceGroup(final String traceGroup) {
@@ -429,7 +447,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the duration of the span
          *
-         * @param durationInNanos
+         * @param durationInNanos duration of the span in nano seconds
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withDurationInNanos(final Long durationInNanos) {
@@ -440,7 +459,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the trace group fields
          *
-         * @param traceGroupFields
+         * @param traceGroupFields trace group fields
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withTraceGroupFields(final TraceGroupFields traceGroupFields) {
@@ -451,7 +471,8 @@ public class JacksonSpan extends JacksonEvent implements Span {
         /**
          * Sets the service name of the span
          *
-         * @param serviceName
+         * @param serviceName name of the service
+         * @return returns the builder
          * @since 1.3
          */
         public Builder withServiceName(final String serviceName) {
