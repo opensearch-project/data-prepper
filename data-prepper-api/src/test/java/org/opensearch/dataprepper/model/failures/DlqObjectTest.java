@@ -12,8 +12,9 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.TimeUnit;
 
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.allOf;
@@ -222,29 +223,40 @@ public class DlqObjectTest {
         }
 
         @Test
-        void test_equals_returns_false_for_two_instances_with_different_values() throws InterruptedException {
-            TimeUnit.SECONDS.sleep(1); // To ensure that the timestamp is different
+        void test_equals_returns_false_for_two_instances_with_different_values() {
+
+            final ZonedDateTime now = Instant.now().atZone(ZoneOffset.UTC);
+
+            final Instant olderInstant = Instant.now().atZone(ZoneOffset.UTC)
+                .withHour(now.getHour() -  1)
+                .toInstant();
 
             final DlqObject otherTestObject = DlqObject.builder()
                 .withPluginId(pluginId)
                 .withPluginName(pluginName)
                 .withPipelineName(pipelineName)
                 .withFailedData(failedData)
+                .withTimestamp(olderInstant)
                 .build();
 
-            assertThat(testObject, is(not(equalTo(otherTestObject))
-            ));
+            assertThat(testObject, is(not(equalTo(otherTestObject))));
         }
 
         @Test
-        void test_hash_codes_for_two_instances_have_different_values() throws InterruptedException {
-            TimeUnit.SECONDS.sleep(1); // To ensure that the timestamp is different
+        void test_hash_codes_for_two_instances_have_different_values() {
+
+            final ZonedDateTime now = Instant.now().atZone(ZoneOffset.UTC);
+
+            final Instant olderInstant = Instant.now().atZone(ZoneOffset.UTC)
+                .withHour(now.getHour() -  1)
+                .toInstant();
 
             final DlqObject otherTestObject = DlqObject.builder()
                 .withPluginId(pluginId)
                 .withPluginName(pluginName)
                 .withPipelineName(pipelineName)
                 .withFailedData(failedData)
+                .withTimestamp(olderInstant)
                 .build();
 
             assertThat(testObject.hashCode(), is(not(equalTo(otherTestObject.hashCode()))));

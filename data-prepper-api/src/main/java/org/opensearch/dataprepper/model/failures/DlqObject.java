@@ -152,6 +152,11 @@ public class DlqObject {
             return this;
         }
 
+        public Builder withTimestamp(final Instant instant) {
+            this.timestamp = FORMATTER.format(instant);
+            return this;
+        }
+
         public DlqObject build() {
             return new DlqObject(this.pluginId, this.pluginName, this.pipelineName, this.timestamp, this.failedData);
         }
