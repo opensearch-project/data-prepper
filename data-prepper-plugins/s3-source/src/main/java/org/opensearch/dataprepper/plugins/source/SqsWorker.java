@@ -81,7 +81,8 @@ public class SqsWorker implements Runnable {
             try {
                 messagesProcessed = processSqsMessages();
             } catch (Exception e) {
-                LOG.error("Unable to process SQS messages with configuration provided", e);
+                LOG.error("Unable to process SQS messages with configuration provided. " +
+                        "Processing error due to: {}", e.getMessage());
             }
 
             if (messagesProcessed > 0 && s3SourceConfig.getSqsOptions().getPollDelay().toMillis() > 0) {

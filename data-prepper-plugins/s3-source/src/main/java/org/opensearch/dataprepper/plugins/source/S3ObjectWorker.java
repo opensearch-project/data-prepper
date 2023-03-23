@@ -91,7 +91,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                     eventConsumer.accept(record.getData(), s3ObjectReference);
                     bufferAccumulator.add(record);
                 } catch (final Exception e) {
-                    LOG.error("Failed writing S3 objects to buffer.", e);
+                    LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
             });
             totalBytesRead = inputStream.getBytesRead();

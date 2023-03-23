@@ -21,6 +21,7 @@ pipeline:
       password: YOUR_PASSWORD_HERE
       index_type: trace-analytics-raw
       dlq_file: /your/local/dlq-file
+      max_retries: 20
       bulk_size: 4
 ```
 
@@ -138,6 +139,9 @@ e.g. [otel-v1-apm-span-index-template.json](https://github.com/opensearch-projec
 
 - `dlq_file`(optional): A String of absolute file path for DLQ failed output records. Defaults to null.
 If not provided, failed records will be written into the default data-prepper log file (`logs/Data-Prepper.log`).
+
+- `max_retries`(optional): A number indicating the maximum number of times OpenSearch Sink should try to push the data to the OpenSearch server before considering it as failure. Defaults to `Integer.MAX_VALUE`.
+If not provided, the sink will try to push the data to OpenSearch server indefinitely because default value is very high and exponential backoff would increase the waiting time before retry.
 
 - `bulk_size` (optional): A long of bulk size in bulk requests in MB. Default to 5 MB. If set to be less than 0,
 all the records received from the upstream prepper at a time will be sent as a single bulk request.

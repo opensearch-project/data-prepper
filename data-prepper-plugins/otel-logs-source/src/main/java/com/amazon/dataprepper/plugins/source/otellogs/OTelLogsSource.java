@@ -70,8 +70,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.oTelLogsSourceConfig = oTelLogsSourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.certificateProviderFactory = certificateProviderFactory;
-        this.authenticationProvider = createAuthenticationProvider(pluginFactory, pipelineDescription);
         this.pipelineName = pipelineDescription.getPipelineName();
+        this.authenticationProvider = createAuthenticationProvider(pluginFactory);
     }
 
     @Override
@@ -188,7 +188,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         return Collections.singletonList(authenticationInterceptor);
     }
 
-    private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory, final PipelineDescription pipelineDescription) {
+    private GrpcAuthenticationProvider createAuthenticationProvider(final PluginFactory pluginFactory) {
         final PluginModel authenticationConfiguration = oTelLogsSourceConfig.getAuthentication();
 
         if (authenticationConfiguration == null || authenticationConfiguration.getPluginName().equals(GrpcAuthenticationProvider.UNAUTHENTICATED_PLUGIN_NAME)) {

@@ -34,6 +34,9 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 public class JacksonEventTest {
+    
+    class TestEventHandle implements EventHandle {
+    };
 
     private Event event;
 
@@ -583,6 +586,19 @@ public class JacksonEventTest {
 
         assertThat(createdEvent.getMetadata(), notNullValue());
         assertThat(createdEvent.getMetadata(), equalTo(eventMetadata));
+    }
+
+    @Test
+    void testEventHandleGetAndSet() {
+        EventHandle testEventHandle = new TestEventHandle();
+        final String jsonString = "{\"foo\": \"bar\"}";
+
+        final JacksonEvent event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .build();
+        event.setEventHandle(testEventHandle);
+        assertThat(event.getEventHandle(), equalTo(testEventHandle));
     }
 
     private static Map<String, Object> createComplexDataMap() {

@@ -36,6 +36,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertFalse;
@@ -147,25 +148,25 @@ public class ServiceMapStatefulProcessorTest {
         final String traceGroup2 = "checkout";
 
         final Span frontendSpans1 = ServiceMapTestUtils.getSpan(FRONTEND_SERVICE, traceGroup1, rootSpanId1,
-                "", traceId1, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+                "", traceId1, SPAN_KIND_CLIENT);
         final Span authenticationSpansServer = ServiceMapTestUtils.getSpan(AUTHENTICATION_SERVICE, "reset",
                 Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)), frontendSpans1.getSpanId(), traceId1,
                 io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);
         final Span authenticationSpansClient = ServiceMapTestUtils.getSpan(AUTHENTICATION_SERVICE, "reset",
                 Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)), authenticationSpansServer.getSpanId(), traceId1,
-                io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+                SPAN_KIND_CLIENT);
         final Span passwordDbSpans = ServiceMapTestUtils.getSpan(PASSWORD_DATABASE, "update",
                 Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)), authenticationSpansClient.getSpanId(), traceId1,
                 io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);
 
         final Span frontendSpans2 = ServiceMapTestUtils.getSpan(FRONTEND_SERVICE, traceGroup2, rootSpanId2,
-                "", traceId2, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+                "", traceId2, SPAN_KIND_CLIENT);
         final Span checkoutSpansServer = ServiceMapTestUtils.getSpan(CHECKOUT_SERVICE, "checkout",
                 Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)), rootSpanId2, traceId2,
                 io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);
         final Span checkoutSpansClient = ServiceMapTestUtils.getSpan(CHECKOUT_SERVICE, "checkout",
                 Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)), checkoutSpansServer.getSpanId(), traceId2,
-                io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+                SPAN_KIND_CLIENT);
         final Span cartSpans = ServiceMapTestUtils.getSpan(CART_SERVICE, "get_items",
                 Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)), checkoutSpansClient.getSpanId(), traceId2,
                 io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);
@@ -176,15 +177,15 @@ public class ServiceMapStatefulProcessorTest {
 
         //Expected relationships
         final ServiceMapRelationship frontendAuth = ServiceMapRelationship.newDestinationRelationship(
-                FRONTEND_SERVICE, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT.name(), AUTHENTICATION_SERVICE, "reset", traceGroup1);
+                FRONTEND_SERVICE, SPAN_KIND_CLIENT.name(), AUTHENTICATION_SERVICE, "reset", traceGroup1);
         final ServiceMapRelationship authPassword = ServiceMapRelationship.newDestinationRelationship(
-                AUTHENTICATION_SERVICE, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT.name(), PASSWORD_DATABASE, "update", traceGroup1);
+                AUTHENTICATION_SERVICE, SPAN_KIND_CLIENT.name(), PASSWORD_DATABASE, "update", traceGroup1);
         final ServiceMapRelationship frontendCheckout = ServiceMapRelationship.newDestinationRelationship(
-                FRONTEND_SERVICE, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT.name(), CHECKOUT_SERVICE, "checkout", traceGroup2);
+                FRONTEND_SERVICE, SPAN_KIND_CLIENT.name(), CHECKOUT_SERVICE, "checkout", traceGroup2);
         final ServiceMapRelationship checkoutCart = ServiceMapRelationship.newDestinationRelationship(
-                CHECKOUT_SERVICE, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT.name(), CART_SERVICE, "get_items", traceGroup2);
+                CHECKOUT_SERVICE, SPAN_KIND_CLIENT.name(), CART_SERVICE, "get_items", traceGroup2);
         final ServiceMapRelationship checkoutPayment = ServiceMapRelationship.newDestinationRelationship(
-                CHECKOUT_SERVICE, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT.name(), PAYMENT_SERVICE, "charge", traceGroup2);
+                CHECKOUT_SERVICE, SPAN_KIND_CLIENT.name(), PAYMENT_SERVICE, "charge", traceGroup2);
 
         final ServiceMapRelationship checkoutTarget = ServiceMapRelationship.newTargetRelationship(
                 CHECKOUT_SERVICE, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER.name(), CHECKOUT_SERVICE, "checkout", traceGroup2);
@@ -297,7 +298,7 @@ public class ServiceMapStatefulProcessorTest {
         final String rootSpanId3 = Hex.encodeHexString(rootSpanId3Bytes);
         final String traceId3 = Hex.encodeHexString(traceId3Bytes);
         final Span frontendSpans3 = ServiceMapTestUtils.getSpan(
-                FRONTEND_SERVICE, traceGroup1, rootSpanId3, rootSpanId3, traceId3, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+                FRONTEND_SERVICE, traceGroup1, rootSpanId3, rootSpanId3, traceId3, SPAN_KIND_CLIENT);
         final Span authenticationSpansServer2 = ServiceMapTestUtils.getSpan(
                 AUTHENTICATION_SERVICE, "reset", Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)),
                 frontendSpans3.getSpanId(), traceId3, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);
@@ -320,6 +321,66 @@ public class ServiceMapStatefulProcessorTest {
     }
 
     @Test
+    public void testTraceGroupsWithIsolatedServiceEventRecordData() throws Exception {
+        final Clock clock = Mockito.mock(Clock.class);
+        Mockito.when(clock.millis()).thenReturn(1L);
+        Mockito.when(clock.instant()).thenReturn(Instant.now());
+        ExecutorService threadpool = Executors.newCachedThreadPool();
+        final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
+        final ServiceMapStatefulProcessor serviceMapStateful1 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
+        final ServiceMapStatefulProcessor serviceMapStateful2 = new ServiceMapStatefulProcessor(100, path, clock, 2, pluginSetting);
+
+        final byte[] rootSpanIdBytes = ServiceMapTestUtils.getRandomBytes(8);
+        final byte[] traceIdBytes = ServiceMapTestUtils.getRandomBytes(16);
+        final String rootSpanId = Hex.encodeHexString(rootSpanIdBytes);
+        final String traceId = Hex.encodeHexString(traceIdBytes);
+
+        final String traceGroup = "reset_password";
+
+        final Span frontendSpans1 = ServiceMapTestUtils.getSpan(FRONTEND_SERVICE, traceGroup, rootSpanId,
+                "", traceId, SPAN_KIND_CLIENT);
+        final Span frontendSpans2 = ServiceMapTestUtils.getSpan(FRONTEND_SERVICE, "reset",
+                Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)), frontendSpans1.getSpanId(), traceId,
+                io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);
+
+        //Expected relationships
+        final ServiceMapRelationship frontend = ServiceMapRelationship.newIsolatedService(
+                FRONTEND_SERVICE, traceGroup);
+
+        final Set<ServiceMapRelationship> relationshipsFound = new HashSet<>();
+
+        Future<Set<ServiceMapRelationship>> r1 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Arrays.asList(new Record<>(frontendSpans1)));
+        Future<Set<ServiceMapRelationship>> r2 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Arrays.asList(new Record<>(frontendSpans2)));
+        relationshipsFound.addAll(r1.get());
+        relationshipsFound.addAll(r2.get());
+
+        Mockito.when(clock.millis()).thenReturn(110L);
+        Future<Set<ServiceMapRelationship>> r3 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Collections.emptyList());
+        Future<Set<ServiceMapRelationship>> r4 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Collections.emptyList());
+        relationshipsFound.addAll(r3.get());
+        relationshipsFound.addAll(r4.get());
+
+        //Shouldn't find any relationships
+        Assertions.assertEquals(0, relationshipsFound.size());
+
+        Mockito.when(clock.millis()).thenReturn(220L);
+        r3 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful1,
+                Collections.emptyList());
+        r4 = ServiceMapTestUtils.startExecuteAsync(threadpool, serviceMapStateful2,
+                Collections.emptyList());
+        relationshipsFound.addAll(r3.get());
+        relationshipsFound.addAll(r4.get());
+
+        //Should find the frontend isolated service
+        Assertions.assertEquals(1, relationshipsFound.size());
+        assertTrue(relationshipsFound.contains(frontend));
+    }
+
+    @Test
     public void testPrepareForShutdownWithEventRecordData() {
         final File path = new File(ServiceMapProcessorConfig.DEFAULT_DB_PATH);
         final ServiceMapStatefulProcessor serviceMapStateful = new ServiceMapStatefulProcessor(100, path, Clock.systemUTC(), 1, pluginSetting);
@@ -331,7 +392,7 @@ public class ServiceMapStatefulProcessorTest {
         final String traceGroup1 = "reset_password";
 
         final Span frontendSpans1 = ServiceMapTestUtils.getSpan(
-                FRONTEND_SERVICE, traceGroup1, rootSpanId1, "", traceId1, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_CLIENT);
+                FRONTEND_SERVICE, traceGroup1, rootSpanId1, "", traceId1, SPAN_KIND_CLIENT);
         final Span authenticationSpansServer = ServiceMapTestUtils.getSpan(
                 AUTHENTICATION_SERVICE, "reset", Hex.encodeHexString(ServiceMapTestUtils.getRandomBytes(8)),
                 frontendSpans1.getSpanId(), traceId1, io.opentelemetry.proto.trace.v1.Span.SpanKind.SPAN_KIND_SERVER);

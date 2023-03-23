@@ -121,14 +121,6 @@ subprojects {
                 because 'Fixes CVE-2022-3509, CVE-2022-3510'
             }
         }
-        constraints {
-            implementation('io.netty:netty-tcnative-boringssl-static') {
-                version {
-                    require '2.0.42.Final'
-                }
-                because 'Netty 4.1.66+ requires new classes and methods in this version.'
-            }
-        }
     }
     test {
         useJUnitPlatform()
