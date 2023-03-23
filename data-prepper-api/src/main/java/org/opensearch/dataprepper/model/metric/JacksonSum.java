@@ -112,6 +112,7 @@ public class JacksonSum extends JacksonMetric implements Sum {
 
         /**
          * Returns a newly created {@link JacksonSum}
+         * @param flattenAttributes flag indicating if the attributes should be flattened or not
          * @return a JacksonSum
          * @since 2.1
          */

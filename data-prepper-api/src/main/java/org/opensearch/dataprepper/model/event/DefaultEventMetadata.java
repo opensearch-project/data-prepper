@@ -110,6 +110,7 @@ public class DefaultEventMetadata implements EventMetadata {
         /**
          * Sets the event type. A non-null or empty event type is required, otherwise it will cause {@link #build()} to fail.
          * @param eventType the event type
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withEventType(final String eventType) {
@@ -120,6 +121,7 @@ public class DefaultEventMetadata implements EventMetadata {
         /**
          * Sets the time received. If not provided, {@link Instant#now()} will be used to set the time received
          * @param timeReceived the time an event was received
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withTimeReceived(final Instant timeReceived) {
@@ -130,6 +132,7 @@ public class DefaultEventMetadata implements EventMetadata {
         /**
          * Sets the attributes. An empty immutable map is the default value.
          * @param attributes a map of key-value pair attributes
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withAttributes(final Map<String, Object> attributes) {

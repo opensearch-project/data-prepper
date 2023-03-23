@@ -234,6 +234,7 @@ public class JacksonHistogram extends JacksonMetric implements Histogram {
 
         /**
          * Returns a newly created {@link JacksonHistogram}
+         * @param flattenAttributes flag indicating if the attributes should be flattened or not
          * @return a JacksonHistogram
          * @since 2.1
          */
