@@ -90,4 +90,9 @@ class CsvRecordsGenerator implements RecordsGenerator {
     public String toString() {
         return this.getClass().getSimpleName();
     }
+
+    @Override
+    public String getQueryStatement() {
+        return "SELECT * FROM S3OBJECT";
+    }
 }
