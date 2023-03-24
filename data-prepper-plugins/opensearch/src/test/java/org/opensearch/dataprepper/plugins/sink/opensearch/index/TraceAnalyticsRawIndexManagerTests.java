@@ -25,6 +25,7 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.client.opensearch.cluster.OpenSearchClusterClient;
+import org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
 import org.opensearch.client.opensearch.indices.ExistsTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetTemplateRequest;
@@ -306,12 +307,12 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     public void checkAndCreateIndex_NeedToCreateNewIndex() throws IOException {
         when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
-        when(openSearchIndicesClient.create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class)))
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
                 .thenReturn(null);
         traceAnalyticsRawIndexManager.checkAndCreateIndex();
         verify(openSearchClient, times(2)).indices();
         verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
-        verify(openSearchIndicesClient).create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class));
+        verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -321,14 +322,14 @@ public class TraceAnalyticsRawIndexManagerTests {
         when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(
                 new BooleanResponse(false));
         when(openSearchException.getMessage()).thenReturn("");
-        when(openSearchIndicesClient.create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class)))
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
                 .thenThrow(openSearchException);
         try {
             traceAnalyticsRawIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
             verify(openSearchClient, times(2)).indices();
             verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
-            verify(openSearchIndicesClient).create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class));
+            verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
             verify(openSearchSinkConfiguration).getIndexConfiguration();
             verify(indexConfiguration).getIndexAlias();
         }

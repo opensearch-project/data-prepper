@@ -15,6 +15,7 @@ import org.opensearch.client.Request;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
@@ -153,11 +154,11 @@ class IsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     @Override
-    public org.opensearch.client.opensearch.indices.CreateIndexRequest getCreateIndexRequest(final String indexAlias) {
+    public CreateIndexRequest getCreateIndexRequest(final String indexAlias) {
         checkArgument(StringUtils.isNotEmpty(indexAlias));
         final String initialIndexName = indexAlias + DEFAULT_INDEX_SUFFIX;
-        final org.opensearch.client.opensearch.indices.CreateIndexRequest createIndexRequest
-                = new org.opensearch.client.opensearch.indices.CreateIndexRequest.Builder()
+        final CreateIndexRequest createIndexRequest
+                = new CreateIndexRequest.Builder()
                 .index(initialIndexName).aliases(
                         indexAlias, new org.opensearch.client.opensearch.indices.Alias.Builder()
                                 .isWriteIndex(true)

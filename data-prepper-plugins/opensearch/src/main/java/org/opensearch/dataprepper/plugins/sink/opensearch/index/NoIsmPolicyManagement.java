@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import org.opensearch.client.opensearch.indices.ExistsRequest;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 
@@ -51,10 +52,10 @@ class NoIsmPolicyManagement implements IsmPolicyManagementStrategy {
     }
 
     @Override
-    public org.opensearch.client.opensearch.indices.CreateIndexRequest getCreateIndexRequest(final String indexAlias) {
+    public CreateIndexRequest getCreateIndexRequest(final String indexAlias) {
         checkArgument(StringUtils.isNotEmpty(indexAlias));
         final String initialIndexName = indexAlias;
-        return new org.opensearch.client.opensearch.indices.CreateIndexRequest.Builder()
+        return new CreateIndexRequest.Builder()
                 .index(initialIndexName)
                 .build();
     }

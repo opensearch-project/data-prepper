@@ -23,6 +23,7 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.client.opensearch.cluster.OpenSearchClusterClient;
+import org.opensearch.client.opensearch.indices.CreateIndexRequest;
 import org.opensearch.client.opensearch.indices.ExistsRequest;
 import org.opensearch.client.opensearch.indices.ExistsTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetTemplateRequest;
@@ -280,12 +281,12 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     @Test
     public void checkAndCreateIndex_NeedToCreateNewIndex() throws IOException {
         when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(false));
-        when(openSearchIndicesClient.create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class)))
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
                 .thenReturn(null);
         traceAnalyticsServiceMapIndexManager.checkAndCreateIndex();
         verify(openSearchClient, times(2)).indices();
         verify(openSearchIndicesClient).exists(any(ExistsRequest.class));
-        verify(openSearchIndicesClient).create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class));
+        verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -295,14 +296,14 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(
                 new BooleanResponse(false));
         when(openSearchException.getMessage()).thenReturn("");
-        when(openSearchIndicesClient.create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class)))
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
                 .thenThrow(openSearchException);
         try {
             traceAnalyticsServiceMapIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
             verify(openSearchClient, times(2)).indices();
             verify(openSearchIndicesClient).exists(any(ExistsRequest.class));
-            verify(openSearchIndicesClient).create(any(org.opensearch.client.opensearch.indices.CreateIndexRequest.class));
+            verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
             verify(openSearchSinkConfiguration).getIndexConfiguration();
             verify(indexConfiguration).getIndexAlias();
         }
