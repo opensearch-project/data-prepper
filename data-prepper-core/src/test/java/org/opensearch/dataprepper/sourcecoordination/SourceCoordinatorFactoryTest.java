@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.sourcecoordination.DynamoDBSourceCoordinationStoreConfig;
 import org.opensearch.dataprepper.parser.model.sourcecoordination.SourceCoordinationConfig;
 import org.opensearch.dataprepper.parser.model.sourcecoordination.SourceCoordinationStoreConfig;
+import org.opensearch.dataprepper.sourcecoordination.dynamo.DynamoDbSourceCoordinator;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;

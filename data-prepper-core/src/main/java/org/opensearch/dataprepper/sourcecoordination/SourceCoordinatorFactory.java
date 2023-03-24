@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.sourcecoordination.DynamoDBSourceCoordinationStoreConfig;
 import org.opensearch.dataprepper.parser.model.sourcecoordination.SourceCoordinationConfig;
 import org.opensearch.dataprepper.parser.model.sourcecoordination.SourceCoordinationStoreConfig;
+import org.opensearch.dataprepper.sourcecoordination.dynamo.DynamoDbSourceCoordinator;
 
 import java.util.Objects;
 
@@ -38,7 +39,7 @@ public class SourceCoordinatorFactory {
         }
 
         if (sourceCoordinationStoreConfig instanceof DynamoDBSourceCoordinationStoreConfig) {
-            return new DynamoDbSourceCoordinator(sourceCoordinationConfig);
+            return new DynamoDbSourceCoordinator(sourceCoordinationConfig, new PartitionManager());
         }
 
         return null;
