@@ -9,7 +9,6 @@ import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 
-import java.io.IOException;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -32,41 +31,41 @@ class ClusterSettingsParserTest {
     private final ClusterSettingsParser objectUnderTest = new ClusterSettingsParser();
 
     @Test
-    public void testGetDefaultSetting_success() throws IOException {
+    public void testGetDefaultSetting_success() {
         when(getClusterSettingsResponse.defaults()).thenReturn(TEST_STRING_SETTINGS);
         assertEquals("testValue",
                 objectUnderTest.getStringValueClusterSetting(getClusterSettingsResponse, "primaryKey"));
     }
 
     @Test
-    public void testGetPersistentSetting_success() throws IOException {
+    public void testGetPersistentSetting_success() {
         when(getClusterSettingsResponse.persistent()).thenReturn(TEST_STRING_SETTINGS);
         assertEquals("testValue",
                 objectUnderTest.getStringValueClusterSetting(getClusterSettingsResponse, "primaryKey"));
     }
 
     @Test
-    public void testGetTransientSetting_success() throws IOException {
+    public void testGetTransientSetting_success() {
         when(getClusterSettingsResponse.transient_()).thenReturn(TEST_STRING_SETTINGS);
         assertEquals("testValue",
                 objectUnderTest.getStringValueClusterSetting(getClusterSettingsResponse, "primaryKey"));
     }
 
     @Test
-    public void testGetNestedSetting_success() throws IOException {
+    public void testGetNestedSetting_success() {
         when(getClusterSettingsResponse.defaults()).thenReturn(TEST_NESTED_SETTINGS);
         assertEquals("true",
                 objectUnderTest.getStringValueClusterSetting(getClusterSettingsResponse, "primaryKey.secondaryKey.thirdKey"));
     }
 
     @Test
-    public void testGetSetting_missing() throws IOException {
+    public void testGetSetting_missing() {
         when(getClusterSettingsResponse.defaults()).thenReturn(TEST_STRING_SETTINGS);
         assertNull(objectUnderTest.getStringValueClusterSetting(getClusterSettingsResponse, "missingKey"));
     }
 
     @Test
-    public void testGetNestedSetting_missing() throws IOException {
+    public void testGetNestedSetting_missing() {
         when(getClusterSettingsResponse.defaults()).thenReturn(TEST_NESTED_SETTINGS);
         assertNull(objectUnderTest.getStringValueClusterSetting(getClusterSettingsResponse, "primaryKey.secondaryKey.missingKey"));
     }
