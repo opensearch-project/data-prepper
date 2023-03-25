@@ -37,13 +37,16 @@ public class IndexManagerFactoryTests {
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
 
     @Mock
+    private ClusterSettingsParser clusterSettingsParser;
+
+    @Mock
     private IndexConfiguration indexConfiguration;
 
     @BeforeEach
     public void setup() {
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
-        indexManagerFactory = new IndexManagerFactory();
+        indexManagerFactory = new IndexManagerFactory(clusterSettingsParser);
     }
 
     @Test

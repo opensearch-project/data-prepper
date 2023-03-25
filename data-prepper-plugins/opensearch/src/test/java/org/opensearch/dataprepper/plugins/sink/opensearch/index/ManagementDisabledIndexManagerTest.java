@@ -50,6 +50,9 @@ class ManagementDisabledIndexManagerTest {
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
 
     @Mock
+    private ClusterSettingsParser clusterSettingsParser;
+
+    @Mock
     private ClusterClient cluster;
 
     @Mock
@@ -74,7 +77,7 @@ class ManagementDisabledIndexManagerTest {
     void setup() throws IOException {
         baseIndexAlias = UUID.randomUUID().toString();
         indexAliasWithTimePattern = baseIndexAlias + "-%{yyyy.MM.dd.HH}";
-        indexManagerFactory = new IndexManagerFactory();
+        indexManagerFactory = new IndexManagerFactory(clusterSettingsParser);
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIndexAlias()).thenReturn(baseIndexAlias);
     }

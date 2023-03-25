@@ -13,8 +13,6 @@ import org.mockito.Mock;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.json.JsonData;
-import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
@@ -46,6 +44,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -57,14 +56,6 @@ public class DefaultIndexManagerTests {
     private static final String INDEX_ALIAS = "test-index-alias";
     private static final String INDEX_ALIAS_WITH_TIME_PATTERN = INDEX_ALIAS+ "-%{yyyy.MM.dd.HH}";
     private static final Pattern EXPECTED_INDEX_PATTERN = Pattern.compile(INDEX_ALIAS + "-\\d{4}.\\d{2}.\\d{2}.\\d{2}");
-    private static final JsonpMapper JSONP_MAPPER = new PreSerializedJsonpMapper();
-    private static final Map<String, JsonData> ISM_ENABLED_SETTING = Map.of(
-            "opendistro", JsonData.of(
-                    Map.of("index_state_management", Map.of("enabled", true)), JSONP_MAPPER)
-    );
-    private static final Map<String, JsonData> ISM_DISABLED_SETTING = Map.of(
-            "opendistro", JsonData.of(
-                    Map.of("index_state_management", Map.of("enabled", false)), JSONP_MAPPER));
 
     private IndexManagerFactory indexManagerFactory;
 
@@ -78,6 +69,9 @@ public class DefaultIndexManagerTests {
 
     @Mock
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
+
+    @Mock
+    private ClusterSettingsParser clusterSettingsParser;
 
     @Mock
     private OpenSearchClusterClient openSearchClusterClient;
@@ -113,7 +107,7 @@ public class DefaultIndexManagerTests {
     public void setup() throws IOException {
         initMocks(this);
 
-        indexManagerFactory = new IndexManagerFactory();
+        indexManagerFactory = new IndexManagerFactory(clusterSettingsParser);
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIsmPolicyFile()).thenReturn(Optional.empty());
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
@@ -303,10 +297,10 @@ public class DefaultIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabledByDefault_True() throws IOException {
+    public void checkISMEnabled_True() throws IOException {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_ENABLED_SETTING);
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("true");
         assertEquals(true, defaultIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
@@ -316,70 +310,15 @@ public class DefaultIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabledByPersistent_True() throws IOException {
+    public void checkISMEnabled_False() throws IOException {
         defaultIndexManager = indexManagerFactory.getIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_ENABLED_SETTING);
-        assertEquals(true, defaultIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
-        verify(indexConfiguration).getIsmPolicyFile();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClient).cluster();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByTransient_True() throws IOException {
-        defaultIndexManager = indexManagerFactory.getIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_ENABLED_SETTING);
-        assertEquals(true, defaultIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
-        verify(indexConfiguration).getIsmPolicyFile();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClient).cluster();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByDefault_False() throws IOException {
-        defaultIndexManager = indexManagerFactory.getIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_DISABLED_SETTING);
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("false");
         assertEquals(false, defaultIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIsmPolicyFile();
         verify(indexConfiguration).getIndexAlias();
         verify(openSearchClient).cluster();
-        verify(getClusterSettingsResponse, times(2)).defaults();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByPersistent_False() throws IOException {
-        defaultIndexManager = indexManagerFactory.getIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
-        assertEquals(false, defaultIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
-        verify(indexConfiguration).getIsmPolicyFile();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClient).cluster();
-        verify(getClusterSettingsResponse, times(2)).persistent();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByTransient_False() throws IOException {
-        defaultIndexManager = indexManagerFactory.getIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
-        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_DISABLED_SETTING);
-        assertEquals(false, defaultIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
-        verify(indexConfiguration).getIsmPolicyFile();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClient).cluster();
-        verify(getClusterSettingsResponse, times(2)).transient_();
         verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
     }
 

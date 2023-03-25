@@ -12,13 +12,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch._types.OpenSearchException;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
-import org.opensearch.client.ClusterClient;
 import org.opensearch.client.IndicesClient;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.indices.GetIndexTemplatesResponse;
-import org.opensearch.client.json.JsonData;
-import org.opensearch.client.json.JsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
@@ -43,6 +39,7 @@ import java.util.Optional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -52,14 +49,6 @@ import static org.mockito.MockitoAnnotations.initMocks;
 @ExtendWith(MockitoExtension.class)
 public class TraceAnalyticsServiceMapIndexManagerTests {
     private static final String INDEX_ALIAS = "trace-service-map-index-alias";
-    private static final JsonpMapper JSONP_MAPPER = new PreSerializedJsonpMapper();
-    private static final Map<String, JsonData> ISM_ENABLED_SETTING = Map.of(
-            "opendistro", JsonData.of(
-                    Map.of("index_state_management", Map.of("enabled", true)), JSONP_MAPPER)
-    );
-    private static final Map<String, JsonData> ISM_DISABLED_SETTING = Map.of(
-            "opendistro", JsonData.of(
-                    Map.of("index_state_management", Map.of("enabled", false)), JSONP_MAPPER));
 
     private IndexManagerFactory indexManagerFactory;
 
@@ -75,13 +64,10 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
 
     @Mock
-    private ClusterClient cluster;
+    private ClusterSettingsParser clusterSettingsParser;
 
     @Mock
     private OpenSearchClusterClient openSearchClusterClient;
-
-    @Mock
-    private ClusterGetSettingsResponse clusterGetSettingsResponse;
 
     @Mock
     private GetClusterSettingsResponse getClusterSettingsResponse;
@@ -111,7 +97,7 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     public void setup() throws IOException {
         initMocks(this);
 
-        indexManagerFactory = new IndexManagerFactory();
+        indexManagerFactory = new IndexManagerFactory(clusterSettingsParser);
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         traceAnalyticsServiceMapIndexManager
@@ -143,64 +129,18 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabledByDefault_True() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
-        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_ENABLED_SETTING);
+    public void checkISMEnabled_True() throws IOException {
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("true");
         assertEquals(true, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
         verify(openSearchClient).cluster();
         verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
-    }
-
-    @Test
-    public void checkISMEnabledByPersistent_True() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_ENABLED_SETTING);
-        assertEquals(true, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
-        verify(openSearchClient).cluster();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
-        verify(indexConfiguration).getIndexAlias();
-    }
-
-    @Test
-    public void checkISMEnabledByTransient_True() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_ENABLED_SETTING);
-        assertEquals(true, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
-        verify(openSearchClient).cluster();
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
     }
 
     @Test
     public void checkISMEnabledByDefault_False() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_DISABLED_SETTING);
-        assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
-        verify(openSearchClient).cluster();
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByPersistent_False() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
-        assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
-        verify(openSearchClient).cluster();
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByTransient_False() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_DISABLED_SETTING);
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("false");
         assertEquals(false, traceAnalyticsServiceMapIndexManager.checkISMEnabled());
         verify(openSearchClient).cluster();
         verify(openSearchSinkConfiguration).getIndexConfiguration();
@@ -314,8 +254,6 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         verifyNoMoreInteractions(
                 restHighLevelClient,
                 openSearchSinkConfiguration,
-                cluster,
-                clusterGetSettingsResponse,
                 indexConfiguration,
                 indicesClient,
                 getIndexTemplatesResponse

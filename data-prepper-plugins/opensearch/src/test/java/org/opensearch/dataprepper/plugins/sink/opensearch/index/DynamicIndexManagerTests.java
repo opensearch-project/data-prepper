@@ -6,16 +6,10 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import org.mockito.Mock;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
-import org.opensearch.client.ClusterClient;
 import org.opensearch.client.IndicesClient;
-import org.opensearch.client.RequestOptions;
-import org.opensearch.client.ResponseException;
-import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.GetIndexTemplatesResponse;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 
@@ -54,9 +48,6 @@ public class DynamicIndexManagerTests {
     private IndexManagerFactory mockIndexManagerFactory;
     private IndexManagerFactory indexManagerFactory;
 
-    @Mock
-    private IndexManager indexManager;
-
     private DynamicIndexManager dynamicIndexManager;
 
     private IndexManager innerIndexManager;
@@ -71,25 +62,13 @@ public class DynamicIndexManagerTests {
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
 
     @Mock
-    private ClusterClient cluster;
-
-    @Mock
-    private ClusterGetSettingsResponse clusterGetSettingsResponse;
-
-    @Mock
     private IndexConfiguration indexConfiguration;
 
     @Mock
     private IndicesClient indicesClient;
 
     @Mock
-    private GetIndexTemplatesResponse getIndexTemplatesResponse;
-
-    @Mock
-    private RestClient restClient;
-
-    @Mock
-    private ResponseException responseException;
+    private ClusterSettingsParser clusterSettingsParser;
 
     static final String EVENT_TYPE = "event";
 
@@ -97,23 +76,22 @@ public class DynamicIndexManagerTests {
     public void setup() throws IOException {
         initMocks(this);
 
-        indexManagerFactory = new IndexManagerFactory();
+        indexManagerFactory = new IndexManagerFactory(clusterSettingsParser);
         mockIndexManagerFactory = mock(IndexManagerFactory.class);
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIsmPolicyFile()).thenReturn(Optional.empty());
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
-        when(restHighLevelClient.cluster()).thenReturn(cluster);
-        when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
-                .thenReturn(clusterGetSettingsResponse);
         when(restHighLevelClient.indices()).thenReturn(indicesClient);
         dynamicIndexManager = new DynamicIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, mockIndexManagerFactory);
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration,
+                clusterSettingsParser, mockIndexManagerFactory);
     }
 
     @Test
     public void dynamicIndexBasicTest() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), eq(IndexConstants.ISM_ENABLED_SETTING)))
+                .thenReturn("true");
         String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
         String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC);
         innerIndexManager = mock(IndexManager.class);
@@ -128,7 +106,8 @@ public class DynamicIndexManagerTests {
     @Test
     public void dynamicIndexWithDateTest() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS_WITH_DATE_PATTERN);
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), eq(IndexConstants.ISM_ENABLED_SETTING)))
+                .thenReturn("true");
         String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(DATE_PATTERN);
         String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC) + "-" + dateFormatter.format(AbstractIndexManager.getCurrentUtcTime());
@@ -144,7 +123,8 @@ public class DynamicIndexManagerTests {
     @Test
     public void dynamicIndexCacheTest() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), eq(IndexConstants.ISM_ENABLED_SETTING)))
+                .thenReturn("true");
         String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
         String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC);
         innerIndexManager = mock(IndexManager.class);
@@ -176,7 +156,8 @@ public class DynamicIndexManagerTests {
     @Test
     public void missingDynamicIndexTest() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), eq(IndexConstants.ISM_ENABLED_SETTING)))
+                .thenReturn("true");
         String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
 
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(RandomStringUtils.randomAlphabetic(10), DYNAMIC)).build();

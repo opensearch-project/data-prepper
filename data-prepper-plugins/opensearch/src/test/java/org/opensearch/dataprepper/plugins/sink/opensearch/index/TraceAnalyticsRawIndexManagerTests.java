@@ -45,6 +45,7 @@ import java.util.Optional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -54,14 +55,6 @@ import static org.mockito.MockitoAnnotations.initMocks;
 @ExtendWith(MockitoExtension.class)
 public class TraceAnalyticsRawIndexManagerTests {
     private static final String INDEX_ALIAS = "trace-raw-index-alias";
-    private static final JsonpMapper JSONP_MAPPER = new PreSerializedJsonpMapper();
-    private static final Map<String, JsonData> ISM_ENABLED_SETTING = Map.of(
-            "opendistro", JsonData.of(
-                    Map.of("index_state_management", Map.of("enabled", true)), JSONP_MAPPER)
-    );
-    private static final Map<String, JsonData> ISM_DISABLED_SETTING = Map.of(
-            "opendistro", JsonData.of(
-                    Map.of("index_state_management", Map.of("enabled", false)), JSONP_MAPPER));
 
     private IndexManagerFactory indexManagerFactory;
 
@@ -77,13 +70,10 @@ public class TraceAnalyticsRawIndexManagerTests {
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
 
     @Mock
-    private ClusterClient cluster;
+    private ClusterSettingsParser clusterSettingsParser;
 
     @Mock
     private OpenSearchClusterClient openSearchClusterClient;
-
-    @Mock
-    private ClusterGetSettingsResponse clusterGetSettingsResponse;
 
     @Mock
     private GetClusterSettingsResponse getClusterSettingsResponse;
@@ -122,7 +112,7 @@ public class TraceAnalyticsRawIndexManagerTests {
     public void setup() throws IOException {
         initMocks(this);
 
-        indexManagerFactory = new IndexManagerFactory();
+        indexManagerFactory = new IndexManagerFactory(clusterSettingsParser);
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
         traceAnalyticsRawIndexManager = indexManagerFactory.getIndexManager(
@@ -153,9 +143,8 @@ public class TraceAnalyticsRawIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabledByDefault_True() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
-        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_ENABLED_SETTING);
+    public void checkISMEnabled_True() throws IOException {
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("true");
         assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
@@ -164,54 +153,8 @@ public class TraceAnalyticsRawIndexManagerTests {
     }
 
     @Test
-    public void checkISMEnabledByPersistent_True() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_ENABLED_SETTING);
-        assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClient).cluster();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByTransient_True() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
-        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_ENABLED_SETTING);
-        assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClient).cluster();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByDefault_False() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.defaults()).thenReturn(ISM_DISABLED_SETTING);
-        assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClient).cluster();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByPersistent_False() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.persistent()).thenReturn(ISM_DISABLED_SETTING);
-        assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
-        verify(openSearchSinkConfiguration).getIndexConfiguration();
-        verify(indexConfiguration).getIndexAlias();
-        verify(openSearchClient).cluster();
-        verify(getClusterSettingsResponse, times(2)).persistent();
-        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
-    }
-
-    @Test
-    public void checkISMEnabledByTransient_False() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
-        when(getClusterSettingsResponse.transient_()).thenReturn(ISM_DISABLED_SETTING);
+    public void checkISMEnabled_False() throws IOException {
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("false");
         assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
@@ -340,8 +283,6 @@ public class TraceAnalyticsRawIndexManagerTests {
         verifyNoMoreInteractions(
                 restHighLevelClient,
                 openSearchSinkConfiguration,
-                cluster,
-                clusterGetSettingsResponse,
                 indexConfiguration,
                 indicesClient,
                 getIndexTemplatesResponse,

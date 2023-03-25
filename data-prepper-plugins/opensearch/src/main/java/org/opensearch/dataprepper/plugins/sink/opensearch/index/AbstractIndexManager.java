@@ -58,6 +58,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchClient openSearchClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
+    protected ClusterSettingsParser clusterSettingsParser;
     protected IsmPolicyManagementStrategy ismPolicyManagementStrategy;
     protected String indexPrefix;
 
@@ -74,14 +75,19 @@ public abstract class AbstractIndexManager implements IndexManager {
     private Optional<DateTimeFormatter> indexTimeSuffixFormatter;
     private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
-    protected AbstractIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchClient openSearchClient,
-                                   final OpenSearchSinkConfiguration openSearchSinkConfiguration, String indexAlias){
+    protected AbstractIndexManager(final RestHighLevelClient restHighLevelClient,
+                                   final OpenSearchClient openSearchClient,
+                                   final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                   final ClusterSettingsParser clusterSettingsParser,
+                                   String indexAlias){
         checkNotNull(restHighLevelClient);
         checkNotNull(openSearchClient);
         checkNotNull(openSearchSinkConfiguration);
+        checkNotNull(clusterSettingsParser);
         this.restHighLevelClient = restHighLevelClient;
         this.openSearchClient = openSearchClient;
         this.openSearchSinkConfiguration = openSearchSinkConfiguration;
+        this.clusterSettingsParser = clusterSettingsParser;
         if (indexAlias == null) {
             indexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
         }
@@ -188,23 +194,7 @@ public abstract class AbstractIndexManager implements IndexManager {
     }
 
     private String getISMEnabled(final GetClusterSettingsResponse response) {
-        final String[] keyPath = IndexConstants.ISM_ENABLED_SETTING.split("[.]");
-        final String keyPrefix = keyPath[0];
-        final String jsonPtr = JsonPointer.SEPARATOR + String.join(
-                String.valueOf(JsonPointer.SEPARATOR), Arrays.copyOfRange(keyPath, 1, keyPath.length));
-        if (response.persistent().containsKey(keyPrefix)) {
-            return getStringFromJsonPointer(response.persistent().get(keyPrefix), jsonPtr);
-        } else if (response.transient_().containsKey(keyPrefix)) {
-            return getStringFromJsonPointer(response.transient_().get(keyPrefix), jsonPtr);
-        } else if (response.defaults().containsKey(keyPrefix)) {
-            return getStringFromJsonPointer(response.defaults().get(keyPrefix), jsonPtr);
-        } else {
-            return null;
-        }
-    }
-
-    private String getStringFromJsonPointer(final JsonData jsonData, final String jsonPtr) {
-        return jsonData == null ? null : jsonData.to(JsonNode.class).at(jsonPtr).asText();
+        return clusterSettingsParser.getStringValueClusterSetting(response, IndexConstants.ISM_ENABLED_SETTING);
     }
 
     /**

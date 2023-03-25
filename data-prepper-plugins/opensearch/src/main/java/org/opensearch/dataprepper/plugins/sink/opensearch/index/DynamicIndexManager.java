@@ -24,19 +24,26 @@ public class DynamicIndexManager extends AbstractIndexManager {
     protected RestHighLevelClient restHighLevelClient;
     protected OpenSearchClient openSearchClient;
     protected OpenSearchSinkConfiguration openSearchSinkConfiguration;
+    protected ClusterSettingsParser clusterSettingsParser;
     final IndexType indexType;
     private final IndexManagerFactory indexManagerFactory;
 
-    public DynamicIndexManager(final IndexType indexType, final OpenSearchClient openSearchClient,
-                               final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration, final IndexManagerFactory indexManagerFactory){
-        super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, "");
+    public DynamicIndexManager(final IndexType indexType,
+                               final OpenSearchClient openSearchClient,
+                               final RestHighLevelClient restHighLevelClient,
+                               final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                               final ClusterSettingsParser clusterSettingsParser,
+                               final IndexManagerFactory indexManagerFactory){
+        super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, "");
         checkNotNull(restHighLevelClient);
         checkNotNull(openSearchSinkConfiguration);
+        checkNotNull(clusterSettingsParser);
         this.indexType = indexType;
         this.indexManagerFactory = indexManagerFactory;
         this.openSearchClient = openSearchClient;
         this.restHighLevelClient = restHighLevelClient;
         this.openSearchSinkConfiguration = openSearchSinkConfiguration;
+        this.clusterSettingsParser = clusterSettingsParser;
         CacheBuilder<String, IndexManager> cacheBuilder = CacheBuilder.newBuilder()
                         .recordStats()
                         .concurrencyLevel(1)
