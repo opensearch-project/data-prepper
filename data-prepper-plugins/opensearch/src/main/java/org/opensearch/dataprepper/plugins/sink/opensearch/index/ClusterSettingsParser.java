@@ -10,7 +10,7 @@ import java.util.Arrays;
 public class ClusterSettingsParser {
 
     public String getStringValueClusterSetting(final GetClusterSettingsResponse response, final String key) {
-        final String[] keyPath = IndexConstants.ISM_ENABLED_SETTING.split("[.]");
+        final String[] keyPath = key.split("[.]");
         final String keyPrefix = keyPath[0];
         final String jsonPtrSuffix = String.join(
                 String.valueOf(JsonPointer.SEPARATOR), Arrays.copyOfRange(keyPath, 1, keyPath.length));
