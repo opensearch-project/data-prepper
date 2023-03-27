@@ -36,6 +36,7 @@ public interface Event extends Serializable {
      *
      * @param key the value to retrieve from
      * @param clazz the return type of the value
+     * @param <T> The type
      * @return T a clazz object from the key
      * @since 1.2
      */
@@ -46,6 +47,7 @@ public interface Event extends Serializable {
      *
      * @param key the value to retrieve from
      * @param clazz the return type of elements in the list
+     * @param <T> The type
      * @return {@literal List<T>} a list of clazz elements
      * @since 1.2
      */
@@ -74,7 +76,7 @@ public interface Event extends Serializable {
 
     /**
      * Checks if the key exists.
-     * @param key
+     * @param key name of the key to look for
      * @return returns true if the key exists, otherwise false
      * @since 1.2
      */
@@ -82,7 +84,7 @@ public interface Event extends Serializable {
 
     /**
      * Checks if the value stored for the key is list
-     * @param key
+     * @param key name of the key to look for
      * @return returns true if the key is a list, otherwise false
      * @since 1.2
      */
@@ -96,10 +98,18 @@ public interface Event extends Serializable {
 
     /**
      * Returns formatted parts of the input string replaced by their values in the event
-     * @param format
+     * @param format input format
      * @return returns a string with no formatted parts, returns null if no value is found
      * @throws RuntimeException if the input string is not properly formatted
      * @since 2.1
      */
     String formatString(final String format);
+
+    /**
+     * Returns event handle
+     *
+     * @return returns the event handle associated with the event
+     * @since 2.2
+     */
+    EventHandle getEventHandle();
 }

@@ -34,6 +34,7 @@ public interface Sink<T extends Record<?>> {
 
     /**
      * Indicates if Sink is ready to do output
+     * @return returns true if the sink is ready, false otherwise
      */
     boolean isReady();
 

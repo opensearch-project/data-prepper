@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
+import org.apache.commons.codec.DecoderException;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -26,10 +27,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.Serializable;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.BrokenBarrierException;
@@ -63,6 +66,8 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
     private static volatile MapDbProcessorState<ServiceMapStateData> currentWindow;
     private static volatile MapDbProcessorState<String> previousTraceGroupWindow;
     private static volatile MapDbProcessorState<String> currentTraceGroupWindow;
+    private static volatile Set<ServiceNodeData> previousIsolatedServiceNodes;
+    private static volatile Set<ServiceNodeData> currentIsolatedServiceNodes;
     //TODO: Consider keeping this state in a db
     private static final Set<ServiceMapRelationship> RELATIONSHIP_STATE = Sets.newConcurrentHashSet();
     private static File dbPath;
@@ -97,6 +102,8 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
             previousWindow = new MapDbProcessorState<>(dbPath, getNewDbName() + EMPTY_SUFFIX, processWorkers);
             currentTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName(), processWorkers);
             previousTraceGroupWindow = new MapDbProcessorState<>(dbPath, getNewTraceDbName() + EMPTY_SUFFIX, processWorkers);
+            currentIsolatedServiceNodes = Sets.newConcurrentHashSet();
+            previousIsolatedServiceNodes = Sets.newConcurrentHashSet();
 
             allThreadsCyclicBarrier = new CyclicBarrier(processWorkers);
         }
@@ -148,23 +155,31 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         if (span.getServiceName() != null) {
             final String serviceName = span.getServiceName();
             final String spanId = span.getSpanId();
-            final String traceId = span.getTraceId();
             final String parentSpanId = span.getParentSpanId();
+            final String spanKind = span.getKind();
+            final byte[] traceId;
+            try {
+                traceId = Hex.decodeHex(span.getTraceId());
+            } catch (DecoderException e) {
+                LOG.error("Caught DecoderException when decoding the traceId.", e);
+                return;
+            }
+            currentIsolatedServiceNodes.add(new ServiceNodeData(traceId, serviceName));
             try {
                 batchStateData.put(
                         Hex.decodeHex(spanId),
                         new ServiceMapStateData(
                                 serviceName,
                                 parentSpanId.isEmpty()? null : Hex.decodeHex(parentSpanId),
-                                Hex.decodeHex(traceId),
-                                span.getKind(),
+                                traceId,
+                                spanKind,
                                 span.getName()));
             } catch (Exception e) {
                 LOG.error("Caught exception trying to put service map state data into batch", e);
             }
             if (parentSpanId.isEmpty()) {
                 try {
-                    currentTraceGroupWindow.put(Hex.decodeHex(traceId), span.getName());
+                    currentTraceGroupWindow.put(traceId, span.getName());
                 } catch (Exception e) {
                     LOG.error("Caught exception trying to put trace group name", e);
                 }
@@ -190,6 +205,7 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
             allThreadsCyclicBarrier.await();
 
             if (isMasterInstance()) {
+                processIsolatedServiceMapNodes(serviceDependencyRecords);
                 rotateWindows();
             }
 
@@ -218,11 +234,15 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
                     parent = previousWindow.get(child.parentSpanId);
                 }
 
-
                 final String traceGroupName = getTraceGroupName(child.traceId);
                 if (traceGroupName == null || parent == null || parent.serviceName.equals(child.serviceName)) {
                     return;
                 }
+
+                previousIsolatedServiceNodes.remove(new ServiceNodeData(parent.traceId, parent.serviceName));
+                currentIsolatedServiceNodes.remove(new ServiceNodeData(parent.traceId, parent.serviceName));
+                previousIsolatedServiceNodes.remove(new ServiceNodeData(parent.traceId, child.serviceName));
+                currentIsolatedServiceNodes.remove(new ServiceNodeData(parent.traceId, child.serviceName));
 
                 final ServiceMapRelationship destinationRelationship =
                         ServiceMapRelationship.newDestinationRelationship(parent.serviceName,
@@ -289,8 +309,23 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         currentWindow.delete();
         previousTraceGroupWindow.delete();
         currentTraceGroupWindow.delete();
+        previousIsolatedServiceNodes.clear();
+        currentIsolatedServiceNodes.clear();
     }
 
+    private void processIsolatedServiceMapNodes(final Collection<Record<Event>> serviceDependencyRecords) {
+        LOG.debug("Add isolated service nodes into service-map relationships.");
+        previousIsolatedServiceNodes.forEach(serviceNodeData -> {
+            final String traceGroupName;
+            traceGroupName = getTraceGroupName(serviceNodeData.traceId);
+            final ServiceMapRelationship serviceMapRelationship = ServiceMapRelationship.newIsolatedService(
+                    serviceNodeData.serviceName, traceGroupName);
+            addServiceMapRelationship(serviceDependencyRecords, serviceMapRelationship);
+            LOG.debug("Added node {serviceName={}, traceGroupName={}} into service-map relationship.",
+                    serviceNodeData.serviceName, traceGroupName);
+        });
+        LOG.debug("Done adding isolated service nodes");
+    }
 
     /**
      * Rotate windows for processor state
@@ -307,6 +342,11 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
         previousTraceGroupWindow = currentTraceGroupWindow;
         currentTraceGroupWindow = tempWindow;
         currentTraceGroupWindow.clear();
+
+        Set<ServiceNodeData> tempNodesWindow = previousIsolatedServiceNodes;
+        previousIsolatedServiceNodes = currentIsolatedServiceNodes;
+        currentIsolatedServiceNodes = tempNodesWindow;
+        currentIsolatedServiceNodes.clear();
 
         previousTimestamp = clock.millis();
         LOG.debug("Done rotating service map windows");
@@ -394,6 +434,34 @@ public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>
             this.traceId = traceId;
             this.spanKind = spanKind;
             this.name = name;
+        }
+    }
+
+    private static class ServiceNodeData implements Serializable {
+        public String serviceName;
+        public byte[] traceId;
+
+        public ServiceNodeData(final byte[] traceId, final String serviceName) {
+            this.traceId = traceId;
+            this.serviceName = serviceName;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            ServiceNodeData that = (ServiceNodeData) o;
+
+            if (!Objects.equals(serviceName, that.serviceName)) return false;
+            return Arrays.equals(traceId, that.traceId);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = serviceName != null ? serviceName.hashCode() : 0;
+            result = 31 * result + Arrays.hashCode(traceId);
+            return result;
         }
     }
 }
