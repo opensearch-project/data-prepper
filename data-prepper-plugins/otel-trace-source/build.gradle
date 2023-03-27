@@ -30,7 +30,7 @@ dependencies {
     testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation testLibs.mockito.inline
     testImplementation testLibs.slf4j.simple
-    testImplementation("commons-io:commons-io:2.10.0")
+    testImplementation("commons-io:commons-io:2.11.0")
 }
 
 jacocoTestCoverageVerification {
