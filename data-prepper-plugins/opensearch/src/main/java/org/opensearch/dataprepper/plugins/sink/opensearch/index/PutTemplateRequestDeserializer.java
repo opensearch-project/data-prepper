@@ -10,7 +10,7 @@ import org.opensearch.client.opensearch.indices.PutTemplateRequest;
 
 /**
  * Utility class for deserializers of {@link PutTemplateRequest}. The built-in deserializer is buggy:
- * https://github.com/opensearch-project/opensearch-java/blob/main/java-client/src/main/java/org/opensearch/client/opensearch/indices/PutTemplateRequest.java#L585-L596
+ * https://github.com/opensearch-project/opensearch-java/issues/417
  */
 public class PutTemplateRequestDeserializer {
     private static final JsonpDeserializer<PutTemplateRequest> JSONP_DESERIALIZER = ObjectBuilderDeserializer
