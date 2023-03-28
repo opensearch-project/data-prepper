@@ -29,7 +29,7 @@ public class JsonInputCodec implements InputCodec {
     private final JsonFactory jsonFactory = new JsonFactory();
 
     @Override
-    public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) throws IOException {
 
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);

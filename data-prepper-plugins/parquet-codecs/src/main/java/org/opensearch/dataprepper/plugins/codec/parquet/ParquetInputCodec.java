@@ -51,7 +51,7 @@ public class ParquetInputCodec implements InputCodec {
     private static final Logger LOG = LoggerFactory.getLogger(ParquetInputCodec.class);
 
     @Override
-    public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) throws IOException {
 
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
@@ -87,8 +87,7 @@ public class ParquetInputCodec implements InputCodec {
                                 eventData.put(field.getName(), simpleGroup.getValueToString(fieldIndex, 0));
                             }
                             catch (Exception parquetException){
-                                eventData.put(field.getName(), "unknown");
-                                LOG.error("Unreadable or bad record");
+                                LOG.error("Unable to retrieve value for field with name = '{}' with error = '{}'", field.getName(), parquetException.getMessage());
                             }
 
                             fieldIndex++;

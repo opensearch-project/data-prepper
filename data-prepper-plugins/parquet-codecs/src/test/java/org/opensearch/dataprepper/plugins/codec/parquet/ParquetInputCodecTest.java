@@ -131,6 +131,7 @@ class ParquetInputCodecTest {
         String filepath = path.toUri().getPath();
         fs.delete(new Path(filepath));
         fs.close();
+        System.clearProperty("hadoop.home.dir");
     }
 
     private static InputStream createRandomParquetStream(int numberOfRecords) throws IOException {
