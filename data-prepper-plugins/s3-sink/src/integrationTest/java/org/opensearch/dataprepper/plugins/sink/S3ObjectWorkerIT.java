@@ -76,7 +76,7 @@ class S3ObjectWorkerIT {
         Collection<Record<Event>> records = setEventQueue();
         s3SinkService.processRecods(records);
         s3SinkService.accumulateBufferEvents(s3SinkWorker);
-        assertNotNull(recordsGenerator);
+        assertNotNull(records);
     }
 
     private static Record<Event> createRecord() {
