@@ -43,6 +43,7 @@ public class IndexConfiguration {
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String AWS_SERVERLESS = "aws_serverless";
+    public static final String AWS_OPTION = "aws";
 
     private IndexType indexType;
     private final String indexAlias;
@@ -158,8 +159,19 @@ public class IndexConfiguration {
             builder.withS3Client(clientProvider.buildS3Client());
         }
 
+        Map<String, Object> awsOption = pluginSetting.getTypedMap(AWS_OPTION, String.class, Object.class);
+        boolean awsOptionUsed = false;
+        if (awsOption != null && !awsOption.isEmpty()) {
+            awsOptionUsed = true;
+            builder.withAwsServerless((Boolean)awsOption.getOrDefault(AWS_SERVERLESS.substring(4), false));
+        }
         final boolean awsServerless = pluginSetting.getBooleanOrDefault(AWS_SERVERLESS, false);
-        builder = builder.withAwsServerless(awsServerless);
+        if (awsServerless) {
+            if (awsOptionUsed) {
+                throw new RuntimeException(String.format("%s option cannot be used along with %s option", AWS_SERVERLESS, AWS_OPTION));
+            }
+            builder.withAwsServerless(awsServerless);
+        }
 
         return builder.build();
     }

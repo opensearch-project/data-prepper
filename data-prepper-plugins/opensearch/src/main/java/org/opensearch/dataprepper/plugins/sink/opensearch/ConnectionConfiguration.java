@@ -205,16 +205,19 @@ public class ConnectionConfiguration {
         builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
         builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
         builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
+        builder.withAwsServerless((Boolean)awsOption.getOrDefault(AWS_SERVERLESS.substring(4), false));
     }
     boolean awsSigv4 = pluginSetting.getBooleanOrDefault(AWS_SIGV4, false);
+    final String awsOptionConflictMessage = String.format("%s option cannot be used along with %s option", AWS_SIGV4, AWS_OPTION);
     if (awsSigv4) {
       if (awsOptionUsed) {
-        throw new RuntimeException(String.format("{} option cannot be used along with {} option", AWS_SIGV4, AWS_OPTION));
+        throw new RuntimeException(awsOptionConflictMessage);
       }
       builder.withAwsSigv4(true);
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
       builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
       builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
+      builder.withAwsServerless(pluginSetting.getBooleanOrDefault(AWS_SERVERLESS, false));
     }
 
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
@@ -227,9 +230,6 @@ public class ConnectionConfiguration {
     }
     final String proxy = pluginSetting.getStringOrDefault(PROXY, null);
     builder = builder.withProxy(proxy);
-
-    final boolean awsServerless = pluginSetting.getBooleanOrDefault(AWS_SERVERLESS, false);
-    builder = builder.withAwsServerless(awsServerless);
 
     return builder.build();
   }

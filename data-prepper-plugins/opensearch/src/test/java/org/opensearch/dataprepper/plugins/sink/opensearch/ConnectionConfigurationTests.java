@@ -89,8 +89,18 @@ class ConnectionConfigurationTests {
     @Test
     void testReadConnectionConfigurationAwsServerlessDefault() {
         final Map<String, Object> configMetadata = generateConfigurationMetadata(
-                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
         configMetadata.put(AWS_SERVERLESS, true);
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertTrue(connectionConfiguration.isAwsServerless());
+    }
+
+    @Test
+    void testReadConnectionConfigurationAwsOptionServerlessDefault() {
+        final String testArn = "arn:aws:iam::123456789012:iam-role";
+        final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, TEST_CERT_PATH, false, Collections.emptyMap());
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -367,7 +377,7 @@ class ConnectionConfigurationTests {
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
         final String testArn = "arn:aws:iam::123456789012:iam-role";
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -421,7 +431,7 @@ class ConnectionConfigurationTests {
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
         final String testArn = "arn:aws:iam::123456789012:iam-role";
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -728,7 +738,7 @@ class ConnectionConfigurationTests {
 
     private Map<String, Object> generateConfigurationMetadataWithAwsOption(
             final List<String> hosts, final String username, final String password,
-            final Integer connectTimeout, final Integer socketTimeout, final boolean awsSigv4, final String awsRegion,
+            final Integer connectTimeout, final Integer socketTimeout, final boolean serverless, final boolean awsSigv4, final String awsRegion,
             final String awsStsRoleArn, final String certPath, final boolean insecure, Map<String, String> headerOverridesMap) {
         final Map<String, Object> metadata = new HashMap<>();
         final Map<String, Object> awsOptionMetadata = new HashMap<>();
@@ -740,6 +750,7 @@ class ConnectionConfigurationTests {
         if (awsRegion != null) {
             awsOptionMetadata.put("region", awsRegion);
         }
+        awsOptionMetadata.put("serverless", serverless);
         awsOptionMetadata.put("sts_role_arn", awsStsRoleArn);
         awsOptionMetadata.put("sts_header_overrides", headerOverridesMap);
         metadata.put("aws", awsOptionMetadata);
