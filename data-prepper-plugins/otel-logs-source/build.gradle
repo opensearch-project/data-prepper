@@ -31,7 +31,6 @@ dependencies {
     implementation "org.bouncycastle:bcpkix-jdk15on:1.69"
     testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation testLibs.mockito.inline
-    testImplementation "org.hamcrest:hamcrest:2.2"
     testImplementation("commons-io:commons-io:2.10.0")
 }
 
