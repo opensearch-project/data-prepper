@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.peerforwarder.discovery;
 import com.google.common.base.Preconditions;
 import com.linecorp.armeria.client.Endpoint;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.parser.model.ServiceDiscoveryConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,8 +38,8 @@ public class StaticPeerListProvider implements PeerListProvider {
         pluginMetrics.gauge(PEER_ENDPOINTS, endpoints, List::size);
     }
 
-    static StaticPeerListProvider createPeerListProvider(final PeerForwarderConfiguration peerForwarderConfiguration, final PluginMetrics pluginMetrics) {
-        final List<String> endpoints = peerForwarderConfiguration.getStaticEndpoints();
+    static StaticPeerListProvider createPeerListProvider(final ServiceDiscoveryConfiguration serviceDiscoveryConfiguration, final PluginMetrics pluginMetrics) {
+        final List<String> endpoints = serviceDiscoveryConfiguration.getStaticEndpoints();
         Objects.requireNonNull(endpoints, "Missing static_endpoints configuration value");
         final List<String> invalidEndpoints = endpoints.stream().filter(endpoint -> !DiscoveryUtils.validateEndpoint(endpoint)).collect(Collectors.toList());
         Preconditions.checkState(invalidEndpoints.isEmpty(), "Including invalid endpoints: %s", invalidEndpoints);

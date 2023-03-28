@@ -31,7 +31,6 @@ import org.opensearch.dataprepper.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
-import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +63,7 @@ public class PipelineParser {
     private static final String ATTRIBUTE_NAME = "name";
     private final String pipelineConfigurationFileLocation;
     private final RouterFactory routerFactory;
-    private final SourceCoordinatorFactory sourceCoordinatorFactory;
+    private final SourceCoordinator sourceCoordinator;
     private final DataPrepperConfiguration dataPrepperConfiguration;
     private final CircuitBreakerManager circuitBreakerManager;
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
@@ -75,16 +74,16 @@ public class PipelineParser {
                           final PluginFactory pluginFactory,
                           final PeerForwarderProvider peerForwarderProvider,
                           final RouterFactory routerFactory,
-                          final SourceCoordinatorFactory sourceCoordinatorFactory,
+                          final SourceCoordinator sourceCoordinator,
                           final DataPrepperConfiguration dataPrepperConfiguration,
                           final CircuitBreakerManager circuitBreakerManager) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
-        this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
         this.circuitBreakerManager = circuitBreakerManager;
+        this.sourceCoordinator = sourceCoordinator;
     }
 
     /**
@@ -177,10 +176,6 @@ public class PipelineParser {
                     pipelineMap, pipelineConfigurationMap);
             final Source source = pipelineSource.orElseGet(() ->
                     pluginFactory.loadPlugin(Source.class, sourceSetting));
-
-            final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(dataPrepperConfiguration);
-
-
 
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             final Buffer pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());

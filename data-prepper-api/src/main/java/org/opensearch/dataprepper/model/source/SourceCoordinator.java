@@ -17,14 +17,16 @@ import java.util.Optional;
 public interface SourceCoordinator {
 
     /**
-     * A partition will be created for each of the partitionKeys passed.
+     * A partition will be created for each of the partitionKeys passed. Should be called every once in a while to pick up new partitions
      * @param partitionKeys
      */
     void createPartitions(final List<String> partitionKeys);
 
     /**
-     * This should be called by the source when it needs to get the next partition it should process on
-     * @return {@link org.opensearch.dataprepper.model.source.SourcePartition} with the details about how to process this partition
+     * This should be called by the source when it needs to get the next partition it should process on. Also is a way to renew a partition that is actively being worked on
+     * @return {@link org.opensearch.dataprepper.model.source.SourcePartition} with the details about how to process this partition. Will return the assigned partition until
+     *          {@link org.opensearch.dataprepper.model.source.SourceCoordinator#completePartition(String)}
+     *          or {@link org.opensearch.dataprepper.model.source.SourceCoordinator#closePartition(String, Duration)} are called by the source.
      */
     Optional<SourcePartition> getNextPartition();
 

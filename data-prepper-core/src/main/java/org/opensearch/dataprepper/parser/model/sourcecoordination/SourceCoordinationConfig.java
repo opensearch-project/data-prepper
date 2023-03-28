@@ -19,6 +19,10 @@ public class SourceCoordinationConfig {
 
     private final SourceCoordinationStoreConfig sourceCoordinationStoreConfig;
 
+    public SourceCoordinationConfig() {
+        this.sourceCoordinationStoreConfig = null;
+    }
+
     @JsonCreator
     public SourceCoordinationConfig(@JsonProperty("store") final SourceCoordinationStoreConfig sourceCoordinationStoreConfig) {
         Objects.requireNonNull(sourceCoordinationStoreConfig, "source_coordination store must not be null");

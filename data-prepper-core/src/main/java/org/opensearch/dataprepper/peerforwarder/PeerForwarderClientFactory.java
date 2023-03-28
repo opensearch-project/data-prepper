@@ -30,8 +30,8 @@ public class PeerForwarderClientFactory {
     }
 
     public HashRing createHashRing() {
-        final DiscoveryMode discoveryMode = peerForwarderConfiguration.getDiscoveryMode();
-        final PeerListProvider peerListProvider = discoveryMode.create(peerForwarderConfiguration, pluginMetrics);
+        final DiscoveryMode discoveryMode = peerForwarderConfiguration.getServiceDiscoveryConfiguration().getDiscoveryMode();
+        final PeerListProvider peerListProvider = discoveryMode.create(peerForwarderConfiguration.getServiceDiscoveryConfiguration(), pluginMetrics);
         return new HashRing(peerListProvider, NUM_VIRTUAL_NODES);
     }
 

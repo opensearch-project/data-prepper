@@ -17,9 +17,13 @@ import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Expression;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
+import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
+import software.amazon.awssdk.enhanced.dynamodb.model.ScanEnhancedRequest;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
@@ -31,6 +35,8 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -90,7 +96,7 @@ public class DynamoDbClientWrapper {
             table.putItem(PutItemEnhancedRequest.builder(DynamoDbSourcePartitionItem.class)
                     .item(dynamoDbSourcePartitionItem)
                     .conditionExpression(Expression.builder()
-                            .expression("attribute_not_exists")
+                            .expression("attribute_not_exists(sourcePartitionKey)")
                             .build())
                     .build());
             return true;
@@ -104,15 +110,17 @@ public class DynamoDbClientWrapper {
 
     public boolean updatePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
         try {
+            dynamoDbSourcePartitionItem.setVersion(dynamoDbSourcePartitionItem.getVersion() + 1L);
             table.putItem(PutItemEnhancedRequest.builder(DynamoDbSourcePartitionItem.class)
                     .item(dynamoDbSourcePartitionItem)
                     .conditionExpression(Expression.builder()
-                            .expression("attribute_exists")
+                            .expression("attribute_exists(sourcePartitionKey) and version = :v")
+                            .expressionValues(Map.of(":v", AttributeValue.builder().n(String.valueOf(dynamoDbSourcePartitionItem.getVersion() - 1L)).build()))
                             .build())
                     .build());
             return true;
         } catch (final ConditionalCheckFailedException e) {
-            LOG.error("The partitionKey {} does not exist");
+            LOG.error("ConditionalCheckFailedException when trying to updatePartitionItem with sourcePartitionKey {}: {}", dynamoDbSourcePartitionItem.getSourcePartitionKey(), e.getMessage());
             return false;
         } catch (final ProvisionedThroughputExceededException e) {
             // configure retries and exponential backoff
@@ -126,11 +134,25 @@ public class DynamoDbClientWrapper {
                     .partitionValue(sourcePartitionKey)
                     .build();
 
-            final DynamoDbSourcePartitionItem result = table.getItem(key);
+            final DynamoDbSourcePartitionItem result = table.getItem(GetItemEnhancedRequest.builder().key(key).build());
+
+            if (Objects.isNull(result)) {
+                return Optional.empty();
+            }
             return Optional.of(result);
         } catch (final ResourceNotFoundException e) {
             return Optional.empty();
         }
+    }
+
+    public PageIterable<DynamoDbSourcePartitionItem> getSourcePartitionItems(final Expression filterExpression) {
+        final ScanEnhancedRequest scanRequest = ScanEnhancedRequest.builder()
+                .filterExpression(filterExpression)
+                //.consistentRead(true)
+                .limit(20)
+                .build();
+
+        return table.scan(scanRequest);
     }
 
     private AwsCredentialsProvider getAwsCredentials(final Region region, final String stsRoleArn) {

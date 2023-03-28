@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.peerforwarder;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.parser.model.ServiceDiscoveryConfiguration;
 import org.opensearch.dataprepper.peerforwarder.discovery.DiscoveryMode;
 
 import java.time.Duration;
@@ -65,6 +66,8 @@ public class PeerForwarderConfiguration {
     private Duration forwardingBatchTimeout = DEFAULT_FORWARDING_BATCH_TIMEOUT;
     private boolean binaryCodec = true;
 
+    private ServiceDiscoveryConfiguration serviceDiscoveryConfiguration;
+
     public PeerForwarderConfiguration() {}
 
     @JsonCreator
@@ -102,7 +105,7 @@ public class PeerForwarderConfiguration {
             @JsonProperty("forwarding_batch_queue_depth") final Integer forwardingBatchQueueDepth,
             @JsonProperty("forwarding_batch_timeout") final Duration forwardingBatchTimeout,
             @JsonProperty("binary_codec") final Boolean binaryCodec
-    ) {
+            ) {
         setServerPort(serverPort);
         setRequestTimeout(requestTimeout);
         setClientTimeout(clientTimeout);
@@ -138,6 +141,15 @@ public class PeerForwarderConfiguration {
         setBinaryCodec(binaryCodec == null || binaryCodec);
         checkForCertAndKeyFileInS3();
         validateSslAndAuthentication();
+
+        serviceDiscoveryConfiguration = new ServiceDiscoveryConfiguration(
+                discoveryMode,
+                awsCloudMapNamespaceName,
+                awsCloudMapServiceName,
+                awsRegion,
+                awsCloudMapQueryParameters,
+                domainName,
+                staticEndpoints);
     }
 
     public int getServerPort() {
@@ -365,6 +377,10 @@ public class PeerForwarderConfiguration {
 
     public ForwardingAuthentication getAuthentication() {
         return authentication;
+    }
+
+    public ServiceDiscoveryConfiguration getServiceDiscoveryConfiguration() {
+        return serviceDiscoveryConfiguration;
     }
 
     private void setUseAcmCertificateForSsl(final Boolean useAcmCertificateForSsl) {

@@ -6,12 +6,9 @@
 package org.opensearch.dataprepper.sourcecoordination.dynamo;
 
 import org.opensearch.dataprepper.sourcecoordination.SourcePartitionStatus;
-import software.amazon.awssdk.enhanced.dynamodb.internal.converter.attribute.EnumAttributeConverter;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbConvertedBy;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
-import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
 import java.time.Instant;
 
@@ -21,7 +18,7 @@ public class DynamoDbSourcePartitionItem {
     private String sourcePartitionKey;
     private String partitionOwner;
     private Long version;
-    private Object partitionProgressState;
+    private String partitionProgressState;
     private SourcePartitionStatus sourcePartitionStatus;
     private Instant partitionOwnershipTimeout;
     private Instant reOpenAt;
@@ -39,7 +36,7 @@ public class DynamoDbSourcePartitionItem {
         this.version = version;
     }
 
-    public void setPartitionProgressState(final Object partitionProgressState) {
+    public void setPartitionProgressState(final String partitionProgressState) {
         this.partitionProgressState = partitionProgressState;
     }
 
@@ -60,11 +57,10 @@ public class DynamoDbSourcePartitionItem {
     }
 
     @DynamoDbPartitionKey
-    private String getSourcePartitionKey() {
+    public String getSourcePartitionKey() {
         return this.sourcePartitionKey;
     }
 
-    @DynamoDbSortKey
     public String getPartitionOwner() {
         return partitionOwner;
     }
@@ -73,13 +69,12 @@ public class DynamoDbSourcePartitionItem {
         return version;
     }
 
-    public Object getPartitionProgressState() {
+    public String getPartitionProgressState() {
         return partitionProgressState;
     }
 
     // Global secondary index? Could be configurable
     @DynamoDbSecondaryPartitionKey(indexNames = {"sourcePartitionStatus"})
-    @DynamoDbConvertedBy(EnumAttributeConverter.class)
     public SourcePartitionStatus getSourcePartitionStatus() {
         return sourcePartitionStatus;
     }

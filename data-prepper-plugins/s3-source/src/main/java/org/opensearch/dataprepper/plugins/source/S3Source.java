@@ -50,7 +50,7 @@ public class S3Source implements Source<Record<Event>>, RequiresSourceCoordinati
         final ConfigBucketOwnerProviderFactory configBucketOwnerProviderFactory = new ConfigBucketOwnerProviderFactory();
         final BucketOwnerProvider bucketOwnerProvider = configBucketOwnerProviderFactory.createBucketOwnerProvider(s3SourceConfig);
 
-        final S3Service s3Service = new S3Service(s3SourceConfig, buffer, codec, pluginMetrics, bucketOwnerProvider);
+        final S3Service s3Service = new S3Service(s3SourceConfig, buffer, codec, pluginMetrics, bucketOwnerProvider, sourceCoordinator);
         sqsService = new SqsService(s3SourceConfig, s3Service, pluginMetrics);
 
         sqsService.start();

@@ -37,6 +37,7 @@ public class DataPrepperConfiguration {
     private PluginModel authentication;
     private CircuitBreakerConfig circuitBreakerConfig;
     private SourceCoordinationConfig sourceCoordinationConfig;
+    private ServiceDiscoveryConfiguration serviceDiscoveryConfiguration;
     private Map<String, String> metricTags = new HashMap<>();
     private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
@@ -79,11 +80,13 @@ public class DataPrepperConfiguration {
             @JsonAlias("sinkShutdownTimeout")
             final Duration sinkShutdownTimeout,
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig,
-            @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig
+            @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig,
+            @JsonProperty("service_discovery") final ServiceDiscoveryConfiguration serviceDiscoveryConfiguration
             ) {
         this.authentication = authentication;
         this.circuitBreakerConfig = circuitBreakerConfig;
         this.sourceCoordinationConfig = sourceCoordinationConfig;
+        this.serviceDiscoveryConfiguration = serviceDiscoveryConfiguration;
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
         this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
@@ -202,4 +205,6 @@ public class DataPrepperConfiguration {
     }
 
     public SourceCoordinationConfig getSourceCoordinationConfig() { return sourceCoordinationConfig; }
+
+    public ServiceDiscoveryConfiguration getServiceDiscoveryConfiguration() { return serviceDiscoveryConfiguration; }
 }

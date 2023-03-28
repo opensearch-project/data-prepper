@@ -9,6 +9,7 @@ import com.google.common.base.Preconditions;
 import com.linecorp.armeria.client.Endpoint;
 import com.linecorp.armeria.client.endpoint.dns.DnsAddressEndpointGroup;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.parser.model.ServiceDiscoveryConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,8 +43,8 @@ public class DnsPeerListProvider implements PeerListProvider {
         pluginMetrics.gauge(PEER_ENDPOINTS, endpointGroup, group -> group.endpoints().size());
     }
 
-    static DnsPeerListProvider createPeerListProvider(final PeerForwarderConfiguration peerForwarderConfiguration, final PluginMetrics pluginMetrics) {
-        final String domainName = peerForwarderConfiguration.getDomainName();
+    static DnsPeerListProvider createPeerListProvider(final ServiceDiscoveryConfiguration serviceDiscoveryConfiguration, final PluginMetrics pluginMetrics) {
+        final String domainName = serviceDiscoveryConfiguration.getDomainName();
         Objects.requireNonNull(domainName, "Missing domain_name configuration value");
         Preconditions.checkState(DiscoveryUtils.validateEndpoint(domainName), "Invalid domain name: %s", domainName);
 

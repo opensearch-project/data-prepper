@@ -5,17 +5,17 @@
 
 package org.opensearch.dataprepper.parser.config;
 
-import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.source.SourceCoordinator;
 import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
-import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -40,7 +40,7 @@ class PipelineParserConfigurationTest {
     private RouterFactory routerFactory;
 
     @Mock
-    private SourceCoordinatorFactory sourceCoordinatorFactory;
+    private SourceCoordinator sourceCoordinator;
 
     @Mock
     private DataPrepperConfiguration dataPrepperConfiguration;
@@ -55,7 +55,7 @@ class PipelineParserConfigurationTest {
                 .thenReturn(pipelineConfigFileLocation);
 
         final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(
-                fileStructurePathProvider, pluginFactory, peerForwarderProvider, routerFactory, sourceCoordinatorFactory, dataPrepperConfiguration, circuitBreakerManager);
+                fileStructurePathProvider, pluginFactory, peerForwarderProvider, routerFactory, sourceCoordinator, dataPrepperConfiguration, circuitBreakerManager);
 
         assertThat(pipelineParser, is(notNullValue()));
         verify(fileStructurePathProvider).getPipelineConfigFileLocation();

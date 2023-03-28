@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.peerforwarder.discovery;
 
 import com.linecorp.armeria.client.Endpoint;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.parser.model.ServiceDiscoveryConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 
 import java.util.Collections;
@@ -15,7 +16,7 @@ import java.util.function.Consumer;
 
 public class LocalPeerListProvider implements PeerListProvider {
 
-    static LocalPeerListProvider createPeerListProvider(final PeerForwarderConfiguration peerForwarderConfiguration, final PluginMetrics pluginMetrics) {
+    static LocalPeerListProvider createPeerListProvider(final ServiceDiscoveryConfiguration serviceDiscoveryConfiguration, final PluginMetrics pluginMetrics) {
         return new LocalPeerListProvider();
     }
 

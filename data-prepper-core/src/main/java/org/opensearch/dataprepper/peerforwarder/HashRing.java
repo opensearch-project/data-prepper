@@ -12,6 +12,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.math.BigInteger;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -50,6 +54,16 @@ public class HashRing implements Consumer<List<Endpoint>> {
     }
 
     public Optional<String> getServerIp(final List<String> identificationKeyValues) {
+        return getServerIpForKeys(identificationKeyValues);
+    }
+
+    public boolean isHashedToThisServer(final List<String> identificationKeyValues) {
+        final Optional<String> result = getServerIpForKeys(identificationKeyValues);
+
+        return result.isPresent() && isAddressDefinedLocally(result.get());
+    }
+
+    private Optional<String> getServerIpForKeys(final List<String> identificationKeyValues) {
         if (hashServerMap.isEmpty()) {
             return Optional.empty();
         }
@@ -113,6 +127,33 @@ public class HashRing implements Consumer<List<Endpoint>> {
             targetMap.putIfAbsent(hashcode, serverIp);
             md.reset();
             intBuffer.clear();
+        }
+    }
+
+    public String getLocalEndpoint() {
+        for (final String endpoint : peerListProvider.getPeerList()) {
+            if (isAddressDefinedLocally(endpoint)) {
+                return endpoint;
+            }
+        }
+        return null;
+    }
+
+    private boolean isAddressDefinedLocally(final String address) {
+        final InetAddress inetAddress;
+        try {
+            inetAddress = InetAddress.getByName(address);
+        } catch (final UnknownHostException e) {
+            return false;
+        }
+        if (inetAddress.isAnyLocalAddress() || inetAddress.isLoopbackAddress()) {
+            return true;
+        } else {
+            try {
+                return NetworkInterface.getByInetAddress(inetAddress) != null;
+            } catch (final SocketException e) {
+                return false;
+            }
         }
     }
 }

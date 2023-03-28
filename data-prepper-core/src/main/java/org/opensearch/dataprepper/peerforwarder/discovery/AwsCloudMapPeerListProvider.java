@@ -12,6 +12,7 @@ import com.linecorp.armeria.common.CommonPools;
 import io.netty.channel.EventLoop;
 import io.netty.util.concurrent.ScheduledFuture;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.parser.model.ServiceDiscoveryConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.plugins.metricpublisher.MicrometerMetricPublisher;
 import org.slf4j.Logger;
@@ -82,14 +83,14 @@ class AwsCloudMapPeerListProvider implements PeerListProvider, AutoCloseable {
         pluginMetrics.gauge(PEER_ENDPOINTS, endpointGroup, group -> group.endpoints().size());
     }
 
-    static AwsCloudMapPeerListProvider createPeerListProvider(final PeerForwarderConfiguration peerForwarderConfiguration, final PluginMetrics pluginMetrics) {
-        final String awsRegion = peerForwarderConfiguration.getAwsRegion();
+    static AwsCloudMapPeerListProvider createPeerListProvider(final ServiceDiscoveryConfiguration serviceDiscoveryConfiguration, final PluginMetrics pluginMetrics) {
+        final String awsRegion = serviceDiscoveryConfiguration.getAwsRegion();
         Objects.requireNonNull(awsRegion, "Missing aws_region configuration value");
-        final String namespace = peerForwarderConfiguration.getAwsCloudMapNamespaceName();
+        final String namespace = serviceDiscoveryConfiguration.getAwsCloudMapNamespaceName();
         Objects.requireNonNull(namespace, "Missing aws_cloud_map_namespace_name configuration value");
-        final String serviceName = peerForwarderConfiguration.getAwsCloudMapServiceName();
+        final String serviceName = serviceDiscoveryConfiguration.getAwsCloudMapServiceName();
         Objects.requireNonNull(serviceName, "Missing aws_cloud_map_service_name configuration value");
-        final Map<String, String> queryParameters = peerForwarderConfiguration.getAwsCloudMapQueryParameters();
+        final Map<String, String> queryParameters = serviceDiscoveryConfiguration.getAwsCloudMapQueryParameters();
 
         final Backoff standardBackoff = Backoff.exponential(ONE_SECOND, TWENTY_SECONDS).withJitter(TWENTY_PERCENT);
         final int timeToRefreshSeconds = 20;
