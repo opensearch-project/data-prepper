@@ -68,7 +68,6 @@ class S3SelectObjectWorkerTest {
     private S3SelectOptions s3SelectOptions;
     private String key;
     private String bucketName;
-    private int numberOfRecordsToAccumulate;
     @Mock
     private Duration bufferTimeout;
     @Mock
@@ -97,7 +96,7 @@ class S3SelectObjectWorkerTest {
                         .details(Progress.builder().bytesProcessed(10L).bytesScanned(20L).bytesReturned(30L).build()).build(),
                 SelectObjectContentEventStream.endBuilder().build()));
         lenient().when(s3AsyncClient.selectObjectContent(any(SelectObjectContentRequest.class),any(SelectObjectContentResponseHandler.class))).thenReturn(feature);
-        lenient().when(selectResponseHandler.getReceivedEvents()).thenReturn(selectObjectContentEventStreamList);
+        lenient().when(selectResponseHandler.getS3SelectContentEvents()).thenReturn(selectObjectContentEventStreamList);
     }
 
     private S3SelectObjectWorker createSelectObjectUnderTest(final String responseFormat, final String queryStatement,
@@ -108,7 +107,7 @@ class S3SelectObjectWorkerTest {
         if(selectResponseHandlerTest == null)
             selectObjectContentResponse(responseFormat);
         Random random = new Random();
-        numberOfRecordsToAccumulate = random.nextInt(10) + 2;
+        int numberOfRecordsToAccumulate = random.nextInt(10) + 2;
         bucketName = UUID.randomUUID().toString();
         key = UUID.randomUUID().toString();
         when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
@@ -139,18 +138,17 @@ class S3SelectObjectWorkerTest {
         assertThat(request.getValue().expectedBucketOwner(), nullValue());
         assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getQueryStatement()));
         verify(s3ObjectsFailedCounter).increment();
-        assertTrue(selectResponseHandler.getReceivedEvents().isEmpty());
+        assertTrue(selectResponseHandler.getS3SelectContentEvents().isEmpty());
     }
     @ParameterizedTest
     @CsvSource({
-            "{\"name\":\"data-prep\"},select * from s3Object,CSV,NONE",
-            "{\"log\":\"data-prep-log\"},select * from s3Object,JSON,NONE",
-            "{\"name\":\"data-prep-test\"},select * from s3Object,PARQUET,NONE",
-            "{\"name\":\"data-prep\"},select * from s3Object,CSV,GZIP",
-            "{\"log\":\"data-prep-log\"},select * from s3Object,JSON,GZIP",
-            "{\"name\":\"data-prep-test\"},select * from s3Object,PARQUET,GZIP"})
+            "'{\"S.No\":\"1\",\"name\":\"data-prep\",\"country\":\"USA\"}',select * from s3Object,CSV,NONE",
+            "'{\"S.No\":\"2\",\"log\":\"data-prep-log\",\"Date\":\"2023-03-03\"}',select * from s3Object,JSON,NONE",
+            "'{\"S.No\":\"3\",\"name\":\"data-prep-test\",\"age\":\"21y\"}',select * from s3Object,PARQUET,NONE",
+            "'{\"S.No\":\"4\",\"name\":\"data-prep\",\"empId\",\"123456\"}',select * from s3Object,CSV,GZIP",
+            "'{\"S.No\":\"5\",\"log\":\"data-prep-log\",\"documentType\":\"test doc\"}',select * from s3Object,JSON,GZIP",
+            "'{\"S.No\":\"6\",\"name\":\"data-prep-test\",\"type\":\"json\"}',select * from s3Object,PARQUET,GZIP"})
     void selectObjectFromS3TestWithCorrectRequest(final String responseFormat,final String query,final String format,final String compression) throws Exception {
-        when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(distributionSummary);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(distributionSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
         final S3SelectObjectWorker selectObjectUnderTest = createSelectObjectUnderTest(responseFormat, query, S3SelectSerializationFormatOption.valueOf(format),
@@ -162,7 +160,7 @@ class S3SelectObjectWorkerTest {
         assertThat(request.getValue().bucket(), equalTo(bucketName));
         assertThat(request.getValue().expectedBucketOwner(), nullValue());
         assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getQueryStatement()));
-        assertTrue(selectResponseHandler.getReceivedEvents().isEmpty());
+        assertTrue(selectResponseHandler.getS3SelectContentEvents().isEmpty());
         verify(s3ObjectsSucceededCounter).increment();
         assertThat(distributionSummary,notNullValue());
     }

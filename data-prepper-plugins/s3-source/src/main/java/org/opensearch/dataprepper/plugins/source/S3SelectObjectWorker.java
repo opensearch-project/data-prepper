@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -97,25 +96,24 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     }
 
     private void selectObjectContent(S3ObjectReference s3ObjectReference) throws IOException {
-        final long totalBytesRead;
         final InputStream inputStreamList;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
         final InputSerialization inputSerialization = getInputSerializationFormat(serializationFormatOption
                 ,compressionType,fileHeaderInfo);
         final SelectObjectContentRequest selectObjectContentRequest = getS3SelectObjRequest(s3ObjectReference, inputSerialization);
         s3AsyncClient.selectObjectContent(selectObjectContentRequest, s3SelectResponseHandler).join();
-        final List<SelectObjectContentEventStream> receivedEvents = s3SelectResponseHandler.getReceivedEvents();
-        if (receivedEvents.isEmpty()) {
-            throw new IOException("No Records Found.");
+        if(s3SelectResponseHandler.getException()!=null)
+            throw new IOException(s3SelectResponseHandler.getException());
+        final List<SelectObjectContentEventStream> receivedEvents = s3SelectResponseHandler.getS3SelectContentEvents();
+        if (!receivedEvents.isEmpty()) {
+            inputStreamList = getInputStreamFromResponseHeader(s3SelectResponseHandler);
+            parseCompleteStreamFromResponseHeader(s3ObjectReference, bufferAccumulator, inputStreamList);
+            s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(bufferAccumulator.getTotalWritten());
+            s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
+            receivedEvents.clear();
+        }else{
+            LOG.info("S3 Select returned no events for S3 object {}", s3ObjectReference);
         }
-        inputStreamList = getInputStreamFromResponseHeader(s3SelectResponseHandler);
-                totalBytesRead = parseCompleteStreamFromResponseHeader(s3ObjectReference, bufferAccumulator,
-                        inputStreamList);
-
-        s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary().record(totalBytesRead);
-        s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(bufferAccumulator.getTotalWritten());
-        s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
-        receivedEvents.clear();
     }
 
     private InputSerialization getInputSerializationFormat(final S3SelectSerializationFormatOption serializationFormatOption,
@@ -140,7 +138,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     }
 
     private InputStream getInputStreamFromResponseHeader(final S3SelectResponseHandler responseHand) {
-        return responseHand.getReceivedEvents().stream()
+        return responseHand.getS3SelectContentEvents().stream()
                 .filter(e -> e.sdkEventType() == SelectObjectContentEventStream.EventType.RECORDS)
                 .map(e -> ((RecordsEvent) e).payload().asInputStream()).collect(Collectors.toList()).stream()
                 .reduce(SequenceInputStream::new).orElse(null);
@@ -156,9 +154,8 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                 .build();
     }
 
-    private long parseCompleteStreamFromResponseHeader(final S3ObjectReference s3ObjectReference,
+    private void parseCompleteStreamFromResponseHeader(final S3ObjectReference s3ObjectReference,
             final BufferAccumulator<Record<Event>> bufferAccumulator,final InputStream stream) throws IOException {
-        final AtomicLong totalBytesRead = new AtomicLong(0);
         try (final CountingInputStream countingInputStream = new CountingInputStream(stream);
              final InputStreamReader inputStreamReader = new InputStreamReader(countingInputStream);
              final BufferedReader reader = new BufferedReader(inputStreamReader)) {
@@ -177,14 +174,12 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
 
                 }
             }
-            totalBytesRead.addAndGet(countingInputStream.getByteCount());
         }
         try {
             bufferAccumulator.flush();
         } catch (Exception e) {
             throw new IOException(e);
         }
-        return totalBytesRead.get();
     }
 
     private JsonNode getJsonNode(String selectObjectOptionalString) throws JsonProcessingException {
