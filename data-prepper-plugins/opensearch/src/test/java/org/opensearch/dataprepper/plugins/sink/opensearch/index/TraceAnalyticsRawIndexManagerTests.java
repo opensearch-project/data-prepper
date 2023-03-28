@@ -8,23 +8,30 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.opensearch.OpenSearchException;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsRequest;
-import org.opensearch.action.admin.cluster.settings.ClusterGetSettingsResponse;
-import org.opensearch.action.admin.indices.alias.get.GetAliasesRequest;
-import org.opensearch.client.ClusterClient;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.IndicesClient;
-import org.opensearch.client.RequestOptions;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.CreateIndexRequest;
-import org.opensearch.client.indices.GetIndexRequest;
-import org.opensearch.client.indices.GetIndexTemplatesRequest;
 import org.opensearch.client.indices.GetIndexTemplatesResponse;
-import org.opensearch.client.indices.PutIndexTemplateRequest;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.cluster.GetClusterSettingsRequest;
+import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import org.opensearch.client.opensearch.cluster.OpenSearchClusterClient;
+import org.opensearch.client.opensearch.indices.CreateIndexRequest;
+import org.opensearch.client.opensearch.indices.ExistsAliasRequest;
+import org.opensearch.client.opensearch.indices.ExistsTemplateRequest;
+import org.opensearch.client.opensearch.indices.GetTemplateRequest;
+import org.opensearch.client.opensearch.indices.GetTemplateResponse;
+import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
+import org.opensearch.client.opensearch.indices.PutTemplateRequest;
+import org.opensearch.client.transport.OpenSearchTransport;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -34,12 +41,14 @@ import java.util.Optional;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
 
+@ExtendWith(MockitoExtension.class)
 public class TraceAnalyticsRawIndexManagerTests {
     private static final String INDEX_ALIAS = "trace-raw-index-alias";
 
@@ -48,16 +57,22 @@ public class TraceAnalyticsRawIndexManagerTests {
     private AbstractIndexManager traceAnalyticsRawIndexManager;
 
     @Mock
+    private OpenSearchClient openSearchClient;
+
+    @Mock
     private RestHighLevelClient restHighLevelClient;
 
     @Mock
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
 
     @Mock
-    private ClusterClient cluster;
+    private ClusterSettingsParser clusterSettingsParser;
 
     @Mock
-    private ClusterGetSettingsResponse clusterGetSettingsResponse;
+    private OpenSearchClusterClient openSearchClusterClient;
+
+    @Mock
+    private GetClusterSettingsResponse getClusterSettingsResponse;
 
     @Mock
     private IndexConfiguration indexConfiguration;
@@ -66,7 +81,13 @@ public class TraceAnalyticsRawIndexManagerTests {
     private IndicesClient indicesClient;
 
     @Mock
+    private OpenSearchIndicesClient openSearchIndicesClient;
+
+    @Mock
     private GetIndexTemplatesResponse getIndexTemplatesResponse;
+
+    @Mock
+    private GetTemplateResponse getTemplateResponse;
 
     @Mock
     private RestClient restClient;
@@ -74,27 +95,36 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Mock
     private ResponseException responseException;
 
+    @Mock
+    private BooleanResponse booleanResponse;
+
+    @Mock
+    private OpenSearchTransport openSearchTransport;
+
+    @Mock
+    private OpenSearchException openSearchException;
+
     @Before
     public void setup() throws IOException {
         initMocks(this);
 
-        indexManagerFactory = new IndexManagerFactory();
+        indexManagerFactory = new IndexManagerFactory(clusterSettingsParser);
         when(openSearchSinkConfiguration.getIndexConfiguration()).thenReturn(indexConfiguration);
         when(indexConfiguration.getIndexAlias()).thenReturn(INDEX_ALIAS);
-        traceAnalyticsRawIndexManager = indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW,
-                restHighLevelClient, openSearchSinkConfiguration);
+        traceAnalyticsRawIndexManager = indexManagerFactory.getIndexManager(
+                IndexType.TRACE_ANALYTICS_RAW, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
 
-        when(restHighLevelClient.cluster()).thenReturn(cluster);
-        when(cluster.getSettings(any(ClusterGetSettingsRequest.class), any(RequestOptions.class)))
-                .thenReturn(clusterGetSettingsResponse);
-
-        when(restHighLevelClient.indices()).thenReturn(indicesClient);
+        when(openSearchClient.cluster()).thenReturn(openSearchClusterClient);
+        when(openSearchClusterClient.getSettings(any(GetClusterSettingsRequest.class)))
+                .thenReturn(getClusterSettingsResponse);
+        when(openSearchClient.indices()).thenReturn(openSearchIndicesClient);
     }
 
     @Test
     public void constructor_NullRestClient() {
         assertThrows(NullPointerException.class, () ->
-                indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW,null, openSearchSinkConfiguration));
+                indexManagerFactory.getIndexManager(
+                        IndexType.TRACE_ANALYTICS_RAW, openSearchClient, null, openSearchSinkConfiguration));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -102,31 +132,30 @@ public class TraceAnalyticsRawIndexManagerTests {
     @Test
     public void constructor_NullConfiguration() {
         assertThrows(NullPointerException.class, () ->
-                indexManagerFactory.getIndexManager(IndexType.TRACE_ANALYTICS_RAW, restHighLevelClient, null));
+                indexManagerFactory.getIndexManager(
+                        IndexType.TRACE_ANALYTICS_RAW, openSearchClient, restHighLevelClient, null));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
     public void checkISMEnabled_True() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("true");
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("true");
         assertEquals(true, traceAnalyticsRawIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
-        verify(restHighLevelClient).cluster();
-        verify(cluster).getSettings(any(), any());
-        verify(clusterGetSettingsResponse).getSetting(any());
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
     }
 
     @Test
     public void checkISMEnabled_False() throws IOException {
-        when(clusterGetSettingsResponse.getSetting(IndexConstants.ISM_ENABLED_SETTING)).thenReturn("false");
+        when(clusterSettingsParser.getStringValueClusterSetting(any(GetClusterSettingsResponse.class), anyString())).thenReturn("false");
         assertEquals(false, traceAnalyticsRawIndexManager.checkISMEnabled());
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
-        verify(restHighLevelClient).cluster();
-        verify(cluster).getSettings(any(), any());
-        verify(clusterGetSettingsResponse).getSetting(any());
+        verify(openSearchClient).cluster();
+        verify(openSearchClusterClient).getSettings(any(GetClusterSettingsRequest.class));
     }
 
     @Test
@@ -153,14 +182,17 @@ public class TraceAnalyticsRawIndexManagerTests {
 
     @Test
     public void checkAndCreateIndexTemplate_NoIndexTemplateOnHost_ISMDisabled() throws IOException {
-        when(indicesClient.existsTemplate(any(), any())).thenReturn(false);
+        when(booleanResponse.value()).thenReturn(false);
+        when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class))).thenReturn(booleanResponse);
         traceAnalyticsRawIndexManager.checkAndCreateIndexTemplate(false, null);
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
-        verify(restHighLevelClient, times(2)).indices();
-        verify(indicesClient).existsTemplate(any(), any());
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).existsTemplate(any(ExistsTemplateRequest.class));
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIndexTemplate();
-        verify(indicesClient).putTemplate(any(PutIndexTemplateRequest.class), any());
+        verify(openSearchIndicesClient).putTemplate(any(PutTemplateRequest.class));
     }
 
     @Test
@@ -168,66 +200,75 @@ public class TraceAnalyticsRawIndexManagerTests {
         final Map<String, Object> configs = new HashMap<>();
         configs.put("settings", new HashMap<String, String>());
         when(indexConfiguration.getIndexTemplate()).thenReturn(configs);
-        when(indicesClient.existsTemplate(any(), any())).thenReturn(false);
+        when(booleanResponse.value()).thenReturn(false);
+        when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class))).thenReturn(booleanResponse);
         traceAnalyticsRawIndexManager.checkAndCreateIndexTemplate(true, null);
         verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
-        verify(restHighLevelClient, times(2)).indices();
-        verify(indicesClient).existsTemplate(any(), any());
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).existsTemplate(any(ExistsTemplateRequest.class));
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration, times(3)).getIndexTemplate();
-        verify(indicesClient).putTemplate(any(PutIndexTemplateRequest.class), any());
+        verify(openSearchIndicesClient).putTemplate(any(PutTemplateRequest.class));
     }
 
     @Test
     public void checkAndCreateIndexTemplate_ZeroIndexTemplateListInResponse() throws IOException {
-        when(indicesClient.existsTemplate(any(), any())).thenReturn(true);
-        when(indicesClient.getIndexTemplate(any(GetIndexTemplatesRequest.class), any())).thenReturn(getIndexTemplatesResponse);
+        when(booleanResponse.value()).thenReturn(true);
+        when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class))).thenReturn(booleanResponse);
+        when(openSearchIndicesClient.getTemplate(any(GetTemplateRequest.class))).thenReturn(getTemplateResponse);
 
         try {
             traceAnalyticsRawIndexManager.checkAndCreateIndexTemplate(false, null);
         } catch (final RuntimeException e) {
             verify(openSearchSinkConfiguration).getIndexConfiguration();
-            verify(restHighLevelClient, times(2)).indices();
-            verify(indicesClient).existsTemplate(any(), any());
+            verify(openSearchClient, times(2)).indices();
+            verify(openSearchIndicesClient).existsTemplate(any(ExistsTemplateRequest.class));
             verify(indexConfiguration).getIndexAlias();
-            verify(indicesClient).existsTemplate(any(), any());
-            verify(indicesClient).getIndexTemplate(any(GetIndexTemplatesRequest.class), any());
-            verify(getIndexTemplatesResponse, times(2)).getIndexTemplates();
+            verify(openSearchIndicesClient).getTemplate(any(GetTemplateRequest.class));
+            verify(getTemplateResponse).result();
         }
     }
 
     @Test
     public void checkAndCreateIndex_IndexAlreadyExists() throws IOException {
-        when(indicesClient.existsAlias(any(GetAliasesRequest.class), any())).thenReturn(true);
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(true));
         traceAnalyticsRawIndexManager.checkAndCreateIndex();
-        verify(restHighLevelClient).indices();
-        verify(indicesClient).existsAlias(any(GetAliasesRequest.class), any());
+        verify(openSearchClient).indices();
+        verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
     public void checkAndCreateIndex_NeedToCreateNewIndex() throws IOException {
-        when(indicesClient.existsAlias(any(GetAliasesRequest.class), any())).thenReturn(false);
-        when(indicesClient.create(any(CreateIndexRequest.class), any())).thenReturn(null);
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(new BooleanResponse(false));
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
+                .thenReturn(null);
         traceAnalyticsRawIndexManager.checkAndCreateIndex();
-        verify(restHighLevelClient, times(2)).indices();
-        verify(indicesClient).existsAlias(any(GetAliasesRequest.class), any());
-        verify(indicesClient).create(any(CreateIndexRequest.class), any());
+        verify(openSearchClient, times(2)).indices();
+        verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
+        verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
 
     @Test
     public void checkAndCreateIndex_CreateNewIndex_Exception() throws IOException {
-        when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(false);
-        when(indicesClient.create(any(CreateIndexRequest.class), any())).thenThrow(new OpenSearchException(""));
+        when(openSearchIndicesClient.existsAlias(any(ExistsAliasRequest.class))).thenReturn(
+                new BooleanResponse(false));
+        when(openSearchException.getMessage()).thenReturn("");
+        when(openSearchIndicesClient.create(any(CreateIndexRequest.class)))
+                .thenThrow(openSearchException);
         try {
             traceAnalyticsRawIndexManager.checkAndCreateIndex();
         } catch (final IOException e) {
-            verify(restHighLevelClient, times(2)).indices();
-            verify(indicesClient).existsAlias(any(GetAliasesRequest.class), any());
-            verify(indicesClient).create(any(CreateIndexRequest.class), any());
+            verify(openSearchClient, times(2)).indices();
+            verify(openSearchIndicesClient).existsAlias(any(ExistsAliasRequest.class));
+            verify(openSearchIndicesClient).create(any(CreateIndexRequest.class));
             verify(openSearchSinkConfiguration).getIndexConfiguration();
             verify(indexConfiguration).getIndexAlias();
         }
@@ -238,8 +279,6 @@ public class TraceAnalyticsRawIndexManagerTests {
         verifyNoMoreInteractions(
                 restHighLevelClient,
                 openSearchSinkConfiguration,
-                cluster,
-                clusterGetSettingsResponse,
                 indexConfiguration,
                 indicesClient,
                 getIndexTemplatesResponse,
