@@ -105,4 +105,7 @@ include 'release:docker'
 include 'release:maven'
 include 'e2e-test:peerforwarder'
 include 'rss-source'
+include 'data-prepper-plugins:parquet-codecs'
+include 'data-prepper-plugins:newline-codecs'
+include 'data-prepper-plugins:avro-codecs'
 

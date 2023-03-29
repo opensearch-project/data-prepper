@@ -8,9 +8,9 @@ package org.opensearch.dataprepper.plugins.source;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.compression.GZipCompressionEngine;
 import org.opensearch.dataprepper.plugins.source.compression.NoneCompressionEngine;
@@ -105,7 +105,7 @@ class S3ObjectWorkerIT {
                 .when(buffer).writeAll(anyCollection(), anyInt());
     }
 
-    private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
+    private S3ObjectWorker createObjectUnderTest(final InputCodec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
         return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, eventMetadataModifier, pluginMetrics);
     }
 

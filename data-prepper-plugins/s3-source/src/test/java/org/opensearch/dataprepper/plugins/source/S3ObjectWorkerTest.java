@@ -20,9 +20,9 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -74,7 +74,7 @@ class S3ObjectWorkerTest {
     private CompressionEngine compressionEngine;
 
     @Mock
-    private Codec codec;
+    private InputCodec codec;
 
     @Mock
     private BucketOwnerProvider bucketOwnerProvider;
