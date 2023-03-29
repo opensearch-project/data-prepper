@@ -6,6 +6,16 @@
 package org.opensearch.dataprepper.event;
 
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import java.lang.ref.WeakReference;
 
-class DefaultEventHandle implements EventHandle {
+public class DefaultEventHandle implements EventHandle {
+    private final WeakReference<AcknowledgementSet> acknowledgementSetRef;
+    public DefaultEventHandle(AcknowledgementSet acknowledgementSet) {
+        this.acknowledgementSetRef = new WeakReference<>(acknowledgementSet);
+    }
+
+    public AcknowledgementSet getAcknowledgementSet() {
+        return acknowledgementSetRef.get();
+    }
 }
