@@ -169,12 +169,6 @@ public class DlqObjectTest {
             assertThat(actualTimestamp, is(lessThanOrEqualTo(Instant.now())));
         }
 
-        @Test
-        public void test_get_version() {
-            final String string = testObject.getVersion();
-            assertThat(string, is(notNullValue()));
-            assertThat(string, is(equalTo("1")));
-        }
     }
 
 

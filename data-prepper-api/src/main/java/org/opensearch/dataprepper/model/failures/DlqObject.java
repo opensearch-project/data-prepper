@@ -26,15 +26,11 @@ public class DlqObject {
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(ISO8601_FORMAT_STRING)
             .withZone(ZoneId.systemDefault());;
 
-    private static final String VERSION = "1";
-
     private final String pluginId;
 
     private final String pluginName;
 
     private final String pipelineName;
-
-    private final String version;
 
     private final Object failedData;
 
@@ -54,7 +50,6 @@ public class DlqObject {
         this.pluginId = pluginId;
         this.pluginName = pluginName;
         this.pipelineName = pipelineName;
-        this.version = VERSION;
         this.failedData = failedData;
 
         this.timestamp = StringUtils.isEmpty(timestamp) ? FORMATTER.format(Instant.now()) : timestamp;
@@ -72,10 +67,6 @@ public class DlqObject {
         return pipelineName;
     }
     
-    public String getVersion() {
-        return version;
-    }
-    
     public Object getFailedData() {
         return failedData;
     }
@@ -89,8 +80,7 @@ public class DlqObject {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final DlqObject that = (DlqObject) o;
-        return Objects.equals(version, that.getVersion())
-            && Objects.equals(failedData, that.getFailedData())
+        return Objects.equals(failedData, that.getFailedData())
             && Objects.equals(pluginId, that.pluginId)
             && Objects.equals(pluginName, that.pluginName)
             && Objects.equals(pipelineName, that.pipelineName)
@@ -99,7 +89,7 @@ public class DlqObject {
 
     @Override
     public int hashCode() {
-        return Objects.hash(pluginId, pluginName, pipelineName, version, timestamp, failedData);
+        return Objects.hash(pluginId, pluginName, pipelineName, timestamp, failedData);
     }
 
     @Override
@@ -108,7 +98,6 @@ public class DlqObject {
             "pluginId='" + pluginId + '\'' +
             ", pluginName='" + pluginName + '\'' +
             ", pipelineName='" + pipelineName + '\'' +
-            ", version='" + version + '\'' +
             ", timestamp='" + timestamp + '\'' +
             ", failedData=" + failedData +
             '}';
