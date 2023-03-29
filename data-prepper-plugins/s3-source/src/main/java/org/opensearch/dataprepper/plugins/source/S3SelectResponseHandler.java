@@ -17,12 +17,10 @@ import software.amazon.awssdk.services.s3.model.SelectObjectContentResponseHandl
  * This class is derived from <code>SelectObjectContentResponseHandler</code> in the AWS SDKv2 for Java.
  */
 public class S3SelectResponseHandler implements SelectObjectContentResponseHandler {
-    private SelectObjectContentResponse response;
     private List<SelectObjectContentEventStream> receivedEvents = new ArrayList<>();
     private Throwable exception;
     @Override
     public void responseReceived(SelectObjectContentResponse response) {
-        this.response = response;
     }
 
     @Override
