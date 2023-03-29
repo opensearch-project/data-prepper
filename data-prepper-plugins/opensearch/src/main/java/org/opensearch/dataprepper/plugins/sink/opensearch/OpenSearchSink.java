@@ -5,11 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
@@ -82,7 +84,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private ObjectMapper objectMapper;
   private volatile boolean initialized;
 
-  public OpenSearchSink(final PluginSetting pluginSetting) {
+  @DataPrepperPluginConstructor
+  public OpenSearchSink(final PluginSetting pluginSetting, final PluginFactory pluginFactory) {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
@@ -98,6 +101,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
     this.initialized = false;
     this.lock = new ReentrantLock(true);
+    // todo: enable dlq loading.
+//    final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
+//    if (dlqConfig.isPresent()) {
+//      // load dlq with pluginFactory
+//    }
   }
 
   @Override
