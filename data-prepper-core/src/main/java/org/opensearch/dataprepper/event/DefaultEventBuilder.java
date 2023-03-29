@@ -9,7 +9,7 @@ import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 
-class DefaultEventBuilder extends DefaultBaseEventBuilder<Event> implements EventBuilder {
+public class DefaultEventBuilder extends DefaultBaseEventBuilder<Event> implements EventBuilder {
 
     static final String EVENT_TYPE = "EVENT";
 
