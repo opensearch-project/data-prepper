@@ -47,6 +47,7 @@ class SnappyCompressionEngineTest {
 
         snappyOut.write(testStringBytes);
         snappyOut.close();
+
         final byte[] bites = byteOut.toByteArray();
         final ByteArrayInputStream byteInStream = new ByteArrayInputStream(bites);
         final InputStream inputStream = compressionEngine.createInputStream(s3Key, byteInStream);
