@@ -12,6 +12,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import java.util.Collections;
 import java.util.Set;
@@ -27,15 +29,21 @@ class RouterFactoryTest {
     @Mock
     private ExpressionEvaluator<Boolean> expressionEvaluator;
     private Set<ConditionalRoute> routes;
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+    @Mock
+    private EventFactory eventFactory;
 
     @BeforeEach
     void setUp() {
         final ConditionalRoute conditionalRoute = mock(ConditionalRoute.class);
         routes = Collections.singleton(conditionalRoute);
+        eventFactory = mock(EventFactory.class);
+        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
     }
 
     private RouterFactory createObjectUnderTest() {
-        return new RouterFactory(expressionEvaluator);
+        return new RouterFactory(expressionEvaluator, eventFactory, acknowledgementSetManager);
     }
 
     @Test

@@ -16,13 +16,17 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.time.Duration;
+import javax.inject.Named;
+import javax.inject.Inject;
 
+@Named
 public class DefaultAcknowledgementSetManager implements AcknowledgementSetManager {
     private static final int MAX_THREADS = 100;
     private static final int DEFAULT_WAIT_TIME_MS = 15 * 1000;
     private final AcknowledgementSetMonitor acknowledgementSetMonitor;
     private final ScheduledExecutorService executor;
 
+    @Inject
     public DefaultAcknowledgementSetManager() {
         this(Duration.ofMillis(DEFAULT_WAIT_TIME_MS));
     }

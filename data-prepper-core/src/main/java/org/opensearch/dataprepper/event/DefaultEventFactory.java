@@ -12,10 +12,14 @@ import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 import java.util.Map;
 import java.util.Collection;
 import java.util.stream.Collectors;
+import javax.inject.Named;
+import javax.inject.Inject;
 
+@Named
 public class DefaultEventFactory implements EventFactory {
     Map<Class<?>, DefaultEventBuilderFactory> classToFactoryMap;
 
+    @Inject
     public DefaultEventFactory(Collection< DefaultEventBuilderFactory> factories) {
         classToFactoryMap = factories.stream()
                   .collect(Collectors.toMap(DefaultEventBuilderFactory::getEventClass, v -> v));   

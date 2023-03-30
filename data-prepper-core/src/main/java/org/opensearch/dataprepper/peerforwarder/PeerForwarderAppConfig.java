@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderHttpService;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServerProxy;
 import org.opensearch.dataprepper.peerforwarder.server.ResponseHandler;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -89,10 +90,11 @@ class PeerForwarderAppConfig {
             final PeerForwarderProvider peerForwarderProvider,
             final PeerForwarderConfiguration peerForwarderConfiguration,
             final PeerForwarderCodec peerForwarderCodec,
+            final AcknowledgementSetManager acknowledgementSetManager,
             @Qualifier("peerForwarderMetrics") final PluginMetrics pluginMetrics
     ) {
         return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration,
-                peerForwarderCodec, pluginMetrics);
+                peerForwarderCodec, acknowledgementSetManager, pluginMetrics);
     }
 
     @Bean

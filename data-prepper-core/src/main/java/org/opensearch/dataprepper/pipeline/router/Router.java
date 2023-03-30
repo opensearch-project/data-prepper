@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.pipeline.router;
 
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import java.util.Collection;
 import java.util.Map;
@@ -20,10 +22,22 @@ import java.util.function.BiConsumer;
 public class Router {
     private final RouteEventEvaluator routeEventEvaluator;
     private final DataFlowComponentRouter dataFlowComponentRouter;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final EventFactory eventFactory;
 
-    Router(final RouteEventEvaluator routeEventEvaluator, final DataFlowComponentRouter dataFlowComponentRouter) {
+    Router(final RouteEventEvaluator routeEventEvaluator, final DataFlowComponentRouter dataFlowComponentRouter, final EventFactory eventFactory, final AcknowledgementSetManager acknowledgementSetManager) {
         this.routeEventEvaluator = Objects.requireNonNull(routeEventEvaluator);
         this.dataFlowComponentRouter = dataFlowComponentRouter;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.eventFactory = eventFactory;
+    }
+
+    public AcknowledgementSetManager getAcknowledgementSetManager() {
+        return acknowledgementSetManager;
+    }
+
+    public EventFactory getEventFactory() {
+        return eventFactory;
     }
 
     public <C> void route(

@@ -13,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,6 +47,12 @@ class RouterTest {
     @Mock
     private RouterGetRecordStrategy getRecordStrategy;
 
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+    
+    @Mock
+    private EventFactory eventFactory;
+
     private Collection<Record> recordsIn;
 
     private static class TestComponent {
@@ -55,10 +63,12 @@ class RouterTest {
         recordsIn = Collections.emptyList();
         dataFlowComponents = Collections.emptyList();
         getRecordStrategy = mock(RouterGetRecordStrategy.class);
+        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
+        eventFactory = mock(EventFactory.class);
     }
 
     private Router createObjectUnderTest() {
-        return new Router(routeEventEvaluator, dataFlowComponentRouter);
+        return new Router(routeEventEvaluator, dataFlowComponentRouter, eventFactory, acknowledgementSetManager);
     }
 
     @Test
