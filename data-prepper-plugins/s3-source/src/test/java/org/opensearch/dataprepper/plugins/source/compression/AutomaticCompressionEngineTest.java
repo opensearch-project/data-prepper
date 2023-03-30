@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.source.compression;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.xerial.snappy.SnappyInputStream;
 import org.xerial.snappy.SnappyOutputStream;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -74,16 +76,9 @@ class AutomaticCompressionEngineTest {
         assertThat(inputStream.readAllBytes(), equalTo(testStringBytes));
     }
 
-    @Test
-    void createInputStream_with_automatic_and_compressed_should_return_instance_of_SnappyInputStream() throws IOException {
-         snappyTest(".snappy");
-    }
-
-    @Test
-    void createInputStream_with_automatic_and_compressed_should_return_instance_of_SnappyInputStreamParquet() throws IOException {
-        snappyTest(".snappy.parquet");
-    }
-    public void snappyTest(String fileExtension) throws IOException {
+    @ParameterizedTest
+    @ValueSource(strings = { ".snappy", ".snappy.parquet"})
+    void createInputStream_with_automatic_and_compressed_should_return_instance_of_SnappyInputStream(final String fileExtension) throws IOException {
 
         s3Key.concat(fileExtension);
         compressionEngine = new SnappyCompressionEngine();
