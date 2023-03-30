@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.compression;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.xerial.snappy.SnappyInputStream;
 import org.xerial.snappy.SnappyOutputStream;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
@@ -36,19 +37,19 @@ class SnappyCompressionEngineTest {
 
     @Test
     void createInputStream_with_snappy_should_return_instance_of_SnappyInputStream() throws IOException {
+        s3Key.concat(".snappy.parquet");
         compressionEngine = new SnappyCompressionEngine();
-
         final String testString = UUID.randomUUID().toString();
         final byte[] testStringBytes = testString.getBytes(StandardCharsets.UTF_8);
-
         final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
         final SnappyOutputStream snappyOut = new SnappyOutputStream(byteOut);
+        snappyOut.write(testStringBytes);
+        snappyOut.close();
         final byte[] bites = byteOut.toByteArray();
         final ByteArrayInputStream byteInStream = new ByteArrayInputStream(bites);
-
         final InputStream inputStream = compressionEngine.createInputStream(s3Key, byteInStream);
-
-        assertThat(inputStream, instanceOf(SnappyCompressionEngine.class));
-        assertThat(inputStream.readAllBytes(), equalTo(testStringBytes));
+        assertThat(inputStream, instanceOf(SnappyInputStream.class));
+        assertThat(inputStream.readAllBytes(),equalTo(testStringBytes));
     }
+
 }
