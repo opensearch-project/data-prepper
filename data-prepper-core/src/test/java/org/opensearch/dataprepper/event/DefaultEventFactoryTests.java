@@ -5,57 +5,69 @@
 
 package org.opensearch.dataprepper.event;
 
-import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.event.LogEventBuilder;
-import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
 import org.junit.jupiter.api.Test;
-import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.BeforeEach;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import org.mockito.Mock;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Map;
-import java.util.Collections;
+import java.util.List;
+import java.util.ArrayList;
 
+@ExtendWith(MockitoExtension.class)
 class DefaultEventFactoryTests {
-    private DefaultEventBuilder eventBuilder;
-    private DefaultLogEventBuilder logEventBuilder;
     private DefaultEventFactory eventFactory;
+    private List<DefaultEventBuilderFactory> factories;
+    @Mock
+    private DefaultEventBuilderFactory factory1;
+    @Mock
+    private DefaultEventBuilderFactory factory2;
+    @Mock
+    DefaultBaseEventBuilder builder1;
+    @Mock
+    DefaultBaseEventBuilder builder2;
+
+    private Class class1;
+    private Class class2;
     
+    private DefaultEventFactory createObjectUnderTest() {
+        return new DefaultEventFactory(factories);
+    }
+
+    @BeforeEach
+    void setup() {
+        class1 = Object.class;
+        factory1 = mock(DefaultEventBuilderFactory.class);
+        lenient().when(factory1.getEventClass()).thenReturn(class1);
+        builder1 = mock(DefaultBaseEventBuilder.class);
+        lenient().when(factory1.createNew()).thenReturn(builder1);
+
+        class2 = Class.class;
+        factory2 = mock(DefaultEventBuilderFactory.class);
+        lenient().when(factory2.getEventClass()).thenReturn(class2);
+        builder2 = mock(DefaultBaseEventBuilder.class);
+        lenient().when(factory2.createNew()).thenReturn(builder2);
+
+        factories = new ArrayList<>();
+        factories.add(factory1);
+        factories.add(factory2);
+        eventFactory = createObjectUnderTest();
+    }
+
     @Test
     void testDefaultEventFactory() {
-        eventFactory = new DefaultEventFactory();
-        String testKey = RandomStringUtils.randomAlphabetic(5);
-        String testValue = RandomStringUtils.randomAlphabetic(10);
-        Map<String, Object> data = Map.of(testKey, testValue);
-        Map<String, Object> attributes = Collections.emptyMap();
-        final DefaultEventBuilder eventBuilder = (DefaultEventBuilder) eventFactory.eventBuilder(DefaultEventBuilder.class).withEventMetadataAttributes(attributes).withData(data);
-        JacksonEvent event = (JacksonEvent) eventBuilder.build();
-        EventMetadata eventMetadata = event.getMetadata();
-        
-        assertThat(eventMetadata.getTimeReceived(), not(equalTo(null)));
-        assertThat(eventMetadata.getEventType(), equalTo(DefaultEventBuilder.EVENT_TYPE));
-        assertThat(eventMetadata.getAttributes(), equalTo(attributes));
-        assertThat(event.toMap(), equalTo(data));
+        assertThat(eventFactory.eventBuilder(class1), equalTo(builder1));
+        assertThat(eventFactory.eventBuilder(class2), equalTo(builder2));
     }
 
     @Test
-    void testDefaultEventFactoryWithLogEvent() {
-        eventFactory = new DefaultEventFactory();
-        String testKey = RandomStringUtils.randomAlphabetic(5);
-        String testValue = RandomStringUtils.randomAlphabetic(10);
-        Map<String, Object> data = Map.of(testKey, testValue);
-        Map<String, Object> attributes = Collections.emptyMap();
-        final DefaultLogEventBuilder logEventBuilder = (DefaultLogEventBuilder) eventFactory.eventBuilder(LogEventBuilder.class).withEventMetadataAttributes(attributes).withData(data);
-        JacksonLog log = (JacksonLog) logEventBuilder.build();
-        EventMetadata eventMetadata = log.getMetadata();
-        
-        assertThat(eventMetadata.getTimeReceived(), not(equalTo(null)));
-        assertThat(eventMetadata.getEventType(), equalTo(DefaultLogEventBuilder.LOG_EVENT_TYPE));
-        assertThat(eventMetadata.getAttributes(), equalTo(attributes));
-        assertThat(log.toMap(), equalTo(data));
+    void testInvalidEventBuilderCalss() throws UnsupportedOperationException {
+        assertThrows(UnsupportedOperationException.class, () -> eventFactory.eventBuilder(BaseEventBuilder.class));
     }
-
 }
-
