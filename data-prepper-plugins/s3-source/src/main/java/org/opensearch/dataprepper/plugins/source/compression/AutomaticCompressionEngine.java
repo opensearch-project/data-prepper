@@ -21,7 +21,9 @@ public class AutomaticCompressionEngine implements CompressionEngine {
     private CompressionOption getCompressionOption(final String s3Key) {
         if (s3Key.endsWith(".gz")) {
             return CompressionOption.GZIP;
-        } else {
+        } else if(s3Key.endsWith(".snappy.parquet") || s3Key.endsWith(".snappy")){
+            return CompressionOption.SNAPPY;
+        }else {
             return CompressionOption.NONE;
         }
 
