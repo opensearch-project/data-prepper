@@ -51,6 +51,7 @@ class SnappyCompressionEngineTest {
         final byte[] bites = byteOut.toByteArray();
         final ByteArrayInputStream byteInStream = new ByteArrayInputStream(bites);
         final InputStream inputStream = compressionEngine.createInputStream(s3Key, byteInStream);
+
         assertThat(inputStream, instanceOf(SnappyInputStream.class));
         assertThat(inputStream.readAllBytes(),equalTo(testStringBytes));
 
