@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package main.java.org.opensearch.dataprepper.dlq;
+package org.opensearch.dataprepper.dlq;
 
 
 import org.opensearch.dataprepper.model.failures.DlqObject;
@@ -25,7 +25,7 @@ public interface DlqWriter {
      *
      * @since 2.2
      */
-    void write(final List<DlqObject> dlqObjects) throws IOException;
+    void write(final List<DlqObject> dlqObjects, final String pipelineName, final String pluginId) throws IOException;
 
     /**
      * Closes any open connections to the DLQ
