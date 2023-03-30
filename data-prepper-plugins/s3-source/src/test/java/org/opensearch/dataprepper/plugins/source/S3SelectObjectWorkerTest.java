@@ -113,7 +113,7 @@ class S3SelectObjectWorkerTest {
         when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
         when(s3ObjectReference.getKey()).thenReturn(key);
         when(s3SourceConfig.getS3SelectOptions()).thenReturn(s3SelectOptions);
-        when(s3SourceConfig.getS3SelectOptions().getQueryStatement()).thenReturn(queryStatement);
+        when(s3SourceConfig.getS3SelectOptions().getExpression()).thenReturn(queryStatement);
         S3ObjectRequest request = new S3ObjectRequest.Builder(buffer,numberOfRecordsToAccumulate,
                 bufferTimeout,s3ObjectPluginMetrics)
                 .queryStatement(queryStatement).eventConsumer(eventConsumer)
@@ -136,7 +136,7 @@ class S3SelectObjectWorkerTest {
         assertThat(request.getValue().key(), equalTo(key));
         assertThat(request.getValue().bucket(), equalTo(bucketName));
         assertThat(request.getValue().expectedBucketOwner(), nullValue());
-        assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getQueryStatement()));
+        assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getExpression()));
         verify(s3ObjectsFailedCounter).increment();
         assertTrue(selectResponseHandler.getS3SelectContentEvents().isEmpty());
     }
@@ -159,7 +159,7 @@ class S3SelectObjectWorkerTest {
         assertThat(request.getValue().key(), equalTo(key));
         assertThat(request.getValue().bucket(), equalTo(bucketName));
         assertThat(request.getValue().expectedBucketOwner(), nullValue());
-        assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getQueryStatement()));
+        assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getExpression()));
         assertTrue(selectResponseHandler.getS3SelectContentEvents().isEmpty());
         verify(s3ObjectsSucceededCounter).increment();
         assertThat(distributionSummary,notNullValue());
