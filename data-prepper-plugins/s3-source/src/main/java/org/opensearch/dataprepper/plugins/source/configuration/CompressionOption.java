@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.plugins.source.compression.AutomaticCompressio
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.compression.GZipCompressionEngine;
 import org.opensearch.dataprepper.plugins.source.compression.NoneCompressionEngine;
+import org.opensearch.dataprepper.plugins.source.compression.SnappyCompressionEngine;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 import java.util.Arrays;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 public enum CompressionOption {
     NONE("none", new NoneCompressionEngine()),
     GZIP("gzip", new GZipCompressionEngine()),
+    SNAPPY("snappy", new SnappyCompressionEngine()),
     AUTOMATIC("automatic", new AutomaticCompressionEngine());
 
     private static final Map<String, CompressionOption> OPTIONS_MAP = Arrays.stream(CompressionOption.values())
