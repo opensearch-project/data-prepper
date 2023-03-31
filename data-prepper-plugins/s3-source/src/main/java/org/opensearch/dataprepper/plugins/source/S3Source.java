@@ -14,9 +14,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.source.UsesSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.source.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
@@ -32,7 +30,6 @@ public class S3Source implements Source<Record<Event>> {
 
     private final PluginMetrics pluginMetrics;
     private final S3SourceConfig s3SourceConfig;
-    private final Codec codec;
     private SqsService sqsService;
     private final PluginFactory pluginFactory;
 
