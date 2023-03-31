@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.source.configuration.NotificationTypeOption;
 import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
@@ -63,6 +64,13 @@ public class S3SourceConfig {
     @JsonProperty("scan")
     private S3ScanScanOptions s3ScanScanOptions;
 
+    @AssertTrue(message = "A codec is required for reading objects.")
+    boolean isCodecProvidedWhenNeeded() {
+        if(s3SelectOptions == null)
+            return codec != null;
+        return true;
+    }
+
     public NotificationTypeOption getNotificationType() {
         return notificationType;
     }
@@ -102,6 +110,7 @@ public class S3SourceConfig {
     public String getMetadataRootKey() {
         return metadataRootKey;
     }
+
     public S3SelectOptions getS3SelectOptions() {
         return s3SelectOptions;
     }
@@ -109,4 +118,9 @@ public class S3SourceConfig {
     public S3ScanScanOptions getS3ScanScanOptions() {
         return s3ScanScanOptions;
     }
+
+	  public S3SelectOptions getS3SelectOptions() {
+		    return s3SelectOptions;
+	  }
+
 }

@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -16,37 +17,52 @@ import java.util.Optional;
 public class IndexManagerFactory {
     private static final String S3_PREFIX = "s3://";
 
+    private final ClusterSettingsParser clusterSettingsParser;
+
+    public IndexManagerFactory(final ClusterSettingsParser clusterSettingsParser) {
+        this.clusterSettingsParser = clusterSettingsParser;
+    }
+
     public final AbstractIndexManager getIndexManager(final IndexType indexType,
-                                        final RestHighLevelClient restHighLevelClient,
-                                        final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
+                                                      final OpenSearchClient openSearchClient,
+                                                      final RestHighLevelClient restHighLevelClient,
+                                                      final OpenSearchSinkConfiguration openSearchSinkConfiguration) {
         try {
-            return (AbstractIndexManager) getIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, null);
+            return (AbstractIndexManager) getIndexManager(
+                    indexType, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, null);
         } catch (IOException e) {
             return null;
         }
     }
 
     public final IndexManager getIndexManager(final IndexType indexType,
-                                        final RestHighLevelClient restHighLevelClient,
-                                        final OpenSearchSinkConfiguration openSearchSinkConfiguration,
-                                        String indexAlias) throws IOException {
+                                              final OpenSearchClient openSearchClient,
+                                              final RestHighLevelClient restHighLevelClient,
+                                              final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                              String indexAlias) throws IOException {
         if (indexAlias != null && isDynamicIndexAlias(indexAlias)) {
-            return  new DynamicIndexManager(indexType, restHighLevelClient, openSearchSinkConfiguration, this);
+            return  new DynamicIndexManager(
+                    indexType, openSearchClient, restHighLevelClient, openSearchSinkConfiguration,
+                    clusterSettingsParser, this);
         }
 
         IndexManager indexManager;
         switch (indexType) {
             case TRACE_ANALYTICS_RAW:
-                indexManager = new TraceAnalyticsRawIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+                indexManager = new TraceAnalyticsRawIndexManager(
+                        restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, indexAlias);
                 break;
             case TRACE_ANALYTICS_SERVICE_MAP:
-                indexManager = new TraceAnalyticsServiceMapIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+                indexManager = new TraceAnalyticsServiceMapIndexManager(
+                        restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, indexAlias);
                 break;
             case MANAGEMENT_DISABLED:
-                indexManager = new ManagementDisabledIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+                indexManager = new ManagementDisabledIndexManager(
+                        restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, indexAlias);
                 break;
             default:
-                indexManager = new DefaultIndexManager(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+                indexManager = new DefaultIndexManager(
+                        restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, indexAlias);
                 break;
         }
         return indexManager;
@@ -61,9 +77,11 @@ public class IndexManagerFactory {
         private static final String POLICY_NAME_SUFFIX = "-policy";
 
         public DefaultIndexManager(final RestHighLevelClient restHighLevelClient,
+                                   final OpenSearchClient openSearchClient,
                                    final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                   final ClusterSettingsParser clusterSettingsParser,
                                    final String indexAlias) {
-            super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+            super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, indexAlias);
             final Optional<String> ismPolicyFile = openSearchSinkConfiguration.getIndexConfiguration().getIsmPolicyFile();
             if (ismPolicyFile.isPresent()) {
                 S3Client s3Client = null;
@@ -74,10 +92,11 @@ public class IndexManagerFactory {
                     s3Client = clientProvider.buildS3Client();
                 }
                 final String indexPolicyName = getIndexPolicyName();
-                this.ismPolicyManagementStrategy = new IsmPolicyManagement(restHighLevelClient, indexPolicyName, ismPolicyFile.get(), s3Client);
+                this.ismPolicyManagementStrategy = new IsmPolicyManagement(
+                        openSearchClient, restHighLevelClient, indexPolicyName, ismPolicyFile.get(), s3Client);
             } else {
                 //Policy file doesn't exist
-                this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
+                this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
             }
         }
 
@@ -89,10 +108,13 @@ public class IndexManagerFactory {
 
     private static class TraceAnalyticsRawIndexManager extends AbstractIndexManager {
         public TraceAnalyticsRawIndexManager(final RestHighLevelClient restHighLevelClient,
+                                             final OpenSearchClient openSearchClient,
                                              final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                             final ClusterSettingsParser clusterSettingsParser,
                                                     final String indexAlias) {
-            super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+            super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, indexAlias);
             this.ismPolicyManagementStrategy = new IsmPolicyManagement(
+                    openSearchClient,
                     restHighLevelClient,
                     IndexConstants.RAW_ISM_POLICY,
                     IndexConstants.RAW_ISM_FILE_WITH_ISM_TEMPLATE,
@@ -104,16 +126,22 @@ public class IndexManagerFactory {
     private static class TraceAnalyticsServiceMapIndexManager extends AbstractIndexManager {
 
         public TraceAnalyticsServiceMapIndexManager(final RestHighLevelClient restHighLevelClient,
+                                                    final OpenSearchClient openSearchClient,
                                                     final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                                    final ClusterSettingsParser clusterSettingsParser,
                                                     final String indexAlias) {
-            super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
-            this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
+            super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, indexAlias);
+            this.ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
         }
     }
 
     private class ManagementDisabledIndexManager extends AbstractIndexManager {
-        protected ManagementDisabledIndexManager(final RestHighLevelClient restHighLevelClient, final OpenSearchSinkConfiguration openSearchSinkConfiguration, final String indexAlias) {
-            super(restHighLevelClient, openSearchSinkConfiguration, indexAlias);
+        protected ManagementDisabledIndexManager(final RestHighLevelClient restHighLevelClient,
+                                                 final OpenSearchClient openSearchClient,
+                                                 final OpenSearchSinkConfiguration openSearchSinkConfiguration,
+                                                 final ClusterSettingsParser clusterSettingsParser,
+                                                 final String indexAlias) {
+            super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, indexAlias);
         }
         @Override
         public void setupIndex() throws IOException {

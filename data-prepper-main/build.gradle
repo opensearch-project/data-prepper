@@ -15,7 +15,7 @@ dependencies {
     implementation project(':data-prepper-core')
     implementation project(':data-prepper-plugins')
     implementation project(':data-prepper-logstash-configuration')
-    implementation('org.springframework:spring-context:5.3.22') {
+    implementation(libs.spring.context) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
 }

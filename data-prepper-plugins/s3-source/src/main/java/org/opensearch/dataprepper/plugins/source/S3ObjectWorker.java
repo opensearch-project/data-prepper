@@ -64,20 +64,18 @@ class S3ObjectWorker implements S3ObjectHandler {
                 .build();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
-        try {
+            try {
             s3ObjectPluginMetrics.getS3ObjectReadTimer().recordCallable((Callable<Void>) () -> {
-                doParseObject(s3ObjectReference, getObjectRequest, bufferAccumulator);
-
-                return null;
-            });
-        } catch (final IOException | RuntimeException e) {
-            throw e;
-        } catch (final Exception e) {
-            // doParseObject does not throw Exception, only IOException or RuntimeException. But, Callable has Exception as a checked
-            // exception on the interface. This catch block thus should not be reached, but in case it is, wrap it.
-            throw new RuntimeException(e);
-        }
-
+                        doParseObject(s3ObjectReference, getObjectRequest, bufferAccumulator);
+                        return null;
+                    });
+                } catch (final IOException | RuntimeException e) {
+                    throw e;
+                } catch (final Exception e) {
+                    // doParseObject does not throw Exception, only IOException or RuntimeException. But, Callable has Exception as a checked
+                    // exception on the interface. This catch block thus should not be reached, but, in case it is, wrap it.
+                    throw new RuntimeException(e);
+                }
         s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
     }
 
@@ -93,7 +91,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                     eventConsumer.accept(record.getData(), s3ObjectReference);
                     bufferAccumulator.add(record);
                 } catch (final Exception e) {
-                    LOG.error("Failed writing S3 objects to buffer.", e);
+                    LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
             });
             totalBytesRead = inputStream.getBytesRead();

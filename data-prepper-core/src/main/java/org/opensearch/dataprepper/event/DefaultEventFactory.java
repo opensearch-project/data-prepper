@@ -7,18 +7,26 @@ package org.opensearch.dataprepper.event;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.event.LogEventBuilder;
 import org.opensearch.dataprepper.model.event.BaseEventBuilder;
 
+import java.util.Map;
+import java.util.Collection;
+import java.util.stream.Collectors;
+
 public class DefaultEventFactory implements EventFactory {
+    Map<Class<?>, DefaultEventBuilderFactory> classToFactoryMap;
+
+    public DefaultEventFactory(Collection< DefaultEventBuilderFactory> factories) {
+        classToFactoryMap = factories.stream()
+                  .collect(Collectors.toMap(DefaultEventBuilderFactory::getEventClass, v -> v));   
+    }
+    
     @Override
-    public <T extends Event, B extends BaseEventBuilder<T>> B eventBuilder(Class<B> eventBuilderClass) {
-        if (eventBuilderClass.equals(LogEventBuilder.class)) {
-            return (B) new DefaultLogEventBuilder();
+    public <T extends Event, B extends BaseEventBuilder<T>> B eventBuilder(Class<B> eventBuilderClass) throws UnsupportedOperationException {
+        if (!classToFactoryMap.containsKey(eventBuilderClass)) {
+            throw new UnsupportedOperationException("Unsupported class");
         }
-        if (eventBuilderClass.equals(DefaultEventBuilder.class)) {
-            return (B) new DefaultEventBuilder();
-        }
-        return null;
+        
+        return (B) classToFactoryMap.get(eventBuilderClass).createNew();
     }
 }

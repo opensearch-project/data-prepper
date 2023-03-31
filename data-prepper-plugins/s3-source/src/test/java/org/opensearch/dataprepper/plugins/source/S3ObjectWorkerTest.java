@@ -65,7 +65,7 @@ class S3ObjectWorkerTest {
 
     @Mock
     private S3Client s3Client;
-
+    
     @Mock
     private Buffer<Record<Event>> buffer;
 
@@ -101,7 +101,6 @@ class S3ObjectWorkerTest {
     private DistributionSummary s3ObjectEventsSummary;
     @Mock
     private BiConsumer<Event, S3ObjectReference> eventConsumer;
-
     private String bucketName;
     private String key;
     @Mock

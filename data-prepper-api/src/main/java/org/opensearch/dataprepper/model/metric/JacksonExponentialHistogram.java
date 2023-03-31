@@ -262,6 +262,7 @@ public class JacksonExponentialHistogram extends JacksonMetric implements Expone
         /**
          * Returns a newly created {@link JacksonExponentialHistogram}
          *
+         * @param flattenAttributes flag indicating if the attributes should be flattened or not
          * @return a JacksonExponentialHistogram
          * @since 2.1
          */

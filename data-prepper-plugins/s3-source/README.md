@@ -22,6 +22,7 @@ The `compression` property defines how to handle compressed S3 objects. It has t
 
 * `none` - The file is not compressed.
 * `gzip` - Apply GZip de-compression on the S3 object.
+* `snappy` - Apply Snappy de-compression on the S3 object.
 * `automatic` - Attempts to automatically determine the compression. If the S3 object key name ends in`.gz`, then perform `gzip` compression. Otherwise, it is treated as `none`.
 
 ### Example: Un-Compressed Logs 
@@ -79,7 +80,6 @@ source-pipeline:
                 data_serialization_format: parquet
               key_path:
                 - my/prefix/a
-
 ```
 
 ## Configuration Options

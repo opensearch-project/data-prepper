@@ -38,12 +38,13 @@ public class S3ObjectRequest {
 
     private S3ObjectRequest(Builder builder) {
         this.buffer = builder.buffer;
-        this.numberOfRecordsToAccumulate = builder.numberOfRecordsToAccumulate;
+        this.numberOfRecordsToAccumulate =builder.numberOfRecordsToAccumulate;
+
         this.bufferTimeout = builder.bufferTimeout;
         this.s3ObjectPluginMetrics = builder.s3ObjectPluginMetrics;
         this.queryStatement = builder.queryStatement;
         this.serializationFormatOption = builder.serializationFormatOption;
-        this.s3AsyncClient = builder.s3AsyncClient;
+        this.s3AsyncClient =builder.s3AsyncClient;
         this.s3SelectResponseHandler = builder.s3SelectResponseHandler;
         this.compressionEngine = builder.compressionEngine;
         this.bucketOwnerProvider = builder.bucketOwnerProvider;
@@ -134,9 +135,9 @@ public class S3ObjectRequest {
         public Builder(final Buffer<Record<Event>> buffer,
                        final int numberOfRecordsToAccumulate,
                        final Duration bufferTimeout,
-                       final S3ObjectPluginMetrics s3ObjectPluginMetrics) {
+                       final S3ObjectPluginMetrics s3ObjectPluginMetrics){
             this.buffer = buffer;
-            this.numberOfRecordsToAccumulate = numberOfRecordsToAccumulate;
+            this.numberOfRecordsToAccumulate=numberOfRecordsToAccumulate;
             this.bufferTimeout = bufferTimeout;
             this.s3ObjectPluginMetrics = s3ObjectPluginMetrics;
         }

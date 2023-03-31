@@ -54,7 +54,9 @@ public class PipelineModel {
     /**
      * @since 2.0
      * @param source Deserialized source plugin configuration
+     * @param buffer Deserialized buffer configuration
      * @param processors Deserialized processors plugin configuration, nullable
+     * @param routes Deserialized routes configuration, nullable
      * @param sinks Deserialized sinks plugin configuration
      * @param workers Deserialized workers plugin configuration, nullable
      * @param delay Deserialized delay plugin configuration, nullable

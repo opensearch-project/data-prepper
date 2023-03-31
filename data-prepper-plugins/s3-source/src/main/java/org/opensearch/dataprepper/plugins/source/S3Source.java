@@ -23,7 +23,6 @@ import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
 import software.amazon.awssdk.services.s3.model.CompressionType;
 import software.amazon.awssdk.services.s3.model.FileHeaderInfo;
 
-import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
@@ -36,12 +35,14 @@ public class S3Source implements Source<Record<Event>> {
     private final PluginFactory pluginFactory;
     private final Optional<S3ScanScanOptions> s3ScanScanOptional;
 
+
     @DataPrepperPluginConstructor
     public S3Source(PluginMetrics pluginMetrics, final S3SourceConfig s3SourceConfig, final PluginFactory pluginFactory) {
         this.pluginMetrics = pluginMetrics;
         this.s3SourceConfig = s3SourceConfig;
         this.pluginFactory = pluginFactory;
         this.s3ScanScanOptional = Optional.ofNullable(s3SourceConfig.getS3ScanScanOptions());
+
     }
 
     @Override
@@ -71,13 +72,11 @@ public class S3Source implements Source<Record<Event>> {
                     .s3SelectResponseHandler(new S3SelectResponseHandler()).build();
             s3Handler = new S3SelectObjectWorker(s3ObjectRequest);
         } else {
-            if(s3SourceConfig.getCodec() == null)
-                throw new NoSuchElementException("codec is required in pipeline yaml configuration");
             final PluginModel codecConfiguration = s3SourceConfig.getCodec();
             final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
             final Codec codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
             final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.bucketOwnerProvider(bucketOwnerProvider)
-                    .eventConsumer(eventMetadataModifier).codec(codec).s3Client(s3ClientBuilderFactory.getS3Client())
+                    .codec(codec).eventConsumer(eventMetadataModifier).s3Client(s3ClientBuilderFactory.getS3Client())
                     .compressionEngine(s3SourceConfig.getCompression().getEngine()).build();
             s3Handler = new S3ObjectWorker(s3ObjectRequest);
         }

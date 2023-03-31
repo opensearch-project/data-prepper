@@ -8,6 +8,10 @@ package org.opensearch.dataprepper.plugins.source.compression;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.xerial.snappy.SnappyInputStream;
+import org.xerial.snappy.SnappyOutputStream;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
@@ -70,5 +74,27 @@ class AutomaticCompressionEngineTest {
 
         assertThat(inputStream, instanceOf(GzipCompressorInputStream.class));
         assertThat(inputStream.readAllBytes(), equalTo(testStringBytes));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { ".snappy", ".snappy.parquet"})
+    void createInputStream_with_automatic_and_compressed_should_return_instance_of_SnappyInputStream(final String fileExtension) throws IOException {
+
+        s3Key.concat(fileExtension);
+        compressionEngine = new SnappyCompressionEngine();
+        final String testString = UUID.randomUUID().toString();
+        final byte[] testStringBytes = testString.getBytes(StandardCharsets.UTF_8);
+        final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        final SnappyOutputStream snappyOut = new SnappyOutputStream(byteOut);
+
+        snappyOut.write(testStringBytes);
+        snappyOut.close();
+
+        final byte[] bites = byteOut.toByteArray();
+        final ByteArrayInputStream byteInStream = new ByteArrayInputStream(bites);
+        final InputStream inputStream = compressionEngine.createInputStream(s3Key, byteInStream);
+
+        assertThat(inputStream, instanceOf(SnappyInputStream.class));
+        assertThat(inputStream.readAllBytes(),equalTo(testStringBytes));
     }
 }

@@ -10,9 +10,6 @@ import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
-/**
- * This enum consists of data serialization formats
- */
 public enum S3SelectSerializationFormatOption {
 	CSV("csv"),
 	JSON("json"),

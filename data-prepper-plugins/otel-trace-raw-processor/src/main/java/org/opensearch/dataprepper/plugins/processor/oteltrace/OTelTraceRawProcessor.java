@@ -213,7 +213,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                         }
                     }
                     if (recordsToFlush.size() > 0) {
-                        LOG.info("Flushing {} records due to GC", recordsToFlush.size());
+                        LOG.info("Flushing {} records", recordsToFlush.size());
                     }
                 } finally {
                     traceFlushLock.unlock();

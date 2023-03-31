@@ -138,6 +138,7 @@ public class PluginSetting implements PipelineDescription {
      *
      * @param attribute    name of the attribute
      * @param type the type stored in the List
+     * @param <T> The type
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
@@ -159,6 +160,8 @@ public class PluginSetting implements PipelineDescription {
      * @param attribute    name of the attribute
      * @param keyType      key type of the Map
      * @param valueType    value type stored in the Map
+     * @param <K> The key type
+     * @param <V> The value type
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
@@ -185,6 +188,8 @@ public class PluginSetting implements PipelineDescription {
      * @param attribute    name of the attribute
      * @param keyType      key type of the Map
      * @param valueType    value type stored in the List value of the Map
+     * @param <K> The key type
+     * @param <V> The value type
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */

@@ -13,7 +13,7 @@ import jakarta.validation.constraints.NotBlank;
  */
 public class S3SelectOptions {
 	static final String DEFAULT_CSV_HEADER = "USE";
-	
+
 	@JsonProperty("query_statement")
     @NotBlank(message = "query statement cannot be null or empty")
     private String queryStatement;

@@ -6,8 +6,8 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.lang.reflect.Field;
 
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -20,19 +20,9 @@ class S3SelectOptionsTest {
         S3SelectOptions s3SelectOptions = new S3SelectOptions();
         final String queryStatement = "select * from s3Object";
         final S3SelectSerializationFormatOption s3SelectSerializationFormatOption = S3SelectSerializationFormatOption.fromOptionValue(dataSerializationFormat);
-        reflectivelySetField(s3SelectOptions,"queryStatement",queryStatement);
-        reflectivelySetField(s3SelectOptions,"s3SelectSerializationFormatOption",s3SelectSerializationFormatOption);
+        ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"queryStatement",queryStatement);
+        ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"s3SelectSerializationFormatOption",s3SelectSerializationFormatOption);
         assertThat(s3SelectOptions.getQueryStatement(),sameInstance(queryStatement));
         assertThat(s3SelectOptions.getS3SelectSerializationFormatOption(),sameInstance(s3SelectSerializationFormatOption));
-    }
-    private void reflectivelySetField(final S3SelectOptions s3SelectOptions, final String fieldName, final Object value)
-            throws NoSuchFieldException, IllegalAccessException {
-        final Field field = S3SelectOptions.class.getDeclaredField(fieldName);
-        try {
-            field.setAccessible(true);
-            field.set(s3SelectOptions, value);
-        } finally {
-            field.setAccessible(false);
-        }
     }
 }
