@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.dlq.plugins.s3;
+package org.opensearch.dataprepper.plugins.dlq.s3;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.dataprepper.dlq.DlqProvider;
-import org.opensearch.dataprepper.dlq.DlqWriter;
+import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
+import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;

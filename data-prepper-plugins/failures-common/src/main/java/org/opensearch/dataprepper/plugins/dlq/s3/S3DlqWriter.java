@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.dlq.plugins.s3;
+package org.opensearch.dataprepper.plugins.dlq.s3;
 
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
-import org.opensearch.dataprepper.dlq.DlqWriter;
+import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.failures.DlqObject;

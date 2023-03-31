@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.dlq.plugins.s3;
+package org.opensearch.dataprepper.plugins.dlq.s3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,12 +49,12 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.dlq.plugins.s3.S3DlqWriter.S3_DLQ_RECORDS_FAILED;
-import static org.opensearch.dataprepper.dlq.plugins.s3.S3DlqWriter.S3_DLQ_RECORDS_SUCCESS;
-import static org.opensearch.dataprepper.dlq.plugins.s3.S3DlqWriter.S3_DLQ_REQUEST_FAILED;
-import static org.opensearch.dataprepper.dlq.plugins.s3.S3DlqWriter.S3_DLQ_REQUEST_LATENCY;
-import static org.opensearch.dataprepper.dlq.plugins.s3.S3DlqWriter.S3_DLQ_REQUEST_SIZE_BYTES;
-import static org.opensearch.dataprepper.dlq.plugins.s3.S3DlqWriter.S3_DLQ_REQUEST_SUCCESS;
+import static org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriter.S3_DLQ_RECORDS_FAILED;
+import static org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriter.S3_DLQ_RECORDS_SUCCESS;
+import static org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriter.S3_DLQ_REQUEST_FAILED;
+import static org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriter.S3_DLQ_REQUEST_LATENCY;
+import static org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriter.S3_DLQ_REQUEST_SIZE_BYTES;
+import static org.opensearch.dataprepper.plugins.dlq.s3.S3DlqWriter.S3_DLQ_REQUEST_SUCCESS;
 
 @ExtendWith(MockitoExtension.class)
 public class S3DlqWriterTest {

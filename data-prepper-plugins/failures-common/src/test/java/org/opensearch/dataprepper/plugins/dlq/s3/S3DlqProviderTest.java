@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.dlq.plugins.s3;
+package org.opensearch.dataprepper.plugins.dlq.s3;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.dlq.DlqWriter;
+import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.services.s3.S3Client;
 
