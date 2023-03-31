@@ -15,6 +15,7 @@ public interface UsesSourceCoordination {
      *
      * @param sourceCoordinator - The {@link org.opensearch.dataprepper.model.source.SourceCoordinator} to be used by the
      *                          {@link org.opensearch.dataprepper.model.source.Source} as needed
+     * @param <T> The partition state type
      */
     <T> void setSourceCoordinator(final SourceCoordinator<T> sourceCoordinator);
 

@@ -27,6 +27,8 @@ import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
+import org.opensearch.dataprepper.event.DefaultEventFactory;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.plugin.DefaultPluginFactory;
@@ -74,16 +76,27 @@ class PipelineParserTests {
     @Mock
     private CircuitBreakerManager circuitBreakerManager;
 
+    private DefaultEventFactory eventFactory;
+
+    private DefaultAcknowledgementSetManager acknowledgementSetManager;
+
     private PluginFactory pluginFactory;
 
     @BeforeEach
     void setUp() {
         peerForwarderProvider = mock(PeerForwarderProvider.class);
+        eventFactory = mock(DefaultEventFactory.class);
+        acknowledgementSetManager = mock(DefaultAcknowledgementSetManager.class);
         final AnnotationConfigApplicationContext publicContext = new AnnotationConfigApplicationContext();
         publicContext.refresh();
 
         final AnnotationConfigApplicationContext coreContext = new AnnotationConfigApplicationContext();
         coreContext.setParent(publicContext);
+
+        coreContext.scan(DefaultEventFactory.class.getPackage().getName());
+
+        coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
+
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.refresh();
         pluginFactory = coreContext.getBean(DefaultPluginFactory.class);
@@ -95,7 +108,9 @@ class PipelineParserTests {
     }
 
     private PipelineParser createObjectUnderTest(final String pipelineConfigurationFileLocation) {
-        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerManager, sourceCoordinatorFactory);
+        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, 
+                                  routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,
+                                  acknowledgementSetManager, sourceCoordinatorFactory);
     }
 
     @Test

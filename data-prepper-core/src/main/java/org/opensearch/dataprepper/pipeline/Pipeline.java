@@ -19,6 +19,8 @@ import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +62,8 @@ public class Pipeline {
     private final Duration peerForwarderDrainTimeout;
     private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
+    private final EventFactory eventFactory;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
@@ -74,6 +78,10 @@ public class Pipeline {
      * @param processorSets               processor sets that will be applied to records. Each set includes either a single shared processor instance
      *                                  or multiple instances with each to be accessed only by a single {@link ProcessWorker}.
      * @param sinks                    sink to which the transformed records are posted
+     * @param router                   router object for routing in the pipeline
+     * @param eventFactory             event factory to create events
+     * @param acknowledgementSetManager   acknowledgement set manager
+     * @param sourceCoordinatorFactory source coordinator factory that enables coordination between different instances/threads of sources
      * @param processorThreads         configured or default threads to parallelize processor work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
      * @param processorShutdownTimeout configured or default timeout before forcefully terminating the processor workers
@@ -87,6 +95,8 @@ public class Pipeline {
             @Nonnull final List<List<Processor>> processorSets,
             @Nonnull final List<DataFlowComponent<Sink>> sinks,
             @Nonnull final Router router,
+            @Nonnull final EventFactory eventFactory,
+            @Nonnull final AcknowledgementSetManager acknowledgementSetManager,
             final SourceCoordinatorFactory sourceCoordinatorFactory,
             final int processorThreads,
             final int readBatchTimeoutInMillis,
@@ -103,6 +113,8 @@ public class Pipeline {
         this.router = router;
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.processorThreads = processorThreads;
+        this.eventFactory = eventFactory;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
         this.processorShutdownTimeout = processorShutdownTimeout;
         this.sinkShutdownTimeout = sinkShutdownTimeout;
@@ -269,7 +281,7 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(sinks);
+        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(eventFactory, acknowledgementSetManager, sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
         );

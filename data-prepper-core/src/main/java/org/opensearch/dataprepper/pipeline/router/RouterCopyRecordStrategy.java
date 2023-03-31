@@ -14,6 +14,8 @@ import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,9 +24,13 @@ import java.util.Set;
 import java.util.HashSet;
 
 public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
-    Set<Record> routedRecords;
+    private Set<Record> routedRecords;
+    private AcknowledgementSetManager acknowledgementSetManager;
+    private EventFactory eventFactory;
 
-    public <C> RouterCopyRecordStrategy(final Collection<DataFlowComponent<C>> dataFlowComponents) {
+    public <C> RouterCopyRecordStrategy(final EventFactory eventFactory, final AcknowledgementSetManager acknowledgementSetManager, final Collection<DataFlowComponent<C>> dataFlowComponents) {
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.eventFactory = eventFactory;
         routedRecords = null;
         /*
          * If there are more than one sink and one of the sinks is

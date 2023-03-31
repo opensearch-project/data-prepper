@@ -10,6 +10,8 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 
@@ -51,8 +53,17 @@ class PluginArgumentsContext {
             typedArgumentsSuppliers.put(PipelineDescription.class, () -> builder.pipelineDescription);
         }
 
-        if(builder.pluginFactory != null)
+        if (builder.pluginFactory != null) {
             typedArgumentsSuppliers.put(PluginFactory.class, () -> builder.pluginFactory);
+        }
+
+        if (builder.eventFactory != null) {
+            typedArgumentsSuppliers.put(EventFactory.class, () -> builder.eventFactory);
+        }
+
+        if (builder.acknowledgementSetManager != null) {
+            typedArgumentsSuppliers.put(AcknowledgementSetManager.class, () -> builder.acknowledgementSetManager);
+        }
     }
 
     Object[] createArguments(final Class<?>[] parameterTypes) {
@@ -100,6 +111,8 @@ class PluginArgumentsContext {
         private PluginFactory pluginFactory;
         private PipelineDescription pipelineDescription;
         private BeanFactory beanFactory;
+        private EventFactory eventFactory;
+        private AcknowledgementSetManager acknowledgementSetManager;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
             this.pluginConfiguration = pluginConfiguration;
@@ -108,6 +121,16 @@ class PluginArgumentsContext {
 
         Builder withPluginSetting(final PluginSetting pluginSetting) {
             this.pluginSetting = pluginSetting;
+            return this;
+        }
+
+        Builder withEventFactory(final EventFactory eventFactory) {
+            this.eventFactory = eventFactory;
+            return this;
+        }
+
+        Builder withAcknowledgementSetManager(final AcknowledgementSetManager acknowledgementSetManager) {
+            this.acknowledgementSetManager = acknowledgementSetManager;
             return this;
         }
 

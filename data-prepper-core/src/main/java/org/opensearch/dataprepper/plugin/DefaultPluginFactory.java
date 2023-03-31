@@ -9,6 +9,8 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.event.DefaultEventFactory;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -30,13 +32,17 @@ public class DefaultPluginFactory implements PluginFactory {
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;
     private final PluginBeanFactoryProvider pluginBeanFactoryProvider;
+    private final DefaultEventFactory eventFactory;
+    private final DefaultAcknowledgementSetManager acknowledgementSetManager;
 
     @Inject
     DefaultPluginFactory(
             final PluginProviderLoader pluginProviderLoader,
             final PluginCreator pluginCreator,
             final PluginConfigurationConverter pluginConfigurationConverter,
-            final PluginBeanFactoryProvider pluginBeanFactoryProvider
+            final PluginBeanFactoryProvider pluginBeanFactoryProvider,
+            final DefaultEventFactory eventFactory,
+            final DefaultAcknowledgementSetManager acknowledgementSetManager
     ) {
         Objects.requireNonNull(pluginProviderLoader);
         this.pluginCreator = Objects.requireNonNull(pluginCreator);
@@ -44,6 +50,8 @@ public class DefaultPluginFactory implements PluginFactory {
 
         this.pluginProviders = Objects.requireNonNull(pluginProviderLoader.getPluginProviders());
         this.pluginBeanFactoryProvider = Objects.requireNonNull(pluginBeanFactoryProvider);
+        this.eventFactory = Objects.requireNonNull(eventFactory);
+        this.acknowledgementSetManager = Objects.requireNonNull(acknowledgementSetManager);
 
         if(pluginProviders.isEmpty()) {
             throw new RuntimeException("Data Prepper requires at least one PluginProvider. " +
@@ -95,6 +103,8 @@ public class DefaultPluginFactory implements PluginFactory {
                 .withPluginConfiguration(configuration)
                 .withPluginFactory(this)
                 .withBeanFactory(pluginBeanFactoryProvider.get())
+                .withEventFactory(eventFactory)
+                .withAcknowledgementSetManager(acknowledgementSetManager)
                 .build();
     }
 

@@ -20,7 +20,7 @@ public interface SourceCoordinator<T> {
     /**
      * A partition will be created for each of the partitionKeys passed. Can be called either on a schedule every once in a while to pick up new partitions,
      * or only when needed if the source is capable of being notified when new partitions are created.
-     * @param partitionIdentifiers
+     * @param partitionIdentifiers partition identifiers
      * @since 2.2
      */
     void createPartitions(final List<PartitionIdentifier> partitionIdentifiers);
@@ -57,8 +57,9 @@ public interface SourceCoordinator<T> {
      * Should be called by the source when it has completed some work for a partition, and needs to save its progress before continuing work on the partition.
      * Should also be called before closePartition and giveUpPartitions if state needs to be updated.
      * Can optionally be called before completePartition if the progress state should be audited.
-     * @param partitionIdentifier
+     * @param partitionIdentifier partition identifier
      * @param partitionProgressState The object to represent the latest partition progress state
+     * @param <S> The partition state type
      * @since 2.2
      */
     <S extends T> void saveProgressStateForPartition(final PartitionIdentifier partitionIdentifier, final S partitionProgressState);
