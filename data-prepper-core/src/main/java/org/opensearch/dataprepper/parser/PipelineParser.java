@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.parser;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -16,9 +19,6 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
@@ -27,9 +27,10 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineConnector;
-import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
+import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
+import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,19 +68,22 @@ public class PipelineParser {
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
     private final PeerForwarderProvider peerForwarderProvider;
+    private final SourceCoordinatorFactory sourceCoordinatorFactory;
 
     public PipelineParser(final String pipelineConfigurationFileLocation,
                           final PluginFactory pluginFactory,
                           final PeerForwarderProvider peerForwarderProvider,
                           final RouterFactory routerFactory,
                           final DataPrepperConfiguration dataPrepperConfiguration,
-                          final CircuitBreakerManager circuitBreakerManager) {
+                          final CircuitBreakerManager circuitBreakerManager,
+                          final SourceCoordinatorFactory sourceCoordinatorFactory) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
         this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
         this.circuitBreakerManager = circuitBreakerManager;
+        this.sourceCoordinatorFactory = sourceCoordinatorFactory;
     }
 
     /**
@@ -173,6 +177,8 @@ public class PipelineParser {
             final Source source = pipelineSource.orElseGet(() ->
                     pluginFactory.loadPlugin(Source.class, sourceSetting));
 
+
+
             LOG.info("Building buffer for the pipeline [{}]", pipelineName);
             final Buffer pipelineDefinedBuffer = pluginFactory.loadPlugin(Buffer.class, pipelineConfiguration.getBufferPluginSetting());
 
@@ -218,7 +224,7 @@ public class PipelineParser {
 
             final Router router = routerFactory.createRouter(pipelineConfiguration.getRoutes());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, router, processorThreads, readBatchDelay,
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, router, sourceCoordinatorFactory, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
             pipelineMap.put(pipelineName, pipeline);

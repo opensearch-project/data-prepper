@@ -1,0 +1,6 @@
+ssl: false
+source_coordination:
+  store:
+    dynamodb:
+      table_name: "Test"
+metric_registries: [Prometheus, CloudWatch]
