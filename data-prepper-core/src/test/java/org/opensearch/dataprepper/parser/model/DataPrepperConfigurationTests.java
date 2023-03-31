@@ -97,6 +97,19 @@ public class DataPrepperConfigurationTests {
     }
 
     @Test
+    void testConfigurationWithValidDynamoDbSourceCoordinationConfig() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_SOURCE_COORDINATION);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.ssl(), equalTo(false));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes().size(), Matchers.equalTo(2));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.Prometheus));
+        assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.CloudWatch));
+        assertThat(dataPrepperConfiguration.getSourceCoordinationConfig(), notNullValue());
+        assertThat(dataPrepperConfiguration.getSourceCoordinationConfig().getSourceCoordinationStoreConfig(), notNullValue());
+    }
+
+    @Test
     void testConfigurationWithCamelCaseOptions() throws IOException {
         final DataPrepperConfiguration dataPrepperConfiguration =
                 makeConfig(TestDataProvider.VALID_DATA_PREPPER_CONFIG_FILE_WITH_CAMEL_CASE_OPTIONS);

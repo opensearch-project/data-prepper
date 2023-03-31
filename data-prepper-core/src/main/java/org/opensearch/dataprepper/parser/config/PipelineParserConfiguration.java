@@ -7,10 +7,11 @@ package org.opensearch.dataprepper.parser.config;
 
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
+import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -28,7 +29,8 @@ public class PipelineParserConfiguration {
             final DataPrepperConfiguration dataPrepperConfiguration,
             final CircuitBreakerManager circuitBreakerManager,
             final EventFactory eventFactory,
-            final AcknowledgementSetManager acknowledgementSetManager
+            final AcknowledgementSetManager acknowledgementSetManager,
+            final SourceCoordinatorFactory sourceCoordinatorFactory
             ) {
         return new PipelineParser(fileStructurePathProvider.getPipelineConfigFileLocation(),
                 pluginFactory,
@@ -37,6 +39,7 @@ public class PipelineParserConfiguration {
                 dataPrepperConfiguration,
                 circuitBreakerManager,
                 eventFactory,
-                acknowledgementSetManager);
+                acknowledgementSetManager,
+                sourceCoordinatorFactory);
     }
 }
