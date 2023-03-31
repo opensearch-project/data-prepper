@@ -119,8 +119,4 @@ public class S3SourceConfig {
         return s3ScanScanOptions;
     }
 
-	  public S3SelectOptions getS3SelectOptions() {
-		    return s3SelectOptions;
-	  }
-
 }
