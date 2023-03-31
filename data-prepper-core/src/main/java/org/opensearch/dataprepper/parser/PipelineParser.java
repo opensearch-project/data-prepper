@@ -25,6 +25,8 @@ import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineConnector;
 import org.opensearch.dataprepper.plugins.MultiBufferDecorator;
@@ -67,19 +69,25 @@ public class PipelineParser {
     private final Map<String, PipelineConnector> sourceConnectorMap = new HashMap<>(); //TODO Remove this and rely only on pipelineMap
     private final PluginFactory pluginFactory;
     private final PeerForwarderProvider peerForwarderProvider;
+    private final EventFactory eventFactory;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     public PipelineParser(final String pipelineConfigurationFileLocation,
                           final PluginFactory pluginFactory,
                           final PeerForwarderProvider peerForwarderProvider,
                           final RouterFactory routerFactory,
                           final DataPrepperConfiguration dataPrepperConfiguration,
-                          final CircuitBreakerManager circuitBreakerManager) {
+                          final CircuitBreakerManager circuitBreakerManager,
+                          final EventFactory eventFactory,
+                          final AcknowledgementSetManager acknowledgementSetManager) {
         this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
         this.dataPrepperConfiguration = Objects.requireNonNull(dataPrepperConfiguration);
         this.circuitBreakerManager = circuitBreakerManager;
+        this.eventFactory = eventFactory;
+        this.acknowledgementSetManager = acknowledgementSetManager;
     }
 
     /**
@@ -218,7 +226,7 @@ public class PipelineParser {
 
             final Router router = routerFactory.createRouter(pipelineConfiguration.getRoutes());
 
-            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, router, processorThreads, readBatchDelay,
+            final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, router, eventFactory, acknowledgementSetManager, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
                     getPeerForwarderDrainTimeout(dataPrepperConfiguration));
             pipelineMap.put(pipelineName, pipeline);

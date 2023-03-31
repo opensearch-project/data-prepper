@@ -15,6 +15,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.parser.PipelineParser;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -44,6 +46,12 @@ class PipelineParserConfigurationTest {
     @Mock
     private CircuitBreakerManager circuitBreakerManager;
 
+    @Mock
+    private EventFactory eventFactory;
+
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
     @Test
     void pipelineParser() {
         final String pipelineConfigFileLocation = "hot soup";
@@ -51,7 +59,8 @@ class PipelineParserConfigurationTest {
                 .thenReturn(pipelineConfigFileLocation);
 
         final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(
-                fileStructurePathProvider, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerManager);
+                fileStructurePathProvider, pluginFactory, peerForwarderProvider, routerFactory,
+                dataPrepperConfiguration, circuitBreakerManager, eventFactory, acknowledgementSetManager);
 
         assertThat(pipelineParser, is(notNullValue()));
         verify(fileStructurePathProvider).getPipelineConfigFileLocation();

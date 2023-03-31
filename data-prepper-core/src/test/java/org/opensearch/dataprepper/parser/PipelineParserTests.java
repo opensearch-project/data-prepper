@@ -81,6 +81,8 @@ class PipelineParserTests {
     @BeforeEach
     void setUp() {
         peerForwarderProvider = mock(PeerForwarderProvider.class);
+        eventFactory = mock(DefaultEventFactory.class);
+        acknowledgementSetManager = mock(DefaultAcknowledgementSetManager.class);
         final AnnotationConfigApplicationContext publicContext = new AnnotationConfigApplicationContext();
         publicContext.refresh();
 
@@ -102,7 +104,7 @@ class PipelineParserTests {
     }
 
     private PipelineParser createObjectUnderTest(final String pipelineConfigurationFileLocation) {
-        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerManager);
+        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory, acknowledgementSetManager);
     }
 
     @Test

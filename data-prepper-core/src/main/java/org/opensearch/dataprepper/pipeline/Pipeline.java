@@ -17,6 +17,8 @@ import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +57,8 @@ public class Pipeline {
     private final Duration peerForwarderDrainTimeout;
     private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
+    private final EventFactory eventFactory;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
@@ -82,6 +86,8 @@ public class Pipeline {
             @Nonnull final List<List<Processor>> processorSets,
             @Nonnull final List<DataFlowComponent<Sink>> sinks,
             @Nonnull final Router router,
+            @Nonnull final EventFactory eventFactory,
+            @Nonnull final AcknowledgementSetManager acknowledgementSetManager,
             final int processorThreads,
             final int readBatchTimeoutInMillis,
             final Duration processorShutdownTimeout,
@@ -96,6 +102,8 @@ public class Pipeline {
         this.sinks = sinks;
         this.router = router;
         this.processorThreads = processorThreads;
+        this.eventFactory = eventFactory;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
         this.processorShutdownTimeout = processorShutdownTimeout;
         this.sinkShutdownTimeout = sinkShutdownTimeout;
@@ -257,7 +265,7 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(router.getEventFactory(), router.getAcknowledgementSetManager(), sinks);
+        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(eventFactory, acknowledgementSetManager, sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
         );
