@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
+import org.opensearch.dataprepper.pipeline.router.RouterAcknowledgementsRecordStrategy;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -127,6 +128,10 @@ public class Pipeline {
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
         stopRequested = false;
+    }
+
+    AcknowledgementSetManager getAcknowledgementSetManager() {
+        return acknowledgementSetManager;
     }
 
     /**
@@ -281,7 +286,9 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(eventFactory, acknowledgementSetManager, sinks);
+        final RouterGetRecordStrategy getRecordStrategy = (source.enabledAcknowledgements()) ? 
+                    new RouterAcknowledgementsRecordStrategy(eventFactory, acknowledgementSetManager, sinks) :
+                    new RouterCopyRecordStrategy(sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
         );

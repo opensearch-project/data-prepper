@@ -25,4 +25,11 @@ public interface Source<T extends Record<?>> {
      * Notifies the source to stop consuming/writing records into Buffer.
      */
     void stop();
+
+    /**
+     * Indicates if the source has end to end acknowledgements enabled
+     *
+     * @return boolean indicating if the source enabled end-to-end acknowledgements
+     */
+    boolean enabledAcknowledgements();
 }

@@ -14,8 +14,6 @@ import org.opensearch.dataprepper.model.trace.JacksonSpan;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -25,12 +23,8 @@ import java.util.HashSet;
 
 public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
     private Set<Record> routedRecords;
-    private AcknowledgementSetManager acknowledgementSetManager;
-    private EventFactory eventFactory;
 
-    public <C> RouterCopyRecordStrategy(final EventFactory eventFactory, final AcknowledgementSetManager acknowledgementSetManager, final Collection<DataFlowComponent<C>> dataFlowComponents) {
-        this.acknowledgementSetManager = acknowledgementSetManager;
-        this.eventFactory = eventFactory;
+    public <C> RouterCopyRecordStrategy(final Collection<DataFlowComponent<C>> dataFlowComponents) {
         routedRecords = null;
         /*
          * If there are more than one sink and one of the sinks is
@@ -58,6 +52,7 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
             return record;
         }
         if (record.getData() instanceof JacksonSpan) {
+            // Not supporting acknowledgements for Span initially
             try {
                 final Span spanEvent = (Span) record.getData();
                 Span newSpanEvent = JacksonSpan.fromSpan(spanEvent);
@@ -67,8 +62,11 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         } else if (record.getData() instanceof Event) {
             try {
                 final Event recordEvent = (Event) record.getData();
-                Event newRecordEvent = JacksonEvent.fromEvent(recordEvent);
-                return new Record<>(newRecordEvent);
+                JacksonEvent newRecordEvent;
+                Record newRecord;
+                newRecordEvent = JacksonEvent.fromEvent(recordEvent);
+                newRecord = new Record<>(newRecordEvent);
+                return newRecord;
             } catch (Exception ex) {
             }
         }

@@ -65,6 +65,11 @@ public class LogGeneratorSource implements Source<Record<Event>> {
         stopGenerating.set(true);
     }
 
+    @Override
+    public boolean enabledAcknowledgements() {
+        return false;
+    }
+
     private boolean hasNotReachedLogCount() {
         if (sourceConfig.getCount() == 0) {
             return true;

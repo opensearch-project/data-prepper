@@ -72,6 +72,11 @@ public class RandomStringSource implements Source<Record<Event>> {
         }
     }
 
+    @Override
+    public boolean enabledAcknowledgements() {
+        return false;
+    }
+
     private Record<Event> generateRandomStringEventRecord() {
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         return new Record<>(event);

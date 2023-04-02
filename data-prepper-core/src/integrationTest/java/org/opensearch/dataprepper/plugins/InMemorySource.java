@@ -45,6 +45,11 @@ public class InMemorySource implements Source<Record<Event>> {
     }
 
     @Override
+    public boolean enabledAcknowledgements() {
+        return false;
+    }
+
+    @Override
     public void stop() {
         isStopped = true;
         runningThread.interrupt();

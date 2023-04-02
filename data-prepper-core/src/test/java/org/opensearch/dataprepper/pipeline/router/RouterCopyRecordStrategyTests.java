@@ -34,8 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.Assert.assertFalse;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.event.EventFactory;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 @ExtendWith(MockitoExtension.class)
 public class RouterCopyRecordStrategyTests {
@@ -43,25 +41,19 @@ public class RouterCopyRecordStrategyTests {
     @Mock
     private DataFlowComponent<PipelineConnector> pipelineDataFlowComponent;
     private Collection<Record> recordsIn;
-    @Mock
-    private AcknowledgementSetManager acknowledgementSetManager;
-    @Mock
-    private EventFactory eventFactory;
 
     private static class TestComponent {
     }
 
     @BeforeEach
     void setUp() {
-        eventFactory = mock(EventFactory.class);
-        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         recordsIn = IntStream.range(0, 10)
                 .mapToObj(i -> mock(Record.class))
                 .collect(Collectors.toList());
     }
 
     private <C> RouterGetRecordStrategy createObjectUnderTest(Collection<DataFlowComponent<C>> dataFlowComponents) {
-        return new RouterCopyRecordStrategy(eventFactory, acknowledgementSetManager, dataFlowComponents);
+        return new RouterCopyRecordStrategy(dataFlowComponents);
     }
 
     @Test

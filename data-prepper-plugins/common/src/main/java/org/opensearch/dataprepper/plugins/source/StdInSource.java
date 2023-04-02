@@ -57,6 +57,11 @@ public class StdInSource implements Source<Record<Event>> {
     }
 
     @Override
+    public boolean enabledAcknowledgements() {
+        return false;
+    }
+
+    @Override
     public void start(final Buffer<Record<Event>> buffer) {
         checkNotNull(buffer, format("Pipeline [%s] - buffer cannot be null for source to start", pipelineName));
         String line = reader.nextLine();
