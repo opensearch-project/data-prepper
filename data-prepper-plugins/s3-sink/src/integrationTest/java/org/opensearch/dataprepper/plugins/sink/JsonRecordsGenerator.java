@@ -5,21 +5,21 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.opensearch.dataprepper.plugins.sink.codec.JsonCodec;
 import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.time.Instant;
-import java.util.Map;
-import java.util.UUID;
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 class JsonRecordsGenerator implements RecordsGenerator {
 
