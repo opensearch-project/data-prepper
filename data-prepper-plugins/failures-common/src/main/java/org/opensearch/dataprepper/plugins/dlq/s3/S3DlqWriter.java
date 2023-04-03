@@ -15,6 +15,8 @@ import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.failures.DlqObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -26,6 +28,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
 /**
  * S3 Dlq writer. Stores DLQ Objects in an S3 bucket.
@@ -42,6 +46,8 @@ public class S3DlqWriter implements DlqWriter {
     static final String S3_DLQ_REQUEST_SIZE_BYTES = "dlqS3RequestSizeBytes";
     private static final String KEY_NAME_FORMAT = "dlq-v%s-%s-%s-%s-%s";
     private static final String FULL_KEY_FORMAT = "%s/%s";
+
+    private static final Logger LOG = LoggerFactory.getLogger(S3DlqWriter.class);
 
     private final S3Client s3Client;
     private final String bucket;
@@ -94,17 +100,22 @@ public class S3DlqWriter implements DlqWriter {
         final PutObjectResponse response = timedPutObject(putObjectRequest, content);
 
         if (!response.sdkHttpResponse().isSuccessful()) {
+            LOG.error(SENSITIVE, "Failed to write to S3 dlq: [{}] to S3 due to status code: [{}]",
+                content, response.sdkHttpResponse().statusCode());
             throw new IOException(String.format(
-                "Failed to write to S3 dlq: [%s] to S3 due to status code: %d",
-                content, response.sdkHttpResponse().statusCode()));
+                "Failed to write to S3 dlq due to status code: %d", response.sdkHttpResponse().statusCode()));
         }
     }
 
     private PutObjectResponse timedPutObject(final PutObjectRequest putObjectRequest, final String content) throws IOException {
         try {
             return dlqS3RequestTimer.recordCallable(() -> putObject(putObjectRequest, content));
+        } catch (final IOException ioException) {
+            throw ioException;
         } catch (final Exception ex) {
-            throw new IOException(String.format("Failed to write to S3 dlq: [%s] to S3.", content), ex);
+            LOG.error(SENSITIVE, "Failed timed write to S3 dlq: [{}] to S3 due to error: [{}]",
+                content, ex.getMessage());
+            throw new IOException("Failed timed write to S3 dlq.", ex);
         }
     }
 
@@ -112,7 +123,9 @@ public class S3DlqWriter implements DlqWriter {
         try {
             return s3Client.putObject(request, RequestBody.fromString(content));
         } catch (Exception ex) {
-            throw new IOException(String.format("Failed to write to S3 dlq: [%s] to S3.", content), ex);
+            LOG.error(SENSITIVE, "Failed to write to S3 dlq: [{}] to S3 due to error: [{}]",
+                content, ex.getMessage());
+            throw new IOException("Failed to write to S3 dlq.", ex);
         }
     }
 
@@ -124,7 +137,9 @@ public class S3DlqWriter implements DlqWriter {
 
             return content;
         } catch (JsonProcessingException e) {
-            throw new IOException(String.format("Failed to build valid S3 request"));
+            LOG.error(SENSITIVE, "Failed to build valid S3 request body with dlqObjects: [{}] due to error: [{}]",
+                dlqObjects, e.getMessage());
+            throw new IOException("Failed to build valid S3 request body", e);
         }
     }
 

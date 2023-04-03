@@ -21,6 +21,8 @@ public interface DlqWriter {
     /**
      * Writes the DLQ objects to the DLQ
      * @param dlqObjects the list of objects to be written to the DLQ
+     * @param pipelineName the pipeline the DLQ object is associated with.
+     * @param pluginId the id of the plugin the DLQ object is associated with.
      * @throws IOException
      *
      * @since 2.2

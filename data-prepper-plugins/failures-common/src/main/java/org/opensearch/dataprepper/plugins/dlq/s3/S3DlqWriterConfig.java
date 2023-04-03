@@ -31,13 +31,15 @@ public class S3DlqWriterConfig {
 
     private static final int MAX_NUMBER_OF_RETRIES = 3;
     private static final String DEFAULT_AWS_REGION = "us-east-1";
+    private static final String AWS_IAM_ROLE = "role";
+    private static final String AWS_IAM = "iam";
     @JsonProperty("bucket")
     @NotNull
     @Size(min = 3, max = 63, message = "bucket lengthy should be between 3 and 63 characters")
     private String bucket;
 
     @JsonProperty("key_path_prefix")
-    @Size(min = 1, max = 1024, message = " key_path_prefix length should be between 1 and 1024 characters")
+    @Size(min = 1, max = 1024, message = "key_path_prefix length should be between 1 and 1024 characters")
     private String keyPathPrefix;
 
     @JsonProperty("region")
@@ -84,11 +86,11 @@ public class S3DlqWriterConfig {
 
     private void validateStsRoleArn() {
         final Arn arn = getArn();
-        if (!"iam".equals(arn.service())) {
+        if (!AWS_IAM.equals(arn.service())) {
             throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
         }
         final Optional<String> resourceType = arn.resource().resourceType();
-        if (resourceType.isEmpty() || !resourceType.get().equals("role")) {
+        if (resourceType.isEmpty() || !resourceType.get().equals(AWS_IAM_ROLE)) {
             throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
         }
     }
