@@ -33,6 +33,7 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.Duration;
@@ -132,7 +133,7 @@ class SqsWorkerTest {
 
         @ParameterizedTest
         @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
-        void processSqsMessages_should_return_number_of_messages_processed(final String eventName) {
+        void processSqsMessages_should_return_number_of_messages_processed(final String eventName) throws IOException {
             Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
             final Message message = mock(Message.class);
             when(message.body()).thenReturn(createEventNotification(eventName, startTime));

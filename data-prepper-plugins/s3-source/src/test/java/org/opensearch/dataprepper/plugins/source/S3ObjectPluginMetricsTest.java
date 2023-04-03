@@ -16,7 +16,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class S3ObjectPluginMetricsTest {
+class S3ObjectPluginMetricsTest {
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
@@ -26,9 +26,10 @@ public class S3ObjectPluginMetricsTest {
     @Mock
     private Counter counter;
     @Test
-    public void s3ObjectPluginMetricsTest(){
+    void s3ObjectPluginMetricsTest(){
         pluginMetrics = mock(PluginMetrics.class);
         when(pluginMetrics.counter(S3ObjectPluginMetrics.S3_OBJECTS_FAILED_METRIC_NAME)).thenReturn(counter);
+        when(pluginMetrics.counter(S3ObjectPluginMetrics.S3_OBJECTS_CODEC_PARSING_FAILED_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(S3ObjectPluginMetrics.S3_OBJECTS_FAILED_NOT_FOUND_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(S3ObjectPluginMetrics.S3_OBJECTS_FAILED_NOT_FOUND_ACCESS_DENIED)).thenReturn(counter);
         when(pluginMetrics.counter(S3ObjectPluginMetrics.S3_OBJECTS_SUCCEEDED_METRIC_NAME)).thenReturn(counter);
