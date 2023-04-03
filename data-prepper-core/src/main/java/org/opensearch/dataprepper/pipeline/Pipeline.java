@@ -5,18 +5,23 @@
 
 package org.opensearch.dataprepper.pipeline;
 
+import com.google.common.base.Preconditions;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.source.UsesSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
-import com.google.common.base.Preconditions;
+import org.opensearch.dataprepper.model.source.SourceCoordinator;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
 import org.opensearch.dataprepper.pipeline.router.Router;
 import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
+import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +53,8 @@ public class Pipeline {
     private final List<List<Processor>> processorSets;
     private final List<DataFlowComponent<Sink>> sinks;
     private final Router router;
+
+    private final SourceCoordinatorFactory sourceCoordinatorFactory;
     private final int processorThreads;
     private final int readBatchTimeoutInMillis;
     private final Duration processorShutdownTimeout;
@@ -55,6 +62,8 @@ public class Pipeline {
     private final Duration peerForwarderDrainTimeout;
     private final ExecutorService processorExecutorService;
     private final ExecutorService sinkExecutorService;
+    private final EventFactory eventFactory;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     /**
      * Constructs a {@link Pipeline} object with provided {@link Source}, {@link #name}, {@link Collection} of
@@ -69,6 +78,10 @@ public class Pipeline {
      * @param processorSets               processor sets that will be applied to records. Each set includes either a single shared processor instance
      *                                  or multiple instances with each to be accessed only by a single {@link ProcessWorker}.
      * @param sinks                    sink to which the transformed records are posted
+     * @param router                   router object for routing in the pipeline
+     * @param eventFactory             event factory to create events
+     * @param acknowledgementSetManager   acknowledgement set manager
+     * @param sourceCoordinatorFactory source coordinator factory that enables coordination between different instances/threads of sources
      * @param processorThreads         configured or default threads to parallelize processor work
      * @param readBatchTimeoutInMillis configured or default timeout for reading batch of records from buffer
      * @param processorShutdownTimeout configured or default timeout before forcefully terminating the processor workers
@@ -82,6 +95,9 @@ public class Pipeline {
             @Nonnull final List<List<Processor>> processorSets,
             @Nonnull final List<DataFlowComponent<Sink>> sinks,
             @Nonnull final Router router,
+            @Nonnull final EventFactory eventFactory,
+            @Nonnull final AcknowledgementSetManager acknowledgementSetManager,
+            final SourceCoordinatorFactory sourceCoordinatorFactory,
             final int processorThreads,
             final int readBatchTimeoutInMillis,
             final Duration processorShutdownTimeout,
@@ -95,7 +111,10 @@ public class Pipeline {
         this.processorSets = processorSets;
         this.sinks = sinks;
         this.router = router;
+        this.sourceCoordinatorFactory = sourceCoordinatorFactory;
         this.processorThreads = processorThreads;
+        this.eventFactory = eventFactory;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         this.readBatchTimeoutInMillis = readBatchTimeoutInMillis;
         this.processorShutdownTimeout = processorShutdownTimeout;
         this.sinkShutdownTimeout = sinkShutdownTimeout;
@@ -179,6 +198,11 @@ public class Pipeline {
     public void execute() {
         LOG.info("Pipeline [{}] - Initiating pipeline execution", name);
         try {
+            if (source instanceof UsesSourceCoordination) {
+                final Class<?> partionProgressModelClass = ((UsesSourceCoordination) source).getPartitionProgressStateClass();
+                final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(partionProgressModelClass);
+                ((UsesSourceCoordination) source).setSourceCoordinator(sourceCoordinator);
+            }
             source.start(buffer);
             LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
             for (int i = 0; i < processorThreads; i++) {
@@ -257,7 +281,7 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(sinks);
+        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(eventFactory, acknowledgementSetManager, sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
         );

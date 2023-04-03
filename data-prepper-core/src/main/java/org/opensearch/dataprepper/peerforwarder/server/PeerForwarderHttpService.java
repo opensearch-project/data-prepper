@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
 import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,16 +47,19 @@ public class PeerForwarderHttpService {
     private final PeerForwarderCodec peerForwarderCodec;
     private final Timer serverRequestProcessingLatencyTimer;
     private final Counter recordsReceivedFromPeersCounter;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     public PeerForwarderHttpService(final ResponseHandler responseHandler,
                                     final PeerForwarderProvider peerForwarderProvider,
                                     final PeerForwarderConfiguration peerForwarderConfiguration,
                                     final PeerForwarderCodec peerForwarderCodec,
+                                    final AcknowledgementSetManager acknowledgementSetManager,
                                     final PluginMetrics pluginMetrics) {
         this.responseHandler = responseHandler;
         this.peerForwarderProvider = peerForwarderProvider;
         this.peerForwarderConfiguration = peerForwarderConfiguration;
         this.peerForwarderCodec = peerForwarderCodec;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         serverRequestProcessingLatencyTimer = pluginMetrics.timer(SERVER_REQUEST_PROCESSING_LATENCY);
         recordsReceivedFromPeersCounter = pluginMetrics.counter(RECORDS_RECEIVED_FROM_PEERS);
     }

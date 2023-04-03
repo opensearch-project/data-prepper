@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.client.opensearch._types.ErrorResponse;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -14,14 +15,13 @@ import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.opensearch.OpenSearchException;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
-import org.opensearch.common.util.concurrent.OpenSearchRejectedExecutionException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
@@ -401,7 +401,9 @@ public class BulkRetryStrategyTests {
             final BulkRequest bulkRequest = accumulatingBulkRequest.getRequest();
             if (maxRetriesTestValue > 0) {
                 if (maxRetriesWithException) {
-                    throw new OpenSearchException(new OpenSearchRejectedExecutionException());
+                    throw new OpenSearchException(new ErrorResponse.Builder()
+                            .status(500)
+                            .error(new ErrorCause.Builder().reason("").type("").build()).build());
                 }
                 if (++attempt > 5) {
                     assert attempt == 0;
@@ -438,7 +440,9 @@ public class BulkRetryStrategyTests {
                 return finalResponse;
             } else if (attempt == 1) {
                 attempt++;
-                throw new OpenSearchException(new OpenSearchRejectedExecutionException());
+                throw new OpenSearchException(new ErrorResponse.Builder()
+                        .status(500)
+                        .error(new ErrorCause.Builder().reason("").type("").build()).build());
             } else if (attempt == 2) {
                 attempt++;
                 throw new IOException();

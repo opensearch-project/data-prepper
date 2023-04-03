@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.plugins.source.filter.S3EventFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
@@ -81,14 +82,13 @@ public class SqsWorker implements Runnable {
             try {
                 messagesProcessed = processSqsMessages();
             } catch (Exception e) {
-                LOG.error("Unable to process SQS messages with configuration provided. " +
-                        "Processing error due to: {}", e.getMessage());
+                LOG.error("Unable to process SQS messages. Processing error due to: {}", e.getMessage());
             }
 
             if (messagesProcessed > 0 && s3SourceConfig.getSqsOptions().getPollDelay().toMillis() > 0) {
                 try {
                     Thread.sleep(s3SourceConfig.getSqsOptions().getPollDelay().toMillis());
-                } catch (InterruptedException e) {
+                } catch (final InterruptedException e) {
                     LOG.error("Thread is interrupted while polling SQS.", e);
                 }
             }
@@ -160,16 +160,16 @@ public class SqsWorker implements Runnable {
             if (s3EventNotification.getRecords() != null)
                 return new ParsedMessage(message, s3EventNotification.getRecords());
             else {
-                LOG.debug("S3 notification message with ID:{} cannot be parsed into S3EventNotificationRecord.", message.messageId());
+                LOG.debug("SQS message with ID:{} does not have any S3 event notification records.", message.messageId());
                 return new ParsedMessage(message, true);
             }
 
         } catch (SdkClientException | JsonProcessingException e) {
             if (message.body().contains("s3:TestEvent") && message.body().contains("Amazon S3")) {
-                LOG.info("Found s3:TestEvent message. Deleting from SQS queue.");
+                LOG.info("Received s3:TestEvent message. Deleting from SQS queue.");
                 return new ParsedMessage(message, false);
             } else {
-                LOG.error("Invalid JSON string in message body of {}", message.messageId(), e);
+                LOG.error("SQS message with message ID:{} has invalid body which cannot be parsed into S3EventNotification. {}.", message.messageId(), e.getMessage());
             }
         }
         return new ParsedMessage(message, true);
@@ -190,13 +190,14 @@ public class SqsWorker implements Runnable {
                 if (!notificationRecords.isEmpty() && isEventNameCreated(notificationRecords.get(0))) {
                     parsedMessagesToRead.add(parsedMessage);
                 } else {
-                    // Add SQS message to delete collection if the eventName is not ObjectCreated
+                    // TODO: Delete these only if on_error is configured to delete_messages.
+                    LOG.debug("Received SQS message other than s3:ObjectCreated:*. Deleting message from SQS queue.");
                     deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
                 }
             }
         }
 
-        LOG.debug("Received {} messages from SQS. Read {} messages from S3.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
+        LOG.debug("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
 
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;
@@ -211,28 +212,30 @@ public class SqsWorker implements Runnable {
     private Optional<DeleteMessageBatchRequestEntry> processS3Object(
             final ParsedMessage parsedMessage,
             final S3ObjectReference s3ObjectReference) {
-        Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = Optional.empty();
         // SQS messages won't be deleted if we are unable to process S3Objects because of S3Exception: Access Denied
         try {
             s3Service.addS3Object(s3ObjectReference);
-            deleteMessageBatchRequestEntry = Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
             sqsMessageDelayTimer.record(Duration.between(
                     Instant.ofEpochMilli(parsedMessage.notificationRecords.get(0).getEventTime().toInstant().getMillis()),
                     Instant.now()
             ));
+            return Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
         } catch (final Exception e) {
-            LOG.warn("Unable to process S3Object: s3ObjectReference={}.", s3ObjectReference, e);
+            return Optional.empty();
         }
-        return deleteMessageBatchRequestEntry;
     }
 
     private void deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
-        LOG.debug("Deleting {} messages from SQS.", deleteMessageBatchRequestEntryCollection.size());
         final DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
-        final DeleteMessageBatchResponse deleteMessageBatchResponse = sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
-        if (deleteMessageBatchResponse.hasSuccessful()) {
-            final int deletedMessagesCount = deleteMessageBatchResponse.successful().size();
-            sqsMessagesDeletedCounter.increment(deletedMessagesCount);
+        try {
+            final DeleteMessageBatchResponse deleteMessageBatchResponse = sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
+            if (deleteMessageBatchResponse.hasSuccessful()) {
+                final int deletedMessagesCount = deleteMessageBatchResponse.successful().size();
+                LOG.debug("Deleted {} messages from SQS.", deletedMessagesCount);
+                sqsMessagesDeletedCounter.increment(deletedMessagesCount);
+            }
+        } catch (final SdkException e) {
+            LOG.debug("Failed to delete {} messages from SQS due to {}.", deleteMessageBatchRequestEntryCollection.size(), e.getMessage());
         }
     }
 

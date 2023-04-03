@@ -69,6 +69,8 @@ pipeline:
 - `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that the OpenSearch cluster is using.
 Default is null.
 
+- `aws_serverless`: A boolean flag to indicate the OpenSearch backend is Amazon OpenSearch Serverless. Default to `false`.
+
 - `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon OpenSearch Service. See [security](security.md) for details. Default to `false`.
 
 - `aws_region`: A String represents the region of Amazon OpenSearch Service domain, e.g. us-west-2. Only applies to Amazon OpenSearch Service. Defaults to `us-east-1`.
@@ -91,7 +93,7 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom`. This index_type instructs Sink plugin what type of data it is handling. 
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `aws_serverless` is `false`, otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling. 
 
 ```
     APM trace analytics raw span data type example:
@@ -166,6 +168,7 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 * `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
 * `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
 * `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
+* `serverless` (Optional): A boolean flag to indicate the OpenSearch backend is Amazon OpenSearch Serverless. Default to `false`.
 
 ## Metrics
 ### Management Disabled Index Type

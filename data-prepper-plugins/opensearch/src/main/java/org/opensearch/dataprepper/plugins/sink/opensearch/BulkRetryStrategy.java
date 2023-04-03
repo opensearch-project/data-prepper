@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import io.micrometer.core.instrument.Counter;
-import org.opensearch.OpenSearchException;
+import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.action.bulk.BackoffPolicy;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch.core.BulkRequest;
@@ -157,7 +157,7 @@ public final class BulkRetryStrategy {
     public static boolean canRetry(final Exception e) {
         return (e instanceof IOException ||
                 (e instanceof OpenSearchException &&
-                        !NON_RETRY_STATUS.contains(((OpenSearchException) e).status().getStatus())));
+                        !NON_RETRY_STATUS.contains(((OpenSearchException) e).status())));
     }
 
     private void handleRetriesAndFailures(final AccumulatingBulkRequest bulkRequestForRetry,
@@ -201,7 +201,7 @@ public final class BulkRetryStrategy {
                 bulkResponse = requestFunction.apply(bulkRequestForRetry);
             } catch (Exception e) {
                 if (e instanceof OpenSearchException) {
-                    int status = ((OpenSearchException) e).status().getStatus();
+                    int status = ((OpenSearchException) e).status();
                     if (NOT_ALLOWED_ERRORS.contains(status)) {
                         bulkRequestNotAllowedErrors.increment();
                     } else if (INVALID_INPUT_ERRORS.contains(status)) {

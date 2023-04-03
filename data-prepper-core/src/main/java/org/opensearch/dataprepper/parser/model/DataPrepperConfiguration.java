@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.parser.model;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonAlias;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
@@ -35,6 +35,7 @@ public class DataPrepperConfiguration {
     private List<MetricRegistryType> metricRegistries = DEFAULT_METRIC_REGISTRY_TYPE;
     private PluginModel authentication;
     private CircuitBreakerConfig circuitBreakerConfig;
+    private SourceCoordinationConfig sourceCoordinationConfig;
     private Map<String, String> metricTags = new HashMap<>();
     private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
@@ -76,10 +77,12 @@ public class DataPrepperConfiguration {
             @JsonProperty("sink_shutdown_timeout")
             @JsonAlias("sinkShutdownTimeout")
             final Duration sinkShutdownTimeout,
-            @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig
+            @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig,
+            @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig
             ) {
         this.authentication = authentication;
         this.circuitBreakerConfig = circuitBreakerConfig;
+        this.sourceCoordinationConfig = sourceCoordinationConfig;
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
         this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
@@ -196,4 +199,6 @@ public class DataPrepperConfiguration {
     public CircuitBreakerConfig getCircuitBreakerConfig() {
         return circuitBreakerConfig;
     }
+
+    public SourceCoordinationConfig getSourceCoordinationConfig() { return sourceCoordinationConfig; }
 }

@@ -42,6 +42,8 @@ public class IndexConfiguration {
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
+    public static final String AWS_SERVERLESS = "aws_serverless";
+    public static final String AWS_OPTION = "aws";
 
     private IndexType indexType;
     private final String indexAlias;
@@ -54,12 +56,14 @@ public class IndexConfiguration {
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
     private final S3Client s3Client;
+    private final boolean awsServerless;
 
     private static final String S3_PREFIX = "s3://";
     private static final String DEFAULT_AWS_REGION = "us-east-1";
 
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
+        this.awsServerless = builder.awsServerless;
         determineIndexType(builder);
 
         this.s3AwsRegion = builder.s3AwsRegion;
@@ -107,6 +111,8 @@ public class IndexConfiguration {
             indexType = mappedIndexType.orElseThrow(
                     () -> new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
                     + IndexType.getIndexTypeValues()));
+        } else if (builder.awsServerless) {
+            this.indexType = IndexType.MANAGEMENT_DISABLED;
         } else {
             this.indexType  = IndexType.CUSTOM;
         }
@@ -153,7 +159,19 @@ public class IndexConfiguration {
             builder.withS3Client(clientProvider.buildS3Client());
         }
 
-
+        Map<String, Object> awsOption = pluginSetting.getTypedMap(AWS_OPTION, String.class, Object.class);
+        boolean awsOptionUsed = false;
+        if (awsOption != null && !awsOption.isEmpty()) {
+            awsOptionUsed = true;
+            builder.withAwsServerless((Boolean)awsOption.getOrDefault(AWS_SERVERLESS.substring(4), false));
+        }
+        final boolean awsServerless = pluginSetting.getBooleanOrDefault(AWS_SERVERLESS, false);
+        if (awsServerless) {
+            if (awsOptionUsed) {
+                throw new RuntimeException(String.format("%s option cannot be used along with %s option", AWS_SERVERLESS, AWS_OPTION));
+            }
+            builder.withAwsServerless(awsServerless);
+        }
 
         return builder.build();
     }
@@ -196,6 +214,10 @@ public class IndexConfiguration {
 
     public String getS3AwsStsRoleArn() {
         return s3AwsStsRoleArn;
+    }
+
+    public boolean getAwsServerless() {
+        return awsServerless;
     }
 
     /**
@@ -253,6 +275,7 @@ public class IndexConfiguration {
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
         private S3Client s3Client;
+        private boolean awsServerless;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -333,6 +356,11 @@ public class IndexConfiguration {
         public Builder withS3Client(final S3Client s3Client) {
             checkArgument(s3Client != null);
             this.s3Client = s3Client;
+            return this;
+        }
+
+        public Builder withAwsServerless(final boolean awsServerless) {
+            this.awsServerless = awsServerless;
             return this;
         }
 
