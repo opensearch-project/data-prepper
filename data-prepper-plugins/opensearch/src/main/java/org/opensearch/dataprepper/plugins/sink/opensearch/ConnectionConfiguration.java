@@ -5,6 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.transport.OpenSearchTransport;
+import org.opensearch.client.transport.aws.AwsSdk2Transport;
+import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
@@ -21,6 +26,7 @@ import org.apache.http.ssl.SSLContexts;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
@@ -32,13 +38,20 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
 import software.amazon.awssdk.core.retry.conditions.RetryCondition;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.apache.ProxyConfiguration;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import java.io.File;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
@@ -57,7 +70,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class ConnectionConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
 
-  private static final String SERVICE_NAME = "es";
+  private static final String AOS_SERVICE_NAME = "es";
+  private static final String AOSS_SERVICE_NAME = "aoss";
   private static final String DEFAULT_AWS_REGION = "us-east-1";
   private static final int STS_CLIENT_RETRIES = 10;
   private static final long STS_CLIENT_BASE_BACKOFF_MILLIS = 1000l;
@@ -76,6 +90,7 @@ public class ConnectionConfiguration {
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
   public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
   public static final String PROXY = "proxy";
+  public static final String AWS_SERVERLESS = "aws_serverless";
 
   /**
    * The valid port range per https://tools.ietf.org/html/rfc6335.
@@ -96,6 +111,7 @@ public class ConnectionConfiguration {
   private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
   private final String pipelineName;
+  private final boolean awsServerless;
 
   List<String> getHosts() {
     return hosts;
@@ -137,6 +153,10 @@ public class ConnectionConfiguration {
     return connectTimeout;
   }
 
+  boolean isAwsServerless() {
+    return awsServerless;
+  }
+
   private ConnectionConfiguration(final Builder builder) {
     this.hosts = builder.hosts;
     this.username = builder.username;
@@ -150,6 +170,7 @@ public class ConnectionConfiguration {
     this.awsStsRoleArn = builder.awsStsRoleArn;
     this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
+    this.awsServerless = builder.awsServerless;
     this.pipelineName = builder.pipelineName;
   }
 
@@ -184,16 +205,19 @@ public class ConnectionConfiguration {
         builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
         builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
         builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
+        builder.withAwsServerless((Boolean)awsOption.getOrDefault(AWS_SERVERLESS.substring(4), false));
     }
     boolean awsSigv4 = pluginSetting.getBooleanOrDefault(AWS_SIGV4, false);
+    final String awsOptionConflictMessage = String.format("%s option cannot be used along with %s option", AWS_SIGV4, AWS_OPTION);
     if (awsSigv4) {
       if (awsOptionUsed) {
-        throw new RuntimeException(String.format("{} option cannot be used along with {} option", AWS_SIGV4, AWS_OPTION));
+        throw new RuntimeException(awsOptionConflictMessage);
       }
       builder.withAwsSigv4(true);
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
       builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
       builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
+      builder.withAwsServerless(pluginSetting.getBooleanOrDefault(AWS_SERVERLESS, false));
     }
 
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
@@ -267,7 +291,7 @@ public class ConnectionConfiguration {
     } else {
       credentialsProvider = DefaultCredentialsProvider.create();
     }
-    final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(SERVICE_NAME, aws4Signer,
+    final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(AOS_SERVICE_NAME, aws4Signer,
             credentialsProvider, awsRegion);
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
       httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
@@ -367,6 +391,95 @@ public class ConnectionConfiguration {
     }
   }
 
+  public OpenSearchClient createOpenSearchClient(final RestHighLevelClient restHighLevelClient) {
+    return new OpenSearchClient(createOpenSearchTransport(restHighLevelClient));
+  }
+
+  private OpenSearchTransport createOpenSearchTransport(final RestHighLevelClient restHighLevelClient) {
+    if (awsSigv4) {
+      final AwsCredentialsProvider credentialsProvider;
+      if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
+        AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
+                .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
+                .roleArn(awsStsRoleArn);
+
+        if(awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
+          assumeRoleRequestBuilder = assumeRoleRequestBuilder
+                  .overrideConfiguration(configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
+        }
+
+        credentialsProvider = StsAssumeRoleCredentialsProvider.builder()
+                .stsClient(getStsClient())
+                .refreshRequest(assumeRoleRequestBuilder.build())
+                .build();
+      } else {
+        credentialsProvider = DefaultCredentialsProvider.create();
+      }
+      final String serviceName = awsServerless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
+      return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).getHostName(),
+              serviceName, Region.of(awsRegion),
+              AwsSdk2TransportOptions.builder()
+                      .setCredentials(credentialsProvider)
+                      .setMapper(new PreSerializedJsonpMapper())
+                      .build());
+    } else {
+      return new RestClientTransport(
+              restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
+    }
+  }
+
+  private SdkHttpClient createSdkHttpClient() {
+    ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
+    if (connectTimeout != null) {
+      apacheHttpClientBuilder.connectionTimeout(Duration.ofMillis(connectTimeout));
+    }
+    if (socketTimeout != null) {
+      apacheHttpClientBuilder.socketTimeout(Duration.ofMillis(socketTimeout));
+    }
+    attachSSLContext(apacheHttpClientBuilder);
+    setHttpProxyIfApplicable(apacheHttpClientBuilder);
+    return apacheHttpClientBuilder.build();
+  }
+
+  private void attachSSLContext(final ApacheHttpClient.Builder apacheHttpClientBuilder) {
+    TrustManager[] trustManagers = createTrustManagers(certPath);
+    apacheHttpClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
+  }
+
+  private static TrustManager[] createTrustManagers(final Path certPath) {
+    if (certPath != null) {
+      LOG.info("Using the cert provided in the config.");
+      try (InputStream certificateInputStream = Files.newInputStream(certPath)) {
+        final CertificateFactory factory = CertificateFactory.getInstance("X.509");
+        final Certificate trustedCa = factory.generateCertificate(certificateInputStream);
+        final KeyStore trustStore = KeyStore.getInstance("pkcs12");
+        trustStore.load(null, null);
+        trustStore.setCertificateEntry("ca", trustedCa);
+
+        final TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance("X509");
+        trustManagerFactory.init(trustStore);
+        return trustManagerFactory.getTrustManagers();
+      } catch (Exception ex) {
+        throw new RuntimeException(ex.getMessage(), ex);
+      }
+    } else {
+      return new TrustManager[] { new X509TrustAllManager() };
+    }
+  }
+
+  private void setHttpProxyIfApplicable(final ApacheHttpClient.Builder apacheHttpClientBuilder) {
+    proxy.ifPresent(
+            p -> {
+              final URI endpoint = URI.create(p);
+              final ProxyConfiguration proxyConfiguration = ProxyConfiguration.builder()
+                      .endpoint(endpoint)
+                      .build();
+              checkProxyPort(endpoint.getPort());
+              apacheHttpClientBuilder.proxyConfiguration(proxyConfiguration);
+            }
+    );
+  }
+
   public static class Builder {
     private final List<String> hosts;
     private String username;
@@ -381,6 +494,8 @@ public class ConnectionConfiguration {
     private Map<String, String> awsStsHeaderOverrides;
     private Optional<String> proxy = Optional.empty();
     private String pipelineName;
+
+    private boolean awsServerless;
 
 
     public Builder(final List<String> hosts) {
@@ -462,6 +577,11 @@ public class ConnectionConfiguration {
 
     public Builder withPipelineName(final String pipelineName) {
       this.pipelineName = pipelineName;
+      return this;
+    }
+
+    public Builder withAwsServerless(boolean awsServerless) {
+      this.awsServerless = awsServerless;
       return this;
     }
 

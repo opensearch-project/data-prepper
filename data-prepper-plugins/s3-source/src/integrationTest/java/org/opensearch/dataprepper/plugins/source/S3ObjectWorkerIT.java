@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import io.micrometer.core.instrument.DistributionSummary;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -45,7 +44,6 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -60,7 +58,7 @@ class S3ObjectWorkerIT {
     private Buffer<Record<Event>> buffer;
     private String bucket;
     private int recordsReceived;
-    private PluginMetrics pluginMetrics;
+    private S3ObjectPluginMetrics s3ObjectPluginMetrics;
     private BucketOwnerProvider bucketOwnerProvider;
     private EventMetadataModifier eventMetadataModifier;
 
@@ -76,13 +74,19 @@ class S3ObjectWorkerIT {
         buffer = mock(Buffer.class);
         recordsReceived = 0;
 
-        pluginMetrics = mock(PluginMetrics.class);
+        s3ObjectPluginMetrics = mock(S3ObjectPluginMetrics.class);
         final Counter counter = mock(Counter.class);
         final DistributionSummary distributionSummary = mock(DistributionSummary.class);
         final Timer timer = new NoopTimer(new Meter.Id("test", Tags.empty(), null, null, Meter.Type.TIMER));
-        when(pluginMetrics.counter(anyString())).thenReturn(counter);
-        when(pluginMetrics.summary(anyString())).thenReturn(distributionSummary);
-        when(pluginMetrics.timer(anyString())).thenReturn(timer);
+        when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(counter);
+        when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(counter);
+        when(s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter()).thenReturn(counter);
+        when(s3ObjectPluginMetrics.getS3ObjectsFailedNotFoundCounter()).thenReturn(counter);
+        when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(distributionSummary);
+        when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(distributionSummary);
+        when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(distributionSummary);
+        when(s3ObjectPluginMetrics.getS3ObjectReadTimer()).thenReturn(timer);
+
 
         bucketOwnerProvider = b -> Optional.empty();
     }
@@ -106,7 +110,11 @@ class S3ObjectWorkerIT {
     }
 
     private S3ObjectWorker createObjectUnderTest(final Codec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
-        return new S3ObjectWorker(s3Client, buffer, compressionEngine, codec, bucketOwnerProvider, Duration.ofMillis(TIMEOUT_IN_MILLIS), numberOfRecordsToAccumulate, eventMetadataModifier, pluginMetrics);
+        final S3ObjectRequest request = new S3ObjectRequest.Builder(buffer, numberOfRecordsToAccumulate,
+                Duration.ofMillis(TIMEOUT_IN_MILLIS), s3ObjectPluginMetrics).bucketOwnerProvider(bucketOwnerProvider)
+                .eventConsumer(eventMetadataModifier).codec(codec).s3Client(s3Client)
+                .compressionEngine(compressionEngine).build();
+        return new S3ObjectWorker(request);
     }
 
     @ParameterizedTest

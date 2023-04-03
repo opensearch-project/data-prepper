@@ -37,8 +37,6 @@ public class DefaultLink implements Link {
         checkArgument(!builder.spanId.isEmpty(), "spanId cannot be an empty String");
         this.spanId = builder.spanId;
 
-        checkNotNull(builder.traceState, "traceState cannot be null");
-        checkArgument(!builder.traceState.isEmpty(), "traceState cannot be an empty String");
         this.traceState = builder.traceState;
 
         this.attributes = builder.attributes == null ? new HashMap<>() : builder.attributes;
@@ -82,6 +80,7 @@ public class DefaultLink implements Link {
 
     /**
      * Builder for creating {@link DefaultLink}
+     * @return returns new builder
      * @since 1.2
      */
     public static Builder builder() {
@@ -98,7 +97,8 @@ public class DefaultLink implements Link {
 
         /**
          * Sets the trace id for the {@link Link}
-         * @param traceId
+         * @param traceId trace id
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withTraceId(final String traceId) {
@@ -108,7 +108,8 @@ public class DefaultLink implements Link {
 
         /**
          * Sets the span id
-         * @param spanId
+         * @param spanId span id
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withSpanId(final String spanId) {
@@ -118,7 +119,8 @@ public class DefaultLink implements Link {
 
         /**
          * Sets the trace state
-         * @param traceState
+         * @param traceState trace state
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withTraceState(final String traceState) {
@@ -129,6 +131,7 @@ public class DefaultLink implements Link {
         /**
          * Optional - sets the attributes for {@link DefaultLink}. Default is an empty map.
          * @param attributes the attributes to associate with this event.
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withAttributes(final Map<String, Object> attributes) {
@@ -139,6 +142,7 @@ public class DefaultLink implements Link {
         /**
          * Optional - sets the dropped attribute count for {@link DefaultLink}. Default is 0.
          * @param droppedAttributesCount the total number of dropped attributes
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {

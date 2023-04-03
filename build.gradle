@@ -84,11 +84,11 @@ subprojects {
         implementation platform('com.fasterxml.jackson:jackson-bom:2.14.1')
         implementation platform('io.micrometer:micrometer-bom:1.9.4')
         implementation libs.guava.core
-        implementation 'org.slf4j:slf4j-api:2.0.5'
+        implementation libs.slf4j.api
         testImplementation testLibs.bundles.junit
         testImplementation testLibs.bundles.mockito
-        testImplementation 'org.hamcrest:hamcrest:2.2'
-        testImplementation 'org.awaitility:awaitility:4.2.0'
+        testImplementation testLibs.hamcrest
+        testImplementation testLibs.awaitility
         constraints {
             implementation('org.apache.httpcomponents:httpclient') {
                 version {
@@ -119,14 +119,6 @@ subprojects {
                     require '3.21.11'
                 }
                 because 'Fixes CVE-2022-3509, CVE-2022-3510'
-            }
-        }
-        constraints {
-            implementation('io.netty:netty-tcnative-boringssl-static') {
-                version {
-                    require '2.0.42.Final'
-                }
-                because 'Netty 4.1.66+ requires new classes and methods in this version.'
             }
         }
     }

@@ -21,6 +21,8 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.opensearch.dataprepper.event.DefaultEventFactory;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 
 /**
  * Integration test of the plugin framework. These tests should not mock any portion
@@ -30,6 +32,10 @@ class DefaultPluginFactoryIT {
 
     private String pluginName;
     private String pipelineName;
+
+    private DefaultEventFactory eventFactory;
+
+    private DefaultAcknowledgementSetManager acknowledgementSetManager;
 
     @BeforeEach
     void setUp() {
@@ -44,6 +50,8 @@ class DefaultPluginFactoryIT {
         final AnnotationConfigApplicationContext coreContext = new AnnotationConfigApplicationContext();
         coreContext.setParent(publicContext);
 
+        coreContext.scan(DefaultEventFactory.class.getPackage().getName());
+        coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.register(PluginBeanFactoryProvider.class);
         coreContext.refresh();

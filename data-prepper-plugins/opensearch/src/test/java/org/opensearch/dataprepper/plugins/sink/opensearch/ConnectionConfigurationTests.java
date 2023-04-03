@@ -6,14 +6,23 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.transport.aws.AwsSdk2Transport;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.io.IOException;
@@ -39,10 +48,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration.AWS_SERVERLESS;
 
+@ExtendWith(MockitoExtension.class)
 class ConnectionConfigurationTests {
     private static final String PROXY_PARAMETER = "proxy";
     private final List<String> TEST_HOSTS = Collections.singletonList("http://localhost:9200");
@@ -52,6 +64,11 @@ class ConnectionConfigurationTests {
     private final Integer TEST_CONNECT_TIMEOUT = 5;
     private final Integer TEST_SOCKET_TIMEOUT = 10;
     private final String TEST_CERT_PATH = Objects.requireNonNull(getClass().getClassLoader().getResource("test-ca.pem")).getFile();
+
+    @Mock
+    private ApacheHttpClient.Builder apacheHttpClientBuilder;
+    @Mock
+    private ApacheHttpClient apacheHttpClient;
 
     @Test
     void testReadConnectionConfigurationDefault() {
@@ -70,6 +87,27 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testReadConnectionConfigurationAwsServerlessDefault() {
+        final Map<String, Object> configMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
+        configMetadata.put(AWS_SERVERLESS, true);
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertTrue(connectionConfiguration.isAwsServerless());
+    }
+
+    @Test
+    void testReadConnectionConfigurationAwsOptionServerlessDefault() {
+        final String testArn = "arn:aws:iam::123456789012:iam-role";
+        final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, TEST_CERT_PATH, false, Collections.emptyMap());
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertTrue(connectionConfiguration.isAwsServerless());
+    }
+
+    @Test
     void testCreateClientDefault() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
@@ -77,6 +115,46 @@ class ConnectionConfigurationTests {
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         final RestHighLevelClient client = connectionConfiguration.createClient();
         assertNotNull(client);
+        client.close();
+    }
+
+    @Test
+    void testCreateOpenSearchClientDefault() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(
+                TEST_HOSTS, null, null, null, null, false, null, null, null, false);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        assertNotNull(openSearchClient);
+        assertTrue(openSearchClient._transport() instanceof RestClientTransport);
+        assertTrue(openSearchClient._transport().jsonpMapper() instanceof PreSerializedJsonpMapper);
+        openSearchClient.shutdown();
+        client.close();
+    }
+
+    @Test
+    void testCreateOpenSearchClientAwsServerlessDefault() throws IOException {
+        final Map<String, Object> configMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
+        configMetadata.put(AWS_SERVERLESS, true);
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        final RestHighLevelClient client = connectionConfiguration.createClient();
+        when(apacheHttpClientBuilder.tlsTrustManagersProvider(any())).thenReturn(apacheHttpClientBuilder);
+        when(apacheHttpClientBuilder.build()).thenReturn(apacheHttpClient);
+        final OpenSearchClient openSearchClient;
+        try (final MockedStatic<ApacheHttpClient> apacheHttpClientMockedStatic = mockStatic(ApacheHttpClient.class)) {
+            apacheHttpClientMockedStatic.when(ApacheHttpClient::builder).thenReturn(apacheHttpClientBuilder);
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        }
+        assertNotNull(openSearchClient);
+        assertTrue(openSearchClient._transport() instanceof AwsSdk2Transport);
+        assertTrue(openSearchClient._transport().jsonpMapper() instanceof PreSerializedJsonpMapper);
+        verify(apacheHttpClientBuilder).tlsTrustManagersProvider(any());
+        verify(apacheHttpClientBuilder).build();
+        openSearchClient.shutdown();
         client.close();
     }
 
@@ -107,6 +185,20 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testCreateOpenSearchClientNoCert() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(
+                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        assertNotNull(openSearchClient);
+        assertEquals(client.getLowLevelClient(), ((RestClientTransport) openSearchClient._transport()).restClient());
+        openSearchClient.shutdown();
+        client.close();
+    }
+
+    @Test
     void testCreateClientInsecure() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, true);
@@ -114,6 +206,20 @@ class ConnectionConfigurationTests {
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         final RestHighLevelClient client = connectionConfiguration.createClient();
         assertNotNull(client);
+        client.close();
+    }
+
+    @Test
+    void testCreateOpenSearchClientInsecure() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(
+                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, true);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        assertNotNull(openSearchClient);
+        assertEquals(client.getLowLevelClient(), ((RestClientTransport) openSearchClient._transport()).restClient());
+        openSearchClient.shutdown();
         client.close();
     }
 
@@ -129,13 +235,27 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testCreateOpenSearchClientWithCertPath() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(
+                TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        assertNotNull(openSearchClient);
+        assertEquals(client.getLowLevelClient(), ((RestClientTransport) openSearchClient._transport()).restClient());
+        openSearchClient.shutdown();
+        client.close();
+    }
+
+    @Test
     void testCreateClientWithAWSSigV4AndRegion() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
                 TEST_HOSTS, null, null, null, null, true, "us-west-2", null, null, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals("us-west-2", connectionConfiguration.getAwsRegion());
-        assertTrue(connectionConfiguration.isAwsSigv4());;
+        assertTrue(connectionConfiguration.isAwsSigv4());
     }
 
     @Test
@@ -189,8 +309,6 @@ class ConnectionConfigurationTests {
                 .thenReturn(assumeRoleRequestBuilder);
         when(assumeRoleRequestBuilder.roleArn(anyString()))
                 .thenReturn(assumeRoleRequestBuilder);
-        when(assumeRoleRequestBuilder.overrideConfiguration(any(Consumer.class)))
-                .thenReturn(assumeRoleRequestBuilder);
 
         final StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
         when(stsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(stsClientBuilder);
@@ -211,13 +329,55 @@ class ConnectionConfigurationTests {
     }
 
     @Test
+    void testCreateOpenSearchClientWithAWSSigV4AndSTSRole() throws IOException {
+        final PluginSetting pluginSetting = generatePluginSetting(
+                TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertThat(connectionConfiguration, notNullValue());
+        assertThat(connectionConfiguration.getAwsRegion(), equalTo("us-east-1"));
+        assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+        assertThat(connectionConfiguration.getPipelineName(), equalTo(TEST_PIPELINE_NAME));
+
+        final StsClient stsClient = mock(StsClient.class);
+        final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
+        when(assumeRoleRequestBuilder.roleSessionName(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.roleArn(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+
+        final StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
+        when(stsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(stsClientBuilder);
+        when(stsClientBuilder.build()).thenReturn(stsClient);
+
+        final OpenSearchClient openSearchClient;
+        try(final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+            final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class)) {
+
+            assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
+            stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+            final RestHighLevelClient client = connectionConfiguration.createClient();
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        }
+        assertNotNull(openSearchClient);
+        assertTrue(openSearchClient._transport() instanceof AwsSdk2Transport);
+        final AwsSdk2Transport opensearchTransport = (AwsSdk2Transport) openSearchClient._transport();
+        assertTrue(opensearchTransport.options().credentials() instanceof StsAssumeRoleCredentialsProvider);
+        verify(assumeRoleRequestBuilder, times(2)).roleArn("arn:aws:iam::123456789012:iam-role");
+        verify(assumeRoleRequestBuilder, times(2)).roleSessionName(anyString());
+        verify(assumeRoleRequestBuilder, times(2)).build();
+        verifyNoMoreInteractions(assumeRoleRequestBuilder);
+    }
+
+    @Test
     void testCreateClientWithAWSOption() {
         final String headerName1 = UUID.randomUUID().toString();
         final String headerValue1 = UUID.randomUUID().toString();
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
         final String testArn = "arn:aws:iam::123456789012:iam-role";
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -264,6 +424,65 @@ class ConnectionConfigurationTests {
         verifyNoMoreInteractions(configurationBuilder);
     }
 
+    @Test
+    void testCreateOpenSearchClientWithAWSOption() {
+        final String headerName1 = UUID.randomUUID().toString();
+        final String headerValue1 = UUID.randomUUID().toString();
+        final String headerName2 = UUID.randomUUID().toString();
+        final String headerValue2 = UUID.randomUUID().toString();
+        final String testArn = "arn:aws:iam::123456789012:iam-role";
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+
+        assertThat(connectionConfiguration, notNullValue());
+        assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+
+        final StsClient stsClient = mock(StsClient.class);
+        final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
+        when(assumeRoleRequestBuilder.roleSessionName(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.roleArn(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.overrideConfiguration(any(Consumer.class)))
+                .thenReturn(assumeRoleRequestBuilder);
+
+        final StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
+        when(stsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(stsClientBuilder);
+        when(stsClientBuilder.build()).thenReturn(stsClient);
+
+        final OpenSearchClient openSearchClient;
+        try(final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+            final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class)) {
+
+            assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
+            stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+            final RestHighLevelClient client = connectionConfiguration.createClient();
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        }
+
+        final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
+
+        assertNotNull(openSearchClient);
+        assertTrue(openSearchClient._transport() instanceof AwsSdk2Transport);
+        final AwsSdk2Transport opensearchTransport = (AwsSdk2Transport) openSearchClient._transport();
+        assertTrue(opensearchTransport.options().credentials() instanceof StsAssumeRoleCredentialsProvider);
+        verify(assumeRoleRequestBuilder, times(2)).overrideConfiguration(configurationCaptor.capture());
+        verify(assumeRoleRequestBuilder, times(2)).roleArn(testArn);
+        verify(assumeRoleRequestBuilder, times(2)).roleSessionName(anyString());
+        verify(assumeRoleRequestBuilder, times(2)).build();
+        verifyNoMoreInteractions(assumeRoleRequestBuilder);
+
+        final Consumer<AwsRequestOverrideConfiguration.Builder> actualOverride = configurationCaptor.getValue();
+
+        final AwsRequestOverrideConfiguration.Builder configurationBuilder = mock(AwsRequestOverrideConfiguration.Builder.class);
+        actualOverride.accept(configurationBuilder);
+        verify(configurationBuilder).putHeader(headerName1, headerValue1);
+        verify(configurationBuilder).putHeader(headerName2, headerValue2);
+        verifyNoMoreInteractions(configurationBuilder);
+    }
 
     @Test
     void testCreateClientWithAWSSigV4AndHeaderOverrides() {
@@ -320,7 +539,68 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testCreateClient_WithValidHttpProxy_HostIP() throws IOException {
+    void testCreateOpenSearchClientWithAWSSigV4AndHeaderOverrides() {
+        final String headerName1 = UUID.randomUUID().toString();
+        final String headerValue1 = UUID.randomUUID().toString();
+        final String headerName2 = UUID.randomUUID().toString();
+        final String headerValue2 = UUID.randomUUID().toString();
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
+        configurationMetadata.put("aws_sts_header_overrides", Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+
+        assertThat(connectionConfiguration, notNullValue());
+        assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+
+        final StsClient stsClient = mock(StsClient.class);
+        final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
+        when(assumeRoleRequestBuilder.roleSessionName(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.roleArn(anyString()))
+                .thenReturn(assumeRoleRequestBuilder);
+        when(assumeRoleRequestBuilder.overrideConfiguration(any(Consumer.class)))
+                .thenReturn(assumeRoleRequestBuilder);
+
+        final StsClientBuilder stsClientBuilder = mock(StsClientBuilder.class);
+        when(stsClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(stsClientBuilder);
+        when(stsClientBuilder.build()).thenReturn(stsClient);
+
+        final OpenSearchClient openSearchClient;
+        try(final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+            final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class)) {
+
+            assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
+            stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+            final RestHighLevelClient client = connectionConfiguration.createClient();
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        }
+
+        assertNotNull(openSearchClient);
+        assertTrue(openSearchClient._transport() instanceof AwsSdk2Transport);
+        final AwsSdk2Transport opensearchTransport = (AwsSdk2Transport) openSearchClient._transport();
+        assertTrue(opensearchTransport.options().credentials() instanceof StsAssumeRoleCredentialsProvider);
+
+        final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
+
+        verify(assumeRoleRequestBuilder, times(2)).overrideConfiguration(configurationCaptor.capture());
+        verify(assumeRoleRequestBuilder, times(2)).roleArn("arn:aws:iam::123456789012:iam-role");
+        verify(assumeRoleRequestBuilder, times(2)).roleSessionName(anyString());
+        verify(assumeRoleRequestBuilder, times(2)).build();
+        verifyNoMoreInteractions(assumeRoleRequestBuilder);
+
+        final Consumer<AwsRequestOverrideConfiguration.Builder> actualOverride = configurationCaptor.getValue();
+
+        final AwsRequestOverrideConfiguration.Builder configurationBuilder = mock(AwsRequestOverrideConfiguration.Builder.class);
+        actualOverride.accept(configurationBuilder);
+        verify(configurationBuilder).putHeader(headerName1, headerValue1);
+        verify(configurationBuilder).putHeader(headerName2, headerValue2);
+        verifyNoMoreInteractions(configurationBuilder);
+    }
+
+    @Test
+    void testCreateAllClients_WithValidHttpProxy_HostIP() throws IOException {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "121.121.121.121:80";
@@ -331,11 +611,12 @@ class ConnectionConfigurationTests {
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         final RestHighLevelClient client = connectionConfiguration.createClient();
         assertNotNull(client);
+        assertNotNull(connectionConfiguration.createOpenSearchClient(client));
         client.close();
     }
 
     @Test
-    void testCreateClient_WithValidHttpProxy_HostName() throws IOException {
+    void testCreateAllClients_WithValidHttpProxy_HostName() throws IOException {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "example.com:80";
@@ -346,11 +627,12 @@ class ConnectionConfigurationTests {
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         final RestHighLevelClient client = connectionConfiguration.createClient();
         assertNotNull(client);
+        assertNotNull(connectionConfiguration.createOpenSearchClient(client));
         client.close();
     }
 
     @Test
-    void testCreateClient_WithValidHttpProxy_SchemeProvided() throws IOException {
+    void testCreateAllClients_WithValidHttpProxy_SchemeProvided() throws IOException {
         final Map<String, Object> metadata = generateConfigurationMetadata(
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final String testHttpProxy = "http://example.com:4350";
@@ -361,6 +643,7 @@ class ConnectionConfigurationTests {
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
         final RestHighLevelClient client = connectionConfiguration.createClient();
         assertNotNull(client);
+        assertNotNull(connectionConfiguration.createOpenSearchClient(client));
         client.close();
     }
 
@@ -455,7 +738,7 @@ class ConnectionConfigurationTests {
 
     private Map<String, Object> generateConfigurationMetadataWithAwsOption(
             final List<String> hosts, final String username, final String password,
-            final Integer connectTimeout, final Integer socketTimeout, final boolean awsSigv4, final String awsRegion,
+            final Integer connectTimeout, final Integer socketTimeout, final boolean serverless, final boolean awsSigv4, final String awsRegion,
             final String awsStsRoleArn, final String certPath, final boolean insecure, Map<String, String> headerOverridesMap) {
         final Map<String, Object> metadata = new HashMap<>();
         final Map<String, Object> awsOptionMetadata = new HashMap<>();
@@ -467,6 +750,7 @@ class ConnectionConfigurationTests {
         if (awsRegion != null) {
             awsOptionMetadata.put("region", awsRegion);
         }
+        awsOptionMetadata.put("serverless", serverless);
         awsOptionMetadata.put("sts_role_arn", awsStsRoleArn);
         awsOptionMetadata.put("sts_header_overrides", headerOverridesMap);
         metadata.put("aws", awsOptionMetadata);

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
 import org.opensearch.dataprepper.peerforwarder.codec.PeerForwarderCodec;
@@ -89,6 +90,9 @@ class PeerForwarderHttpServiceTest {
     @Mock
     private Counter recordsReceivedFromPeersCounter;
 
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
     private Timer serverRequestProcessingLatencyTimer;
 
     @BeforeEach
@@ -112,9 +116,8 @@ class PeerForwarderHttpServiceTest {
 
     private PeerForwarderHttpService createObjectUnderTest() {
         return new PeerForwarderHttpService(responseHandler, peerForwarderProvider, peerForwarderConfiguration,
-                peerForwarderCodec, pluginMetrics);
+                peerForwarderCodec, acknowledgementSetManager, pluginMetrics);
     }
-
 
     @Test
     void test_doPost_with_HTTP_request_should_return_OK() throws Exception {

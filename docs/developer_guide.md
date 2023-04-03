@@ -157,7 +157,7 @@ issue to request that a previous change be backported.
 Documentation is very important for users of Data Prepper and contributors. We are using the
 following conventions for documentation.
 
-1. Document features in markdown. Plugins should have detailed documentation in a `README.md` file in the plugin project directory. Documentation for all of Data Prepper should be in the [docs](../docs) directory.
+1. Document features in markdown. Plugins should have detailed documentation in a `README.md` file in the plugin project directory. Documentation for all of Data Prepper should be included in the [Data Prepper documentation](https://opensearch.org/docs/latest/data-prepper/index/).
 2. Provide Javadocs for all public classes, methods, and fields. Plugins need not follow this guidance since their classes are generally not exposed.
 3. Avoid commenting within code, unless it is required to understand that code.
 

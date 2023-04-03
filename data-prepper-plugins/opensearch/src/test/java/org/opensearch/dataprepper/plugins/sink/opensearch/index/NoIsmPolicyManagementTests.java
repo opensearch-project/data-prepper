@@ -8,9 +8,11 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
-import org.opensearch.client.IndicesClient;
 import org.opensearch.client.RestHighLevelClient;
-import org.opensearch.client.indices.GetIndexRequest;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch.indices.ExistsRequest;
+import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
+import org.opensearch.client.transport.endpoints.BooleanResponse;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -32,18 +34,21 @@ public class NoIsmPolicyManagementTests {
     private RestHighLevelClient restHighLevelClient;
 
     @Mock
-    IndicesClient indicesClient;
+    private OpenSearchClient openSearchClient;
+
+    @Mock
+    OpenSearchIndicesClient openSearchIndicesClient;
 
     @Before
     public void setup() throws IOException {
         initMocks(this);
-        ismPolicyManagementStrategy = new NoIsmPolicyManagement(restHighLevelClient);
+        ismPolicyManagementStrategy = new NoIsmPolicyManagement(openSearchClient, restHighLevelClient);
     }
 
     @Test
     public void constructor_NullRestClient() throws IOException {
         assertThrows(NullPointerException.class, () ->
-                new NoIsmPolicyManagement(null));
+                new NoIsmPolicyManagement(openSearchClient, null));
     }
 
     @Test
@@ -72,15 +77,15 @@ public class NoIsmPolicyManagementTests {
 
     @Test
     public void checkIfIndexExistsOnServer_false() throws IOException {
-        when(restHighLevelClient.indices()).thenReturn(indicesClient);
-        when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(false);
+        when(openSearchClient.indices()).thenReturn(openSearchIndicesClient);
+        when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(false));
         assertEquals(false, ismPolicyManagementStrategy.checkIfIndexExistsOnServer(INDEX_ALIAS));
     }
 
     @Test
     public void checkIfIndexExistsOnServer_true() throws IOException {
-        when(restHighLevelClient.indices()).thenReturn(indicesClient);
-        when(indicesClient.exists(any(GetIndexRequest.class), any())).thenReturn(true);
+        when(openSearchClient.indices()).thenReturn(openSearchIndicesClient);
+        when(openSearchIndicesClient.exists(any(ExistsRequest.class))).thenReturn(new BooleanResponse(true));
         assertEquals(true, ismPolicyManagementStrategy.checkIfIndexExistsOnServer(INDEX_ALIAS));
     }
 

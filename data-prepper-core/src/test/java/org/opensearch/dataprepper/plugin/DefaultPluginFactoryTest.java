@@ -10,6 +10,8 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
+import org.opensearch.dataprepper.event.DefaultEventFactory;
 import org.opensearch.dataprepper.plugins.TestSink;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -52,6 +54,8 @@ class DefaultPluginFactoryTest {
     private PluginBeanFactoryProvider beanFactoryProvider;
     private BeanFactory beanFactory;
     private String pipelineName;
+    private DefaultAcknowledgementSetManager acknowledgementSetManager;
+    private DefaultEventFactory eventFactory;
 
     @BeforeEach
     void setUp() {
@@ -59,6 +63,8 @@ class DefaultPluginFactoryTest {
         pluginCreator = mock(PluginCreator.class);
         pluginConfigurationConverter = mock(PluginConfigurationConverter.class);
 
+        acknowledgementSetManager = mock(DefaultAcknowledgementSetManager.class);
+        eventFactory = mock(DefaultEventFactory.class);
         pluginProviders = new ArrayList<>();
         given(pluginProviderLoader.getPluginProviders()).willReturn(pluginProviders);
         firstPluginProvider = mock(PluginProvider.class);
@@ -76,7 +82,7 @@ class DefaultPluginFactoryTest {
     }
 
     private DefaultPluginFactory createObjectUnderTest() {
-        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactoryProvider);
+        return new DefaultPluginFactory(pluginProviderLoader, pluginCreator, pluginConfigurationConverter, beanFactoryProvider, eventFactory, acknowledgementSetManager);
     }
 
     @Test

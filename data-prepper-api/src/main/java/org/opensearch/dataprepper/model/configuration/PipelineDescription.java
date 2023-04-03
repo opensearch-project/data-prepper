@@ -12,12 +12,16 @@ package org.opensearch.dataprepper.model.configuration;
 public interface PipelineDescription {
     /**
      * Returns the name of the pipeline that a plugin belongs to
+     * 
+     * @return returns pipeline name
      * @since 1.3
      */
     String getPipelineName();
 
     /**
      * Returns the number of process workers the pipeline is using; plugins can utilize this if synchronization between workers is necessary
+     *
+     * @return returns the number of process workers
      * @since 1.3
      */
     int getNumberOfProcessWorkers();

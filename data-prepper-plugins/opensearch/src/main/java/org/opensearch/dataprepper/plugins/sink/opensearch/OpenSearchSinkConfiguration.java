@@ -11,9 +11,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfigurati
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class OpenSearchSinkConfiguration {
-  /**
-   * TODO: add retryConfiguration
-   */
+
   private final ConnectionConfiguration connectionConfiguration;
   private final IndexConfiguration indexConfiguration;
   private final RetryConfiguration retryConfiguration;

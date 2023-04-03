@@ -128,6 +128,7 @@ public class JacksonSummary extends JacksonMetric implements Summary {
 
         /**
          * Returns a newly created {@link JacksonSummary}
+         * @param flattenAttributes flag indicating if the attributes should be flattened or not
          * @return a JacksonSummary
          * @since 2.1
          */

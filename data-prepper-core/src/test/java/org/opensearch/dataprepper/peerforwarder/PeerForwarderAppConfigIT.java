@@ -16,6 +16,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_CERTIFICATE_FILE_PATH;
 import static org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration.DEFAULT_PRIVATE_KEY_FILE_PATH;
+import org.opensearch.dataprepper.event.DefaultEventFactory;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 
 class PeerForwarderAppConfigIT {
 
@@ -24,6 +26,9 @@ class PeerForwarderAppConfigIT {
         applicationContext.scan(PeerForwarderConfiguration.class.getPackageName());
         applicationContext.register(PeerForwarderAppConfig.class);
         applicationContext.register(InnerAppConfig.class);
+        applicationContext.scan(DefaultEventFactory.class.getPackage().getName());
+        applicationContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
+
         applicationContext.refresh();
 
         return applicationContext.getBean(PeerForwarderConfiguration.class);

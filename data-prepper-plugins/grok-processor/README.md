@@ -6,7 +6,7 @@ to structure and extract important keys and make data more structured and querya
 The Grok Processor uses the [java-grok Library](https://github.com/thekrakken/java-grok) internally and supports all java-grok library compatible patterns. The java-grok library is built using the `java.util.regex` regular expression library.
 
 The full set of default patterns can be found [here](https://github.com/thekrakken/java-grok/blob/master/src/main/resources/patterns/patterns). Custom patterns can be added through either the
-`patterns_definitions` or `patterns_directories` configuration settings. When debugging custom patterns, the [Grok Debugger](https://grokdebug.herokuapp.com/) 
+`patterns_definitions` or `patterns_directories` configuration settings. When debugging custom patterns, the [Grok Debugger](https://grokconstructor.appspot.com/do/match) 
 can be extremely helpful.
 
 ## Basic Usage

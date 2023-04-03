@@ -85,7 +85,8 @@ public class DefaultSpanEvent implements SpanEvent {
 
         /**
          * Sets the name for the {@link DefaultSpanEvent}
-         * @param name
+         * @param name name of the span
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withName(final String name) {
@@ -95,7 +96,8 @@ public class DefaultSpanEvent implements SpanEvent {
 
         /**
          * Sets the time for the {@link DefaultSpanEvent}
-         * @param time
+         * @param time time
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withTime(final String time) {
@@ -106,6 +108,7 @@ public class DefaultSpanEvent implements SpanEvent {
         /**
          * Optional - sets the attributes for {@link DefaultSpanEvent}. Default is an empty map.
          * @param attributes the attributes to associate with this event.
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withAttributes(final Map<String, Object> attributes) {
@@ -116,6 +119,7 @@ public class DefaultSpanEvent implements SpanEvent {
         /**
          * Optional - sets the dropped attribute count for {@link DefaultSpanEvent}. Default is 0.
          * @param droppedAttributesCount the total number of dropped attributes
+         * @return returns the builder
          * @since 1.2
          */
         public Builder withDroppedAttributesCount(final Integer droppedAttributesCount) {
