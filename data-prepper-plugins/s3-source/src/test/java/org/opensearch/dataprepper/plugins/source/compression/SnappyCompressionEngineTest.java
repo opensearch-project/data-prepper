@@ -56,5 +56,4 @@ class SnappyCompressionEngineTest {
         assertThat(inputStream.readAllBytes(),equalTo(testStringBytes));
 
     }
-
 }

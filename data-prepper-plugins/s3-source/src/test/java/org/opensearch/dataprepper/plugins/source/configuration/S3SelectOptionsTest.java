@@ -17,11 +17,11 @@ class S3SelectOptionsTest {
     @CsvSource({"csv","json","parquet"})
     void s3SelectOptionsTest(final String dataSerializationFormat) throws NoSuchFieldException, IllegalAccessException {
         S3SelectOptions s3SelectOptions = new S3SelectOptions();
-        final String queryStatement = "select * from s3Object";
+        final String expression = "select * from s3Object";
         final S3SelectSerializationFormatOption s3SelectSerializationFormatOption = S3SelectSerializationFormatOption.fromOptionValue(dataSerializationFormat);
-        ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"queryStatement",queryStatement);
+        ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"expression",expression);
         ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"s3SelectSerializationFormatOption",s3SelectSerializationFormatOption);
-        assertThat(s3SelectOptions.getQueryStatement(),sameInstance(queryStatement));
+        assertThat(s3SelectOptions.getExpression(),sameInstance(expression));
         assertThat(s3SelectOptions.getS3SelectSerializationFormatOption(),sameInstance(s3SelectSerializationFormatOption));
     }
 }
