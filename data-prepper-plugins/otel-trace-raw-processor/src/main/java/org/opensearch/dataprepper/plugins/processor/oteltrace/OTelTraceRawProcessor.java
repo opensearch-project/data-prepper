@@ -203,12 +203,12 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                                     recordsToFlush.add(span);
                                 });
                             } else {
+                                LOG.warn("There are {} spans with missing trace groups. Unable to populate with trace group information.", spans.size());
                                 spans.forEach(span -> {
                                     recordsToFlush.add(span);
                                     LOG.debug("Missing trace group for SpanId: {}", span.getSpanId());
                                 });
                             }
-
                             entryIterator.remove();
                         }
                     }
