@@ -45,7 +45,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 public class BulkOperationWriter {
     private static final int MAX_SOURCE_LENGTH_IN_TOSTRING = 2048;
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static String bulkOperationToString(BulkOperation bulkOperation) {
         String index = bulkOperation.index().index();
@@ -80,7 +80,7 @@ public class BulkOperationWriter {
 
     private static String extractDocumentSource(final FailedDlqData failedData) {
         try {
-            return objectMapper.writeValueAsString(failedData.getDocument());
+            return OBJECT_MAPPER.writeValueAsString(failedData.getDocument());
         } catch (JsonProcessingException e) {
             return "n/a, unable to extract document";
         }

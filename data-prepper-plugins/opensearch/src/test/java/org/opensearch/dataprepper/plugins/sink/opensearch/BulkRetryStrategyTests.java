@@ -22,11 +22,10 @@ import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
-import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
-import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
+import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.rest.RestStatus;
 
 import java.io.IOException;
@@ -51,7 +50,7 @@ public class BulkRetryStrategyTests {
     private static final String PIPELINE_NAME = "pipelineName";
     private PluginSetting pluginSetting;
     private PluginMetrics pluginMetrics;
-    private BiConsumer<List<DlqObject>, Throwable> logFailureConsumer;
+    private BiConsumer<List<FailedBulkOperation>, Throwable> logFailureConsumer;
     private boolean maxRetriesLimitReached;
 
     @BeforeEach
@@ -151,17 +150,17 @@ public class BulkRetryStrategyTests {
         assertEquals("3", client.finalRequest.operations().get(0).index().id());
         assertEquals("4", client.finalRequest.operations().get(1).index().id());
 
-        ArgumentCaptor<List<DlqObject>> dlqObjectsCaptor = ArgumentCaptor.forClass(List.class);
+        final ArgumentCaptor<List<FailedBulkOperation>> failedBulkOperationsCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<Throwable> throwableArgCaptor = ArgumentCaptor.forClass(Throwable.class);
-        verify(logFailureConsumer).accept(dlqObjectsCaptor.capture(), throwableArgCaptor.capture());
-        MatcherAssert.assertThat(dlqObjectsCaptor.getValue(), notNullValue());
+        verify(logFailureConsumer).accept(failedBulkOperationsCaptor.capture(), throwableArgCaptor.capture());
+        MatcherAssert.assertThat(failedBulkOperationsCaptor.getValue(), notNullValue());
 
-        final List<DlqObject> dlqObjects = dlqObjectsCaptor.getValue();
-        MatcherAssert.assertThat(dlqObjects.size(), equalTo(1));
-        dlqObjects.forEach(dlqObject -> {
-            FailedDlqData failedData = (FailedDlqData) dlqObject.getFailedData();
-            MatcherAssert.assertThat(failedData.getIndex(), equalTo(testIndex));
-            MatcherAssert.assertThat(failedData.getIndexId(), equalTo("2"));
+        final List<FailedBulkOperation> failedBulkOperations = failedBulkOperationsCaptor.getValue();
+        MatcherAssert.assertThat(failedBulkOperations.size(), equalTo(1));
+        failedBulkOperations.forEach(failedBulkOperation -> {
+            final BulkOperation bulkOperation = failedBulkOperation.getBulkOperation();
+            MatcherAssert.assertThat(bulkOperation.index().index(), equalTo(testIndex));
+            MatcherAssert.assertThat(bulkOperation.index().id(), equalTo(String.valueOf("2")));
         });
 
         // verify metrics
@@ -204,17 +203,17 @@ public class BulkRetryStrategyTests {
 
         assertEquals(1, client.attempt);
 
-        ArgumentCaptor<List<DlqObject>> dlqObjectsArgCaptor = ArgumentCaptor.forClass(List.class);
+        final ArgumentCaptor<List<FailedBulkOperation>> dlqObjectsArgCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<Throwable> throwableArgCaptor = ArgumentCaptor.forClass(Throwable.class);
         verify(logFailureConsumer)
                 .accept(dlqObjectsArgCaptor.capture(), throwableArgCaptor.capture());
-        final List<DlqObject> dlqObjects = dlqObjectsArgCaptor.getValue();
-        MatcherAssert.assertThat(dlqObjects.size(), equalTo(4));
+        final List<FailedBulkOperation> failedBulkOperations = dlqObjectsArgCaptor.getValue();
+        MatcherAssert.assertThat(failedBulkOperations.size(), equalTo(4));
         AtomicInteger expectedIndexId = new AtomicInteger(1);
-        dlqObjects.forEach(dlqObject -> {
-            FailedDlqData failedData = (FailedDlqData) dlqObject.getFailedData();
-            MatcherAssert.assertThat(failedData.getIndex(), equalTo(testIndex));
-            MatcherAssert.assertThat(failedData.getIndexId(), equalTo(String.valueOf(expectedIndexId.get())));
+        failedBulkOperations.forEach(failedBulkOperation -> {
+            final BulkOperation bulkOperation = failedBulkOperation.getBulkOperation();
+            MatcherAssert.assertThat(bulkOperation.index().index(), equalTo(testIndex));
+            MatcherAssert.assertThat(bulkOperation.index().id(), equalTo(String.valueOf(expectedIndexId.get())));
             expectedIndexId.addAndGet(1);
         });
 
@@ -231,7 +230,7 @@ public class BulkRetryStrategyTests {
         assertEquals(4.0, documentErrorsMeasurements.get(0).getValue(), 0);
     }
 
-    private void logFailureMaxRetries(final List<DlqObject> dlqObjects, final Throwable failure) {
+    private void logFailureMaxRetries(final List<FailedBulkOperation> dlqObjects, final Throwable failure) {
         if (failure != null && failure.getMessage().contains("reached the limit of max retries")) {
             maxRetriesLimitReached = true;
         }
@@ -334,18 +333,19 @@ public class BulkRetryStrategyTests {
 
         assertEquals(1, client.attempt);
 
-        ArgumentCaptor<List<DlqObject>> dlqObjectsCaptor = ArgumentCaptor.forClass(List.class);
+        final ArgumentCaptor<List<FailedBulkOperation>> failedBulkOperationsCaptor = ArgumentCaptor.forClass(List.class);
         ArgumentCaptor<Throwable> throwableArgCaptor = ArgumentCaptor.forClass(Throwable.class);
         verify(logFailureConsumer, times(1))
-                .accept(dlqObjectsCaptor.capture(), throwableArgCaptor.capture());
-        final List<DlqObject> dlqObjects = dlqObjectsCaptor.getValue();
-        MatcherAssert.assertThat(dlqObjects.size(), equalTo(3));
+                .accept(failedBulkOperationsCaptor.capture(), throwableArgCaptor.capture());
+        final List<FailedBulkOperation> failedBulkOperations = failedBulkOperationsCaptor.getValue();
+        MatcherAssert.assertThat(failedBulkOperations.size(), equalTo(3));
         AtomicInteger expectedIndexId = new AtomicInteger(1);
-        dlqObjects.forEach(dlqObject -> {
+
+        failedBulkOperations.forEach(failedBulkOperation -> {
             expectedIndexId.addAndGet(1);
-            FailedDlqData failedData = (FailedDlqData) dlqObject.getFailedData();
-            MatcherAssert.assertThat(failedData.getIndex(), equalTo(testIndex));
-            MatcherAssert.assertThat(failedData.getIndexId(), equalTo(String.valueOf(expectedIndexId.get())));
+            final BulkOperation bulkOperation = failedBulkOperation.getBulkOperation();
+            MatcherAssert.assertThat(bulkOperation.index().index(), equalTo(testIndex));
+            MatcherAssert.assertThat(bulkOperation.index().id(), equalTo(String.valueOf(expectedIndexId.get())));
         });
 
         // verify metrics

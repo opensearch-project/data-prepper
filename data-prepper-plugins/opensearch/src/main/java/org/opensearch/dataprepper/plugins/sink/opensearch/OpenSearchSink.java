@@ -36,6 +36,8 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
+import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
+import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
@@ -55,6 +57,7 @@ import java.util.Optional;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
@@ -92,6 +95,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private volatile boolean initialized;
   private PluginSetting pluginSetting;
 
+  private FailedBulkOperationConverter failedBulkOperationConverter;
+
   private DlqProvider dlqProvider;
 
   @DataPrepperPluginConstructor
@@ -109,6 +114,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
+    this.failedBulkOperationConverter = new FailedBulkOperationConverter(pluginSetting.getPipelineName(), pluginSetting.getName(),
+        pluginSetting.getName());
     this.initialized = false;
     this.lock = new ReentrantLock(true);
     this.pluginSetting = pluginSetting;
@@ -267,7 +274,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     });
   }
 
-  private void logFailure(final List<DlqObject> dlqObjects, final Throwable failure) {
+  private void logFailure(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
+
+    final List<DlqObject> dlqObjects = failedBulkOperations.stream()
+        .map(failedBulkOperationConverter::convertToDlqObject)
+        .collect(Collectors.toList());
+
     if (dlqFileWriter != null) {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
