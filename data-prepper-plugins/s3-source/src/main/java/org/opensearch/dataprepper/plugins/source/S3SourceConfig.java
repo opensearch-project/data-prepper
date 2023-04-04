@@ -28,7 +28,7 @@ public class S3SourceConfig {
     @NotNull
     private NotificationTypeOption notificationType;
 
-    @JsonProperty("compression")
+    @JsonProperty("compression_type")
     private CompressionOption compression = CompressionOption.NONE;
 
     @JsonProperty("codec")

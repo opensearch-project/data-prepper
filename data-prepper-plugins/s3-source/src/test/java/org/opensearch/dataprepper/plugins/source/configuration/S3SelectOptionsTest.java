@@ -8,6 +8,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
+
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -21,7 +23,11 @@ class S3SelectOptionsTest {
         final S3SelectSerializationFormatOption s3SelectSerializationFormatOption = S3SelectSerializationFormatOption.fromOptionValue(dataSerializationFormat);
         ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"expression",expression);
         ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"s3SelectSerializationFormatOption",s3SelectSerializationFormatOption);
+        ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"expressionType","SQL");
+        ReflectivelySetField.setField(S3SelectOptions.class,s3SelectOptions,"compressionType","none");
         assertThat(s3SelectOptions.getExpression(),sameInstance(expression));
         assertThat(s3SelectOptions.getS3SelectSerializationFormatOption(),sameInstance(s3SelectSerializationFormatOption));
+        assertThat(s3SelectOptions.getExpressionType(),equalTo("SQL"));
+        assertThat(s3SelectOptions.getCompressionType(),equalTo("none"));
     }
 }

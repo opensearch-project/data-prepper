@@ -25,6 +25,8 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,10 +37,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.CompressionType;
-import software.amazon.awssdk.services.s3.model.ExpressionType;
 import software.amazon.awssdk.services.s3.model.FileHeaderInfo;
 import software.amazon.awssdk.services.s3.model.InputSerialization;
-import software.amazon.awssdk.services.s3.model.JSONType;
 import software.amazon.awssdk.services.s3.model.RecordsEvent;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentEventStream;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentRequest;
@@ -57,27 +57,31 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
     private final Buffer<Record<Event>> buffer;
-    private final String queryStatement;
+    private final String expression;
     private final S3SelectSerializationFormatOption serializationFormatOption;
     private final S3SelectResponseHandler s3SelectResponseHandler;
     private final S3ObjectPluginMetrics s3ObjectPluginMetrics;
     private final CompressionType compressionType;
-    private final FileHeaderInfo fileHeaderInfo;
     private final BiConsumer<Event, S3ObjectReference> eventConsumer;
     private final ObjectMapper mapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
+    private final S3SelectCSVOption s3SelectCSVOption;
+    private final S3SelectJsonOption s3SelectJsonOption;
+    private final String expressionType;
     public S3SelectObjectWorker(final S3ObjectRequest s3ObjectRequest) {
         this.buffer = s3ObjectRequest.getBuffer();
         this.numberOfRecordsToAccumulate = s3ObjectRequest.getNumberOfRecordsToAccumulate();
         this.bufferTimeout = s3ObjectRequest.getBufferTimeout();
-        this.queryStatement = s3ObjectRequest.getQueryStatement();
+        this.expression = s3ObjectRequest.getExpression();
         this.serializationFormatOption = s3ObjectRequest.getSerializationFormatOption();
         this.s3AsyncClient = s3ObjectRequest.getS3AsyncClient();
         this.s3SelectResponseHandler = s3ObjectRequest.getS3SelectResponseHandler();
         this.s3ObjectPluginMetrics = s3ObjectRequest.getS3ObjectPluginMetrics();
         this.compressionType = s3ObjectRequest.getCompressionType();
-        this.fileHeaderInfo = s3ObjectRequest.getFileHeaderInfo();
         this.eventConsumer = s3ObjectRequest.getEventConsumer();
+        this.s3SelectCSVOption = s3ObjectRequest.getS3SelectCSVOption();
+        this.s3SelectJsonOption = s3ObjectRequest.getS3SelectJsonOption();
+        this.expressionType = s3ObjectRequest.getExpressionType();
     }
 
     /**
@@ -98,8 +102,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private void selectObjectContent(S3ObjectReference s3ObjectReference) throws IOException {
         final InputStream inputStreamList;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
-        final InputSerialization inputSerialization = getInputSerializationFormat(serializationFormatOption
-                ,compressionType,fileHeaderInfo);
+        final InputSerialization inputSerialization = getInputSerializationFormat(serializationFormatOption);
         final SelectObjectContentRequest selectObjectContentRequest = getS3SelectObjRequest(s3ObjectReference, inputSerialization);
         s3AsyncClient.selectObjectContent(selectObjectContentRequest, s3SelectResponseHandler).join();
         if(s3SelectResponseHandler.getException()!=null)
@@ -116,17 +119,21 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         }
     }
 
-    private InputSerialization getInputSerializationFormat(final S3SelectSerializationFormatOption serializationFormatOption,
-                                                           final CompressionType compressionType,
-                                                           final FileHeaderInfo fileHeaderInfo) {
+    private InputSerialization getInputSerializationFormat(final S3SelectSerializationFormatOption serializationFormatOption) {
         InputSerialization inputSerialization = null;
         switch (serializationFormatOption) {
         case CSV:
             inputSerialization = InputSerialization.builder()
-                        .csv( csv -> csv.fileHeaderInfo(fileHeaderInfo).build()).compressionType(compressionType).build();
+                        .csv( csv -> csv.fileHeaderInfo(s3SelectCSVOption.getFileHeaderInfo())
+                                .quoteEscapeCharacter(s3SelectCSVOption.getQuiteEscape())
+                                .comments(s3SelectCSVOption.getComments())
+                                .allowQuotedRecordDelimiter(
+                                        (s3SelectCSVOption.getQuiteEscape() != null ||
+                                                s3SelectCSVOption.getComments() != null) ? true : false).build())
+                        .compressionType(compressionType).build();
             break;
         case JSON:
-            inputSerialization = InputSerialization.builder().json(json -> json.type(JSONType.DOCUMENT).build())
+            inputSerialization = InputSerialization.builder().json(json -> json.type(s3SelectJsonOption.getType()).build())
                     .compressionType(compressionType).build();
             break;
         case PARQUET:
@@ -147,8 +154,8 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private SelectObjectContentRequest getS3SelectObjRequest(final S3ObjectReference s3ObjectReference,
             final InputSerialization inputSerialization) {
         return SelectObjectContentRequest.builder().bucket(s3ObjectReference.getBucketName())
-                .key(s3ObjectReference.getKey()).expressionType(ExpressionType.SQL)
-                .expression(queryStatement)
+                .key(s3ObjectReference.getKey()).expressionType(expressionType)
+                .expression(expression)
                 .inputSerialization(inputSerialization)
                 .outputSerialization(outputSerialization -> outputSerialization.json(SdkBuilder::build))
                 .build();
@@ -185,7 +192,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private JsonNode getJsonNode(String selectObjectOptionalString) throws JsonProcessingException {
         final JsonNode recordJsonNode;
         if(serializationFormatOption.equals(S3SelectSerializationFormatOption.CSV) &&
-                FileHeaderInfo.NONE.name().equals(fileHeaderInfo.name()))
+                FileHeaderInfo.NONE.name().equalsIgnoreCase(s3SelectCSVOption.getFileHeaderInfo()))
             recordJsonNode = csvColumNamesRefactorInCaseNoHeader(selectObjectOptionalString);
         else
             recordJsonNode = mapper.readTree(selectObjectOptionalString);

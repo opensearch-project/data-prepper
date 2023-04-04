@@ -11,12 +11,14 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CompressionType;
-import software.amazon.awssdk.services.s3.model.FileHeaderInfo;
 
 import java.time.Duration;
 import java.util.function.BiConsumer;
@@ -47,7 +49,7 @@ public class S3ObjectRequestTest {
     @Mock
     private S3Client s3Client;
     @Mock
-    private static final String queryStatement = "select _1 from s3Object";
+    private static final String expression = "select _1 from s3Object";
     @Mock
     private S3SelectSerializationFormatOption serializationFormatOption;
     @Mock
@@ -56,19 +58,25 @@ public class S3ObjectRequestTest {
     private BucketOwnerProvider bucketOwnerProvider;
     @Mock
     private S3SelectResponseHandler s3SelectResponseHandler;
+    private final S3SelectCSVOption s3SelectCSVOption = new S3SelectCSVOption();
+    @Mock
+    private S3SelectJsonOption s3SelectJsonOption;
     @Test
-    public void s3ScanObjectWorkerTest(){
+    public void s3ScanObjectWorkerTest() throws Exception {
+        ReflectivelySetField.setField(S3SelectCSVOption.class,s3SelectCSVOption,"quiteEscape",",");
+        ReflectivelySetField.setField(S3SelectCSVOption.class,s3SelectCSVOption,"comments","test");
         S3ObjectRequest request = new S3ObjectRequest.Builder(buffer,0,bufferTimeout,s3ObjectPluginMetrics)
                 .codec(codec).eventConsumer(eventConsumer).
                 s3AsyncClient(s3AsyncClient).
                 s3Client(s3Client).
                 serializationFormatOption(serializationFormatOption).
                 compressionType(CompressionType.NONE).
-                fileHeaderInfo(FileHeaderInfo.NONE).
+                s3SelectCSVOption(s3SelectCSVOption).
+                s3SelectJsonOption(s3SelectJsonOption).
                 compressionEngine(compressionEngine).
                 bucketOwnerProvider(bucketOwnerProvider).
                 s3SelectResponseHandler(s3SelectResponseHandler).
-                queryStatement(queryStatement).build();
+                expression(expression).build();
         assertThat(request.getBuffer(),sameInstance(buffer));
         assertThat(request.getBufferTimeout(),sameInstance(bufferTimeout));
         assertThat(request.getEventConsumer(),sameInstance(eventConsumer));
@@ -77,9 +85,13 @@ public class S3ObjectRequestTest {
         assertThat(request.getS3AsyncClient(),sameInstance(s3AsyncClient));
         assertThat(request.getS3Client(),sameInstance(s3Client));
         assertThat(request.getSerializationFormatOption(),sameInstance(serializationFormatOption));
-        assertThat(request.getQueryStatement(),sameInstance(queryStatement));
+        assertThat(request.getExpression(),sameInstance(expression));
         assertThat(request.getCompressionType(),sameInstance(CompressionType.NONE));
-        assertThat(request.getFileHeaderInfo(),sameInstance(FileHeaderInfo.NONE));
+        assertThat(request.getS3SelectCSVOption(),sameInstance(s3SelectCSVOption));
+        assertThat(request.getS3SelectCSVOption().getFileHeaderInfo(),equalTo("USE"));
+        assertThat(request.getS3SelectCSVOption().getComments(),equalTo("test"));
+        assertThat(request.getS3SelectCSVOption().getQuiteEscape(),equalTo(","));
+        assertThat(request.getS3SelectJsonOption(),sameInstance(s3SelectJsonOption));
         assertThat(request.getCompressionEngine(),sameInstance(compressionEngine));
         assertThat(request.getBucketOwnerProvider(),sameInstance(bucketOwnerProvider));
     }
