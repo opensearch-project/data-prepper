@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package main.java.org.opensearch.dataprepper.dlq;
+package org.opensearch.dataprepper.plugins.dlq;
 
 import java.util.Optional;
 
