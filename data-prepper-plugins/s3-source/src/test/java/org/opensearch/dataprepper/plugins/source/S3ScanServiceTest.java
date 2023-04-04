@@ -102,7 +102,7 @@ public class S3ScanServiceTest {
         S3ScanBucketOptions bucket = mock(S3ScanBucketOptions.class);
         final S3ScanBucketOption s3SelectOptions = mock(S3ScanBucketOption.class);
         final S3SelectOptions s3Select = mock(S3SelectOptions.class);
-        when(s3Select.getQueryStatement()).thenReturn(queryStatement);
+        when(s3Select.getExpression()).thenReturn(queryStatement);
         when(s3Select.getS3SelectSerializationFormatOption()).thenReturn(serializationFormatOption);
         when(s3Select.getCsvFileHeaderInfo()).thenReturn("NONE");
         when(s3SelectOptions.getName()).thenReturn(bucketName);

@@ -100,7 +100,7 @@ public class S3ScanService {
                         codec = pluginFactory.loadPlugin(Codec.class, pluginSetting);
                     }
                     if (s3SelectOptions != null) {
-                        queryStatement = s3SelectOptions.getQueryStatement();
+                        queryStatement = s3SelectOptions.getExpression();
                         serializationFormatOption = s3SelectOptions.getS3SelectSerializationFormatOption();
                         csvFileHeaderInfo = FileHeaderInfo.valueOf(s3SelectOptions.getCsvFileHeaderInfo());
                     }
