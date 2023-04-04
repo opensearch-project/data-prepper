@@ -205,7 +205,7 @@ public class OTelTraceRawProcessor extends AbstractProcessor<Record<Span>, Recor
                             } else {
                                 spans.forEach(span -> {
                                     recordsToFlush.add(span);
-                                    LOG.warn("Missing trace group for SpanId: {}", span.getSpanId());
+                                    LOG.debug("Missing trace group for SpanId: {}", span.getSpanId());
                                 });
                             }
 
