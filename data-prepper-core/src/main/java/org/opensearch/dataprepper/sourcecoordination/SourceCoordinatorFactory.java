@@ -6,11 +6,12 @@
 package org.opensearch.dataprepper.sourcecoordination;
 
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.source.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 
 /**
- * A factory class that will create the {@link org.opensearch.dataprepper.model.source.SourceCoordinator} implementation based on the
+ * A factory class that will create the {@link SourceCoordinator} implementation based on the
  * source_coordination configuration
  * @since 2.2
  */
@@ -32,6 +33,9 @@ public class SourceCoordinatorFactory {
             return null;
         }
 
-        return pluginFactory.loadPlugin(SourceCoordinator.class, sourceCoordinationConfig.getSourceCoordinationStoreConfig());
+        final SourceCoordinationStore sourceCoordinationStore =
+                pluginFactory.loadPlugin(SourceCoordinationStore.class, sourceCoordinationConfig.getSourceCoordinationStoreConfig());
+
+        return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig);
     }
 }

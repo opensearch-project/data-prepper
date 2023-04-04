@@ -11,13 +11,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.source.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -38,7 +39,7 @@ public class SourceCoordinatorFactoryTest {
     void provideSourceCoordinatorWithNullSourceCoordinationConfig_returns_null() {
 
 
-        final SourceCoordinator sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
+        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
 
         assertThat(sourceCoordinator, nullValue());
     }
@@ -47,7 +48,7 @@ public class SourceCoordinatorFactoryTest {
     void provideSourceCoordinatorWithNullSourceCoordinationStoreConfig_returns_null() {
         given(sourceCoordinationConfig.getSourceCoordinationStoreConfig()).willReturn(null);
 
-        final SourceCoordinator sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
+        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
 
         assertThat(sourceCoordinator, nullValue());
     }
@@ -60,7 +61,7 @@ public class SourceCoordinatorFactoryTest {
         given(sourceCoordinationConfig.getSourceCoordinationStoreConfig()).willReturn(pluginSetting);
         given(pluginSetting.getName()).willReturn(null);
 
-        final SourceCoordinator sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
+        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
 
         assertThat(sourceCoordinator, nullValue());
     }
@@ -72,12 +73,12 @@ public class SourceCoordinatorFactoryTest {
         given(sourceCoordinationConfig.getSourceCoordinationStoreConfig()).willReturn(pluginSetting);
         given(pluginSetting.getName()).willReturn(pluginName);
 
-        final SourceCoordinator expectedSourceCoordinator = mock(SourceCoordinator.class);
+        final SourceCoordinationStore expectedSourceCoordinationStore = mock(SourceCoordinationStore.class);
 
-        given(pluginFactory.loadPlugin(SourceCoordinator.class, pluginSetting)).willReturn(expectedSourceCoordinator);
+        given(pluginFactory.loadPlugin(SourceCoordinationStore.class, pluginSetting)).willReturn(expectedSourceCoordinationStore);
 
-        final SourceCoordinator actualSourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
+        final SourceCoordinator<String> actualSourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
 
-        assertThat(expectedSourceCoordinator, equalTo(actualSourceCoordinator));
+        assertThat(actualSourceCoordinator, notNullValue());
     }
 }

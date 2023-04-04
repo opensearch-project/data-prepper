@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.model.source;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
+import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 
 import java.util.UUID;
 
