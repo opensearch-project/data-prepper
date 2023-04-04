@@ -87,7 +87,7 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `csv` (Optional) : Provide the csv configuration to process the csv data.
 
-* `file_header_info` (Optional) : Provide CSV Header example : `use` , `none` , `ignore`. Default is `use`.
+* `file_header_info` (Required if csv block is enabled) : Provide CSV Header example : `use` , `none` , `ignore`. Default is `use`.
 
 * `quote_escape` (Optional) : Provide quote_escape attribute example : `,` , `.`.
 
