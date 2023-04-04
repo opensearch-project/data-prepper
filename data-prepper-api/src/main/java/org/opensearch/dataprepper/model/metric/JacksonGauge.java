@@ -57,6 +57,7 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
         /**
          * Sets the value of the gauge
          * @param value the value of the gauge
+         * @return returns the builder
          * @since 1.4
          */
         public Builder withValue(final Double value) {
@@ -77,6 +78,7 @@ public class JacksonGauge extends JacksonMetric implements Gauge {
 
         /**
          * Returns a newly created {@link JacksonGauge}
+         * @param flattenAttributes flag indicating if the attributes should be flattened or not
          * @return a JacksonGauge
          * @since 2.1
          */

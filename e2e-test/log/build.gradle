@@ -191,6 +191,6 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:log-generator-source')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
     integrationTestImplementation libs.armeria.core
-    integrationTestImplementation "org.awaitility:awaitility:4.1.1"
+    integrationTestImplementation testLibs.awaitility
     integrationTestImplementation libs.opensearch.rhlc
 }

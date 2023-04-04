@@ -57,6 +57,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 /**
  * Integration tests that verify that Peer Forwarder client-server communication
@@ -78,6 +79,7 @@ class PeerForwarder_ClientServerIT {
     private List<Record<Event>> outgoingRecords;
     private Set<String> expectedMessages;
     private PluginMetrics pluginMetrics;
+    private AcknowledgementSetManager acknowledgementSetManager; 
     private AnnotationConfigApplicationContext applicationContext;
 
     @BeforeEach
@@ -113,7 +115,7 @@ class PeerForwarder_ClientServerIT {
             final PeerForwarderProvider peerForwarderProvider) {
         final PeerForwarderCodec peerForwarderCodec = applicationContext.getBean(PeerForwarderCodec.class);
         final PeerForwarderHttpService peerForwarderHttpService = new PeerForwarderHttpService(new ResponseHandler(pluginMetrics), peerForwarderProvider, peerForwarderConfiguration,
-                peerForwarderCodec, pluginMetrics);
+                peerForwarderCodec, acknowledgementSetManager, pluginMetrics);
         Objects.requireNonNull(peerForwarderConfiguration, "Nested classes must supply peerForwarderConfiguration");
         Objects.requireNonNull(certificateProviderFactory, "Nested classes must supply certificateProviderFactory");
         final PeerForwarderHttpServerProvider serverProvider = new PeerForwarderHttpServerProvider(peerForwarderConfiguration,

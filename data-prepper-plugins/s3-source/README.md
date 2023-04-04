@@ -22,6 +22,7 @@ The `compression` property defines how to handle compressed S3 objects. It has t
 
 * `none` - The file is not compressed.
 * `gzip` - Apply GZip de-compression on the S3 object.
+* `snappy` - Apply Snappy de-compression on the S3 object.
 * `automatic` - Attempts to automatically determine the compression. If the S3 object key name ends in`.gz`, then perform `gzip` compression. Otherwise, it is treated as `none`.
 
 ### Example: Un-Compressed Logs 
@@ -43,7 +44,7 @@ source:
       sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
 ```
 
-The following configuration shows a minimum configuration for reading content using S3 select service and Scanning from S3 bucket which
+The following configuration shows a minimum configuration for reading content using S3 select service from S3 bucket which
 are not compressed.
 
 ```
@@ -53,8 +54,8 @@ source-pipeline:
       notification_type: sqs
       compression: none
       s3_select:
-        query_statement: "select * from s3object s LIMIT 10000"
-        data_serialization_format: csv
+        expression: "select * from s3object s LIMIT 10000"
+        input_serialization: csv
         csv_file_header: use
       sqs:
         queue_url: https://sqs.us-east-2.amazonaws.com/895099425385/data-prepper-testing
@@ -79,7 +80,6 @@ source-pipeline:
                 data_serialization_format: parquet
               key_path:
                 - my/prefix/a
-
 ```
 
 ## Configuration Options
@@ -88,11 +88,11 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `s3_select` : S3 Select Configuration.
 
-* `query_statement` : Provide s3 select query to process the data using S3 select for the particular bucket.
+* `expression` (Required if s3_select enabled) : Provide s3 select query to process the data using S3 select for the particular bucket.
 
-* `data_serialization_format` : Provide the s3 select file format (csv/json/Apache Parquet) Amazon S3 uses this format to parse object data into records and returns only records that match the specified SQL expression. You must also specify the data serialization format for the response.
+* `input_serialization` (Required if s3_select enabled) : Provide the s3 select file format (csv/json/Apache Parquet) Amazon S3 uses this format to parse object data into records and returns only records that match the specified SQL expression. You must also specify the data serialization format for the response.
 
-* `csv_file_header` : Provide CSV Header example : `use` , `none` , `ignore`.
+* `csv_file_header` (Optional) : Provide CSV Header example : `use` , `none` , `ignore`.
 
 * `bucket_name` : Provide S3 bucket name.
 

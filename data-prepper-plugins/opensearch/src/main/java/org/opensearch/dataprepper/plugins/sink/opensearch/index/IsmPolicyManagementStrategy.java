@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import org.opensearch.client.indices.CreateIndexRequest;
+import org.opensearch.client.opensearch.indices.CreateIndexRequest;
 
 import java.io.IOException;
 import java.util.List;
