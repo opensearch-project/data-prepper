@@ -92,6 +92,7 @@ public class ParquetInputCodec implements InputCodec {
                         }
                         final Event event = JacksonLog.builder().withData(eventData).build();
                         eventConsumer.accept(new Record<>(event));
+                        eventData.clear();
                 }
             }
         } catch (Exception parquetException) {

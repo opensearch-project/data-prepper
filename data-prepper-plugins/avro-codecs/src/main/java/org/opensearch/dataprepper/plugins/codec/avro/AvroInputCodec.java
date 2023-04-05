@@ -54,9 +54,9 @@ public class AvroInputCodec implements InputCodec {
             DataFileStream<GenericRecord> stream = new DataFileStream<GenericRecord>(byteArrayInputStream, new GenericDatumReader<GenericRecord>());
             Schema schema=stream.getSchema();
 
-            while (stream.hasNext()) {
+            final Map<String, Object> eventData = new HashMap<>();
 
-                final Map<String, Object> eventData = new HashMap<>();
+            while (stream.hasNext()) {
 
                 GenericRecord record= stream.next();
                 for(Schema.Field field : schema.getFields()) {
@@ -66,7 +66,7 @@ public class AvroInputCodec implements InputCodec {
                 }
                 final Event event = JacksonLog.builder().withData(eventData).build();
                 eventConsumer.accept(new Record<>(event));
-
+                eventData.clear();
             }
 
         }
