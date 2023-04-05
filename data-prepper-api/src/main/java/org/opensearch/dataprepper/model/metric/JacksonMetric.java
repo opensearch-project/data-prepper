@@ -5,9 +5,9 @@
 
 package org.opensearch.dataprepper.model.metric;
 
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 
 import java.util.HashMap;
 import java.util.Iterator;

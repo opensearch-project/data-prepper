@@ -23,4 +23,8 @@ public interface SourceCoordinationStore {
                                    final SourcePartitionStatus sourcePartitionStatus,
                                    final Long closedCount,
                                    final String partitionProgressState);
+
+    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition();
+
+    boolean tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem);
 }

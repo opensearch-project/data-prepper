@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.model.event;
 
-import java.util.Map;
 import java.time.Instant;
+import java.util.Map;
 
 public interface BaseEventBuilder<T extends Event> {
     /**

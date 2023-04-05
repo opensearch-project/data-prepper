@@ -43,4 +43,14 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
                                           final String partitionProgressState) {
         return false;
     }
+
+    @Override
+    public Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition() {
+        return Optional.empty();
+    }
+
+    @Override
+    public boolean tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem) {
+        return false;
+    }
 }

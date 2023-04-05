@@ -26,7 +26,7 @@ public class SourceCoordinatorFactory {
         this.pluginFactory = pluginFactory;
     }
 
-    public <T> SourceCoordinator<T> provideSourceCoordinator(final Class<T> clazz) {
+    public <T> SourceCoordinator<T> provideSourceCoordinator(final Class<T> clazz, final String ownerPrefix) {
         if (sourceCoordinationConfig == null
                 || sourceCoordinationConfig.getSourceCoordinationStoreConfig() == null
                 || sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName() == null) {
@@ -36,6 +36,6 @@ public class SourceCoordinatorFactory {
         final SourceCoordinationStore sourceCoordinationStore =
                 pluginFactory.loadPlugin(SourceCoordinationStore.class, sourceCoordinationConfig.getSourceCoordinationStoreConfig());
 
-        return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig);
+        return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig, new PartitionManager<>(), ownerPrefix);
     }
 }

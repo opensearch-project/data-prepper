@@ -5,13 +5,13 @@
 
 package org.opensearch.dataprepper.metrics;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.util.Collections;
 import java.util.StringJoiner;

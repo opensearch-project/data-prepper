@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.failures;
 
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.model.annotations.SkipTestCoverageGenerated;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -90,6 +91,7 @@ public class DlqObject {
     }
 
     @Override
+    @SkipTestCoverageGenerated
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
