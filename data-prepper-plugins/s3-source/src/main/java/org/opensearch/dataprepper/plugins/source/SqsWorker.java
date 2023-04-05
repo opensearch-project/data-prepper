@@ -100,17 +100,18 @@ public class SqsWorker implements Runnable {
 
     int processSqsMessages() {
         final List<Message> sqsMessages = getMessagesFromSqs();
-        if (!sqsMessages.isEmpty())
+        if (!sqsMessages.isEmpty()) {
             sqsMessagesReceivedCounter.increment(sqsMessages.size());
 
-        final Collection<ParsedMessage> s3MessageEventNotificationRecords = getS3MessageEventNotificationRecords(sqsMessages);
+            final Collection<ParsedMessage> s3MessageEventNotificationRecords = getS3MessageEventNotificationRecords(sqsMessages);
 
-        // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
-        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3MessageEventNotificationRecords);
+            // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
+            final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3MessageEventNotificationRecords);
 
-        // delete sqs messages
-        if (!deleteMessageBatchRequestEntries.isEmpty()) {
-            deleteSqsMessages(deleteMessageBatchRequestEntries);
+            // delete sqs messages
+            if (!deleteMessageBatchRequestEntries.isEmpty()) {
+                deleteSqsMessages(deleteMessageBatchRequestEntries);
+            }
         }
 
         return sqsMessages.size();
@@ -200,7 +201,7 @@ public class SqsWorker implements Runnable {
             }
         }
 
-        LOG.debug("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
+        LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
 
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;

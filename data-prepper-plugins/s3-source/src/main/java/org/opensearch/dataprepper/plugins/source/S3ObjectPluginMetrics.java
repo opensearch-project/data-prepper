@@ -21,8 +21,6 @@ public class S3ObjectPluginMetrics {
     static final String S3_OBJECTS_TIME_ELAPSED_METRIC_NAME = "s3ObjectReadTimeElapsed";
     static final String S3_OBJECTS_SIZE = "s3ObjectSizeBytes";
     private final Counter s3ObjectsFailedCounter;
-
-    private final Counter s3ObjectsCodecParsingFailedCounter;
     private final Counter s3ObjectsFailedNotFoundCounter;
     private final Counter s3ObjectsFailedAccessDeniedCounter;
     private final Counter s3ObjectsSucceededCounter;
@@ -33,7 +31,6 @@ public class S3ObjectPluginMetrics {
 
     public S3ObjectPluginMetrics(final PluginMetrics pluginMetrics){
         s3ObjectsFailedCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_METRIC_NAME);
-        s3ObjectsCodecParsingFailedCounter = pluginMetrics.counter(S3_OBJECTS_CODEC_PARSING_FAILED_METRIC_NAME);
         s3ObjectsFailedNotFoundCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_NOT_FOUND_METRIC_NAME);
         s3ObjectsFailedAccessDeniedCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_NOT_FOUND_ACCESS_DENIED);
         s3ObjectsSucceededCounter = pluginMetrics.counter(S3_OBJECTS_SUCCEEDED_METRIC_NAME);
@@ -45,10 +42,6 @@ public class S3ObjectPluginMetrics {
 
     public Counter getS3ObjectsFailedCounter() {
         return s3ObjectsFailedCounter;
-    }
-
-    public Counter getS3ObjectsCodecParsingFailedCounter() {
-        return s3ObjectsCodecParsingFailedCounter;
     }
 
     public Counter getS3ObjectsFailedNotFoundCounter() {

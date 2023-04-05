@@ -136,7 +136,6 @@ The following policy shows the necessary permissions for S3 source. `kms:Decrypt
 ### Counters
 
 * `s3ObjectsFailed` - The number of S3 objects that the S3 Source failed to read.
-* `s3ObjectsCodecParsingFailed` - The number of S3 objects that the S3 Source codec failed to parse.
 * `s3ObjectsNotFound` - The number of S3 objects that the S3 Source failed to read due to a Not Found error from S3. These are also counted toward `s3ObjectsFailed`.
 * `s3ObjectsAccessDenied` - The number of S3 objects that the S3 Source failed to read due to an Access Denied or Forbidden error. These are also counted toward `s3ObjectsFailed`. 
 * `s3ObjectsSucceeded` - The number of S3 objects that the S3 Source successfully read.

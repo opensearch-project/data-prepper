@@ -297,7 +297,7 @@ class S3ObjectWorkerTest {
     void parseS3Object_throws_Exception_and_increments_failure_counter_when_unable_to_parse_S3_object() throws IOException {
         when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
 
-        when(s3ObjectPluginMetrics.getS3ObjectsCodecParsingFailedCounter()).thenReturn(s3ObjectsCodecParsingFailedCounter);
+        when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
 
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
@@ -310,7 +310,7 @@ class S3ObjectWorkerTest {
 
         assertThat(actualException, sameInstance(expectedException));
 
-        verify(s3ObjectsCodecParsingFailedCounter).increment();
+        verify(s3ObjectsFailedCounter).increment();
         verifyNoInteractions(s3ObjectsSucceededCounter);
         assertThat(exceptionThrownByCallable, sameInstance(expectedException));
     }
@@ -380,14 +380,14 @@ class S3ObjectWorkerTest {
                 .thenReturn(objectInputStream);
         final IOException expectedException = mock(IOException.class);
         when(compressionEngine.createInputStream(key, objectInputStream)).thenThrow(expectedException);
-        when(s3ObjectPluginMetrics.getS3ObjectsCodecParsingFailedCounter()).thenReturn(s3ObjectsCodecParsingFailedCounter);
+        when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
 
         final S3ObjectHandler objectUnderTest = createObjectUnderTest(s3ObjectPluginMetrics);
         final IOException actualException = assertThrows(IOException.class, () -> objectUnderTest.parseS3Object(s3ObjectReference));
 
         assertThat(actualException, sameInstance(expectedException));
 
-        verify(s3ObjectsCodecParsingFailedCounter).increment();
+        verify(s3ObjectsFailedCounter).increment();
         verifyNoInteractions(s3ObjectsSucceededCounter);
         assertThat(exceptionThrownByCallable, sameInstance(expectedException));
     }
