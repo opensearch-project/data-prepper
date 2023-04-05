@@ -35,7 +35,7 @@ source:
     notification_type: "sqs"
     codec:
       newline:
-    compression_type: none
+    compression: none
     sqs:
       queue_url: "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
     aws:
@@ -51,7 +51,7 @@ source-pipeline:
   source:
     s3:
       notification_type: sqs
-      compression_type: none
+      compression: none
       s3_select:
         expression: "select * from s3object s LIMIT 10000"
         expression_type: SQL
@@ -98,7 +98,7 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `notification_type` : Must be `sqs`.
 
-* `compression_type` (Optional if sqs enabled) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
+* `compression` (Optional if sqs enabled) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
 
 * `codec` (Required) : The codec to apply. Must be either `newline`, `csv` or `json`.
 
