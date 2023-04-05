@@ -123,6 +123,7 @@ The AWS configuration is the same for both SQS and S3.
 * `sqsMessagesReceived` - The number of SQS messages received from the queue by the S3 Source.
 * `sqsMessagesDeleted` - The number of SQS messages deleted from the queue by the S3 Source.
 * `sqsMessagesFailed` - The number of SQS messages that the S3 Source failed to parse.
+* `sqsMessagesDeleteFailed` - The number of SQS messages that the S3 Source failed to delete from the SQS queue.
 
 
 ### Timers
