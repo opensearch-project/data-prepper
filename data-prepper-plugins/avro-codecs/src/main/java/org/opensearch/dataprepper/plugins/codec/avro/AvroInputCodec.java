@@ -54,10 +54,9 @@ public class AvroInputCodec implements InputCodec {
             DataFileStream<GenericRecord> stream = new DataFileStream<GenericRecord>(byteArrayInputStream, new GenericDatumReader<GenericRecord>());
             Schema schema=stream.getSchema();
 
-
-            final Map<String, Object> eventData = new HashMap<>();
-
             while (stream.hasNext()) {
+
+                final Map<String, Object> eventData = new HashMap<>();
 
                 GenericRecord record= stream.next();
                 for(Schema.Field field : schema.getFields()) {
