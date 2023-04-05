@@ -5,22 +5,33 @@
 package org.opensearch.dataprepper.plugins.source.configuration;
 
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class S3SelectJsonOptionTest {
 
+    private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+
     @Test
-    void s3SelectJsonOptionWithLinesTest() throws NoSuchFieldException, IllegalAccessException {
-        S3SelectJsonOption jsonOption = new S3SelectJsonOption();
-        ReflectivelySetField.setField(S3SelectJsonOption.class,jsonOption,"type","Lines");
+    void s3SelectJsonOptionWithLinesTest() throws JsonProcessingException {
+        String jsonOptionYaml = "type: \"Lines\"";
+        final S3SelectJsonOption jsonOption = objectMapper.readValue(jsonOptionYaml, S3SelectJsonOption.class);
         assertThat(jsonOption.getType(),equalTo("Lines"));
     }
 
     @Test
-    void s3SelectJsonOptionWithDefaultOptionTest() throws NoSuchFieldException, IllegalAccessException {
+    void s3SelectJsonOptionWithDocumentTest() throws JsonProcessingException {
+        String jsonOptionYaml = "type: \"DOCUMENT\"";
+        final S3SelectJsonOption jsonOption = objectMapper.readValue(jsonOptionYaml, S3SelectJsonOption.class);
+        assertThat(jsonOption.getType(),equalTo("DOCUMENT"));
+    }
+
+    @Test
+    void s3SelectJsonOptionWithDefaultOptionTest() {
         S3SelectJsonOption jsonOption = new S3SelectJsonOption();
         assertThat(jsonOption.getType(),equalTo("DOCUMENT"));
     }
