@@ -98,7 +98,7 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `notification_type` : Must be `sqs`.
 
-* `compression` (Optional if sqs enabled) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
+* `compression` (Optional) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
 
 * `codec` (Required) : The codec to apply. Must be either `newline`, `csv` or `json`.
 

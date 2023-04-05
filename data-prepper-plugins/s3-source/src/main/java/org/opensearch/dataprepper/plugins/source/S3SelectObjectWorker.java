@@ -37,7 +37,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.CompressionType;
-import software.amazon.awssdk.services.s3.model.FileHeaderInfo;
 import software.amazon.awssdk.services.s3.model.InputSerialization;
 import software.amazon.awssdk.services.s3.model.RecordsEvent;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentEventStream;
@@ -53,6 +52,9 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     static final String S3_BUCKET_NAME = "bucket";
     static final String S3_OBJECT_KEY = "key";
     static final String S3_BUCKET_REFERENCE_NAME = "s3";
+
+    static final String CSV_FILE_HEADER_INFO_NONE = "none";
+
     private final S3AsyncClient s3AsyncClient;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;
@@ -192,7 +194,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private JsonNode getJsonNode(String selectObjectOptionalString) throws JsonProcessingException {
         final JsonNode recordJsonNode;
         if(serializationFormatOption.equals(S3SelectSerializationFormatOption.CSV) &&
-                FileHeaderInfo.NONE.name().equalsIgnoreCase(s3SelectCSVOption.getFileHeaderInfo()))
+                CSV_FILE_HEADER_INFO_NONE.equals(s3SelectCSVOption.getFileHeaderInfo()))
             recordJsonNode = csvColumNamesRefactorInCaseNoHeader(selectObjectOptionalString);
         else
             recordJsonNode = mapper.readTree(selectObjectOptionalString);
