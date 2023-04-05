@@ -12,8 +12,6 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 public class S3ObjectPluginMetrics {
     static final String S3_OBJECTS_SIZE_PROCESSED = "s3ObjectProcessedBytes";
     static final String S3_OBJECTS_FAILED_METRIC_NAME = "s3ObjectsFailed";
-
-    static final String S3_OBJECTS_CODEC_PARSING_FAILED_METRIC_NAME = "s3ObjectsCodecParseFailed";
     static final String S3_OBJECTS_SUCCEEDED_METRIC_NAME = "s3ObjectsSucceeded";
     static final String S3_OBJECTS_EVENTS = "s3ObjectsEvents";
     static final String S3_OBJECTS_FAILED_NOT_FOUND_METRIC_NAME = "s3ObjectsNotFound";

@@ -22,6 +22,7 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
@@ -235,8 +236,13 @@ public class SqsWorker implements Runnable {
             final DeleteMessageBatchResponse deleteMessageBatchResponse = sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
             if (deleteMessageBatchResponse.hasSuccessful()) {
                 final int deletedMessagesCount = deleteMessageBatchResponse.successful().size();
-                LOG.debug("Deleted {} messages from SQS.", deletedMessagesCount);
-                sqsMessagesDeletedCounter.increment(deletedMessagesCount);
+                if (deletedMessagesCount > 0) {
+                    final String successfullyDeletedMessages = deleteMessageBatchResponse.successful().stream()
+                            .map(DeleteMessageBatchResultEntry::id)
+                            .collect(Collectors.joining(", "));
+                    LOG.info("Deleted {} messages from SQS. [{}]", deletedMessagesCount, successfullyDeletedMessages);
+                    sqsMessagesDeletedCounter.increment(deletedMessagesCount);
+                }
             }
             if(deleteMessageBatchResponse.hasFailed()) {
                 final int failedDeleteCount = deleteMessageBatchResponse.failed().size();

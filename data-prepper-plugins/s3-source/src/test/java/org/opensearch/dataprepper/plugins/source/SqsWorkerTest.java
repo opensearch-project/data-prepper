@@ -275,7 +275,7 @@ class SqsWorkerTest {
     }
 
     @Test
-    void processSqsMessages_should_report_correct_metrics_for_DeleteMessages_when_some_succeed_and_some_fail() {
+    void processSqsMessages_should_report_correct_metrics_for_DeleteMessages_when_some_succeed_and_some_fail() throws IOException {
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
         final List<Message> messages = IntStream.range(0, 6).mapToObj(i -> {
                     final Message message = mock(Message.class);
@@ -324,7 +324,7 @@ class SqsWorkerTest {
     }
 
     @Test
-    void processSqsMessages_should_report_correct_metrics_for_DeleteMessages_when_request_fails() {
+    void processSqsMessages_should_report_correct_metrics_for_DeleteMessages_when_request_fails() throws IOException {
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
         final List<Message> messages = IntStream.range(0, 6).mapToObj(i -> {
                     final Message message = mock(Message.class);

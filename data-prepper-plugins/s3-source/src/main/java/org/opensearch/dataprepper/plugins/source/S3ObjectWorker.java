@@ -100,7 +100,7 @@ class S3ObjectWorker implements S3ObjectHandler {
         } catch (final Exception ex) {
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
             if (ex instanceof S3Exception) {
-                LOG.error("Error reading from S3 object: s3ObjectReference={}.", s3ObjectReference, ex);
+                LOG.error("Error reading from S3 object: s3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
                 recordS3Exception((S3Exception) ex);
             }
             if (ex instanceof IOException) {
