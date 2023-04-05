@@ -293,7 +293,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       });
     } else if (dlqWriter != null) {
       try {
-        dlqWriter.write(dlqObjects, "pipelineName", "pluginId");
+        dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
       } catch (final IOException e) {
         dlqObjects.forEach(dlqObject -> {
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);

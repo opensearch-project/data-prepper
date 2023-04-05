@@ -60,6 +60,7 @@ public class S3DlqWriter implements DlqWriter {
     private final Counter dlqS3RequestFailedCounter;
     private final Timer dlqS3RequestTimer;
     private final DistributionSummary dlqS3RequestSizeBytesSummary;
+    private final KeyPathGenerator keyPathGenerator;
 
     S3DlqWriter(final S3DlqWriterConfig s3DlqWriterConfig, final ObjectMapper objectMapper, final PluginMetrics pluginMetrics) {
         dlqS3RecordsSuccessCounter = pluginMetrics.counter(S3_DLQ_RECORDS_SUCCESS);
@@ -74,6 +75,7 @@ public class S3DlqWriter implements DlqWriter {
         this.bucket = s3DlqWriterConfig.getBucket();
         this.keyPathPrefix = s3DlqWriterConfig.getKeyPathPrefix();
         this.objectMapper = objectMapper;
+        this.keyPathGenerator = new KeyPathGenerator(keyPathPrefix);
     }
 
     @Override
@@ -146,7 +148,7 @@ public class S3DlqWriter implements DlqWriter {
     private String buildKey(final String pipelineName, final String pluginId) {
         final String key = String.format(KEY_NAME_FORMAT, DataPrepperVersion.getCurrentVersion().getMajorVersion(),
             pipelineName, pluginId, Instant.now(), UUID.randomUUID());
-        return keyPathPrefix == null ? key : String.format(FULL_KEY_FORMAT, keyPathPrefix, key);
+        return keyPathPrefix == null ? key : String.format(FULL_KEY_FORMAT, keyPathGenerator.generate(), key);
     }
 
     @Override
