@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.model.source;
+package org.opensearch.dataprepper.model.source.coordinator;
 
 import java.util.List;
 import java.util.Objects;
 
 /**
- * The model class to be passed to {@link org.opensearch.dataprepper.model.source.SourceCoordinator#createPartitions(List)}.
+ * The model class to be passed to {@link SourceCoordinator#createPartitions(List)}.
  * The partitionKey should uniquely identify the partition
  * @since 2.2
  */
