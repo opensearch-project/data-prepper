@@ -42,7 +42,7 @@ public class AwsAuthenticationOptions {
             try {
                 Arn.fromString(awsStsRoleArn);
             } catch (final Exception e) {
-                throw new IllegalArgumentException("Invalid ARN format for awsStsRoleArn");
+                throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
             }
 
             final StsClient stsClient = StsClient.builder()
