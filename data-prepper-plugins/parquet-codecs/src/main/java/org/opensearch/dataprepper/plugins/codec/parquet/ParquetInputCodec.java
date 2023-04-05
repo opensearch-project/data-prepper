@@ -42,8 +42,6 @@ import java.util.function.Consumer;
  */
 @DataPrepperPlugin(name = "parquet", pluginType = InputCodec.class)
 public class ParquetInputCodec implements InputCodec {
-
-    private static final String MESSAGE_FIELD_NAME = "message";
     private static final String FILE_NAME = "parquet-data";
     private static final String FILE_SUFFIX = ".parquet";
 
@@ -61,13 +59,12 @@ public class ParquetInputCodec implements InputCodec {
 
     private void parseParquetStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) throws IOException {
 
-         final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
+        final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
         Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
         try (ParquetFileReader parquetFileReader = new ParquetFileReader(HadoopInputFile.fromPath(new Path(tempFile.toURI()), new Configuration()), ParquetReadOptions.builder().build())) {
             final ParquetMetadata footer = parquetFileReader.getFooter();
             final MessageType schema = createdParquetSchema(footer);
-
             PageReadStore pages;
 
             while ((pages = parquetFileReader.readNextRowGroup()) != null) {
@@ -75,16 +72,16 @@ public class ParquetInputCodec implements InputCodec {
                 final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
                 final RecordReader recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
 
-                final Map<String, String> eventData = new HashMap<>();
+                final Map<String, Object> eventData = new HashMap<>();
 
                 for (int row = 0; row < rows; row++) {
 
                         fieldIndex = 0;
                         final SimpleGroup simpleGroup = (SimpleGroup) recordReader.read();
                         for (Type field : schema.getFields()) {
-
                             try {
-                                eventData.put(field.getName(), simpleGroup.getValueToString(fieldIndex, 0));
+                                Object dataTypeValue = PrimitiveDataTypeChecker.checkPrimitiveDataType(field,simpleGroup,fieldIndex);
+                                eventData.put(field.getName(),dataTypeValue);
                             }
                             catch (Exception parquetException){
                                 LOG.error("Unable to retrieve value for field with name = '{}' with error = '{}'", field.getName(), parquetException.getMessage());

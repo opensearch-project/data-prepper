@@ -5,11 +5,10 @@
 package org.opensearch.dataprepper.plugins.codec.avro;
 
 import org.apache.avro.Schema;
-import org.apache.avro.file.DataFileReader;
-import org.apache.avro.file.FileReader;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.io.DatumReader;
+
+import org.apache.avro.file.DataFileStream;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
@@ -18,11 +17,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -35,9 +32,6 @@ import java.util.function.Consumer;
  */
 @DataPrepperPlugin(name="avro", pluginType = InputCodec.class)
 public class AvroInputCodec implements InputCodec {
-    private static final String MESSAGE_FIELD_NAME = "message";
-    private static final String FILE_NAME = "avro-data";
-    private static final String FILE_SUFFIX = ".avro";
 
     private static final Logger LOG =  LoggerFactory.getLogger(AvroInputCodec.class);
 
@@ -53,26 +47,22 @@ public class AvroInputCodec implements InputCodec {
 
     private void parseAvroStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer)throws IOException {
 
-        File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
-
-        Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
         try {
 
-            DatumReader<GenericRecord> datumReaderForSchema = new GenericDatumReader<>();
-            DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(tempFile, datumReaderForSchema);
-            Schema schema = dataFileReader.getSchema();
-            GenericDatumReader<GenericRecord> genericDatumReader = new GenericDatumReader<>(schema);
+            final byte[] avroData=inputStream.readAllBytes();
+            ByteArrayInputStream byteArrayInputStream=new ByteArrayInputStream(avroData);
+            DataFileStream<GenericRecord> stream = new DataFileStream<GenericRecord>(byteArrayInputStream, new GenericDatumReader<GenericRecord>());
+            Schema schema=stream.getSchema();
 
-            FileReader<GenericRecord> fileReader = DataFileReader.openReader(tempFile, genericDatumReader);
 
-            final Map<String, String> eventData = new HashMap<>();
+            final Map<String, Object> eventData = new HashMap<>();
 
-            for (GenericRecord record : fileReader) {
+            while (stream.hasNext()) {
 
+                GenericRecord record= stream.next();
                 for(Schema.Field field : schema.getFields()) {
 
-                    eventData.put(field.name(), record.get(field.name()).toString());
+                    eventData.put(field.name(), record.get(field.name()));
 
                 }
                 final Event event = JacksonLog.builder().withData(eventData).build();
@@ -80,14 +70,9 @@ public class AvroInputCodec implements InputCodec {
 
             }
 
-            fileReader.close();
-
         }
         catch (Exception avroException){
             LOG.error("An exception has occurred while parsing avro InputStream ", avroException);
-        }
-        finally {
-           tempFile.delete();
         }
     }
 

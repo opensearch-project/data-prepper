@@ -30,6 +30,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:csv-processor')
     testImplementation project(':data-prepper-plugins:parse-json-processor')
     testImplementation project(':data-prepper-plugins:newline-codecs')
+    testImplementation project(':data-prepper-plugins:avro-codecs')
 }
 
 test {
