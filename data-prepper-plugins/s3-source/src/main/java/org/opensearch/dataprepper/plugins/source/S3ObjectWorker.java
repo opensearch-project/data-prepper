@@ -98,10 +98,13 @@ class S3ObjectWorker implements S3ObjectHandler {
             });
             totalBytesRead = inputStream.getBytesRead();
         } catch (final Exception ex) {
-            LOG.error("Error reading from S3 object: s3ObjectReference={}.", s3ObjectReference, ex);
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
             if (ex instanceof S3Exception) {
+                LOG.error("Error reading from S3 object: s3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
                 recordS3Exception((S3Exception) ex);
+            }
+            if (ex instanceof IOException) {
+                LOG.error("Error while parsing S3 object: S3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
             }
             throw ex;
         }
