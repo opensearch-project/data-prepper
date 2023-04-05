@@ -109,7 +109,7 @@ public class ProcessWorker implements Runnable {
         //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
         for (final Processor processor : processors) {
             List<Event> inputEvents = null;
-            if (pipeline.getSource().enabledAcknowledgements()) {
+            if (pipeline.getSource().areAcknowledgementsEnabled()) {
                 inputEvents = ((ArrayList<Record<Event>>)records).stream().map(Record::getData).collect(Collectors.toList());   
             }
             records = processor.execute(records);

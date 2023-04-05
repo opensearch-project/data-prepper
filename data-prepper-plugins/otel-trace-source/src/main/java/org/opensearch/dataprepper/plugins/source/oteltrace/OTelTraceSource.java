@@ -202,11 +202,6 @@ public class OTelTraceSource implements Source<Record<Object>> {
         LOG.info("Stopped otel_trace_source.");
     }
 
-    @Override
-    public boolean enabledAcknowledgements() {
-        return false;
-    }
-
     private List<ServerInterceptor> getAuthenticationInterceptor() {
         final ServerInterceptor authenticationInterceptor = authenticationProvider.getAuthenticationInterceptor();
         if (authenticationInterceptor == null) {

@@ -38,11 +38,6 @@ public class TestSourceWithCoordination implements Source<Record<String>>, UsesS
     }
 
     @Override
-    public boolean enabledAcknowledgements() {
-        return false;
-    }
-
-    @Override
     public void start(Buffer<Record<String>> buffer) {
         if(failSourceForTest) {
             throw new RuntimeException("Source is expected to fail");

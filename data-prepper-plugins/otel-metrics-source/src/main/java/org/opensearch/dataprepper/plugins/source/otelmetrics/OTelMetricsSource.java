@@ -198,11 +198,6 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         LOG.info("Stopped otel_metrics_source.");
     }
 
-    @Override
-    public boolean enabledAcknowledgements() {
-        return false;
-    }
-
     private List<ServerInterceptor> getAuthenticationInterceptor() {
         final ServerInterceptor authenticationInterceptor = authenticationProvider.getAuthenticationInterceptor();
         if (authenticationInterceptor == null) {

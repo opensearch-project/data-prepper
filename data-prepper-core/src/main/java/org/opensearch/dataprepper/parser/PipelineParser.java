@@ -284,7 +284,7 @@ public class PipelineParser {
             Pipeline sourcePipeline = pipelineMap.get(connectedPipeline);
             final PipelineConnector pipelineConnector = sourceConnectorMap.get(sourcePipelineName);
             pipelineConnector.setSourcePipelineName(pipelineNameOptional.get());
-            if (sourcePipeline.getSource().enabledAcknowledgements()) {
+            if (sourcePipeline.getSource().areAcknowledgementsEnabled()) {
                 pipelineConnector.enableAcknowledgements();
             }
             return Optional.of(pipelineConnector);

@@ -31,5 +31,7 @@ public interface Source<T extends Record<?>> {
      *
      * @return boolean indicating if the source enabled end-to-end acknowledgements
      */
-    boolean enabledAcknowledgements();
+    default boolean areAcknowledgementsEnabled() {
+        return false;
+    }
 }

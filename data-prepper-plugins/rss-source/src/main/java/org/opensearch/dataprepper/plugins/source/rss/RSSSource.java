@@ -52,10 +52,4 @@ public class RSSSource implements Source<Record<Document>> {
     public void stop() {
         scheduledExecutorService.shutdown();
     }
-
-    @Override
-    public boolean enabledAcknowledgements() {
-        return false;
-    }
-
 }

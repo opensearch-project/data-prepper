@@ -286,7 +286,7 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        final RouterGetRecordStrategy getRecordStrategy = (source.enabledAcknowledgements()) ? 
+        final RouterGetRecordStrategy getRecordStrategy = (source.areAcknowledgementsEnabled()) ? 
                     new RouterAcknowledgementsRecordStrategy(eventFactory, acknowledgementSetManager, sinks) :
                     new RouterCopyRecordStrategy(sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->

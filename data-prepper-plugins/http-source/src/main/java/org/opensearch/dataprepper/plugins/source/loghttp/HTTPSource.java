@@ -169,10 +169,4 @@ public class HTTPSource implements Source<Record<Log>> {
         }
         LOG.info("Stopped http source.");
     }
-
-    @Override
-    public boolean enabledAcknowledgements() {
-        return true;
-    }
-
 }

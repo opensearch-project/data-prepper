@@ -85,9 +85,4 @@ public class S3Source implements Source<Record<Event>> {
     public void stop() {
         sqsService.stop();
     }
-
-    @Override
-    public boolean enabledAcknowledgements() {
-        return false;
-    }
 }

@@ -74,11 +74,6 @@ public class FileSource implements Source<Record<Object>> {
         isStopRequested = true;
     }
 
-    @Override
-    public boolean enabledAcknowledgements() {
-        return false;
-    }
-
     private Record<Object> getEventRecordFromLine(final String line) {
         Map<String, Object> structuredLine = new HashMap<>();
 

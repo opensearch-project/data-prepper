@@ -20,11 +20,6 @@ public class TestSingleThreadSource implements Source<Record<String>> {
     }
 
     @Override
-    public boolean enabledAcknowledgements() {
-        return false;
-    }
-
-    @Override
     public void stop() {
 
     }
