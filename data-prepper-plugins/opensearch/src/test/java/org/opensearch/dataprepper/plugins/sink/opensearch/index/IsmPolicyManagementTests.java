@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.client.ResponseException;
 import org.opensearch.client.RestClient;
@@ -66,7 +66,7 @@ public class IsmPolicyManagementTests {
     @Mock
     private S3Client s3Client;
 
-    @Before
+    @BeforeEach
     public void setup() {
         initMocks(this);
         ismPolicyManagementStrategy = new IsmPolicyManagement(
