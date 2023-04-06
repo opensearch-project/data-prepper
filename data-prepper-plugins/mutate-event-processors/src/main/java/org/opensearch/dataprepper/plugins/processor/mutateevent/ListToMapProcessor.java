@@ -21,7 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -49,20 +48,21 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
             try {
                 sourceNode = getSourceNode(recordEvent);
             } catch (final Exception e) {
-                LOG.error(EVENT, "Given source path [{}] is not valid on record [{}]",
+                LOG.warn(EVENT, "Given source path [{}] is not valid on record [{}]",
                         config.getSource(), recordEvent, e);
                 continue;
             }
 
-            ObjectNode targetNode = null;
+            ObjectNode targetNode;
             try {
                 targetNode = constructTargetNode(sourceNode);
             } catch (IllegalArgumentException e) {
-                LOG.error(EVENT, "Cannot find a list at the given source path [{}} on record [{}]",
+                LOG.warn(EVENT, "Cannot find a list at the given source path [{}} on record [{}]",
                         config.getSource(), recordEvent, e);
                 continue;
             } catch (final Exception e) {
                 LOG.error(EVENT, "Error converting source list to map on record [{}]", recordEvent, e);
+                continue;
             }
 
             try {
@@ -110,14 +110,14 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
                 }
             }
         } else {
-            throw new IllegalArgumentException("Cannot find a list at the given source path [{}}" + config.getSource());
+            throw new IllegalArgumentException("Cannot find a list at the given source path [{}]" + config.getSource());
         }
         return targetNode;
     }
 
     private void updateEvent(Event recordEvent, ObjectNode targetNode) {
-        final TypeReference<HashMap<String, Object>> hashMapTypeReference = new TypeReference<>() {};
-        final Map<String, Object> targetMap = OBJECT_MAPPER.convertValue(targetNode, hashMapTypeReference);
+        final TypeReference<Map<String, Object>> mapTypeReference = new TypeReference<>() {};
+        final Map<String, Object> targetMap = OBJECT_MAPPER.convertValue(targetNode, mapTypeReference);
 
         final boolean doWriteToRoot = Objects.isNull(config.getTarget());
         if (doWriteToRoot) {

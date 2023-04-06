@@ -33,10 +33,10 @@ class ListToMapProcessorTest {
 
     @Test
     public void testValueExtractionWithFlattenAndWriteToRoot() {
-        configureDefaultSettings();
         when(mockConfig.getValueKey()).thenReturn("value");
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
+        when(mockConfig.getFlatten()).thenReturn(true);
         when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.FIRST);
 
         final ListToMapProcessor processor = createObjectUnderTest();
@@ -53,10 +53,10 @@ class ListToMapProcessorTest {
 
     @Test
     public void testValueExtractionWithFlattenKeepLastElementAndWriteToRoot() {
-        configureDefaultSettings();
         when(mockConfig.getValueKey()).thenReturn("value");
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
+        when(mockConfig.getFlatten()).thenReturn(true);
         when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.LAST);
 
         final ListToMapProcessor processor = createObjectUnderTest();
@@ -73,11 +73,11 @@ class ListToMapProcessorTest {
 
     @Test
     public void testValueExtractionWithFlattenAndWriteToTarget() {
-        configureDefaultSettings();
         when(mockConfig.getValueKey()).thenReturn("value");
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
         when(mockConfig.getTarget()).thenReturn("mymap");
+        when(mockConfig.getFlatten()).thenReturn(true);
         when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.FIRST);
 
         final ListToMapProcessor processor = createObjectUnderTest();
@@ -94,9 +94,9 @@ class ListToMapProcessorTest {
 
     @Test
     public void testNoValueExtractionWithFlattenAndWriteToRoot() {
-        configureDefaultSettings();
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
+        when(mockConfig.getFlatten()).thenReturn(true);
         when(mockConfig.getFlattenedElement()).thenReturn(ListToMapProcessorConfig.FlattenedElement.FIRST);
 
         final ListToMapProcessor processor = createObjectUnderTest();
@@ -113,11 +113,9 @@ class ListToMapProcessorTest {
 
     @Test
     public void testValueExtractionWithNoFlattenAndWriteToRoot() {
-        configureDefaultSettings();
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
         when(mockConfig.getValueKey()).thenReturn("value");
-        when(mockConfig.getFlatten()).thenReturn(false);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -133,10 +131,8 @@ class ListToMapProcessorTest {
 
     @Test
     public void testNoValueExtractionWithNoFlattenAndWriteToRoot() {
-        configureDefaultSettings();
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
-        when(mockConfig.getFlatten()).thenReturn(false);
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
@@ -183,11 +179,9 @@ class ListToMapProcessorTest {
 
     @Test
     public void testFailureDueToBadEventData() {
-        configureDefaultSettings();
         when(mockConfig.getValueKey()).thenReturn("value");
         when(mockConfig.getSource()).thenReturn("mylist");
         when(mockConfig.getKey()).thenReturn("name");
-        when(mockConfig.getTarget()).thenReturn("mymap");
 
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createBadTestRecord();
@@ -215,12 +209,6 @@ class ListToMapProcessorTest {
                 .withEventType("event")
                 .build();
         return new Record<>(event);
-    }
-
-    private void configureDefaultSettings() {
-        when(mockConfig.getTarget()).thenReturn(null);
-        when(mockConfig.getValueKey()).thenReturn(null);
-        when(mockConfig.getFlatten()).thenReturn(true);
     }
 
     private Record<Event> createBadTestRecord() {

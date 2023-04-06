@@ -31,12 +31,6 @@ public class ListToMapProcessorConfig {
             this.name = name.toLowerCase();
         }
 
-        @Override
-        public String toString() {
-            String a = "{\"notmylist\":{\"name\":\"a\",\"value\":\"val-a\"}}";
-            return name;
-        }
-
         @JsonCreator
         static FlattenedElement fromOptionValue(final String option) {
             return ACTIONS_MAP.get(option);
@@ -61,7 +55,7 @@ public class ListToMapProcessorConfig {
 
     @NotNull
     @JsonProperty("flatten")
-    private boolean flatten = true;
+    private boolean flatten = false;
 
     @NotNull
     @JsonProperty("flattened_element")
