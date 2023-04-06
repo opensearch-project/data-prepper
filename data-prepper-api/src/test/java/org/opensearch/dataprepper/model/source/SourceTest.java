@@ -5,23 +5,18 @@
 
 package org.opensearch.dataprepper.model.source;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.junit.jupiter.api.Test;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.junit.Assert.assertFalse;
 
-public class SourceTest implements Source<Record<Event>> {
-    @Override
-    public void start(Buffer<Record<Event>> buffer) {
-    }
-
-    @Override
-    public void stop() {
-    }
-
+public class SourceTest {
     @Test
     void testAreAcknowledgementsEnabled() {
-        assertTrue(!areAcknowledgementsEnabled());
+      Source<Record<Event>> objectUnderTest = mock(Source.class);
+      when(objectUnderTest.areAcknowledgementsEnabled()).thenCallRealMethod();
+      assertFalse(objectUnderTest.areAcknowledgementsEnabled());
     }
 }
