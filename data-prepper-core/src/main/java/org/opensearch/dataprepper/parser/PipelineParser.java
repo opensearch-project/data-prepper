@@ -281,8 +281,12 @@ public class PipelineParser {
                         connectedPipeline, sourcePipelineName);
                 throw new RuntimeException(format("Failed building source for %s, exiting", sourcePipelineName));
             }
+            Pipeline sourcePipeline = pipelineMap.get(connectedPipeline);
             final PipelineConnector pipelineConnector = sourceConnectorMap.get(sourcePipelineName);
             pipelineConnector.setSourcePipelineName(pipelineNameOptional.get());
+            if (sourcePipeline.getSource().areAcknowledgementsEnabled()) {
+                pipelineConnector.enableAcknowledgements();
+            }
             return Optional.of(pipelineConnector);
         }
         return Optional.empty();
