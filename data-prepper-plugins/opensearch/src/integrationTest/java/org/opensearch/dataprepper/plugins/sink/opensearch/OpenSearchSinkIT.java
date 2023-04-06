@@ -61,6 +61,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.Date;
 
@@ -73,6 +74,7 @@ import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.closeTo;
+import static org.hamcrest.Matchers.not;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.getHosts;
@@ -567,9 +569,9 @@ public class OpenSearchSinkIT {
     final String expectedId = UUID.randomUUID().toString();
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
-	    .withEventType("event")
-	    .build();
+            .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
+            .withEventType("event")
+            .build();
     testEvent.put(testDocumentIdField, expectedId);
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
@@ -593,7 +595,7 @@ public class OpenSearchSinkIT {
     final String expectedRoutingField = UUID.randomUUID().toString();
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
+            .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
             .withEventType("event")
             .build();
     testEvent.put(testRoutingField, expectedRoutingField);
@@ -923,9 +925,10 @@ public class OpenSearchSinkIT {
 
     indices.stream()
             .filter(Objects::nonNull)
-	    .filter(indexName -> !".opendistro_security".equals(indexName))
-	    .filter(indexName -> !".opendistro-reports-definitions".equals(indexName))
-	    .filter(indexName -> !".opendistro-reports-instances".equals(indexName))
+            .filter(Predicate.not(indexName -> indexName.startsWith(".opendistro-")))
+            .filter(Predicate.not(indexName -> indexName.startsWith(".opendistro_")))
+            .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch-")))
+            .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch_")))
             .forEach(indexName -> {
               try {
                 client.performRequest(new Request("DELETE", "/" + indexName));
