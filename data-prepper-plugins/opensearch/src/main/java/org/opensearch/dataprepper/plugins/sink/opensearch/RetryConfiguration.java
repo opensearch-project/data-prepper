@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -80,13 +82,19 @@ public class RetryConfiguration {
     if (maxRetries != null) {
       builder = builder.withMaxRetries(maxRetries);
     }
-    final PluginModel dlq = (PluginModel) pluginSetting.getAttributeFromSettings(DLQ);
+    final LinkedHashMap<String, Map<String, Object>> dlq = (LinkedHashMap) pluginSetting.getAttributeFromSettings(DLQ);
     if (dlq != null) {
       if (dlqFile != null) {
         final String dlqOptionConflictMessage = String.format("%s option cannot be used along with %s option", DLQ_FILE, DLQ);
         throw new RuntimeException(dlqOptionConflictMessage);
       }
-      builder = builder.withDlq(dlq);
+      if (dlq.size() != 1) {
+        throw new RuntimeException("dlq option must declare exactly one dlq configuration");
+      }
+      final Map.Entry<String, Map<String, Object>> entry = dlq.entrySet().stream()
+          .findFirst()
+          .get();
+      builder = builder.withDlq(new PluginModel(entry.getKey(), entry.getValue()));
     }
     return builder.build();
   }

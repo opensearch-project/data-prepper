@@ -22,6 +22,7 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
@@ -41,6 +42,7 @@ public class SqsWorker implements Runnable {
     static final String SQS_MESSAGES_RECEIVED_METRIC_NAME = "sqsMessagesReceived";
     static final String SQS_MESSAGES_DELETED_METRIC_NAME = "sqsMessagesDeleted";
     static final String SQS_MESSAGES_FAILED_METRIC_NAME = "sqsMessagesFailed";
+    static final String SQS_MESSAGES_DELETE_FAILED_METRIC_NAME = "sqsMessagesDeleteFailed";
     static final String SQS_MESSAGE_DELAY_METRIC_NAME = "sqsMessageDelay";
 
     private final S3SourceConfig s3SourceConfig;
@@ -51,6 +53,7 @@ public class SqsWorker implements Runnable {
     private final Counter sqsMessagesReceivedCounter;
     private final Counter sqsMessagesDeletedCounter;
     private final Counter sqsMessagesFailedCounter;
+    private final Counter sqsMessagesDeleteFailedCounter;
     private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
     private int failedAttemptCount;
@@ -71,6 +74,7 @@ public class SqsWorker implements Runnable {
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
         sqsMessagesDeletedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETED_METRIC_NAME);
         sqsMessagesFailedCounter = pluginMetrics.counter(SQS_MESSAGES_FAILED_METRIC_NAME);
+        sqsMessagesDeleteFailedCounter = pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME);
         sqsMessageDelayTimer = pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME);
     }
 
@@ -97,17 +101,18 @@ public class SqsWorker implements Runnable {
 
     int processSqsMessages() {
         final List<Message> sqsMessages = getMessagesFromSqs();
-        if (!sqsMessages.isEmpty())
+        if (!sqsMessages.isEmpty()) {
             sqsMessagesReceivedCounter.increment(sqsMessages.size());
 
-        final Collection<ParsedMessage> s3MessageEventNotificationRecords = getS3MessageEventNotificationRecords(sqsMessages);
+            final Collection<ParsedMessage> s3MessageEventNotificationRecords = getS3MessageEventNotificationRecords(sqsMessages);
 
-        // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
-        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3MessageEventNotificationRecords);
+            // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
+            final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3MessageEventNotificationRecords);
 
-        // delete sqs messages
-        if (!deleteMessageBatchRequestEntries.isEmpty()) {
-            deleteSqsMessages(deleteMessageBatchRequestEntries);
+            // delete sqs messages
+            if (!deleteMessageBatchRequestEntries.isEmpty()) {
+                deleteSqsMessages(deleteMessageBatchRequestEntries);
+            }
         }
 
         return sqsMessages.size();
@@ -197,7 +202,7 @@ public class SqsWorker implements Runnable {
             }
         }
 
-        LOG.debug("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
+        LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
 
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;
@@ -231,11 +236,30 @@ public class SqsWorker implements Runnable {
             final DeleteMessageBatchResponse deleteMessageBatchResponse = sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
             if (deleteMessageBatchResponse.hasSuccessful()) {
                 final int deletedMessagesCount = deleteMessageBatchResponse.successful().size();
-                LOG.debug("Deleted {} messages from SQS.", deletedMessagesCount);
-                sqsMessagesDeletedCounter.increment(deletedMessagesCount);
+                if (deletedMessagesCount > 0) {
+                    final String successfullyDeletedMessages = deleteMessageBatchResponse.successful().stream()
+                            .map(DeleteMessageBatchResultEntry::id)
+                            .collect(Collectors.joining(", "));
+                    LOG.info("Deleted {} messages from SQS. [{}]", deletedMessagesCount, successfullyDeletedMessages);
+                    sqsMessagesDeletedCounter.increment(deletedMessagesCount);
+                }
             }
+            if(deleteMessageBatchResponse.hasFailed()) {
+                final int failedDeleteCount = deleteMessageBatchResponse.failed().size();
+                sqsMessagesDeleteFailedCounter.increment(failedDeleteCount);
+
+                if(LOG.isErrorEnabled()) {
+                    final String failedMessages = deleteMessageBatchResponse.failed().stream()
+                            .map(failed -> toString())
+                            .collect(Collectors.joining(", "));
+                    LOG.error("Failed to delete {} messages from SQS with errors: [{}].", failedDeleteCount, failedMessages);
+                }
+            }
+
         } catch (final SdkException e) {
-            LOG.debug("Failed to delete {} messages from SQS due to {}.", deleteMessageBatchRequestEntryCollection.size(), e.getMessage());
+            final int failedMessageCount = deleteMessageBatchRequestEntryCollection.size();
+            sqsMessagesDeleteFailedCounter.increment(failedMessageCount);
+            LOG.error("Failed to delete {} messages from SQS due to {}.", failedMessageCount, e.getMessage());
         }
     }
 

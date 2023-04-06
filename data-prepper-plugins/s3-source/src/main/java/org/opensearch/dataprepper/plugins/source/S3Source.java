@@ -76,9 +76,13 @@ public class S3Source implements Source<Record<Event>> {
             final PluginModel codecConfiguration = s3SourceConfig.getCodec();
             final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
             final Codec codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
-            final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.bucketOwnerProvider(bucketOwnerProvider)
-                    .codec(codec).eventConsumer(eventMetadataModifier).s3Client(s3ClientBuilderFactory.getS3Client())
-                    .compressionEngine(s3SourceConfig.getCompression().getEngine()).build();
+            final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder
+                    .bucketOwnerProvider(bucketOwnerProvider)
+                    .codec(codec)
+                    .eventConsumer(eventMetadataModifier)
+                    .s3Client(s3ClientBuilderFactory.getS3Client())
+                    .compressionEngine(s3SourceConfig.getCompression().getEngine())
+                    .build();
             s3Handler = new S3ObjectWorker(s3ObjectRequest);
         }
         final S3Service s3Service = new S3Service(s3Handler);

@@ -32,14 +32,20 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.common.unit.ByteSizeValue;
+import org.opensearch.dataprepper.model.failures.DlqObject;
+import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 
 /**
  * Based on low-level REST client's <code>org.opensearch.action.index.IndexRequest::toString</code> method.
  */
 public class BulkOperationWriter {
     private static final int MAX_SOURCE_LENGTH_IN_TOSTRING = 2048;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static String bulkOperationToString(BulkOperation bulkOperation) {
         String index = bulkOperation.index().index();
@@ -60,6 +66,24 @@ public class BulkOperationWriter {
             // ignore
         }
         return "index {[" + index + "][" + id + "], source[" + sSource + "]}";
+    }
+
+    public static String dlqObjectToString(final DlqObject dlqObject) {
+        final FailedDlqData failedData = (FailedDlqData) dlqObject.getFailedData();
+        final String index = failedData.getIndex();
+        final String id = failedData.getIndexId();
+
+        final String source = extractDocumentSource(failedData);
+
+        return "index {[" + index + "][" + id + "], source[" + source + "]}";
+    }
+
+    private static String extractDocumentSource(final FailedDlqData failedData) {
+        try {
+            return OBJECT_MAPPER.writeValueAsString(failedData.getDocument());
+        } catch (JsonProcessingException e) {
+            return "n/a, unable to extract document";
+        }
     }
 
     private static String extractDocumentSource(BulkOperation bulkOperation) {
