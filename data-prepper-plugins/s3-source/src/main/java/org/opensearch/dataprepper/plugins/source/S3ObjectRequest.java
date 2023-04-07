@@ -9,12 +9,13 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CompressionType;
-import software.amazon.awssdk.services.s3.model.FileHeaderInfo;
 
 import java.time.Duration;
 import java.util.function.BiConsumer;
@@ -24,7 +25,7 @@ public class S3ObjectRequest {
     private final int numberOfRecordsToAccumulate;
     private final Duration bufferTimeout;
     private final S3ObjectPluginMetrics s3ObjectPluginMetrics;
-    private final String queryStatement;
+    private final String expression;
     private final S3SelectSerializationFormatOption serializationFormatOption;
     private final S3AsyncClient s3AsyncClient;
     private final S3SelectResponseHandler s3SelectResponseHandler;
@@ -34,7 +35,10 @@ public class S3ObjectRequest {
     private final BiConsumer<Event, S3ObjectReference> eventConsumer;
     private final S3Client s3Client;
     private final CompressionType compressionType;
-    private final FileHeaderInfo fileHeaderInfo;
+    private final S3SelectCSVOption s3SelectCSVOption;
+    private final S3SelectJsonOption s3SelectJsonOption;
+    private final String expressionType;
+
 
     private S3ObjectRequest(Builder builder) {
         this.buffer = builder.buffer;
@@ -42,7 +46,7 @@ public class S3ObjectRequest {
 
         this.bufferTimeout = builder.bufferTimeout;
         this.s3ObjectPluginMetrics = builder.s3ObjectPluginMetrics;
-        this.queryStatement = builder.queryStatement;
+        this.expression = builder.expression;
         this.serializationFormatOption = builder.serializationFormatOption;
         this.s3AsyncClient =builder.s3AsyncClient;
         this.s3SelectResponseHandler = builder.s3SelectResponseHandler;
@@ -52,7 +56,9 @@ public class S3ObjectRequest {
         this.eventConsumer = builder.eventConsumer;
         this.s3Client = builder.s3Client;
         this.compressionType = builder.compressionType;
-        this.fileHeaderInfo = builder.fileHeaderInfo;
+        this.s3SelectCSVOption = builder.s3SelectCSVOption;
+        this.s3SelectJsonOption = builder.s3SelectJsonOption;
+        this.expressionType = builder.expressionType;
     }
 
     public Buffer<Record<Event>> getBuffer() {
@@ -71,8 +77,8 @@ public class S3ObjectRequest {
         return s3ObjectPluginMetrics;
     }
 
-    public String getQueryStatement() {
-        return queryStatement;
+    public String getExpression() {
+        return expression;
     }
 
     public S3SelectSerializationFormatOption getSerializationFormatOption() {
@@ -111,8 +117,16 @@ public class S3ObjectRequest {
         return compressionType;
     }
 
-    public FileHeaderInfo getFileHeaderInfo() {
-        return fileHeaderInfo;
+    public S3SelectCSVOption getS3SelectCSVOption() {
+        return s3SelectCSVOption;
+    }
+
+    public S3SelectJsonOption getS3SelectJsonOption() {
+        return s3SelectJsonOption;
+    }
+
+    public String getExpressionType() {
+        return expressionType;
     }
 
     public static class Builder {
@@ -121,7 +135,7 @@ public class S3ObjectRequest {
         private final Duration bufferTimeout;
         private final S3ObjectPluginMetrics s3ObjectPluginMetrics;
         private BucketOwnerProvider bucketOwnerProvider;
-        private String queryStatement;
+        private String expression;
         private S3SelectSerializationFormatOption serializationFormatOption;
         private S3AsyncClient s3AsyncClient;
         private S3SelectResponseHandler s3SelectResponseHandler;
@@ -130,7 +144,9 @@ public class S3ObjectRequest {
         private BiConsumer<Event, S3ObjectReference> eventConsumer;
         private S3Client s3Client;
         private CompressionType compressionType;
-        private FileHeaderInfo fileHeaderInfo;
+        private S3SelectCSVOption s3SelectCSVOption;
+        private S3SelectJsonOption s3SelectJsonOption;
+        private String expressionType;
 
         public Builder(final Buffer<Record<Event>> buffer,
                        final int numberOfRecordsToAccumulate,
@@ -147,8 +163,8 @@ public class S3ObjectRequest {
             return this;
         }
 
-        public Builder queryStatement(String queryStatement) {
-            this.queryStatement = queryStatement;
+        public Builder expression(String expression) {
+            this.expression = expression;
             return this;
         }
 
@@ -196,9 +212,19 @@ public class S3ObjectRequest {
             return new S3ObjectRequest(this);
         }
 
-        public Builder fileHeaderInfo(FileHeaderInfo fileHeaderInfo) {
-            this.fileHeaderInfo = fileHeaderInfo;
+        public Builder s3SelectCSVOption(S3SelectCSVOption s3SelectCSVOption) {
+            this.s3SelectCSVOption = s3SelectCSVOption;
             return this;
         }
+
+        public Builder s3SelectJsonOption(S3SelectJsonOption s3SelectJsonOption) {
+            this.s3SelectJsonOption = s3SelectJsonOption;
+            return this;
+        }
+        public Builder expressionType(String expressionType) {
+            this.expressionType = expressionType;
+            return this;
+        }
+
     }
 }

@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.opensearch.client.opensearch._types.ErrorCause;
 
-class ErrorCauseStringCreator {
-    static String toSingleLineDisplayString(ErrorCause errorCause) {
+public class ErrorCauseStringCreator {
+    public static String toSingleLineDisplayString(ErrorCause errorCause) {
         ErrorCause currentErrorCause = errorCause;
 
         StringBuilder errorString = new StringBuilder();

@@ -22,7 +22,6 @@ The `compression` property defines how to handle compressed S3 objects. It has t
 
 * `none` - The file is not compressed.
 * `gzip` - Apply GZip de-compression on the S3 object.
-* `snappy` - Apply Snappy de-compression on the S3 object.
 * `automatic` - Attempts to automatically determine the compression. If the S3 object key name ends in`.gz`, then perform `gzip` compression. Otherwise, it is treated as `none`.
 
 ### Example: Un-Compressed Logs 
@@ -55,8 +54,15 @@ source-pipeline:
       compression: none
       s3_select:
         expression: "select * from s3object s LIMIT 10000"
+        expression_type: SQL
         input_serialization: csv
-        csv_file_header: use
+        compression_type: none
+        csv: 
+          file_header_info: use
+          quote_escape: 
+          comments: 
+        json:
+          type: document
       sqs:
         queue_url: https://sqs.us-east-2.amazonaws.com/895099425385/data-prepper-testing
       aws:
@@ -90,9 +96,23 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `expression` (Required if s3_select enabled) : Provide s3 select query to process the data using S3 select for the particular bucket.
 
+* `expression_type` (Optional if s3_select enabled) : Provide s3 select query type to process the data using S3 select for the particular bucket.
+
+* `compression_type` (Optional if s3_select enabled) : The compression algorithm to apply. May be one of: `none`, `gzip`. Defaults to `none`.
+
 * `input_serialization` (Required if s3_select enabled) : Provide the s3 select file format (csv/json/Apache Parquet) Amazon S3 uses this format to parse object data into records and returns only records that match the specified SQL expression. You must also specify the data serialization format for the response.
 
-* `csv_file_header` (Optional) : Provide CSV Header example : `use` , `none` , `ignore`. Default is `use`.
+* `csv` (Optional) : Provide the csv configuration to process the csv data.
+
+* `file_header_info` (Required if csv block is enabled) : Provide CSV Header example : `use` , `none` , `ignore`. Default is `use`.
+
+* `quote_escape` (Optional) : Provide quote_escape attribute example : `,` , `.`.
+
+* `comments` (Optional) : Provide comments attribute example : `#`. Default is `#`.
+
+* `json` (Optional) : Provide the json configuration to process the json data.
+
+* `type` (Optional) : Provide the type attribute to process the json type data example: `Lines` , `Document` Default is `Document`.
 
 * `bucket_name` : Provide S3 bucket name.
 
@@ -135,7 +155,26 @@ All Duration values are a string that represents a duration. They support ISO_86
 The AWS configuration is the same for both SQS and S3.
 
 * `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
-* `sts_role_arn` (Optional) : The AWS STS role to assume for requests to SQS and S3. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
+* `sts_role_arn` (Optional) : The AWS STS role to assume for requests to SQS and S3. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html). 
+The following policy shows the necessary permissions for S3 source. `kms:Decrypt` is required if SQS queue is encrypted with AWS [KMS](https://aws.amazon.com/kms/).
+```json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "s3policy",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "sqs:DeleteMessage",
+                "sqs:ReceiveMessage",
+                "kms:Decrypt"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+```
 * `aws_sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
 
 ## Metrics
@@ -149,6 +188,7 @@ The AWS configuration is the same for both SQS and S3.
 * `sqsMessagesReceived` - The number of SQS messages received from the queue by the S3 Source.
 * `sqsMessagesDeleted` - The number of SQS messages deleted from the queue by the S3 Source.
 * `sqsMessagesFailed` - The number of SQS messages that the S3 Source failed to parse.
+* `sqsMessagesDeleteFailed` - The number of SQS messages that the S3 Source failed to delete from the SQS queue.
 
 
 ### Timers

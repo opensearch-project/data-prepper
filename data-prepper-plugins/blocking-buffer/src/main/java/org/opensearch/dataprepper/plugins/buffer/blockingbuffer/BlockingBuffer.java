@@ -114,23 +114,23 @@ public class BlockingBuffer<T extends Record<?>> extends AbstractBuffer<T> {
     public void doWriteAll(Collection<T> records, int timeoutInMillis) throws Exception {
         final int size = records.size();
         if (size > bufferCapacity) {
-            throw new SizeOverflowException(format("Buffer capacity too small for the size of records: %d", size));
+            throw new SizeOverflowException(format("Buffer capacity too small for the number of records: %d", size));
         }
         try {
             final boolean permitAcquired = capacitySemaphore.tryAcquire(size, timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!permitAcquired) {
                 throw new TimeoutException(
-                        format("Pipeline [%s] - Buffer does not have enough capacity left for the size of records: %d, " +
+                        format("Pipeline [%s] - Buffer does not have enough capacity left for the number of records: %d, " +
                                         "timed out waiting for slots.",
                         pipelineName, size));
             }
             blockingQueue.addAll(records);
         } catch (InterruptedException ex) {
-            LOG.error("Pipeline [{}] - Buffer does not have enough capacity left for the size of records: {}, " +
+            LOG.error("Pipeline [{}] - Buffer does not have enough capacity left for the number of records: {}, " +
                             "interrupted while waiting to write the records",
                     pipelineName, size, ex);
             throw new TimeoutException(
-                    format("Pipeline [%s] - Buffer does not have enough capacity left for the size of records: %d, " +
+                    format("Pipeline [%s] - Buffer does not have enough capacity left for the number of records: %d, " +
                             "timed out waiting for slots.",
                     pipelineName, size));
         }

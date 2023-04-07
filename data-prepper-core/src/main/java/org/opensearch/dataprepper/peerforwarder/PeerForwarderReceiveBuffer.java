@@ -74,21 +74,21 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> extends AbstractBuf
     public void doWriteAll(final Collection<T> records, final int timeoutInMillis) throws Exception {
         final int size = records.size();
         if (size > bufferSize) {
-            throw new SizeOverflowException(format("Peer forwarder buffer capacity too small for the size of records: %d", size));
+            throw new SizeOverflowException(format("Peer forwarder buffer capacity too small for the number of records: %d", size));
         }
         try {
             final boolean permitAcquired = capacitySemaphore.tryAcquire(size, timeoutInMillis, TimeUnit.MILLISECONDS);
             if (!permitAcquired) {
                 throw new TimeoutException(
-                        format("Peer forwarder buffer does not have enough capacity left for the size of records: %d, " +
+                        format("Peer forwarder buffer does not have enough capacity left for the number of records: %d, " +
                                         "timed out waiting for slots.", size));
             }
             blockingQueue.addAll(records);
         } catch (InterruptedException ex) {
-            LOG.error("Peer forwarder buffer does not have enough capacity left for the size of records: {}, " +
+            LOG.error("Peer forwarder buffer does not have enough capacity left for the number of records: {}, " +
                             "interrupted while waiting to write the records", size, ex);
             throw new TimeoutException(
-                    format("Peer forwarder buffer does not have enough capacity left for the size of records: %d, " +
+                    format("Peer forwarder buffer does not have enough capacity left for the number of records: %d, " +
                                     "timed out waiting for slots.", size));
         }
     }
