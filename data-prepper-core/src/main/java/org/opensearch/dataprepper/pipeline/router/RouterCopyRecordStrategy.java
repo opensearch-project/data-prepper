@@ -58,7 +58,7 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         return referencedRecords;
     }
 
-    private void acquireEventReference(Record record) {
+    private void acquireEventReference(final Record record) {
         if (acknowledgementSetManager == null || record.getData() == null) {
             return;
         }
@@ -72,7 +72,7 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         }
     }
     @Override
-    public Record getRecord(Record record) {
+    public Record getRecord(final Record record) {
         if (routedRecords == null) {
             acquireEventReference(record);
             return record;
@@ -134,4 +134,10 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         }
         return newRecords;
     }
+
+    // for testing
+    public AcknowledgementSetManager getAcknowledgementSetManager() {
+        return acknowledgementSetManager;
+    }
+
 }

@@ -26,8 +26,10 @@ import org.opensearch.dataprepper.plugins.TestSink;
 import org.opensearch.dataprepper.plugins.TestSource;
 import org.opensearch.dataprepper.plugins.TestSourceWithCoordination;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.acknowledgements.InactiveAcknowledgementSetManager;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 
 import java.time.Duration;
@@ -296,12 +298,15 @@ class PipelineTests {
         private List<Sink> sinks;
         private List<Record> records;
         private List<DataFlowComponent<Sink>> dataFlowComponents;
+        private Source mockSource;
 
         @BeforeEach
         void setUp() {
             sinks = IntStream.range(0, 3)
                     .mapToObj(i -> mock(Sink.class))
                     .collect(Collectors.toList());
+            mockSource = mock(Source.class);
+            when(mockSource.areAcknowledgementsEnabled()).thenReturn(false);
 
             dataFlowComponents = sinks.stream()
                     .map(sink -> {
@@ -317,9 +322,42 @@ class PipelineTests {
         }
 
         private Pipeline createObjectUnderTest() {
-            return new Pipeline(TEST_PIPELINE_NAME, mock(Source.class), mock(Buffer.class), Collections.emptyList(),
+            return new Pipeline(TEST_PIPELINE_NAME, mockSource, mock(Buffer.class), Collections.emptyList(),
                     dataFlowComponents, router, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS,
                     TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+        }
+
+        @Test
+        void publishToSinks_calls_route_with_Events_and_Sinks_verify_AcknowledgementSetManager() {
+
+            doAnswer(a -> {
+                RouterCopyRecordStrategy routerCopyRecordStrategy = (RouterCopyRecordStrategy)a.getArgument(2);
+                assertThat(routerCopyRecordStrategy.getAcknowledgementSetManager(), equalTo(acknowledgementSetManager));
+                return null;
+            }).when(router)
+              .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
+            Pipeline pipeline = createObjectUnderTest();
+            when(mockSource.areAcknowledgementsEnabled()).thenReturn(true);
+            pipeline.publishToSinks(records);
+
+            verify(router)
+                    .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
+        }
+
+
+        @Test
+        void publishToSinks_calls_route_with_Events_and_Sinks_verify_InactiveAcknowledgementSetManager() {
+
+            doAnswer(a -> {
+                RouterCopyRecordStrategy routerCopyRecordStrategy = (RouterCopyRecordStrategy)a.getArgument(2);
+                assertThat(routerCopyRecordStrategy.getAcknowledgementSetManager(), equalTo(InactiveAcknowledgementSetManager.getInstance()));
+                return null;
+            }).when(router)
+              .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
+            createObjectUnderTest().publishToSinks(records);
+
+            verify(router)
+                    .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
         }
 
         @Test
