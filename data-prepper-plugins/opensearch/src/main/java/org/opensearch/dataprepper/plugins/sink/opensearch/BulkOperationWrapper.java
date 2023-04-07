@@ -8,16 +8,16 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
-public class BulkOperationWithHandle {
+public class BulkOperationWrapper {
     private EventHandle eventHandle;
     private BulkOperation bulkOperation;
 
-    public BulkOperationWithHandle(final BulkOperation bulkOperation) {
+    public BulkOperationWrapper(final BulkOperation bulkOperation) {
         this.bulkOperation = bulkOperation;
         this.eventHandle = null;
     }
 
-    public BulkOperationWithHandle(final BulkOperation bulkOperation, EventHandle eventHandle) {
+    public BulkOperationWrapper(final BulkOperation bulkOperation, EventHandle eventHandle) {
         this.bulkOperation = bulkOperation;
         this.eventHandle = eventHandle;
     }

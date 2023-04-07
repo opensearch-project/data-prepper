@@ -12,20 +12,20 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 
-public class BulkOperationWithHandleTests {
+public class BulkOperationWrapperTests {
     private BulkOperation bulkOperation;
 
-    BulkOperationWithHandle createObjectUnderTest(EventHandle eventHandle) {
+    BulkOperationWrapper createObjectUnderTest(EventHandle eventHandle) {
         bulkOperation = mock(BulkOperation.class);
         if (eventHandle == null) {
-            return new BulkOperationWithHandle(bulkOperation);
+            return new BulkOperationWrapper(bulkOperation);
         }
-        return new BulkOperationWithHandle(bulkOperation, eventHandle);
+        return new BulkOperationWrapper(bulkOperation, eventHandle);
     }
 
     @Test
     public void testConstructorWithOneArgument() {
-        BulkOperationWithHandle bulkOperationWithHandle = createObjectUnderTest(null);
+        BulkOperationWrapper bulkOperationWithHandle = createObjectUnderTest(null);
         assertThat(bulkOperationWithHandle.getBulkOperation(), equalTo(bulkOperation));
         assertThat(bulkOperationWithHandle.getEventHandle(), equalTo(null));
     }
@@ -33,7 +33,7 @@ public class BulkOperationWithHandleTests {
     @Test
     public void testConstructorWithTwoArguments() {
         EventHandle eventHandle = mock(EventHandle.class);
-        BulkOperationWithHandle bulkOperationWithHandle = createObjectUnderTest(eventHandle);
+        BulkOperationWrapper bulkOperationWithHandle = createObjectUnderTest(eventHandle);
         assertThat(bulkOperationWithHandle.getBulkOperation(), equalTo(bulkOperation));
         assertThat(bulkOperationWithHandle.getEventHandle(), equalTo(eventHandle));
     }

@@ -199,7 +199,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       return;
     }
 
-    AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest> bulkRequest = bulkRequestSupplier.get();
+    AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestSupplier.get();
 
     for (final Record<Event> record : records) {
       final Event event = record.getData();
@@ -246,7 +246,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
       }
 
-      BulkOperationWithHandle bulkOperationWithHandle = new BulkOperationWithHandle(bulkOperation, event.getEventHandle());
+      BulkOperationWrapper bulkOperationWithHandle = new BulkOperationWrapper(bulkOperation, event.getEventHandle());
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWithHandle);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);

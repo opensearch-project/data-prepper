@@ -10,7 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
-import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWithHandle;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 import static java.util.UUID.randomUUID;
@@ -30,7 +30,7 @@ public class FailedBulkOperationTest {
     @Nested
     class Getters {
 
-        private BulkOperationWithHandle bulkOperation;
+        private BulkOperationWrapper bulkOperation;
         private BulkResponseItem bulkResponseItem;
         private EventHandle eventHandle;
         private Throwable failure;
@@ -38,7 +38,7 @@ public class FailedBulkOperationTest {
         private FailedBulkOperation testObject;
         @BeforeEach
         public void setUp() {
-            bulkOperation = mock(BulkOperationWithHandle.class);
+            bulkOperation = mock(BulkOperationWrapper.class);
             bulkResponseItem = mock(BulkResponseItem.class);
             eventHandle = mock(EventHandle.class);
             failure = new Exception();
@@ -75,13 +75,13 @@ public class FailedBulkOperationTest {
 
     @Nested
     class Builder {
-        private BulkOperationWithHandle bulkOperation;
+        private BulkOperationWrapper bulkOperation;
         private BulkResponseItem bulkResponseItem;
         private Throwable failure;
 
         @BeforeEach
         public void setUp() {
-            bulkOperation = mock(BulkOperationWithHandle.class);
+            bulkOperation = mock(BulkOperationWrapper.class);
             bulkResponseItem = mock(BulkResponseItem.class);
             failure = new Exception();
         }
@@ -125,14 +125,14 @@ public class FailedBulkOperationTest {
     @Nested
     class EqualsAndHashCodeAndToString {
 
-        private BulkOperationWithHandle bulkOperation;
+        private BulkOperationWrapper bulkOperation;
         private BulkResponseItem bulkResponseItem;
         private Throwable failure;
 
         private FailedBulkOperation testObject;
         @BeforeEach
         public void setUp() {
-            bulkOperation = mock(BulkOperationWithHandle.class);
+            bulkOperation = mock(BulkOperationWrapper.class);
             bulkResponseItem = mock(BulkResponseItem.class);
             failure = new Exception();
 

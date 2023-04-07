@@ -6,7 +6,7 @@ import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
-import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWithHandle;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -33,7 +33,7 @@ public class FailedBulkOperationConverter {
 
     public DlqObject convertToDlqObject(final FailedBulkOperation failedBulkOperation) {
 
-        final BulkOperationWithHandle bulkOperationWithHandle = failedBulkOperation.getBulkOperation();
+        final BulkOperationWrapper bulkOperationWithHandle = failedBulkOperation.getBulkOperation();
         final BulkOperation bulkOperation = bulkOperationWithHandle.getBulkOperation();
         final BulkResponseItem bulkResponseItem = failedBulkOperation.getBulkResponseItem();
 

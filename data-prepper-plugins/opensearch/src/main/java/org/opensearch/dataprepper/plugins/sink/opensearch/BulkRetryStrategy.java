@@ -95,13 +95,13 @@ public final class BulkRetryStrategy {
                     RestStatus.REQUEST_TIMEOUT.getStatus()
             ));
 
-    private final RequestFunction<AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest>, BulkResponse> requestFunction;
+    private final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction;
     private final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure;
     private final PluginMetrics pluginMetrics;
     private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
     private final int maxRetries;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final Map<AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest>, Integer> retryCountMap;
+    private final Map<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, Integer> retryCountMap;
     private final String pluginId;
     private final String pluginName;
     private final String pipelineName;
@@ -119,7 +119,7 @@ public final class BulkRetryStrategy {
     private final Counter bulkRequestTimeoutErrors;
     private final Counter bulkRequestServerErrors;
 
-    public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest>, BulkResponse> requestFunction,
+    public BulkRetryStrategy(final RequestFunction<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, BulkResponse> requestFunction,
                              final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure,
                              final PluginMetrics pluginMetrics,
                              final int maxRetries,
@@ -205,7 +205,7 @@ public final class BulkRetryStrategy {
 
     private void handleRetry(final AccumulatingBulkRequest request, final BulkResponse response,
                              final BackOffUtils backOffUtils) throws InterruptedException {
-        final AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
+        final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
         int retryCount = retryCountMap.get(bulkRequestForRetry);
         if (backOffUtils.hasNext()) {
             // Wait for backOff duration
@@ -242,7 +242,7 @@ public final class BulkRetryStrategy {
                     sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
                 }
                 sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
-                for (final BulkOperationWithHandle bulkOperation: bulkRequestForRetry.getOperations()) {
+                for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
                     EventHandle eventHandle = bulkOperation.getEventHandle();
                     acknowledgementSetManager.releaseEventReference(eventHandle, true);
                 }
@@ -251,8 +251,8 @@ public final class BulkRetryStrategy {
         }
     }
 
-    private AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest> createBulkRequestForRetry(
-            final AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest> request, final BulkResponse response) {
+    private AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> createBulkRequestForRetry(
+            final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> request, final BulkResponse response) {
         int newCount = retryCountMap.containsKey(request) ? (retryCountMap.get(request) + 1) : 1;
         if (response == null) {
             retryCountMap.put(request, newCount);
@@ -267,8 +267,8 @@ public final class BulkRetryStrategy {
             }
             int index = 0;
             for (final BulkResponseItem bulkItemResponse : response.items()) {
-                BulkOperationWithHandle bulkOperationWithHandle =
-                    (BulkOperationWithHandle)request.getOperationAt(index);
+                BulkOperationWrapper bulkOperationWithHandle =
+                    (BulkOperationWrapper)request.getOperationAt(index);
                 if (bulkItemResponse.error() != null) {
                     if (!NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
                         requestToReissue.addOperation(bulkOperationWithHandle);
@@ -291,12 +291,12 @@ public final class BulkRetryStrategy {
         }
     }
 
-    private void handleFailures(final AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest> accumulatingBulkRequest, final List<BulkResponseItem> itemResponses) {
+    private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> accumulatingBulkRequest, final List<BulkResponseItem> itemResponses) {
         assert accumulatingBulkRequest.getOperationsCount() == itemResponses.size();
         final ImmutableList.Builder<FailedBulkOperation> failures = ImmutableList.builder();
         for (int i = 0; i < itemResponses.size(); i++) {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
-            final BulkOperationWithHandle bulkOperationWithHandle = (BulkOperationWithHandle)accumulatingBulkRequest.getOperationAt(i);
+            final BulkOperationWrapper bulkOperationWithHandle = (BulkOperationWrapper)accumulatingBulkRequest.getOperationAt(i);
             if (bulkItemResponse.error() != null) {
                 failures.add(FailedBulkOperation.builder()
                     .withBulkOperation(bulkOperationWithHandle)
@@ -312,12 +312,12 @@ public final class BulkRetryStrategy {
         logFailure.accept(failures.build(), null);
     }
 
-    private void handleFailures(final AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest> accumulatingBulkRequest, final Throwable failure) {
+    private void handleFailures(final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> accumulatingBulkRequest, final Throwable failure) {
         documentErrorsCounter.increment(accumulatingBulkRequest.getOperationsCount());
         final ImmutableList.Builder<FailedBulkOperation> failures = ImmutableList.builder();
-        final List<BulkOperationWithHandle> bulkOperations = accumulatingBulkRequest.getOperations();
+        final List<BulkOperationWrapper> bulkOperations = accumulatingBulkRequest.getOperations();
         for (int i = 0; i < bulkOperations.size(); i++) {
-            final BulkOperationWithHandle bulkOperation = bulkOperations.get(i);
+            final BulkOperationWrapper bulkOperation = bulkOperations.get(i);
             failures.add(FailedBulkOperation.builder()
                     .withBulkOperation(bulkOperation)
                     .withFailure(failure)
