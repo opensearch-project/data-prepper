@@ -33,7 +33,7 @@ import static org.hamcrest.Matchers.empty;
 
 class PipelinesWithAcksIT {
 
-    private static final String IN_MEMORY_IDENTIFIER = "SimpleAckPipelineIT";
+    private static final String IN_MEMORY_IDENTIFIER = "PipelinesWithAcksIT";
     private static final String SIMPLE_PIPELINE_CONFIGURATION_UNDER_TEST = "acknowledgements/simple-test.yaml";
     private static final String TWO_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/two-pipelines-test.yaml";
     private static final String TWO_PARALLEL_PIPELINES_CONFIGURATION_UNDER_TEST = "acknowledgements/two-parallel-pipelines-test.yaml";

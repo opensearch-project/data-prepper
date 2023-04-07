@@ -2,8 +2,8 @@ pipeline1:
   delay: 2
   source:
     in_memory:
-      testing_key: SimpleAckPipelineIT
-      enable_acknowledgements: true
+      testing_key: PipelinesWithAcksIT
+      end_to_end_acknowledgements: true
   sink:
     - pipeline:
         name: "pipeline2"
@@ -22,4 +22,4 @@ pipeline3:
       name: "pipeline2"
   sink:
     - in_memory:
-        testing_key: SimpleAckPipelineIT
+        testing_key: PipelinesWithAcksIT
