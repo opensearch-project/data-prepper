@@ -82,8 +82,8 @@ source-pipeline:
           - bucket:
               name: my-bucket-2
               s3_select:
-                query_statement: "select * from s3object s LIMIT 10000"
-                data_serialization_format: parquet
+                expression: "select * from s3object s LIMIT 10000"
+                input_serialization: parquet
               key_path:
                 - my/prefix/a
 ```
