@@ -5,15 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.mockito.Mock;
-import org.opensearch.dataprepper.metrics.MetricNames;
-import org.opensearch.dataprepper.metrics.MetricsTestUtil;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,18 +18,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
 import org.opensearch.common.Strings;
 import org.opensearch.common.xcontent.XContentFactory;
 import org.opensearch.common.xcontent.XContentType;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 
 import javax.ws.rs.HttpMethod;
@@ -53,6 +53,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,15 +62,15 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.Date;
 
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.closeTo;
@@ -567,9 +568,9 @@ public class OpenSearchSinkIT {
     final String expectedId = UUID.randomUUID().toString();
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
-	    .withEventType("event")
-	    .build();
+            .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
+            .withEventType("event")
+            .build();
     testEvent.put(testDocumentIdField, expectedId);
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
@@ -593,7 +594,7 @@ public class OpenSearchSinkIT {
     final String expectedRoutingField = UUID.randomUUID().toString();
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
+            .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
             .withEventType("event")
             .build();
     testEvent.put(testRoutingField, expectedRoutingField);
@@ -923,9 +924,10 @@ public class OpenSearchSinkIT {
 
     indices.stream()
             .filter(Objects::nonNull)
-	    .filter(indexName -> !".opendistro_security".equals(indexName))
-	    .filter(indexName -> !".opendistro-reports-definitions".equals(indexName))
-	    .filter(indexName -> !".opendistro-reports-instances".equals(indexName))
+            .filter(Predicate.not(indexName -> indexName.startsWith(".opendistro-")))
+            .filter(Predicate.not(indexName -> indexName.startsWith(".opendistro_")))
+            .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch-")))
+            .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch_")))
             .forEach(indexName -> {
               try {
                 client.performRequest(new Request("DELETE", "/" + indexName));
