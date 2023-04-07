@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
-import net.bytebuddy.utility.RandomString;
+import org.apache.avro.SchemaBuilder;
 import org.apache.hadoop.fs.FileSystem;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,10 +19,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
@@ -36,7 +38,9 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -57,7 +61,14 @@ class ParquetInputCodecTest {
     private Consumer<Record<Event>> eventConsumer;
 
     private ParquetInputCodec parquetInputCodec;
+
     private static FileInputStream fileInputStream;
+
+    private static int numberOfRecords;
+
+    private static final String FILE_NAME="test-parquet.parquet";
+
+    private static final String HADOOP_HOME_DIRECTORY="hadoop.home.dir";
 
     private static final String INVALID_PARQUET_INPUT_STREAM = "Invalid Parquet Input Stream";
 
@@ -99,16 +110,21 @@ class ParquetInputCodecTest {
     }
 
     @Test
-    public void parse_with_Invalid_InputStream_then_catches_exception() {
+    void parse_with_Invalid_InputStream_then_catches_exception() {
+        String OS = System.getProperty("os.name").toLowerCase();
+        if (OS.contains("win")) {
+            System.setProperty(HADOOP_HOME_DIRECTORY, Paths.get("").toAbsolutePath().toString());
+        }
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         Assertions.assertDoesNotThrow(()->
                 parquetInputCodec.parse(createInvalidParquetStream(),eventConsumer));
-
+        System.clearProperty(HADOOP_HOME_DIRECTORY);
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1,10,100,1000})
-    void test_when_HappyCaseParquetInputStream_then_callsConsumerWithParsedEvents(final int numberOfRecords) throws IOException {
+    void test_when_HappyCaseParquetInputStream_then_callsConsumerWithParsedEvents(final int numberOfRecords) throws Exception {
+        ParquetInputCodecTest.numberOfRecords =numberOfRecords;
         InputStream inputStream = createRandomParquetStream(numberOfRecords);
 
         parquetInputCodec.parse(inputStream,eventConsumer);
@@ -117,14 +133,16 @@ class ParquetInputCodecTest {
         verify(eventConsumer, times(numberOfRecords)).accept(recordArgumentCaptor.capture());
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         assertThat(actualRecords.size(), equalTo(numberOfRecords));
+        int index=0;
+        for (final Record<Event> actualRecord : actualRecords) {
 
-        for (int i = 0; i < actualRecords.size(); i++) {
-
-            final Record<Event> actualRecord = actualRecords.get(i);
             assertThat(actualRecord, notNullValue());
             assertThat(actualRecord.getData(), notNullValue());
             assertThat(actualRecord.getData().getMetadata(), notNullValue());
             assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+            Object expectedMap=getExpectedOutput(index).toMap();
+            assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
+            index++;
         }
 
         fileInputStream.close();
@@ -132,24 +150,23 @@ class ParquetInputCodecTest {
         String filepath = path.toUri().getPath();
         fs.delete(new Path(filepath));
         fs.close();
-        System.clearProperty("hadoop.home.dir");
     }
 
     private static InputStream createRandomParquetStream(int numberOfRecords) throws IOException {
 
-        Files.deleteIfExists(java.nio.file.Path.of("test-parquet.parquet"));
+        Files.deleteIfExists(java.nio.file.Path.of(FILE_NAME));
         Schema schema = parseSchema();
         String OS = System.getProperty("os.name").toLowerCase();
 
         if (OS.contains("win")) {
-            System.setProperty("hadoop.home.dir", Paths.get("").toAbsolutePath().toString());
+            System.setProperty(HADOOP_HOME_DIRECTORY, Paths.get("").toAbsolutePath().toString());
         } else {
-            System.setProperty("hadoop.home.dir", "/");
+            System.setProperty(HADOOP_HOME_DIRECTORY, "/");
         }
 
-        List<GenericData.Record> recordList = generateRecords(schema, numberOfRecords);
+        List<GenericRecord> recordList = generateRecords(schema, numberOfRecords);
 
-        path = Paths.get("test-parquet.parquet");
+        path = Paths.get(FILE_NAME);
 
         try(ParquetWriter<GenericData.Record> writer = AvroParquetWriter.<GenericData.Record>builder(new Path(path.toUri().getPath()))
                 .withSchema(schema)
@@ -160,45 +177,51 @@ class ParquetInputCodecTest {
                 .withValidation(false)
                 .withDictionaryEncoding(false)
                 .build()) {
-            for (GenericData.Record record : recordList) {
-                writer.write(record);
+            for (GenericRecord record : recordList) {
+                writer.write((GenericData.Record)record);
             }
         }
+        System.clearProperty(HADOOP_HOME_DIRECTORY);
         fileInputStream = new FileInputStream(path.toString());
         return fileInputStream;
     }
 
     private static Schema parseSchema() {
-        String schemaJson = "{\"namespace\": \"org.myorganization.mynamespace\","
-                + "\"type\": \"record\","
-                + "\"name\": \"myrecordname\","
-                + "\"fields\": ["
-                + " {\"name\": \"myString\",  \"type\": [\"string\", \"null\"]}"
-                + ", {\"name\": \"myInteger\", \"type\": \"int\"}"
-                + " ]}";
-
-        Schema.Parser parser = new Schema.Parser().setValidate(true);
-        return parser.parse(schemaJson);
+        return SchemaBuilder.record("Person")
+                .fields()
+                .name("name").type().stringType().noDefault()
+                .name("age").type().intType().noDefault()
+                .endRecord();
     }
 
-    private static List<GenericData.Record> generateRecords(Schema schema, int numberOfRecords) {
+    private static Event getExpectedOutput(int index) {
+        List<GenericRecord> recordList=generateRecords(parseSchema(),numberOfRecords);
+        GenericRecord record=recordList.get(index);
+        Schema schema=parseSchema();
+        final Map<String, Object> eventData = new HashMap<>();
+        for(Schema.Field field : schema.getFields()) {
 
-        List<GenericData.Record> recordList = new ArrayList<>();
+            eventData.put(field.name(), record.get(field.name()));
+
+        }
+        final Event event = JacksonLog.builder().withData(eventData).build();
+        return event;
+    }
+
+    private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
+
+        List<GenericRecord> recordList = new ArrayList<>();
 
         for(int recordValue = 1; recordValue <= numberOfRecords; recordValue++) {
-            GenericData.Record record = new GenericData.Record(schema);
-            record.put("myInteger", recordValue);
-            record.put("myString", recordValue + RandomString.make());
+            GenericRecord record = new GenericData.Record(schema);
+            record.put("age", recordValue);
+            record.put("name", recordValue + "testString");
             recordList.add(record);
         }
         return recordList;
     }
 
     private static InputStream createInvalidParquetStream() {
-        String OS = System.getProperty("os.name").toLowerCase();
-        if (OS.contains("win")) {
-            System.setProperty("hadoop.home.dir", Paths.get("").toAbsolutePath().toString());
-        }
         return  new ByteArrayInputStream(INVALID_PARQUET_INPUT_STREAM.getBytes());
     }
 }

@@ -9,6 +9,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 
 import org.apache.avro.file.DataFileStream;
+import org.apache.avro.util.Utf8;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
@@ -45,7 +46,7 @@ public class AvroInputCodec implements InputCodec {
 
     }
 
-    private void parseAvroStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer)throws IOException {
+    private void parseAvroStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) {
 
         try {
 
@@ -54,24 +55,36 @@ public class AvroInputCodec implements InputCodec {
             DataFileStream<GenericRecord> stream = new DataFileStream<GenericRecord>(byteArrayInputStream, new GenericDatumReader<GenericRecord>());
             Schema schema=stream.getSchema();
 
-            final Map<String, Object> eventData = new HashMap<>();
-
             while (stream.hasNext()) {
 
-                GenericRecord record= stream.next();
-                for(Schema.Field field : schema.getFields()) {
+                final Map<String, Object> eventData = new HashMap<>();
+                GenericRecord avroRecord= stream.next();
 
-                    eventData.put(field.name(), record.get(field.name()));
+                for(Schema.Field field : schema.getFields()) {
+                    Object value=decodeValueIfEncoded(avroRecord.get(field.name()));
+                    eventData.put(field.name(), value);
 
                 }
                 final Event event = JacksonLog.builder().withData(eventData).build();
                 eventConsumer.accept(new Record<>(event));
-                eventData.clear();
             }
 
         }
         catch (Exception avroException){
             LOG.error("An exception has occurred while parsing avro InputStream ", avroException);
+        }
+    }
+
+    private static Object decodeValueIfEncoded(Object rawValue){
+        try{
+            if(rawValue instanceof Utf8){
+                byte[] utf8Bytes = rawValue.toString().getBytes("UTF-8");
+                return new String(utf8Bytes, "UTF-8");
+            }
+            return rawValue;
+        }
+        catch (Exception e){
+            return rawValue;
         }
     }
 

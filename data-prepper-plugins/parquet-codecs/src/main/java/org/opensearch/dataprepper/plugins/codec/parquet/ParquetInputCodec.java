@@ -9,6 +9,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
@@ -43,9 +44,9 @@ import java.util.function.Consumer;
 @DataPrepperPlugin(name = "parquet", pluginType = InputCodec.class)
 public class ParquetInputCodec implements InputCodec {
     private static final String FILE_NAME = "parquet-data";
+
     private static final String FILE_SUFFIX = ".parquet";
 
-    private static int fieldIndex;
     private static final Logger LOG = LoggerFactory.getLogger(ParquetInputCodec.class);
 
     @Override
@@ -70,20 +71,22 @@ public class ParquetInputCodec implements InputCodec {
             while ((pages = parquetFileReader.readNextRowGroup()) != null) {
                 final long rows = pages.getRowCount();
                 final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-                final RecordReader recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
-
-                final Map<String, Object> eventData = new HashMap<>();
+                final RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
 
                 for (int row = 0; row < rows; row++) {
 
-                        fieldIndex = 0;
+                        final Map<String, Object> eventData = new HashMap<>();
+
+                        int fieldIndex = 0;
                         final SimpleGroup simpleGroup = (SimpleGroup) recordReader.read();
                         for (Type field : schema.getFields()) {
+
                             try {
                                 Object dataTypeValue = PrimitiveDataTypeChecker.checkPrimitiveDataType(field,simpleGroup,fieldIndex);
                                 eventData.put(field.getName(),dataTypeValue);
                             }
                             catch (Exception parquetException){
+                                eventData.put(field.getName(),"UNKNOWN VALUE");
                                 LOG.error("Unable to retrieve value for field with name = '{}' with error = '{}'", field.getName(), parquetException.getMessage());
                             }
 
@@ -92,7 +95,6 @@ public class ParquetInputCodec implements InputCodec {
                         }
                         final Event event = JacksonLog.builder().withData(eventData).build();
                         eventConsumer.accept(new Record<>(event));
-                        eventData.clear();
                 }
             }
         } catch (Exception parquetException) {

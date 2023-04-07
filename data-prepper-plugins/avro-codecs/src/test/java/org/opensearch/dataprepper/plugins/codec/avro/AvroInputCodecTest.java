@@ -13,7 +13,6 @@ import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,21 +22,24 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.codec.avro.AvroInputCodec;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.function.Consumer;
-import java.util.Random;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.Matchers.equalTo;
@@ -52,7 +54,13 @@ import static org.mockito.Mockito.times;
 public class AvroInputCodecTest {
 
     private static final String FILE_NAME = "avro-test";
+
     private static final String FILE_SUFFIX = ".avro";
+
+    private static int index;
+
+    private static int numberOfRecords;
+
     private static final String INVALID_AVRO_INPUT_STREAM = "Invalid Avro Input Stream";
 
     @Mock
@@ -69,11 +77,6 @@ public class AvroInputCodecTest {
         return new AvroInputCodec();
     }
 
-    @BeforeEach
-    void setup(){
-        avroInputCodec=createObjectUnderTest();
-    }
-
     @Test
     public void test_when_nullInputStream_then_throwsException(){
         avroInputCodec=new AvroInputCodec();
@@ -87,7 +90,7 @@ public class AvroInputCodecTest {
 
     @Test
     public void parse_with_Invalid_InputStream_then_catches_exception()  {
-        avroInputCodec=new AvroInputCodec();
+        avroInputCodec=createObjectUnderTest();
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         Assertions.assertDoesNotThrow(()->
                 avroInputCodec.parse(createInvalidAvroStream(), eventConsumer));
@@ -116,8 +119,9 @@ public class AvroInputCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints={1,10,100,1000})
-    public void test_HappyCaseAvroInputStream_then_callsConsumerWithParsedEvents(final int numberOfRecords)throws IOException{
+    public void test_HappyCaseAvroInputStream_then_callsConsumerWithParsedEvents(final int numberOfRecords) throws Exception {
 
+        AvroInputCodecTest.numberOfRecords =numberOfRecords;
         avroInputCodec=createObjectUnderTest();
         InputStream inputStream=createRandomAvroStream(numberOfRecords);
 
@@ -127,20 +131,54 @@ public class AvroInputCodecTest {
         verify(eventConsumer, times(numberOfRecords)).accept(recordArgumentCaptor.capture());
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         assertThat(actualRecords.size(), equalTo(numberOfRecords));
-
+        index=0;
         for (final Record<Event> actualRecord : actualRecords) {
 
             assertThat(actualRecord, notNullValue());
-            assertThat(actualRecord.getData(), notNullValue());
-            assertThat(actualRecord.getData().getMetadata(), notNullValue());
+            assertThat(actualRecord.getData(),notNullValue());
+            assertThat(actualRecord.getData().getMetadata(),notNullValue());
             assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+
+            Map expectedMap=getEvent(index).toMap();
+            assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
+
+            for(Object key: actualRecord.getData().toMap().keySet()){
+                Object decodedOutput = decodeOutputIfEncoded(actualRecord.getData().toMap() , key);
+                Object expectedOutput = getEvent(index).toMap().get(key.toString());
+                assertThat(decodedOutput, equalTo(expectedOutput));
+            }
+            index++;
         }
         fileInputStream.close();
         Files.delete(path);
 
     }
 
+    private static Object decodeOutputIfEncoded(Map encodedOutput, Object key){
+        try{
+            JSONObject outputJson = new JSONObject(encodedOutput);
+            Map innerJson= (Map) outputJson.get(key.toString());
+            byte[] encodedString=(byte[]) innerJson.get("bytes");
+            return new String(encodedString, StandardCharsets.UTF_8);
 
+        }catch (Exception e){
+            return encodedOutput.get(key);
+        }
+    }
+
+    private static Event getEvent(int index){
+        List<GenericRecord> recordList=generateRecords(parseSchema(),numberOfRecords);
+        GenericRecord record=recordList.get(index);
+        Schema schema=parseSchema();
+        final Map<String, Object> eventData = new HashMap<>();
+        for(Schema.Field field : schema.getFields()) {
+
+            eventData.put(field.name(), record.get(field.name()));
+
+        }
+        final Event event = JacksonLog.builder().withData(eventData).build();
+        return event;
+    }
 
 
     private static InputStream createRandomAvroStream(int numberOfRecords) throws IOException{
@@ -164,21 +202,18 @@ public class AvroInputCodecTest {
         fileInputStream = new FileInputStream(path.toString());
         return fileInputStream;
 
-
     }
 
     private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
 
         List<GenericRecord> recordList = new ArrayList<>();
 
-        Random random = new Random();
-
         for(int rows = 0; rows < numberOfRecords; rows++){
 
             GenericRecord record = new GenericData.Record(schema);
 
             record.put("name", "Person"+rows);
-            record.put("age", random.nextInt(numberOfRecords));
+            record.put("age", rows);
             recordList.add((record));
 
         }
