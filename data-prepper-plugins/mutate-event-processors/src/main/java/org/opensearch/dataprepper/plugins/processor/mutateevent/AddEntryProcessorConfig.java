@@ -21,6 +21,10 @@ public class AddEntryProcessorConfig {
         @NotNull
         private Object value;
 
+        @NotEmpty
+        @NotNull
+        private String format;
+
         @JsonProperty("overwrite_if_key_exists")
         private boolean overwriteIfKeyExists = false;
 
@@ -32,14 +36,19 @@ public class AddEntryProcessorConfig {
             return value;
         }
 
+        public String getFormat() {
+            return format;
+        }
+
         public boolean getOverwriteIfKeyExists() {
             return overwriteIfKeyExists;
         }
 
-        public Entry(final String key, final Object value, final boolean overwriteIfKeyExists)
+        public Entry(final String key, final Object value, final String format, final boolean overwriteIfKeyExists)
         {
             this.key = key;
             this.value = value;
+            this.format = format;
             this.overwriteIfKeyExists = overwriteIfKeyExists;
         }
 
