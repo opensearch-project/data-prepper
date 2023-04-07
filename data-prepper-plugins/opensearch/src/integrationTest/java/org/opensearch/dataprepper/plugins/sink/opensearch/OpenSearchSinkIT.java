@@ -5,6 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.mockito.Mock;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,27 +27,18 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Mock;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;
 import org.opensearch.common.Strings;
 import org.opensearch.common.xcontent.XContentFactory;
 import org.opensearch.common.xcontent.XContentType;
-import org.opensearch.dataprepper.metrics.MetricNames;
-import org.opensearch.dataprepper.metrics.MetricsTestUtil;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 
 import javax.ws.rs.HttpMethod;
@@ -53,7 +53,6 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,15 +61,15 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.Date;
 
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.hasItems;
+import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.Matchers.closeTo;
@@ -80,6 +79,11 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchInteg
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.isOSBundle;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.waitForClusterStateUpdatesToFinish;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.wipeAllTemplates;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 
 public class OpenSearchSinkIT {
   private static final String PLUGIN_NAME = "opensearch";
@@ -95,6 +99,17 @@ public class OpenSearchSinkIT {
   
   @Mock
   private PluginFactory pluginFactory;
+
+  @Mock
+  private AcknowledgementSetManager acknowledgementSetManager;
+
+  @BeforeEach
+  public void setup() {
+    acknowledgementSetManager = mock(AcknowledgementSetManager.class);
+    lenient().doAnswer(a -> {
+            return null;
+    }).when(acknowledgementSetManager).releaseEventReference(any(), any(Boolean.class));
+  }
 
   @BeforeEach
   public void metricsInit() throws IOException {
@@ -113,7 +128,7 @@ public class OpenSearchSinkIT {
   @Test
   public void testInstantiateSinkRawSpanDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
     Request request = new Request(HttpMethod.HEAD, indexAlias);
@@ -140,7 +155,7 @@ public class OpenSearchSinkIT {
     MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     // Instantiate sink again
-    sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     // Make sure no new write index *-000001 is created under alias
     final String rolloverIndexName = String.format("%s-000002", indexAlias);
@@ -161,7 +176,7 @@ public class OpenSearchSinkIT {
     final Request request = new Request(HttpMethod.PUT, reservedIndexAlias);
     client.performRequest(request);
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     Assert.assertThrows(String.format(AbstractIndexManager.INDEX_ALIAS_USED_AS_INDEX_ERROR, reservedIndexAlias),
             RuntimeException.class, () -> sink.doInitialize());
   }
@@ -176,7 +191,7 @@ public class OpenSearchSinkIT {
 
     final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
 
@@ -247,7 +262,7 @@ public class OpenSearchSinkIT {
     final String expDLQFile = tempDirectory.getAbsolutePath() + "/test-dlq.txt";
     pluginSetting.getSettings().put(RetryConfiguration.DLQ_FILE, expDLQFile);
 
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
     sink.shutdown();
@@ -292,7 +307,7 @@ public class OpenSearchSinkIT {
   @Test
   public void testInstantiateSinkServiceMapDefault() throws IOException {
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     final String indexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
     final Request request = new Request(HttpMethod.HEAD, indexAlias);
@@ -317,7 +332,7 @@ public class OpenSearchSinkIT {
 
     final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(testDoc));
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
     final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
@@ -347,7 +362,7 @@ public class OpenSearchSinkIT {
     MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(265.0, 0));
 
     // Check restart for index already exists
-    sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.shutdown();
   }
@@ -358,7 +373,7 @@ public class OpenSearchSinkIT {
     final String testTemplateFile = Objects.requireNonNull(
             getClass().getClassLoader().getResource(TEST_TEMPLATE_V1_FILE)).getFile();
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     final Request request = new Request(HttpMethod.HEAD, testIndexAlias);
     final Response response = client.performRequest(request);
@@ -366,7 +381,7 @@ public class OpenSearchSinkIT {
     sink.shutdown();
 
     // Check restart for index already exists
-    sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.shutdown();
   }
@@ -379,7 +394,7 @@ public class OpenSearchSinkIT {
     final Map<String, Object> metadata = initializeConfigurationMetadata(null, indexAlias, testTemplateFile);
     metadata.put(IndexConfiguration.ISM_POLICY_FILE, TEST_CUSTOM_INDEX_POLICY_FILE);
     final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     Request request = new Request(HttpMethod.HEAD, indexAlias);
     Response response = client.performRequest(request);
@@ -405,7 +420,7 @@ public class OpenSearchSinkIT {
     MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
 
     // Instantiate sink again
-    sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     // Make sure no new write index *-000001 is created under alias
     final String rolloverIndexName = String.format("%s-000002", indexAlias);
@@ -429,7 +444,7 @@ public class OpenSearchSinkIT {
 
     // Create sink with template version 1
     PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFileV1);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
 
     Request getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
@@ -446,7 +461,7 @@ public class OpenSearchSinkIT {
 
     // Create sink with template version 2
     pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFileV2);
-    sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
@@ -463,7 +478,7 @@ public class OpenSearchSinkIT {
 
     // Create sink with template version 1 again
     pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFileV1);
-    sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
 
     getTemplateRequest = new Request(HttpMethod.GET, "/_template/" + expectedIndexTemplateName);
@@ -491,7 +506,7 @@ public class OpenSearchSinkIT {
     final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(generateCustomRecordJson(testIdField, testId)));
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -519,7 +534,7 @@ public class OpenSearchSinkIT {
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     pluginSetting.getSettings().put(IndexConfiguration.ACTION, BulkAction.CREATE.toString());
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -547,7 +562,7 @@ public class OpenSearchSinkIT {
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
 
@@ -568,16 +583,16 @@ public class OpenSearchSinkIT {
     final String expectedId = UUID.randomUUID().toString();
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-            .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
-            .withEventType("event")
-            .build();
+	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
+	    .withEventType("event")
+	    .build();
     testEvent.put(testDocumentIdField, expectedId);
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
     pluginSetting.getSettings().put(IndexConfiguration.DOCUMENT_ID_FIELD, testDocumentIdField);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
 
@@ -594,7 +609,7 @@ public class OpenSearchSinkIT {
     final String expectedRoutingField = UUID.randomUUID().toString();
     final String testIndexAlias = "test_index";
     final Event testEvent = JacksonEvent.builder()
-            .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
+	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
             .withEventType("event")
             .build();
     testEvent.put(testRoutingField, expectedRoutingField);
@@ -603,7 +618,7 @@ public class OpenSearchSinkIT {
 
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
     pluginSetting.getSettings().put(IndexConfiguration.ROUTING_FIELD, testRoutingField);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
 
@@ -633,7 +648,7 @@ public class OpenSearchSinkIT {
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
     final PluginSetting pluginSetting = generatePluginSetting(null, dynamicTestIndexAlias, null);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(testIndexAlias);
@@ -667,7 +682,7 @@ public class OpenSearchSinkIT {
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
     final PluginSetting pluginSetting = generatePluginSetting(null, dynamicTestIndexAlias, null);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expectedIndexAlias);
@@ -696,12 +711,11 @@ public class OpenSearchSinkIT {
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
     final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, null);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
     sink.output(testRecords);
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expectedIndexName);
     MatcherAssert.assertThat(retSources.size(), equalTo(1));
-    System.out.println(retSources);
     MatcherAssert.assertThat(retSources, hasItem(expectedMap));
     sink.shutdown();
   }
@@ -711,7 +725,7 @@ public class OpenSearchSinkIT {
     String invalidDatePattern = "yyyy-MM-dd HH:ss:mm";
     final String invalidTestIndexAlias = "test-index-%{"+invalidDatePattern+"}";
     final PluginSetting pluginSetting = generatePluginSetting(null, invalidTestIndexAlias, null);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     Assert.assertThrows(IllegalArgumentException.class, () -> sink.doInitialize());
   }
 
@@ -719,7 +733,7 @@ public class OpenSearchSinkIT {
   public void testOpenSearchIndexWithInvalidChars() throws IOException, InterruptedException {
     final String invalidTestIndexAlias = "test#-index";
     final PluginSetting pluginSetting = generatePluginSetting(null, invalidTestIndexAlias, null);
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     Assert.assertThrows(RuntimeException.class, () -> sink.doInitialize());
   }
 
@@ -745,7 +759,7 @@ public class OpenSearchSinkIT {
     metadata.put(ConnectionConfiguration.PASSWORD, password);
     metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, testIdField);
     final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
-    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    final OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
     sink.doInitialize();
 
     final String testTemplateFile = Objects.requireNonNull(
@@ -924,10 +938,9 @@ public class OpenSearchSinkIT {
 
     indices.stream()
             .filter(Objects::nonNull)
-            .filter(Predicate.not(indexName -> indexName.startsWith(".opendistro-")))
-            .filter(Predicate.not(indexName -> indexName.startsWith(".opendistro_")))
-            .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch-")))
-            .filter(Predicate.not(indexName -> indexName.startsWith(".opensearch_")))
+	    .filter(indexName -> !".opendistro_security".equals(indexName))
+	    .filter(indexName -> !".opendistro-reports-definitions".equals(indexName))
+	    .filter(indexName -> !".opendistro-reports-instances".equals(indexName))
             .forEach(indexName -> {
               try {
                 client.performRequest(new Request("DELETE", "/" + indexName));

@@ -36,8 +36,10 @@ public class DlqObject {
 
     private final String timestamp;
 
+    private final Object eventHandle;
+
     private DlqObject(final String pluginId, final String pluginName, final String pipelineName,
-                      final String timestamp, final Object failedData) {
+                      final String timestamp, final Object failedData, final Object eventHandle) {
 
         checkNotNull(pluginId, "pluginId cannot be null");
         checkArgument(!pluginId.isEmpty(), "pluginId cannot be an empty string");
@@ -51,6 +53,7 @@ public class DlqObject {
         this.pluginName = pluginName;
         this.pipelineName = pipelineName;
         this.failedData = failedData;
+        this.eventHandle = eventHandle;
 
         this.timestamp = StringUtils.isEmpty(timestamp) ? FORMATTER.format(Instant.now()) : timestamp;
     }
@@ -75,6 +78,10 @@ public class DlqObject {
         return timestamp;
     }
 
+    public Object getEventHandle() {
+        return eventHandle;
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
@@ -84,6 +91,7 @@ public class DlqObject {
             && Objects.equals(pluginId, that.pluginId)
             && Objects.equals(pluginName, that.pluginName)
             && Objects.equals(pipelineName, that.pipelineName)
+            && Objects.equals(eventHandle, that.eventHandle)
             && Objects.equals(timestamp, that.getTimestamp());
     }
 
@@ -113,6 +121,7 @@ public class DlqObject {
         private String pluginName;
         private String pipelineName;
         private Object failedData;
+        private Object eventHandle;
 
         private String timestamp;
 
@@ -141,13 +150,18 @@ public class DlqObject {
             return this;
         }
 
+        public Builder withEventHandle(final Object eventHandle) {
+            this.eventHandle = eventHandle;
+            return this;
+        }
+
         public Builder withTimestamp(final Instant instant) {
             this.timestamp = FORMATTER.format(instant);
             return this;
         }
 
         public DlqObject build() {
-            return new DlqObject(this.pluginId, this.pluginName, this.pipelineName, this.timestamp, this.failedData);
+            return new DlqObject(this.pluginId, this.pluginName, this.pipelineName, this.timestamp, this.failedData, this.eventHandle);
         }
 
     }

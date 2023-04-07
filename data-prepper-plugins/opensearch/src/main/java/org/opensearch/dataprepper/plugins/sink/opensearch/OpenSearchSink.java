@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
@@ -43,6 +44,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsP
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +80,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private IndexManager indexManager;
   private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
+  private AcknowledgementSetManager acknowledgementSetManager;
   private final long bulkSize;
   private final IndexType indexType;
   private final String documentIdField;
@@ -100,7 +103,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private DlqProvider dlqProvider;
 
   @DataPrepperPluginConstructor
-  public OpenSearchSink(final PluginSetting pluginSetting, final PluginFactory pluginFactory) {
+  public OpenSearchSink(final PluginSetting pluginSetting,
+                        final PluginFactory pluginFactory,
+                        final AcknowledgementSetManager acknowledgementSetManager) {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
@@ -113,6 +118,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
+    this.acknowledgementSetManager = acknowledgementSetManager;
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
     this.failedBulkOperationConverter = new FailedBulkOperationConverter(pluginSetting.getPipelineName(), pluginSetting.getName(),
         pluginSetting.getName());
@@ -173,6 +179,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             this::logFailure,
             pluginMetrics,
             maxRetries,
+            acknowledgementSetManager,
             bulkRequestSupplier,
             pluginSetting);
 
@@ -192,7 +199,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       return;
     }
 
-    AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
+    AccumulatingBulkRequest<BulkOperationWithHandle, BulkRequest> bulkRequest = bulkRequestSupplier.get();
 
     for (final Record<Event> record : records) {
       final Event event = record.getData();
@@ -217,7 +224,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
         docId.ifPresent(createOperationBuilder::id);
         routing.ifPresent(createOperationBuilder::routing);
-        
+
         bulkOperation = new BulkOperation.Builder()
                 .create(createOperationBuilder.build())
                 .build();
@@ -239,12 +246,13 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
       }
 
-      final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperation);
+      BulkOperationWithHandle bulkOperationWithHandle = new BulkOperationWithHandle(bulkOperation, event.getEventHandle());
+      final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWithHandle);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);
         bulkRequest = bulkRequestSupplier.get();
       }
-      bulkRequest.addOperation(bulkOperation);
+      bulkRequest.addOperation(bulkOperationWithHandle);
     }
 
     // Flush the remaining requests
@@ -284,24 +292,35 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
         final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
+        EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
               BulkOperationWriter.dlqObjectToString(dlqObject), message));
+          acknowledgementSetManager.releaseEventReference(eventHandle, true);
         } catch (final IOException e) {
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
+          acknowledgementSetManager.releaseEventReference(eventHandle, false);
         }
       });
     } else if (dlqWriter != null) {
       try {
         dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
+        dlqObjects.forEach((dlqObject) -> {
+            EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
+            acknowledgementSetManager.releaseEventReference(eventHandle, true);
+        });
       } catch (final IOException e) {
         dlqObjects.forEach(dlqObject -> {
+          EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
+          acknowledgementSetManager.releaseEventReference(eventHandle, false);
         });
       }
     } else {
       dlqObjects.forEach(dlqObject -> {
         LOG.warn(SENSITIVE, "Document [{}] has failure.", dlqObject.getFailedData(), failure);
+        EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
+        acknowledgementSetManager.releaseEventReference(eventHandle, false);
       });
     }
   }

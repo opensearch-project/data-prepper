@@ -1,17 +1,17 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.dlq;
 
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWithHandle;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 
 import java.util.Objects;
 
 public class FailedBulkOperation {
 
-    private final BulkOperation bulkOperation;
+    private final BulkOperationWithHandle bulkOperation;
     private final BulkResponseItem bulkResponseItem;
     private final Throwable failure;
 
-    private FailedBulkOperation(final BulkOperation bulkOperation, final BulkResponseItem bulkResponseItem, final Throwable failure) {
+    private FailedBulkOperation(final BulkOperationWithHandle bulkOperation, final BulkResponseItem bulkResponseItem, final Throwable failure) {
         Objects.requireNonNull(bulkOperation);
         this.bulkOperation = bulkOperation;
         if (bulkResponseItem == null && failure == null) {
@@ -21,7 +21,7 @@ public class FailedBulkOperation {
         this.failure = failure;
     }
 
-    public BulkOperation getBulkOperation() {
+    public BulkOperationWithHandle getBulkOperation() {
         return bulkOperation;
     }
 
@@ -67,11 +67,11 @@ public class FailedBulkOperation {
 
     public static class Builder {
 
-        private BulkOperation bulkOperation;
+        private BulkOperationWithHandle bulkOperation;
         private BulkResponseItem bulkResponseItem;
         private Throwable failure;
 
-        public Builder withBulkOperation(final BulkOperation bulkOperation) {
+        public Builder withBulkOperation(final BulkOperationWithHandle bulkOperation) {
             this.bulkOperation = bulkOperation;
             return this;
         }
