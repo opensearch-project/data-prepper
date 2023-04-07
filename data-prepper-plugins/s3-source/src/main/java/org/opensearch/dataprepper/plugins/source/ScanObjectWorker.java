@@ -59,7 +59,6 @@ public class ScanObjectWorker implements Runnable{
         this.bufferTimeout = s3ObjectRequest.getBufferTimeout();
         this.eventMetadataModifier = s3ObjectRequest.getEventConsumer();
         this.bucketOwnerProvider = s3ObjectRequest.getBucketOwnerProvider();
-
     }
 
     /**
@@ -78,12 +77,14 @@ public class ScanObjectWorker implements Runnable{
         final S3ObjectRequest.Builder s3ObjectRequestBuilder = new S3ObjectRequest.Builder(buffer, numberOfRecordsToAccumulate,
                 bufferTimeout, s3ObjectPluginMetrics);
         final S3ObjectHandler s3ObjectHandler;
-        if(scanOptionsBuilder.getQuery()!=null){
-            S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.queryStatement(scanOptionsBuilder.getQuery())
+        if(scanOptionsBuilder.getExpression() != null){
+            S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.expression(scanOptionsBuilder.getExpression())
                     .serializationFormatOption(scanOptionsBuilder.getSerializationFormatOption())
+                    .expressionType(scanOptionsBuilder.getExpressionType())
                     .s3AsyncClient(s3AsyncClient).compressionType(scanOptionsBuilder.getCompressionType())
                     .s3SelectResponseHandler(new S3SelectResponseHandler()).eventConsumer(eventMetadataModifier)
-                    .fileHeaderInfo(scanOptionsBuilder.getCsvHeaderInfo()).build();
+                    .s3SelectCSVOption(scanOptionsBuilder.getS3SelectCSVOption())
+                    .s3SelectJsonOption(scanOptionsBuilder.getS3SelectJsonOption()).build();
             s3ObjectHandler = new S3SelectObjectWorker(s3ObjectRequest);
         } else {
             final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.bucketOwnerProvider(bucketOwnerProvider)

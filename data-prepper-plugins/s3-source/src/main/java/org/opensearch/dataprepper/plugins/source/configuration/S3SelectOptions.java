@@ -13,8 +13,8 @@ import jakarta.validation.constraints.NotBlank;
  */
 public class S3SelectOptions {
 
-	static final String DEFAULT_EXPRESSION_TYPE = "SQL";
-	static final String DEFAULT_COMPRESSION_TYPE = "none";
+	public static final String DEFAULT_EXPRESSION_TYPE = "SQL";
+	public static final String DEFAULT_COMPRESSION_TYPE = "none";
 	@JsonProperty("expression")
 	@NotBlank(message = "expression cannot be null or empty")
 	private String expression;

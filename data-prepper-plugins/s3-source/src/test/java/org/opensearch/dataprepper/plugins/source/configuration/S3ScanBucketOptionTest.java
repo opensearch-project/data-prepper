@@ -6,8 +6,8 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 
 import org.junit.Test;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
 
@@ -25,11 +25,11 @@ public class S3ScanBucketOptionTest {
         final PluginModel plugInModel = mock(PluginModel.class);
         final List<String> stringList = Arrays.asList("file1.csv", "file2.csv");
         final S3SelectOptions s3SelectOptions = mock(S3SelectOptions.class);
-        reflectivelySetField(s3ScanBucketOption,"name",bucketName);
-        reflectivelySetField(s3ScanBucketOption,"codec",plugInModel);
-        reflectivelySetField(s3ScanBucketOption,"s3SelectOptions",s3SelectOptions);
-        reflectivelySetField(s3ScanBucketOption,"keyPath", stringList);
-        reflectivelySetField(s3ScanBucketOption,"compression", CompressionOption.NONE);
+        ReflectivelySetField.setField(S3ScanBucketOption.class,s3ScanBucketOption,"name",bucketName);
+        ReflectivelySetField.setField(S3ScanBucketOption.class,s3ScanBucketOption,"codec",plugInModel);
+        ReflectivelySetField.setField(S3ScanBucketOption.class,s3ScanBucketOption,"s3SelectOptions",s3SelectOptions);
+        ReflectivelySetField.setField(S3ScanBucketOption.class,s3ScanBucketOption,"keyPath", stringList);
+        ReflectivelySetField.setField(S3ScanBucketOption.class,s3ScanBucketOption,"compression", CompressionOption.NONE);
 
         assertThat(s3ScanBucketOption.getName(), notNullValue());
         assertThat(s3ScanBucketOption.getCodec(), notNullValue());
@@ -40,15 +40,5 @@ public class S3ScanBucketOptionTest {
         assertThat(s3ScanBucketOption.getS3SelectOptions(),sameInstance(s3SelectOptions));
         assertThat(s3ScanBucketOption.getKeyPath(),sameInstance(stringList));
         assertThat(s3ScanBucketOption.getCompression(),sameInstance(CompressionOption.NONE));
-    }
-    private void reflectivelySetField(final S3ScanBucketOption s3ScanBucketOption, final String fieldName, final Object value)
-            throws NoSuchFieldException, IllegalAccessException {
-        final Field field = S3ScanBucketOption.class.getDeclaredField(fieldName);
-        try {
-            field.setAccessible(true);
-            field.set(s3ScanBucketOption, value);
-        } finally {
-            field.setAccessible(false);
-        }
     }
 }

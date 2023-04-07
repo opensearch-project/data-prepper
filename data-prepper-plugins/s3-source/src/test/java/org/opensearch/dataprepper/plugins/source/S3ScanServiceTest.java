@@ -15,13 +15,13 @@ import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanScanOptions;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -84,12 +84,12 @@ public class S3ScanServiceTest {
         service.start();
         final List<ScanOptionsBuilder> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder,notNullValue());
-        assertThat(scanOptionsBuilder.get(0).getQuery(),nullValue());
+        assertThat(scanOptionsBuilder.get(0).getExpression(),nullValue());
         assertThat(scanOptionsBuilder.get(0).getKeys(),sameInstance(keyList));
     }
 
     @Test
-    public void testS3ScanServiceWithS3SelectConfiguration() throws IOException {
+    public void testS3ScanServiceWithS3SelectConfiguration() {
         String bucketName="my-bucket-1";
         String key = "file1.csv";
         final List<String> keyList = Arrays.asList(key);
@@ -102,9 +102,11 @@ public class S3ScanServiceTest {
         S3ScanBucketOptions bucket = mock(S3ScanBucketOptions.class);
         final S3ScanBucketOption s3SelectOptions = mock(S3ScanBucketOption.class);
         final S3SelectOptions s3Select = mock(S3SelectOptions.class);
+        final S3SelectCSVOption csvOption = mock(S3SelectCSVOption.class);
         when(s3Select.getExpression()).thenReturn(queryStatement);
         when(s3Select.getS3SelectSerializationFormatOption()).thenReturn(serializationFormatOption);
-        when(s3Select.getCsvFileHeaderInfo()).thenReturn("NONE");
+        when(s3Select.getS3SelectCSVOption()).thenReturn(csvOption);
+        when(s3Select.getCompressionType()).thenReturn("none");
         when(s3SelectOptions.getName()).thenReturn(bucketName);
         when(s3SelectOptions.getS3SelectOptions()).thenReturn(s3Select);
         when(s3SelectOptions.getKeyPath()).thenReturn(keyList);
@@ -125,7 +127,7 @@ public class S3ScanServiceTest {
         service.start();
         final List<ScanOptionsBuilder> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder,notNullValue());
-        assertThat(scanOptionsBuilder.get(0).getQuery(),sameInstance(queryStatement));
+        assertThat(scanOptionsBuilder.get(0).getExpression(),sameInstance(queryStatement));
         assertThat(scanOptionsBuilder.get(0).getBucket(),sameInstance(bucketName));
         assertThat(scanOptionsBuilder.get(0).getKeys(),sameInstance(keyList));
         assertThat(scanOptionsBuilder.get(0).getSerializationFormatOption(),sameInstance(serializationFormatOption));

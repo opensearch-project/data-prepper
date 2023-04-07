@@ -129,7 +129,9 @@ class S3ScanObjectWorkerTest {
         final String startDateTime="2023-03-07T10:00:00";
         final String bucketName = "my-bucket-2";
         final List<String> keyPathList = Arrays.asList("sample.csv");
-        final ScanOptionsBuilder scanOptionsBuilder = new ScanOptionsBuilder().setStartDate(startDateTime).setRange(range).setBucket(bucketName).setQuery(null).setSerializationFormatOption(null).setKeys(keyPathList).setCodec(codec).setCompressionOption(CompressionOption.NONE);
+        final ScanOptionsBuilder scanOptionsBuilder = new ScanOptionsBuilder().setStartDate(startDateTime).setRange(range)
+                .setBucket(bucketName).setExpression(null).setSerializationFormatOption(null).setKeys(keyPathList)
+                .setCodec(codec).setCompressionOption(CompressionOption.NONE);
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
@@ -165,8 +167,9 @@ class S3ScanObjectWorkerTest {
         final String bucketName = "my-bucket-1";
         final List<String> keyPathList = Arrays.asList("file1.csv");
         final S3SelectSerializationFormatOption s3SelectSerializationFormatOption = S3SelectSerializationFormatOption.valueOf(dataSerializingFormat);
-        final ScanOptionsBuilder scanOptionsBuilder = new ScanOptionsBuilder().setStartDate(startDateTime).setRange(range).setBucket(bucketName).setQuery(queryStatement).setSerializationFormatOption(s3SelectSerializationFormatOption).setKeys(keyPathList).setCodec(null).setCompressionOption(CompressionOption.NONE);
-
+        final ScanOptionsBuilder scanOptionsBuilder = new ScanOptionsBuilder().setStartDate(startDateTime)
+                .setRange(range).setBucket(bucketName).setExpression(queryStatement)
+                .setSerializationFormatOption(s3SelectSerializationFormatOption).setKeys(keyPathList).setCodec(null).setCompressionOption(CompressionOption.NONE);
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
