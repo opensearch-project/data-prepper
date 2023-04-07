@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
 import org.opensearch.dataprepper.plugins.InMemorySourceAccessor;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -202,6 +203,6 @@ class PipelinesWithAcksIT {
             assertThat(outputRecords, not(empty()));
             assertThat(outputRecords.size(), equalTo(3*numRecords));
         });
-        assertTrue(!inMemorySourceAccessor.getAckReceived());
+        assertFalse(inMemorySourceAccessor.getAckReceived());
     }
 }

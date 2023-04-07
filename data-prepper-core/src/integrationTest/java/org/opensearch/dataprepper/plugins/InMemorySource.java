@@ -52,9 +52,9 @@ public class InMemorySource implements Source<Record<Event>> {
     @Override
     public void start(final Buffer<Record<Event>> buffer) {
         if (enabledAcks) {
-            runningThread = new Thread(new SourceRunner(inMemorySourceAccessor, acknowledgementSetManager, buffer));
+            runningThread = new Thread(new AcknowledgementSourceRunner(acknowledgementSetManager, buffer));
         } else {
-            runningThread = new Thread(new SourceRunner(null, null, buffer));
+            runningThread = new Thread(new SourceRunner(buffer));
         }
 
         runningThread.start();
@@ -73,13 +73,38 @@ public class InMemorySource implements Source<Record<Event>> {
 
     private class SourceRunner implements Runnable {
         private final Buffer<Record<Event>> buffer;
+
+        SourceRunner(final Buffer<Record<Event>> buffer) {
+            this.buffer = buffer;
+        }
+
+        protected void writeToBuffer(final List<Record<Event>> records) throws Exception {
+            if(!records.isEmpty()) {
+                buffer.writeAll(records, 200);
+            } else {
+                Thread.sleep(10);
+            }
+        }
+
+        @Override
+        public void run() {
+            while (!isStopped) {
+                try {
+                    final List<Record<Event>> records = inMemorySourceAccessor.read(testingKey);
+                    writeToBuffer(records);
+                } catch (final Exception ex) {
+                    LOG.error("Error during source loop.", ex);
+                }
+            }
+        }
+    }
+
+    private class AcknowledgementSourceRunner extends SourceRunner {
         private final AcknowledgementSetManager acknowledgementSetManager;
         private AtomicBoolean ackReceived;
-        private final InMemorySourceAccessor inMemorySourceAccessor;
 
-        SourceRunner(final InMemorySourceAccessor inMemorySourceAccessor, final AcknowledgementSetManager acknowledgementSetManager, final Buffer<Record<Event>> buffer) {
-            this.buffer = buffer;
-            this.inMemorySourceAccessor = inMemorySourceAccessor;
+        AcknowledgementSourceRunner(final AcknowledgementSetManager acknowledgementSetManager, final Buffer<Record<Event>> buffer) {
+            super(buffer);
             this.acknowledgementSetManager = acknowledgementSetManager;
             this.ackReceived = new AtomicBoolean(false);
         }
@@ -89,21 +114,19 @@ public class InMemorySource implements Source<Record<Event>> {
             while (!isStopped) {
                 try {
                     final List<Record<Event>> records = inMemorySourceAccessor.read(testingKey);
-                    if (acknowledgementSetManager != null) {
-                        AcknowledgementSet ackSet = acknowledgementSetManager.create((result) -> {
-                                inMemorySourceAccessor.setAckReceived(result);
-                            }, Duration.ofSeconds(5));
-                        records.stream().forEach((record) -> { ackSet.add(record.getData()); });
-                    }
-                    if(!records.isEmpty()) {
-                        buffer.writeAll(records, 200);
-                    } else {
-                        Thread.sleep(10);
-                    }
+                    AcknowledgementSet ackSet =
+                            acknowledgementSetManager.create((result) ->
+                                {
+                                    inMemorySourceAccessor.setAckReceived(result);
+                                },
+                                Duration.ofSeconds(5));
+                    records.stream().forEach((record) -> { ackSet.add(record.getData()); });
+                    writeToBuffer(records);
                 } catch (final Exception ex) {
                     LOG.error("Error during source loop.", ex);
                 }
             }
         }
     }
+
 }
