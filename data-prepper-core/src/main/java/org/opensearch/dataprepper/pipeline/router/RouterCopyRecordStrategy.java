@@ -135,7 +135,9 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         return newRecords;
     }
 
-    // for testing
+    /*
+     * for testing
+     */
     public AcknowledgementSetManager getAcknowledgementSetManager() {
         return acknowledgementSetManager;
     }
