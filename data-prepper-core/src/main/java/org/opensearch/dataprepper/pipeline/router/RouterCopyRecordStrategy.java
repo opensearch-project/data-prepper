@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.event.EventBuilder;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.acknowledgements.InactiveAcknowledgementSetManager;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -59,7 +60,7 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
     }
 
     private void acquireEventReference(final Record record) {
-        if (acknowledgementSetManager == null || record.getData() == null) {
+        if (acknowledgementSetManager == InactiveAcknowledgementSetManager.getInstance() || record.getData() == null) {
             return;
         }
         if (referencedRecords.contains(record) || ((routedRecords != null) && routedRecords.contains(record))) {
@@ -133,13 +134,6 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
             newRecords.add(getRecord(record));
         }
         return newRecords;
-    }
-
-    /*
-     * for testing
-     */
-    public AcknowledgementSetManager getAcknowledgementSetManager() {
-        return acknowledgementSetManager;
     }
 
 }

@@ -13,6 +13,8 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
@@ -29,7 +31,6 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.acknowledgements.InactiveAcknowledgementSetManager;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 
 import java.time.Duration;
@@ -73,6 +74,8 @@ class PipelineTests {
     private Duration sinkShutdownTimeout;
     private Duration peerForwarderDrainTimeout;
     private EventFactory eventFactory;
+    private JacksonEvent event;
+    private EventHandle eventHandle;
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @BeforeEach
@@ -332,13 +335,20 @@ class PipelineTests {
 
             doAnswer(a -> {
                 RouterCopyRecordStrategy routerCopyRecordStrategy = (RouterCopyRecordStrategy)a.getArgument(2);
-                assertThat(routerCopyRecordStrategy.getAcknowledgementSetManager(), equalTo(acknowledgementSetManager));
+                Record rec = records.get(0);
+                event = mock(JacksonEvent.class);
+                eventHandle = mock(EventHandle.class);
+                when(event.getEventHandle()).thenReturn(eventHandle);
+                when(rec.getData()).thenReturn(event);
+                routerCopyRecordStrategy.getRecord(rec);
+                routerCopyRecordStrategy.getRecord(rec);
                 return null;
             }).when(router)
               .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
             Pipeline pipeline = createObjectUnderTest();
             when(mockSource.areAcknowledgementsEnabled()).thenReturn(true);
             pipeline.publishToSinks(records);
+            verify(acknowledgementSetManager).acquireEventReference(any(EventHandle.class));
 
             verify(router)
                     .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
@@ -350,11 +360,18 @@ class PipelineTests {
 
             doAnswer(a -> {
                 RouterCopyRecordStrategy routerCopyRecordStrategy = (RouterCopyRecordStrategy)a.getArgument(2);
-                assertThat(routerCopyRecordStrategy.getAcknowledgementSetManager(), equalTo(InactiveAcknowledgementSetManager.getInstance()));
+                Record rec = records.get(0);
+                event = mock(JacksonEvent.class);
+                eventHandle = mock(EventHandle.class);
+                when(event.getEventHandle()).thenReturn(null);
+                when(rec.getData()).thenReturn(event);
+                routerCopyRecordStrategy.getRecord(rec);
+                routerCopyRecordStrategy.getRecord(rec);
                 return null;
             }).when(router)
               .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
             createObjectUnderTest().publishToSinks(records);
+            verifyNoInteractions(acknowledgementSetManager);
 
             verify(router)
                     .route(anyCollection(), eq(dataFlowComponents), any(RouterGetRecordStrategy.class), any(BiConsumer.class));
