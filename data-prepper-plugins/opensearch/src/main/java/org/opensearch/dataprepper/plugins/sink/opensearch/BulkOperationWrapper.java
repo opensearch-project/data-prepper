@@ -9,15 +9,15 @@ import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 public class BulkOperationWrapper {
-    private EventHandle eventHandle;
-    private BulkOperation bulkOperation;
+    private final EventHandle eventHandle;
+    private final BulkOperation bulkOperation;
 
     public BulkOperationWrapper(final BulkOperation bulkOperation) {
         this.bulkOperation = bulkOperation;
         this.eventHandle = null;
     }
 
-    public BulkOperationWrapper(final BulkOperation bulkOperation, EventHandle eventHandle) {
+    public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle) {
         this.bulkOperation = bulkOperation;
         this.eventHandle = eventHandle;
     }

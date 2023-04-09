@@ -70,7 +70,7 @@ class JavaClientAccumulatingBulkRequestTest {
     void getOperationsCount_returns_the_correct_operation_count(final int operationCount) {
         final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
         for (int i = 0; i < operationCount; i++) {
-            BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocument()));
+            final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocument()));
             objectUnderTest.addOperation(bulkOperation);
         }
 
@@ -83,7 +83,7 @@ class JavaClientAccumulatingBulkRequestTest {
         final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
         final long arbitraryDocumentSize = 175;
         for (int i = 0; i < operationCount; i++) {
-            BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocumentWithLength(arbitraryDocumentSize)));
+            final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocumentWithLength(arbitraryDocumentSize)));
             objectUnderTest.addOperation(bulkOperation);
         }
 
@@ -146,7 +146,7 @@ class JavaClientAccumulatingBulkRequestTest {
 
     @Test
     void estimateSizeInBytesWithDocument_on_new_object_returns_operation_overhead_if_no_document() {
-        BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(null));
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(null));
 
         assertThat(createObjectUnderTest().estimateSizeInBytesWithDocument(bulkOperation),
                 equalTo((long) JavaClientAccumulatingBulkRequest.OPERATION_OVERHEAD));

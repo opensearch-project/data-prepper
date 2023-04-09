@@ -80,7 +80,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private IndexManager indexManager;
   private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
-  private AcknowledgementSetManager acknowledgementSetManager;
+  private final AcknowledgementSetManager acknowledgementSetManager;
   private final long bulkSize;
   private final IndexType indexType;
   private final String documentIdField;
@@ -246,13 +246,13 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
       }
 
-      BulkOperationWrapper bulkOperationWithHandle = new BulkOperationWrapper(bulkOperation, event.getEventHandle());
-      final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWithHandle);
+      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle());
+      final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);
         bulkRequest = bulkRequestSupplier.get();
       }
-      bulkRequest.addOperation(bulkOperationWithHandle);
+      bulkRequest.addOperation(bulkOperationWrapper);
     }
 
     // Flush the remaining requests
@@ -292,7 +292,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
         final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
-        EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
+        final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
               BulkOperationWriter.dlqObjectToString(dlqObject), message));
@@ -306,12 +306,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       try {
         dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
         dlqObjects.forEach((dlqObject) -> {
-            EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
+            final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
             acknowledgementSetManager.releaseEventReference(eventHandle, true);
         });
       } catch (final IOException e) {
         dlqObjects.forEach(dlqObject -> {
-          EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
+          final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
           acknowledgementSetManager.releaseEventReference(eventHandle, false);
         });
@@ -319,7 +319,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     } else {
       dlqObjects.forEach(dlqObject -> {
         LOG.warn(SENSITIVE, "Document [{}] has failure.", dlqObject.getFailedData(), failure);
-        EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
+        final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
         acknowledgementSetManager.releaseEventReference(eventHandle, false);
       });
     }
