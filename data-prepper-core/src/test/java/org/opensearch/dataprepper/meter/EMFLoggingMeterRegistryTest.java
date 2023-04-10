@@ -26,6 +26,7 @@ import software.amazon.cloudwatchlogs.emf.environment.EnvironmentProvider;
 import software.amazon.cloudwatchlogs.emf.logger.MetricsLogger;
 import software.amazon.cloudwatchlogs.emf.model.DimensionSet;
 import software.amazon.cloudwatchlogs.emf.model.MetricsContext;
+import software.amazon.cloudwatchlogs.emf.model.Unit;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -34,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.micrometer.core.instrument.Meter.Id;
 import static io.micrometer.core.instrument.Meter.Type;
@@ -87,6 +90,19 @@ class EMFLoggingMeterRegistryTest {
     }
 
     @Test
+    void snapshotGaugeDataValid() {
+        final Gauge gauge = Gauge.builder("gauge", 1d, Number::doubleValue)
+                .tags(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.gaugeData(gauge)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(1));
+        final EMFLoggingMeterRegistry.MetricDataPoint metricDataPoint = metricDataPoints.get(0);
+        assertThat(metricDataPoint.key, equalTo("gauge.value"));
+        assertThat(metricDataPoint.value, equalTo(1d));
+        assertThat(metricDataPoint.unit, equalTo(Unit.NONE));
+    }
+
+    @Test
     void snapshotGaugeMetricsLoggerWhenNaNShouldNotAdd() throws JsonProcessingException {
         final Gauge gauge = Gauge.builder("gauge", Double.NaN, Number::doubleValue)
                 .tags(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
@@ -98,6 +114,15 @@ class EMFLoggingMeterRegistryTest {
     }
 
     @Test
+    void snapshotGaugeDataWhenNaNShouldNotAdd() {
+        final Gauge gauge = Gauge.builder("gauge", Double.NaN, Number::doubleValue)
+                .tags(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.gaugeData(gauge)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(0));
+    }
+
+    @Test
     void snapshotCounterMetricsLoggerValid() throws JsonProcessingException {
         final Counter counter = Counter.builder("counter").tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final MetricsLogger metricsLogger = registrySnapshot.counterDataMetricsLogger(counter);
@@ -105,6 +130,18 @@ class EMFLoggingMeterRegistryTest {
         assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
         assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
         assertThat(hasMetric(context, counter.getId(), "count"), is(true));
+    }
+
+    @Test
+    void snapshotCounterMetricDataValid() throws JsonProcessingException {
+        final Counter counter = Counter.builder("counter").tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.counterData(counter)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(1));
+        final EMFLoggingMeterRegistry.MetricDataPoint metricDataPoint = metricDataPoints.get(0);
+        assertThat(metricDataPoint.key, equalTo("counter.count"));
+        assertThat(metricDataPoint.value, equalTo(0d));
+        assertThat(metricDataPoint.unit, equalTo(Unit.COUNT));
     }
 
     @Test
