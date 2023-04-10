@@ -89,27 +89,12 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     @Override
     protected void publish() {
         if (config.enabled()) {
-            metricsLoggers2().forEach(MetricsLogger::flush);
+            metricsLoggers().forEach(MetricsLogger::flush);
         }
     }
 
     //VisibleForTesting
     List<MetricsLogger> metricsLoggers() {
-        final Snapshot snapshot = new Snapshot();
-        return getMeters().stream().map(m -> m.match(
-                snapshot::gaugeDataMetricsLogger,
-                snapshot::counterDataMetricsLogger,
-                snapshot::timerDataMetricsLogger,
-                snapshot::summaryDataMetricsLogger,
-                snapshot::longTaskTimerDataMetricsLogger,
-                snapshot::timeGaugeDataMetricsLogger,
-                snapshot::functionCounterDataMetricsLogger,
-                snapshot::functionTimerDataMetricsLogger,
-                snapshot::metricDataMetricsLogger)
-        ).collect(toList());
-    }
-
-    List<MetricsLogger> metricsLoggers2() {
         final Snapshot snapshot = new Snapshot();
         final Map<List<Tag>, List<Meter>> tagsToMeters = getMeters().stream().collect(
                 groupingBy(meter -> meter.getId().getConventionTags(config().namingConvention())));
@@ -164,40 +149,16 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
     class Snapshot {
         final Instant timestamp = Instant.ofEpochMilli(clock.wallTime());
 
-        MetricsLogger gaugeDataMetricsLogger(final Gauge gauge) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(gauge.getId());
-            addMetricDatum(gauge.getId(), "value", gauge.value(), metricsLogger);
-            return metricsLogger;
-        }
-
         Stream<MetricDataPoint> gaugeData(final Gauge gauge) {
             return Stream.ofNullable(
                     metricDataPoint(gauge.getId(), "value", gauge.value())
             );
         }
 
-        MetricsLogger counterDataMetricsLogger(final Counter counter) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(counter.getId());
-            addMetricDatum(counter.getId(), "count", Unit.COUNT, counter.count(), metricsLogger);
-            return metricsLogger;
-        }
-
         Stream<MetricDataPoint> counterData(final Counter counter) {
             return Stream.ofNullable(
                     metricDataPoint(counter.getId(), "count", Unit.COUNT, counter.count())
             );
-        }
-
-        MetricsLogger timerDataMetricsLogger(final Timer timer) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(timer.getId());
-            addMetricDatum(timer.getId(), "sum", getBaseTimeUnit().name(), timer.totalTime(getBaseTimeUnit()), metricsLogger);
-            final long count = timer.count();
-            addMetricDatum(timer.getId(), "count", Unit.COUNT, count, metricsLogger);
-            if (count > 0) {
-                addMetricDatum(timer.getId(), "avg", getBaseTimeUnit().name(), timer.mean(getBaseTimeUnit()), metricsLogger);
-                addMetricDatum(timer.getId(), "max", getBaseTimeUnit().name(), timer.max(getBaseTimeUnit()), metricsLogger);
-            }
-            return metricsLogger;
         }
 
         Stream<MetricDataPoint> timerData(final Timer timer) {
@@ -220,18 +181,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             return metrics.build();
         }
 
-        MetricsLogger summaryDataMetricsLogger(final DistributionSummary summary) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(summary.getId());
-            addMetricDatum(summary.getId(), "sum", summary.totalAmount(), metricsLogger);
-            final long count = summary.count();
-            addMetricDatum(summary.getId(), "count", Unit.COUNT, count, metricsLogger);
-            if (count > 0) {
-                addMetricDatum(summary.getId(), "avg", summary.mean(), metricsLogger);
-                addMetricDatum(summary.getId(), "max", summary.max(), metricsLogger);
-            }
-            return metricsLogger;
-        }
-
         Stream<MetricDataPoint> summaryData(final DistributionSummary summary) {
             final Stream.Builder<MetricDataPoint> metrics = Stream.builder();
             metrics.add(metricDataPoint(summary.getId(), "sum", summary.totalAmount()));
@@ -244,13 +193,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             return metrics.build();
         }
 
-        MetricsLogger longTaskTimerDataMetricsLogger(final LongTaskTimer longTaskTimer) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(longTaskTimer.getId());
-            addMetricDatum(longTaskTimer.getId(), "activeTasks", longTaskTimer.activeTasks(), metricsLogger);
-            addMetricDatum(longTaskTimer.getId(), "duration", longTaskTimer.duration(getBaseTimeUnit()), metricsLogger);
-            return metricsLogger;
-        }
-
         Stream<MetricDataPoint> longTaskTimerData(final LongTaskTimer longTaskTimer) {
             final Stream.Builder<MetricDataPoint> metrics = Stream.builder();
             metrics.add(metricDataPoint(longTaskTimer.getId(), "activeTasks", longTaskTimer.activeTasks()));
@@ -258,44 +200,12 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             return metrics.build();
         }
 
-        MetricsLogger timeGaugeDataMetricsLogger(final TimeGauge gauge) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(gauge.getId());
-            addMetricDatum(gauge.getId(), "value", gauge.value(getBaseTimeUnit()), metricsLogger);
-            return metricsLogger;
-        }
-
         Stream<MetricDataPoint> timeGaugeData(final TimeGauge gauge) {
-            final Stream.Builder<MetricDataPoint> metrics = Stream.builder();
-            metrics.add(metricDataPoint(gauge.getId(), "value", gauge.value(getBaseTimeUnit())));
-            return metrics.build();
-        }
-
-        MetricsLogger functionCounterDataMetricsLogger(final FunctionCounter counter) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(counter.getId());
-            addMetricDatum(counter.getId(), "count", Unit.COUNT, counter.count(), metricsLogger);
-            return metricsLogger;
+            return Stream.ofNullable(metricDataPoint(gauge.getId(), "value", gauge.value(getBaseTimeUnit())));
         }
 
         Stream<MetricDataPoint> functionCounterData(final FunctionCounter counter) {
-            final Stream.Builder<MetricDataPoint> metrics = Stream.builder();
-            metrics.add(metricDataPoint(counter.getId(), "count", Unit.COUNT, counter.count()));
-            return metrics.build();
-        }
-
-        MetricsLogger functionTimerDataMetricsLogger(final FunctionTimer timer) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(timer.getId());
-            // we can't know anything about max and percentiles originating from a function timer
-            final double sum = timer.totalTime(getBaseTimeUnit());
-            if (!Double.isFinite(sum)) {
-                return metricsLogger;
-            }
-            final double count = timer.count();
-            addMetricDatum(timer.getId(), "count", Unit.COUNT, count, metricsLogger);
-            addMetricDatum(timer.getId(), "sum", sum, metricsLogger);
-            if (count > 0) {
-                addMetricDatum(timer.getId(), "avg", timer.mean(getBaseTimeUnit()), metricsLogger);
-            }
-            return metricsLogger;
+            return Stream.ofNullable(metricDataPoint(counter.getId(), "count", Unit.COUNT, counter.count()));
         }
 
         Stream<MetricDataPoint> functionTimerData(final FunctionTimer timer) {
@@ -314,47 +224,22 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             return metrics.build();
         }
 
-        MetricsLogger metricDataMetricsLogger(final Meter m) {
-            final MetricsLogger metricsLogger = prepareMetricsLogger(m.getId());
-            stream(m.measure().spliterator(), false)
-                    .forEach(ms -> addMetricDatum(m.getId().withTag(ms.getStatistic()), ms.getValue(), metricsLogger));
-            return metricsLogger;
-        }
-
         Stream<MetricDataPoint> metricData(final Meter m) {
             return stream(m.measure().spliterator(), false)
                     .map(ms -> metricDataPoint(m.getId().withTag(ms.getStatistic()), ms.getValue()))
                     .filter(Objects::nonNull);
         }
 
-        private void addMetricDatum(final Meter.Id id, final double value, final MetricsLogger metricsLogger) {
-            addMetricDatum(id, null, id.getBaseUnit(), value, metricsLogger);
-        }
-
         private MetricDataPoint metricDataPoint(final Meter.Id id, final double value) {
             return metricDataPoint(id, null, id.getBaseUnit(), value);
-        }
-
-        private void addMetricDatum(final Meter.Id id, @Nullable final String suffix, final double value, final MetricsLogger metricsLogger) {
-            addMetricDatum(id, suffix, id.getBaseUnit(), value, metricsLogger);
         }
 
         private MetricDataPoint metricDataPoint(final Meter.Id id, @Nullable final String suffix, final double value) {
             return metricDataPoint(id, suffix, id.getBaseUnit(), value);
         }
 
-        private void addMetricDatum(final Meter.Id id, @Nullable final String suffix, @Nullable final String unit, final double value, final MetricsLogger metricsLogger) {
-            addMetricDatum(id, suffix, toUnit(unit), value, metricsLogger);
-        }
-
         private MetricDataPoint metricDataPoint(final Meter.Id id, @Nullable final String suffix, @Nullable final String unit, final double value) {
             return metricDataPoint(id, suffix, toUnit(unit), value);
-        }
-
-        private void addMetricDatum(final Meter.Id id, @Nullable final String suffix, final Unit unit, final double value, final MetricsLogger metricsLogger) {
-            if (!Double.isNaN(value)) {
-                metricsLogger.putMetric(getMetricName(id, suffix), EMFMetricUtils.clampMetricValue(value), unit);
-            }
         }
 
         private MetricDataPoint metricDataPoint(final Meter.Id id, @Nullable final String suffix, final Unit unit, final double value) {
@@ -362,11 +247,6 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
                 return null;
             }
             return new MetricDataPoint(getMetricName(id, suffix), EMFMetricUtils.clampMetricValue(value), unit);
-        }
-
-        private void addDimensionSet(final Meter.Id id, final MetricsLogger metricsLogger) {
-            final List<Tag> tags = id.getConventionTags(config().namingConvention());
-            metricsLogger.setDimensions(toDimensionSet(tags));
         }
 
         String getMetricName(final Meter.Id id, @Nullable final String suffix) {
@@ -381,31 +261,9 @@ public class EMFLoggingMeterRegistry extends StepMeterRegistry {
             final Unit unitObject = UNIT_BY_LOWERCASE_VALUE.get(unit.toLowerCase());
             return unitObject != null ? unitObject : Unit.NONE;
         }
-
-        private DimensionSet toDimensionSet(final List<Tag> tags) {
-            final DimensionSet dimensionSet = new DimensionSet();
-            tags.stream().filter(this::isAcceptableTag).forEach(tag -> dimensionSet.addDimension(tag.getKey(), tag.getValue()));
-            return dimensionSet;
-        }
-
-        private MetricsLogger prepareMetricsLogger(final Meter.Id id) {
-            final MetricsLogger metricsLogger = new MetricsLogger(environment)
-                    .setNamespace(NAMESPACE)
-                    .setTimestamp(timestamp);
-            addDimensionSet(id, metricsLogger);
-            return metricsLogger;
-        }
-
-        private boolean isAcceptableTag(final Tag tag) {
-            if (StringUtils.isBlank(tag.getValue())) {
-                warnThenDebugLogger.log("Dropping a tag with key '" + tag.getKey() + "' because its value is blank.");
-                return false;
-            }
-            return true;
-        }
     }
 
-    class MetricDataPoint {
+    static class MetricDataPoint {
         String key;
         double value;
         Unit unit;
