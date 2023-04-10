@@ -1,0 +1,34 @@
+pipeline1:
+  delay: 2
+  source:
+    in_memory:
+      testing_key: PipelinesWithAcksIT
+      end_to_end_acknowledgements: true
+  route:
+    - 2xx_route: '/status >= 200 and /status < 300'
+    - other_route: '/status >= 300 or /status < 200'
+  sink:
+    - pipeline:
+        name: "pipeline2"
+        routes:
+          - 2xx_route
+    - pipeline:
+        name: "pipeline3"
+        routes:
+          - other_route
+
+pipeline2:
+  source:
+    pipeline:
+      name: "pipeline1"
+  sink:
+    - in_memory:
+        testing_key: PipelinesWithAcksIT
+
+pipeline3:
+  source:
+    pipeline:
+      name: "pipeline1"
+  sink:
+    - in_memory:
+        testing_key: PipelinesWithAcksIT

@@ -1,0 +1,27 @@
+pipeline1:
+  delay: 2
+  source:
+    in_memory:
+      testing_key: PipelinesWithAcksIT
+      end_to_end_acknowledgements: true
+  sink:
+    - pipeline:
+        name: "pipeline2"
+    - pipeline:
+        name: "pipeline3"
+
+pipeline2:
+  source:
+    pipeline:
+      name: "pipeline1"
+  sink:
+    - in_memory:
+        testing_key: PipelinesWithAcksIT
+
+pipeline3:
+  source:
+    pipeline:
+      name: "pipeline1"
+  sink:
+    - in_memory:
+        testing_key: PipelinesWithAcksIT
