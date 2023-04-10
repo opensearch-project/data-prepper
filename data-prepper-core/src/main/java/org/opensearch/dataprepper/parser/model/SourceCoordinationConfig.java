@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.source.UsesSourceCoordination;
+import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 
 import java.util.Objects;
 

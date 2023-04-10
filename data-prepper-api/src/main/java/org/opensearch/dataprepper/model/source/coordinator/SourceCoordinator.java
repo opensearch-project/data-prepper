@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.model.source;
+package org.opensearch.dataprepper.model.source.coordinator;
 
 import java.time.Duration;
 import java.util.List;
@@ -28,9 +28,9 @@ public interface SourceCoordinator<T> {
     /**
      * This should be called by the source when it needs to get the next partition it should process on. Also is a way to renew ownership of a partition that is actively being worked on
      *
-     * @return {@link org.opensearch.dataprepper.model.source.SourcePartition} with the details about how to process this partition. Will repeatedly return the partition until
-     * {@link org.opensearch.dataprepper.model.source.SourceCoordinator#completePartition(PartitionIdentifier)}
-     * or {@link org.opensearch.dataprepper.model.source.SourceCoordinator#closePartition(PartitionIdentifier, Duration)} are called by the source,
+     * @return {@link SourcePartition} with the details about how to process this partition. Will repeatedly return the partition until
+     * {@link SourceCoordinator#completePartition(PartitionIdentifier)}
+     * or {@link SourceCoordinator#closePartition(PartitionIdentifier, Duration)} are called by the source,
      * or until the partition ownership times out.
      * @since 2.2
      */

@@ -15,6 +15,10 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.event.EventFactory;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.EventBuilder;
+import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import java.util.ArrayList;
@@ -25,6 +29,7 @@ import java.util.HashSet;
 
 public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
     private Set<Record> routedRecords;
+    private Set<Record> referencedRecords;
     private AcknowledgementSetManager acknowledgementSetManager;
     private EventFactory eventFactory;
 
@@ -32,6 +37,7 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.eventFactory = eventFactory;
         routedRecords = null;
+        referencedRecords = new HashSet<Record>();
         /*
          * If there are more than one sink and one of the sinks is
          * pipeline connector, then we should make a copy of every
@@ -48,16 +54,36 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         }
     }
 
+    Set<Record> getReferencedRecords() {
+        return referencedRecords;
+    }
+
+    private void acquireEventReference(Record record) {
+        if (acknowledgementSetManager == null || record.getData() == null) {
+            return;
+        }
+        if (referencedRecords.contains(record) || ((routedRecords != null) && routedRecords.contains(record))) {
+            EventHandle eventHandle = ((JacksonEvent)record.getData()).getEventHandle();
+            if (eventHandle != null) {
+                acknowledgementSetManager.acquireEventReference(eventHandle);
+            }
+        } else if (!referencedRecords.contains(record)) {
+            referencedRecords.add(record);
+        }
+    }
     @Override
     public Record getRecord(Record record) {
         if (routedRecords == null) {
+            acquireEventReference(record);
             return record;
         }
         if (!routedRecords.contains(record)) {
+            acquireEventReference(record);
             routedRecords.add(record);
             return record;
         }
         if (record.getData() instanceof JacksonSpan) {
+            // Not supporting acknowledgements for Span initially
             try {
                 final Span spanEvent = (Span) record.getData();
                 Span newSpanEvent = JacksonSpan.fromSpan(spanEvent);
@@ -67,8 +93,24 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
         } else if (record.getData() instanceof Event) {
             try {
                 final Event recordEvent = (Event) record.getData();
-                Event newRecordEvent = JacksonEvent.fromEvent(recordEvent);
-                return new Record<>(newRecordEvent);
+                JacksonEvent newRecordEvent;
+                Record newRecord;
+                DefaultEventHandle eventHandle = (DefaultEventHandle)recordEvent.getEventHandle();
+                if (eventHandle != null) {
+                    final EventMetadata eventMetadata = recordEvent.getMetadata();
+                    final EventBuilder eventBuilder = (EventBuilder) eventFactory.eventBuilder(EventBuilder.class).withEventMetadata(eventMetadata).withData(recordEvent.toMap());
+                    newRecordEvent = (JacksonEvent) eventBuilder.build();
+
+                    eventHandle.getAcknowledgementSet().add(newRecordEvent);
+                    newRecord = new Record<>(newRecordEvent);
+                    acquireEventReference(newRecord);
+                } else {
+                    // TODO we should have a way to create from factory
+                    // even when acknowledgements are not used
+                    newRecordEvent = JacksonEvent.fromEvent(recordEvent);
+                    newRecord = new Record<>(newRecordEvent);
+                }
+                return newRecord;
             } catch (Exception ex) {
             }
         }
@@ -78,12 +120,14 @@ public class RouterCopyRecordStrategy implements RouterGetRecordStrategy {
     @Override
     public Collection<Record> getAllRecords(final Collection<Record> allRecords) {
         if (routedRecords == null) {
+            allRecords.stream().forEach((record) -> acquireEventReference(record));
             return allRecords;
         }
         if (routedRecords.isEmpty()) {
+            allRecords.stream().forEach((record) -> acquireEventReference(record));
             routedRecords.addAll(allRecords);
             return allRecords;
-        } 
+        }
         List<Record> newRecords = new ArrayList<Record>();
         for (Record record : allRecords) {
             newRecords.add(getRecord(record));

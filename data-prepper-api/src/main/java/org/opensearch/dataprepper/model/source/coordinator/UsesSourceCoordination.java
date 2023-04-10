@@ -3,17 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.model.source;
+package org.opensearch.dataprepper.model.source.coordinator;
 
 /**
  * An interface that a {@link org.opensearch.dataprepper.model.source.Source} will implement to be provided
- * with a {@link org.opensearch.dataprepper.model.source.SourceCoordinator} when source_coordination is configured
+ * with a {@link SourceCoordinator} when source_coordination is configured
  * @since 2.2
  */
 public interface UsesSourceCoordination {
     /**
      *
-     * @param sourceCoordinator - The {@link org.opensearch.dataprepper.model.source.SourceCoordinator} to be used by the
+     * @param sourceCoordinator - The {@link SourceCoordinator} to be used by the
      *                          {@link org.opensearch.dataprepper.model.source.Source} as needed
      * @param <T> The partition state type
      */

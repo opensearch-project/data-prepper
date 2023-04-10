@@ -30,6 +30,7 @@ public class AcknowledgementSetMonitor implements Runnable {
     private final ReentrantLock lock;
     private AtomicInteger numInvalidAcquires;
     private AtomicInteger numInvalidReleases;
+    private AtomicInteger numNullHandles;
 
     private DefaultAcknowledgementSet getAcknowledgementSet(final EventHandle eventHandle) {
         return (DefaultAcknowledgementSet)((DefaultEventHandle)eventHandle).getAcknowledgementSet();
@@ -40,6 +41,7 @@ public class AcknowledgementSetMonitor implements Runnable {
         this.lock = new ReentrantLock(true);
         this.numInvalidAcquires = new AtomicInteger(0);
         this.numInvalidReleases = new AtomicInteger(0);
+        this.numNullHandles = new AtomicInteger(0);
     }
 
     public int getNumInvalidAcquires() {
@@ -60,6 +62,11 @@ public class AcknowledgementSetMonitor implements Runnable {
     }
 
     public void acquire(final EventHandle eventHandle) {
+        if (eventHandle == null) {
+            numNullHandles.incrementAndGet();
+            return;
+        }
+
         DefaultAcknowledgementSet acknowledgementSet = getAcknowledgementSet(eventHandle);
         lock.lock();
         boolean exists = false;
@@ -80,6 +87,10 @@ public class AcknowledgementSetMonitor implements Runnable {
     }
 
     public void release(final EventHandle eventHandle, final boolean success) {
+        if (eventHandle == null) {
+            numNullHandles.incrementAndGet();
+            return;
+        }
         DefaultAcknowledgementSet acknowledgementSet = getAcknowledgementSet(eventHandle);
         lock.lock();
         boolean exists = false;
@@ -110,7 +121,7 @@ public class AcknowledgementSetMonitor implements Runnable {
         try {
             if (acknowledgementSets.size() > 0) {
                 acknowledgementSets.removeIf((ackSet) -> ((DefaultAcknowledgementSet)ackSet).isDone());
-            } 
+            }
         } finally {
             lock.unlock();
         }
