@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -23,6 +24,7 @@ class S3SourceTest {
     private PluginMetrics pluginMetrics;
     private S3SourceConfig s3SourceConfig;
     private PluginFactory pluginFactory;
+    private AcknowledgementSetManager acknowledgementSetManager;
 
 
     @BeforeEach
@@ -30,10 +32,11 @@ class S3SourceTest {
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
         s3SourceConfig = mock(S3SourceConfig.class);
         pluginFactory = mock(PluginFactory.class);
+        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
 
         when(s3SourceConfig.getCodec()).thenReturn(mock(PluginModel.class));
 
-        s3Source = new S3Source(pluginMetrics, s3SourceConfig, pluginFactory);
+        s3Source = new S3Source(pluginMetrics, s3SourceConfig, pluginFactory, acknowledgementSetManager);
     }
 
     @Test

@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
@@ -33,12 +34,21 @@ public class S3Source implements Source<Record<Event>> {
     private final S3SourceConfig s3SourceConfig;
     private SqsService sqsService;
     private final PluginFactory pluginFactory;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final boolean endToEndAcknowledgementsEnabled;
 
     @DataPrepperPluginConstructor
-    public S3Source(PluginMetrics pluginMetrics, final S3SourceConfig s3SourceConfig, final PluginFactory pluginFactory) {
+    public S3Source(PluginMetrics pluginMetrics, final S3SourceConfig s3SourceConfig, final PluginFactory pluginFactory, final AcknowledgementSetManager acknowledgementSetManager) {
         this.pluginMetrics = pluginMetrics;
         this.s3SourceConfig = s3SourceConfig;
         this.pluginFactory = pluginFactory;
+        this.endToEndAcknowledgementsEnabled = s3SourceConfig.getEndToEndAcknowledgements();
+        this.acknowledgementSetManager = acknowledgementSetManager;
+    }
+
+    @Override
+    public boolean areAcknowledgementsEnabled() {
+        return endToEndAcknowledgementsEnabled;
     }
 
     @Override
@@ -86,7 +96,7 @@ public class S3Source implements Source<Record<Event>> {
             s3Handler = new S3ObjectWorker(s3ObjectRequest);
         }
         final S3Service s3Service = new S3Service(s3Handler);
-        sqsService = new SqsService(s3SourceConfig, s3Service, pluginMetrics);
+        sqsService = new SqsService(acknowledgementSetManager, s3SourceConfig, s3Service, pluginMetrics);
 
         sqsService.start();
     }

@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
@@ -23,22 +24,25 @@ public class SqsService {
     private final S3Service s3Accessor;
     private final SqsClient sqsClient;
     private final PluginMetrics pluginMetrics;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     private Thread sqsWorkerThread;
 
-    public SqsService(final S3SourceConfig s3SourceConfig,
+    public SqsService(final AcknowledgementSetManager acknowledgementSetManager,
+                      final S3SourceConfig s3SourceConfig,
                       final S3Service s3Accessor,
                       final PluginMetrics pluginMetrics) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3Accessor = s3Accessor;
         this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         this.sqsClient = createSqsClient();
     }
 
     public void start() {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-        sqsWorkerThread = new Thread(new SqsWorker(sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
+        sqsWorkerThread = new Thread(new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
         sqsWorkerThread.start();
     }
 

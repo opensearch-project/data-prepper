@@ -46,6 +46,9 @@ public class S3SourceConfig {
     @JsonProperty("on_error")
     private OnErrorOption onErrorOption = OnErrorOption.RETAIN_MESSAGES;
 
+    @JsonProperty("end_to_end_acknowledgements")
+    private boolean endToEndAcknowledgements = false;
+
     @JsonProperty("buffer_timeout")
     private Duration bufferTimeout = DEFAULT_BUFFER_TIMEOUT;
 
@@ -69,6 +72,10 @@ public class S3SourceConfig {
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
+    }
+
+    boolean getEndToEndAcknowledgements() {
+        return endToEndAcknowledgements;
     }
 
     public CompressionOption getCompression() {
