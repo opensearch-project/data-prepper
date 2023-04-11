@@ -6,10 +6,13 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
+import java.util.Objects;
 
 public class AddEntryProcessorConfig {
     public static class Entry {
@@ -17,12 +20,8 @@ public class AddEntryProcessorConfig {
         @NotNull
         private String key;
 
-        @NotEmpty
-        @NotNull
         private Object value;
 
-        @NotEmpty
-        @NotNull
         private String format;
 
         @JsonProperty("overwrite_if_key_exists")
@@ -44,6 +43,11 @@ public class AddEntryProcessorConfig {
             return overwriteIfKeyExists;
         }
 
+        @AssertTrue(message = "Either value or format must be specified")
+        public boolean hasValueOrFormat() {
+            return Objects.nonNull(value) || Objects.nonNull(format);
+        }
+
         public Entry(final String key, final Object value, final String format, final boolean overwriteIfKeyExists)
         {
             this.key = key;
@@ -59,6 +63,7 @@ public class AddEntryProcessorConfig {
 
     @NotEmpty
     @NotNull
+    @Valid
     private List<Entry> entries;
 
     public List<Entry> getEntries() {
