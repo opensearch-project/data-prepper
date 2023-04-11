@@ -70,7 +70,7 @@ public class S3Source implements Source<Record<Event>> {
                     s3SelectCSVOption(csvOption).s3SelectJsonOption(jsonOption)
                     .expressionType(s3SelectOptional.get().getExpressionType())
                     .compressionType(CompressionType.valueOf(s3SelectOptional.get().getCompressionType().toUpperCase()))
-                    .s3SelectResponseHandler(new S3SelectResponseHandler()).build();
+                    .s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).build();
             s3Handler = new S3SelectObjectWorker(s3ObjectRequest);
         } else {
             final PluginModel codecConfiguration = s3SourceConfig.getCodec();
