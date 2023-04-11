@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.failures;
 
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.apache.commons.lang3.StringUtils;
 
 import java.time.Instant;
@@ -36,10 +37,10 @@ public class DlqObject {
 
     private final String timestamp;
 
-    private final Object eventHandle;
+    private final EventHandle eventHandle;
 
     private DlqObject(final String pluginId, final String pluginName, final String pipelineName,
-                      final String timestamp, final Object failedData, final Object eventHandle) {
+                      final String timestamp, final Object failedData, final EventHandle eventHandle) {
 
         checkNotNull(pluginId, "pluginId cannot be null");
         checkArgument(!pluginId.isEmpty(), "pluginId cannot be an empty string");
@@ -78,7 +79,7 @@ public class DlqObject {
         return timestamp;
     }
 
-    public Object getEventHandle() {
+    public EventHandle getEventHandle() {
         return eventHandle;
     }
 
@@ -121,7 +122,7 @@ public class DlqObject {
         private String pluginName;
         private String pipelineName;
         private Object failedData;
-        private Object eventHandle;
+        private EventHandle eventHandle;
 
         private String timestamp;
 
@@ -150,7 +151,7 @@ public class DlqObject {
             return this;
         }
 
-        public Builder withEventHandle(final Object eventHandle) {
+        public Builder withEventHandle(final EventHandle eventHandle) {
             this.eventHandle = eventHandle;
             return this;
         }

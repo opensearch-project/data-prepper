@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class BulkOperationWrapper {
     private final EventHandle eventHandle;
@@ -18,6 +19,7 @@ public class BulkOperationWrapper {
     }
 
     public BulkOperationWrapper(final BulkOperation bulkOperation, final EventHandle eventHandle) {
+        checkNotNull(bulkOperation);
         this.bulkOperation = bulkOperation;
         this.eventHandle = eventHandle;
     }

@@ -292,7 +292,7 @@ public final class BulkRetryStrategy {
         final ImmutableList.Builder<FailedBulkOperation> failures = ImmutableList.builder();
         for (int i = 0; i < itemResponses.size(); i++) {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
-            final BulkOperationWrapper bulkOperationWithHandle = (BulkOperationWrapper)accumulatingBulkRequest.getOperationAt(i);
+            final BulkOperationWrapper bulkOperationWithHandle = accumulatingBulkRequest.getOperationAt(i);
             if (bulkItemResponse.error() != null) {
                 failures.add(FailedBulkOperation.builder()
                     .withBulkOperation(bulkOperationWithHandle)

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.failures;
 
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
 
 public class DlqObjectTest {
 
@@ -35,7 +37,7 @@ public class DlqObjectTest {
     private String pluginName;
     private String pipelineName;
     private Object failedData;
-    private Object eventHandle;
+    private EventHandle eventHandle;
 
     @BeforeEach
     public void setUp() {
@@ -43,7 +45,7 @@ public class DlqObjectTest {
         pluginName = randomUUID().toString();
         pipelineName = randomUUID().toString();
         failedData = randomUUID();
-        eventHandle = randomUUID();
+        eventHandle = mock(EventHandle.class);
     }
 
     @Test
