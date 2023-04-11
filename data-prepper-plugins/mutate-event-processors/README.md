@@ -39,10 +39,26 @@ When run, the processor will parse the message into the following output:
 
 > If `newMessage` had already existed, its existing value would have been overwritten with `3`
 
+We can also use `format` option to form the value for the new entry from existing entries. For example, if we update the above processor configuration to:
+```yaml
+  processor:
+    - add_entries:
+        entries:
+        - key: "newMessage"
+          format: "new ${message}"
+          overwrite_if_key_exists: true
+```
+then when we run with the same input, the processor will parse the message into the following output:
+
+```json
+{"message": "value", "newMessage": "new value"}
+```
+
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
   * `key` - (required) - The key of the new entry to be added
-  * `value` - (required) - The value of the new entry to be added. Strings, booleans, numbers, null, nested objects, and arrays containing the aforementioned data types are valid to use
+  * `value` - (optional) - The value of the new entry to be added. Strings, booleans, numbers, null, nested objects, and arrays containing the aforementioned data types are valid to use. Required if `format` is not specified.
+  * `format` - (optional) - A format string to use as value of the new entry to be added. For example, `${key1}-${ke2}` where `key1` and `key2` are existing keys in the event. Required if `value` is not specified.
   * `overwrite_if_key_exists` - (optional) - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 
 
 ___
