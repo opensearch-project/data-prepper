@@ -68,6 +68,9 @@ class S3SelectObjectWorkerTest {
     private S3AsyncClient s3AsyncClient;
 
     @Mock
+    private S3SelectResponseHandlerFactory responseHandlerFactory;
+
+    @Mock
     private S3SelectResponseHandler selectResponseHandler;
 
     @Mock
@@ -112,7 +115,8 @@ class S3SelectObjectWorkerTest {
         given(s3ObjectRequest.getNumberOfRecordsToAccumulate()).willReturn(1);
         given(s3ObjectRequest.getS3AsyncClient()).willReturn(s3AsyncClient);
         given(s3ObjectRequest.getBufferTimeout()).willReturn(Duration.ofMillis(random.nextInt(100) + 100));
-        given(s3ObjectRequest.getS3SelectResponseHandler()).willReturn(selectResponseHandler);
+        given(s3ObjectRequest.getS3SelectResponseHandlerFactory()).willReturn(responseHandlerFactory);
+        given(responseHandlerFactory.provideS3SelectResponseHandler()).willReturn(selectResponseHandler);
         given(s3ObjectRequest.getEventConsumer()).willReturn(eventConsumer);
         given(s3ObjectRequest.getExpressionType()).willReturn(UUID.randomUUID().toString());
 
@@ -243,7 +247,6 @@ class S3SelectObjectWorkerTest {
 
         doThrow(TimeoutException.class).doNothing().when(buffer).writeAll(any(Collection.class), anyInt());
 
-        System.out.println(responseFormat);
         createObjectUnderTest().parseS3Object(s3ObjectReference);
 
         assertHeadObjectRequestIsCorrect();

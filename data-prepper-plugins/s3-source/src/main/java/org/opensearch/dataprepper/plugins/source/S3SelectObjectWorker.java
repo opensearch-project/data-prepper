@@ -59,7 +59,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private static final Logger LOG = LoggerFactory.getLogger(S3SelectObjectWorker.class);
 
     static final long MAX_S3_OBJECT_CHUNK_SIZE = 64 * 1024 * 1024;
-    private static final int MAX_FLUSH_RETRIES_ON_IO_EXCEPTION = 5;
+    private static final int MAX_FLUSH_RETRIES_ON_IO_EXCEPTION = Integer.MAX_VALUE;
     private static final Duration INITIAL_FLUSH_RETRY_DELAY_ON_IO_EXCEPTION = Duration.ofSeconds(5);
     static final String S3_BUCKET_NAME = "bucket";
     static final String S3_OBJECT_KEY = "key";
@@ -73,7 +73,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private final Buffer<Record<Event>> buffer;
     private final String expression;
     private final S3SelectSerializationFormatOption serializationFormatOption;
-    private final S3SelectResponseHandler s3SelectResponseHandler;
+    private final S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
     private final S3ObjectPluginMetrics s3ObjectPluginMetrics;
     private final CompressionType compressionType;
     private final BiConsumer<Event, S3ObjectReference> eventConsumer;
@@ -89,7 +89,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         this.expression = s3ObjectRequest.getExpression();
         this.serializationFormatOption = s3ObjectRequest.getSerializationFormatOption();
         this.s3AsyncClient = s3ObjectRequest.getS3AsyncClient();
-        this.s3SelectResponseHandler = s3ObjectRequest.getS3SelectResponseHandler();
+        this.s3SelectResponseHandlerFactory = s3ObjectRequest.getS3SelectResponseHandlerFactory();
         this.s3ObjectPluginMetrics = s3ObjectRequest.getS3ObjectPluginMetrics();
         this.compressionType = s3ObjectRequest.getCompressionType();
         this.eventConsumer = s3ObjectRequest.getEventConsumer();
@@ -130,6 +130,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                     .build();
             final SelectObjectContentRequest selectObjectContentRequest = getS3SelectObjRequest(s3ObjectReference, inputSerialization, scanRange);
 
+            final S3SelectResponseHandler s3SelectResponseHandler = s3SelectResponseHandlerFactory.provideS3SelectResponseHandler();
             s3AsyncClient.selectObjectContent(selectObjectContentRequest, s3SelectResponseHandler).join();
             if (s3SelectResponseHandler.getException() != null)
                 throw new IOException(s3SelectResponseHandler.getException());
@@ -219,7 +220,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                         eventConsumer.accept(eventRecord.getData(), s3ObjectReference);
                         bufferAccumulator.add(eventRecord);
                     } catch (final TimeoutException ex) {
-                        flushWithBackoff(bufferAccumulator, MAX_FLUSH_RETRIES_ON_IO_EXCEPTION, INITIAL_FLUSH_RETRY_DELAY_ON_IO_EXCEPTION);
+                        flushWithBackoff(bufferAccumulator);
                     } catch (final Exception ex) {
                         LOG.error("Failed writing S3 objects to buffer due to: {}", ex.getMessage());
                     }
@@ -234,14 +235,13 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         }
     }
 
-    private boolean flushWithBackoff(final BufferAccumulator<Record<Event>> bufferAccumulator, final int maxRetries, final Duration initialDelay) {
+    private boolean flushWithBackoff(final BufferAccumulator<Record<Event>> bufferAccumulator) {
 
         final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
-        long nextDelay = initialDelay.toMillis();
-        int backoffRate = 2;
+        long nextDelay = INITIAL_FLUSH_RETRY_DELAY_ON_IO_EXCEPTION.toMillis();
         boolean flushedSuccessfully;
 
-        for (int retryCount = 0; retryCount < maxRetries; retryCount++) {
+        for (int retryCount = 0; retryCount < MAX_FLUSH_RETRIES_ON_IO_EXCEPTION; retryCount++) {
             final ScheduledFuture<Boolean> flushBufferFuture = scheduledExecutorService.schedule(() -> {
                 try {
                     bufferAccumulator.flush();
@@ -253,9 +253,8 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
 
             try {
                 flushedSuccessfully = flushBufferFuture.get();
-                if (!flushedSuccessfully) {
-                    nextDelay *= backoffRate;
-                } else {
+                if (flushedSuccessfully) {
+                    LOG.info("Successfully flushed the buffer accumulator on retry attempt {}", retryCount + 1);
                     scheduledExecutorService.shutdownNow();
                     return true;
                 }
@@ -267,7 +266,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         }
 
 
-        LOG.warn("Flushing the bufferAccumulator failed after {} attempts", maxRetries);
+        LOG.warn("Flushing the bufferAccumulator failed after {} attempts", S3SelectObjectWorker.MAX_FLUSH_RETRIES_ON_IO_EXCEPTION);
         scheduledExecutorService.shutdownNow();
         return false;
     }

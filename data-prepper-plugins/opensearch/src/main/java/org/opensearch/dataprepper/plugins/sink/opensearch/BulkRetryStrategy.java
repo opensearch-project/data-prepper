@@ -202,6 +202,9 @@ public final class BulkRetryStrategy {
     private void handleRetry(final AccumulatingBulkRequest request, final BulkResponse response,
                              final BackOffUtils backOffUtils) throws InterruptedException {
         final AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
+        if (!retryCountMap.containsKey(bulkRequestForRetry)) {
+            retryCountMap.put(bulkRequestForRetry, 1);
+        }
         int retryCount = retryCountMap.get(bulkRequestForRetry);
         if (backOffUtils.hasNext()) {
             // Wait for backOff duration
