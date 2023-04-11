@@ -69,7 +69,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ConnectionConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
-
+  private static final String AWS_IAM_ROLE = "role";
+  private static final String AWS_IAM = "iam";
   private static final String AOS_SERVICE_NAME = "es";
   private static final String AOSS_SERVICE_NAME = "aoss";
   private static final String DEFAULT_AWS_REGION = "us-east-1";
@@ -174,6 +175,25 @@ public class ConnectionConfiguration {
     this.pipelineName = builder.pipelineName;
   }
 
+  private void validateStsRoleArn() {
+    final Arn arn = getArn();
+    if (!AWS_IAM.equals(arn.service())) {
+      throw new IllegalArgumentException(String.format("sts_role_arn must be an IAM Role, %s", arn));
+    }
+    final Optional<String> resourceType = arn.resource().resourceType();
+    if (resourceType.isEmpty() || !resourceType.get().equals(AWS_IAM_ROLE)) {
+      throw new IllegalArgumentException(String.format("sts_role_arn must be an IAM Role, %s %s", arn, resourceType.toString()));
+    }
+  }
+
+  private Arn getArn() {
+    try {
+      return Arn.fromString(awsStsRoleArn);
+    } catch (final Exception e) {
+      throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
+    }
+  }
+
   public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
     @SuppressWarnings("unchecked")
     final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
@@ -275,6 +295,7 @@ public class ConnectionConfiguration {
     final Aws4Signer aws4Signer = Aws4Signer.create();
     final AwsCredentialsProvider credentialsProvider;
     if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
+      validateStsRoleArn();
       AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
               .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
               .roleArn(awsStsRoleArn);
@@ -399,6 +420,7 @@ public class ConnectionConfiguration {
     if (awsSigv4) {
       final AwsCredentialsProvider credentialsProvider;
       if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
+        validateStsRoleArn();
         AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
                 .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
                 .roleArn(awsStsRoleArn);
