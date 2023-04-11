@@ -178,11 +178,11 @@ public class ConnectionConfiguration {
   private void validateStsRoleArn() {
     final Arn arn = getArn();
     if (!AWS_IAM.equals(arn.service())) {
-      throw new IllegalArgumentException(String.format("sts_role_arn must be an IAM Role, %s", arn));
+      throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
     }
     final Optional<String> resourceType = arn.resource().resourceType();
     if (resourceType.isEmpty() || !resourceType.get().equals(AWS_IAM_ROLE)) {
-      throw new IllegalArgumentException(String.format("sts_role_arn must be an IAM Role, %s %s", arn, resourceType.toString()));
+      throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
     }
   }
 
