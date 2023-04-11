@@ -12,26 +12,50 @@ import jakarta.validation.constraints.NotBlank;
  * Class consists the s3 select options.
  */
 public class S3SelectOptions {
-	static final String DEFAULT_CSV_HEADER = "USE";
-	@JsonProperty("query_statement")
-    @NotBlank(message = "query statement cannot be null or empty")
-    private String queryStatement;
-	
-	@JsonProperty("data_serialization_format")
-    @NotBlank(message = "data serialization format cannot be null or empty")
-    private S3SelectSerializationFormatOption s3SelectSerializationFormatOption;
-	@JsonProperty("csv_file_header")
-	private String csvFileHeaderInfo = DEFAULT_CSV_HEADER;
+	static final String DEFAULT_EXPRESSION_TYPE = "SQL";
+	static final String DEFAULT_COMPRESSION_TYPE = "none";
+	@JsonProperty("expression")
+	@NotBlank(message = "expression cannot be null or empty")
+	private String expression;
 
-	public String getQueryStatement() {
-		return queryStatement;
+	@JsonProperty("expression_type")
+	@NotBlank(message = "expression_type cannot be null or empty")
+	private String expressionType = DEFAULT_EXPRESSION_TYPE;
+
+	@JsonProperty("input_serialization")
+	@NotBlank(message = "input serialization format cannot be null or empty")
+	private S3SelectSerializationFormatOption s3SelectSerializationFormatOption;
+
+	@JsonProperty("compression_type")
+	private String compressionType = DEFAULT_COMPRESSION_TYPE;
+
+	@JsonProperty("csv")
+	private S3SelectCSVOption s3SelectCSVOption;
+
+	@JsonProperty("json")
+	private S3SelectJsonOption s3SelectJsonOption;
+
+	public String getExpression() {
+		return expression;
 	}
 
 	public S3SelectSerializationFormatOption getS3SelectSerializationFormatOption() {
 		return s3SelectSerializationFormatOption;
 	}
 
-	public String getCsvFileHeaderInfo() {
-		return csvFileHeaderInfo;
+	public String getExpressionType() {
+		return expressionType;
+	}
+
+	public String getCompressionType() {
+		return compressionType;
+	}
+
+	public S3SelectCSVOption getS3SelectCSVOption() {
+		return s3SelectCSVOption;
+	}
+
+	public S3SelectJsonOption getS3SelectJsonOption() {
+		return s3SelectJsonOption;
 	}
 }

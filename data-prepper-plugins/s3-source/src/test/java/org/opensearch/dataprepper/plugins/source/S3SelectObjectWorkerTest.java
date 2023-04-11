@@ -37,15 +37,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.CompressionType;
-import software.amazon.awssdk.services.s3.model.FileHeaderInfo;
 import software.amazon.awssdk.services.s3.model.Progress;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentEventStream;
 import software.amazon.awssdk.services.s3.model.SelectObjectContentRequest;
@@ -99,11 +101,11 @@ class S3SelectObjectWorkerTest {
         lenient().when(selectResponseHandler.getS3SelectContentEvents()).thenReturn(selectObjectContentEventStreamList);
     }
 
-    private S3SelectObjectWorker createSelectObjectUnderTest(final String responseFormat, final String queryStatement,
+    private S3SelectObjectWorker createSelectObjectUnderTest(final String responseFormat, final String expression,
                                             final S3SelectSerializationFormatOption format,
                                             final S3SelectResponseHandler selectResponseHandlerTest,
                                             final S3ObjectPluginMetrics s3ObjectPluginMetrics,
-                                            final CompressionType compressionType) {
+                                            final CompressionType compressionType) throws Exception {
         if(selectResponseHandlerTest == null)
             selectObjectContentResponse(responseFormat);
         Random random = new Random();
@@ -113,17 +115,20 @@ class S3SelectObjectWorkerTest {
         when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
         when(s3ObjectReference.getKey()).thenReturn(key);
         when(s3SourceConfig.getS3SelectOptions()).thenReturn(s3SelectOptions);
-        when(s3SourceConfig.getS3SelectOptions().getQueryStatement()).thenReturn(queryStatement);
+        when(s3SourceConfig.getS3SelectOptions().getExpression()).thenReturn(expression);
+        final S3SelectCSVOption csvOption = new S3SelectCSVOption();
+        ReflectivelySetField.setField(S3SelectCSVOption.class,csvOption,"fileHeaderInfo","none");
         S3ObjectRequest request = new S3ObjectRequest.Builder(buffer,numberOfRecordsToAccumulate,
                 bufferTimeout,s3ObjectPluginMetrics)
-                .queryStatement(queryStatement).eventConsumer(eventConsumer)
-                .serializationFormatOption(format).fileHeaderInfo(FileHeaderInfo.NONE)
+                .expression(expression).eventConsumer(eventConsumer)
+                .serializationFormatOption(format).s3SelectCSVOption(csvOption)
+                .s3SelectJsonOption(new S3SelectJsonOption())
                 .s3AsyncClient(s3AsyncClient).compressionType(compressionType)
                 .s3SelectResponseHandler(selectResponseHandler).build();
         return new S3SelectObjectWorker(request);
     }
     @Test
-    void selectObjectFromS3CsvTestWithEmptyResponse() {
+    void selectObjectFromS3CsvTestWithEmptyResponse() throws Exception{
         when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
         S3SelectResponseHandler selectResponseHandler =new S3SelectResponseHandler();
         final S3SelectObjectWorker selectObjectUnderTest = createSelectObjectUnderTest(null, "select * from s3Object", S3SelectSerializationFormatOption.CSV,
@@ -136,7 +141,7 @@ class S3SelectObjectWorkerTest {
         assertThat(request.getValue().key(), equalTo(key));
         assertThat(request.getValue().bucket(), equalTo(bucketName));
         assertThat(request.getValue().expectedBucketOwner(), nullValue());
-        assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getQueryStatement()));
+        assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getExpression()));
         verify(s3ObjectsFailedCounter).increment();
         assertTrue(selectResponseHandler.getS3SelectContentEvents().isEmpty());
     }
@@ -159,7 +164,7 @@ class S3SelectObjectWorkerTest {
         assertThat(request.getValue().key(), equalTo(key));
         assertThat(request.getValue().bucket(), equalTo(bucketName));
         assertThat(request.getValue().expectedBucketOwner(), nullValue());
-        assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getQueryStatement()));
+        assertThat(request.getValue().expression(), equalTo(s3SourceConfig.getS3SelectOptions().getExpression()));
         assertTrue(selectResponseHandler.getS3SelectContentEvents().isEmpty());
         verify(s3ObjectsSucceededCounter).increment();
         assertThat(distributionSummary,notNullValue());

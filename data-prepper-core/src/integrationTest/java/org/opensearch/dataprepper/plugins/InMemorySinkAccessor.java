@@ -23,6 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class InMemorySinkAccessor {
     private final Map<String, List<Record<Event>>> recordsMap = new HashMap<>();
     private final Lock lock = new ReentrantLock();
+    private boolean result = true;
 
     /**
      * Gets the records from an in_memory sink. This will not remove any records from
@@ -66,5 +67,13 @@ public class InMemorySinkAccessor {
         } finally {
             lock.unlock();
         }
+    }
+
+    public void setResult(boolean value) {
+        result = value;
+    }
+
+    public boolean getResult() {
+        return result;
     }
 }

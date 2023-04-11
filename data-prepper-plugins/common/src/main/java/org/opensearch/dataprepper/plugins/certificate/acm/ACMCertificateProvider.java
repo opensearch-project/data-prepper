@@ -64,7 +64,7 @@ public class ACMCertificateProvider implements CertificateProvider {
         try {
             Arn.fromString(acmArn);
         } catch (Exception e) {
-            throw InvalidArnException.builder().message("Invalid ARN format for acmArn").build();
+            throw InvalidArnException.builder().message(String.format("Invalid ARN format for acmArn. Check the format of %s", acmArn)).build();
         }
         this.totalTimeout = Objects.requireNonNull(totalTimeout);
         // Passphrase can be null. If null a random passphrase will be generated.
