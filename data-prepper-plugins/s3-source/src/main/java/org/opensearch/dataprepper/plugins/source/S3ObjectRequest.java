@@ -27,7 +27,7 @@ public class S3ObjectRequest {
     private final String expression;
     private final S3SelectSerializationFormatOption serializationFormatOption;
     private final S3AsyncClient s3AsyncClient;
-    private final S3SelectResponseHandler s3SelectResponseHandler;
+    private final S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
     private final CompressionEngine compressionEngine;
     private final BucketOwnerProvider bucketOwnerProvider;
     private final Codec codec;
@@ -46,7 +46,7 @@ public class S3ObjectRequest {
         this.expression = builder.expression;
         this.serializationFormatOption = builder.serializationFormatOption;
         this.s3AsyncClient =builder.s3AsyncClient;
-        this.s3SelectResponseHandler = builder.s3SelectResponseHandler;
+        this.s3SelectResponseHandlerFactory = builder.s3SelectResponseHandlerFactory;
         this.compressionEngine = builder.compressionEngine;
         this.bucketOwnerProvider = builder.bucketOwnerProvider;
         this.codec = builder.codec;
@@ -86,8 +86,8 @@ public class S3ObjectRequest {
         return s3AsyncClient;
     }
 
-    public S3SelectResponseHandler getS3SelectResponseHandler() {
-        return s3SelectResponseHandler;
+    public S3SelectResponseHandlerFactory getS3SelectResponseHandlerFactory() {
+        return s3SelectResponseHandlerFactory;
     }
 
     public CompressionEngine getCompressionEngine() {
@@ -135,7 +135,7 @@ public class S3ObjectRequest {
         private String expression;
         private S3SelectSerializationFormatOption serializationFormatOption;
         private S3AsyncClient s3AsyncClient;
-        private S3SelectResponseHandler s3SelectResponseHandler;
+        private S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
         private CompressionEngine compressionEngine;
         private Codec codec;
         private BiConsumer<Event, S3ObjectReference> eventConsumer;
@@ -175,8 +175,8 @@ public class S3ObjectRequest {
             return this;
         }
 
-        public Builder s3SelectResponseHandler(S3SelectResponseHandler s3SelectResponseHandler) {
-            this.s3SelectResponseHandler = s3SelectResponseHandler;
+        public Builder s3SelectResponseHandlerFactory(S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory) {
+            this.s3SelectResponseHandlerFactory = s3SelectResponseHandlerFactory;
             return this;
         }
 
