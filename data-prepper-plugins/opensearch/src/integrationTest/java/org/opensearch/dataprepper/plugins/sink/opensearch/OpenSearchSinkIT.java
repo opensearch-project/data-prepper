@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -80,9 +81,7 @@ import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchInteg
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.isOSBundle;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.waitForClusterStateUpdatesToFinish;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.wipeAllTemplates;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 
@@ -97,15 +96,13 @@ public class OpenSearchSinkIT {
   private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
 
   private RestClient client;
+  private EventHandle eventHandle;
   
   @Mock
   private PluginFactory pluginFactory;
 
-  @Mock
-  private AcknowledgementSetManager acknowledgementSetManager;
-
   public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, acknowledgementSetManager);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
     if (doInitialize) {
         sink.doInitialize();
     }
@@ -114,10 +111,10 @@ public class OpenSearchSinkIT {
 
   @BeforeEach
   public void setup() {
-    acknowledgementSetManager = mock(AcknowledgementSetManager.class);
+    eventHandle = mock(EventHandle.class);
     lenient().doAnswer(a -> {
             return null;
-    }).when(acknowledgementSetManager).releaseEventReference(any(), any(Boolean.class));
+    }).when(eventHandle).release(any(Boolean.class));
   }
 
   @BeforeEach
@@ -551,6 +548,7 @@ public class OpenSearchSinkIT {
             .withData("{\"log\": \"foobar\"}")
             .withEventType("event")
             .build();
+    ((JacksonEvent)testEvent).setEventHandle(eventHandle);
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
@@ -578,6 +576,7 @@ public class OpenSearchSinkIT {
 	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
 	    .withEventType("event")
 	    .build();
+    ((JacksonEvent)testEvent).setEventHandle(eventHandle);
     testEvent.put(testDocumentIdField, expectedId);
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
@@ -603,6 +602,7 @@ public class OpenSearchSinkIT {
 	    .withData(Map.of("arbitrary_data", UUID.randomUUID().toString()))
             .withEventType("event")
             .build();
+    ((JacksonEvent)testEvent).setEventHandle(eventHandle);
     testEvent.put(testRoutingField, expectedRoutingField);
 
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
@@ -631,6 +631,7 @@ public class OpenSearchSinkIT {
             .withData(dataMap)
             .withEventType("event")
             .build();
+    ((JacksonEvent)testEvent).setEventHandle(eventHandle);
     testEvent.put(testIndex, testIndexName);
 
     Map<String, Object> expectedMap = testEvent.toMap();
@@ -664,6 +665,7 @@ public class OpenSearchSinkIT {
             .withData(dataMap)
             .withEventType("event")
             .build();
+    ((JacksonEvent)testEvent).setEventHandle(eventHandle);
     testEvent.put(testIndex, testIndexName);
 
     Map<String, Object> expectedMap = testEvent.toMap();
@@ -693,6 +695,7 @@ public class OpenSearchSinkIT {
             .withData(dataMap)
             .withEventType("event")
             .build();
+    ((JacksonEvent)testEvent).setEventHandle(eventHandle);
 
     Map<String, Object> expectedMap = testEvent.toMap();
 
@@ -940,7 +943,12 @@ public class OpenSearchSinkIT {
   private Record jsonStringToRecord(final String jsonString) {
     final ObjectMapper objectMapper = new ObjectMapper();
     try {
-      return new Record(JacksonEvent.builder().withEventType(EventType.TRACE.toString()).withData(objectMapper.readValue(jsonString, Map.class)).build());
+      Record record = new Record(JacksonEvent.builder()
+          .withEventType(EventType.TRACE.toString())
+          .withData(objectMapper.readValue(jsonString, Map.class)).build());
+      JacksonEvent event = (JacksonEvent)record.getData();
+      event.setEventHandle(eventHandle);
+      return record;
     } catch (final JsonProcessingException e) {
       throw new RuntimeException(e);
     }

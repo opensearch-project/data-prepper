@@ -18,4 +18,12 @@ public class DefaultEventHandle implements EventHandle {
     public AcknowledgementSet getAcknowledgementSet() {
         return acknowledgementSetRef.get();
     }
+
+    @Override
+    public void release(boolean result) {
+        AcknowledgementSet acknowledgementSet = getAcknowledgementSet();
+        if (acknowledgementSet != null) {
+            acknowledgementSet.release(this, result);
+        }
+    }
 }

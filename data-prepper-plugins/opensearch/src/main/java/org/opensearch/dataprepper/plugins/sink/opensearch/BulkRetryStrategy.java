@@ -20,7 +20,6 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.rest.RestStatus;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -100,7 +99,6 @@ public final class BulkRetryStrategy {
     private final PluginMetrics pluginMetrics;
     private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
     private final int maxRetries;
-    private final AcknowledgementSetManager acknowledgementSetManager;
     private final Map<AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>, Integer> retryCountMap;
     private final String pluginId;
     private final String pluginName;
@@ -123,7 +121,6 @@ public final class BulkRetryStrategy {
                              final BiConsumer<List<FailedBulkOperation>, Throwable> logFailure,
                              final PluginMetrics pluginMetrics,
                              final int maxRetries,
-                             final AcknowledgementSetManager acknowledgementSetManager,
                              final Supplier<AccumulatingBulkRequest> bulkRequestSupplier,
                              final PluginSetting pluginSetting) {
         this.requestFunction = requestFunction;
@@ -136,7 +133,6 @@ public final class BulkRetryStrategy {
         this.pluginId = pluginSetting.getName();
         this.pluginName = pluginSetting.getName();
         this.objectMapper = new ObjectMapper();
-        this.acknowledgementSetManager = acknowledgementSetManager;
 
         sentDocumentsCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS);
         sentDocumentsOnFirstAttemptCounter = pluginMetrics.counter(DOCUMENTS_SUCCESS_FIRST_ATTEMPT);
@@ -244,7 +240,7 @@ public final class BulkRetryStrategy {
                 sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
                 for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
                     final EventHandle eventHandle = bulkOperation.getEventHandle();
-                    acknowledgementSetManager.releaseEventReference(eventHandle, true);
+                    eventHandle.release(true);
                 }
                 retryCountMap.remove(bulkRequestForRetry);
             }
@@ -282,7 +278,7 @@ public final class BulkRetryStrategy {
                 } else {
                     sentDocumentsCounter.increment();
                     final EventHandle eventHandle = bulkOperationWithHandle.getEventHandle();
-                    acknowledgementSetManager.releaseEventReference(eventHandle, true);
+                    eventHandle.release(true);
                 }
                 index++;
             }
@@ -306,7 +302,7 @@ public final class BulkRetryStrategy {
             } else {
                 sentDocumentsCounter.increment();
                 final EventHandle eventHandle = bulkOperationWithHandle.getEventHandle();
-                acknowledgementSetManager.releaseEventReference(eventHandle, true);
+                eventHandle.release(true);
             }
         }
         logFailure.accept(failures.build(), null);
