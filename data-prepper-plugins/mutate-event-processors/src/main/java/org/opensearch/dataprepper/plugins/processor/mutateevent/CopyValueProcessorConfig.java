@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
@@ -51,6 +52,7 @@ public class CopyValueProcessorConfig {
 
     @NotEmpty
     @NotNull
+    @Valid
     private List<Entry> entries;
 
     public List<Entry> getEntries() {
