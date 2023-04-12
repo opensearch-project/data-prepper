@@ -22,6 +22,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -30,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -155,6 +158,87 @@ class BufferAccumulatorTest {
 
         assertThat(actualRecordsWritten.size(), equalTo(1));
         assertThat(actualRecordsWritten, equalTo(Collections.singletonList(record)));
+    }
+
+    @Test
+    void flush_timeout_exception_backs_off_and_retries() throws Exception {
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+        final Record record = createRecord();
+        objectUnderTest.add(record);
+
+        verifyNoInteractions(buffer);
+
+        final List<Record<?>> actualRecordsWritten = new ArrayList<>();
+        doThrow(new TimeoutException())
+                .doAnswer(a -> actualRecordsWritten.addAll(a.getArgument(0, Collection.class)))
+                .when(buffer).writeAll(anyCollection(), anyInt());
+
+        objectUnderTest.flush();
+
+        verify(buffer, times(2)).writeAll(anyCollection(), eq(timeoutMillis));
+        assertThat(actualRecordsWritten.size(), equalTo(1));
+        assertThat(actualRecordsWritten, equalTo(Collections.singletonList(record)));
+    }
+
+    @Test
+    void flush_timeout_exception_backs_off_and_retries_until_success() throws Exception {
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+        final Record record = createRecord();
+        objectUnderTest.add(record);
+
+        verifyNoInteractions(buffer);
+
+        final List<Record<?>> actualRecordsWritten = new ArrayList<>();
+        doThrow(new TimeoutException())
+                .doThrow(new TimeoutException())
+                .doThrow(new TimeoutException())
+                .doThrow(new TimeoutException())
+                .doAnswer(a -> actualRecordsWritten.addAll(a.getArgument(0, Collection.class)))
+                .when(buffer).writeAll(anyCollection(), anyInt());
+
+        objectUnderTest.flush();
+
+        verify(buffer, times(5)).writeAll(anyCollection(), eq(timeoutMillis));
+        assertThat(actualRecordsWritten.size(), equalTo(1));
+        assertThat(actualRecordsWritten, equalTo(Collections.singletonList(record)));
+    }
+
+    @Test
+    void flush_non_timeout_exception_does_not_retry_throws_exception() throws Exception {
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+        final Record record = createRecord();
+        objectUnderTest.add(record);
+
+        verifyNoInteractions(buffer);
+
+        final List<Record<?>> actualRecordsWritten = new ArrayList<>();
+        doThrow(new RuntimeException()).when(buffer).writeAll(anyCollection(), anyInt());
+
+        assertThrows(RuntimeException.class, () -> objectUnderTest.flush());
+
+        verify(buffer).writeAll(anyCollection(), eq(timeoutMillis));
+        assertThat(actualRecordsWritten.size(), equalTo(0));
+        assertThat(actualRecordsWritten, equalTo(Collections.emptyList()));
+    }
+
+    @Test
+    void flush_non_timeout_exception_during_retry_throws_exception() throws Exception {
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+        final Record record = createRecord();
+        objectUnderTest.add(record);
+
+        verifyNoInteractions(buffer);
+
+        final List<Record<?>> actualRecordsWritten = new ArrayList<>();
+        doThrow(new TimeoutException())
+                .doThrow(new RuntimeException())
+                .when(buffer).writeAll(anyCollection(), anyInt());
+
+        assertThrows(ExecutionException.class, () -> objectUnderTest.flush());
+
+        verify(buffer, times(2)).writeAll(anyCollection(), eq(timeoutMillis));
+        assertThat(actualRecordsWritten.size(), equalTo(0));
+        assertThat(actualRecordsWritten, equalTo(Collections.emptyList()));
     }
 
     @Test
