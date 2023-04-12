@@ -39,6 +39,18 @@ class S3SourceConfigTest {
     }
 
     @Test
+    void default_end_to_end_acknowledgements_test() {
+        assertThat(new S3SourceConfig().getEndToEndAcknowledgements(), equalTo(false));
+    }
+
+    @Test
+    void end_to_end_acknowledgements_set_to_true_test() throws Exception {
+        final S3SourceConfig s3SourceConfig = new S3SourceConfig();
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"endToEndAcknowledgements", true);
+        assertTrue(s3SourceConfig.getEndToEndAcknowledgements());
+    }
+
+    @Test
     void default_records_to_accumulate_test() {
         assertThat(new S3SourceConfig().getNumberOfRecordsToAccumulate(), equalTo(DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE));
     }

@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.AfterEach;
@@ -33,6 +34,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.core.StringStartsWith.startsWith;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -46,9 +48,11 @@ class SqsWorkerIT {
     private S3ObjectGenerator s3ObjectGenerator;
     private String bucket;
     private Backoff backoff;
+    private AcknowledgementSetManager acknowledgementSetManager;
 
     @BeforeEach
     void setUp() {
+        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         final S3Client s3Client = S3Client.builder()
                 .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
@@ -84,7 +88,7 @@ class SqsWorkerIT {
     }
 
     private SqsWorker createObjectUnderTest() {
-        return new SqsWorker(sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
+        return new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
     }
 
     @AfterEach
@@ -112,7 +116,7 @@ class SqsWorkerIT {
         final int sqsMessagesProcessed = objectUnderTest.processSqsMessages();
 
         final ArgumentCaptor<S3ObjectReference> s3ObjectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        verify(s3Service, atLeastOnce()).addS3Object(s3ObjectReferenceArgumentCaptor.capture());
+        verify(s3Service, atLeastOnce()).addS3Object(s3ObjectReferenceArgumentCaptor.capture(), eq(null));
 
         assertThat(s3ObjectReferenceArgumentCaptor.getValue().getBucketName(), equalTo(bucket));
         assertThat(s3ObjectReferenceArgumentCaptor.getValue().getKey(), startsWith("s3 source/sqs/"));
