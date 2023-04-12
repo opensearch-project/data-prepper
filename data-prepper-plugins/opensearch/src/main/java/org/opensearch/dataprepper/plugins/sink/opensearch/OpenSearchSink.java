@@ -291,10 +291,14 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
               BulkOperationWriter.dlqObjectToString(dlqObject), message));
-          eventHandle.release(true);
+          if (eventHandle != null) {
+            eventHandle.release(true);
+          }
         } catch (final IOException e) {
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
-          eventHandle.release(false);
+          if (eventHandle != null) {
+            eventHandle.release(false);
+          }
         }
       });
     } else if (dlqWriter != null) {
@@ -302,20 +306,26 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
         dlqObjects.forEach((dlqObject) -> {
             final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
-            eventHandle.release(true);
+            if (eventHandle != null) {
+              eventHandle.release(true);
+            }
         });
       } catch (final IOException e) {
         dlqObjects.forEach(dlqObject -> {
           final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
-          eventHandle.release(false);
+          if (eventHandle != null) {
+            eventHandle.release(false);
+          }
         });
       }
     } else {
       dlqObjects.forEach(dlqObject -> {
         LOG.warn(SENSITIVE, "Document [{}] has failure.", dlqObject.getFailedData(), failure);
         final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
-        eventHandle.release(false);
+        if (eventHandle != null) {
+          eventHandle.release(false);
+        }
       });
     }
   }

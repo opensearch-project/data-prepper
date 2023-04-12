@@ -243,7 +243,9 @@ public final class BulkRetryStrategy {
                 sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
                 for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
                     final EventHandle eventHandle = bulkOperation.getEventHandle();
-                    eventHandle.release(true);
+                    if (eventHandle != null) {
+                        eventHandle.release(true);
+                    }
                 }
                 retryCountMap.remove(bulkRequestForRetry);
             }
@@ -281,7 +283,9 @@ public final class BulkRetryStrategy {
                 } else {
                     sentDocumentsCounter.increment();
                     final EventHandle eventHandle = bulkOperationWithHandle.getEventHandle();
-                    eventHandle.release(true);
+                    if (eventHandle != null) {
+                        eventHandle.release(true);
+                    }
                 }
                 index++;
             }
@@ -305,7 +309,9 @@ public final class BulkRetryStrategy {
             } else {
                 sentDocumentsCounter.increment();
                 final EventHandle eventHandle = bulkOperationWithHandle.getEventHandle();
-                eventHandle.release(true);
+                if (eventHandle != null) {
+                    eventHandle.release(true);
+                }
             }
         }
         logFailure.accept(failures.build(), null);
