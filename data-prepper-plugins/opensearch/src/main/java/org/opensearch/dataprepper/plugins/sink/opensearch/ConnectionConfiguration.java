@@ -175,25 +175,6 @@ public class ConnectionConfiguration {
     this.pipelineName = builder.pipelineName;
   }
 
-  private void validateStsRoleArn() {
-    final Arn arn = getArn();
-    if (!AWS_IAM.equals(arn.service())) {
-      throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
-    }
-    final Optional<String> resourceType = arn.resource().resourceType();
-    if (resourceType.isEmpty() || !resourceType.get().equals(AWS_IAM_ROLE)) {
-      throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
-    }
-  }
-
-  private Arn getArn() {
-    try {
-      return Arn.fromString(awsStsRoleArn);
-    } catch (final Exception e) {
-      throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
-    }
-  }
-
   public static ConnectionConfiguration readConnectionConfiguration(final PluginSetting pluginSetting){
     @SuppressWarnings("unchecked")
     final List<String> hosts = (List<String>) pluginSetting.getAttributeFromSettings(HOSTS);
@@ -295,7 +276,6 @@ public class ConnectionConfiguration {
     final Aws4Signer aws4Signer = Aws4Signer.create();
     final AwsCredentialsProvider credentialsProvider;
     if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
-      validateStsRoleArn();
       AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
               .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
               .roleArn(awsStsRoleArn);
@@ -420,7 +400,6 @@ public class ConnectionConfiguration {
     if (awsSigv4) {
       final AwsCredentialsProvider credentialsProvider;
       if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
-        validateStsRoleArn();
         AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
                 .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
                 .roleArn(awsStsRoleArn);
@@ -519,6 +498,24 @@ public class ConnectionConfiguration {
 
     private boolean awsServerless;
 
+    private void validateStsRoleArn(final String awsStsRoleArn) {
+      final Arn arn = getArn(awsStsRoleArn);
+      if (!AWS_IAM.equals(arn.service())) {
+        throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
+      }
+      final Optional<String> resourceType = arn.resource().resourceType();
+      if (resourceType.isEmpty() || !resourceType.get().equals(AWS_IAM_ROLE)) {
+        throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
+      }
+    }
+
+    private Arn getArn(final String awsStsRoleArn) {
+      try {
+        return Arn.fromString(awsStsRoleArn);
+      } catch (final Exception e) {
+        throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
+      }
+    }
 
     public Builder(final List<String> hosts) {
       checkArgument(hosts != null, "hosts cannot be null");
@@ -575,11 +572,7 @@ public class ConnectionConfiguration {
     public Builder withAWSStsRoleArn(final String awsStsRoleArn) {
       checkArgument(awsStsRoleArn == null || awsStsRoleArn.length() <= 2048, "awsStsRoleArn length cannot exceed 2048");
       if(awsStsRoleArn != null) {
-        try {
-          Arn.fromString(awsStsRoleArn);
-        } catch (Exception e) {
-          throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
-        }
+        validateStsRoleArn(awsStsRoleArn);
       }
       this.awsStsRoleArn = awsStsRoleArn;
       return this;
