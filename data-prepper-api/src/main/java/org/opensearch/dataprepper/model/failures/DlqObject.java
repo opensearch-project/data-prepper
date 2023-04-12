@@ -83,6 +83,12 @@ public class DlqObject {
         return eventHandle;
     }
 
+    public void releaseEventHandle(boolean result) {
+        if (eventHandle != null) {
+            eventHandle.release(result);
+        }
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;

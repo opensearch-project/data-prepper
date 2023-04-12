@@ -31,4 +31,10 @@ public class BulkOperationWrapper {
     public EventHandle getEventHandle() {
         return eventHandle;
     }
+
+    public void releaseEventHandle(boolean result) {
+        if (eventHandle != null) {
+            eventHandle.release(result);
+        }
+    }
 }

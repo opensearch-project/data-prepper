@@ -287,45 +287,31 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
         final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
-        final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
               BulkOperationWriter.dlqObjectToString(dlqObject), message));
-          if (eventHandle != null) {
-            eventHandle.release(true);
-          }
+          dlqObject.releaseEventHandle(true);
         } catch (final IOException e) {
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
-          if (eventHandle != null) {
-            eventHandle.release(false);
-          }
+          dlqObject.releaseEventHandle(false);
         }
       });
     } else if (dlqWriter != null) {
       try {
         dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
         dlqObjects.forEach((dlqObject) -> {
-            final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
-            if (eventHandle != null) {
-              eventHandle.release(true);
-            }
+          dlqObject.releaseEventHandle(true);
         });
       } catch (final IOException e) {
         dlqObjects.forEach(dlqObject -> {
-          final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
-          if (eventHandle != null) {
-            eventHandle.release(false);
-          }
+          dlqObject.releaseEventHandle(false);
         });
       }
     } else {
       dlqObjects.forEach(dlqObject -> {
         LOG.warn(SENSITIVE, "Document [{}] has failure.", dlqObject.getFailedData(), failure);
-        final EventHandle eventHandle = (EventHandle)dlqObject.getEventHandle();
-        if (eventHandle != null) {
-          eventHandle.release(false);
-        }
+        dlqObject.releaseEventHandle(false);
       });
     }
   }

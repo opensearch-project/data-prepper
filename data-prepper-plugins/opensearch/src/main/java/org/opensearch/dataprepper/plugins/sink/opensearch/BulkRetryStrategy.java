@@ -242,10 +242,7 @@ public final class BulkRetryStrategy {
                 }
                 sentDocumentsCounter.increment(bulkRequestForRetry.getOperationsCount());
                 for (final BulkOperationWrapper bulkOperation: bulkRequestForRetry.getOperations()) {
-                    final EventHandle eventHandle = bulkOperation.getEventHandle();
-                    if (eventHandle != null) {
-                        eventHandle.release(true);
-                    }
+                    bulkOperation.releaseEventHandle(true);
                 }
                 retryCountMap.remove(bulkRequestForRetry);
             }
@@ -268,24 +265,21 @@ public final class BulkRetryStrategy {
             }
             int index = 0;
             for (final BulkResponseItem bulkItemResponse : response.items()) {
-                BulkOperationWrapper bulkOperationWithHandle =
+                BulkOperationWrapper bulkOperation =
                     (BulkOperationWrapper)request.getOperationAt(index);
                 if (bulkItemResponse.error() != null) {
                     if (!NON_RETRY_STATUS.contains(bulkItemResponse.status())) {
-                        requestToReissue.addOperation(bulkOperationWithHandle);
+                        requestToReissue.addOperation(bulkOperation);
                     } else {
                         nonRetryableFailures.add(FailedBulkOperation.builder()
-                                .withBulkOperation(bulkOperationWithHandle)
+                                .withBulkOperation(bulkOperation)
                                 .withBulkResponseItem(bulkItemResponse)
                                 .build());
                         documentErrorsCounter.increment();
                     }
                 } else {
                     sentDocumentsCounter.increment();
-                    final EventHandle eventHandle = bulkOperationWithHandle.getEventHandle();
-                    if (eventHandle != null) {
-                        eventHandle.release(true);
-                    }
+                    bulkOperation.releaseEventHandle(true);
                 }
                 index++;
             }
@@ -299,19 +293,16 @@ public final class BulkRetryStrategy {
         final ImmutableList.Builder<FailedBulkOperation> failures = ImmutableList.builder();
         for (int i = 0; i < itemResponses.size(); i++) {
             final BulkResponseItem bulkItemResponse = itemResponses.get(i);
-            final BulkOperationWrapper bulkOperationWithHandle = accumulatingBulkRequest.getOperationAt(i);
+            final BulkOperationWrapper bulkOperation = accumulatingBulkRequest.getOperationAt(i);
             if (bulkItemResponse.error() != null) {
                 failures.add(FailedBulkOperation.builder()
-                    .withBulkOperation(bulkOperationWithHandle)
+                    .withBulkOperation(bulkOperation)
                     .withBulkResponseItem(bulkItemResponse)
                     .build());
                 documentErrorsCounter.increment();
             } else {
                 sentDocumentsCounter.increment();
-                final EventHandle eventHandle = bulkOperationWithHandle.getEventHandle();
-                if (eventHandle != null) {
-                    eventHandle.release(true);
-                }
+                bulkOperation.releaseEventHandle(true);
             }
         }
         logFailure.accept(failures.build(), null);

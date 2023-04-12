@@ -29,6 +29,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.ArgumentMatchers.any;
 
 public class DlqObjectTest {
 
@@ -164,10 +167,13 @@ public class DlqObjectTest {
         }
 
         @Test
-        public void test_get_eventHandle() {
+        public void test_get_release_eventHandle() {
+            doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
             final Object actualEventHandle = testObject.getEventHandle();
             assertThat(actualEventHandle, is(notNullValue()));
             assertThat(actualEventHandle, is(eventHandle));
+            testObject.releaseEventHandle(true);
+            verify(eventHandle).release(any(Boolean.class));
         }
 
         @Test
