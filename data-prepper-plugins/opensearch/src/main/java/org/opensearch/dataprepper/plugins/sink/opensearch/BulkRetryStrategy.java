@@ -11,7 +11,6 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import io.micrometer.core.instrument.Counter;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.action.bulk.BackoffPolicy;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
