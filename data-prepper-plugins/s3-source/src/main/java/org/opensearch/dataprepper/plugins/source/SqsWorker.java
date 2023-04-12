@@ -214,17 +214,20 @@ public class SqsWorker implements Runnable {
 
         LOG.info("Received {} messages from SQS. Processing {} messages.", s3EventNotificationRecords.size(), parsedMessagesToRead.size());
 
-        List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
-        AcknowledgementSet acknowledgementSet = null;
-        if (endToEndAcknowledgementsEnabled) {
-            // Acknowledgement Set timeout is slightly smaller than the visibility timeout;
-            int timeout = (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2;
-            acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                acknowledgementSetCallbackCounter.increment();
-                deleteSqsMessages(waitingForAcknowledgements);
-            }, Duration.ofSeconds(timeout));
-        }
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
+            List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
+            AcknowledgementSet acknowledgementSet = null;
+            if (endToEndAcknowledgementsEnabled) {
+                // Acknowledgement Set timeout is slightly smaller than the visibility timeout;
+                int timeout = (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2;
+                acknowledgementSet = acknowledgementSetManager.create((result) -> {
+                    acknowledgementSetCallbackCounter.increment();
+                    // Delete only if this is positive acknowledgement
+                    if (result == true) {
+                        deleteSqsMessages(waitingForAcknowledgements);
+                    }
+                }, Duration.ofSeconds(timeout));
+            }
             final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;
             final S3ObjectReference s3ObjectReference = populateS3Reference(notificationRecords.get(0));
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
