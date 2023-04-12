@@ -212,6 +212,10 @@ Besides common metrics in [AbstractSink](https://github.com/opensearch-project/d
 - `bulkRequestTimeoutErrors`: measures number of requests failed with timeout error. `RestStatus` value of `REQUEST_TIMEOUT` is mapped to this errors counter.
 - `bulkRequestServerErrors`: measures the number of requests failed with 5xx errors. `RestStatus` value of 500-599 are mapped to this errors counter.
 
+### End-to-End acknowledgements
+
+If the events received by the OpenSearch Sink have end-to-end acknowledgements enabled (which is tracked using the presence of EventHandle in the event received for processing), then upon successful posting to OpenSearch or upon successful write to DLQ, a positive acknowledgement is sent to the acknowledgementSetManager, otherwise a negative acknowledgement is sent.
+
 ### Distribution Summary
 - `bulkRequestSizeBytes`: measures the distribution of bulk request's payload sizes in bytes.
 
