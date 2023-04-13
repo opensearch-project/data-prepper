@@ -5,36 +5,37 @@
 
 package org.opensearch.dataprepper.acknowledgements;
 
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 
-import java.util.function.Consumer;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.time.Duration;
-import javax.inject.Named;
 import javax.inject.Inject;
+import javax.inject.Named;
+import java.time.Duration;
+import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 
 @Named
 public class DefaultAcknowledgementSetManager implements AcknowledgementSetManager {
-    private static final int MAX_THREADS = 100;
     private static final int DEFAULT_WAIT_TIME_MS = 15 * 1000;
     private final AcknowledgementSetMonitor acknowledgementSetMonitor;
-    private final ScheduledExecutorService executor;
+    private final ExecutorService executor;
+    private final AcknowledgementSetMonitorThread acknowledgementSetMonitorThread;
+
 
     @Inject
-    public DefaultAcknowledgementSetManager() {
-        this(Duration.ofMillis(DEFAULT_WAIT_TIME_MS));
+    public DefaultAcknowledgementSetManager(
+            @Named("acknowledgementCallbackExecutor") final ExecutorService callbackExecutor) {
+        this(callbackExecutor, Duration.ofMillis(DEFAULT_WAIT_TIME_MS));
     }
 
-    public DefaultAcknowledgementSetManager(final Duration waitTime) {
-        this.executor = Executors.newScheduledThreadPool(MAX_THREADS);
+    public DefaultAcknowledgementSetManager(final ExecutorService callbackExecutor, final Duration waitTime) {
         this.acknowledgementSetMonitor = new AcknowledgementSetMonitor();
-        this.executor.scheduleAtFixedRate(this.acknowledgementSetMonitor, waitTime.toMillis(), waitTime.toMillis(), TimeUnit.MILLISECONDS);
+        this.executor = Objects.requireNonNull(callbackExecutor);
+        acknowledgementSetMonitorThread = new AcknowledgementSetMonitorThread(acknowledgementSetMonitor, waitTime);
+        acknowledgementSetMonitorThread.start();
     }
 
     public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout) {
@@ -44,7 +45,7 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
     }
 
     public void acquireEventReference(final Event event) {
-        acquireEventReference(((JacksonEvent)event).getEventHandle());
+        acquireEventReference(event.getEventHandle());
     }
 
     public void acquireEventReference(final EventHandle eventHandle) {
@@ -56,11 +57,15 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
     }
 
     public void shutdown() {
-        this.executor.shutdownNow();
+        acknowledgementSetMonitorThread.stop();
     }
 
-    // for testing
-    public AcknowledgementSetMonitor getAcknowledgementSetMonitor() {
+    /**
+     * For testing only.
+     *
+     * @return the AcknowledgementSetMonitor
+     */
+    AcknowledgementSetMonitor getAcknowledgementSetMonitor() {
         return acknowledgementSetMonitor;
     }
 }
