@@ -134,7 +134,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     try {
         doInitializeInternal();
     } catch (IOException e) {
-        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error {}", (Objects.isNull(e.getCause()) ? e : e.getCause()), e);
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. ", e);
         closeFiles();
     } catch (InvalidPluginConfigurationException e) {
         LOG.error("Failed to initialize OpenSearch sink.");
@@ -146,7 +146,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             this.shutdown();
             throw e;
         }
-        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error {}", (Objects.isNull(e.getCause()) ? e : e.getCause()), e);
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. ", e);
         closeFiles();
     }
   }
