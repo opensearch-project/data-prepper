@@ -9,6 +9,7 @@ import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.rest.RestStatus;
 import java.util.Map;
 import java.util.UUID;
@@ -69,7 +70,7 @@ public class FailedBulkOperationConverterTest {
     public void testConvertToDlqObject() {
 
         final FailedBulkOperation testData = FailedBulkOperation.builder()
-            .withBulkOperation(bulkOperation)
+            .withBulkOperation(new BulkOperationWrapper(bulkOperation))
             .withBulkResponseItem(bulkResponseItem)
             .withFailure(failure)
             .build();
@@ -82,7 +83,7 @@ public class FailedBulkOperationConverterTest {
     @Test
     public void testConvertToDlqObjectWithOnlyFailure() {
         final FailedBulkOperation testData = FailedBulkOperation.builder()
-            .withBulkOperation(bulkOperation)
+            .withBulkOperation(new BulkOperationWrapper(bulkOperation))
             .withFailure(failure)
             .build();
 
@@ -95,7 +96,7 @@ public class FailedBulkOperationConverterTest {
     public void testConvertToDlqObjectWithOnlyBulkResponseItem() {
 
         final FailedBulkOperation testData = FailedBulkOperation.builder()
-            .withBulkOperation(bulkOperation)
+            .withBulkOperation(new BulkOperationWrapper(bulkOperation))
             .withBulkResponseItem(bulkResponseItem)
             .build();
 

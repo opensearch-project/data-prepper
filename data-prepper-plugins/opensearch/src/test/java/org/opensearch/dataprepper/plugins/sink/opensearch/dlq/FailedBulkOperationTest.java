@@ -1,11 +1,17 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.sink.opensearch.dlq;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
+import org.opensearch.dataprepper.model.event.EventHandle;
 
 import static java.util.UUID.randomUUID;
 import static org.hamcrest.CoreMatchers.allOf;
@@ -16,6 +22,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
 public class FailedBulkOperationTest {
@@ -23,16 +30,19 @@ public class FailedBulkOperationTest {
     @Nested
     class Getters {
 
-        private BulkOperation bulkOperation;
+        private BulkOperationWrapper bulkOperation;
         private BulkResponseItem bulkResponseItem;
+        private EventHandle eventHandle;
         private Throwable failure;
 
         private FailedBulkOperation testObject;
         @BeforeEach
         public void setUp() {
-            bulkOperation = mock(BulkOperation.class);
+            bulkOperation = mock(BulkOperationWrapper.class);
             bulkResponseItem = mock(BulkResponseItem.class);
+            eventHandle = mock(EventHandle.class);
             failure = new Exception();
+            lenient().when(bulkOperation.getEventHandle()).thenReturn(eventHandle);
 
             testObject = FailedBulkOperation.builder()
                 .withBulkOperation(bulkOperation)
@@ -44,6 +54,11 @@ public class FailedBulkOperationTest {
         @Test
         public void testGetBulkOperation() {
             assertThat(testObject.getBulkOperation(), is(equalTo(bulkOperation)));
+        }
+
+        @Test
+        public void testGetEventHandle() {
+            assertThat(testObject.getBulkOperation().getEventHandle(), is(equalTo(eventHandle)));
         }
 
         @Test
@@ -60,13 +75,13 @@ public class FailedBulkOperationTest {
 
     @Nested
     class Builder {
-        private BulkOperation bulkOperation;
+        private BulkOperationWrapper bulkOperation;
         private BulkResponseItem bulkResponseItem;
         private Throwable failure;
 
         @BeforeEach
         public void setUp() {
-            bulkOperation = mock(BulkOperation.class);
+            bulkOperation = mock(BulkOperationWrapper.class);
             bulkResponseItem = mock(BulkResponseItem.class);
             failure = new Exception();
         }
@@ -110,14 +125,14 @@ public class FailedBulkOperationTest {
     @Nested
     class EqualsAndHashCodeAndToString {
 
-        private BulkOperation bulkOperation;
+        private BulkOperationWrapper bulkOperation;
         private BulkResponseItem bulkResponseItem;
         private Throwable failure;
 
         private FailedBulkOperation testObject;
         @BeforeEach
         public void setUp() {
-            bulkOperation = mock(BulkOperation.class);
+            bulkOperation = mock(BulkOperationWrapper.class);
             bulkResponseItem = mock(BulkResponseItem.class);
             failure = new Exception();
 

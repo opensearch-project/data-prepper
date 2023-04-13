@@ -149,7 +149,7 @@ class S3ObjectWorkerIT {
 
     private void parseObject(final String key, final S3ObjectWorker objectUnderTest) throws IOException {
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        objectUnderTest.parseS3Object(s3ObjectReference);
+        objectUnderTest.parseS3Object(s3ObjectReference, null);
     }
 
     static class IntegrationTestArguments implements ArgumentsProvider {

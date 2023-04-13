@@ -5,17 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.client.opensearch.core.BulkRequest;
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkRequest<BulkOperation, BulkRequest> {
+public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> {
     static final int OPERATION_OVERHEAD = 50;
 
-    private final List<BulkOperation> bulkOperations;
+    private final List<BulkOperationWrapper> bulkOperations;
     private BulkRequest.Builder bulkRequestBuilder;
     private long currentBulkSize = 0L;
     private int operationCount = 0;
@@ -27,24 +27,24 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
     }
 
     @Override
-    public long estimateSizeInBytesWithDocument(BulkOperation documentOrOperation) {
+    public long estimateSizeInBytesWithDocument(BulkOperationWrapper documentOrOperation) {
         return currentBulkSize + estimateBulkOperationSize(documentOrOperation);
     }
 
     @Override
-    public void addOperation(BulkOperation bulkOperation) {
+    public void addOperation(BulkOperationWrapper bulkOperation) {
         final Long documentLength = estimateBulkOperationSize(bulkOperation);
 
         currentBulkSize += documentLength;
 
-        bulkRequestBuilder = bulkRequestBuilder.operations(bulkOperation);
+        bulkRequestBuilder = bulkRequestBuilder.operations(bulkOperation.getBulkOperation());
 
         operationCount++;
         bulkOperations.add(bulkOperation);
     }
 
     @Override
-    public BulkOperation getOperationAt(int index) {
+    public BulkOperationWrapper getOperationAt(int index) {
         return bulkOperations.get(index);
     }
 
@@ -59,7 +59,7 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
     }
 
     @Override
-    public List<BulkOperation> getOperations() {
+    public List<BulkOperationWrapper> getOperations() {
         return Collections.unmodifiableList(bulkOperations);
     }
 
@@ -70,14 +70,14 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
         return builtRequest;
     }
 
-    private long estimateBulkOperationSize(BulkOperation bulkOperation) {
+    private long estimateBulkOperationSize(BulkOperationWrapper bulkOperation) {
 
         Object anyDocument;
 
-        if (bulkOperation.isIndex()) {
-            anyDocument = bulkOperation.index().document();
-        } else if (bulkOperation.isCreate()) {
-            anyDocument = bulkOperation.create().document();
+        if (bulkOperation.getBulkOperation().isIndex()) {
+            anyDocument = bulkOperation.getBulkOperation().index().document();
+        } else if (bulkOperation.getBulkOperation().isCreate()) {
+            anyDocument = bulkOperation.getBulkOperation().create().document();
         } else {
             throw new UnsupportedOperationException("Only index or create operations are supported currently. " + bulkOperation);
         }
