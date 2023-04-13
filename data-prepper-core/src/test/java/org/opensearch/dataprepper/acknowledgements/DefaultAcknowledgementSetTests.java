@@ -5,26 +5,28 @@
 
 package org.opensearch.dataprepper.acknowledgements;
 
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.event.DefaultEventHandle;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.CoreMatchers.not;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Executors;
-import java.util.function.Consumer;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.event.DefaultEventHandle;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+
+import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
+
+import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
-import org.junit.jupiter.api.extension.ExtendWith;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.doAnswer;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.time.Duration;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultAcknowledgementSetTests {
@@ -34,7 +36,7 @@ class DefaultAcknowledgementSetTests {
     private JacksonEvent event;
     private DefaultEventHandle handle;
 
-    private ScheduledExecutorService executor;
+    private ExecutorService executor;
     private Boolean acknowledgementSetResult;
     private final Duration TEST_TIMEOUT = Duration.ofMillis(5000);
     private AtomicBoolean callbackInterrupted;
@@ -50,7 +52,7 @@ class DefaultAcknowledgementSetTests {
 
     @BeforeEach
     void setupEvent() {
-        executor = Executors.newScheduledThreadPool(MAX_THREADS);
+        executor = Executors.newFixedThreadPool(MAX_THREADS);
 
         acknowledgementSetResult = null;
         defaultAcknowledgementSet = createObjectUnderTest();
@@ -58,12 +60,10 @@ class DefaultAcknowledgementSetTests {
 
         event = mock(JacksonEvent.class);
         
-        try {
-            doAnswer((i) -> {
-                handle = (DefaultEventHandle)i.getArgument(0);
-                return null;
-            }).when(event).setEventHandle(any());
-        } catch (Exception e){}
+        doAnswer((i) -> {
+            handle = i.getArgument(0);
+            return null;
+        }).when(event).setEventHandle(any());
         lenient().when(event.getEventHandle()).thenReturn(handle);
     }
 
@@ -129,9 +129,9 @@ class DefaultAcknowledgementSetTests {
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
 
-        while (!defaultAcknowledgementSet.isDone()) {
-            Thread.sleep(1000);
-        }
+        Awaitility.waitAtMost(Duration.ofSeconds(10))
+                .pollDelay(Duration.ofMillis(500))
+                .until(() -> defaultAcknowledgementSet.isDone());
         assertThat(acknowledgementSetResult, equalTo(true));
     }
 
@@ -152,9 +152,9 @@ class DefaultAcknowledgementSetTests {
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(false));
         assertThat(defaultAcknowledgementSet.release(handle, false), equalTo(false));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
-        while (!defaultAcknowledgementSet.isDone()) {
-            Thread.sleep(1000);
-        }
+        Awaitility.waitAtMost(Duration.ofSeconds(10))
+                .pollDelay(Duration.ofMillis(500))
+                .until(() -> defaultAcknowledgementSet.isDone());
         assertThat(acknowledgementSetResult, equalTo(false));
     }
 
@@ -174,18 +174,13 @@ class DefaultAcknowledgementSetTests {
         assertThat(handle, not(equalTo(null)));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
-        while (!defaultAcknowledgementSet.isDone()) {
-            Thread.sleep(1000);
-        }
+        Awaitility.waitAtMost(Duration.ofSeconds(10))
+                .pollDelay(Duration.ofMillis(500))
+                .until(() -> defaultAcknowledgementSet.isDone());
         assertThat(acknowledgementSetResult, equalTo(null));
-        final int MAX_TRIES = 10;
-        int numTries = 0;
-        // Try few times
-        while (numTries++ < MAX_TRIES && !callbackInterrupted.get()) {
-            try {
-                Thread.sleep(1000);
-            } catch (Exception e){}
-        }
+        Awaitility.waitAtMost(Duration.ofSeconds(20))
+                .pollDelay(Duration.ofMillis(500))
+                .until(() -> callbackInterrupted.get());
         assertThat(callbackInterrupted.get(), equalTo(true));
     }
 }
