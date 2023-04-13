@@ -12,8 +12,10 @@ import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializa
 import software.amazon.awssdk.services.s3.model.CompressionType;
 
 import java.util.List;
-
-public class ScanOptionsBuilder {
+/**
+ * Class consists the scan related properties.
+ */
+public class ScanOptions {
     private String startDate;
     private String range;
     private String bucket;
@@ -35,7 +37,7 @@ public class ScanOptionsBuilder {
         return expressionType;
     }
 
-    public ScanOptionsBuilder setExpressionType(String expressionType) {
+    public ScanOptions setExpressionType(String expressionType) {
         this.expressionType = expressionType;
         return this;
     }
@@ -44,7 +46,7 @@ public class ScanOptionsBuilder {
         return s3SelectCSVOption;
     }
 
-    public ScanOptionsBuilder setS3SelectCSVOption(S3SelectCSVOption s3SelectCSVOption) {
+    public ScanOptions setS3SelectCSVOption(S3SelectCSVOption s3SelectCSVOption) {
         this.s3SelectCSVOption = s3SelectCSVOption;
         return this;
     }
@@ -53,52 +55,52 @@ public class ScanOptionsBuilder {
         return s3SelectJsonOption;
     }
 
-    public ScanOptionsBuilder setS3SelectJsonOption(S3SelectJsonOption s3SelectJsonOption) {
+    public ScanOptions setS3SelectJsonOption(S3SelectJsonOption s3SelectJsonOption) {
         this.s3SelectJsonOption = s3SelectJsonOption;
         return this;
     }
 
-    public ScanOptionsBuilder setStartDate(String startDate) {
+    public ScanOptions setStartDate(String startDate) {
         this.startDate = startDate;
         return this;
     }
 
-    public ScanOptionsBuilder setRange(String range) {
+    public ScanOptions setRange(String range) {
         this.range = range;
         return this;
     }
 
-    public ScanOptionsBuilder setBucket(String bucket) {
+    public ScanOptions setBucket(String bucket) {
         this.bucket = bucket;
         return this;
     }
 
-    public ScanOptionsBuilder setExpression(String expression) {
+    public ScanOptions setExpression(String expression) {
         this.expression = expression;
         return this;
     }
 
-    public ScanOptionsBuilder setSerializationFormatOption(S3SelectSerializationFormatOption serializationFormatOption) {
+    public ScanOptions setSerializationFormatOption(S3SelectSerializationFormatOption serializationFormatOption) {
         this.serializationFormatOption = serializationFormatOption;
         return this;
     }
 
-    public ScanOptionsBuilder setKeys(List<String> keys) {
+    public ScanOptions setKeys(List<String> keys) {
         this.keys = keys;
         return this;
     }
 
-    public ScanOptionsBuilder setCodec(Codec codec) {
+    public ScanOptions setCodec(Codec codec) {
         this.codec = codec;
         return this;
     }
 
-    public ScanOptionsBuilder setCompressionOption(CompressionOption compressionOption) {
+    public ScanOptions setCompressionOption(CompressionOption compressionOption) {
         this.compressionOption = compressionOption;
         return this;
     }
 
-    public ScanOptionsBuilder setCompressionType(CompressionType compressionType) {
+    public ScanOptions setCompressionType(CompressionType compressionType) {
         this.compressionType = compressionType;
         return this;
     }

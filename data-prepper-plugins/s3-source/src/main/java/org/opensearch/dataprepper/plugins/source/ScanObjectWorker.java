@@ -47,9 +47,9 @@ public class ScanObjectWorker implements Runnable{
     private final BucketOwnerProvider bucketOwnerProvider;
     private final BiConsumer<Event, S3ObjectReference> eventMetadataModifier;
     private static final Map<String,S3ObjectDetails> stateSaveMap = new HashMap<>();
-    private final List<ScanOptionsBuilder> scanOptionsBuilderList;
+    private final List<ScanOptions> scanOptionsBuilderList;
 
-    public ScanObjectWorker(final S3ObjectRequest s3ObjectRequest,final List<ScanOptionsBuilder> scanOptionsBuilderList){
+    public ScanObjectWorker(final S3ObjectRequest s3ObjectRequest,final List<ScanOptions> scanOptionsBuilderList){
         this.s3Client = s3ObjectRequest.getS3Client();
         this.s3AsyncClient = s3ObjectRequest.getS3AsyncClient();
         this.scanOptionsBuilderList = scanOptionsBuilderList;
@@ -73,7 +73,7 @@ public class ScanObjectWorker implements Runnable{
     /**
      * Method will parse the s3 object and write to {@link Buffer}
      */
-    void parseS3ScanObjects(ScanOptionsBuilder scanOptionsBuilder) {
+    void parseS3ScanObjects(final ScanOptions scanOptionsBuilder) {
         final S3ObjectRequest.Builder s3ObjectRequestBuilder = new S3ObjectRequest.Builder(buffer, numberOfRecordsToAccumulate,
                 bufferTimeout, s3ObjectPluginMetrics);
         final S3ObjectHandler s3ObjectHandler;
@@ -82,7 +82,7 @@ public class ScanObjectWorker implements Runnable{
                     .serializationFormatOption(scanOptionsBuilder.getSerializationFormatOption())
                     .expressionType(scanOptionsBuilder.getExpressionType())
                     .s3AsyncClient(s3AsyncClient).compressionType(scanOptionsBuilder.getCompressionType())
-                    .s3SelectResponseHandler(new S3SelectResponseHandler()).eventConsumer(eventMetadataModifier)
+                    .s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).eventConsumer(eventMetadataModifier)
                     .s3SelectCSVOption(scanOptionsBuilder.getS3SelectCSVOption())
                     .s3SelectJsonOption(scanOptionsBuilder.getS3SelectJsonOption()).build();
             s3ObjectHandler = new S3SelectObjectWorker(s3ObjectRequest);
@@ -99,8 +99,8 @@ public class ScanObjectWorker implements Runnable{
     }
 
 
-    private void processS3ObjectKeys(final S3ObjectReference s3ObjectReference, final S3ObjectHandler s3ObjectHandler, final ScanOptionsBuilder scanOptionsBuilder){
-        final S3ObjectDetails s3ObjDetails = getS3ObjectKeyLastModifiedTime(s3ObjectReference);
+    private void processS3ObjectKeys(final S3ObjectReference s3ObjectReference, final S3ObjectHandler s3ObjectHandler, final ScanOptions scanOptionsBuilder){
+        final S3ObjectDetails s3ObjDetails = getS3ObjectDetails(s3ObjectReference);
         final boolean isKeyMatchedBetweenTimeRange = isKeyMatchedBetweenTimeRange(s3ObjDetails.getS3ObjectLastModifiedTimestamp(),
                 scanOptionsBuilder.getRange(),
                 LocalDateTime.parse(scanOptionsBuilder.getStartDate()));
@@ -119,8 +119,7 @@ public class ScanObjectWorker implements Runnable{
      * @return boolean
      */
     public boolean isKeyProcessedByS3Scan(final S3ObjectDetails s3ObjectDetails) {
-        final S3ObjectDetails mapDbs3ObjectDetails = stateSaveMap.get((s3ObjectDetails.getBucket()+s3ObjectDetails.getKey()));
-        return mapDbs3ObjectDetails == null;
+        return stateSaveMap.get(s3ObjectDetails.getBucket()+s3ObjectDetails.getKey()) == null;
     }
 
     /**
@@ -137,7 +136,7 @@ public class ScanObjectWorker implements Runnable{
      * fetch the s3 object last modified time.
      * @return S3ObjectDetails
      */
-    public S3ObjectDetails getS3ObjectKeyLastModifiedTime(final S3ObjectReference s3ObjectReference){
+    public S3ObjectDetails getS3ObjectDetails(final S3ObjectReference s3ObjectReference){
         GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(s3ObjectReference.getBucketName()).key(s3ObjectReference.getKey()).build();
         ResponseInputStream<GetObjectResponse> s3ObjectResp = s3Client.getObject(getObjectRequest);
         final Instant instant = s3ObjectResp.response().lastModified();
@@ -179,9 +178,7 @@ public class ScanObjectWorker implements Runnable{
     public boolean isKeyMatchedBetweenTimeRange(final LocalDateTime lastModifiedTime,
                                                 final String rangeString,
                                                 final LocalDateTime endDate){
-        final boolean returnStatus;
-        final LocalDateTime startLocalDate = getSlurpingStartDateByRange(rangeString, endDate);
-        returnStatus = lastModifiedTime.isAfter(startLocalDate) && lastModifiedTime.isBefore(endDate);
-        return returnStatus;
+        return lastModifiedTime.isAfter(getSlurpingStartDateByRange(rangeString, endDate))
+                && lastModifiedTime.isBefore(endDate);
     }
 }

@@ -93,7 +93,7 @@ public class S3ScanServiceTest {
         when(s3SelectOptions.getKeyPath()).thenReturn(keyList);
         when(s3SelectOptions.getCompression()).thenReturn(CompressionOption.NONE);
         when(s3SelectOptions.getCodec()).thenReturn(mock(PluginModel.class));
-        when(bucket.getBucket()).thenReturn(s3SelectOptions);
+        when(bucket.getS3ScanBucketOption()).thenReturn(s3SelectOptions);
         List<S3ScanBucketOptions> buckets = new ArrayList<>();
         buckets.add(bucket);
         when(s3ScanScanOptions.getBuckets()).thenReturn(buckets);
@@ -104,7 +104,7 @@ public class S3ScanServiceTest {
         S3ScanService service = new S3ScanService(s3SourceConfig,buffer,bucketOwnerProvider,eventConsumer,
                 s3ObjectPluginMetrics,pluginFactory,s3ClientBuilderFactory);
         service.start();
-        final List<ScanOptionsBuilder> scanOptionsBuilder = service.getScanOptions();
+        final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getKeys(),sameInstance(keyList));
         assertThat(scanOptionsBuilder.get(0).getExpression(),nullValue());
         assertThat(scanOptionsBuilder.get(0).getBucket(),sameInstance(bucketName));
@@ -112,8 +112,6 @@ public class S3ScanServiceTest {
         assertThat(scanOptionsBuilder.get(0).getCompressionOption(),sameInstance(CompressionOption.NONE));
         assertThat(scanOptionsBuilder.get(0).getRange(),sameInstance(range));
         assertThat(scanOptionsBuilder.get(0).getStartDate(),sameInstance(startDate));
-        assertThat(scanOptionsBuilder.get(0).getExpressionType(),sameInstance("SQL"));
-        assertThat(scanOptionsBuilder.get(0).getCompressionType(),sameInstance(CompressionType.NONE));
     }
 
     @Test
@@ -143,7 +141,7 @@ public class S3ScanServiceTest {
         when(s3SelectOptions.getKeyPath()).thenReturn(keyList);
         when(s3SelectOptions.getCompression()).thenReturn(CompressionOption.NONE);
         when(s3SelectOptions.getCodec()).thenReturn(mock(PluginModel.class));
-        when(bucket.getBucket()).thenReturn(s3SelectOptions);
+        when(bucket.getS3ScanBucketOption()).thenReturn(s3SelectOptions);
         List<S3ScanBucketOptions> buckets = new ArrayList<>();
         buckets.add(bucket);
         when(s3ScanScanOptions.getBuckets()).thenReturn(buckets);
@@ -156,7 +154,7 @@ public class S3ScanServiceTest {
         when(bucketOwnerProvider.getBucketOwner(bucketName)).thenReturn(Optional.of(bucketName));
         S3ScanService service = new S3ScanService(s3SourceConfig,buffer,bucketOwnerProvider,eventConsumer,s3ObjectPluginMetrics,pluginFactory,s3ClientBuilderFactory);
         service.start();
-        final List<ScanOptionsBuilder> scanOptionsBuilder = service.getScanOptions();
+        final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getKeys(),sameInstance(keyList));
         assertThat(scanOptionsBuilder.get(0).getExpression(),sameInstance(queryStatement));
         assertThat(scanOptionsBuilder.get(0).getBucket(),sameInstance(bucketName));

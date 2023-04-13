@@ -10,9 +10,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class S3ScanBucketOptions {
     @JsonProperty("bucket")
-    private S3ScanBucketOption bucket;
+    private S3ScanBucketOption scanBucketOption;
 
-    public S3ScanBucketOption getBucket() {
-        return bucket;
+    public S3ScanBucketOption getS3ScanBucketOption() {
+        return scanBucketOption;
     }
 }

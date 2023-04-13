@@ -88,7 +88,7 @@ class S3ScanObjectWorkerTest {
     @Mock
     private CompressionEngine compressionEngine;
 
-    ScanObjectWorker createScanWorker(final ScanOptionsBuilder scanOptionsBuilder) throws IOException {
+    ScanObjectWorker createScanWorker(final ScanOptions scanOptionsBuilder) throws IOException {
         Random random = new Random();
         recordsToAccumulate = random.nextInt(10) + 2;
         objectSize = random.nextInt(100_000) + 10_000;
@@ -126,10 +126,10 @@ class S3ScanObjectWorkerTest {
     @ParameterizedTest
     @CsvSource({"1w","2d","3m","1y"})
     void fileScanBucketWithS3ObjectVerifyingRangeInYears(final String range) throws IOException{
-        final String startDateTime="2023-03-07T10:00:00";
+        final String startDateTime= "2023-03-07T10:00:00";
         final String bucketName = "my-bucket-2";
         final List<String> keyPathList = Arrays.asList("sample.csv");
-        final ScanOptionsBuilder scanOptionsBuilder = new ScanOptionsBuilder().setStartDate(startDateTime).setRange(range)
+        final ScanOptions scanOptionsBuilder = new ScanOptions().setStartDate(startDateTime).setRange(range)
                 .setBucket(bucketName).setExpression(null).setSerializationFormatOption(null).setKeys(keyPathList)
                 .setCodec(codec).setCompressionOption(CompressionOption.NONE);
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
@@ -163,11 +163,11 @@ class S3ScanObjectWorkerTest {
             "3y,select s.* from s3Object s,PARQUET"
     })
     void scanBucketWithS3SelectVerifyingRangeInDays(String range,final String queryStatement,final String dataSerializingFormat) throws IOException {
-        final String startDateTime="2023-03-07T10:00:00";
+        final String startDateTime= "2023-03-07T10:00:00";
         final String bucketName = "my-bucket-1";
         final List<String> keyPathList = Arrays.asList("file1.csv");
         final S3SelectSerializationFormatOption s3SelectSerializationFormatOption = S3SelectSerializationFormatOption.valueOf(dataSerializingFormat);
-        final ScanOptionsBuilder scanOptionsBuilder = new ScanOptionsBuilder().setStartDate(startDateTime)
+        final ScanOptions scanOptionsBuilder = new ScanOptions().setStartDate(startDateTime)
                 .setRange(range).setBucket(bucketName).setExpression(queryStatement)
                 .setSerializationFormatOption(s3SelectSerializationFormatOption).setKeys(keyPathList).setCodec(null).setCompressionOption(CompressionOption.NONE);
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);

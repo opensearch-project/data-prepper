@@ -16,7 +16,7 @@ public class S3ScanBucketOptionsTest {
     public void s3ScanBucketOptionsTest() throws NoSuchFieldException, IllegalAccessException {
         S3ScanBucketOptions s3ScanBucketOptions = new S3ScanBucketOptions();
         S3ScanBucketOption s3ScanBucketOption = new S3ScanBucketOption();
-        ReflectivelySetField.setField(S3ScanBucketOptions.class,s3ScanBucketOptions,"bucket",s3ScanBucketOption);
-        assertThat(s3ScanBucketOptions.getBucket(),sameInstance(s3ScanBucketOption));
+        ReflectivelySetField.setField(S3ScanBucketOptions.class,s3ScanBucketOptions,"scanBucketOption",s3ScanBucketOption);
+        assertThat(s3ScanBucketOptions.getS3ScanBucketOption(),sameInstance(s3ScanBucketOption));
     }
 }

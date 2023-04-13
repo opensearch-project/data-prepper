@@ -17,7 +17,6 @@ import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptio
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
-import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.model.CompressionType;
 
@@ -28,8 +27,8 @@ import java.util.NoSuchElementException;
 import java.util.function.BiConsumer;
 
 /**
- * Class responsible for taking an {@link S3SourceConfig} and creating all the necessary {@link ScanOptionsBuilder}
- * objects sand span a thread {@link S3SelectObjectWorker}
+ * Class responsible for taking an {@link S3SourceConfig} and creating all the necessary {@link ScanOptions}
+ * objects and spawn a thread {@link S3SelectObjectWorker}
  */
 public class S3ScanService {
     private final List<S3ScanBucketOptions> s3ScanBucketOptions;
@@ -81,46 +80,54 @@ public class S3ScanService {
      *
      * @return @List<ScanOptionsBuilder>
      */
-    List<ScanOptionsBuilder> getScanOptions() {
-        List<ScanOptionsBuilder> scanOptionsList = new ArrayList<>();
+    List<ScanOptions> getScanOptions() {
+        List<ScanOptions> scanOptionsList = new ArrayList<>();
         s3ScanBucketOptions.forEach(
                 obj -> {
-                    final S3ScanBucketOption bucket = obj.getBucket();
-                    final S3SelectOptions s3SelectOptions = bucket.getS3SelectOptions();
-                    Codec codec = null;
-                    String expression = null;
-                    S3SelectSerializationFormatOption s3SelectSerializationFormatOption = null;
-                    S3SelectCSVOption s3SelectCSVOption = null;
-                    S3SelectJsonOption s3SelectJsonOption = null;
-                    String expressionType = S3SelectOptions.DEFAULT_EXPRESSION_TYPE;
-                    String compressionType =  S3SelectOptions.DEFAULT_COMPRESSION_TYPE;
-                    if (s3SelectOptions == null && bucket.getCodec() == null) {
-                        throw new NoSuchElementException("codec is required in pipeline yaml configuration");
-                    }
-                    if (bucket.getCodec() != null) {
-                        final PluginModel pluginModel = bucket.getCodec();
-                        final PluginSetting pluginSetting = new PluginSetting(pluginModel.getPluginName(),
-                                pluginModel.getPluginSettings());
-                        codec = pluginFactory.loadPlugin(Codec.class, pluginSetting);
-                    }
-                    if(s3SelectOptions!=null){
-                        expression = s3SelectOptions.getExpression();
-                        expressionType = s3SelectOptions.getExpressionType();
-                        s3SelectSerializationFormatOption = s3SelectOptions.getS3SelectSerializationFormatOption();
-                        s3SelectCSVOption = s3SelectOptions.getS3SelectCSVOption();
-                        s3SelectJsonOption = s3SelectOptions.getS3SelectJsonOption();
-                        compressionType = s3SelectOptions.getCompressionType();
-                    }
-                    scanOptionsList.add(new ScanOptionsBuilder().setStartDate(endTime).setRange(range)
-                            .setBucket(bucket.getName()).setExpression(expression)
-                                    .setExpressionType(expressionType)
-                            .setSerializationFormatOption(s3SelectSerializationFormatOption)
-                            .setKeys(bucket.getKeyPath()).setCodec(codec)
-                            .setS3SelectCSVOption(s3SelectCSVOption !=null ? s3SelectCSVOption : new S3SelectCSVOption())
-                            .setS3SelectJsonOption(s3SelectJsonOption != null ? s3SelectJsonOption : new S3SelectJsonOption())
-                            .setCompressionType(CompressionType.valueOf(compressionType.toUpperCase()))
-                            .setCompressionOption(bucket.getCompression() != null ? bucket.getCompression() : compressionOption));
+                    buildScanOptions(scanOptionsList, obj);
                 });
         return scanOptionsList;
+    }
+
+    private void buildScanOptions(final List<ScanOptions> scanOptionsList, final S3ScanBucketOptions scanBucketOptions) {
+        final S3ScanBucketOption bucket = scanBucketOptions.getS3ScanBucketOption();
+        final S3SelectOptions s3SelectOptions = bucket.getS3SelectOptions();
+        validationCheckForCodecOrS3Select(bucket, s3SelectOptions);
+        scanOptionsList.add((s3SelectOptions != null ? getSlectScanOptions(bucket) : new ScanOptions())
+                .setStartDate(endTime).setRange(range)
+                .setBucket(bucket.getName())
+                .setKeys(bucket.getKeyPath()).setCodec(getCodec(bucket))
+                .setCompressionOption(bucket.getCompression() != null ? bucket.getCompression() : compressionOption));
+    }
+
+    private ScanOptions getSlectScanOptions(final S3ScanBucketOption bucket){
+        final S3SelectOptions s3SelectOptions = bucket.getS3SelectOptions();
+        final S3SelectJsonOption s3SelectJsonOption = s3SelectOptions.getS3SelectJsonOption();
+        final S3SelectCSVOption s3SelectCSVOption = s3SelectOptions.getS3SelectCSVOption();
+        return new ScanOptions().setExpression(s3SelectOptions.getExpression())
+                    .setExpressionType(s3SelectOptions.getExpressionType() != null
+                       ? s3SelectOptions.getExpressionType() : S3SelectOptions.DEFAULT_EXPRESSION_TYPE)
+                    .setCompressionType(CompressionType.valueOf(s3SelectOptions.getCompressionType() != null
+                       ? s3SelectOptions.getCompressionType().toUpperCase() : S3SelectOptions.DEFAULT_COMPRESSION_TYPE))
+                    .setS3SelectCSVOption(s3SelectCSVOption !=null ? s3SelectCSVOption : new S3SelectCSVOption())
+                    .setS3SelectJsonOption(s3SelectJsonOption != null ? s3SelectJsonOption : new S3SelectJsonOption())
+                    .setSerializationFormatOption(s3SelectOptions.getS3SelectSerializationFormatOption());
+    }
+
+    private Codec getCodec(final S3ScanBucketOption bucket) {
+        if (bucket.getCodec() != null) {
+            final PluginModel pluginModel = bucket.getCodec();
+            final PluginSetting pluginSetting = new PluginSetting(pluginModel.getPluginName(),
+                    pluginModel.getPluginSettings());
+            return pluginFactory.loadPlugin(Codec.class, pluginSetting);
+        }
+        return null;
+    }
+
+    private static void validationCheckForCodecOrS3Select(final S3ScanBucketOption bucket,
+                                                          final S3SelectOptions s3SelectOptions) {
+        if (s3SelectOptions == null && bucket.getCodec() == null) {
+            throw new NoSuchElementException("either codec or s3 select option is required in pipeline yaml configuration");
+        }
     }
 }

@@ -64,10 +64,10 @@ source-pipeline:
         json:
           type: document
       sqs:
-        queue_url: https://sqs.us-east-2.amazonaws.com/895099425385/data-prepper-testing
+        queue_url: "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
       aws:
-        region: "us-east-2"
-        sts_role_arn: "arn:aws:iam::895099425785:role/data-prepper-s3source-execution-role"
+        region: "us-east-1"
+        sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
       scan:
         start_time: 2023-03-25T10:00:00
         range: 1d
