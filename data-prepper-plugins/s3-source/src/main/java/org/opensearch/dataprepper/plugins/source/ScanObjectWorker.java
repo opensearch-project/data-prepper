@@ -107,7 +107,7 @@ public class ScanObjectWorker implements Runnable{
         if(isKeyMatchedBetweenTimeRange && (isKeyProcessedByS3Scan(s3ObjDetails))){
             updateKeyProcessedByS3Scan(s3ObjDetails);
             try{
-                s3ObjectHandler.parseS3Object(s3ObjectReference);
+                s3ObjectHandler.parseS3Object(s3ObjectReference,null);
             }catch (IOException ex){
                 deleteKeyProcessedByS3Scan(s3ObjDetails);
                 LOG.error("Error while process the parseS3Object. ",ex);
