@@ -5,42 +5,39 @@
 
 package org.opensearch.dataprepper.acknowledgements;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.event.DefaultEventHandle;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
-import java.util.Map;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.time.Instant;
-import java.time.Duration;
+import java.util.function.Consumer;
 
 public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAcknowledgementSet.class);
     private final Consumer<Boolean> callback;
     private final Instant expiryTime;
-    private final ScheduledExecutorService executor;
+    private final ExecutorService executor;
     // This lock protects all the non-final members
     private final ReentrantLock lock;
     private boolean result;
-    private Map<EventHandle, AtomicInteger> pendingAcknowledgments;
-    private ScheduledFuture callbackFuture;
+    private final Map<EventHandle, AtomicInteger> pendingAcknowledgments;
+    private Future<?> callbackFuture;
 
-    private AtomicInteger numInvalidAcquires;
-    private AtomicInteger numInvalidReleases;
+    private final AtomicInteger numInvalidAcquires;
+    private final AtomicInteger numInvalidReleases;
 
-    public DefaultAcknowledgementSet(final ScheduledExecutorService executor, final Consumer<Boolean> callback, final Duration expiryTime) {
+    public DefaultAcknowledgementSet(final ExecutorService executor, final Consumer<Boolean> callback, final Duration expiryTime) {
         this.callback = callback;
         this.result = true;
         this.executor = executor;
@@ -127,7 +124,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
             if (pendingAcknowledgments.get(eventHandle).decrementAndGet() == 0) {
                 pendingAcknowledgments.remove(eventHandle);
                 if (pendingAcknowledgments.size() == 0) {
-                    callbackFuture = executor.schedule(() -> {callback.accept(this.result);}, 0, TimeUnit.SECONDS);
+                    callbackFuture = executor.submit(() -> callback.accept(this.result));
                     return true;
                 }
             }
