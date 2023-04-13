@@ -129,6 +129,10 @@ public class Pipeline {
         stopRequested = false;
     }
 
+    AcknowledgementSetManager getAcknowledgementSetManager() {
+        return acknowledgementSetManager;
+    }
+
     /**
      * @return Unique name of this pipeline.
      */
@@ -281,7 +285,9 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(eventFactory, acknowledgementSetManager, sinks);
+
+        final RouterGetRecordStrategy getRecordStrategy =
+                    new RouterCopyRecordStrategy(eventFactory, (source.areAcknowledgementsEnabled()) ? acknowledgementSetManager : null, sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
         );
