@@ -128,7 +128,6 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                 inputStreamList = getInputStreamFromResponseHeader(s3SelectResponseHandler);
                 parseCompleteStreamFromResponseHeader(acknowledgementSet, s3ObjectReference, bufferAccumulator, inputStreamList);
                 s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(bufferAccumulator.getTotalWritten());
-                s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
                 receivedEvents.clear();
             } else {
                 LOG.info("S3 Select returned no events for S3 object {}", s3ObjectReference);
@@ -137,6 +136,8 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
             startRange = endRange;
             endRange += Math.min(MAX_S3_OBJECT_CHUNK_SIZE, objectSize - endRange);
         }
+
+        s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
     }
 
     private Long getObjectSize(final S3ObjectReference s3ObjectReference) {
