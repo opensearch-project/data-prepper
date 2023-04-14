@@ -10,13 +10,13 @@ import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.exception.SqsRetriesExhaustedException;
 import org.opensearch.dataprepper.plugins.source.filter.ObjectCreatedFilter;
 import org.opensearch.dataprepper.plugins.source.filter.S3EventFilter;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
@@ -24,10 +24,11 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
-import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResultEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
+import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
 import java.time.Duration;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -61,10 +63,12 @@ public class SqsWorker implements Runnable {
     private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
     private int failedAttemptCount;
-    private boolean endToEndAcknowledgementsEnabled;
+    private final boolean endToEndAcknowledgementsEnabled;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final SqsDynamicVisibilityTimeoutManager sqsDynamicVisibilityTimeoutManager;
 
     public SqsWorker(final AcknowledgementSetManager acknowledgementSetManager,
+                     final SqsDynamicVisibilityTimeoutManager sqsDynamicVisibilityTimeoutManager,
                      final SqsClient sqsClient,
                      final S3Service s3Service,
                      final S3SourceConfig s3SourceConfig,
@@ -76,6 +80,7 @@ public class SqsWorker implements Runnable {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.standardBackoff = backoff;
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getEndToEndAcknowledgements();
+        this.sqsDynamicVisibilityTimeoutManager = sqsDynamicVisibilityTimeoutManager;
         sqsOptions = s3SourceConfig.getSqsOptions();
         objectCreatedFilter = new ObjectCreatedFilter();
         failedAttemptCount = 0;
@@ -115,13 +120,18 @@ public class SqsWorker implements Runnable {
             sqsMessagesReceivedCounter.increment(sqsMessages.size());
 
             final Collection<ParsedMessage> s3MessageEventNotificationRecords = getS3MessageEventNotificationRecords(sqsMessages);
-
             // build s3ObjectReference from S3EventNotificationRecord if event name starts with ObjectCreated
             final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = processS3EventNotificationRecords(s3MessageEventNotificationRecords);
 
             // delete sqs messages
             if (!deleteMessageBatchRequestEntries.isEmpty()) {
                 deleteSqsMessages(deleteMessageBatchRequestEntries);
+
+                if (Objects.nonNull(sqsDynamicVisibilityTimeoutManager)) {
+                    for (final DeleteMessageBatchRequestEntry deleteMessageBatchRequestEntry : deleteMessageBatchRequestEntries) {
+                        sqsDynamicVisibilityTimeoutManager.stopDynamicVisibilityForMessage(deleteMessageBatchRequestEntry.id());
+                    }
+                }
             }
         }
 
@@ -131,7 +141,8 @@ public class SqsWorker implements Runnable {
     private List<Message> getMessagesFromSqs() {
         try {
             final ReceiveMessageRequest receiveMessageRequest = createReceiveMessageRequest();
-            final List<Message> messages = sqsClient.receiveMessage(receiveMessageRequest).messages();
+            final ReceiveMessageResponse receiveMessageResponse = sqsClient.receiveMessage(receiveMessageRequest);
+            final List<Message> messages = receiveMessageResponse.messages();
             failedAttemptCount = 0;
             return messages;
         } catch (final SqsException e) {
@@ -219,7 +230,9 @@ public class SqsWorker implements Runnable {
             AcknowledgementSet acknowledgementSet = null;
             if (endToEndAcknowledgementsEnabled) {
                 // Acknowledgement Set timeout is slightly smaller than the visibility timeout;
-                int timeout = (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2;
+                int timeout = Objects.isNull(sqsDynamicVisibilityTimeoutManager) ?
+                        (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2 :
+                        sqsDynamicVisibilityTimeoutManager.getRemainingTimeBeforeNextChangeMessageIncrease(parsedMessage.message.messageId());
                 acknowledgementSet = acknowledgementSetManager.create((result) -> {
                     acknowledgementSetCallbackCounter.increment();
                     // Delete only if this is positive acknowledgement
@@ -247,6 +260,10 @@ public class SqsWorker implements Runnable {
             final AcknowledgementSet acknowledgementSet) {
         // SQS messages won't be deleted if we are unable to process S3Objects because of S3Exception: Access Denied
         try {
+
+            if (Objects.nonNull(sqsDynamicVisibilityTimeoutManager)) {
+                sqsDynamicVisibilityTimeoutManager.startDynamicVisibilityForMessage(parsedMessage.message, s3Service.getObjectSize(s3ObjectReference));
+            }
             s3Service.addS3Object(s3ObjectReference, acknowledgementSet);
             sqsMessageDelayTimer.record(Duration.between(
                     Instant.ofEpochMilli(parsedMessage.notificationRecords.get(0).getEventTime().toInstant().getMillis()),

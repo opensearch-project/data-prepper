@@ -7,12 +7,14 @@ package org.opensearch.dataprepper.plugins.source;
 
 import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+
+import java.util.Objects;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
@@ -25,6 +27,7 @@ public class SqsService {
     private final SqsClient sqsClient;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final SqsDynamicVisibilityTimeoutManager sqsDynamicVisibilityTimeoutManager;
 
     private Thread sqsWorkerThread;
 
@@ -37,12 +40,18 @@ public class SqsService {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sqsClient = createSqsClient();
+
+        if (s3SourceConfig.getSqsOptions().getEnableDynamicVisibilityTimeout()) {
+            this.sqsDynamicVisibilityTimeoutManager = new SqsDynamicVisibilityTimeoutManager(sqsClient, s3SourceConfig.getSqsOptions());
+        } else {
+            this.sqsDynamicVisibilityTimeoutManager = null;
+        }
     }
 
     public void start() {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-        sqsWorkerThread = new Thread(new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
+        sqsWorkerThread = new Thread(new SqsWorker(acknowledgementSetManager, sqsDynamicVisibilityTimeoutManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
         sqsWorkerThread.start();
     }
 
@@ -58,6 +67,9 @@ public class SqsService {
     }
 
     public void stop() {
+        if (Objects.nonNull(sqsDynamicVisibilityTimeoutManager)) {
+            sqsDynamicVisibilityTimeoutManager.shutdownDynamicMessaging();
+        }
         sqsWorkerThread.interrupt();
     }
 }

@@ -102,12 +102,23 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         }
     }
 
+    @Override
+    public Long getS3ObjectSize(S3ObjectReference s3ObjectReference) {
+        final HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
+                .bucket(s3ObjectReference.getBucketName())
+                .key(s3ObjectReference.getKey())
+                .build();
+        final HeadObjectResponse headObjectResponse = s3AsyncClient.headObject(headObjectRequest).join();
+
+        return headObjectResponse.contentLength();
+    }
+
     private void selectObjectInBatches(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
         final InputSerialization inputSerialization = getInputSerializationFormat(serializationFormatOption);
         InputStream inputStreamList;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
 
-        final long objectSize = getObjectSize(s3ObjectReference);
+        final long objectSize = getS3ObjectSize(s3ObjectReference);
 
         long startRange = 0;
         long endRange = Math.min(MAX_S3_OBJECT_CHUNK_SIZE, objectSize);
@@ -138,16 +149,6 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         }
 
         s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
-    }
-
-    private Long getObjectSize(final S3ObjectReference s3ObjectReference) {
-        final HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
-                .bucket(s3ObjectReference.getBucketName())
-                .key(s3ObjectReference.getKey())
-                .build();
-        final HeadObjectResponse headObjectResponse = s3AsyncClient.headObject(headObjectRequest).join();
-
-        return headObjectResponse.contentLength();
     }
 
     private InputSerialization getInputSerializationFormat(final S3SelectSerializationFormatOption serializationFormatOption) {

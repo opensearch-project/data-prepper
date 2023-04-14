@@ -83,6 +83,7 @@ class SqsWorkerTest {
     private Timer sqsMessageDelayTimer;
     private AcknowledgementSetManager acknowledgementSetManager;
     private AcknowledgementSet acknowledgementSet;
+    private SqsDynamicVisibilityTimeoutManager sqsDynamicVisibilityTimeoutManager;
 
     @BeforeEach
     void setUp() {
@@ -93,6 +94,7 @@ class SqsWorkerTest {
         s3SourceConfig = mock(S3SourceConfig.class);
         objectCreatedFilter = new ObjectCreatedFilter();
         backoff = mock(Backoff.class);
+        sqsDynamicVisibilityTimeoutManager = mock(SqsDynamicVisibilityTimeoutManager.class);
 
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
@@ -117,7 +119,7 @@ class SqsWorkerTest {
         when(pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME)).thenReturn(sqsMessagesDeleteFailedCounter);
         when(pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(sqsMessageDelayTimer);
 
-        sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
+        sqsWorker = new SqsWorker(acknowledgementSetManager, null, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
     }
 
     @AfterEach
@@ -181,7 +183,7 @@ class SqsWorkerTest {
         void processSqsMessages_should_return_number_of_messages_processed_with_acknowledgements(final String eventName) throws IOException {
             when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
             when(s3SourceConfig.getEndToEndAcknowledgements()).thenReturn(true);
-            sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
+            sqsWorker = new SqsWorker(acknowledgementSetManager, null, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
             Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
             final Message message = mock(Message.class);
             when(message.body()).thenReturn(createEventNotification(eventName, startTime));

@@ -20,6 +20,8 @@ import software.amazon.awssdk.http.HttpStatusCode;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
@@ -78,6 +80,17 @@ class S3ObjectWorker implements S3ObjectHandler {
             throw new RuntimeException(e);
         }
         s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
+    }
+
+    @Override
+    public Long getS3ObjectSize(final S3ObjectReference s3ObjectReference) {
+        final HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
+                .bucket(s3ObjectReference.getBucketName())
+                .key(s3ObjectReference.getKey())
+                .build();
+        final HeadObjectResponse headObjectResponse = s3Client.headObject(headObjectRequest);
+
+        return headObjectResponse.contentLength();
     }
 
     private void doParseObject(final AcknowledgementSet acknowledgementSet, final S3ObjectReference s3ObjectReference, final GetObjectRequest getObjectRequest, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {

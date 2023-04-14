@@ -34,6 +34,9 @@ public class SqsOptions {
     @DurationMax(seconds = 43200)
     private Duration visibilityTimeout = DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
 
+    @JsonProperty("enable_dynamic_visibility_timeout")
+    private Boolean enableDynamicVisibilityTimeout = false;
+
     @JsonProperty("wait_time")
     @DurationMin(seconds = 0)
     @DurationMax(seconds = 20)
@@ -61,5 +64,9 @@ public class SqsOptions {
 
     public Duration getPollDelay() {
         return pollDelay;
+    }
+
+    public Boolean getEnableDynamicVisibilityTimeout() {
+        return enableDynamicVisibilityTimeout;
     }
 }

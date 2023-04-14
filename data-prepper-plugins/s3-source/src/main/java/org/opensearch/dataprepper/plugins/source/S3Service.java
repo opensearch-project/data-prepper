@@ -18,4 +18,7 @@ public class S3Service {
         s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet);
     }
 
+    Long getObjectSize(final S3ObjectReference s3ObjectReference) {
+        return s3ObjectHandler.getS3ObjectSize(s3ObjectReference);
+    }
 }
