@@ -69,7 +69,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class ConnectionConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
-
+  private static final String AWS_IAM_ROLE = "role";
+  private static final String AWS_IAM = "iam";
   private static final String AOS_SERVICE_NAME = "es";
   private static final String AOSS_SERVICE_NAME = "aoss";
   private static final String DEFAULT_AWS_REGION = "us-east-1";
@@ -497,6 +498,24 @@ public class ConnectionConfiguration {
 
     private boolean awsServerless;
 
+    private void validateStsRoleArn(final String awsStsRoleArn) {
+      final Arn arn = getArn(awsStsRoleArn);
+      if (!AWS_IAM.equals(arn.service())) {
+        throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
+      }
+      final Optional<String> resourceType = arn.resource().resourceType();
+      if (resourceType.isEmpty() || !resourceType.get().equals(AWS_IAM_ROLE)) {
+        throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
+      }
+    }
+
+    private Arn getArn(final String awsStsRoleArn) {
+      try {
+        return Arn.fromString(awsStsRoleArn);
+      } catch (final Exception e) {
+        throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
+      }
+    }
 
     public Builder(final List<String> hosts) {
       checkArgument(hosts != null, "hosts cannot be null");
@@ -553,11 +572,7 @@ public class ConnectionConfiguration {
     public Builder withAWSStsRoleArn(final String awsStsRoleArn) {
       checkArgument(awsStsRoleArn == null || awsStsRoleArn.length() <= 2048, "awsStsRoleArn length cannot exceed 2048");
       if(awsStsRoleArn != null) {
-        try {
-          Arn.fromString(awsStsRoleArn);
-        } catch (Exception e) {
-          throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
-        }
+        validateStsRoleArn(awsStsRoleArn);
       }
       this.awsStsRoleArn = awsStsRoleArn;
       return this;

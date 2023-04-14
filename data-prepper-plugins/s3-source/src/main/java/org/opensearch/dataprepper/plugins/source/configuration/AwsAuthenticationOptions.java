@@ -16,9 +16,13 @@ import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 public class AwsAuthenticationOptions {
+    private static final String AWS_IAM_ROLE = "role";
+    private static final String AWS_IAM = "iam";
+
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
     private String awsRegion;
@@ -31,6 +35,25 @@ public class AwsAuthenticationOptions {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    private void validateStsRoleArn() {
+        final Arn arn = getArn();
+        if (!AWS_IAM.equals(arn.service())) {
+            throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
+        }
+        final Optional<String> resourceType = arn.resource().resourceType();
+        if (resourceType.isEmpty() || !resourceType.get().equals(AWS_IAM_ROLE)) {
+            throw new IllegalArgumentException("sts_role_arn must be an IAM Role");
+        }
+    }
+
+    private Arn getArn() {
+        try {
+            return Arn.fromString(awsStsRoleArn);
+        } catch (final Exception e) {
+            throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
+        }
+    }
+
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
@@ -39,11 +62,8 @@ public class AwsAuthenticationOptions {
 
         final AwsCredentialsProvider awsCredentialsProvider;
         if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
-            try {
-                Arn.fromString(awsStsRoleArn);
-            } catch (final Exception e) {
-                throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
-            }
+
+            validateStsRoleArn();
 
             final StsClient stsClient = StsClient.builder()
                     .region(getAwsRegion())
