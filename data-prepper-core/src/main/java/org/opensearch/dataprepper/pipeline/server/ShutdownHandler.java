@@ -36,7 +36,7 @@ public class ShutdownHandler implements HttpHandler {
         }
 
         try {
-            dataPrepper.shutdown();
+            dataPrepper.shutdownPipelines();
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, 0);
         } catch (Exception e) {
             LOG.error("Caught exception shutting down data prepper", e);
