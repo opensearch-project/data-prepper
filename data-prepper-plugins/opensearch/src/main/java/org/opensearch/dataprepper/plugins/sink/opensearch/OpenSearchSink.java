@@ -54,7 +54,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -134,7 +133,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     try {
         doInitializeInternal();
     } catch (IOException e) {
-        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error {}", (Objects.isNull(e.getCause()) ? e : e.getCause()), e);
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. ", e);
         closeFiles();
     } catch (InvalidPluginConfigurationException e) {
         LOG.error("Failed to initialize OpenSearch sink.");
@@ -146,7 +145,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             this.shutdown();
             throw e;
         }
-        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error {}", (Objects.isNull(e.getCause()) ? e : e.getCause()), e);
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. ", e);
         closeFiles();
     }
   }
