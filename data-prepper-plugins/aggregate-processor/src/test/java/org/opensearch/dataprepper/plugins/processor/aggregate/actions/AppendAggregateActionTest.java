@@ -22,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -289,9 +288,9 @@ public class AppendAggregateActionTest {
             groupState.putAll(eventMap);
         }
 
-        final Optional<Event> result = appendAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(true));
-        assertThat(result.get().getMetadata().getEventType(), equalTo(AppendAggregateAction.EVENT_TYPE));
-        assertThat(result.get().toMap(), equalTo(groupState));
+        final List<Event> result = appendAggregateAction.concludeGroup(aggregateActionInput);
+        assertThat(result.size(), equalTo(1));
+        assertThat(result.get(0).getMetadata().getEventType(), equalTo(AppendAggregateAction.EVENT_TYPE));
+        assertThat(result.get(0).toMap(), equalTo(groupState));
     }
 }

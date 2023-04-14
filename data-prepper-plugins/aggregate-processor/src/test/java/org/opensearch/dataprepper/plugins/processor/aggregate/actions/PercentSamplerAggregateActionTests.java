@@ -21,11 +21,12 @@ import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
 public class PercentSamplerAggregateActionTests {
@@ -67,8 +68,8 @@ public class PercentSamplerAggregateActionTests {
                 allowedEvents++;
             }
         }
-        final Optional<Event> result = percentSamplerAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(false));
+        final List<Event> result = percentSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        assertTrue(result.isEmpty());
         assertThat(allowedEvents, equalTo((int)(totalEvents * testPercent/100.0)));
     }
 }

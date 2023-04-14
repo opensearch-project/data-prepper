@@ -17,7 +17,6 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This
@@ -79,12 +78,12 @@ public class AppendAggregateAction implements AggregateAction {
     }
 
     @Override
-    public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public List<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
 
         final Event event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(aggregateActionInput.getGroupState())
                 .build();
-        return Optional.of(event);
+        return List.of(event);
     }
 }

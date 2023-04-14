@@ -17,12 +17,13 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTes
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -61,8 +62,8 @@ public class RateLimiterAggregateActionTests {
             assertThat(aggregateActionResponse.getEvent(), equalTo(testEvent));
             Thread.sleep(1000/testEventsPerSecond);
         }
-        final Optional<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(false));
+        final List<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        assertTrue(result.isEmpty());
     }
 
     @ParameterizedTest
@@ -89,8 +90,8 @@ public class RateLimiterAggregateActionTests {
             } 
         }
         assertThat(numFailed, greaterThan(0));
-        final Optional<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(false));
+        final List<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        assertTrue(result.isEmpty());
     }
 
     @ParameterizedTest
@@ -119,7 +120,7 @@ public class RateLimiterAggregateActionTests {
             }
         }
         assertThat(numFailed, equalTo(0));
-        final Optional<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(false));
+        final List<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        assertTrue(result.isEmpty());
     }
 }

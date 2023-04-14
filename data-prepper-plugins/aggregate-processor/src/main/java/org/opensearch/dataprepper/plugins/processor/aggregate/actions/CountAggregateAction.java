@@ -18,11 +18,11 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
 
 import java.time.Instant;
+import java.util.List;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Optional;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action will count the number of events with same keys and will create a combined event
@@ -70,7 +70,7 @@ public class CountAggregateAction implements AggregateAction {
     }
 
     @Override
-    public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public List<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
@@ -102,6 +102,6 @@ public class CountAggregateAction implements AggregateAction {
             event = (Event)sum;
         }
         
-        return Optional.of(event);
+        return List.of(event);
     }
 }

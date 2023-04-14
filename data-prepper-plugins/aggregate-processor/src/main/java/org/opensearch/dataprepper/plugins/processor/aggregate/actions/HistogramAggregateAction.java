@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Optional;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action will create a combined event with histogram buckets of the values 
@@ -151,7 +150,7 @@ public class HistogramAggregateAction implements AggregateAction {
     }
 
     @Override
-    public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public List<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
@@ -208,6 +207,6 @@ public class HistogramAggregateAction implements AggregateAction {
             event = (Event)histogram;
         }
         
-        return Optional.of(event);
+        return List.of(event);
     }
 }

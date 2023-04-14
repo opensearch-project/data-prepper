@@ -16,11 +16,12 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTes
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
 import java.util.Collections;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RemoveDuplicatesAggregateActionTest {
     private AggregateAction removeDuplicatesAggregateAction;
@@ -68,22 +69,22 @@ public class RemoveDuplicatesAggregateActionTest {
     }
 
     @Test
-    void concludeGroup_with_empty_groupState_returns_empty_Optional() {
+    void concludeGroup_with_empty_groupState_returns_empty_List() {
         removeDuplicatesAggregateAction = createObjectUnderTest();
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
-        final Optional<Event> result = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
 
-        assertThat(result.isPresent(), equalTo(false));
+        assertTrue(result.isEmpty());
     }
 
     @Test
-    void concludeGroup_with_non_empty_groupState_returns_empty_Optional() {
+    void concludeGroup_with_non_empty_groupState_returns_empty_List() {
         removeDuplicatesAggregateAction = createObjectUnderTest();
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState groupState = aggregateActionInput.getGroupState();
         groupState.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        final Optional<Event> result = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
 
-        assertThat(result.isPresent(), equalTo(false));
+        assertTrue(result.isEmpty());
     }
 }
