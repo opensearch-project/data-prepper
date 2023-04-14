@@ -269,15 +269,39 @@ pipeline:
     - stdout:
 ```
 
-Create the file named `logs_json.log` with the following content and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+Create the file named `logs_json.log` with the following line and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
 
 ```json
 {"mylist":[{"name":"a","value":"val-a"},{"name":"b","value":"val-b1"},{"name":"b","value":"val-b2"},{"name":"c","value":"val-c"}]}
 ```
 
+> Note that the output json data below is reformatted for readability. The actual output you see will be formatted as a single line.
+
 When run, the processor will parse the message into the following output:
 ```json
-{"mylist":[{"name":"a","value":"val-a"},{"name":"b","value":"val-b1"},{"name":"b","value":"val-b2"},{"name":"c","value":"val-c"}],"a":"val-a","b":"val-b1","c":"val-c"}
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "a": "val-a",
+  "b": "val-b1",
+  "c": "val-c"
+}
 ```
 
 If we set a `target`:
@@ -291,7 +315,31 @@ If we set a `target`:
 ```
 the generated map will be put under the target key:
 ```json
-{"mylist":[{"name":"a","value":"val-a"},{"name":"b","value":"val-b1"},{"name":"b","value":"val-b2"},{"name":"c","value":"val-c"}],"mymap":{"a":"val-a","b":"val-b1","c":"val-c"}}
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "mymap": {
+    "a": "val-a",
+    "b": "val-b1",
+    "c": "val-c"
+  }
+}
 ```
 
 If we do not specify a `value_key`:
@@ -303,7 +351,38 @@ If we do not specify a `value_key`:
 ```
 the values of the map will be original objects from the source list:
 ```json
-{"mylist":[{"name":"a","value":"val-a"},{"name":"b","value":"val-b1"},{"name":"b","value":"val-b2"},{"name":"c","value":"val-c"}],"a":{"name":"a","value":"val-a"},"b":{"name":"b","value":"val-b1"},"c":{"name":"c","value":"val-c"}}
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "a": {
+    "name": "a",
+    "value": "val-a"
+  },
+  "b": {
+    "name": "b",
+    "value": "val-b1"
+  },
+  "c": {
+    "name": "c",
+    "value": "val-c"
+  }
+}
 ```
 
 If `flatten` option is not set or set to false:
@@ -316,7 +395,36 @@ If `flatten` option is not set or set to false:
 ```
 the values of the map will be lists, and some entries may have more than one element in their values:
 ```json
-{"mylist":[{"name":"a","value":"val-a"},{"name":"b","value":"val-b1"},{"name":"b","value":"val-b2"},{"name":"c","value":"val-c"}],"a":["val-a"],"b":["val-b1","val-b2"],"c":["val-c"]}
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "a": [
+    "val-a"
+  ],
+  "b": [
+    "val-b1",
+    "val-b2"
+  ],
+  "c": [
+    "val-c"
+  ]
+}
 ```
 
 If we specify `flattened_element` as "last":
@@ -330,12 +438,34 @@ If we specify `flattened_element` as "last":
 ```
 the last element will be kept:
 ```json
-{"mylist":[{"name":"a","value":"val-a"},{"name":"b","value":"val-b1"},{"name":"b","value":"val-b2"},{"name":"c","value":"val-c"}],"a":"val-a","b":"val-b2","c":"val-c"}
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "a": "val-a",
+  "b": "val-b2",
+  "c": "val-c"
+}
 ```
 
 ### Configuration
 * `key` - (required) - The key of the fields that will be extracted as keys in the generated map
-* `source` - (required) - The key of the source list
+* `source` - (required) - The key in the event with a list of objects that will be converted to map
 * `target` - (optional) - The key of the field that will hold the generated map. If not specified, the generated map will be put in the root.
 * `value_key` - (optional) - If specified, the values of the given `value_key` in the objects of the source list will be extracted and put into the values of the generated map; otherwise, original objects in the source list will be put into the values of the generated map.
 * `flatten` - (optional) - A boolean value, default to false. If it's false, the values in the generated map will be lists; if it's true, the lists will be flattened into single items.
@@ -343,6 +473,8 @@ the last element will be kept:
 
 
 ## Developer Guide
-This plugin is compatible with Java 14. See
-- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
-- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
+This plugin is compatible with Java 11 and 17. Refer to the following developer guides for plugin development:
+- [Developer Guide](https://github.com/opensearch-project/data-prepper/blob/main/docs/developer_guide.md)
+- [Contributing Guidelines](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
+- [Plugin Development](https://github.com/opensearch-project/data-prepper/blob/main/docs/plugin_development.md)
+- [Monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
