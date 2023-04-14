@@ -178,6 +178,7 @@ class S3SelectObjectWorkerTest {
         given(s3ObjectRequest.getCompressionType()).willReturn(CompressionType.NONE);
         given(selectResponseHandler.getException()).willReturn(null);
         given(selectResponseHandler.getS3SelectContentEvents()).willReturn(Collections.emptyList());
+        given(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).willReturn(s3ObjectsSucceededCounter);
 
         final CompletableFuture<Void> selectObjectResponseFuture = mock(CompletableFuture.class);
         given(selectObjectResponseFuture.join()).willReturn(mock(Void.class));
@@ -188,6 +189,7 @@ class S3SelectObjectWorkerTest {
         assertHeadObjectRequestIsCorrect();
 
         verify(selectResponseHandler, times(numberOfObjectScans)).getS3SelectContentEvents();
+        verify(s3ObjectsSucceededCounter).increment();
     }
 
     @ParameterizedTest
