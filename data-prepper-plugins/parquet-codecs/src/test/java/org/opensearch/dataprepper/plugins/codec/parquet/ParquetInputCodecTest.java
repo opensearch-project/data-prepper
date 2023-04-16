@@ -68,8 +68,6 @@ class ParquetInputCodecTest {
 
     private static final String FILE_NAME="test-parquet.parquet";
 
-    private static final String HADOOP_HOME_DIRECTORY="hadoop.home.dir";
-
     private static final String INVALID_PARQUET_INPUT_STREAM = "Invalid Parquet Input Stream";
 
     @TempDir
@@ -111,14 +109,9 @@ class ParquetInputCodecTest {
 
     @Test
     void parse_with_Invalid_InputStream_then_catches_exception() {
-        String OS = System.getProperty("os.name").toLowerCase();
-        if (OS.contains("win")) {
-            System.setProperty(HADOOP_HOME_DIRECTORY, Paths.get("").toAbsolutePath().toString());
-        }
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         Assertions.assertDoesNotThrow(()->
                 parquetInputCodec.parse(createInvalidParquetStream(),eventConsumer));
-        System.clearProperty(HADOOP_HOME_DIRECTORY);
     }
 
     @ParameterizedTest
@@ -156,13 +149,6 @@ class ParquetInputCodecTest {
 
         Files.deleteIfExists(java.nio.file.Path.of(FILE_NAME));
         Schema schema = parseSchema();
-        String OS = System.getProperty("os.name").toLowerCase();
-
-        if (OS.contains("win")) {
-            System.setProperty(HADOOP_HOME_DIRECTORY, Paths.get("").toAbsolutePath().toString());
-        } else {
-            System.setProperty(HADOOP_HOME_DIRECTORY, "/");
-        }
 
         List<GenericRecord> recordList = generateRecords(schema, numberOfRecords);
 
@@ -181,7 +167,6 @@ class ParquetInputCodecTest {
                 writer.write((GenericData.Record)record);
             }
         }
-        System.clearProperty(HADOOP_HOME_DIRECTORY);
         fileInputStream = new FileInputStream(path.toString());
         return fileInputStream;
     }
