@@ -3,18 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.codec.csv;
 
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvReadException;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,15 +30,15 @@ import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * An implementation of {@link Codec} which parses CSV records into fields.
+ * An implementation of {@link InputCodec} which parses CSV records into fields.
  */
-@DataPrepperPlugin(name = "csv", pluginType = Codec.class, pluginConfigurationType = CsvCodecConfig.class)
-public class CsvCodec implements Codec {
-    private static final Logger LOG = LoggerFactory.getLogger(CsvCodec.class);
-    private final CsvCodecConfig config;
+@DataPrepperPlugin(name = "csv", pluginType = InputCodec.class, pluginConfigurationType = CsvInputCodecConfig.class)
+public class CsvInputCodec implements InputCodec {
+    private static final Logger LOG = LoggerFactory.getLogger(CsvInputCodec.class);
+    private final CsvInputCodecConfig config;
 
     @DataPrepperPluginConstructor
-    public CsvCodec(final CsvCodecConfig config) {
+    public CsvInputCodec(CsvInputCodecConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
     }
@@ -87,12 +88,12 @@ public class CsvCodec implements Codec {
                     .build();
             eventConsumer.accept(new Record<>(event));
         } catch (final CsvReadException csvException) {
-            LOG.error("Invalid CSV row, skipping this line. This typically means the row has too many columns. Consider using the CSV " +
-                    "Processor if there might be inconsistencies in the number of columns because it is more flexible. Error: {}. Line Number: {} " +
-                    "Character Number: {}", csvException.getMessage(), parsingIterator.getCurrentLocation().getLineNr(), parsingIterator.getCurrentLocation().getColumnNr());
+            LOG.error("Invalid CSV row, skipping this line. This typically means the row has too many lines. Consider using the CSV " +
+                    "Processor if there might be inconsistencies in the number of columns because it is more flexible. Error ",
+                    csvException);
         } catch (JsonParseException jsonException) {
             LOG.error("A JsonParseException occurred on a row of the CSV file, skipping line. This typically means a quote character was " +
-                    "not properly closed. Error: {}", jsonException.getMessage());
+                    "not properly closed. Error ", jsonException);
         } catch (final Exception e) {
             LOG.error("An Exception occurred while reading a row of the CSV file. Error ", e);
         }
