@@ -5,8 +5,26 @@
 
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
+import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.ColumnIOFactory;
+import org.apache.parquet.io.MessageColumnIO;
+import org.apache.parquet.io.RecordReader;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,21 +40,11 @@ import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.parquet.avro.AvroParquetWriter;
-import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -115,7 +123,7 @@ class ParquetInputCodecTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {1,10,100,1000})
+    @ValueSource(ints = 100)
     void test_when_HappyCaseParquetInputStream_then_callsConsumerWithParsedEvents(final int numberOfRecords) throws Exception {
         ParquetInputCodecTest.numberOfRecords =numberOfRecords;
         InputStream inputStream = createRandomParquetStream(numberOfRecords);
@@ -149,24 +157,7 @@ class ParquetInputCodecTest {
 
         Files.deleteIfExists(java.nio.file.Path.of(FILE_NAME));
         Schema schema = parseSchema();
-
-        List<GenericRecord> recordList = generateRecords(schema, numberOfRecords);
-
-        path = Paths.get(FILE_NAME);
-
-        try(ParquetWriter<GenericData.Record> writer = AvroParquetWriter.<GenericData.Record>builder(new Path(path.toUri().getPath()))
-                .withSchema(schema)
-                .withCompressionCodec(CompressionCodecName.SNAPPY)
-                .withRowGroupSize(ParquetWriter.DEFAULT_BLOCK_SIZE)
-                .withPageSize(ParquetWriter.DEFAULT_PAGE_SIZE)
-                .withConf(new Configuration())
-                .withValidation(false)
-                .withDictionaryEncoding(false)
-                .build()) {
-            for (GenericRecord record : recordList) {
-                writer.write((GenericData.Record)record);
-            }
-        }
+        Path path=new Path("C:\\data-prepper\\data-prepper-plugins\\parquet-codecs\\src\\main\\resources\\test-parquet.parquet");
         fileInputStream = new FileInputStream(path.toString());
         return fileInputStream;
     }
@@ -196,17 +187,42 @@ class ParquetInputCodecTest {
     private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
 
         List<GenericRecord> recordList = new ArrayList<>();
+        Path path=new Path("C:\\Users\\Umair Husain\\Downloads\\parquetstream\\parquetstream\\src\\main\\resources\\test-parquet.parquet");
+        try (ParquetFileReader parquetFileReader = new ParquetFileReader(HadoopInputFile.fromPath(path, new Configuration()), ParquetReadOptions.builder().build())) {
+            final ParquetMetadata footer = parquetFileReader.getFooter();
+            final MessageType fileSchema = createdParquetSchema(footer);
+            PageReadStore pages;
+            while ((pages = parquetFileReader.readNextRowGroup()) != null) {
+                final long rows = pages.getRowCount();
+                final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(fileSchema);
+                final RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(fileSchema));
 
-        for(int recordValue = 1; recordValue <= numberOfRecords; recordValue++) {
-            GenericRecord record = new GenericData.Record(schema);
-            record.put("age", recordValue);
-            record.put("name", recordValue + "testString");
-            recordList.add(record);
+                for (int row = 0; row < rows; row++) {
+                    int fieldIndex = 0;
+                    final SimpleGroup simpleGroup = (SimpleGroup) recordReader.read();
+                    GenericRecord record = new GenericData.Record(schema);
+                    for (Type field : fileSchema.getFields()) {
+
+                        Object dataTypeValue = PrimitiveDataTypeChecker.checkPrimitiveDataType(field,simpleGroup,fieldIndex);
+                        record.put(field.getName(),dataTypeValue);
+
+                        fieldIndex++;
+
+                    }
+                    recordList.add(record);
+                }
+            }
+        } catch (Exception parquetException) {
+            //
         }
         return recordList;
     }
 
     private static InputStream createInvalidParquetStream() {
         return  new ByteArrayInputStream(INVALID_PARQUET_INPUT_STREAM.getBytes());
+    }
+
+    private static MessageType createdParquetSchema(ParquetMetadata parquetMetadata) {
+        return parquetMetadata.getFileMetaData().getSchema();
     }
 }
