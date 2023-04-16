@@ -45,6 +45,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -77,6 +78,8 @@ class ParquetInputCodecTest {
     private static final String FILE_NAME="test-parquet.parquet";
 
     private static final String INVALID_PARQUET_INPUT_STREAM = "Invalid Parquet Input Stream";
+
+    private static final String RELATIVE_PATH = "\\src\\main\\resources\\test-parquet.parquet";
 
     @TempDir
     private static java.nio.file.Path path;
@@ -157,7 +160,7 @@ class ParquetInputCodecTest {
 
         Files.deleteIfExists(java.nio.file.Path.of(FILE_NAME));
         Schema schema = parseSchema();
-        Path path=new Path("C:\\data-prepper\\data-prepper-plugins\\parquet-codecs\\src\\main\\resources\\test-parquet.parquet");
+        Path path=new Path(Paths.get("").toAbsolutePath().toString()+RELATIVE_PATH);
         fileInputStream = new FileInputStream(path.toString());
         return fileInputStream;
     }
@@ -187,7 +190,7 @@ class ParquetInputCodecTest {
     private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
 
         List<GenericRecord> recordList = new ArrayList<>();
-        Path path=new Path("C:\\data-prepper\\data-prepper-plugins\\parquet-codecs\\src\\main\\resources\\test-parquet.parquet");
+        Path path=new Path(Paths.get("").toAbsolutePath().toString()+RELATIVE_PATH);
         try (ParquetFileReader parquetFileReader = new ParquetFileReader(HadoopInputFile.fromPath(path, new Configuration()), ParquetReadOptions.builder().build())) {
             final ParquetMetadata footer = parquetFileReader.getFooter();
             final MessageType fileSchema = createdParquetSchema(footer);
