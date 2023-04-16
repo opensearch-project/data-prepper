@@ -187,7 +187,7 @@ class ParquetInputCodecTest {
     private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
 
         List<GenericRecord> recordList = new ArrayList<>();
-        Path path=new Path("C:\\Users\\Umair Husain\\Downloads\\parquetstream\\parquetstream\\src\\main\\resources\\test-parquet.parquet");
+        Path path=new Path("C:\\data-prepper\\data-prepper-plugins\\parquet-codecs\\src\\main\\resources\\test-parquet.parquet");
         try (ParquetFileReader parquetFileReader = new ParquetFileReader(HadoopInputFile.fromPath(path, new Configuration()), ParquetReadOptions.builder().build())) {
             final ParquetMetadata footer = parquetFileReader.getFooter();
             final MessageType fileSchema = createdParquetSchema(footer);

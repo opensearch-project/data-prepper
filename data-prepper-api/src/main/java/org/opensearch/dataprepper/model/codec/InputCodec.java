@@ -18,6 +18,7 @@ public interface InputCodec {
      *
      * @param inputStream   The input stream for the source plugin(e.g. S3, Http, RssFeed etc) object
      * @param eventConsumer The consumer which handles each event from the stream
+     * @throws IOException throws IOException when invalid input is received or incorrect codec name is provided
      */
     void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException;
 }

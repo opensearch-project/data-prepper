@@ -16,7 +16,6 @@ public class PrimitiveDataTypeChecker {
             PrimitiveType primitiveType = field.asPrimitiveType();
             fieldPrimitiveDataType = primitiveType.getPrimitiveTypeName().name();
             switch (fieldPrimitiveDataType) {
-                case "INT64":
                 case "INT32":
                     return simpleGroup.getInteger(fieldIndex, 0);
                 case "BOOLEAN":
@@ -27,6 +26,7 @@ public class PrimitiveDataTypeChecker {
                     return simpleGroup.getDouble(fieldIndex, 0);
                 case "INT96":
                     return simpleGroup.getInt96(fieldIndex, 0);
+                case "INT64":
                 case "LONG":
                     return simpleGroup.getLong(fieldIndex,0);
                 case "FIXED_LEN_BYTE_ARRAY":
@@ -35,6 +35,6 @@ public class PrimitiveDataTypeChecker {
                     //
             }
         }
-        return simpleGroup.getValueToString(fieldIndex, 0);
+        return null;
     }
 }

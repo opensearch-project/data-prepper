@@ -86,7 +86,6 @@ public class ParquetInputCodec implements InputCodec {
                                 eventData.put(field.getName(),dataTypeValue);
                             }
                             catch (Exception parquetException){
-                                eventData.put(field.getName(),"UNKNOWN VALUE");
                                 LOG.error("Unable to retrieve value for field with name = '{}' with error = '{}'", field.getName(), parquetException.getMessage());
                             }
 
