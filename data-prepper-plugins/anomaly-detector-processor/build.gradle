@@ -12,10 +12,10 @@ dependencies {
     implementation project(':data-prepper-test-common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
-    implementation 'software.amazon.randomcutforest:randomcutforest-testutils:3.0.0'
-    implementation 'software.amazon.randomcutforest:randomcutforest-core:3.0.0'
-    implementation 'software.amazon.randomcutforest:randomcutforest-examples:3.0.0'
-    implementation 'software.amazon.randomcutforest:randomcutforest-parkservices:3.0.0'
+    implementation 'software.amazon.randomcutforest:randomcutforest-testutils:3.6.0'
+    implementation 'software.amazon.randomcutforest:randomcutforest-core:3.6.0'
+    implementation 'software.amazon.randomcutforest:randomcutforest-examples:3.6.0'
+    implementation 'software.amazon.randomcutforest:randomcutforest-parkservices:3.6.0'
     implementation 'software.amazon.randomcutforest:randomcutforest-serialization-json:1.0'
     testImplementation 'org.apache.commons:commons-lang3:3.12.0'
 }
