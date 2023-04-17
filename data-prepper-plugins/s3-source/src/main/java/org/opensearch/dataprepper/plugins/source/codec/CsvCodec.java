@@ -61,12 +61,22 @@ public class CsvCodec implements Codec {
         }
 
         MappingIterator<Map<String, String>> parsingIterator = mapper.readerFor(Map.class).with(schema).readValues(reader);
+        boolean hasNextValue;
         try {
-            while (parsingIterator.hasNextValue()) {
-                readCsvLine(parsingIterator, eventConsumer);
+            hasNextValue = parsingIterator.hasNextValue();
+        } catch (Exception ex) {
+            LOG.error("An Exception occurred while determining if file has next line ", ex);
+            throw ex;
+        }
+
+        while (hasNextValue) {
+            readCsvLine(parsingIterator, eventConsumer);
+            try {
+                hasNextValue = parsingIterator.hasNextValue();
+            } catch (Exception ex) {
+                LOG.error("An Exception occurred while determining if file has next line ", ex);
+                throw ex;
             }
-        } catch (Exception jsonExceptionOnHasNextLine) {
-            LOG.error("An Exception occurred while determining if file has next line ", jsonExceptionOnHasNextLine);
         }
     }
 
@@ -78,7 +88,7 @@ public class CsvCodec implements Codec {
         return firstLineNumberColumns;
     }
 
-    private void readCsvLine(final MappingIterator<Map<String, String>> parsingIterator, final Consumer<Record<Event>> eventConsumer) {
+    private void readCsvLine(final MappingIterator<Map<String, String>> parsingIterator, final Consumer<Record<Event>> eventConsumer) throws IOException {
         try {
             final Map<String, String> parsedLine = parsingIterator.nextValue();
 
@@ -90,11 +100,14 @@ public class CsvCodec implements Codec {
             LOG.error("Invalid CSV row, skipping this line. This typically means the row has too many columns. Consider using the CSV " +
                     "Processor if there might be inconsistencies in the number of columns because it is more flexible. Error: {}. Line Number: {} " +
                     "Character Number: {}", csvException.getMessage(), parsingIterator.getCurrentLocation().getLineNr(), parsingIterator.getCurrentLocation().getColumnNr());
+            throw csvException;
         } catch (JsonParseException jsonException) {
             LOG.error("A JsonParseException occurred on a row of the CSV file, skipping line. This typically means a quote character was " +
                     "not properly closed. Error: {}", jsonException.getMessage());
+            throw jsonException;
         } catch (final Exception e) {
             LOG.error("An Exception occurred while reading a row of the CSV file. Error ", e);
+            throw e;
         }
     }
 
