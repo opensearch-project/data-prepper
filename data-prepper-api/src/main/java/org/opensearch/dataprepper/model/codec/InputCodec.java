@@ -16,7 +16,7 @@ public interface InputCodec {
      * Parses an {@link InputStream}. Implementors should call the {@link Consumer} for each
      * {@link Record} loaded from the {@link InputStream}.
      *
-     * @param inputStream   The input stream for the source plugin(e.g. S3, Http, RssFeed etc) object
+     * @param inputStream   The input stream for the S3 object
      * @param eventConsumer The consumer which handles each event from the stream
      * @throws IOException throws IOException when invalid input is received or incorrect codec name is provided
      */

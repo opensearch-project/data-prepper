@@ -88,12 +88,12 @@ public class CsvInputCodec implements InputCodec {
                     .build();
             eventConsumer.accept(new Record<>(event));
         } catch (final CsvReadException csvException) {
-            LOG.error("Invalid CSV row, skipping this line. This typically means the row has too many lines. Consider using the CSV " +
-                    "Processor if there might be inconsistencies in the number of columns because it is more flexible. Error ",
-                    csvException);
+            LOG.error("Invalid CSV row, skipping this line. This typically means the row has too many columns. Consider using the CSV " +
+                    "Processor if there might be inconsistencies in the number of columns because it is more flexible. Error: {}. Line Number: {} " +
+                    "Character Number: {}", csvException.getMessage(), parsingIterator.getCurrentLocation().getLineNr(), parsingIterator.getCurrentLocation().getColumnNr());
         } catch (JsonParseException jsonException) {
             LOG.error("A JsonParseException occurred on a row of the CSV file, skipping line. This typically means a quote character was " +
-                    "not properly closed. Error ", jsonException);
+                    "not properly closed. Error: {}", jsonException.getMessage());
         } catch (final Exception e) {
             LOG.error("An Exception occurred while reading a row of the CSV file. Error ", e);
         }
