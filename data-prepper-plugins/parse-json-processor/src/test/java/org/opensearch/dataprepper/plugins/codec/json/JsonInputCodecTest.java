@@ -106,7 +106,6 @@ class JsonInputCodecTest {
     @Test
     void parse_with_InputStream_with_object_and_no_array_does_not_call_Consumer() throws IOException {
         final Map<String, Object> jsonWithoutList = Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        System.out.printf(jsonWithoutList.values().toString());
 
         createObjectUnderTest().parse(createInputStream(jsonWithoutList), eventConsumer);
 
