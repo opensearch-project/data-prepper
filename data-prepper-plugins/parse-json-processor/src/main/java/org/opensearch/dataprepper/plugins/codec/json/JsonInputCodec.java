@@ -22,6 +22,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+/**
+ * An implementation of {@link InputCodec} which parses JSON Objects for arrays.
+ */
 @DataPrepperPlugin(name = "json", pluginType = InputCodec.class)
 public class JsonInputCodec implements InputCodec {
 
