@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.event.DefaultEventFactory;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -28,6 +30,8 @@ import java.util.function.Function;
  */
 @Named
 public class DefaultPluginFactory implements PluginFactory {
+    private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
+
     private final Collection<PluginProvider> pluginProviders;
     private final PluginCreator pluginCreator;
     private final PluginConfigurationConverter pluginConfigurationConverter;
@@ -109,12 +113,23 @@ public class DefaultPluginFactory implements PluginFactory {
     }
 
     private <T> Class<? extends T> getPluginClass(final Class<T> baseClass, final String pluginName) {
-        return pluginProviders.stream()
+        final Class<? extends T> pluginClass = pluginProviders.stream()
                 .map(pluginProvider -> pluginProvider.findPluginClass(baseClass, pluginName))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .findFirst()
                 .orElseThrow(() -> new NoPluginFoundException(
                         "Unable to find a plugin named '" + pluginName + "'. Please ensure that plugin is annotated with appropriate values."));
+
+        logDeprecatedPluginsNames(pluginClass, pluginName);
+        return pluginClass;
+    }
+
+    private <T> void logDeprecatedPluginsNames(final Class<? extends T> pluginClass, final String pluginName) {
+        final String deprecatedName = pluginClass.getAnnotation(DataPrepperPlugin.class).deprecatedName();
+        final String name = pluginClass.getAnnotation(DataPrepperPlugin.class).name();
+        if (deprecatedName.equals(pluginName)) {
+            LOG.warn("Plugin name '{}' is deprecated and will be removed in the next major release. Consider using the updated plugin name '{}'.", deprecatedName, name);
+        }
     }
 }
