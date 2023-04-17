@@ -35,20 +35,20 @@ public class S3Source implements Source<Record<Event>> {
     private SqsService sqsService;
     private final PluginFactory pluginFactory;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final boolean endToEndAcknowledgementsEnabled;
+    private final boolean acknowledgementsEnabled;
 
     @DataPrepperPluginConstructor
     public S3Source(PluginMetrics pluginMetrics, final S3SourceConfig s3SourceConfig, final PluginFactory pluginFactory, final AcknowledgementSetManager acknowledgementSetManager) {
         this.pluginMetrics = pluginMetrics;
         this.s3SourceConfig = s3SourceConfig;
         this.pluginFactory = pluginFactory;
-        this.endToEndAcknowledgementsEnabled = s3SourceConfig.getEndToEndAcknowledgements();
+        this.acknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
     }
 
     @Override
     public boolean areAcknowledgementsEnabled() {
-        return endToEndAcknowledgementsEnabled;
+        return acknowledgementsEnabled;
     }
 
     @Override

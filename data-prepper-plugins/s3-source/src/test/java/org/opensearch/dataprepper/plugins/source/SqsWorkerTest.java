@@ -103,7 +103,7 @@ class SqsWorkerTest {
         when(s3SourceConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
         when(s3SourceConfig.getOnErrorOption()).thenReturn(OnErrorOption.RETAIN_MESSAGES);
-        when(s3SourceConfig.getEndToEndAcknowledgements()).thenReturn(false);
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(false);
 
         pluginMetrics = mock(PluginMetrics.class);
         sqsMessagesReceivedCounter = mock(Counter.class);
@@ -180,7 +180,7 @@ class SqsWorkerTest {
         @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
         void processSqsMessages_should_return_number_of_messages_processed_with_acknowledgements(final String eventName) throws IOException {
             when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
-            when(s3SourceConfig.getEndToEndAcknowledgements()).thenReturn(true);
+            when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
             sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
             Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
             final Message message = mock(Message.class);
