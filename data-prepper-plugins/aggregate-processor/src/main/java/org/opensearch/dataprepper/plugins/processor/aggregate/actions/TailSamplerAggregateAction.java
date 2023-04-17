@@ -34,6 +34,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
     private final Duration waitPeriod;
     private final ExpressionEvaluator<Boolean> expressionEvaluator;
     private final String errorCondition;
+    private boolean shouldCarryGroupState;
 
     @DataPrepperPluginConstructor
     public TailSamplerAggregateAction(final TailSamplerAggregateActionConfig tailSamplerAggregateActionConfig, final ExpressionEvaluator<Boolean> expressionEvaluator) {
@@ -41,11 +42,12 @@ public class TailSamplerAggregateAction implements AggregateAction {
         waitPeriod = tailSamplerAggregateActionConfig.getWaitPeriod();
         errorCondition = tailSamplerAggregateActionConfig.getErrorCondition();
         this.expressionEvaluator = expressionEvaluator;
+        shouldCarryGroupState = true;
     }
 
     @Override
     public boolean shouldCarryState() {
-        return true;
+        return shouldCarryGroupState;
     }
 
     @Override
@@ -70,6 +72,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
             if (timeDiff.getSeconds() > waitPeriod.getSeconds()) {
                 Random randomNum = new Random();
                 int randomInt = randomNum.nextInt(100);
+                shouldCarryGroupState = false;
                 if ((boolean)groupState.getOrDefault(ERROR_STATUS_KEY, false) ||
                     (randomInt < percent)) {
                     groupState.remove(EVENTS_KEY);
