@@ -1,6 +1,6 @@
 entry-pipeline:
   source:
-    otel_traces:
+    otel_trace_source:
       ssl: false
   processor:
   sink:
@@ -11,7 +11,7 @@ service-map-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - service_map:
+    - service_map_stateful:
         window_duration: 8
   sink:
     - opensearch:

@@ -68,13 +68,13 @@ public class ClasspathPluginProvider implements PluginProvider {
                     pluginsMap.computeIfAbsent(pluginName, k -> new HashMap<>());
             supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
 
-            checkAndAddIfDeprecatedPluginNameIsNotDefault(pluginsMap, concretePluginClass);
+            addOptionalDeprecatedPluginName(pluginsMap, concretePluginClass);
         }
 
         return pluginsMap;
     }
 
-    private void checkAndAddIfDeprecatedPluginNameIsNotDefault(
+    private void addOptionalDeprecatedPluginName(
             final Map<String, Map<Class<?>, Class<?>>> pluginsMap,
             final Class<?> concretePluginClass) {
         final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);

@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface DataPrepperPlugin {
-    String DEFAULT_DEPRECATED_NAME = "unassigned";
+    String DEFAULT_DEPRECATED_NAME = "";
 
     /**
      *

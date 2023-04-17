@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugin;
 
 import org.mockito.ArgumentCaptor;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.NoPluginFoundException;
@@ -282,6 +283,35 @@ class DefaultPluginFactoryTest {
             assertThat(plugins.get(0), equalTo(expectedInstance1));
             assertThat(plugins.get(1), equalTo(expectedInstance2));
             assertThat(plugins.get(2), equalTo(expectedInstance3));
+        }
+    }
+
+    @Nested
+    class WithFoundDeprecatedPluginName {
+        private static final String TEST_SINK_DEPRECATED_NAME = "test_sink_deprecated_name";
+        private Class expectedPluginClass;
+
+        @BeforeEach
+        void setUp() {
+            expectedPluginClass = TestSink.class;
+            given(pluginSetting.getName()).willReturn(TEST_SINK_DEPRECATED_NAME);
+
+            given(firstPluginProvider.findPluginClass(baseClass, TEST_SINK_DEPRECATED_NAME))
+                    .willReturn(Optional.of(expectedPluginClass));
+        }
+
+        @Test
+        void loadPlugin_should_create_a_new_instance_of_the_first_plugin_found_with_correct_name_and_deprecated_name() {
+            final TestSink expectedInstance = mock(TestSink.class);
+            final Object convertedConfiguration = mock(Object.class);
+            given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
+                    .willReturn(convertedConfiguration);
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(PluginArgumentsContext.class), eq(TEST_SINK_DEPRECATED_NAME)))
+                    .willReturn(expectedInstance);
+
+            assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting), equalTo(expectedInstance));
+            assertThat(expectedInstance.getClass().getAnnotation(DataPrepperPlugin.class).deprecatedName(), equalTo(TEST_SINK_DEPRECATED_NAME));
+            verify(beanFactoryProvider).get();
         }
     }
 }
