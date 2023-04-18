@@ -31,6 +31,8 @@ class PluginPackagesSupplierTest {
 
     private static final String PROPERTIES_PREFIX = "org.opensearch.dataprepper.plugin.packages=";
     private static final String DEFAULT_PACKAGE_NAME = "org.opensearch.dataprepper.plugins";
+    // TODO: Remove this once all plugins have migrated to org.opensearch
+    private static final String DEPRECATED_DEFAULT_PACKAGE_NAME = "com.amazon.dataprepper.plugins";
 
     private PluginPackagesSupplier createObjectUnderTest() {
         final PluginPackagesSupplier object = new PluginPackagesSupplier();
@@ -46,8 +48,9 @@ class PluginPackagesSupplierTest {
         final String[] actualPackages = objectUnderTest.get();
         assertThat(actualPackages, notNullValue());
 
-        assertThat(actualPackages.length, equalTo(1));
+        assertThat(actualPackages.length, equalTo(2));
         assertThat(actualPackages[0], equalTo(DEFAULT_PACKAGE_NAME));
+        assertThat(actualPackages[1], equalTo(DEPRECATED_DEFAULT_PACKAGE_NAME));
     }
 
     @Test
@@ -59,8 +62,9 @@ class PluginPackagesSupplierTest {
         final String[] actualPackages = objectUnderTest.get();
         assertThat(actualPackages, notNullValue());
 
-        assertThat(actualPackages.length, equalTo(1));
+        assertThat(actualPackages.length, equalTo(2));
         assertThat(actualPackages[0], equalTo(DEFAULT_PACKAGE_NAME));
+        assertThat(actualPackages[1], equalTo(DEPRECATED_DEFAULT_PACKAGE_NAME));
     }
 
     @Test
@@ -77,8 +81,9 @@ class PluginPackagesSupplierTest {
         final String[] actualPackages = objectUnderTest.get();
         assertThat(actualPackages, notNullValue());
 
-        assertThat(actualPackages.length, equalTo(1));
+        assertThat(actualPackages.length, equalTo(2));
         assertThat(actualPackages[0], equalTo(DEFAULT_PACKAGE_NAME));
+        assertThat(actualPackages[1], equalTo(DEPRECATED_DEFAULT_PACKAGE_NAME));
     }
 
     @Test
@@ -96,8 +101,9 @@ class PluginPackagesSupplierTest {
         final String[] actualPackages = objectUnderTest.get();
         assertThat(actualPackages, notNullValue());
 
-        assertThat(actualPackages.length, equalTo(1));
+        assertThat(actualPackages.length, equalTo(2));
         assertThat(actualPackages[0], equalTo(DEFAULT_PACKAGE_NAME));
+        assertThat(actualPackages[1], equalTo(DEPRECATED_DEFAULT_PACKAGE_NAME));
     }
 
     @Test
