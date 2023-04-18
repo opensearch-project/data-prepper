@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.source.otellogs;
+package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -12,22 +12,22 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.AWS_REGION;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_THREAD_COUNT;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.ENABLE_UNFRAMED_REQUESTS;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.HEALTH_CHECK_SERVICE;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.MAX_CONNECTION_COUNT;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PATH;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PORT;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PROTO_REFLECTION_SERVICE;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.REQUEST_TIMEOUT;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_CERT_FILE;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_FILE;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.THREAD_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.AWS_REGION;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_THREAD_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.ENABLE_UNFRAMED_REQUESTS;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.HEALTH_CHECK_SERVICE;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.MAX_CONNECTION_COUNT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PATH;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PORT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.PROTO_REFLECTION_SERVICE;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.REQUEST_TIMEOUT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_CERT_FILE;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL_KEY_FILE;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.THREAD_COUNT;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;

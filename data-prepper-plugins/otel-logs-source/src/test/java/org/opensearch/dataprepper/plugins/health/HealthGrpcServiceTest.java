@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.health;
+package org.opensearch.dataprepper.plugins.health;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
