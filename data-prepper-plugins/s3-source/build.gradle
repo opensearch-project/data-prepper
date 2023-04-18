@@ -31,6 +31,9 @@ dependencies {
     testImplementation 'com.github.tomakehurst:wiremock:3.0.0-beta-5'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-plugins:csv-processor')
+	testImplementation project(':data-prepper-plugins:parse-json-processor')
+	testImplementation project(':data-prepper-plugins:newline-codecs')
 }
 
 test {
