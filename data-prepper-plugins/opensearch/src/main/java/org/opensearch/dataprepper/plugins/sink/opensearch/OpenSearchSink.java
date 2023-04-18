@@ -82,6 +82,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String documentIdField;
   private final String routingField;
   private final String action;
+  private final String documentRootKey;
   private String configuredIndexAlias;
   private final ReentrantLock lock;
 
@@ -113,6 +114,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
+    this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
     this.failedBulkOperationConverter = new FailedBulkOperationConverter(pluginSetting.getPipelineName(), pluginSetting.getName(),
         pluginSetting.getName());
@@ -258,7 +260,21 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private SerializedJson getDocument(final Event event) {
     String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
     String routing = (routingField != null) ? event.get(routingField, String.class) : null;
-    return SerializedJson.fromStringAndOptionals(event.toJsonString(), docId, routing);
+
+    final String document = buildRawDocument(event);
+
+    return SerializedJson.fromStringAndOptionals(document, docId, routing);
+  }
+
+  private String buildRawDocument(final Event event) {
+    if (documentRootKey != null && event.containsKey(documentRootKey)) {
+      final String document = event.getToJsonString(documentRootKey);
+      if (document == null || !document.startsWith("{")) {
+        return String.format("{\"%s\": %s}", documentRootKey, document);
+      }
+      return document;
+    }
+    return event.toJsonString();
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {
