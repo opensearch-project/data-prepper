@@ -55,7 +55,7 @@ public class ShutdownHandlerTest {
         shutdownHandler.handle(exchange);
 
         verify(dataPrepper, times(1))
-                .shutdown();
+                .shutdownPipelines();
         verify(exchange, times(1))
                 .sendResponseHeaders(eq(HttpURLConnection.HTTP_OK), eq(0L));
         verify(responseBody, times(1))
@@ -82,7 +82,7 @@ public class ShutdownHandlerTest {
     public void testHandleException() throws IOException {
         when(exchange.getRequestMethod())
                 .thenReturn(HttpMethod.POST);
-        doThrow(RuntimeException.class).when(dataPrepper).shutdown();
+        doThrow(RuntimeException.class).when(dataPrepper).shutdownPipelines();
 
         shutdownHandler.handle(exchange);
 
