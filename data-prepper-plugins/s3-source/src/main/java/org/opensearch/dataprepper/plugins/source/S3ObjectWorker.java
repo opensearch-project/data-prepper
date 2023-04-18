@@ -7,10 +7,10 @@ package org.opensearch.dataprepper.plugins.source;
 
 import org.apache.commons.compress.utils.CountingInputStream;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
@@ -37,7 +37,7 @@ class S3ObjectWorker implements S3ObjectHandler {
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
     private final CompressionEngine compressionEngine;
-    private final Codec codec;
+    private final InputCodec codec;
     private final BucketOwnerProvider bucketOwnerProvider;
     private final Duration bufferTimeout;
     private final int numberOfRecordsToAccumulate;

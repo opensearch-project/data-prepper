@@ -9,7 +9,7 @@ import org.mockito.Mock;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
@@ -41,7 +41,7 @@ public class S3ObjectRequestTest {
     BiConsumer<Event, S3ObjectReference> eventConsumer;
 
     @Mock
-    private Codec codec;
+    private InputCodec codec;
 
     @Mock
     private S3AsyncClient s3AsyncClient;
