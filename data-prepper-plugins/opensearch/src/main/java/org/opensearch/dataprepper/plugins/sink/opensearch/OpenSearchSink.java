@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -54,6 +55,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.function.Supplier;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -161,7 +163,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     if (dlqFile != null) {
       dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
     } else if (dlqProvider != null) {
-      Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter();
+      Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
+          .add(pluginSetting.getPipelineName())
+          .add(pluginSetting.getName()).toString());
       dlqWriter = potentialDlq.isPresent() ? potentialDlq.get() : null;
     }
     indexManager.setupIndex();
