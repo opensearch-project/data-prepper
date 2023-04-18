@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
@@ -95,7 +96,8 @@ public class PutAllAggregateActionTest {
             groupState.putAll(eventMap);
         }
 
-        final List<Event> result = combineAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = combineAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertThat(result.size(), equalTo(1));
         assertThat(result.get(0).getMetadata().getEventType(), equalTo(PutAllAggregateAction.EVENT_TYPE));
         assertThat(result.get(0).toMap(), equalTo(groupState));

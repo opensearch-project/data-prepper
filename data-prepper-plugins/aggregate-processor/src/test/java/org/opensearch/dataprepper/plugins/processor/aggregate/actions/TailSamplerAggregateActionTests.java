@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
@@ -73,10 +74,12 @@ public class TailSamplerAggregateActionTests {
             Event receivedEvent = aggregateActionResponse.getEvent();
             assertThat(receivedEvent, equalTo(null));
         }
-        List<Event> result = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        AggregateActionOutput actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        List<Event> result = actionOutput.getEvents();
         assertTrue(result.isEmpty());
         Thread.sleep(2 * testWaitPeriod.toMillis());
-        result = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        result = actionOutput.getEvents();
         assertThat(result, not(equalTo(null)));
         assertThat(result.size(), equalTo(totalEvents));
     }
@@ -112,10 +115,12 @@ public class TailSamplerAggregateActionTests {
             Event receivedEvent = aggregateActionResponse.getEvent();
             assertThat(receivedEvent, equalTo(null));
         }
-        List<Event> result = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        AggregateActionOutput actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        List<Event> result = actionOutput.getEvents();
         assertTrue(result.isEmpty());
         Thread.sleep(2 * testWaitPeriod.toMillis());
-        result = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        result = actionOutput.getEvents();
         assertThat(result, not(equalTo(null)));
         assertThat(result.size(), equalTo(totalEvents));
     }

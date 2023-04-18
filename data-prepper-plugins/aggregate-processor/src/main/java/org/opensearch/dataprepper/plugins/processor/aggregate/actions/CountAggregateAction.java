@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
@@ -70,7 +71,7 @@ public class CountAggregateAction implements AggregateAction {
     }
 
     @Override
-    public List<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
@@ -102,6 +103,6 @@ public class CountAggregateAction implements AggregateAction {
             event = (Event)sum;
         }
         
-        return List.of(event);
+        return new AggregateActionOutput(List.of(event));
     }
 }

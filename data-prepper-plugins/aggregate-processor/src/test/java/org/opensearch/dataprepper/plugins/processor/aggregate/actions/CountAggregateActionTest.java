@@ -14,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
@@ -62,7 +63,8 @@ public class CountAggregateActionTest {
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final List<Event> result = countAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = countAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertThat(result.size(), equalTo(1));
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap(key, value));
         expectedEventMap.put(CountAggregateActionConfig.DEFAULT_COUNT_KEY, testCount);
@@ -90,7 +92,8 @@ public class CountAggregateActionTest {
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final List<Event> result = countAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = countAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertThat(result.size(), equalTo(1));
         Map<String, Object> expectedEventMap = new HashMap<>();
         expectedEventMap.put("value", (double)testCount);

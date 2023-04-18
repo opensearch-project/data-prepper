@@ -270,7 +270,7 @@ public class AggregateProcessorTest {
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>(identificationKeysMap, aggregateGroup);
             when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
-            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, false)).thenReturn(List.of());
+            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, false)).thenReturn(new AggregateActionOutput(List.of()));
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
@@ -292,7 +292,7 @@ public class AggregateProcessorTest {
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>(identificationKeysMap, aggregateGroup);
             when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
-            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, false)).thenReturn(List.of(event));
+            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, false)).thenReturn(new AggregateActionOutput(List.of(event)));
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 
@@ -317,7 +317,7 @@ public class AggregateProcessorTest {
             final Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry = new AbstractMap.SimpleEntry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>(identificationKeysMap, aggregateGroup);
             when(aggregateGroupManager.getGroupsToConclude(eq(true))).thenReturn(Collections.singletonList(groupEntry));
             when(aggregateActionResponse.getEvent()).thenReturn(null);
-            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, true)).thenReturn(List.of(event));
+            when(aggregateActionSynchronizer.concludeGroup(identificationKeysMap, aggregateGroup, true)).thenReturn(new AggregateActionOutput(List.of(event)));
 
             final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(Collections.singletonList(new Record<>(event)));
 

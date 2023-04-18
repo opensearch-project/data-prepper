@@ -49,19 +49,19 @@ class AggregateActionSynchronizer {
         this.actionConcludeGroupEventsProcessingErrors = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_PROCESSING_ERRORS);
     }
 
-    List<Event> concludeGroup(final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
+    AggregateActionOutput concludeGroup(final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 
-        List<Event> concludeGroupEvents = List.of();
+        AggregateActionOutput actionOutput = new AggregateActionOutput(List.of());
         if (concludeGroupLock.tryLock()) {
             handleEventForGroupLock.lock();
 
             try {
                 if (aggregateGroup.shouldConcludeGroup(aggregateGroupManager.getGroupDuration()) || forceConclude) {
                     LOG.debug("Start critical section in concludeGroup");
-                    concludeGroupEvents = aggregateAction.concludeGroup(aggregateGroup);
-                    if (!aggregateAction.shouldCarryState()) {
+                    actionOutput = aggregateAction.concludeGroup(aggregateGroup);
+                    if (!actionOutput.shouldCarryState()) {
                         aggregateGroupManager.closeGroup(hash, aggregateGroup);
                     }
                 }
@@ -73,7 +73,7 @@ class AggregateActionSynchronizer {
                 concludeGroupLock.unlock();
             }
         }
-        return concludeGroupEvents;
+        return actionOutput;
     }
 
     AggregateActionResponse handleEventForGroup(final Event event, final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup) {

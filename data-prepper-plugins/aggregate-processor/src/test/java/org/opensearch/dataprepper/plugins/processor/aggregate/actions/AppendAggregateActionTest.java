@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
@@ -288,7 +289,8 @@ public class AppendAggregateActionTest {
             groupState.putAll(eventMap);
         }
 
-        final List<Event> result = appendAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = appendAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertThat(result.size(), equalTo(1));
         assertThat(result.get(0).getMetadata().getEventType(), equalTo(AppendAggregateAction.EVENT_TYPE));
         assertThat(result.get(0).toMap(), equalTo(groupState));

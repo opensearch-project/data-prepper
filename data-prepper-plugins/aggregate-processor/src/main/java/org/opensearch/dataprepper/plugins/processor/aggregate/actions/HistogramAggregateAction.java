@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import static org.opensearch.dataprepper.plugins.processor.aggregate.AggregateProcessor.getTimeNanos;
@@ -150,7 +151,7 @@ public class HistogramAggregateAction implements AggregateAction {
     }
 
     @Override
-    public List<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
@@ -207,6 +208,6 @@ public class HistogramAggregateAction implements AggregateAction {
             event = (Event)histogram;
         }
         
-        return List.of(event);
+        return new AggregateActionOutput(List.of(event));
     }
 }

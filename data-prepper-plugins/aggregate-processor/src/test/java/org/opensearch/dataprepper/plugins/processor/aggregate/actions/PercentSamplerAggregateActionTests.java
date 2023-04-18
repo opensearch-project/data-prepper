@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
@@ -68,7 +69,8 @@ public class PercentSamplerAggregateActionTests {
                 allowedEvents++;
             }
         }
-        final List<Event> result = percentSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = percentSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertTrue(result.isEmpty());
         assertThat(allowedEvents, equalTo((int)(totalEvents * testPercent/100.0)));
     }

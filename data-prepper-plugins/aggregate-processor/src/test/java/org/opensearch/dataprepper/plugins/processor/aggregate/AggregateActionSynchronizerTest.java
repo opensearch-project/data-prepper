@@ -96,7 +96,8 @@ public class AggregateActionSynchronizerTest {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
         when(concludeGroupLock.tryLock()).thenReturn(false);
 
-        final List<Event> concludeGroupEvents = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, false);
+        final AggregateActionOutput actionOutput = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, false);
+        final List<Event> concludeGroupEvents = actionOutput.getEvents();
 
         verifyNoInteractions(handleEventForGroupLock);
         verifyNoInteractions(aggregateAction);
@@ -110,9 +111,10 @@ public class AggregateActionSynchronizerTest {
     void concludeGroup_with_tryLock_true_calls_expected_functions_and_returns_correct_event() {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
         when(concludeGroupLock.tryLock()).thenReturn(true);
-        when(aggregateAction.concludeGroup(aggregateGroup)).thenReturn(List.of(event));
+        when(aggregateAction.concludeGroup(aggregateGroup)).thenReturn(new AggregateActionOutput(List.of(event)));
 
-        final List<Event> concludeGroupEvents = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, false);
+        final AggregateActionOutput actionOutput = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, false);
+        final List<Event> concludeGroupEvents = actionOutput.getEvents();
 
         final InOrder inOrder = Mockito.inOrder(handleEventForGroupLock, aggregateAction, aggregateGroupManager, concludeGroupLock);
         inOrder.verify(handleEventForGroupLock).lock();
@@ -131,7 +133,8 @@ public class AggregateActionSynchronizerTest {
         when(concludeGroupLock.tryLock()).thenReturn(true);
         when(aggregateAction.concludeGroup(aggregateGroup)).thenThrow(RuntimeException.class);
 
-        final List<Event> concludeGroupEvents = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, false);
+        final AggregateActionOutput actionOutput = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, false);
+        final List<Event> concludeGroupEvents = actionOutput.getEvents();
 
         final InOrder inOrder = Mockito.inOrder(handleEventForGroupLock, aggregateAction, concludeGroupLock, actionConcludeGroupEventsProcessingErrors);
         inOrder.verify(handleEventForGroupLock).lock();
@@ -186,7 +189,8 @@ public class AggregateActionSynchronizerTest {
         when(concludeGroupLock.tryLock()).thenReturn(true);
         when(aggregateGroup.shouldConcludeGroup(any(Duration.class))).thenReturn(false);
 
-        final List<Event> concludeGroupEvents = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, false);
+        final AggregateActionOutput actionOutput = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, false);
+        final List<Event> concludeGroupEvents = actionOutput.getEvents();
 
         final InOrder inOrder = Mockito.inOrder(concludeGroupLock, handleEventForGroupLock, aggregateGroup, aggregateGroupManager);
         inOrder.verify(concludeGroupLock).tryLock();
@@ -207,9 +211,10 @@ public class AggregateActionSynchronizerTest {
         final AggregateActionSynchronizer objectUnderTest = createObjectUnderTest();
         when(concludeGroupLock.tryLock()).thenReturn(true);
         when(aggregateGroup.shouldConcludeGroup(any(Duration.class))).thenReturn(false);
-        when(aggregateAction.concludeGroup(aggregateGroup)).thenReturn(List.of(event));
+        when(aggregateAction.concludeGroup(aggregateGroup)).thenReturn(new AggregateActionOutput(List.of(event)));
 
-        final List<Event> concludeGroupEvents = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, true);
+        final AggregateActionOutput actionOutput = objectUnderTest.concludeGroup(identificationKeysMap, aggregateGroup, true);
+        final List<Event> concludeGroupEvents = actionOutput.getEvents();
 
         final InOrder inOrder = Mockito.inOrder(handleEventForGroupLock, aggregateAction, aggregateGroupManager, concludeGroupLock);
         inOrder.verify(handleEventForGroupLock).lock();

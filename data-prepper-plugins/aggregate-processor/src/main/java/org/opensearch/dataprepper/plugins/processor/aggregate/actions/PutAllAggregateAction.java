@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
@@ -33,13 +34,13 @@ public class PutAllAggregateAction implements AggregateAction {
     }
 
     @Override
-    public List<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
 
         final Event event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(aggregateActionInput.getGroupState())
                 .build();
 
-        return List.of(event);
+        return new AggregateActionOutput(List.of(event));
     }
 }

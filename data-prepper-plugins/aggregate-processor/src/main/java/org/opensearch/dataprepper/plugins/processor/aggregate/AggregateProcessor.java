@@ -84,8 +84,9 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
         final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(forceConclude);
         for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry : groupsToConclude) {
-            final List<Event> concludeGroupEvents = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
+            final AggregateActionOutput actionOutput = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
 
+            final List<Event> concludeGroupEvents = actionOutput != null ? actionOutput.getEvents() : null;
             if (concludeGroupEvents != null && !concludeGroupEvents.isEmpty()) {
                 concludeGroupEvents.stream().forEach((event) -> {
                     recordsOut.add(new Record(event));

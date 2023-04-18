@@ -37,18 +37,8 @@ public interface AggregateAction {
      * should not pass an event
      * @since 1.3
      */
-    default List<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
-        return List.of();
-    }
-
-    /**
-     * Indicates if the aggregation action requires carrying state across aggregation periods
-     *
-     * @return true if the action requries carrying state, false otherwise
-     * @since 2.2
-     */
-    default boolean shouldCarryState() {
-        return false;
+    default AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
+        return new AggregateActionOutput(List.of(), false);
     }
 
 }

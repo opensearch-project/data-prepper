@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
@@ -72,7 +73,8 @@ public class RemoveDuplicatesAggregateActionTest {
     void concludeGroup_with_empty_groupState_returns_empty_List() {
         removeDuplicatesAggregateAction = createObjectUnderTest();
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
-        final List<Event> result = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
 
         assertTrue(result.isEmpty());
     }
@@ -83,7 +85,8 @@ public class RemoveDuplicatesAggregateActionTest {
         final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(Collections.emptyMap());
         final GroupState groupState = aggregateActionInput.getGroupState();
         groupState.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        final List<Event> result = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = removeDuplicatesAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
 
         assertTrue(result.isEmpty());
     }

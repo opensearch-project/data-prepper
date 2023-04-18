@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
@@ -46,11 +47,6 @@ public class TailSamplerAggregateAction implements AggregateAction {
     }
 
     @Override
-    public boolean shouldCarryState() {
-        return shouldCarryGroupState;
-    }
-
-    @Override
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
         final GroupState groupState = aggregateActionInput.getGroupState();
         List<Event> events = (List)groupState.getOrDefault(EVENTS_KEY, new ArrayList<>());
@@ -64,25 +60,24 @@ public class TailSamplerAggregateAction implements AggregateAction {
     }
 
     @Override
-    public List<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         Duration timeDiff = Duration.between((Instant)groupState.get(LAST_RECEIVED_TIME_KEY), Instant.now());
-        List<Event> result = (List)groupState.get(EVENTS_KEY);
-        if (result != null) {
+        List<Event> events = (List)groupState.get(EVENTS_KEY);
+        if (events != null) {
             if (timeDiff.getSeconds() > waitPeriod.getSeconds()) {
                 Random randomNum = new Random();
                 int randomInt = randomNum.nextInt(100);
-                shouldCarryGroupState = false;
                 if ((boolean)groupState.getOrDefault(ERROR_STATUS_KEY, false) ||
                     (randomInt < percent)) {
                     groupState.remove(EVENTS_KEY);
-                    return result;
+                    return new AggregateActionOutput(events, false);
                 } else {
                     groupState.remove(EVENTS_KEY);
                 }
             }
         }
-        return List.of();
+        return new AggregateActionOutput(List.of(), true);
     }
 
 }

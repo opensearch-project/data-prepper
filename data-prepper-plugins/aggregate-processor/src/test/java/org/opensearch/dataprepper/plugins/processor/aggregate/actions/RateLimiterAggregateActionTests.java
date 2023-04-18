@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
@@ -62,7 +63,8 @@ public class RateLimiterAggregateActionTests {
             assertThat(aggregateActionResponse.getEvent(), equalTo(testEvent));
             Thread.sleep(1000/testEventsPerSecond);
         }
-        final List<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertTrue(result.isEmpty());
     }
 
@@ -90,7 +92,8 @@ public class RateLimiterAggregateActionTests {
             } 
         }
         assertThat(numFailed, greaterThan(0));
-        final List<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertTrue(result.isEmpty());
     }
 
@@ -120,7 +123,8 @@ public class RateLimiterAggregateActionTests {
             }
         }
         assertThat(numFailed, equalTo(0));
-        final List<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertTrue(result.isEmpty());
     }
 }

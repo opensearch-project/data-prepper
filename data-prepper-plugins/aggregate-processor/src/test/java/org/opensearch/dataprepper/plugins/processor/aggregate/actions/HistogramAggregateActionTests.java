@@ -14,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
@@ -102,7 +103,8 @@ public class HistogramAggregateActionTests {
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final List<Event> result = histogramAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = histogramAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertThat(result.size(), equalTo(1));
         final String expectedCountKey = histogramAggregateActionConfig.getCountKey();
         final String expectedStartTimeKey = histogramAggregateActionConfig.getStartTimeKey();
@@ -183,7 +185,8 @@ public class HistogramAggregateActionTests {
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final List<Event> result = histogramAggregateAction.concludeGroup(aggregateActionInput);
+        final AggregateActionOutput actionOutput = histogramAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
         assertThat(result.size(), equalTo(1));
         final String expectedCountKey = histogramAggregateActionConfig.getCountKey();
         final String expectedStartTimeKey = histogramAggregateActionConfig.getStartTimeKey();
