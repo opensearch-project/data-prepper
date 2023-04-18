@@ -40,6 +40,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:avro-codecs')
     testImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
     testImplementation project(':data-prepper-core')
+    testImplementation project(':data-prepper-plugins:parquet-codecs')
     constraints {
         testImplementation('org.eclipse.jetty:jetty-bom') {
             version {
