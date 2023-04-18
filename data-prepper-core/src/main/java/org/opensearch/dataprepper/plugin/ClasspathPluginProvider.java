@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_DEPRECATED_NAME;
+
 /**
  * The implementation of {@link PluginProvider} which loads plugins from the
  * current Java classpath.
@@ -58,16 +60,31 @@ public class ClasspathPluginProvider implements PluginProvider {
 
         final Map<String, Map<Class<?>, Class<?>>> pluginsMap = new HashMap<>(dataPrepperPluginClasses.size());
         for (final Class<?> concretePluginClass : dataPrepperPluginClasses) {
-            final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass
-                    .getAnnotation(DataPrepperPlugin.class);
+            final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);
             final String pluginName = dataPrepperPluginAnnotation.name();
             final Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
 
             final Map<Class<?>, Class<?>> supportTypeToPluginTypeMap =
                     pluginsMap.computeIfAbsent(pluginName, k -> new HashMap<>());
             supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
+
+            addOptionalDeprecatedPluginName(pluginsMap, concretePluginClass);
         }
 
         return pluginsMap;
+    }
+
+    private void addOptionalDeprecatedPluginName(
+            final Map<String, Map<Class<?>, Class<?>>> pluginsMap,
+            final Class<?> concretePluginClass) {
+        final DataPrepperPlugin dataPrepperPluginAnnotation = concretePluginClass.getAnnotation(DataPrepperPlugin.class);
+        final String deprecatedPluginName = dataPrepperPluginAnnotation.deprecatedName();
+        final Class<?> supportedType = dataPrepperPluginAnnotation.pluginType();
+
+        if (!deprecatedPluginName.equals(DEFAULT_DEPRECATED_NAME)) {
+            final Map<Class<?>, Class<?>> supportTypeToPluginTypeMap =
+                    pluginsMap.computeIfAbsent(deprecatedPluginName, k -> new HashMap<>());
+            supportTypeToPluginTypeMap.put(supportedType, concretePluginClass);
+        }
     }
 }
