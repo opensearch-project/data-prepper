@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.pipeline.server;
 
-import org.opensearch.dataprepper.DataPrepper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import org.opensearch.dataprepper.pipeline.PipelinesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,12 +24,12 @@ import java.util.stream.Collectors;
  */
 public class ListPipelinesHandler implements HttpHandler {
 
-    private final DataPrepper dataPrepper;
+    private final PipelinesProvider pipelinesProvider;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Logger LOG = LoggerFactory.getLogger(ListPipelinesHandler.class);
 
-    public ListPipelinesHandler(final DataPrepper dataPrepper) {
-        this.dataPrepper = dataPrepper;
+    public ListPipelinesHandler(final PipelinesProvider pipelinesProvider) {
+        this.pipelinesProvider = pipelinesProvider;
     }
 
     private static class PipelineListing {
@@ -50,7 +50,7 @@ public class ListPipelinesHandler implements HttpHandler {
         }
 
         try {
-            final List<PipelineListing> pipelines = dataPrepper.getTransformationPipelines()
+            final List<PipelineListing> pipelines = pipelinesProvider.getTransformationPipelines()
                     .keySet()
                     .stream()
                     .map(PipelineListing::new)

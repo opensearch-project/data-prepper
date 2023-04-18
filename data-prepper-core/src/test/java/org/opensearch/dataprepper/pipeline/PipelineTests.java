@@ -482,4 +482,49 @@ class PipelineTests {
             }
         }
     }
+
+    @Test
+    void shutdown_calls_added_PipelineObservers() {
+        final Source<Record<String>> testSource = new TestSource();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+        final TestSink testSink = new TestSink();
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router,
+                eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+
+        PipelineObserver pipelineObserver = mock(PipelineObserver.class);
+        testPipeline.addShutdownObserver(pipelineObserver);
+
+        testPipeline.execute();
+
+        verifyNoInteractions(pipelineObserver);
+
+        testPipeline.shutdown();
+
+        verify(pipelineObserver).shutdown(testPipeline);
+    }
+
+    @Test
+    void shutdown_does_not_call_removed_PipelineObservers() {
+        final Source<Record<String>> testSource = new TestSource();
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+        final TestSink testSink = new TestSink();
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.emptyList(), Collections.singletonList(sinkDataFlowComponent), router,
+                eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS, TEST_READ_BATCH_TIMEOUT,
+                processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+
+        PipelineObserver pipelineObserver = mock(PipelineObserver.class);
+        testPipeline.addShutdownObserver(pipelineObserver);
+
+        testPipeline.execute();
+
+        testPipeline.removeShutdownObserver(pipelineObserver);
+
+        testPipeline.shutdown();
+        verifyNoInteractions(pipelineObserver);
+    }
 }
