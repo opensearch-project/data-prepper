@@ -18,18 +18,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 /**
  * AcknowledgementSetMonitor - monitors the acknowledgement sets for completion/expiration
- *
+ * <p>
  * Every acknowledgement set must complete (ie get acknowledgements from all the events in it)
  * by a specified time. If it is not completed, then it is considered 'expired' and it is
  * cleaned up. The 'run' method is invoked periodically to cleanup the acknowledgement sets
  * that are either completed or expired.
  */
-public class AcknowledgementSetMonitor implements Runnable {
+class AcknowledgementSetMonitor implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(AcknowledgementSetMonitor.class);
     private final Set<AcknowledgementSet> acknowledgementSets;
     private final ReentrantLock lock;
-    private AtomicInteger numInvalidAcquires;
-    private AtomicInteger numInvalidReleases;
+    private final AtomicInteger numInvalidAcquires;
+    private final AtomicInteger numInvalidReleases;
+    private final AtomicInteger numNullHandles;
 
     private DefaultAcknowledgementSet getAcknowledgementSet(final EventHandle eventHandle) {
         return (DefaultAcknowledgementSet)((DefaultEventHandle)eventHandle).getAcknowledgementSet();
@@ -40,6 +41,7 @@ public class AcknowledgementSetMonitor implements Runnable {
         this.lock = new ReentrantLock(true);
         this.numInvalidAcquires = new AtomicInteger(0);
         this.numInvalidReleases = new AtomicInteger(0);
+        this.numNullHandles = new AtomicInteger(0);
     }
 
     public int getNumInvalidAcquires() {
@@ -60,6 +62,11 @@ public class AcknowledgementSetMonitor implements Runnable {
     }
 
     public void acquire(final EventHandle eventHandle) {
+        if (eventHandle == null) {
+            numNullHandles.incrementAndGet();
+            return;
+        }
+
         DefaultAcknowledgementSet acknowledgementSet = getAcknowledgementSet(eventHandle);
         lock.lock();
         boolean exists = false;
@@ -80,6 +87,10 @@ public class AcknowledgementSetMonitor implements Runnable {
     }
 
     public void release(final EventHandle eventHandle, final boolean success) {
+        if (eventHandle == null) {
+            numNullHandles.incrementAndGet();
+            return;
+        }
         DefaultAcknowledgementSet acknowledgementSet = getAcknowledgementSet(eventHandle);
         lock.lock();
         boolean exists = false;
@@ -99,7 +110,10 @@ public class AcknowledgementSetMonitor implements Runnable {
         }
     }
 
-    // For testing
+    /**
+     * for testing
+     * @return the size
+     */
     int getSize() {
         return acknowledgementSets.size();
     }
@@ -109,8 +123,8 @@ public class AcknowledgementSetMonitor implements Runnable {
         lock.lock();
         try {
             if (acknowledgementSets.size() > 0) {
-                acknowledgementSets.removeIf((ackSet) -> ((DefaultAcknowledgementSet)ackSet).isDone());
-            } 
+                acknowledgementSets.removeIf((ackSet) -> ((DefaultAcknowledgementSet) ackSet).isDone());
+            }
         } finally {
             lock.unlock();
         }

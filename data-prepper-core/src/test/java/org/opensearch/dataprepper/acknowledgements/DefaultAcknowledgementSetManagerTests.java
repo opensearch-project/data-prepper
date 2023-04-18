@@ -22,11 +22,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultAcknowledgementSetManagerTests {
     private static final Duration TEST_TIMEOUT_MS = Duration.ofMillis(1000);
     DefaultAcknowledgementSetManager acknowledgementSetManager;
+    private ExecutorService callbackExecutor;
 
     @Mock
     JacksonEvent event1;
@@ -42,22 +45,19 @@ class DefaultAcknowledgementSetManagerTests {
 
     @BeforeEach
     void setup() {
+        callbackExecutor = Executors.newFixedThreadPool(2);
         event1 = mock(JacksonEvent.class);
-        try {
-            doAnswer((i) -> {
-                eventHandle1 = (EventHandle)i.getArgument(0);
-                return null;
-            }).when(event1).setEventHandle(any());
-        } catch (Exception e){}
+        doAnswer((i) -> {
+            eventHandle1 = i.getArgument(0);
+            return null;
+        }).when(event1).setEventHandle(any());
         lenient().when(event1.getEventHandle()).thenReturn(eventHandle1);
 
         event2 = mock(JacksonEvent.class);
-        try {
-            doAnswer((i) -> {
-                eventHandle2 = (EventHandle)i.getArgument(0);
-                return null;
-            }).when(event2).setEventHandle(any());
-        } catch (Exception e){}
+        doAnswer((i) -> {
+            eventHandle2 = i.getArgument(0);
+            return null;
+        }).when(event2).setEventHandle(any());
         lenient().when(event2.getEventHandle()).thenReturn(eventHandle2);
 
         acknowledgementSetManager = createObjectUnderTest();
@@ -67,39 +67,33 @@ class DefaultAcknowledgementSetManagerTests {
     }
 
     DefaultAcknowledgementSetManager createObjectUnderTest() {
-        return new DefaultAcknowledgementSetManager(Duration.ofMillis(TEST_TIMEOUT_MS.toMillis() * 2));
+        return new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(TEST_TIMEOUT_MS.toMillis() * 2));
     }
 
     @Test
-    void testBasic() {
+    void testBasic() throws InterruptedException {
         acknowledgementSetManager.releaseEventReference(eventHandle2, true);
         acknowledgementSetManager.releaseEventReference(eventHandle1, true);
-        try {
-            Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
-        } catch (Exception e){}
+        Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
         assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
         assertThat(result, equalTo(true));
     }
 
     @Test
-    void testExpirations() {
+    void testExpirations() throws InterruptedException {
         acknowledgementSetManager.releaseEventReference(eventHandle2, true);
-        try {
-            Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
-        } catch (Exception e){}
+        Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
         assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
         assertThat(result, equalTo(null));
     }
 
     @Test
-    void testMultipleAcknowledgementSets() {
+    void testMultipleAcknowledgementSets() throws InterruptedException {
         event3 = mock(JacksonEvent.class);
-        try {
-            doAnswer((i) -> {
-                eventHandle3 = (EventHandle)i.getArgument(0);
-                return null;
-            }).when(event3).setEventHandle(any());
-        } catch (Exception e){}
+        doAnswer((i) -> {
+            eventHandle3 = i.getArgument(0);
+            return null;
+        }).when(event3).setEventHandle(any());
         lenient().when(event3.getEventHandle()).thenReturn(eventHandle3);
 
         AcknowledgementSet acknowledgementSet2 = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT_MS);
@@ -107,9 +101,7 @@ class DefaultAcknowledgementSetManagerTests {
 
         acknowledgementSetManager.releaseEventReference(eventHandle2, true);
         acknowledgementSetManager.releaseEventReference(eventHandle3, true);
-        try {
-            Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
-        } catch (Exception e){}
+        Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
         assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
         assertThat(result, equalTo(true));
     }

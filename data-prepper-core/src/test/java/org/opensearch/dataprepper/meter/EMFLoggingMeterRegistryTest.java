@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.meter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
@@ -26,6 +25,7 @@ import software.amazon.cloudwatchlogs.emf.environment.EnvironmentProvider;
 import software.amazon.cloudwatchlogs.emf.logger.MetricsLogger;
 import software.amazon.cloudwatchlogs.emf.model.DimensionSet;
 import software.amazon.cloudwatchlogs.emf.model.MetricsContext;
+import software.amazon.cloudwatchlogs.emf.model.Unit;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static io.micrometer.core.instrument.Meter.Id;
 import static io.micrometer.core.instrument.Meter.Type;
@@ -76,239 +77,230 @@ class EMFLoggingMeterRegistryTest {
     }
 
     @Test
-    void snapshotGaugeMetricsLoggerValid() throws JsonProcessingException {
+    void snapshotGaugeDataValid() {
         final Gauge gauge = Gauge.builder("gauge", 1d, Number::doubleValue)
                 .tags(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.gaugeDataMetricsLogger(gauge);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, gauge.getId(), "value"), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.gaugeData(gauge)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(1));
+        final EMFLoggingMeterRegistry.MetricDataPoint metricDataPoint = metricDataPoints.get(0);
+        assertThat(metricDataPoint.key, equalTo("gauge.value"));
+        assertThat(metricDataPoint.value, equalTo(1d));
+        assertThat(metricDataPoint.unit, equalTo(Unit.NONE));
     }
 
     @Test
-    void snapshotGaugeMetricsLoggerWhenNaNShouldNotAdd() throws JsonProcessingException {
+    void snapshotGaugeDataWhenNaNShouldNotAdd() {
         final Gauge gauge = Gauge.builder("gauge", Double.NaN, Number::doubleValue)
                 .tags(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.gaugeDataMetricsLogger(gauge);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, gauge.getId(), "value"), is(false));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.gaugeData(gauge)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(0));
     }
 
     @Test
-    void snapshotCounterMetricsLoggerValid() throws JsonProcessingException {
+    void snapshotCounterMetricDataValid() {
         final Counter counter = Counter.builder("counter").tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.counterDataMetricsLogger(counter);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, counter.getId(), "count"), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.counterData(counter)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(1));
+        final EMFLoggingMeterRegistry.MetricDataPoint metricDataPoint = metricDataPoints.get(0);
+        assertThat(metricDataPoint.key, equalTo("counter.count"));
+        assertThat(metricDataPoint.value, equalTo(0d));
+        assertThat(metricDataPoint.unit, equalTo(Unit.COUNT));
     }
 
     @Test
-    void snapshotShouldAddTimerAggregateMetricWhenAtLeastOneEventHappened() throws JsonProcessingException {
+    void snapshotShouldAddTimerAggregateDataWhenAtLeastOneEventHappened() {
         final Timer timer = mock(Timer.class);
         final Id meterId = new Id(METER_NAME, Tags.of(TEST_TAG_KEY, TEST_TAG_VALUE), null, null, TIMER);
         when(timer.getId()).thenReturn(meterId);
         when(timer.count()).thenReturn(2L);
 
-        final MetricsLogger metricsLogger = registrySnapshot.timerDataMetricsLogger(timer);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, meterId, "count"), is(true));
-        assertThat(hasMetric(context, meterId, "sum"), is(true));
-        assertThat(hasMetric(context, meterId, "avg"), is(true));
-        assertThat(hasMetric(context, meterId, "max"), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.timerData(timer)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(4));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .containsAll(List.of("test.count", "test.sum", "test.avg", "test.max")), is(true));
     }
 
     @Test
-    void snapshotShouldNotAddTimerAggregateMetricWhenNoEventHappened() throws JsonProcessingException {
+    void snapshotShouldNotAddTimerAggregateDataWhenNoEventHappened() {
         Timer timer = mock(Timer.class);
         Id meterId = new Id(METER_NAME, Tags.of(TEST_TAG_KEY, TEST_TAG_VALUE), null, null, TIMER);
         when(timer.getId()).thenReturn(meterId);
         when(timer.count()).thenReturn(0L);
 
-        final MetricsLogger metricsLogger = registrySnapshot.timerDataMetricsLogger(timer);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, meterId, "count"), is(true));
-        assertThat(hasMetric(context, meterId, "sum"), is(true));
-        assertThat(hasMetric(context, meterId, "avg"), is(false));
-        assertThat(hasMetric(context, meterId, "max"), is(false));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.timerData(timer)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(2));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .containsAll(List.of("test.count", "test.sum")), is(true));
     }
 
     @Test
-    void snapshotShouldAddSummaryAggregateMetricWhenAtLeastOneEventHappened() throws JsonProcessingException {
+    void snapshotShouldAddSummaryAggregateDataWhenAtLeastOneEventHappened() {
         final DistributionSummary summary = mock(DistributionSummary.class);
         final Id meterId = new Id(METER_NAME, Tags.of(TEST_TAG_KEY, TEST_TAG_VALUE), null, null, DISTRIBUTION_SUMMARY);
         when(summary.getId()).thenReturn(meterId);
         when(summary.count()).thenReturn(2L);
 
-        final MetricsLogger metricsLogger = registrySnapshot.summaryDataMetricsLogger(summary);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, meterId, "count"), is(true));
-        assertThat(hasMetric(context, meterId, "sum"), is(true));
-        assertThat(hasMetric(context, meterId, "avg"), is(true));
-        assertThat(hasMetric(context, meterId, "max"), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.summaryData(summary)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(4));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .containsAll(List.of("test.count", "test.sum", "test.avg", "test.max")), is(true));
     }
 
     @Test
-    void shouldNotAddDistributionSumAggregateMetricWhenNoEventHappened() throws JsonProcessingException {
+    void shouldNotAddDistributionSumAggregateDataWhenNoEventHappened() {
         final DistributionSummary summary = mock(DistributionSummary.class);
         final Id meterId = new Id(METER_NAME, Tags.of(TEST_TAG_KEY, TEST_TAG_VALUE), null, null, DISTRIBUTION_SUMMARY);
         when(summary.getId()).thenReturn(meterId);
         when(summary.count()).thenReturn(0L);
 
-        final MetricsLogger metricsLogger = registrySnapshot.summaryDataMetricsLogger(summary);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, meterId, "count"), is(true));
-        assertThat(hasMetric(context, meterId, "sum"), is(true));
-        assertThat(hasMetric(context, meterId, "avg"), is(false));
-        assertThat(hasMetric(context, meterId, "max"), is(false));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot.summaryData(summary)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(2));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .containsAll(List.of("test.count", "test.sum")), is(true));
     }
 
     @Test
-    void snapshotLongTaskTimerMetricsLoggerValid() throws JsonProcessingException {
+    void snapshotLongTaskTimerDataValid() {
         final LongTaskTimer longTaskTimer = LongTaskTimer.builder("longTaskTimer")
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.longTaskTimerDataMetricsLogger(longTaskTimer);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, longTaskTimer.getId(), "activeTasks"), is(true));
-        assertThat(hasMetric(context, longTaskTimer.getId(), "duration"), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .longTaskTimerData(longTaskTimer)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(2));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .containsAll(List.of("longTaskTimer.activeTasks", "longTaskTimer.duration")), is(true));
     }
 
     @Test
-    void snapshotTimeGaugeDataMetricsLoggerValid() throws JsonProcessingException {
+    void snapshotTimeGaugeDataValid() {
         final AtomicReference<Double> testValue = new AtomicReference<>(0.0);
         final TimeGauge timeGauge = TimeGauge.builder("timeGaugeData", testValue, TimeUnit.MILLISECONDS, AtomicReference::get)
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.timeGaugeDataMetricsLogger(timeGauge);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, timeGauge.getId(), "value"), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .timeGaugeData(timeGauge)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(1));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .contains("timeGaugeData.value"), is(true));
     }
 
     @Test
-    void snapshotTimeGaugeDataMetricsLoggerWhenNaNShouldNotAdd() throws JsonProcessingException {
+    void snapshotTimeGaugeDataWhenNaNShouldNotAdd() {
         final AtomicReference<Double> testValue = new AtomicReference<>(Double.NaN);
         final TimeGauge timeGauge = TimeGauge.builder("timeGaugeData", testValue, TimeUnit.MILLISECONDS, AtomicReference::get)
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.timeGaugeDataMetricsLogger(timeGauge);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, timeGauge.getId(), "value"), is(false));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .timeGaugeData(timeGauge)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(0));
     }
 
     @Test
-    void snapshotFunctionCounterDataMetricsLoggerValid() throws JsonProcessingException {
+    void snapshotFunctionCounterDataValid() {
         final FunctionCounter functionCounter = FunctionCounter.builder("functionCounterData", 1d, Number::doubleValue)
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.functionCounterDataMetricsLogger(functionCounter);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, functionCounter.getId(), "count"), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .functionCounterData(functionCounter)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(1));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .contains("functionCounterData.count"), is(true));
     }
 
     @Test
-    void snapshotFunctionCounterDataShouldClampInfiniteValues() throws JsonProcessingException {
+    void snapshotFunctionCounterDataShouldClampInfiniteValues() {
         FunctionCounter functionCounter = FunctionCounter
                 .builder("my.positive.infinity", Double.POSITIVE_INFINITY, Number::doubleValue).register(registry);
         clock.add(EMFLoggingRegistryConfig.DEFAULT.step());
-        MetricsLogger metricsLogger = registrySnapshot.functionCounterDataMetricsLogger(functionCounter);
-        MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertMetricEqual(context, functionCounter.getId(), "count", 1.174271e+108);
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints1 = registrySnapshot
+                .functionCounterData(functionCounter)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints1.size(), equalTo(1));
+        assertThat(metricDataPoints1.get(0).value, equalTo(1.174271e+108));
 
         functionCounter = FunctionCounter
                 .builder("my.negative.infinity", Double.NEGATIVE_INFINITY, Number::doubleValue).register(registry);
         clock.add(EMFLoggingRegistryConfig.DEFAULT.step());
-        metricsLogger = registrySnapshot.functionCounterDataMetricsLogger(functionCounter);
-        context = reflectivelyGetMetricsContext(metricsLogger);
-        assertMetricEqual(context, functionCounter.getId(), "count", -1.174271e+108);
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints2 = registrySnapshot
+                .functionCounterData(functionCounter)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints2.size(), equalTo(1));
+        assertThat(metricDataPoints2.get(0).value, equalTo(-1.174271e+108));
     }
 
     @Test
-    void snapshotShouldAddFunctionTimerAggregateMetricWhenAtLeastOneEventHappened() throws JsonProcessingException {
+    void snapshotShouldAddFunctionTimerAggregateDataWhenAtLeastOneEventHappened() {
         final FunctionTimer timer = mock(FunctionTimer.class);
         final Id meterId = new Id(METER_NAME, Tags.of(TEST_TAG_KEY, TEST_TAG_VALUE), null, null, TIMER);
         when(timer.getId()).thenReturn(meterId);
         when(timer.count()).thenReturn(2.0);
 
-        final MetricsLogger metricsLogger = registrySnapshot.functionTimerDataMetricsLogger(timer);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, meterId, "count"), is(true));
-        assertThat(hasMetric(context, meterId, "sum"), is(true));
-        assertThat(hasMetric(context, meterId, "avg"), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .functionTimerData(timer)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(3));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .containsAll(List.of("test.count", "test.sum", "test.avg")), is(true));
     }
 
     @Test
-    void snapshotShouldNotAddFunctionTimerAggregateMetricWhenAtLeastOneEventHappened() throws JsonProcessingException {
+    void snapshotShouldNotAddFunctionTimerAggregateDataWhenNoEventHappened() {
         final FunctionTimer timer = mock(FunctionTimer.class);
         final Id meterId = new Id(METER_NAME, Tags.of(TEST_TAG_KEY, TEST_TAG_VALUE), null, null, TIMER);
         when(timer.getId()).thenReturn(meterId);
         when(timer.count()).thenReturn(0.0);
 
-        final MetricsLogger metricsLogger = registrySnapshot.functionTimerDataMetricsLogger(timer);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, meterId, "count"), is(true));
-        assertThat(hasMetric(context, meterId, "sum"), is(true));
-        assertThat(hasMetric(context, meterId, "avg"), is(false));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .functionTimerData(timer)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(2));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .containsAll(List.of("test.count", "test.sum")), is(true));
     }
 
     @Test
-    void snapshotShouldNotAddFunctionTimerMetricWhenSumIsNaN() throws JsonProcessingException {
+    void snapshotShouldNotAddFunctionTimerDataWhenSumIsNaN() {
         final FunctionTimer functionTimer = FunctionTimer
                 .builder("my.function.timer", Double.NaN, Number::longValue, Number::doubleValue, TimeUnit.MILLISECONDS)
                 .register(registry);
         clock.add(EMFLoggingRegistryConfig.DEFAULT.step());
-        final MetricsLogger metricsLogger = registrySnapshot.functionTimerDataMetricsLogger(functionTimer);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertThat(hasMetric(context, functionTimer.getId(), "count"), is(false));
-        assertThat(hasMetric(context, functionTimer.getId(), "sum"), is(false));
-        assertThat(hasMetric(context, functionTimer.getId(), "avg"), is(false));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .functionTimerData(functionTimer)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(0));
     }
 
     @Test
-    void snapshotCustomMeterDataMetricsLoggerValid() throws JsonProcessingException {
+    void snapshotCustomMeterDataValid() {
         final Measurement measurement = new Measurement(() -> 2d, Statistic.VALUE);
         final List<Measurement> measurements = Collections.singletonList(measurement);
         final Meter meter = Meter.builder(METER_NAME, Meter.Type.GAUGE, measurements)
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.metricDataMetricsLogger(meter);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, meter.getId(), null), is(true));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .metricData(meter)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(1));
+        assertThat(metricDataPoints.stream().map(metricDataPoint -> metricDataPoint.key).collect(Collectors.toList())
+                .contains("test"), is(true));
     }
 
     @Test
-    void snapshotCustomMeterDataMetricsLoggerWhenNaNShouldNotAdd() throws JsonProcessingException {
+    void snapshotCustomMeterDataWhenNaNShouldNotAdd() {
         final Measurement measurement = new Measurement(() -> Double.NaN, Statistic.VALUE);
         final List<Measurement> measurements = Collections.singletonList(measurement);
         final Meter meter = Meter.builder(METER_NAME, Meter.Type.GAUGE, measurements)
                 .tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
-        final MetricsLogger metricsLogger = registrySnapshot.metricDataMetricsLogger(meter);
-        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
-        assertThat(context.getNamespace(), equalTo(SERVICE_NAME));
-        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
-        assertThat(hasMetric(context, meter.getId(), null), is(false));
+        final List<EMFLoggingMeterRegistry.MetricDataPoint> metricDataPoints = registrySnapshot
+                .metricData(meter)
+                .collect(Collectors.toList());
+        assertThat(metricDataPoints.size(), equalTo(0));
     }
 
     @Test
@@ -324,11 +316,15 @@ class EMFLoggingMeterRegistryTest {
         final List<Measurement> measurement = Collections.singletonList(new Measurement(() -> 2d, Statistic.VALUE));
         Meter.builder(METER_NAME, Type.OTHER, measurement).tag(TEST_TAG_KEY, TEST_TAG_VALUE).register(registry);
         final List<MetricsLogger> metricsLoggerList = registry.metricsLoggers();
-        assertThat(metricsLoggerList.size(), equalTo(9));
+        assertThat(metricsLoggerList.size(), equalTo(2));
+        final MetricsLogger metricsLogger = metricsLoggerList.get(1);
+        final MetricsContext context = reflectivelyGetMetricsContext(metricsLogger);
+        assertThat(hasDimension(context, TEST_TAG_KEY), is(true));
+        assertDimensionEqual(context, TEST_TAG_KEY, TEST_TAG_VALUE);
     }
 
     @Test
-    void registryMetricsLoggerDropEmptyTag() {
+    void registryMetricsLoggersDropEmptyTag() {
         registry.gauge("gauge", Tags.of("empty", ""), 1d);
         final List<MetricsLogger> metricsLoggerList = registry.metricsLoggers();
         assertThat(metricsLoggerList.size(), equalTo(1));
@@ -376,28 +372,5 @@ class EMFLoggingMeterRegistryTest {
         final DimensionSet dimensionSet = dimensionSetList.get(0);
         assertThat(dimensionSet.getDimensionKeys().size(), equalTo(1));
         assertThat(dimensionSet.getDimensionValue(key), equalTo(value));
-    }
-
-    private boolean hasMetric(final MetricsContext context, final Id meterId, final String suffix) throws JsonProcessingException {
-        final List<String> emfJsonList = context.serialize();
-        assertThat(emfJsonList.size(), equalTo(1));
-        final Map<String, Object> emfMap = objectMapper.readValue(emfJsonList.get(0), MAP_TYPE_REFERENCE);
-        String metricName = meterId.getName();
-        if (suffix != null) {
-            metricName = metricName.concat(".").concat(suffix);
-        }
-        return emfMap.get(metricName) instanceof Double;
-    }
-
-    private void assertMetricEqual(final MetricsContext context, final Id meterId, final String suffix, final Double value)
-            throws JsonProcessingException {
-        final List<String> emfJsonList = context.serialize();
-        assertThat(emfJsonList.size(), equalTo(1));
-        final Map<String, Object> emfMap = objectMapper.readValue(emfJsonList.get(0), MAP_TYPE_REFERENCE);
-        String metricName = meterId.getName();
-        if (suffix != null) {
-            metricName = metricName.concat(".").concat(suffix);
-        }
-        assertThat(emfMap.get(metricName), equalTo(value));
     }
 }

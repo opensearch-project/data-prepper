@@ -10,9 +10,9 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.model.source.UsesSourceCoordination;
+import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.source.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.parser.DataFlowComponent;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadFactory;
 import org.opensearch.dataprepper.pipeline.common.PipelineThreadPoolExecutor;
@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.pipeline.router.RouterCopyRecordStrategy;
 import org.opensearch.dataprepper.pipeline.router.RouterGetRecordStrategy;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.acknowledgements.InactiveAcknowledgementSetManager;
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,6 +128,10 @@ public class Pipeline {
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
         stopRequested = false;
+    }
+
+    AcknowledgementSetManager getAcknowledgementSetManager() {
+        return acknowledgementSetManager;
     }
 
     /**
@@ -281,7 +286,13 @@ public class Pipeline {
     List<Future<Void>> publishToSinks(final Collection<Record> records) {
         final int sinksSize = sinks.size();
         final List<Future<Void>> sinkFutures = new ArrayList<>(sinksSize);
-        final RouterGetRecordStrategy getRecordStrategy = new RouterCopyRecordStrategy(eventFactory, acknowledgementSetManager, sinks);
+
+        final RouterGetRecordStrategy getRecordStrategy =
+                new RouterCopyRecordStrategy(eventFactory,
+                (source.areAcknowledgementsEnabled()) ?
+                    acknowledgementSetManager :
+                    InactiveAcknowledgementSetManager.getInstance(),
+                sinks);
         router.route(records, sinks, getRecordStrategy, (sink, events) ->
                 sinkFutures.add(sinkExecutorService.submit(() -> sink.output(events), null))
         );

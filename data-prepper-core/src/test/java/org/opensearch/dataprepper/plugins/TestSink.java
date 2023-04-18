@@ -14,7 +14,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@DataPrepperPlugin(name = "test_sink", pluginType = Sink.class)
+@DataPrepperPlugin(name = "test_sink", deprecatedName = "test_sink_deprecated_name", pluginType = Sink.class)
 public class TestSink implements Sink<Record<String>> {
     private final List<Record<String>> collectedRecords;
     private final boolean failSinkForTest;

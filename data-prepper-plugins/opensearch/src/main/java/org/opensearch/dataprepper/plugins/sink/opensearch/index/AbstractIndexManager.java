@@ -62,7 +62,7 @@ public abstract class AbstractIndexManager implements IndexManager {
 
     //For matching a string that begins with a "%{" and ends with a "}".
     //For a string like "data-prepper-%{yyyy-MM-dd}", "%{yyyy-MM-dd}" is matched.
-    private static final String TIME_PATTERN_REGULAR_EXPRESSION  = "%\\{.*?\\}";
+    private static final String TIME_PATTERN_REGULAR_EXPRESSION = "%\\{.*?\\}";
 
     //For matching a string enclosed by "%{" and "}".
     //For a string like "data-prepper-%{yyyy-MM}", "yyyy-MM" is matched.

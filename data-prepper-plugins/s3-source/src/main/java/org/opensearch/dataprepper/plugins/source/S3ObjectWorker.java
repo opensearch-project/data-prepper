@@ -9,6 +9,7 @@ import org.apache.commons.compress.utils.CountingInputStream;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
@@ -51,11 +52,11 @@ class S3ObjectWorker implements S3ObjectHandler {
         this.bufferTimeout = s3ObjectRequest.getBufferTimeout();
         this.numberOfRecordsToAccumulate = s3ObjectRequest.getNumberOfRecordsToAccumulate();
         this.eventConsumer = s3ObjectRequest.getEventConsumer();
-        this.s3Client=s3ObjectRequest.getS3Client();
+        this.s3Client = s3ObjectRequest.getS3Client();
         this.s3ObjectPluginMetrics = s3ObjectRequest.getS3ObjectPluginMetrics();
     }
 
-    public void parseS3Object(final S3ObjectReference s3ObjectReference) throws IOException {
+    public void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
         final GetObjectRequest.Builder getObjectBuilder = GetObjectRequest.builder()
                 .bucket(s3ObjectReference.getBucketName())
                 .key(s3ObjectReference.getKey());
@@ -64,24 +65,26 @@ class S3ObjectWorker implements S3ObjectHandler {
                 .build();
 
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
-            try {
+        try {
             s3ObjectPluginMetrics.getS3ObjectReadTimer().recordCallable((Callable<Void>) () -> {
-                        doParseObject(s3ObjectReference, getObjectRequest, bufferAccumulator);
-                        return null;
-                    });
-                } catch (final IOException | RuntimeException e) {
-                    throw e;
-                } catch (final Exception e) {
-                    // doParseObject does not throw Exception, only IOException or RuntimeException. But, Callable has Exception as a checked
-                    // exception on the interface. This catch block thus should not be reached, but, in case it is, wrap it.
-                    throw new RuntimeException(e);
-                }
+                doParseObject(acknowledgementSet, s3ObjectReference, getObjectRequest, bufferAccumulator);
+                return null;
+            });
+        } catch (final IOException | RuntimeException e) {
+            throw e;
+        } catch (final Exception e) {
+            // doParseObject does not throw Exception, only IOException or RuntimeException. But, Callable has Exception as a checked
+            // exception on the interface. This catch block thus should not be reached, but, in case it is, wrap it.
+            throw new RuntimeException(e);
+        }
         s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
     }
 
-    private void doParseObject(final S3ObjectReference s3ObjectReference, final GetObjectRequest getObjectRequest, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
+    private void doParseObject(final AcknowledgementSet acknowledgementSet, final S3ObjectReference s3ObjectReference, final GetObjectRequest getObjectRequest, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
         final long s3ObjectSize;
         final long totalBytesRead;
+
+        LOG.info("Read S3 object: {}", s3ObjectReference);
 
         try (final ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
              final CountingInputStream inputStream = new CountingInputStream(compressionEngine.createInputStream(getObjectRequest.key(), responseInputStream))) {
@@ -90,16 +93,22 @@ class S3ObjectWorker implements S3ObjectHandler {
                 try {
                     eventConsumer.accept(record.getData(), s3ObjectReference);
                     bufferAccumulator.add(record);
+                    if (acknowledgementSet != null) {
+                        acknowledgementSet.add(record.getData());
+                    }
                 } catch (final Exception e) {
                     LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
             });
             totalBytesRead = inputStream.getBytesRead();
         } catch (final Exception ex) {
-            LOG.error("Error reading from S3 object: s3ObjectReference={}.", s3ObjectReference, ex);
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
-            if(ex instanceof S3Exception) {
+            if (ex instanceof S3Exception) {
+                LOG.error("Error reading from S3 object: s3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
                 recordS3Exception((S3Exception) ex);
+            }
+            if (ex instanceof IOException) {
+                LOG.error("Error while parsing S3 object: S3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
             }
             throw ex;
         }
@@ -116,10 +125,9 @@ class S3ObjectWorker implements S3ObjectHandler {
     }
 
     private void recordS3Exception(final S3Exception ex) {
-        if(ex.statusCode() == HttpStatusCode.NOT_FOUND) {
+        if (ex.statusCode() == HttpStatusCode.NOT_FOUND) {
             s3ObjectPluginMetrics.getS3ObjectsFailedNotFoundCounter().increment();
-        }
-        else if(ex.statusCode() == HttpStatusCode.FORBIDDEN) {
+        } else if (ex.statusCode() == HttpStatusCode.FORBIDDEN) {
             s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter().increment();
         }
     }

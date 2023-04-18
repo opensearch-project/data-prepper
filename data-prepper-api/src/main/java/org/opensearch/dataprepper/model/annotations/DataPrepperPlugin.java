@@ -31,11 +31,20 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface DataPrepperPlugin {
+    String DEFAULT_DEPRECATED_NAME = "";
+
     /**
      *
      * @return Name of the plugin which should be unique for the type
      */
     String name();
+
+    /**
+     *
+     * @return Deprecated name of the plugin which should be unique for the type
+     * @since 2.2
+     */
+    String deprecatedName() default DEFAULT_DEPRECATED_NAME;
 
     /**
      * The class type for this plugin.

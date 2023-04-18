@@ -36,6 +36,8 @@ import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTi
 public class JacksonEventTest {
     
     class TestEventHandle implements EventHandle {
+        @Override
+        public void release(boolean result) {}
     };
 
     private Event event;

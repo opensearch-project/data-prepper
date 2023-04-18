@@ -5,8 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
+import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -32,6 +36,9 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
+import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
+import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
+import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
@@ -45,10 +52,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
-import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
@@ -61,7 +69,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
 
-  private BufferedWriter dlqWriter;
+  private DlqWriter dlqWriter;
+  private BufferedWriter dlqFileWriter;
   private final OpenSearchSinkConfiguration openSearchSinkConfig;
   private final IndexManagerFactory indexManagerFactory;
   private RestHighLevelClient restHighLevelClient;
@@ -83,9 +92,15 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private OpenSearchClient openSearchClient;
   private ObjectMapper objectMapper;
   private volatile boolean initialized;
+  private PluginSetting pluginSetting;
+
+  private FailedBulkOperationConverter failedBulkOperationConverter;
+
+  private DlqProvider dlqProvider;
 
   @DataPrepperPluginConstructor
-  public OpenSearchSink(final PluginSetting pluginSetting, final PluginFactory pluginFactory) {
+  public OpenSearchSink(final PluginSetting pluginSetting,
+                        final PluginFactory pluginFactory) {
     super(pluginSetting);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
@@ -99,13 +114,18 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
+    this.failedBulkOperationConverter = new FailedBulkOperationConverter(pluginSetting.getPipelineName(), pluginSetting.getName(),
+        pluginSetting.getName());
     this.initialized = false;
     this.lock = new ReentrantLock(true);
-    // todo: enable dlq loading.
-//    final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
-//    if (dlqConfig.isPresent()) {
-//      // load dlq with pluginFactory
-//    }
+    this.pluginSetting = pluginSetting;
+
+    final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
+    if (dlqConfig.isPresent()) {
+      final PluginSetting dlqPluginSetting = new PluginSetting(dlqConfig.get().getPluginName(), dlqConfig.get().getPluginSettings());
+      dlqPluginSetting.setPipelineName(pluginSetting.getPipelineName());
+      dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
+    }
   }
 
   @Override
@@ -113,7 +133,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     try {
         doInitializeInternal();
     } catch (IOException e) {
-        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error {}", (Objects.isNull(e.getCause()) ? e : e.getCause()));
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. ", e);
         closeFiles();
     } catch (InvalidPluginConfigurationException e) {
         LOG.error("Failed to initialize OpenSearch sink.");
@@ -125,7 +145,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             this.shutdown();
             throw e;
         }
-        LOG.warn("Failed to initialize OpenSearch sink, retrying. Error {}", (Objects.isNull(e.getCause()) ? e : e.getCause()));
+        LOG.warn("Failed to initialize OpenSearch sink, retrying. ", e);
         closeFiles();
     }
   }
@@ -139,7 +159,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             openSearchSinkConfig, configuredIndexAlias);
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
     if (dlqFile != null) {
-      dlqWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+      dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+    } else if (dlqProvider != null) {
+      Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter();
+      dlqWriter = potentialDlq.isPresent() ? potentialDlq.get() : null;
     }
     indexManager.setupIndex();
 
@@ -150,7 +173,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             this::logFailure,
             pluginMetrics,
             maxRetries,
-            bulkRequestSupplier);
+            bulkRequestSupplier,
+            pluginSetting);
 
     objectMapper = new ObjectMapper();
     this.initialized = true;
@@ -168,7 +192,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       return;
     }
 
-    AccumulatingBulkRequest<BulkOperation, BulkRequest> bulkRequest = bulkRequestSupplier.get();
+    AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestSupplier.get();
 
     for (final Record<Event> record : records) {
       final Event event = record.getData();
@@ -193,7 +217,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
         docId.ifPresent(createOperationBuilder::id);
         routing.ifPresent(createOperationBuilder::routing);
-        
+
         bulkOperation = new BulkOperation.Builder()
                 .create(createOperationBuilder.build())
                 .build();
@@ -215,12 +239,13 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
       }
 
-      final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperation);
+      BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle());
+      final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);
         bulkRequest = bulkRequestSupplier.get();
       }
-      bulkRequest.addOperation(bulkOperation);
+      bulkRequest.addOperation(bulkOperationWrapper);
     }
 
     // Flush the remaining requests
@@ -250,16 +275,42 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     });
   }
 
-  private void logFailure(final BulkOperation bulkOperation, final Throwable failure) {
-    if (dlqWriter != null) {
+  private void logFailure(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
+
+    final List<DlqObject> dlqObjects = failedBulkOperations.stream()
+        .map(failedBulkOperationConverter::convertToDlqObject)
+        .collect(Collectors.toList());
+
+    if (dlqFileWriter != null) {
+      dlqObjects.forEach(dlqObject -> {
+        final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
+        final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
+        try {
+          dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
+              BulkOperationWriter.dlqObjectToString(dlqObject), message));
+          dlqObject.releaseEventHandle(true);
+        } catch (final IOException e) {
+          LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
+          dlqObject.releaseEventHandle(false);
+        }
+      });
+    } else if (dlqWriter != null) {
       try {
-        dlqWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
-                BulkOperationWriter.bulkOperationToString(bulkOperation), failure.getMessage()));
+        dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
+        dlqObjects.forEach((dlqObject) -> {
+          dlqObject.releaseEventHandle(true);
+        });
       } catch (final IOException e) {
-        LOG.error(SENSITIVE, "DLQ failed for Document [{}]", bulkOperation, e);
+        dlqObjects.forEach(dlqObject -> {
+          LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
+          dlqObject.releaseEventHandle(false);
+        });
       }
     } else {
-      LOG.warn(SENSITIVE, "Document [{}] has failure.", bulkOperation.toString(), failure);
+      dlqObjects.forEach(dlqObject -> {
+        LOG.warn(SENSITIVE, "Document [{}] has failure.", dlqObject.getFailedData(), failure);
+        dlqObject.releaseEventHandle(false);
+      });
     }
   }
 
@@ -275,6 +326,13 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     if (dlqWriter != null) {
       try {
         dlqWriter.close();
+      } catch (final IOException e) {
+        LOG.error(e.getMessage(), e);
+      }
+    }
+    if (dlqFileWriter != null) {
+      try {
+        dlqFileWriter.close();
       } catch (final IOException e) {
         LOG.error(e.getMessage(), e);
       }

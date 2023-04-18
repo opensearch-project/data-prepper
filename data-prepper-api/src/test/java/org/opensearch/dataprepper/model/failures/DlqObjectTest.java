@@ -5,10 +5,12 @@
 
 package org.opensearch.dataprepper.model.failures;
 
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -24,8 +26,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.ArgumentMatchers.any;
 
 public class DlqObjectTest {
 
@@ -34,6 +40,7 @@ public class DlqObjectTest {
     private String pluginName;
     private String pipelineName;
     private Object failedData;
+    private EventHandle eventHandle;
 
     @BeforeEach
     public void setUp() {
@@ -41,6 +48,7 @@ public class DlqObjectTest {
         pluginName = randomUUID().toString();
         pipelineName = randomUUID().toString();
         failedData = randomUUID();
+        eventHandle = mock(EventHandle.class);
     }
 
     @Test
@@ -51,6 +59,7 @@ public class DlqObjectTest {
                 .withPluginName(pluginName)
                 .withPipelineName(pipelineName)
                 .withFailedData(failedData)
+                .withEventHandle(eventHandle)
                 .withTimestamp(randomUUID().toString())
                 .build();
 
@@ -125,6 +134,7 @@ public class DlqObjectTest {
                 .withPluginName(pluginName)
                 .withPipelineName(pipelineName)
                 .withFailedData(failedData)
+                .withEventHandle(eventHandle)
                 .build();
         }
 
@@ -154,6 +164,16 @@ public class DlqObjectTest {
             final Object actualFailedData = testObject.getFailedData();
             assertThat(actualFailedData, is(notNullValue()));
             assertThat(actualFailedData, is(failedData));
+        }
+
+        @Test
+        public void test_get_release_eventHandle() {
+            doAnswer(a -> { return null; }).when(eventHandle).release(any(Boolean.class));
+            final Object actualEventHandle = testObject.getEventHandle();
+            assertThat(actualEventHandle, is(notNullValue()));
+            assertThat(actualEventHandle, is(eventHandle));
+            testObject.releaseEventHandle(true);
+            verify(eventHandle).release(any(Boolean.class));
         }
 
         @Test
@@ -222,7 +242,7 @@ public class DlqObjectTest {
             final ZonedDateTime now = Instant.now().atZone(ZoneOffset.UTC);
 
             final Instant olderInstant = Instant.now().atZone(ZoneOffset.UTC)
-                .withHour(now.getHour() -  1)
+                .withHour(now.getHour())
                 .toInstant();
 
             final DlqObject otherTestObject = DlqObject.builder()
@@ -230,7 +250,7 @@ public class DlqObjectTest {
                 .withPluginName(pluginName)
                 .withPipelineName(pipelineName)
                 .withFailedData(failedData)
-                .withTimestamp(olderInstant)
+                .withTimestamp(olderInstant.minus(Duration.ofMinutes(30)))
                 .build();
 
             assertThat(testObject, is(not(equalTo(otherTestObject))));
@@ -242,7 +262,7 @@ public class DlqObjectTest {
             final ZonedDateTime now = Instant.now().atZone(ZoneOffset.UTC);
 
             final Instant olderInstant = Instant.now().atZone(ZoneOffset.UTC)
-                .withHour(now.getHour() -  1)
+                .withHour(now.getHour())
                 .toInstant();
 
             final DlqObject otherTestObject = DlqObject.builder()
@@ -250,7 +270,7 @@ public class DlqObjectTest {
                 .withPluginName(pluginName)
                 .withPipelineName(pipelineName)
                 .withFailedData(failedData)
-                .withTimestamp(olderInstant)
+                .withTimestamp(olderInstant.minus(Duration.ofMinutes(30)))
                 .build();
 
             assertThat(testObject.hashCode(), is(not(equalTo(otherTestObject.hashCode()))));

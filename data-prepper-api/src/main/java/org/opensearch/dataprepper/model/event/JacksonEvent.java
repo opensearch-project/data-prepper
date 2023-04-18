@@ -292,7 +292,7 @@ public class JacksonEvent implements Event {
         while ((position = format.indexOf("${", fromIndex)) != -1) {
             int endPosition = format.indexOf("}", position + 1);
             if (endPosition == -1) {
-                throw new RuntimeException("index name not properly formed");
+                throw new RuntimeException("Format string is not properly formed");
             }
             result += format.substring(fromIndex, position);
             String name = format.substring(position + 2, endPosition);

@@ -9,6 +9,8 @@ import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.pipeline.common.FutureHelper;
 import org.opensearch.dataprepper.pipeline.common.FutureHelperResult;
 import org.slf4j.Logger;
@@ -16,8 +18,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class ProcessWorker implements Runnable {
@@ -77,6 +82,17 @@ public class ProcessWorker implements Runnable {
         }
     }
 
+    private void processAcknowledgements(List<Event> inputEvents, Collection outputRecords) {
+        AcknowledgementSetManager acknowledgementSetManager = pipeline.getAcknowledgementSetManager();
+        Set<Event> outputEventsSet = ((ArrayList<Record<Event>>)outputRecords).stream().map(Record::getData).collect(Collectors.toSet());
+        // For each event in the input events list that is not present in the output events, send positive acknowledgement, if acknowledgements are enabled for it
+        inputEvents.forEach(event -> { 
+            if (event.getEventHandle() != null && !outputEventsSet.contains(event)) {
+                acknowledgementSetManager.releaseEventReference(event.getEventHandle(), true);
+            }
+        });
+    }
+
     private void doRun() {
         final Map.Entry<Collection, CheckpointState> readResult = readBuffer.read(pipeline.getReadBatchTimeoutInMillis());
         Collection records = readResult.getKey();
@@ -92,7 +108,14 @@ public class ProcessWorker implements Runnable {
         }
         //Should Empty list from buffer should be sent to the processors? For now sending as the Stateful processors expects it.
         for (final Processor processor : processors) {
+            List<Event> inputEvents = null;
+            if (pipeline.getSource().areAcknowledgementsEnabled()) {
+                inputEvents = ((ArrayList<Record<Event>>)records).stream().map(Record::getData).collect(Collectors.toList());   
+            }
             records = processor.execute(records);
+            if (inputEvents != null) {
+                processAcknowledgements(inputEvents, records);
+            }
         }
         if (!records.isEmpty()) {
             postToSink(records);
