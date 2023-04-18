@@ -331,6 +331,16 @@ public class IndexConfigurationTests {
         assertEquals(expectedRootKey, indexConfiguration.getDocumentRootKey());
     }
 
+    @Test
+    public void testReadIndexConfig_emptyDocumentRootKey() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+            IndexType.CUSTOM.getValue(), "foo", null, null, null);
+        metadata.put(DOCUMENT_ROOT_KEY, "");
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
+    }
+
+
     private PluginSetting generatePluginSetting(
             final String indexType, final String indexAlias, final String templateFilePath,
             final Long bulkSize, final String documentIdField) {

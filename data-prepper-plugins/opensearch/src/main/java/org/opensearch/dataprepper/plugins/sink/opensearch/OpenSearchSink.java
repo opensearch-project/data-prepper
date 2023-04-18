@@ -40,6 +40,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperatio
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
@@ -261,20 +262,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
     String routing = (routingField != null) ? event.get(routingField, String.class) : null;
 
-    final String document = buildRawDocument(event);
+    final String document = DocumentBuilder.build(event, documentRootKey);
 
     return SerializedJson.fromStringAndOptionals(document, docId, routing);
-  }
-
-  private String buildRawDocument(final Event event) {
-    if (documentRootKey != null && event.containsKey(documentRootKey)) {
-      final String document = event.getToJsonString(documentRootKey);
-      if (document == null || !document.startsWith("{")) {
-        return String.format("{\"%s\": %s}", documentRootKey, document);
-      }
-      return document;
-    }
-    return event.toJsonString();
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {

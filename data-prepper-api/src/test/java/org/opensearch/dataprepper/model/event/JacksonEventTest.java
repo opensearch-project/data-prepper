@@ -207,7 +207,7 @@ public class JacksonEventTest {
         final TestObject value = new TestObject(nestedValue);
 
         event.put(key, value);
-        final String actualNestedValue = event.getToJsonString(key);
+        final String actualNestedValue = event.getAsJsonString(key);
 
         assertThat(actualNestedValue, is(equalTo(String.format("{\"field1\":\"%s\"}", nestedValue))));
     }
@@ -218,7 +218,7 @@ public class JacksonEventTest {
         final UUID value = UUID.randomUUID();
 
         event.put(key, value);
-        final String result = event.getToJsonString(key);
+        final String result = event.getAsJsonString(key);
 
         assertThat(result, is(notNullValue()));
         assertThat(result, is(equalTo(String.format("\"%s\"", value))));
@@ -230,7 +230,7 @@ public class JacksonEventTest {
         final UUID value = UUID.randomUUID();
 
         event.put("staticKey", value);
-        final String result = event.getToJsonString(key);
+        final String result = event.getAsJsonString(key);
 
         assertThat(result, is(nullValue()));
     }

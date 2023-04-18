@@ -73,7 +73,7 @@ public interface Event extends Serializable {
      * @return Json string of the field
      * @since 2.2
      */
-    String getToJsonString(String key);
+    String getAsJsonString(String key);
 
     /**
      * Retrieves the EventMetadata

@@ -376,6 +376,9 @@ public class IndexConfiguration {
         }
 
         public Builder withDocumentRootKey(final String documentRootKey) {
+            if (documentRootKey != null) {
+                checkArgument(!documentRootKey.isEmpty(), "documentRootKey cannot be empty string");
+            }
             this.documentRootKey = documentRootKey;
             return this;
         }

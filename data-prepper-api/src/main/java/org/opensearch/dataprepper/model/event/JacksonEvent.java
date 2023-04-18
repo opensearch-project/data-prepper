@@ -277,7 +277,7 @@ public class JacksonEvent implements Event {
     }
 
     @Override
-    public String getToJsonString(final String key) {
+    public String getAsJsonString(final String key) {
         final String trimmedKey = checkAndTrimKey(key);
 
         final JsonNode node = getNode(trimmedKey);
