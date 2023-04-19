@@ -107,4 +107,6 @@ include 'release:maven'
 include 'e2e-test:peerforwarder'
 include 'rss-source'
 include 'data-prepper-plugins:failures-common'
+include 'data-prepper-plugins:newline-codecs'
 include 'data-prepper-plugins:parquet-codecs'
+

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.codec.csv;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.MappingIterator;
@@ -50,17 +50,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class CsvCodecTest {
     @Mock
-    private CsvCodecConfig config;
+    private CsvInputCodecConfig config;
     @Mock
     private Consumer<Record<Event>> eventConsumer;
-    private CsvCodec csvCodec;
-    private CsvCodec createObjectUnderTest() {
-        return new CsvCodec(config);
+    private CsvInputCodec csvCodec;
+    private CsvInputCodec createObjectUnderTest() {
+        return new CsvInputCodec(config);
     }
 
     @BeforeEach
     void setup() {
-        CsvCodecConfig defaultCsvCodecConfig = new CsvCodecConfig();
+        CsvInputCodecConfig defaultCsvCodecConfig = new CsvInputCodecConfig();
         lenient().when(config.getDelimiter()).thenReturn(defaultCsvCodecConfig.getDelimiter());
         lenient().when(config.getQuoteCharacter()).thenReturn(defaultCsvCodecConfig.getQuoteCharacter());
         lenient().when(config.getHeader()).thenReturn(defaultCsvCodecConfig.getHeader());
