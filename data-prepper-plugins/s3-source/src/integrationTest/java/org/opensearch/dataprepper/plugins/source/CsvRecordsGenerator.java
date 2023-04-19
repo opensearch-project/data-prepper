@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
-import org.opensearch.dataprepper.plugins.source.codec.CsvCodec;
-import org.opensearch.dataprepper.plugins.source.codec.CsvCodecConfig;
+import org.opensearch.dataprepper.plugins.codec.csv.CsvInputCodecConfig;
+import org.opensearch.dataprepper.plugins.codec.csv.CsvInputCodec;
 
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -37,19 +37,19 @@ class CsvRecordsGenerator implements RecordsGenerator {
     }
 
     @Override
-    public Codec getCodec() {
-        CsvCodecConfig config = csvCodecConfigWithAutogenerateHeader();
-        return new CsvCodec(config);
+    public InputCodec getCodec() {
+        CsvInputCodecConfig config = csvCodecConfigWithAutogenerateHeader();
+        return new CsvInputCodec(config);
     }
 
     /**
      * For easy testing, we will autogenerate all column names (which requires setting detectHeader = false)
      * @return CsvCodecConfig for testing
      */
-    private CsvCodecConfig csvCodecConfigWithAutogenerateHeader() {
-        CsvCodecConfig csvCodecConfig = new CsvCodecConfig();
+    private CsvInputCodecConfig csvCodecConfigWithAutogenerateHeader() {
+        CsvInputCodecConfig csvCodecConfig = new CsvInputCodecConfig();
         try {
-            setField(CsvCodecConfig.class, csvCodecConfig, "detectHeader", false);
+            setField(CsvInputCodecConfig.class, csvCodecConfig, "detectHeader", false);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }

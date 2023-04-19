@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -16,7 +17,6 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
@@ -85,7 +85,7 @@ public class S3Source implements Source<Record<Event>> {
         } else {
             final PluginModel codecConfiguration = s3SourceConfig.getCodec();
             final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
-            final Codec codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
+            final InputCodec codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
             final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder
                     .bucketOwnerProvider(bucketOwnerProvider)
                     .codec(codec)

@@ -3,17 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.codec.newline;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -32,17 +32,18 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
+
 
 @ExtendWith(MockitoExtension.class)
 class NewlineDelimitedCodecTest {
 
     @Mock
-    private NewlineDelimitedConfig config;
+    private NewlineDelimitedInputConfig config;
 
-    private NewlineDelimitedCodec createObjectUnderTest() {
-        return new NewlineDelimitedCodec(config);
+    private NewlineDelimitedInputCodec createObjectUnderTest() {
+        return new NewlineDelimitedInputCodec(config);
     }
 
     @Test
@@ -54,7 +55,7 @@ class NewlineDelimitedCodecTest {
 
     @Test
     void constructor_throws_if_header_destination_is_empty() throws NoSuchFieldException, IllegalAccessException {
-        final NewlineDelimitedConfig objectUnderTest = new NewlineDelimitedConfig();
+        final NewlineDelimitedInputConfig objectUnderTest = new NewlineDelimitedInputConfig();
         reflectivelySetField(objectUnderTest, "headerDestination", "");
         assertThat(objectUnderTest.isValidHeaderDestination(), equalTo(false));
     }
@@ -242,12 +243,12 @@ class NewlineDelimitedCodecTest {
         return stringWriter.toString();
     }
 
-    private void reflectivelySetField(final NewlineDelimitedConfig newlineDelimitedConfig, final String fieldName, final Object value)
+    private void reflectivelySetField(final NewlineDelimitedInputConfig newlineDelimitedInputConfig, final String fieldName, final Object value)
             throws NoSuchFieldException, IllegalAccessException {
-        final Field field = NewlineDelimitedConfig.class.getDeclaredField(fieldName);
+        final Field field = NewlineDelimitedInputConfig.class.getDeclaredField(fieldName);
         try {
             field.setAccessible(true);
-            field.set(newlineDelimitedConfig, value);
+            field.set(newlineDelimitedInputConfig, value);
         } finally {
             field.setAccessible(false);
         }

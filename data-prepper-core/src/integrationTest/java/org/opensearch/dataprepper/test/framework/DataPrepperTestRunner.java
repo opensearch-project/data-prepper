@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.test.framework;
 
+import org.opensearch.dataprepper.AbstractContextManager;
 import org.opensearch.dataprepper.DataPrepper;
 import org.opensearch.dataprepper.parser.config.FileStructurePathProvider;
 import org.opensearch.dataprepper.plugins.InMemorySinkAccessor;
@@ -25,13 +26,11 @@ import javax.annotation.Nullable;
 public class DataPrepperTestRunner {
     private static final Logger LOG = LoggerFactory.getLogger(DataPrepperTestRunner.class);
     private static final String BASE_PATH = "src/integrationTest/resources/org/opensearch/dataprepper";
-    private static final String BASE_DATA_PREPPER_PACKAGE = "org.opensearch.dataprepper";
-    private static final String EXPRESSION_PACKAGE = BASE_DATA_PREPPER_PACKAGE + ".expression";
-    private final AnnotationConfigApplicationContext coreApplicationContext;
     private final String dataPrepperConfigFile;
     private final String pipelinesDirectoryOrFile;
     private final InMemorySourceAccessor inMemorySourceAccessor;
     private final InMemorySinkAccessor inMemorySinkAccessor;
+    private final TestContextManager contextManager;
 
     private DataPrepperTestRunner(final Builder builder) {
         dataPrepperConfigFile = builder.dataPrepperConfigFile;
@@ -41,18 +40,7 @@ public class DataPrepperTestRunner {
         inMemorySinkAccessor = new InMemorySinkAccessor();
         LOG.info("created in memory source accessor {}", inMemorySourceAccessor);
 
-        final AnnotationConfigApplicationContext publicApplicationContext = new AnnotationConfigApplicationContext();
-        publicApplicationContext.scan(EXPRESSION_PACKAGE);
-        publicApplicationContext.registerBean(InMemorySourceAccessor.class, () -> inMemorySourceAccessor);
-        publicApplicationContext.registerBean(InMemorySinkAccessor.class, () -> inMemorySinkAccessor);
-        publicApplicationContext.refresh();
-
-        coreApplicationContext = new AnnotationConfigApplicationContext();
-        coreApplicationContext.setParent(publicApplicationContext);
-        coreApplicationContext.registerBean(FileStructurePathProvider.class, TestFileStructurePathProvider::new);
-        coreApplicationContext.scan(BASE_DATA_PREPPER_PACKAGE);
-
-        coreApplicationContext.refresh();
+        contextManager = new TestContextManager();
         LOG.info("Started Data Prepper Application context for testing.");
     }
 
@@ -68,7 +56,7 @@ public class DataPrepperTestRunner {
      * Starts the Data Prepper test instance.
      */
     public void start() {
-        coreApplicationContext.getBean(DataPrepper.class)
+        contextManager.getDataPrepperBean()
                 .execute();
     }
 
@@ -76,9 +64,8 @@ public class DataPrepperTestRunner {
      * Stops the Data Prepper test instance.
      */
     public void stop() {
-        final DataPrepper dataPrepper = coreApplicationContext.getBean(DataPrepper.class);
+        final DataPrepper dataPrepper = contextManager.getDataPrepperBean();
         dataPrepper.shutdown();
-        dataPrepper.shutdownServers();
     }
 
     /**
@@ -134,6 +121,19 @@ public class DataPrepperTestRunner {
 
         public DataPrepperTestRunner build() {
             return new DataPrepperTestRunner(this);
+        }
+    }
+
+    private class TestContextManager extends AbstractContextManager {
+
+        protected void preRefreshPublicApplicationContext(final AnnotationConfigApplicationContext publicApplicationContext) {
+            publicApplicationContext.registerBean(InMemorySourceAccessor.class, () -> inMemorySourceAccessor);
+            publicApplicationContext.registerBean(InMemorySinkAccessor.class, () -> inMemorySinkAccessor);
+
+        }
+
+        protected void preRefreshCoreApplicationContext(final AnnotationConfigApplicationContext coreApplicationContext) {
+            coreApplicationContext.registerBean(FileStructurePathProvider.class, TestFileStructurePathProvider::new);
         }
     }
 }
