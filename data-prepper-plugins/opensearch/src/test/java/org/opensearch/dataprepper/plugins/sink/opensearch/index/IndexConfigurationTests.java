@@ -272,18 +272,6 @@ public class IndexConfigurationTests {
         assertEquals(testIdField, indexConfiguration.getDocumentIdField());
     }
 
-//    @Test
-//    public void testReadIndexConfig_awsServerlessDefault() {
-//        final String testIndexAlias = "foo";
-//        final Map<String, Object> metadata = initializeConfigMetaData(
-//                null, testIndexAlias, null, null, null);
-//        metadata.put(SERVERLESS, true);
-//        final PluginSetting pluginSetting = getPluginSetting(metadata);
-//        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
-//        assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
-//        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
-//    }
-
     @Test
     public void testReadIndexConfig_awsOptionServerlessDefault() {
         final String testIndexAlias = "foo";
