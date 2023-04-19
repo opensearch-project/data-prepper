@@ -3,7 +3,7 @@ pipeline1:
   source:
     in_memory:
       testing_key: PipelinesWithAcksIT
-      acknowledgements: true
+      acknowledgments: true
   route:
     - 2xx_route: '/status >= 200 and /status < 300'
     - other_route: '/status >= 300 or /status < 200'
