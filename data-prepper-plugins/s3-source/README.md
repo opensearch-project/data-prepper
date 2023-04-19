@@ -106,6 +106,8 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details.
 
+* `acknowledgments` (Optional) : Enables End-to-end acknowledgments. If set to `true`, sqs message is deleted only after all events from the sqs message are successfully acknowledged by all sinks. Default value `false`.
+
 * `on_error` (Optional) : Determines how to handle errors in SQS. Can be either `retain_messages` or `delete_messages`. If `retain_messages`, then Data Prepper will leave the message in the SQS queue and try again. This is recommended for dead-letter queues. If `delete_messages`, then Data Prepper will delete failed messages. Defaults to `retain_messages`.
 
 * `buffer_timeout` (Optional) : Duration - The timeout for writing events to the Data Prepper buffer. Any Events which the S3 Source cannot write to the Buffer in this time will be discarded. Defaults to 10 seconds.
