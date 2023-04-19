@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.source.otellogs;
+package org.opensearch.dataprepper.plugins.source.otellogs;
 
-import com.amazon.dataprepper.plugins.health.HealthGrpcService;
-import com.amazon.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
+import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
