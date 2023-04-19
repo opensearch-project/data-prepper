@@ -219,6 +219,10 @@ public class IndexConfiguration {
         return serverless;
     }
 
+    public String getDocumentRootKey() {
+        return documentRootKey;
+    }
+
     /**
      * This method is used in the creation of IndexConfiguration object. It takes in the template file path
      * or index type and returns the index template read from the file or specific to index type or returns an

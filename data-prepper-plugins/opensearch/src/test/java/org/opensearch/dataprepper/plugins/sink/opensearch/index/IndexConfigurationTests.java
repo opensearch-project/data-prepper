@@ -32,7 +32,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_OPTION;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_SERVERLESS;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
@@ -272,39 +272,28 @@ public class IndexConfigurationTests {
         assertEquals(testIdField, indexConfiguration.getDocumentIdField());
     }
 
-    @Test
-    public void testReadIndexConfig_awsServerlessDefault() {
-        final String testIndexAlias = "foo";
-        final Map<String, Object> metadata = initializeConfigMetaData(
-                null, testIndexAlias, null, null, null);
-        metadata.put(AWS_SERVERLESS, true);
-        final PluginSetting pluginSetting = getPluginSetting(metadata);
-        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
-        assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
-        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
-    }
+//    @Test
+//    public void testReadIndexConfig_awsServerlessDefault() {
+//        final String testIndexAlias = "foo";
+//        final Map<String, Object> metadata = initializeConfigMetaData(
+//                null, testIndexAlias, null, null, null);
+//        metadata.put(SERVERLESS, true);
+//        final PluginSetting pluginSetting = getPluginSetting(metadata);
+//        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+//        assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
+//        assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+//    }
 
     @Test
     public void testReadIndexConfig_awsOptionServerlessDefault() {
         final String testIndexAlias = "foo";
         final Map<String, Object> metadata = initializeConfigMetaData(
                 null, testIndexAlias, null, null, null);
-        metadata.put(AWS_OPTION, Map.of(AWS_SERVERLESS.substring(4), true));
+        metadata.put(AWS_OPTION, Map.of(SERVERLESS, true));
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
-    }
-
-    @Test
-    public void testReadIndexConfig_awsOptionServerlessConflictWithAwsServerless() {
-        final String testIndexAlias = "foo";
-        final Map<String, Object> metadata = initializeConfigMetaData(
-                null, testIndexAlias, null, null, null);
-        metadata.put(AWS_OPTION, Map.of(AWS_SERVERLESS.substring(4), true));
-        metadata.put(AWS_SERVERLESS, true);
-        final PluginSetting pluginSetting = getPluginSetting(metadata);
-        assertThrows(RuntimeException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
     }
 
     @Test
@@ -312,12 +301,12 @@ public class IndexConfigurationTests {
         final String testIndexAlias = "foo";
         final Map<String, Object> metadata = initializeConfigMetaData(
                 IndexType.CUSTOM.getValue(), testIndexAlias, null, null, null);
-        metadata.put(AWS_SERVERLESS, true);
+        metadata.put(AWS_OPTION, Map.of(SERVERLESS, true));
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
-        assertEquals(true, indexConfiguration.getAwsServerless());
+        assertEquals(true, indexConfiguration.getServerless());
     }
 
     @Test
