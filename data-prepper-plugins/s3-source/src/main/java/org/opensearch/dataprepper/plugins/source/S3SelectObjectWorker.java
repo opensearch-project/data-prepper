@@ -215,7 +215,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     }
 
     private boolean isQuotedRecordDelimiterAllowed() {
-        return (s3SelectCSVOption.getQuiteEscape() != null || s3SelectCSVOption.getComments() != null);
+        return s3SelectCSVOption.getQuiteEscape() != null || s3SelectCSVOption.getComments() != null;
     }
 
     private InputStream getInputStreamFromResponseHeader(final S3SelectResponseHandler responseHand) {
