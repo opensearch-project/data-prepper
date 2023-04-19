@@ -1,6 +1,6 @@
 entry-pipeline:
   source:
-    otel_traces:
+    otel_trace_source:
       ssl: false
   processor:
   sink:
