@@ -108,20 +108,19 @@ class S3SinkTest {
     void test_doOutput_with_data_local_file() {
         when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.LOCALFILE);
         s3Sink = new S3Sink(pluginSetting, s3SinkConfig, pluginFactory);
+        assertNotNull(s3Sink);
         s3Sink.doInitialize();
         s3Sink.doOutput(generateRandomStringEventRecord());
-        assertNotNull(s3Sink);
     }
 
     @Test
     void test_doOutput_with_data_in_memory() {
         when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
         s3Sink = new S3Sink(pluginSetting, s3SinkConfig, pluginFactory);
+        assertNotNull(s3Sink);
         s3Sink.doInitialize();
         s3Sink.doOutput(generateRandomStringEventRecord());
-        assertNotNull(s3Sink);
     }
-
     @Test
     void test_doOutput_noInteractions_with_s3SinkService() {
         Collection<Record<Event>> records = generateRandomStringEventRecord();
