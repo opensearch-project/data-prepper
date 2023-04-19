@@ -43,6 +43,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
+import static org.hamcrest.Matchers.endsWith;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
@@ -157,6 +158,7 @@ public class S3DlqWriterTest {
 
         assertThat(putObjectRequest.bucket(), is(equalTo(bucket)));
         assertThat(putObjectRequest.key(), startsWith(String.format("%s-%s-%s", expectedKeyPrefix, pipelineName, pluginId)));
+        assertThat(putObjectRequest.key(), endsWith(".json"));
         verify(dlqS3RequestSuccessCounter).increment();
         verify(dlqS3RecordsSuccessCounter).increment(dlqObjects.size());
     }
@@ -232,7 +234,7 @@ public class S3DlqWriterTest {
 
         @Test
         public void testDeserializeThrowsException() throws JsonProcessingException {
-            when(objectMapper.writeValueAsString(dlqObjects)).thenThrow(JsonProcessingException.class);
+            when(objectMapper.writeValueAsString(any())).thenThrow(JsonProcessingException.class);
 
             assertThrows(IOException.class, () -> s3DlqWriter.write(dlqObjects, pipelineName, pluginId));
         }
