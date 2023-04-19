@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.source.otellogs.certificate;
+package org.opensearch.dataprepper.plugins.source.otellogs.certificate;
 
-import com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig;
+import org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
