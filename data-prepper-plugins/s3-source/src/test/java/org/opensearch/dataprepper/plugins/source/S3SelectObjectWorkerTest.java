@@ -58,6 +58,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.lenient;
 import static org.opensearch.dataprepper.plugins.source.S3SelectObjectWorker.CSV_FILE_HEADER_INFO_NONE;
+import static org.opensearch.dataprepper.plugins.source.S3SelectObjectWorker.JSON_LINES_TYPE;
 import static org.opensearch.dataprepper.plugins.source.S3SelectObjectWorker.MAX_S3_OBJECT_CHUNK_SIZE;
 
 @ExtendWith(MockitoExtension.class)
@@ -98,6 +99,12 @@ class S3SelectObjectWorkerTest {
     private S3ObjectReference s3ObjectReference;
 
     @Mock
+    private S3SelectCSVOption selectCSVOption;
+
+    @Mock
+    private S3SelectJsonOption selectJsonOption;
+
+    @Mock
     private BiConsumer<Event, S3ObjectReference> eventConsumer;
 
     private ArgumentCaptor<HeadObjectRequest> argumentCaptorForHeadObjectRequest;
@@ -131,22 +138,23 @@ class S3SelectObjectWorkerTest {
         given(s3ObjectRequest.getEventConsumer()).willReturn(eventConsumer);
         given(s3ObjectRequest.getExpressionType()).willReturn(UUID.randomUUID().toString());
 
-        final S3SelectCSVOption selectCSVOption = mock(S3SelectCSVOption.class);
         given(s3ObjectRequest.getS3SelectCSVOption()).willReturn(selectCSVOption);
-
-        final S3SelectJsonOption selectJsonOption = mock(S3SelectJsonOption.class);
+        lenient().when(selectCSVOption.getComments()).thenReturn(null);
+        lenient().when(selectCSVOption.getQuiteEscape()).thenReturn(null);
+        lenient().when(selectCSVOption.getFileHeaderInfo()).thenReturn(CSV_FILE_HEADER_INFO_NONE);
         given(s3ObjectRequest.getS3SelectJsonOption()).willReturn(selectJsonOption);
+        lenient().when(selectJsonOption.getType()).thenReturn(JSON_LINES_TYPE);
 
         given(s3ObjectRequest.getS3ObjectPluginMetrics()).willReturn(s3ObjectPluginMetrics);
 
         final CompletableFuture<HeadObjectResponse> headObjectResponseCompletableFuture = mock(CompletableFuture.class);
         final HeadObjectResponse headObjectResponse = mock(HeadObjectResponse.class);
-        given(headObjectResponse.contentLength()).willReturn(MAX_S3_OBJECT_CHUNK_SIZE * numberOfObjectScans);
-        given(headObjectResponseCompletableFuture.join()).willReturn(headObjectResponse);
+        lenient().when(headObjectResponse.contentLength()).thenReturn(MAX_S3_OBJECT_CHUNK_SIZE * numberOfObjectScans);
+        lenient().when(headObjectResponseCompletableFuture.join()).thenReturn(headObjectResponse);
 
 
         argumentCaptorForHeadObjectRequest = ArgumentCaptor.forClass(HeadObjectRequest.class);
-        given(s3AsyncClient.headObject(argumentCaptorForHeadObjectRequest.capture())).willReturn(headObjectResponseCompletableFuture);
+        lenient().when(s3AsyncClient.headObject(argumentCaptorForHeadObjectRequest.capture())).thenReturn(headObjectResponseCompletableFuture);
     }
 
     private S3SelectObjectWorker createObjectUnderTest() {
@@ -194,24 +202,17 @@ class S3SelectObjectWorkerTest {
 
     @ParameterizedTest
     @CsvSource({
-            "'{\"S.No\":\"1\",\"name\":\"data-prep\",\"country\":\"USA\"}',select * from s3Object,CSV,NONE",
-            "'{\"S.No\":\"2\",\"log\":\"data-prep-log\",\"Date\":\"2023-03-03\"}',select * from s3Object,JSON,NONE",
-            "'{\"S.No\":\"3\",\"name\":\"data-prep-test\",\"age\":\"21y\"}',select * from s3Object,PARQUET,NONE",
-            "'{\"S.No\":\"4\",\"name\":\"data-prep\",\"empId\",\"123456\"}',select * from s3Object,CSV,GZIP",
-            "'{\"S.No\":\"5\",\"log\":\"data-prep-log\",\"documentType\":\"test doc\"}',select * from s3Object,JSON,GZIP",
-            "'{\"S.No\":\"6\",\"name\":\"data-prep-test\",\"type\":\"json\"}',select * from s3Object,PARQUET,GZIP"})
+            "'{\"S.No\":\"1\",\"name\":\"data-prep\",\"country\":\"USA\"}',select * from s3Object,CSV,NONE,true",
+            "'{\"S.No\":\"2\",\"log\":\"data-prep-log\",\"Date\":\"2023-03-03\"}',select * from s3Object,JSON,NONE,true",
+            "'{\"S.No\":\"3\",\"name\":\"data-prep-test\",\"age\":\"21y\"}',select * from s3Object,PARQUET,NONE,true",
+            "'{\"S.No\":\"4\",\"name\":\"data-prep\",\"empId\",\"123456\"}',select * from s3Object,CSV,GZIP,false",
+            "'{\"S.No\":\"5\",\"log\":\"data-prep-log\",\"documentType\":\"test doc\"}',select * from s3Object,JSON,GZIP,false",
+            "'{\"S.No\":\"6\",\"name\":\"data-prep-test\",\"type\":\"json\"}',select * from s3Object,PARQUET,GZIP,true"})
     void parseS3Object_with_different_formats_and_events_in_the_inputstream_works_as_expected(final String responseFormat,
                                                                                               final String query,
                                                                                               final String format,
-                                                                                              final String compression) throws IOException {
-        if (format.equals("CSV")) {
-            given(s3ObjectRequest.getS3SelectCSVOption().getFileHeaderInfo()).willReturn(CSV_FILE_HEADER_INFO_NONE);
-            given(s3ObjectRequest.getS3SelectCSVOption().getComments()).willReturn(UUID.randomUUID().toString());
-            given(s3ObjectRequest.getS3SelectCSVOption().getQuiteEscape()).willReturn(UUID.randomUUID().toString());
-        } else if (format.equals("JSON")) {
-            given(s3ObjectRequest.getS3SelectJsonOption().getType()).willReturn(UUID.randomUUID().toString());
-        }
-
+                                                                                              final String compression,
+                                                                                              final boolean isBatchingExpected) throws IOException {
         given(s3ObjectRequest.getCompressionType()).willReturn(CompressionType.valueOf(compression));
         given(s3ObjectRequest.getExpression()).willReturn(query);
         given(s3ObjectRequest.getSerializationFormatOption()).willReturn(S3SelectSerializationFormatOption.valueOf(format));
@@ -227,7 +228,9 @@ class S3SelectObjectWorkerTest {
 
         createObjectUnderTest().parseS3Object(s3ObjectReference, null);
 
-        assertHeadObjectRequestIsCorrect();
+        if (isBatchingExpected) {
+            assertHeadObjectRequestIsCorrect();
+        }
 
         verify(eventConsumer).accept(any(Event.class), eq(s3ObjectReference));
         verify(s3ObjectEventsSummary).record(1);
@@ -236,24 +239,17 @@ class S3SelectObjectWorkerTest {
 
     @ParameterizedTest
     @CsvSource({
-            "'{\"S.No\":\"1\",\"name\":\"data-prep\",\"country\":\"USA\"}',select * from s3Object,CSV,NONE",
-            "'{\"S.No\":\"2\",\"log\":\"data-prep-log\",\"Date\":\"2023-03-03\"}',select * from s3Object,JSON,NONE",
-            "'{\"S.No\":\"3\",\"name\":\"data-prep-test\",\"age\":\"21y\"}',select * from s3Object,PARQUET,NONE",
-            "'{\"S.No\":\"4\",\"name\":\"data-prep\",\"empId\",\"123456\"}',select * from s3Object,CSV,GZIP",
-            "'{\"S.No\":\"5\",\"log\":\"data-prep-log\",\"documentType\":\"test doc\"}',select * from s3Object,JSON,GZIP",
-            "'{\"S.No\":\"6\",\"name\":\"data-prep-test\",\"type\":\"json\"}',select * from s3Object,PARQUET,GZIP"})
+            "'{\"S.No\":\"1\",\"name\":\"data-prep\",\"country\":\"USA\"}',select * from s3Object,CSV,NONE,true",
+            "'{\"S.No\":\"2\",\"log\":\"data-prep-log\",\"Date\":\"2023-03-03\"}',select * from s3Object,JSON,NONE,true",
+            "'{\"S.No\":\"3\",\"name\":\"data-prep-test\",\"age\":\"21y\"}',select * from s3Object,PARQUET,NONE,true",
+            "'{\"S.No\":\"4\",\"name\":\"data-prep\",\"empId\",\"123456\"}',select * from s3Object,CSV,GZIP,false",
+            "'{\"S.No\":\"5\",\"log\":\"data-prep-log\",\"documentType\":\"test doc\"}',select * from s3Object,JSON,GZIP,false",
+            "'{\"S.No\":\"6\",\"name\":\"data-prep-test\",\"type\":\"json\"}',select * from s3Object,PARQUET,GZIP,true"})
     void parseS3Object_with_different_formats_and_events_in_the_inputstream_works_as_expected_with_acknowledgements(final String responseFormat,
-                                                                                              final String query,
-                                                                                              final String format,
-                                                                                              final String compression) throws IOException {
-        if (format.equals("CSV")) {
-            given(s3ObjectRequest.getS3SelectCSVOption().getFileHeaderInfo()).willReturn(CSV_FILE_HEADER_INFO_NONE);
-            given(s3ObjectRequest.getS3SelectCSVOption().getComments()).willReturn(UUID.randomUUID().toString());
-            given(s3ObjectRequest.getS3SelectCSVOption().getQuiteEscape()).willReturn(UUID.randomUUID().toString());
-        } else if (format.equals("JSON")) {
-            given(s3ObjectRequest.getS3SelectJsonOption().getType()).willReturn(UUID.randomUUID().toString());
-        }
-
+                                                                                                                    final String query,
+                                                                                                                    final String format,
+                                                                                                                    final String compression,
+                                                                                                                    final boolean isBatchingExpected) throws IOException {
         given(s3ObjectRequest.getCompressionType()).willReturn(CompressionType.valueOf(compression));
         given(s3ObjectRequest.getExpression()).willReturn(query);
         given(s3ObjectRequest.getSerializationFormatOption()).willReturn(S3SelectSerializationFormatOption.valueOf(format));
@@ -271,7 +267,9 @@ class S3SelectObjectWorkerTest {
         createObjectUnderTest().parseS3Object(s3ObjectReference, acknowledgementSet);
         assertThat(numEventsAdded, equalTo(1));
 
-        assertHeadObjectRequestIsCorrect();
+        if (isBatchingExpected) {
+            assertHeadObjectRequestIsCorrect();
+        }
 
         verify(eventConsumer).accept(any(Event.class), eq(s3ObjectReference));
         verify(s3ObjectEventsSummary).record(1);
@@ -293,9 +291,6 @@ class S3SelectObjectWorkerTest {
         given(selectResponseHandler.getS3SelectContentEvents()).willReturn(constructObjectEventStreamForResponseFormat(responseFormat));
         given(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).willReturn(s3ObjectEventsSummary);
         given(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).willReturn(s3ObjectsSucceededCounter);
-        given(s3ObjectRequest.getS3SelectCSVOption().getFileHeaderInfo()).willReturn(CSV_FILE_HEADER_INFO_NONE);
-        given(s3ObjectRequest.getS3SelectCSVOption().getComments()).willReturn(UUID.randomUUID().toString());
-        given(s3ObjectRequest.getS3SelectCSVOption().getQuiteEscape()).willReturn(UUID.randomUUID().toString());
 
         final CompletableFuture<Void> selectObjectResponseFuture = mock(CompletableFuture.class);
         given(selectObjectResponseFuture.join()).willReturn(mock(Void.class));
@@ -310,6 +305,59 @@ class S3SelectObjectWorkerTest {
 
         verify(eventConsumer).accept(any(Event.class), eq(s3ObjectReference));
         verify(s3ObjectEventsSummary).record(1);
+        verify(s3ObjectsSucceededCounter).increment();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "DOCUMENT,NONE",
+            "LINES,GZIP",
+            "LINES,BZIP2"
+    })
+    void parseS3Object_does_not_use_batching_for_unsupported_json_configuration(final String jsonType, final String compressionType) throws IOException {
+        given(s3ObjectRequest.getSerializationFormatOption()).willReturn(S3SelectSerializationFormatOption.JSON);
+        given(selectJsonOption.getType()).willReturn(jsonType);
+        mockNonBatchedS3SelectCall(compressionType);
+
+        createObjectUnderTest().parseS3Object(s3ObjectReference, null);
+
+        verifyNonBatchedS3SelectCall();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "#,null,NONE",
+            "null,\",NONE",
+            "#,\",NONE",
+            "null,null,GZIP",
+            "null,null,BZIP2"
+    })
+    void parseS3Object_does_not_use_batching_for_unsupported_csv_configuration(final String comments, final String quoteEscape,
+                                                                               final String compressionType) throws IOException {
+        given(s3ObjectRequest.getSerializationFormatOption()).willReturn(S3SelectSerializationFormatOption.CSV);
+        given(selectCSVOption.getComments()).willReturn(comments);
+        given(selectCSVOption.getQuiteEscape()).willReturn(quoteEscape);
+        mockNonBatchedS3SelectCall(compressionType);
+
+        createObjectUnderTest().parseS3Object(s3ObjectReference, null);
+
+        verifyNonBatchedS3SelectCall();
+    }
+
+    private void mockNonBatchedS3SelectCall(final String compressionType) {
+        given(s3ObjectRequest.getCompressionType()).willReturn(CompressionType.valueOf(compressionType));
+        given(selectResponseHandler.getException()).willReturn(null);
+        given(selectResponseHandler.getS3SelectContentEvents()).willReturn(Collections.emptyList());
+        given(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).willReturn(s3ObjectsSucceededCounter);
+
+        final CompletableFuture<Void> selectObjectResponseFuture = mock(CompletableFuture.class);
+        given(selectObjectResponseFuture.join()).willReturn(mock(Void.class));
+        given(s3AsyncClient.selectObjectContent(any(SelectObjectContentRequest.class), eq(selectResponseHandler))).willReturn(selectObjectResponseFuture);
+    }
+
+    private void verifyNonBatchedS3SelectCall() {
+        verify(s3AsyncClient, times(0)).headObject(any(HeadObjectRequest.class));
+        verify(selectResponseHandler, times(1)).getS3SelectContentEvents();
         verify(s3ObjectsSucceededCounter).increment();
     }
 
