@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthentication
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
@@ -47,8 +48,9 @@ public class S3SourceConfig {
     @JsonProperty("on_error")
     private OnErrorOption onErrorOption = OnErrorOption.RETAIN_MESSAGES;
 
-    @JsonProperty("end_to_end_acknowledgements")
-    private boolean endToEndAcknowledgements = false;
+    @JsonProperty("acknowledgements")
+    @JsonAlias("acknowledgments")
+    private boolean acknowledgements = false;
 
     @JsonProperty("buffer_timeout")
     private Duration bufferTimeout = DEFAULT_BUFFER_TIMEOUT;
@@ -78,8 +80,8 @@ public class S3SourceConfig {
         return notificationType;
     }
 
-    boolean getEndToEndAcknowledgements() {
-        return endToEndAcknowledgements;
+    boolean getAcknowledgements() {
+        return acknowledgements;
     }
 
     public CompressionOption getCompression() {

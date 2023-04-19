@@ -75,7 +75,7 @@ public class SqsWorker implements Runnable {
         this.s3SourceConfig = s3SourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.standardBackoff = backoff;
-        this.endToEndAcknowledgementsEnabled = s3SourceConfig.getEndToEndAcknowledgements();
+        this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         sqsOptions = s3SourceConfig.getSqsOptions();
         objectCreatedFilter = new ObjectCreatedFilter();
         failedAttemptCount = 0;

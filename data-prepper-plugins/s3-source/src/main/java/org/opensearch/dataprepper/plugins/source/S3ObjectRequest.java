@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.source;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
@@ -31,7 +31,7 @@ public class S3ObjectRequest {
     private final S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
     private final CompressionEngine compressionEngine;
     private final BucketOwnerProvider bucketOwnerProvider;
-    private final Codec codec;
+    private final InputCodec codec;
     private final BiConsumer<Event, S3ObjectReference> eventConsumer;
     private final S3Client s3Client;
     private final CompressionType compressionType;
@@ -101,7 +101,7 @@ public class S3ObjectRequest {
         return bucketOwnerProvider;
     }
 
-    public Codec getCodec() {
+    public InputCodec getCodec() {
         return codec;
     }
 
@@ -140,7 +140,7 @@ public class S3ObjectRequest {
         private S3AsyncClient s3AsyncClient;
         private S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
         private CompressionEngine compressionEngine;
-        private Codec codec;
+        private InputCodec codec;
         private BiConsumer<Event, S3ObjectReference> eventConsumer;
         private S3Client s3Client;
         private CompressionType compressionType;
@@ -188,7 +188,7 @@ public class S3ObjectRequest {
             return this;
         }
 
-        public Builder codec(Codec codec) {
+        public Builder codec(InputCodec codec) {
             this.codec = codec;
             return this;
         }

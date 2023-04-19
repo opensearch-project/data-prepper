@@ -41,6 +41,8 @@ class AwsAuthenticationOptionsTest {
 
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
+    private final String TEST_ROLE = "arn:aws:iam::123456789012:role/test-role";
+
     @BeforeEach
     void setUp() {
         awsAuthenticationOptions = new AwsAuthenticationOptions();
@@ -97,7 +99,7 @@ class AwsAuthenticationOptionsTest {
         @Test
         void authenticateAWSConfiguration_should_return_s3Client_with_sts_role_arn() throws NoSuchFieldException, IllegalAccessException {
             reflectivelySetField(awsAuthenticationOptions, "awsRegion", "us-east-1");
-            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
+            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", TEST_ROLE);
 
             when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
             final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
@@ -116,7 +118,7 @@ class AwsAuthenticationOptionsTest {
 
             assertThat(actualCredentialsProvider, instanceOf(AwsCredentialsProvider.class));
 
-            verify(assumeRoleRequestBuilder).roleArn("arn:aws:iam::123456789012:iam-role");
+            verify(assumeRoleRequestBuilder).roleArn(TEST_ROLE);
             verify(assumeRoleRequestBuilder).roleSessionName(anyString());
             verify(assumeRoleRequestBuilder).build();
             verifyNoMoreInteractions(assumeRoleRequestBuilder);
@@ -125,7 +127,7 @@ class AwsAuthenticationOptionsTest {
         @Test
         void authenticateAWSConfiguration_should_return_s3Client_with_sts_role_arn_when_no_region() throws NoSuchFieldException, IllegalAccessException {
             reflectivelySetField(awsAuthenticationOptions, "awsRegion", null);
-            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
+            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", TEST_ROLE);
             assertThat(awsAuthenticationOptions.getAwsRegion(), equalTo(null));
 
             when(stsClientBuilder.region(null)).thenReturn(stsClientBuilder);
@@ -148,7 +150,7 @@ class AwsAuthenticationOptionsTest {
             final Map<String, String> overrideHeaders = Map.of(headerName1, headerValue1, headerName2, headerValue2);
 
             reflectivelySetField(awsAuthenticationOptions, "awsRegion", "us-east-1");
-            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
+            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", TEST_ROLE);
             reflectivelySetField(awsAuthenticationOptions, "awsStsHeaderOverrides", overrideHeaders);
 
             when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
@@ -173,7 +175,7 @@ class AwsAuthenticationOptionsTest {
 
             final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
 
-            verify(assumeRoleRequestBuilder).roleArn("arn:aws:iam::123456789012:iam-role");
+            verify(assumeRoleRequestBuilder).roleArn(TEST_ROLE);
             verify(assumeRoleRequestBuilder).roleSessionName(anyString());
             verify(assumeRoleRequestBuilder).overrideConfiguration(configurationCaptor.capture());
             verify(assumeRoleRequestBuilder).build();
@@ -191,7 +193,7 @@ class AwsAuthenticationOptionsTest {
         @Test
         void authenticateAWSConfiguration_should_not_override_STS_Headers_when_HeaderOverrides_are_empty() throws NoSuchFieldException, IllegalAccessException {
             reflectivelySetField(awsAuthenticationOptions, "awsRegion", "us-east-1");
-            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", "arn:aws:iam::123456789012:iam-role");
+            reflectivelySetField(awsAuthenticationOptions, "awsStsRoleArn", TEST_ROLE);
             reflectivelySetField(awsAuthenticationOptions, "awsStsHeaderOverrides", Collections.emptyMap());
 
             when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
@@ -211,7 +213,7 @@ class AwsAuthenticationOptionsTest {
 
             assertThat(actualCredentialsProvider, instanceOf(AwsCredentialsProvider.class));
 
-            verify(assumeRoleRequestBuilder).roleArn("arn:aws:iam::123456789012:iam-role");
+            verify(assumeRoleRequestBuilder).roleArn(TEST_ROLE);
             verify(assumeRoleRequestBuilder).roleSessionName(anyString());
             verify(assumeRoleRequestBuilder).build();
             verifyNoMoreInteractions(assumeRoleRequestBuilder);

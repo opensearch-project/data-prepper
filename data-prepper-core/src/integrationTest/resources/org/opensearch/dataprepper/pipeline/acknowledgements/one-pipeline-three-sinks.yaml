@@ -3,7 +3,7 @@ pipeline1:
   source:
     in_memory:
       testing_key: PipelinesWithAcksIT
-      end_to_end_acknowledgements: true
+      acknowledgements: true
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT

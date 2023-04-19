@@ -3,14 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.codec;
+package org.opensearch.dataprepper.plugins.codec.csv;
 
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.record.Record;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvParser;
+import com.fasterxml.jackson.dataformat.csv.CsvReadException;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +19,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -48,17 +50,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class CsvCodecTest {
     @Mock
-    private CsvCodecConfig config;
+    private CsvInputCodecConfig config;
     @Mock
     private Consumer<Record<Event>> eventConsumer;
-    private CsvCodec csvCodec;
-    private CsvCodec createObjectUnderTest() {
-        return new CsvCodec(config);
+    private CsvInputCodec csvCodec;
+    private CsvInputCodec createObjectUnderTest() {
+        return new CsvInputCodec(config);
     }
 
     @BeforeEach
     void setup() {
-        CsvCodecConfig defaultCsvCodecConfig = new CsvCodecConfig();
+        CsvInputCodecConfig defaultCsvCodecConfig = new CsvInputCodecConfig();
         lenient().when(config.getDelimiter()).thenReturn(defaultCsvCodecConfig.getDelimiter());
         lenient().when(config.getQuoteCharacter()).thenReturn(defaultCsvCodecConfig.getQuoteCharacter());
         lenient().when(config.getHeader()).thenReturn(defaultCsvCodecConfig.getHeader());
@@ -280,7 +282,7 @@ public class CsvCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {2, 10, 100})
-    void test_when_autoDetectHeaderWrongNumberColumnsAndJaggedRows_then_skipsJaggedRows(final int numberOfRows) throws IOException {
+    void test_when_autoDetectHeaderWrongNumberColumnsAndJaggedRows_then_skipsRemainingRows(final int numberOfRows) throws IOException {
         // row that's longer than header should be skipped
         when(config.isDetectHeader()).thenReturn(Boolean.TRUE);
 
@@ -290,13 +292,14 @@ public class CsvCodecTest {
         final List<String> csvRowsExcludingHeader = new ArrayList<>(csvRowsExcludingHeaderImmutable);
 
         csvRowsExcludingHeader.add(generateCsvLine(numberOfColumns+1, config.getDelimiter(), config.getQuoteCharacter()));
+        csvRowsExcludingHeader.addAll(generateCsvLinesAsList(numberOfProperlyFormattedRows, numberOfColumns));
 
 
         final String header = generateHeader(numberOfColumns);
 
         final InputStream inputStream = createInputStreamAndAppendHeader(csvRowsExcludingHeader, header);
 
-        csvCodec.parse(inputStream, eventConsumer);
+        assertThrows(CsvReadException.class, () -> csvCodec.parse(inputStream, eventConsumer));
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
@@ -322,7 +325,7 @@ public class CsvCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {2, 10, 100})
-    void test_when_manualHeaderWrongNumberColumnsAndJaggedRows_then_skipsJaggedRows(final int numberOfRows) throws IOException {
+    void test_when_manualHeaderWrongNumberColumnsAndJaggedRows_then_skipsRemainingRows(final int numberOfRows) throws IOException {
         // row that's longer than header should be skipped
         when(config.isDetectHeader()).thenReturn(Boolean.FALSE);
 
@@ -336,10 +339,11 @@ public class CsvCodecTest {
         final List<String> csvRowsExcludingHeader = new ArrayList<>(csvRowsExcludingHeaderImmutable);
 
         csvRowsExcludingHeader.add(generateCsvLine(numberOfColumns+1, config.getDelimiter(), config.getQuoteCharacter()));
+        csvRowsExcludingHeader.addAll(generateCsvLinesAsList(numberOfProperlyFormattedRows, numberOfColumns));
 
         final InputStream inputStream = createInputStream(csvRowsExcludingHeader);
 
-        csvCodec.parse(inputStream, eventConsumer);
+        assertThrows(CsvReadException.class, () -> csvCodec.parse(inputStream, eventConsumer));
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
 
@@ -388,7 +392,7 @@ public class CsvCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {2, 10, 100})
-    void test_when_unrecoverableRow_then_logsExceptionAndSkipsOffendingRow(final int numberOfRows) throws IOException {
+    void test_when_unrecoverableRow_then_logsExceptionAndSkipsRemainingRows(final int numberOfRows) throws IOException {
         // If there's an unclosed quote then expected behavior is to skip that row
         when(config.isDetectHeader()).thenReturn(Boolean.TRUE);
         when(config.getQuoteCharacter()).thenReturn(";"); // ";" is also the array character
@@ -399,11 +403,13 @@ public class CsvCodecTest {
         final List<String> csvRowsExcludingHeader = new ArrayList<>(csvRowsExcludingHeaderImmutable);
         csvRowsExcludingHeader.add(generateIllegalString(numberOfColumns, config.getDelimiter(), config.getQuoteCharacter()));
         csvRowsExcludingHeader.add(generateCsvLine(numberOfColumns, config.getDelimiter(), config.getQuoteCharacter()));
+        csvRowsExcludingHeader.addAll(generateCsvLinesAsList(numberOfProperlyFormattedRows, numberOfColumns,
+                config.getDelimiter(), config.getQuoteCharacter()));
         final String header = generateHeader(numberOfColumns, config.getDelimiter().charAt(0), config.getQuoteCharacter().charAt(0));
 
         final InputStream inputStream = createInputStreamAndAppendHeader(csvRowsExcludingHeader, header);
 
-        csvCodec.parse(inputStream, eventConsumer);
+        assertThrows(JsonParseException.class, () -> csvCodec.parse(inputStream, eventConsumer));
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         verify(eventConsumer, times(numberOfProperlyFormattedRows)).accept(recordArgumentCaptor.capture());

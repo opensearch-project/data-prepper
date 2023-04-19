@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -23,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.String.format;
 
-@DataPrepperPlugin(name = "file", pluginType = Sink.class)
+@DataPrepperPlugin(name = "file", pluginType = Sink.class, pluginConfigurationType = FileSinkConfig.class)
 public class FileSink implements Sink<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(FileSink.class);
     private static final String SAMPLE_FILE_PATH = "src/resources/file-test-sample-output.txt";
@@ -42,30 +43,21 @@ public class FileSink implements Sink<Record<Object>> {
      * has access to pluginSetting metadata from pipeline
      * pluginSetting file.
      *
-     * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
+     * @param fileSinkConfig The file sink configuration
      */
-    public FileSink(final PluginSetting pluginSetting) {
-        this((String) pluginSetting.getAttributeFromSettings(FILE_PATH));
-    }
-
-    public FileSink() {
-        this(SAMPLE_FILE_PATH);
-    }
-
-    public FileSink(final String outputFile) {
-        this.outputFilePath = outputFile == null ? SAMPLE_FILE_PATH : outputFile;
+    @DataPrepperPluginConstructor
+    public FileSink(final FileSinkConfig fileSinkConfig) {
+        this.outputFilePath = fileSinkConfig.getPath();
         isStopRequested = false;
         initialized = false;
         lock = new ReentrantLock(true);
-        initialize();
     }
 
     @Override
     public void output(final Collection<Record<Object>> records) {
-
         lock.lock();
         try {
-            if(isStopRequested)
+            if (isStopRequested)
                 return;
 
             for (final Record<Object> record : records) {

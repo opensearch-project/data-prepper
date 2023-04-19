@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -37,7 +38,7 @@ public class S3Source implements Source<Record<Event>> {
     private final PluginFactory pluginFactory;
     private final Optional<S3ScanScanOptions> s3ScanScanOptional;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final boolean endToEndAcknowledgementsEnabled;
+    private final boolean acknowledgementsEnabled;
 
 
     @DataPrepperPluginConstructor
@@ -46,13 +47,13 @@ public class S3Source implements Source<Record<Event>> {
         this.s3SourceConfig = s3SourceConfig;
         this.pluginFactory = pluginFactory;
         this.s3ScanScanOptional = Optional.ofNullable(s3SourceConfig.getS3ScanScanOptions());
-        this.endToEndAcknowledgementsEnabled = s3SourceConfig.getEndToEndAcknowledgements();
-        this.acknowledgementSetManager = acknowledgementSetManager;    
+        this.acknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
+        this.acknowledgementSetManager = acknowledgementSetManager;   
     }
 
     @Override
     public boolean areAcknowledgementsEnabled() {
-        return endToEndAcknowledgementsEnabled;
+        return acknowledgementsEnabled;
     }
 
     @Override
@@ -89,7 +90,7 @@ public class S3Source implements Source<Record<Event>> {
         } else {
             final PluginModel codecConfiguration = s3SourceConfig.getCodec();
             final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(), codecConfiguration.getPluginSettings());
-            final Codec codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
+            final InputCodec codec = pluginFactory.loadPlugin(InputCodec.class, codecPluginSettings);
             final S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder
                     .bucketOwnerProvider(bucketOwnerProvider)
                     .codec(codec)

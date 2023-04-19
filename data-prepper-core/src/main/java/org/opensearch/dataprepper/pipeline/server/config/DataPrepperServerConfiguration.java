@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.DataPrepper;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import org.opensearch.dataprepper.pipeline.server.ListPipelinesHandler;
 import org.opensearch.dataprepper.pipeline.server.ShutdownHandler;
@@ -65,8 +66,8 @@ public class DataPrepperServerConfiguration {
     }
 
     @Bean
-    public ListPipelinesHandler listPipelinesHandler(final DataPrepper dataPrepper) {
-        return new ListPipelinesHandler(dataPrepper);
+    public ListPipelinesHandler listPipelinesHandler(final PipelinesProvider pipelinesProvider) {
+        return new ListPipelinesHandler(pipelinesProvider);
     }
 
     @Bean

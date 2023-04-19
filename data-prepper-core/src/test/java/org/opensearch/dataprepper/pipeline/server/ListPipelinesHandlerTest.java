@@ -5,16 +5,16 @@
 
 package org.opensearch.dataprepper.pipeline.server;
 
+import com.sun.net.httpserver.Headers;
+import com.sun.net.httpserver.HttpExchange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.DataPrepper;
 import org.opensearch.dataprepper.pipeline.Pipeline;
-import com.sun.net.httpserver.Headers;
-import com.sun.net.httpserver.HttpExchange;
+import org.opensearch.dataprepper.pipeline.PipelinesProvider;
 
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;
@@ -33,6 +33,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ListPipelinesHandlerTest {
     @Mock
+    private PipelinesProvider pipelinesProvider;
+    @Mock
     private HttpExchange httpExchange;
 
     @Mock
@@ -44,21 +46,24 @@ class ListPipelinesHandlerTest {
                 .thenReturn(outputStream);
     }
 
+    private ListPipelinesHandler createObjectUnderTest() {
+        return new ListPipelinesHandler(pipelinesProvider);
+    }
+
     @ParameterizedTest
     @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
     public void testGivenNoPipelinesThenResponseWritten(String httpMethod) throws IOException {
-        final DataPrepper dataPrepper = mock(DataPrepper.class);
         final Headers headers = mock(Headers.class);
         final Map<String, Pipeline> transformationPipelines = new HashMap<>();
 
-        when(dataPrepper.getTransformationPipelines())
+        when(pipelinesProvider.getTransformationPipelines())
                 .thenReturn(transformationPipelines);
         when(httpExchange.getResponseHeaders())
                 .thenReturn(headers);
         when(httpExchange.getRequestMethod())
                 .thenReturn(httpMethod);
 
-        final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
+        final ListPipelinesHandler handler = createObjectUnderTest();
 
         handler.handle(httpExchange);
 
@@ -75,7 +80,6 @@ class ListPipelinesHandlerTest {
     @ParameterizedTest
     @ValueSource(strings = { HttpMethod.GET, HttpMethod.POST })
     public void testGivenPipelinesThenResponseWritten(String httpMethod) throws IOException {
-        final DataPrepper dataPrepper = mock(DataPrepper.class);
         final Headers headers = mock(Headers.class);
         final Pipeline pipeline = mock(Pipeline.class);
         final Map<String, Pipeline> transformationPipelines = new HashMap<>();
@@ -83,14 +87,14 @@ class ListPipelinesHandlerTest {
         transformationPipelines.put("Pipeline B", pipeline);
         transformationPipelines.put("Pipeline C", pipeline);
 
-        when(dataPrepper.getTransformationPipelines())
+        when(pipelinesProvider.getTransformationPipelines())
                 .thenReturn(transformationPipelines);
         when(httpExchange.getResponseHeaders())
                 .thenReturn(headers);
         when(httpExchange.getRequestMethod())
                 .thenReturn(httpMethod);
 
-        final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
+        final ListPipelinesHandler handler = createObjectUnderTest();
 
         handler.handle(httpExchange);
 
@@ -107,8 +111,7 @@ class ListPipelinesHandlerTest {
     @ParameterizedTest
     @ValueSource(strings = { HttpMethod.DELETE, HttpMethod.PATCH, HttpMethod.PUT })
     public void testGivenProhibitedHttpMethodThenErrorResponseWritten(String httpMethod) throws IOException {
-        final DataPrepper dataPrepper = mock(DataPrepper.class);
-        final ListPipelinesHandler handler = new ListPipelinesHandler(dataPrepper);
+        final ListPipelinesHandler handler = createObjectUnderTest();
 
         when(httpExchange.getRequestMethod())
                 .thenReturn(httpMethod);
@@ -127,7 +130,8 @@ class ListPipelinesHandlerTest {
         when(httpExchange.getRequestMethod())
                 .thenReturn(httpMethod);
 
-        final ListPipelinesHandler handler = new ListPipelinesHandler(null);
+        pipelinesProvider = null;
+        final ListPipelinesHandler handler = createObjectUnderTest();
         handler.handle(httpExchange);
 
         verify(httpExchange)

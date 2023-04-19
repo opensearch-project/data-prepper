@@ -46,7 +46,7 @@ public class InMemorySource implements Source<Record<Event>> {
         this.inMemorySourceAccessor = inMemorySourceAccessor;
         this.inMemorySourceAccessor.setEventFactory(eventFactory);
         this.acknowledgementSetManager = acknowledgementSetManager;
-        this.enabledAcks = inMemoryConfig.getEndToEndAcknowledgements();
+        this.enabledAcks = inMemoryConfig.getAcknowledgements();
     }
 
     @Override

@@ -3,7 +3,7 @@ simple-pipeline:
   source:
     in_memory:
       testing_key: PipelinesWithAcksIT
-      end_to_end_acknowledgements: true
+      acknowledgments: true
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT

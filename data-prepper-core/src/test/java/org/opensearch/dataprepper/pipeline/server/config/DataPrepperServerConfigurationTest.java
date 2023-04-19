@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.DataPrepper;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperCoreAuthenticationProvider;
 import org.opensearch.dataprepper.pipeline.server.ListPipelinesHandler;
 import org.opensearch.dataprepper.pipeline.server.ShutdownHandler;
@@ -100,18 +101,18 @@ class DataPrepperServerConfigurationTest {
 
     @Test
     public void testGivenValidInputWithNoAuthenticatorThenServerListContextCreated() {
-        final DataPrepper dataPrepper = mock(DataPrepper.class);
+        final PipelinesProvider pipelinesProvider = mock(PipelinesProvider.class);
 
-        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper);
+        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(pipelinesProvider);
 
         assertThat(handler, isA(ListPipelinesHandler.class));
     }
 
     @Test
     public void testGivenValidInputWithAuthenticatorThenServerListContextCreated() {
-        final DataPrepper dataPrepper = mock(DataPrepper.class);
+        final PipelinesProvider pipelinesProvider = mock(PipelinesProvider.class);
 
-        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(dataPrepper);
+        final ListPipelinesHandler handler = serverConfiguration.listPipelinesHandler(pipelinesProvider);
 
         assertThat(handler, isA(ListPipelinesHandler.class));
     }
