@@ -19,9 +19,11 @@ public interface DlqProvider {
 
     /**
      * Allows implementors to provide a {@link DlqWriter}. This may be optional, in which case it is not used.
+     * @param pluginMetricsScope the {@link org.opensearch.dataprepper.metrics.PluginMetrics} component scope.
+     *                           This is used to place the DLQ metrics under the correct parent plugin.
      * @since 2.2
      */
-    default Optional<DlqWriter> getDlqWriter() {
+    default Optional<DlqWriter> getDlqWriter(final String pluginMetricsScope) {
         return Optional.empty();
     }
 }
