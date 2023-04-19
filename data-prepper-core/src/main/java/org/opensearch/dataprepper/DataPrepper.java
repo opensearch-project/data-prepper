@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper;
 
+import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.parser.PipelineParser;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
@@ -12,17 +13,17 @@ import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineObserver;
 import org.opensearch.dataprepper.pipeline.PipelinesProvider;
 import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
-import io.micrometer.core.instrument.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.util.Map;
-import java.util.Set;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * DataPrepper is the entry point into the execution engine. The instance can be used to trigger execution via
@@ -41,6 +42,7 @@ public class DataPrepper implements PipelinesProvider {
     private final PeerForwarderServer peerForwarderServer;
     private final PipelinesObserver pipelinesObserver;
     private final Map<String, Pipeline> transformationPipelines;
+    private final Predicate<Map<String, Pipeline>> shouldShutdownOnPipelineFailurePredicate;
 
     // TODO: Remove DataPrepperServer dependency on DataPrepper
     @Inject
@@ -61,11 +63,12 @@ public class DataPrepper implements PipelinesProvider {
     public DataPrepper(
             final PipelineParser pipelineParser,
             final PluginFactory pluginFactory,
-            final PeerForwarderServer peerForwarderServer
-            ) {
+            final PeerForwarderServer peerForwarderServer,
+            final Predicate<Map<String, Pipeline>> shouldShutdownOnPipelineFailurePredicate) {
         this.pluginFactory = pluginFactory;
 
         transformationPipelines = pipelineParser.parseConfiguration();
+        this.shouldShutdownOnPipelineFailurePredicate = shouldShutdownOnPipelineFailurePredicate;
         if (transformationPipelines.size() == 0) {
             throw new RuntimeException("No valid pipeline is available for execution, exiting");
         }
@@ -172,7 +175,7 @@ public class DataPrepper implements PipelinesProvider {
             transformationPipelines.remove(pipeline.getName());
 
             LOG.info("Pipeline has shutdown. '{}'. There are {} pipelines remaining.", pipeline.getName(), transformationPipelines.size());
-            if(transformationPipelines.size() == 0) {
+            if(shouldShutdownOnPipelineFailurePredicate.test(transformationPipelines)) {
                 DataPrepper.this.shutdown();
             }
         }

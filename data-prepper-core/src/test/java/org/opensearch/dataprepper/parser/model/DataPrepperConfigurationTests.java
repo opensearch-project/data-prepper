@@ -21,6 +21,7 @@ import org.junit.Assert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.pipeline.PipelineShutdownOption;
 
 import java.io.File;
 import java.io.IOException;
@@ -244,5 +245,19 @@ public class DataPrepperConfigurationTests {
         assertThat(config.getCircuitBreakerConfig().getHeapConfig(), notNullValue());
         assertThat(config.getCircuitBreakerConfig().getHeapConfig().getUsage(), notNullValue());
         assertThat(config.getCircuitBreakerConfig().getHeapConfig().getUsage().getBytes(), Matchers.equalTo(2_684_354_560L));
+    }
+
+    @Test
+    void testConfigHasDefaultShutdown() throws IOException {
+        final DataPrepperConfiguration config = makeConfig("src/test/resources/valid_data_prepper_config.yml");
+        assertThat(config, notNullValue());
+        assertThat(config.getPipelineShutdown(), equalTo(PipelineShutdownOption.ON_ANY_PIPELINE_FAILURE));
+    }
+
+    @Test
+    void testConfigWithPipelineShutdown() throws IOException {
+        final DataPrepperConfiguration config = makeConfig("src/test/resources/valid_data_prepper_config_with_pipeline_shutdown.yml");
+        assertThat(config, notNullValue());
+        assertThat(config.getPipelineShutdown(), equalTo(PipelineShutdownOption.ON_ALL_PIPELINE_FAILURES));
     }
 }
