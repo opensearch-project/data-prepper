@@ -50,23 +50,5 @@ public class DefaultAcknowledgementSetMetrics {
         }
     }
 
-    public double get(String metricName) throws IllegalArgumentException {
-        switch (metricName) {
-            case CREATED_METRIC_NAME:
-                return numberOfAcknowledgementSetsCreated.count();
-            case COMPLETED_METRIC_NAME:
-                return numberOfAcknowledgementSetsCompleted.count();
-            case EXPIRED_METRIC_NAME:
-                return numberOfAcknowledgementSetsExpired.count();
-            case INVALID_ACQUIRES_METRIC_NAME:
-                return numberOfInvalidAcknowledgementAcquires.count();
-            case INVALID_RELEASES_METRIC_NAME:
-                return numberOfInvalidAcknowledgementReleases.count();
-            default:
-                throw new IllegalArgumentException("Invalid metric name");
-        }
-    }
-
 }
-
 

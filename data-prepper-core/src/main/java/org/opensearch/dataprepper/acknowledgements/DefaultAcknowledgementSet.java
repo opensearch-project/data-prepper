@@ -35,7 +35,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private Future<?> callbackFuture;
     private final DefaultAcknowledgementSetMetrics metrics;
 
-    public DefaultAcknowledgementSet(final ExecutorService executor, final Consumer<Boolean> callback, final Duration expiryTime, DefaultAcknowledgementSetMetrics metrics) {
+    public DefaultAcknowledgementSet(final ExecutorService executor, final Consumer<Boolean> callback, final Duration expiryTime, final DefaultAcknowledgementSetMetrics metrics) {
         this.callback = callback;
         this.result = true;
         this.executor = executor;
