@@ -46,7 +46,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
-@DataPrepperPlugin(name = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
+@DataPrepperPlugin(name = "otel_traces", deprecatedName = "otel_trace_source", pluginType = Source.class, pluginConfigurationType = OTelTraceSourceConfig.class)
 public class OTelTraceSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(OTelTraceSource.class);
     private static final String HTTP_HEALTH_CHECK_PATH = "/health";

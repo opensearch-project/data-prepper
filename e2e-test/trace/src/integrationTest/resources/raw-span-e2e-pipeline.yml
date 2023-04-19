@@ -1,6 +1,6 @@
 entry-pipeline:
   source:
-    otel_trace_source:
+    otel_traces:
       ssl: false
   sink:
     - pipeline:
@@ -10,7 +10,7 @@ raw-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - otel_trace_raw:
+    - otel_trace_span:
         trace_flush_interval: 5
     - otel_trace_group:
         hosts: [ "https://node-0.example.com:9200" ]
