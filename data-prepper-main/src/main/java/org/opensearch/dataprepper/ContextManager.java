@@ -12,19 +12,10 @@ import org.springframework.core.env.SimpleCommandLinePropertySource;
 
 /**
  * @since 1.3
- * <p>Creates Spring {@link org.springframework.context.ApplicationContext} hierarchy for Dependency Injection with limited visibility.</p>
- * <p>
- *     Application Context Hierarchy
- *         Public Application Context<br>
- *         ├─ Core Application Context<br>
- *         ├─ Shared Plugin Application Context<br>
- *             ├─ Plugin Isolated Application Context<br>
- * </p>
  */
-public class ContextManager {
+public class ContextManager extends AbstractContextManager {
     private static final Logger LOG = LoggerFactory.getLogger(ContextManager.class);
-
-    private final AnnotationConfigApplicationContext coreApplicationContext;
+    private final SimpleCommandLinePropertySource commandLinePropertySource;
 
     /**
      * @since 1.3
@@ -34,26 +25,11 @@ public class ContextManager {
      */
     public ContextManager(final String ... args) {
         LOG.trace("Reading args");
-        final SimpleCommandLinePropertySource commandLinePropertySource = new SimpleCommandLinePropertySource(args);
-
-        final AnnotationConfigApplicationContext publicApplicationContext = new AnnotationConfigApplicationContext();
-        publicApplicationContext.scan("org.opensearch.dataprepper.expression");
-        publicApplicationContext.refresh();
-
-        coreApplicationContext = new AnnotationConfigApplicationContext();
-        coreApplicationContext.setParent(publicApplicationContext);
-        coreApplicationContext.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
-        coreApplicationContext.register(DataPrepperExecute.class);
-
-        coreApplicationContext.refresh();
+        commandLinePropertySource = new SimpleCommandLinePropertySource(args);
     }
 
-    /**
-     * @since 1.3
-     * Retrieves the instance of {@link DataPrepper} singleton
-     * @return {@link DataPrepper} instance
-     */
-    public DataPrepper getDataPrepperBean() {
-        return coreApplicationContext.getBean(DataPrepper.class);
+    @Override
+    protected void preRefreshCoreApplicationContext(final AnnotationConfigApplicationContext coreApplicationContext) {
+        coreApplicationContext.getEnvironment().getPropertySources().addFirst(commandLinePropertySource);
     }
 }
