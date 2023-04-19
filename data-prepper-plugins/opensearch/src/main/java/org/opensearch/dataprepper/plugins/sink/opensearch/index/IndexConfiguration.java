@@ -44,6 +44,7 @@ public class IndexConfiguration {
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String AWS_SERVERLESS = "aws_serverless";
     public static final String AWS_OPTION = "aws";
+    public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
     private IndexType indexType;
     private final String indexAlias;
@@ -57,6 +58,7 @@ public class IndexConfiguration {
     private final String s3AwsStsRoleArn;
     private final S3Client s3Client;
     private final boolean awsServerless;
+    private final String documentRootKey;
 
     private static final String S3_PREFIX = "s3://";
     private static final String DEFAULT_AWS_REGION = "us-east-1";
@@ -103,6 +105,7 @@ public class IndexConfiguration {
         this.documentIdField = documentIdField;
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
+        this.documentRootKey = builder.documentRootKey;
     }
 
     private void determineIndexType(Builder builder) {
@@ -173,6 +176,9 @@ public class IndexConfiguration {
             builder.withAwsServerless(awsServerless);
         }
 
+        final String documentRootKey = pluginSetting.getStringOrDefault(DOCUMENT_ROOT_KEY, null);
+        builder.withDocumentRootKey(documentRootKey);
+
         return builder.build();
     }
 
@@ -218,6 +224,10 @@ public class IndexConfiguration {
 
     public boolean getAwsServerless() {
         return awsServerless;
+    }
+
+    public String getDocumentRootKey() {
+        return documentRootKey;
     }
 
     /**
@@ -276,6 +286,7 @@ public class IndexConfiguration {
         private String s3AwsStsRoleArn;
         private S3Client s3Client;
         private boolean awsServerless;
+        private String documentRootKey;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -361,6 +372,14 @@ public class IndexConfiguration {
 
         public Builder withAwsServerless(final boolean awsServerless) {
             this.awsServerless = awsServerless;
+            return this;
+        }
+
+        public Builder withDocumentRootKey(final String documentRootKey) {
+            if (documentRootKey != null) {
+                checkArgument(!documentRootKey.isEmpty(), "documentRootKey cannot be empty string");
+            }
+            this.documentRootKey = documentRootKey;
             return this;
         }
 

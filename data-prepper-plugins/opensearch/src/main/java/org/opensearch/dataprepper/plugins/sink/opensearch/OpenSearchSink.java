@@ -40,6 +40,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperatio
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsParser;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
@@ -82,6 +83,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final String documentIdField;
   private final String routingField;
   private final String action;
+  private final String documentRootKey;
   private String configuredIndexAlias;
   private final ReentrantLock lock;
 
@@ -113,6 +115,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
+    this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
     this.failedBulkOperationConverter = new FailedBulkOperationConverter(pluginSetting.getPipelineName(), pluginSetting.getName(),
         pluginSetting.getName());
@@ -258,7 +261,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private SerializedJson getDocument(final Event event) {
     String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
     String routing = (routingField != null) ? event.get(routingField, String.class) : null;
-    return SerializedJson.fromStringAndOptionals(event.toJsonString(), docId, routing);
+
+    final String document = DocumentBuilder.build(event, documentRootKey);
+
+    return SerializedJson.fromStringAndOptionals(document, docId, routing);
   }
 
   private void flushBatch(AccumulatingBulkRequest accumulatingBulkRequest) {

@@ -276,6 +276,17 @@ public class JacksonEvent implements Event {
         return jsonNode.toString();
     }
 
+    @Override
+    public String getAsJsonString(final String key) {
+        final String trimmedKey = checkAndTrimKey(key);
+
+        final JsonNode node = getNode(trimmedKey);
+        if (node.isMissingNode()) {
+            return null;
+        }
+        return node.toString();
+    }
+
     /**
      * returns a string with formatted parts replaced by their values. The input
      * string may contain parts with format "${.../.../...}" which are replaced
