@@ -92,7 +92,7 @@ subprojects {
         constraints {
             implementation('org.apache.httpcomponents:httpclient') {
                 version {
-                    require '4.5.13'
+                    require '4.5.14'
                 }
                 because 'We want the newest version of httpclient.'
             }
