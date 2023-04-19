@@ -223,7 +223,7 @@ ___
 A processor that converts the type of value associated with the specified key in a message to the specified type. Basically this is a "casting" processor that changes types of some fields in the event/message.
 Some of the data in the input may need to be converted to different types (ex integer or double) for passing the events through "condition" based processors or to do conditional routing.
 
-## Basic Usage
+### Basic Usage
 
 To get started with type conversion processor using Data Prepper, create the following `pipeline.yaml`.
 ```yaml
@@ -262,8 +262,235 @@ and the type conversion processor will change it to the following output, where 
 * `key` - (required) - keys whose value needs to be converted to a different type
 * `type` - target type for the value of the key. Possible values are `integer`, `double`, `string`, and `boolean`. Default is `integer`.
 
+## List-to-map Processor
+A processor that converts a list of objects from an event, where each object has a key field, to a map of keys to objects.
+
+### Basic Usage
+
+To get started with list-to-map processor using Data Prepper, create the following `pipeline.yaml`:
+```yaml
+pipeline:
+  source:
+    file:
+      path: "/full/path/to/logs_json.log"
+      record_type: "event"
+      format: "json"
+  processor:
+    - list_to_map:
+        key: "name"
+        source: "mylist"
+        value_key: "value"
+        flatten: true
+  sink:
+    - stdout:
+```
+
+Create the file named `logs_json.log` with the following line and replace the `path` in the file source of your `pipeline.yaml` with the path of this file.
+
+```json
+{"mylist":[{"name":"a","value":"val-a"},{"name":"b","value":"val-b1"},{"name":"b","value":"val-b2"},{"name":"c","value":"val-c"}]}
+```
+
+> Note that the output json data below is reformatted for readability. The actual output you see will be formatted as a single line.
+
+When run, the processor will parse the message into the following output:
+```json
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "a": "val-a",
+  "b": "val-b1",
+  "c": "val-c"
+}
+```
+
+If we set a `target`:
+```yaml
+    - list_to_map:
+        key: "name"
+        source: "mylist"
+        target: "mymap"
+        value_key: "value"
+        flatten: true
+```
+the generated map will be put under the target key:
+```json
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "mymap": {
+    "a": "val-a",
+    "b": "val-b1",
+    "c": "val-c"
+  }
+}
+```
+
+If we do not specify a `value_key`:
+```yaml
+    - list_to_map:
+        key: "name"
+        source: "mylist"
+        flatten: true
+```
+the values of the map will be original objects from the source list:
+```json
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "a": {
+    "name": "a",
+    "value": "val-a"
+  },
+  "b": {
+    "name": "b",
+    "value": "val-b1"
+  },
+  "c": {
+    "name": "c",
+    "value": "val-c"
+  }
+}
+```
+
+If `flatten` option is not set or set to false:
+```yaml
+    - list_to_map:
+        key: "name"
+        source: "mylist"
+        value_key: "value"
+        flatten: false
+```
+the values of the map will be lists, and some entries may have more than one element in their values:
+```json
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "a": [
+    "val-a"
+  ],
+  "b": [
+    "val-b1",
+    "val-b2"
+  ],
+  "c": [
+    "val-c"
+  ]
+}
+```
+
+If we specify `flattened_element` as "last":
+```yaml
+    - list_to_map:
+        key: "name"
+        source: "mylist"
+        value_key: "value"
+        flatten: true
+        flattened_element: "last"
+```
+the last element will be kept:
+```json
+{
+  "mylist": [
+    {
+      "name": "a",
+      "value": "val-a"
+    },
+    {
+      "name": "b",
+      "value": "val-b1"
+    },
+    {
+      "name": "b",
+      "value": "val-b2"
+    },
+    {
+      "name": "c",
+      "value": "val-c"
+    }
+  ],
+  "a": "val-a",
+  "b": "val-b2",
+  "c": "val-c"
+}
+```
+
+### Configuration
+* `key` - (required) - The key of the fields that will be extracted as keys in the generated map
+* `source` - (required) - The key in the event with a list of objects that will be converted to map
+* `target` - (optional) - The key of the field that will hold the generated map. If not specified, the generated map will be put in the root.
+* `value_key` - (optional) - If specified, the values of the given `value_key` in the objects of the source list will be extracted and put into the values of the generated map; otherwise, original objects in the source list will be put into the values of the generated map.
+* `flatten` - (optional) - A boolean value, default to false. If it's false, the values in the generated map will be lists; if it's true, the lists will be flattened into single items.
+* `flattened_element` - (optional) - Valid options are "first" and "last", default is "first". This specifies which element, first one or last one, to keep if `flatten` option is true.
+
 
 ## Developer Guide
-This plugin is compatible with Java 14. See
-- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
-- [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
+This plugin is compatible with Java 11 and 17. Refer to the following developer guides for plugin development:
+- [Developer Guide](https://github.com/opensearch-project/data-prepper/blob/main/docs/developer_guide.md)
+- [Contributing Guidelines](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
+- [Plugin Development](https://github.com/opensearch-project/data-prepper/blob/main/docs/plugin_development.md)
+- [Monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
