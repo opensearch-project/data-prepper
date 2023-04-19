@@ -4,7 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
@@ -22,7 +22,7 @@ public class ScanOptions {
     private String expression;
     private S3SelectSerializationFormatOption serializationFormatOption;
     private List<String> keys;
-    private Codec codec;
+    private InputCodec codec;
     private CompressionOption compressionOption;
 
     private CompressionType compressionType;
@@ -90,7 +90,7 @@ public class ScanOptions {
         return this;
     }
 
-    public ScanOptions setCodec(Codec codec) {
+    public ScanOptions setCodec(InputCodec codec) {
         this.codec = codec;
         return this;
     }
@@ -129,7 +129,7 @@ public class ScanOptions {
         return keys;
     }
 
-    public Codec getCodec() {
+    public InputCodec getCodec() {
         return codec;
     }
 

@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptions;
@@ -114,12 +114,12 @@ public class S3ScanService {
                     .setSerializationFormatOption(s3SelectOptions.getS3SelectSerializationFormatOption());
     }
 
-    private Codec getCodec(final S3ScanBucketOption bucket) {
+    private InputCodec getCodec(final S3ScanBucketOption bucket) {
         if (bucket.getCodec() != null) {
             final PluginModel pluginModel = bucket.getCodec();
             final PluginSetting pluginSetting = new PluginSetting(pluginModel.getPluginName(),
                     pluginModel.getPluginSettings());
-            return pluginFactory.loadPlugin(Codec.class, pluginSetting);
+            return pluginFactory.loadPlugin(InputCodec.class, pluginSetting);
         }
         return null;
     }
