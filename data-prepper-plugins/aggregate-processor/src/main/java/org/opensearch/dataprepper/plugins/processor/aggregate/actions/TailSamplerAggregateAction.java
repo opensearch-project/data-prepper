@@ -17,7 +17,6 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Random;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -29,6 +28,7 @@ import java.time.Instant;
 @DataPrepperPlugin(name = "tail_sampler", pluginType = AggregateAction.class, pluginConfigurationType = TailSamplerAggregateActionConfig.class)
 public class TailSamplerAggregateAction implements AggregateAction {
     static final String LAST_RECEIVED_TIME_KEY = "last_received_time";
+    static final String SHOULD_CONCLUDE_CHECK_SET_KEY = "should_conclude_check_set";
     static final String EVENTS_KEY = "events";
     static final String ERROR_STATUS_KEY = "error_status";
     private final double percent;
@@ -49,6 +49,14 @@ public class TailSamplerAggregateAction implements AggregateAction {
     @Override
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
         final GroupState groupState = aggregateActionInput.getGroupState();
+        if (!((boolean)groupState.getOrDefault(SHOULD_CONCLUDE_CHECK_SET_KEY, false))) {
+            aggregateActionInput.setCustomShouldConclude((duration) -> {
+                Duration timeDiff = Duration.between((Instant)groupState.getOrDefault(LAST_RECEIVED_TIME_KEY, Instant.now()), Instant.now());
+
+                return timeDiff.toSeconds() >= waitPeriod.toSeconds();
+            });
+            groupState.put(SHOULD_CONCLUDE_CHECK_SET_KEY, true);
+        }
         List<Event> events = (List)groupState.getOrDefault(EVENTS_KEY, new ArrayList<>());
         events.add(event);
         groupState.put(EVENTS_KEY, events);
@@ -62,22 +70,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
-        Duration timeDiff = Duration.between((Instant)groupState.get(LAST_RECEIVED_TIME_KEY), Instant.now());
-        List<Event> events = (List)groupState.get(EVENTS_KEY);
-        if (events != null) {
-            if (timeDiff.getSeconds() > waitPeriod.getSeconds()) {
-                Random randomNum = new Random();
-                int randomInt = randomNum.nextInt(100);
-                if ((boolean)groupState.getOrDefault(ERROR_STATUS_KEY, false) ||
-                    (randomInt < percent)) {
-                    groupState.remove(EVENTS_KEY);
-                    return new AggregateActionOutput(events, false);
-                } else {
-                    groupState.remove(EVENTS_KEY);
-                }
-            }
-        }
-        return new AggregateActionOutput(List.of(), true);
+        return new AggregateActionOutput((List)groupState.getOrDefault(EVENTS_KEY, List.of()));
     }
 
 }

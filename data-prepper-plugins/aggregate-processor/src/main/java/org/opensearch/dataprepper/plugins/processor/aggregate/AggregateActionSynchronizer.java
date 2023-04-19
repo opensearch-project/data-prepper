@@ -61,9 +61,7 @@ class AggregateActionSynchronizer {
                 if (aggregateGroup.shouldConcludeGroup(aggregateGroupManager.getGroupDuration()) || forceConclude) {
                     LOG.debug("Start critical section in concludeGroup");
                     actionOutput = aggregateAction.concludeGroup(aggregateGroup);
-                    if (!actionOutput.shouldCarryState()) {
-                        aggregateGroupManager.closeGroup(hash, aggregateGroup);
-                    }
+                    aggregateGroupManager.closeGroup(hash, aggregateGroup);
                 }
             } catch (final Exception e) {
                 LOG.debug("Error while concluding group: ", e);

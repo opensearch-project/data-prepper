@@ -7,15 +7,23 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.time.Duration;
+import java.util.function.Function;
 
 public class AggregateActionTestUtils {
     public static class TestAggregateActionInput implements AggregateActionInput {
         private final GroupState groupState;
         private final Map<Object, Object> identificationKeys;
+        private Function<Duration, Boolean> customShouldConclude;
 
         public TestAggregateActionInput(Map<Object, Object> identificationKeys) {
             this.groupState = new AggregateActionTestUtils.TestGroupState();
             this.identificationKeys = identificationKeys;
+        }
+
+        @Override
+        public void setCustomShouldConclude(Function<Duration, Boolean> shouldConclude) {
+            customShouldConclude = shouldConclude;
         }
 
         @Override
@@ -26,6 +34,13 @@ public class AggregateActionTestUtils {
         @Override
         public Map<Object, Object> getIdentificationKeys() {
             return identificationKeys;
+        }
+
+        public boolean shouldConcludeGroup(final Duration groupDuration) {
+            if (customShouldConclude != null) {
+                return customShouldConclude.apply(groupDuration);
+            }
+            return true;
         }
     }
 

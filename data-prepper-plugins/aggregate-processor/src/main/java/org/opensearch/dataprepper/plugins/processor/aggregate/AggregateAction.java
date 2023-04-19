@@ -38,7 +38,7 @@ public interface AggregateAction {
      * @since 1.3
      */
     default AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
-        return new AggregateActionOutput(List.of(), false);
+        return new AggregateActionOutput(List.of());
     }
 
 }

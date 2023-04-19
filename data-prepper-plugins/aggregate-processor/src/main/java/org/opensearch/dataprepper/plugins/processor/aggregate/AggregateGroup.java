@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.function.Function;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -17,6 +18,7 @@ class AggregateGroup implements AggregateActionInput {
     private final Lock concludeGroupLock;
     private final Lock handleEventForGroupLock;
     private final Map<Object, Object> identificationKeys;
+    private Function<Duration, Boolean> customShouldConclude;
 
     AggregateGroup(final Map<Object, Object> identificationKeys) {
         this.groupState = new DefaultGroupState();
@@ -42,11 +44,19 @@ class AggregateGroup implements AggregateActionInput {
         return concludeGroupLock;
     }
 
+    @Override
+    public void setCustomShouldConclude(Function<Duration, Boolean> shouldConclude) {
+        customShouldConclude = shouldConclude;
+    }
+
     Lock getHandleEventForGroupLock() {
         return handleEventForGroupLock;
     }
 
     boolean shouldConcludeGroup(final Duration groupDuration) {
+        if (customShouldConclude != null) {
+            return customShouldConclude.apply(groupDuration);
+        }
         return Duration.between(groupStart, Instant.now()).compareTo(groupDuration) >= 0;
     }
 

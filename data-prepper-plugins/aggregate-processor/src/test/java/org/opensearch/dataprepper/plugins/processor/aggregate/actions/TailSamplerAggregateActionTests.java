@@ -25,10 +25,11 @@ import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 import java.time.Duration;
+import java.time.Instant;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
 
@@ -66,7 +67,7 @@ public class TailSamplerAggregateActionTests {
                 .build();
         final int totalEvents = 100;
         int allowedEvents = 0;
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        final AggregateActionTestUtils.TestAggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
         for (int i = 0; i < totalEvents; i++) { 
             final String dataValue = UUID.randomUUID().toString();
             testEvent.put(dataKey, dataValue);
@@ -74,14 +75,15 @@ public class TailSamplerAggregateActionTests {
             Event receivedEvent = aggregateActionResponse.getEvent();
             assertThat(receivedEvent, equalTo(null));
         }
+        Instant start = Instant.now();
+        while (!aggregateActionInput.shouldConcludeGroup(Duration.ofSeconds(1))) {
+            Thread.sleep(1000);
+        }
         AggregateActionOutput actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
         List<Event> result = actionOutput.getEvents();
-        assertTrue(result.isEmpty());
-        Thread.sleep(2 * testWaitPeriod.toMillis());
-        actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
-        result = actionOutput.getEvents();
         assertThat(result, not(equalTo(null)));
         assertThat(result.size(), equalTo(totalEvents));
+        assertThat(Duration.between(start, Instant.now()).toSeconds(), greaterThanOrEqualTo(testWaitPeriod.toSeconds()));
     }
 
     @Test
@@ -106,7 +108,7 @@ public class TailSamplerAggregateActionTests {
                 .build();
         final int totalEvents = 100;
         int allowedEvents = 0;
-        final AggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
+        final AggregateActionTestUtils.TestAggregateActionInput aggregateActionInput = new AggregateActionTestUtils.TestAggregateActionInput(eventMap);
         for (int i = 0; i < totalEvents; i++) { 
             final String dataValue = UUID.randomUUID().toString();
             testEvent.put(statusKey, errorStatusValue);
@@ -115,13 +117,15 @@ public class TailSamplerAggregateActionTests {
             Event receivedEvent = aggregateActionResponse.getEvent();
             assertThat(receivedEvent, equalTo(null));
         }
+        Instant start = Instant.now();
+        while (!aggregateActionInput.shouldConcludeGroup(Duration.ofSeconds(1))) {
+            Thread.sleep(1000);
+        }
         AggregateActionOutput actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
         List<Event> result = actionOutput.getEvents();
-        assertTrue(result.isEmpty());
-        Thread.sleep(2 * testWaitPeriod.toMillis());
-        actionOutput = tailSamplerAggregateAction.concludeGroup(aggregateActionInput);
         result = actionOutput.getEvents();
         assertThat(result, not(equalTo(null)));
         assertThat(result.size(), equalTo(totalEvents));
+        assertThat(Duration.between(start, Instant.now()).toSeconds(), greaterThanOrEqualTo(testWaitPeriod.toSeconds()));
     }
 }
