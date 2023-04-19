@@ -46,7 +46,7 @@ class S3SourceConfigTest {
     @Test
     void end_to_end_acknowledgements_set_to_true_test() throws Exception {
         final S3SourceConfig s3SourceConfig = new S3SourceConfig();
-        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"acknowledgements", true);
+        ReflectivelySetField.setField(S3SourceConfig.class,s3SourceConfig,"acknowledgments", true);
         assertTrue(s3SourceConfig.getAcknowledgements());
     }
 
