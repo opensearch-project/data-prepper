@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.source.otellogs;
+package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import io.grpc.Context;
 import io.grpc.Status;

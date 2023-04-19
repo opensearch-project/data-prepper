@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package com.amazon.dataprepper.plugins.source.otellogs;
+package org.opensearch.dataprepper.plugins.source.otellogs;
 
-import com.amazon.dataprepper.plugins.health.HealthGrpcService;
-import com.amazon.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
+import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -85,9 +85,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
-import static com.amazon.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
