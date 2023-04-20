@@ -91,7 +91,7 @@ public class ConnectionConfiguration {
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
   public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
   public static final String PROXY = "proxy";
-  public static final String AWS_SERVERLESS = "aws_serverless";
+  public static final String SERVERLESS = "serverless";
 
   /**
    * The valid port range per https://tools.ietf.org/html/rfc6335.
@@ -112,7 +112,7 @@ public class ConnectionConfiguration {
   private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
   private final String pipelineName;
-  private final boolean awsServerless;
+  private final boolean serverless;
 
   List<String> getHosts() {
     return hosts;
@@ -154,8 +154,8 @@ public class ConnectionConfiguration {
     return connectTimeout;
   }
 
-  boolean isAwsServerless() {
-    return awsServerless;
+  boolean isServerless() {
+    return serverless;
   }
 
   private ConnectionConfiguration(final Builder builder) {
@@ -171,7 +171,7 @@ public class ConnectionConfiguration {
     this.awsStsRoleArn = builder.awsStsRoleArn;
     this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
-    this.awsServerless = builder.awsServerless;
+    this.serverless = builder.serverless;
     this.pipelineName = builder.pipelineName;
   }
 
@@ -206,7 +206,9 @@ public class ConnectionConfiguration {
         builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
         builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
         builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
-        builder.withAwsServerless((Boolean)awsOption.getOrDefault(AWS_SERVERLESS.substring(4), false));
+        builder.withServerless((Boolean)awsOption.getOrDefault(SERVERLESS, false));
+    } else {
+      builder.withServerless(false);
     }
     boolean awsSigv4 = pluginSetting.getBooleanOrDefault(AWS_SIGV4, false);
     final String awsOptionConflictMessage = String.format("%s option cannot be used along with %s option", AWS_SIGV4, AWS_OPTION);
@@ -218,7 +220,6 @@ public class ConnectionConfiguration {
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
       builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
       builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
-      builder.withAwsServerless(pluginSetting.getBooleanOrDefault(AWS_SERVERLESS, false));
     }
 
     final String certPath = pluginSetting.getStringOrDefault(CERT_PATH, null);
@@ -416,7 +417,7 @@ public class ConnectionConfiguration {
       } else {
         credentialsProvider = DefaultCredentialsProvider.create();
       }
-      final String serviceName = awsServerless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
+      final String serviceName = serverless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
       return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).getHostName(),
               serviceName, Region.of(awsRegion),
               AwsSdk2TransportOptions.builder()
@@ -495,8 +496,7 @@ public class ConnectionConfiguration {
     private Map<String, String> awsStsHeaderOverrides;
     private Optional<String> proxy = Optional.empty();
     private String pipelineName;
-
-    private boolean awsServerless;
+    private boolean serverless;
 
     private void validateStsRoleArn(final String awsStsRoleArn) {
       final Arn arn = getArn(awsStsRoleArn);
@@ -595,8 +595,8 @@ public class ConnectionConfiguration {
       return this;
     }
 
-    public Builder withAwsServerless(boolean awsServerless) {
-      this.awsServerless = awsServerless;
+    public Builder withServerless(boolean serverless) {
+      this.serverless = serverless;
       return this;
     }
 
