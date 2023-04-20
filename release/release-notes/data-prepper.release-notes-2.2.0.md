@@ -6,13 +6,13 @@
 * Support End-to-End Acknowledgments for S3 source ([#2394](https://github.com/opensearch-project/data-prepper/pull/2394), [#2426](https://github.com/opensearch-project/data-prepper/pull/2426), [#2436](https://github.com/opensearch-project/data-prepper/pull/2436), [#2458](https://github.com/opensearch-project/data-prepper/pull/2458), [#2465](https://github.com/opensearch-project/data-prepper/pull/2465))
 * Support S3 DLQ for OpenSearch sink ([#2298](https://github.com/opensearch-project/data-prepper/pull/2298))
 * Support Amazon Opensearch Serverless Sink ([#2169](https://github.com/opensearch-project/data-prepper/pull/2169))
-* Support S3 select in S3 source ([#1971](https://github.com/opensearch-project/data-prepper/pull/1971))
-* Support new list_to_map processor ([#2410](https://github.com/opensearch-project/data-prepper/pull/2410))
-* Support Snappy compression in S3 source ([#2420](https://github.com/opensearch-project/data-prepper/pull/2420))
+* Support S3 Select in `s3` source ([#1971](https://github.com/opensearch-project/data-prepper/pull/1971))
+* Support new `list_to_map` processor ([#2410](https://github.com/opensearch-project/data-prepper/pull/2410))
+* Support Snappy compression in `s3` source ([#2420](https://github.com/opensearch-project/data-prepper/pull/2420))
 * Add append aggregation action for aggregate processor ([#2230](https://github.com/opensearch-project/data-prepper/pull/2230))
+* Support built-in grok patterns for common use-cases ([#2514](https://github.com/opensearch-project/data-prepper/issues/2514))
 
 ### Enhancements
-* Support built-in grok patterns for common use cases ([#2514](https://github.com/opensearch-project/data-prepper/issues/2514))
 * Improve logging by adding error details to logs ([#2391](https://github.com/opensearch-project/data-prepper/issues/2391), [#2417](https://github.com/opensearch-project/data-prepper/issues/2417), [#2555](https://github.com/opensearch-project/data-prepper/issues/2555), [#2448](https://github.com/opensearch-project/data-prepper/issues/2448), [#2438](https://github.com/opensearch-project/data-prepper/issues/2438))
 * Add EventFactory framework to create events ([#2378](https://github.com/opensearch-project/data-prepper/issues/2378), [#2399](https://github.com/opensearch-project/data-prepper/issues/2399) [#2426](https://github.com/opensearch-project/data-prepper/issues/2426))
 * Support routes as an alias to route component ([#2550](https://github.com/opensearch-project/data-prepper/issues/2550))
@@ -25,6 +25,7 @@
 * Allow deprecated name for plugins ([#2504](https://github.com/opensearch-project/data-prepper/issues/2504))
 * Make shutdown behaviour configurable ([#2524](https://github.com/opensearch-project/data-prepper/issues/2524))
 * Add support for document_root_key to configure the key to write to OpenSearch ([#2511](https://github.com/opensearch-project/data-prepper/issues/2511))
+* Support format option in `add_entries` processor  ([#2464](https://github.com/opensearch-project/data-prepper/issues/2464))
 * Support isolated service map extraction in service-map ([#628](https://github.com/opensearch-project/data-prepper/issues/628))
 
 ### Bug Fixes
