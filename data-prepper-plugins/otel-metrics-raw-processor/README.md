@@ -2,6 +2,8 @@
 
 This is a processor that serializes a collection of `ExportMetricsServiceRequest` sent from [otel-metrics-source](../dataPrepper-plugins/otel-metrics-source) into a collection of string records.
 
+> Note: `otel_metrics_raw_processor` processor has been renamed to `otel_metrics`. You can use either name for now but the support for `otel_metrics_raw_processor` will be removed in major version 3.0.
+
 ## Usages
 Example `.yaml` configuration
 ```
