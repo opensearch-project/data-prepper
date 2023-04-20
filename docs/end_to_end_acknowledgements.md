@@ -1,36 +1,36 @@
 
 ## End-to-end Acknowledgements
-The Data Prepper framework offers a reliable way for sources to ensure the durability and reliability of data by tracking its delivery to sinks through end-to-end acknowledgements. If the pipeline has multiple sinks, including other pipeline sinks, the event level acknowledgements are sent only after the event is sent to all final sinks. The framework enables a source to create an acknowledgement set to monitor a batch of events and receive a positive acknowledgement when those events are successfully pushed to the sinks or negative acknowledgement when any one of the events could not be pushed to the sinks for any reason. In the event of a failure or crash of any component of the Data Prepper, if it is unable to send an event, the source will not receive an acknowledgement. In this case, the source will time out and can take necessary actions like retrying or logging the failure.
+The Data Prepper framework offers a reliable way for sources to ensure the durability and reliability of data by tracking its delivery to sinks through end-to-end acknowledgments. If the pipeline has multiple sinks, including other pipeline sinks, the event level acknowledgments are sent only after the event is sent to all final sinks. The framework enables a source to create an acknowledgment set to monitor a batch of events and receive a positive acknowledgment when those events are successfully pushed to the sinks or negative acknowledgment when any one of the events could not be pushed to the sinks for any reason. In the event of a failure or crash of any component of the Data Prepper, if it is unable to send an event, the source will not receive an acknowledgment. In this case, the source will time out and can take necessary actions like retrying or logging the failure.
 
 ### Limitations
-The end-to-end acknowledgement framework loses track of events sent to a different DataPrepper instance running on a different node, making it unsuitable for use when [PeerForwarder](https://github.com/opensearch-project/data-prepper/tree/main/docs/peer_forwarder.md) is used.
-As of DataPrepper version 2.2, only S3 Source and OpenSearch Sink support end-to-end acknowledgements. End-to-end acknowledgements can be enabled for S3 source using `acknowledgements: true` config option.
+The end-to-end acknowledgment framework loses track of events sent to a different DataPrepper instance running on a different node, making it unsuitable for use when [PeerForwarder](https://github.com/opensearch-project/data-prepper/tree/main/docs/peer_forwarder.md) is used.
+As of DataPrepper version 2.2, only S3 Source and OpenSearch Sink support end-to-end acknowledgments. End-to-end acknowledgments can be enabled for S3 source using `acknowledgments: true` config option.
 
-The following sections explain how to add end-to-end acknowledgements support to either new or other existing sources and sinks.
+The following sections explain how to add end-to-end acknowledgments support to either new or other existing sources and sinks.
 
-### How to enable end-to-end acknowledgements for a source
-1. Source plugin should create an acknowledgement set. An example way of creating an acknowledgement set is
+### How to enable end-to-end acknowledgments for a source
+1. Source plugin should create an acknowledgment set. An example way of creating an acknowledgment set is
    ```
-   AcknowledgementSet acknowledgementSet = AcknowledgementSetManager.create((result)-> {
+   AcknowledgementSet acknowledgmentSet = AcknowledgementSetManager.create((result)-> {
     // callback function code
-    if (result) { // positive acknowledgement
+    if (result) { // positive acknowledgment
        // do something
     } else {
        // do something else
     }, Duration.ofSeconds(timeout)); 
-    // callback function is called after acknowledgements from all the events added to the acknowledgementSet are received
-    // timeout - max wait time for receiving acknowledgements
+    // callback function is called after acknowledgments from all the events added to the acknowledgmentSet are received
+    // timeout - max wait time for receiving acknowledgments
    ```
 
-2. Source should then add the events created to this `acknowledgementSet`.
-An example way of adding events to the `acknowledgementSet` is
+2. Source should then add the events created to this `acknowledgmentSet`.
+An example way of adding events to the `acknowledgmentSet` is
     ```
     for (Record record: records) {
-        acknowledgementSet.add((Event)record.getData());
+        acknowledgmentSet.add((Event)record.getData());
     }
     ```
 
-### How to add support for end-to-end acknowledgements in a sink
+### How to add support for end-to-end acknowledgments in a sink
 After successfully sending the events to the external sink, the DataPrepper sink plugin should just issue release on each of the event's handle. An example code is
     ```
     public void output(final Collection<Record<Event>> records) {
@@ -38,7 +38,7 @@ After successfully sending the events to the external sink, the DataPrepper sink
         result = sendToSink();
 
         EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
-        // a result value of "false" would send negative acknowledgement
+        // a result value of "false" would send negative acknowledgment
         eventHandle.release(result); 
     }
     ```
@@ -53,7 +53,7 @@ If the sink supports DLQ, then the example code is
         }
             
         EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
-        // a result value of "false" would send negative acknowledgement
+        // a result value of "false" would send negative acknowledgment
         eventHandle.release(status); 
     }
     ```
