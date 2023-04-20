@@ -15,7 +15,7 @@ configurations.all {
 group 'org.opensearch.dataprepper.test.performance'
 
 repositories {
-    mavenCentral()
+    maven { url 'https://repo1.maven.org/maven2/' }
 }
 
 dependencies {

@@ -9,7 +9,7 @@ buildscript {
     }
 
     repositories {
-        mavenCentral()
+        maven { url 'https://repo1.maven.org/maven2/' }
         gradlePluginPortal()
     }
 
@@ -27,10 +27,6 @@ buildscript {
 
 plugins {
     id 'java'
-}
-
-repositories {
-    mavenCentral()
 }
 
 dependencies {
