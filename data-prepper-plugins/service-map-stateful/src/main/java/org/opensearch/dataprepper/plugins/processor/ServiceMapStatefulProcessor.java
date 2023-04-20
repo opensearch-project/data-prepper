@@ -40,7 +40,7 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SingleThread
-@DataPrepperPlugin(name = "service_map_stateful", pluginType = Processor.class)
+@DataPrepperPlugin(name = "service_map", deprecatedName = "service_map_stateful", pluginType = Processor.class)
 public class ServiceMapStatefulProcessor extends AbstractProcessor<Record<Event>, Record<Event>> implements RequiresPeerForwarding {
 
     static final String SPANS_DB_SIZE = "spansDbSize";

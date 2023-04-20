@@ -33,7 +33,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 
-@DataPrepperPlugin(name = "otel_metrics_raw_processor", pluginType = Processor.class, pluginConfigurationType = OtelMetricsRawProcessorConfig.class)
+@DataPrepperPlugin(name = "otel_metrics", deprecatedName = "otel_metrics_raw_processor", pluginType = Processor.class, pluginConfigurationType = OtelMetricsRawProcessorConfig.class)
 public class OTelMetricsRawProcessor extends AbstractProcessor<Record<ExportMetricsServiceRequest>, Record<? extends Metric>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsRawProcessor.class);
