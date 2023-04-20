@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.configuration;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -37,6 +38,7 @@ public class PipelineModel {
     private final PluginModel buffer;
 
     @JsonProperty("route")
+    @JsonAlias("routes")
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private final List<ConditionalRoute> routes;
 
@@ -66,7 +68,7 @@ public class PipelineModel {
             @JsonProperty("source") final PluginModel source,
             @JsonProperty("buffer") final PluginModel buffer,
             @JsonProperty("processor") final List<PluginModel> processors,
-            @JsonProperty("route") final List<ConditionalRoute> routes,
+            @JsonProperty("route")@JsonAlias("routes") final List<ConditionalRoute> routes,
             @JsonProperty("sink") final List<SinkModel> sinks,
             @JsonProperty("workers") final Integer workers,
             @JsonProperty("delay") final Integer delay) {
