@@ -52,7 +52,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration.AWS_SERVERLESS;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration.SERVERLESS;
 
 @ExtendWith(MockitoExtension.class)
 class ConnectionConfigurationTests {
@@ -88,24 +88,13 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testReadConnectionConfigurationAwsServerlessDefault() {
-        final Map<String, Object> configMetadata = generateConfigurationMetadata(
-                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
-        configMetadata.put(AWS_SERVERLESS, true);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
-        final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertTrue(connectionConfiguration.isAwsServerless());
-    }
-
-    @Test
     void testReadConnectionConfigurationAwsOptionServerlessDefault() {
         final String testArn = TEST_ROLE;
         final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, TEST_CERT_PATH, false, Collections.emptyMap());
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertTrue(connectionConfiguration.isAwsServerless());
+        assertTrue(connectionConfiguration.isServerless());
     }
 
     @Test
@@ -138,7 +127,7 @@ class ConnectionConfigurationTests {
     void testCreateOpenSearchClientAwsServerlessDefault() throws IOException {
         final Map<String, Object> configMetadata = generateConfigurationMetadata(
                 TEST_HOSTS, null, null, null, null, true, null, null, null, false);
-        configMetadata.put(AWS_SERVERLESS, true);
+        configMetadata.put(SERVERLESS, true);
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
