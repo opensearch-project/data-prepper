@@ -11,7 +11,7 @@ service-map-pipeline:
     pipeline:
       name: "entry-pipeline"
   processor:
-    - service_map_stateful:
+    - service_map:
         window_duration: 8
   sink:
     - opensearch:
