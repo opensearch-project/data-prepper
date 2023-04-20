@@ -92,7 +92,7 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testPutAndGet_withMultLevelKeyTwice() {
+    public void testPutAndGet_withMultiLevelKeyTwice() {
         final String key = "foo/bar";
         final UUID value = UUID.randomUUID();
 
@@ -113,7 +113,7 @@ public class JacksonEventTest {
     }
 
     @Test
-    public void testPutAndGet_withMultLevelKeyWithADash() {
+    public void testPutAndGet_withMultiLevelKeyWithADash() {
         final String key = "foo/bar-bar";
         final UUID value = UUID.randomUUID();
 
@@ -196,6 +196,41 @@ public class JacksonEventTest {
         final String key = "foo/bar";
 
         UUID result = event.get(key, UUID.class);
+
+        assertThat(result, is(nullValue()));
+    }
+
+    @Test
+    public void testGetToJsonString_nestedObject() {
+        final String key = "foo/bar";
+        final String nestedValue = UUID.randomUUID().toString();
+        final TestObject value = new TestObject(nestedValue);
+
+        event.put(key, value);
+        final String actualNestedValue = event.getAsJsonString(key);
+
+        assertThat(actualNestedValue, is(equalTo(String.format("{\"field1\":\"%s\"}", nestedValue))));
+    }
+
+    @Test
+    public void testGetToJsonString_randomKeys() {
+        final String key = "aRandomKey" + UUID.randomUUID();
+        final UUID value = UUID.randomUUID();
+
+        event.put(key, value);
+        final String result = event.getAsJsonString(key);
+
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(String.format("\"%s\"", value))));
+    }
+
+    @Test
+    public void testGetToJsonString_keysThatDoNotExist() {
+        final String key = "aRandomKey" + UUID.randomUUID();
+        final UUID value = UUID.randomUUID();
+
+        event.put("staticKey", value);
+        final String result = event.getAsJsonString(key);
 
         assertThat(result, is(nullValue()));
     }

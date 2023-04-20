@@ -165,6 +165,31 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 
 - `trace_analytics_service_map`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
 
+- `document_root_key`: The key in the event that will be used as the root in the document. The default is the root of the event. If the key does not exist the entire event is written as the document. If the value at the `document_root_key` is a basic type (ie String, int, etc), the document will have a structure of `{"data": <value of the document_root_key>}`. For example, If we have the following sample event: 
+
+```
+{
+    status: 200,
+    message: null,
+    metadata: {
+        sourceIp: "123.212.49.58",
+        destinationIp: "79.54.67.231",
+        bytes: 3545,
+        duration: "15 ms"
+    }
+}
+```
+With the `document_root_key` set to `status`. The document structure would be `{"data": 200}`. Alternatively if, the `document_root_key` was provided as `metadata`. The document written to OpenSearch would be:
+
+```
+{
+    sourceIp: "123.212.49.58"
+    destinationIp: "79.54.67.231"
+    bytes: 3545,
+    duration: "15 ms"
+}
+```
+
 ### <a name="aws_configuration">AWS Configuration</a>
 
 * `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
