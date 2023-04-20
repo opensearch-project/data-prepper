@@ -29,6 +29,7 @@ import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -95,8 +96,10 @@ public class SqsWorker implements Runnable {
             int messagesProcessed = 0;
             try {
                 messagesProcessed = processSqsMessages();
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 LOG.error("Unable to process SQS messages. Processing error due to: {}", e.getMessage());
+                // There shouldn't be any exceptions caught here, but added backoff just to control the amount of logging in case of an exception is thrown.
+                applyBackoff();
             }
 
             if (messagesProcessed > 0 && s3SourceConfig.getSqsOptions().getPollDelay().toMillis() > 0) {
@@ -134,7 +137,7 @@ public class SqsWorker implements Runnable {
             final List<Message> messages = sqsClient.receiveMessage(receiveMessageRequest).messages();
             failedAttemptCount = 0;
             return messages;
-        } catch (final SqsException e) {
+        } catch (final SqsException | StsException e) {
             LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
             applyBackoff();
             return Collections.emptyList();
@@ -145,7 +148,7 @@ public class SqsWorker implements Runnable {
         final long delayMillis = standardBackoff.nextDelayMillis(++failedAttemptCount);
         if (delayMillis < 0) {
             Thread.currentThread().interrupt();
-            throw new SqsRetriesExhaustedException("SQS retries exhausted. Make sure that SQS configuration is valid and queue exists.");
+            throw new SqsRetriesExhaustedException("SQS retries exhausted. Make sure that SQS configuration is valid, SQS queue exists, and IAM role has required permissions.");
         }
         try {
             Thread.sleep(delayMillis);
