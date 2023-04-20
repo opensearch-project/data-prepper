@@ -5,25 +5,30 @@
 
 package org.opensearch.dataprepper.plugins.processor.grok;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorTests.buildRecordWithEvent;
 
@@ -350,7 +355,7 @@ public class GrokProcessorIT {
 
     @Test
     public void testPatternsDirWithDefaultPatternsFilesGlob() throws JsonProcessingException {
-        final String patternDirectory = "./src/test/resources/patterns";
+        final String patternDirectory = "./src/test/resources/test_patterns";
 
         final List<String> patternsDirectories = new ArrayList<>();
         patternsDirectories.add(patternDirectory);
@@ -383,7 +388,7 @@ public class GrokProcessorIT {
 
     @Test
     public void testPatternsDirWithCustomPatternsFilesGlob() throws JsonProcessingException {
-        final String patternDirectory = "./src/test/resources/patterns";
+        final String patternDirectory = "./src/test/resources/test_patterns";
 
         final List<String> patternsDirectories = new ArrayList<>();
         patternsDirectories.add(patternDirectory);
@@ -462,11 +467,68 @@ public class GrokProcessorIT {
         assertThrows(IllegalArgumentException.class, () -> new GrokProcessor(pluginSetting));
     }
 
+    @ParameterizedTest
+    @MethodSource("getGrokPatternInputAndOutput")
+    void testDataPrepperBuiltInGrokPatterns(final String matchPattern, final String logInput, final String expectedGrokResultJson) throws JsonProcessingException {
+        final Map<String, List<String>> matchConfig = new HashMap<>();
+        matchConfig.put("message", Collections.singletonList(matchPattern));
+
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        grokProcessor = new GrokProcessor(pluginSetting);
+
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", logInput);
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        final Map<String, Object> expectedGrokResult = OBJECT_MAPPER.readValue(expectedGrokResultJson, MAP_TYPE_REFERENCE);
+        expectedGrokResult.put("message", logInput);
+
+
+        final Record<Event> resultRecord = buildRecordWithEvent(expectedGrokResult);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
+    }
+
     private void assertRecordsAreEqual(final Record<Event> first, final Record<Event> second) throws JsonProcessingException {
         final Map<String, Object> recordMapFirst = OBJECT_MAPPER.readValue(first.getData().toJsonString(), MAP_TYPE_REFERENCE);
         final Map<String, Object> recordMapSecond = OBJECT_MAPPER.readValue(second.getData().toJsonString(), MAP_TYPE_REFERENCE);
 
-        assertThat(recordMapFirst, equalTo(recordMapSecond));
+        for (final Map.Entry<String, Object> entry : recordMapSecond.entrySet()) {
+            assertThat(recordMapFirst, hasEntry(entry.getKey(), entry.getValue()));
+        }
     }
 
+    private static Stream<Arguments> getGrokPatternInputAndOutput() {
+        return Stream.of(
+                Arguments.of("%{VPC_FLOW_LOG}",
+                        "2 123456789010 eni-1235b8ca123456789 203.0.113.12 172.31.16.139 0 0 1 4 336 1432917027 1432917142 ACCEPT OK",
+                        "{\"srcaddr\":\"203.0.113.12\",\"dstport\":0,\"account-id\":\"123456789010\",\"start\":1432917027,\"dstaddr\":\"172.31.16.139\",\"version\":\"2\",\"packets\":4,\"protocol\":1,\"bytes\":336,\"srcport\":0,\"action\":\"ACCEPT\",\"end\":1432917142,\"log-status\":\"OK\",\"interface-id\":\"eni-1235b8ca123456789\"}"
+                ),
+                Arguments.of("%{VPC_FLOW_LOG}",
+                        "2 123456789010 eni-1235b8ca123456789 - - - - - - - 1431280876 1431280934 - NODATA",
+                        "{\"srcaddr\":\"-\",\"account-id\":\"123456789010\",\"start\":1431280876,\"action\":\"-\",\"dstaddr\":\"-\",\"end\":1431280934,\"log-status\":\"NODATA\",\"version\":\"2\",\"interface-id\":\"eni-1235b8ca123456789\"}"
+                ),
+                Arguments.of("%{ALB_ACCESS_LOG}",
+                        "https 2017-11-20T22:05:36 long-bill-lb 77.222.19.149:41148 10.168.203.134:23662 0.000201 0.401924 0.772005 500 200 262 455 \"GET https://elmagek.no-ip.org:443/json/v1/collector/histogram/100105037?startTimestamp=1405571270000&endTimestamp=1405574870000&bucketCount=60&_=1405574870206 HTTP/1.1\" \"Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.5; en-US; rv:1.9.0.4) Gecko/2008102920 Firefox/3.0.4\" DH-RSA-AES256-GCM-SHA384 TLSv1.2 arn:aws:elasticloadbalancing:us-west-2:104030218370:targetgroup/Prod-frontend/92e3199b1rc814fe9 \"Root=1-58337364-23a8c76965a2ef7629b185e134\" \"my-domain\" \"my-chosen-cert-arn\" 1000 2018-11-20T22:05:36 \"my-action\" \"my-redirect-url\" \"my-error-reason\" \"target:port1 target:port2\" \"target1 target2\" \"class\" \"reason\"",
+                        "{\"sent_bytes\":455,\"request_processing_time\":\"0.000201\",\"ssl_protocol\":\"TLSv1.2\",\"actions_executed\":\"my-action\",\"trace_id\":\"Root=1-58337364-23a8c76965a2ef7629b185e134\",\"elb\":\"long-bill-lb\",\"received_bytes\":262,\"domain\":\"elmagek.no-ip.org\",\"response_processing_time\":\"0.772005\",\"domain_name\":\"my-domain\",\"classification_reason\":\"reason\",\"ssl_cipher\":\"DH-RSA-AES256-GCM-SHA384\",\"redirect_url\":\"my-redirect-url\",\"target_processing_time\":\"0.401924\",\"target_group_arn\":\"arn:aws:elasticloadbalancing:us-west-2:104030218370:targetgroup/Prod-frontend/92e3199b1rc814fe9\",\"user_agent\":\"Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.5; en-US; rv:1.9.0.4) Gecko/2008102920 Firefox/3.0.4\",\"target_status_code\":\"200\",\"http_method\":\"GET\",\"matched_rule_priority\":1000,\"http_version\":\"HTTP/1.1\",\"http_port\":\"443\",\"client\":\"77.222.19.149:41148\",\"error_reason\":\"my-error-reason\",\"target_list\":\"target:port1 target:port2\",\"target\":\"10.168.203.134:23662\",\"classification\":\"class\",\"time\":\"2017-11-20T22:05:36\",\"type\":\"https\",\"request_uri\":\"/json/v1/collector/histogram/100105037?startTimestamp=1405571270000&endTimestamp=1405574870000&bucketCount=60&_=1405574870206\",\"request_creation_time\":\"2018-11-20T22:05:36\",\"target_status_code_list\":\"target1 target2\",\"protocol\":\"https\",\"elb_status_code\":\"500\",\"chosen_cert_arn\":\"my-chosen-cert-arn\"}"
+                ),
+                Arguments.of("%{ALB_ACCESS_LOG_GENERAL_URI}",
+                        "https 2017-11-20T22:05:36 long-bill-lb 77.222.19.149:41148 10.168.203.134:23662 0.000201 0.401924 0.772005 500 200 262 455 \"GET https://elmagek.no-ip.org:443/json/v1/collector/histogram/100105037?startTimestamp=1405571270000&endTimestamp=1405574870000&bucketCount=60&_=1405574870206 HTTP/1.1\" \"Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.5; en-US; rv:1.9.0.4) Gecko/2008102920 Firefox/3.0.4\" DH-RSA-AES256-GCM-SHA384 TLSv1.2 arn:aws:elasticloadbalancing:us-west-2:104030218370:targetgroup/Prod-frontend/92e3199b1rc814fe9 \"Root=1-58337364-23a8c76965a2ef7629b185e134\" \"my-domain\" \"my-chosen-cert-arn\" 1000 2018-11-20T22:05:36 \"my-action\" \"my-redirect-url\" \"my-error-reason\" \"target:port1 target:port2\" \"target1 target2\" \"class\" \"reason\"",
+                        "{\"request_processing_time\":\"0.000201\",\"ssl_protocol\":\"TLSv1.2\",\"actions_executed\":\"my-action\",\"trace_id\":\"Root=1-58337364-23a8c76965a2ef7629b185e134\",\"elb\":\"long-bill-lb\",\"received_bytes\":262,\"response_processing_time\":\"0.772005\",\"domain_name\":\"my-domain\",\"classification_reason\":\"reason\",\"ssl_cipher\":\"DH-RSA-AES256-GCM-SHA384\",\"redirect_url\":\"my-redirect-url\",\"target_processing_time\":\"0.401924\",\"target_group_arn\":\"arn:aws:elasticloadbalancing:us-west-2:104030218370:targetgroup/Prod-frontend/92e3199b1rc814fe9\",\"user_agent\":\"Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.5; en-US; rv:1.9.0.4) Gecko/2008102920 Firefox/3.0.4\",\"target_status_code\":\"200\",\"http_method\":\"GET\",\"matched_rule_priority\":1000,\"http_version\":\"HTTP/1.1\",\"http_uri\":\"https://elmagek.no-ip.org:443/json/v1/collector/histogram/100105037?startTimestamp=1405571270000&endTimestamp=1405574870000&bucketCount=60&_=1405574870206\",\"client\":\"77.222.19.149:41148\",\"error_reason\":\"my-error-reason\",\"target_list\":\"target:port1 target:port2\",\"target\":\"10.168.203.134:23662\",\"classification\":\"class\",\"time\":\"2017-11-20T22:05:36\",\"type\":\"https\",\"request_creation_time\":\"2018-11-20T22:05:36\",\"target_status_code_list\":\"target1 target2\",\"elb_status_code\":\"500\",\"chosen_cert_arn\":\"my-chosen-cert-arn\",\"sent_bytes\":455}"
+                ),
+                Arguments.of("%{S3_ACCESS_LOG}",
+                        "79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be DOC-EXAMPLE-BUCKET1 [06/Feb/2019:00:00:38 +0000] 192.0.2.3 79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be 3E57427F3EXAMPLE REST.GET.VERSIONING - \"GET /DOC-EXAMPLE-BUCKET1?versioning HTTP/1.1\" 200 - 113 - 7 - \"-\" \"S3Console/0.4\" - s9lzHYrFp76ZVxRcpX9+5cjAnEH2ROuNkd2BHfIa6UkFVdtjf5mKR3/eTPFvsiP/XV/VLi31234= SigV4 ECDHE-RSA-AES128-GCM-SHA256 AuthHeader DOC-EXAMPLE-BUCKET1.s3.us-west-1.amazonaws.com TLSV1.2 arn:aws:s3:us-west-1:123456789012:accesspoint/example-AP Yes",
+                        "{\"httpversion\":\"1.1\",\"request\":\"/DOC-EXAMPLE-BUCKET1?versioning\",\"timestamp\":\"06/Feb/2019:00:00:38 +0000\",\"requester\":\"79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be\",\"agent\":\"S3Console/0.4\",\"key\":\"-\",\"clientip\":\"192.0.2.3\",\"response\":200,\"operation\":\"REST.GET.VERSIONING\",\"verb\":\"GET\",\"request_id\":\"3E57427F3EXAMPLE\",\"bucket\":\"DOC-EXAMPLE-BUCKET1\",\"owner\":\"79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be\",\"referrer\":\"-\",\"bytes_sent\":113,\"request_time_ms\":7}"
+                ),
+                Arguments.of("%{ELB_ACCESS_LOG}",
+                        "2020-06-14T17:26:04.805368Z my-clb-1 170.01.01.02:39492 172.31.25.183:5000 0.000032 0.001861 0.000017 200 200 0 13 \"GET http://my-clb-1-1798137604.us-east-2.elb.amazonaws.com:80/ HTTP/1.1\" \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.129 Safari/537.36\" - -",
+                        "{\"backendport\":5000,\"received_bytes\":0,\"request\":\"http://my-clb-1-1798137604.us-east-2.elb.amazonaws.com:80/\",\"backend_response\":200,\"verb\":\"GET\",\"clientport\":39492,\"request_processing_time\":3.2E-5,\"urihost\":\"my-clb-1-1798137604.us-east-2.elb.amazonaws.com:80\",\"response_processing_time\":1.7E-5,\"path\":\"/\",\"port\":\"80\",\"response\":200,\"bytes\":13,\"clientip\":\"170.01.01.02\",\"proto\":\"http\",\"elb\":\"my-clb-1\",\"httpversion\":\"1.1\",\"backendip\":\"172.31.25.183\",\"backend_processing_time\":0.001861,\"timestamp\":\"2020-06-14T17:26:04.805368Z\"}"
+                )
+        );
+    }
 }
