@@ -31,9 +31,9 @@ public interface AggregateActionInput {
     /**
      * Sets custom shouldConclude function
      *
-     * @param function doing custom check
+     * @param customShouldConclude function doing custom check
      * @since 2.2
      */
-    default void setCustomShouldConclude(Function<Duration, Boolean> check) {
+    default void setCustomShouldConclude(Function<Duration, Boolean> customShouldConclude) {
     }
 }
