@@ -299,6 +299,9 @@ public class SqsWorker implements Runnable {
             final int failedMessageCount = deleteMessageBatchRequestEntryCollection.size();
             sqsMessagesDeleteFailedCounter.increment(failedMessageCount);
             LOG.error("Failed to delete {} messages from SQS due to {}.", failedMessageCount, e.getMessage());
+            if(e instanceof StsException) {
+                applyBackoff();
+            }
         }
     }
 
