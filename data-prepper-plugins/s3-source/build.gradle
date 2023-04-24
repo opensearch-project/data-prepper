@@ -32,8 +32,9 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:csv-processor')
-	testImplementation project(':data-prepper-plugins:parse-json-processor')
-	testImplementation project(':data-prepper-plugins:newline-codecs')
+    testImplementation project(':data-prepper-plugins:parse-json-processor')
+    testImplementation project(':data-prepper-plugins:newline-codecs')
+    testImplementation project(':data-prepper-plugins:avro-codecs')
 }
 
 test {
