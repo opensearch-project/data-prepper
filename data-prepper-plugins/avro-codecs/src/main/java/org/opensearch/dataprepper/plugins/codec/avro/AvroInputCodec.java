@@ -5,8 +5,11 @@
 package org.opensearch.dataprepper.plugins.codec.avro;
 
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericFixed;
 
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.util.Utf8;
@@ -80,6 +83,9 @@ public class AvroInputCodec implements InputCodec {
             if(rawValue instanceof Utf8){
                 byte[] utf8Bytes = rawValue.toString().getBytes("UTF-8");
                 return new String(utf8Bytes, "UTF-8");
+            }
+            else if(rawValue instanceof GenericEnumSymbol || rawValue instanceof GenericData.EnumSymbol || rawValue instanceof GenericFixed || rawValue instanceof GenericRecord){
+                throw new Exception("The Avro codec does not support this data type presently");
             }
             return rawValue;
         }
