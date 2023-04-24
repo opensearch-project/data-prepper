@@ -39,11 +39,20 @@ public class PeerForwarderCodecAppConfig {
     }
 
     @Bean
-    public ObjectInputFilter objectInputFilter() {
+    public ObjectInputFilter objectInputFilter(final PeerForwarderConfiguration peerForwarderConfiguration) {
         final String baseModelPackage = "org.opensearch.dataprepper.model";
 
+        Integer maxArrayLength = peerForwarderConfiguration.getForwardingBatchSize();
+        if(maxArrayLength == null) {
+            maxArrayLength = PeerForwarderConfiguration.MAX_FORWARDING_BATCH_SIZE;
+        } else if(maxArrayLength < 10) {
+            maxArrayLength = 10;
+        }
+
         final String pattern =
-                "java.lang.Object;" +
+                "maxarray=" + maxArrayLength + ";" +
+                        "maxdepth=10;" +
+                        "java.lang.Object;" +
                         "java.util.Collections*;" +
                         "java.util.ArrayList*;" +
                         "java.util.LinkedList*;" +
