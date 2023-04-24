@@ -2,11 +2,13 @@
 
 This is a special processor that consumes Opentelemetry traces, stores them in a MapDB data store and evaluate relationships at fixed ```window_duration```.
 
+> Note: `service_map_stateful` processor has been renamed to `service_map`. You can use either name for now but the support for `service_map_stateful` will be removed in major version 3.0.
+
 # Usages
 Example `.yaml` configuration:
 ```
 processor:
-    service-map-stateful:
+    service_map_stateful:
 ```
 
 ## Configurations

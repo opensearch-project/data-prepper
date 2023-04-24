@@ -40,14 +40,33 @@ class DefaultAcknowledgementSetTests {
     private Boolean acknowledgementSetResult;
     private final Duration TEST_TIMEOUT = Duration.ofMillis(5000);
     private AtomicBoolean callbackInterrupted;
+    @Mock
+    private DefaultAcknowledgementSetMetrics metrics;
+    private int invalidAcquiresCounter;
+    private int invalidReleasesCounter;
     
+    private void setupMetrics() {
+        metrics = mock(DefaultAcknowledgementSetMetrics.class);
+        lenient().doAnswer(a -> {
+            String metricName = a.getArgument(0);
+            if (metricName == DefaultAcknowledgementSetMetrics.INVALID_ACQUIRES_METRIC_NAME) {
+                invalidAcquiresCounter++;
+            } else if (metricName == DefaultAcknowledgementSetMetrics.INVALID_RELEASES_METRIC_NAME) {
+                invalidReleasesCounter++;
+            }
+            return null;
+        }).when(metrics).increment(any(String.class));
+    }
+
     private DefaultAcknowledgementSet createObjectUnderTest() {
+        setupMetrics();
         return new DefaultAcknowledgementSet(executor, (flag) ->
-                {}, TEST_TIMEOUT);
+                {}, TEST_TIMEOUT, metrics);
     }
 
     private DefaultAcknowledgementSet createObjectUnderTestWithCallback(Consumer<Boolean> callback) {
-        return new DefaultAcknowledgementSet(executor, callback, TEST_TIMEOUT);
+        setupMetrics();
+        return new DefaultAcknowledgementSet(executor, callback, TEST_TIMEOUT, metrics);
     }
 
     @BeforeEach
@@ -95,7 +114,7 @@ class DefaultAcknowledgementSetTests {
         DefaultAcknowledgementSet secondAcknowledgementSet = createObjectUnderTest();
         DefaultEventHandle handle2 = new DefaultEventHandle(secondAcknowledgementSet);
         defaultAcknowledgementSet.acquire(handle2);
-        assertThat(defaultAcknowledgementSet.getNumInvalidAcquires(), equalTo(1));
+        assertThat(invalidAcquiresCounter, equalTo(1));
     }
 
     @Test
@@ -104,7 +123,7 @@ class DefaultAcknowledgementSetTests {
         DefaultAcknowledgementSet secondAcknowledgementSet = createObjectUnderTest();
         DefaultEventHandle handle2 = new DefaultEventHandle(secondAcknowledgementSet);
         assertThat(defaultAcknowledgementSet.release(handle2, true), equalTo(false));
-        assertThat(defaultAcknowledgementSet.getNumInvalidReleases(), equalTo(1));
+        assertThat(invalidReleasesCounter, equalTo(1));
     }
 
     @Test
@@ -114,7 +133,7 @@ class DefaultAcknowledgementSetTests {
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(false));
-        assertThat(defaultAcknowledgementSet.getNumInvalidReleases(), equalTo(1));
+        assertThat(invalidReleasesCounter, equalTo(1));
     }
 
     @Test
