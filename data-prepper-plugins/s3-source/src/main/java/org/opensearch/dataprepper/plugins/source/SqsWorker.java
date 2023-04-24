@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
@@ -256,6 +257,10 @@ public class SqsWorker implements Runnable {
                     Instant.now()
             ));
             return Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
+        } catch (final S3Exception | StsException e) {
+            LOG.error("Error processing from S3: {}. Retrying with exponential backoff.", e.getMessage());
+            applyBackoff();
+            return Optional.empty();
         } catch (final Exception e) {
             return Optional.empty();
         }
@@ -291,6 +296,9 @@ public class SqsWorker implements Runnable {
             final int failedMessageCount = deleteMessageBatchRequestEntryCollection.size();
             sqsMessagesDeleteFailedCounter.increment(failedMessageCount);
             LOG.error("Failed to delete {} messages from SQS due to {}.", failedMessageCount, e.getMessage());
+            if(e instanceof StsException) {
+                applyBackoff();
+            }
         }
     }
 
