@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import software.amazon.awssdk.services.s3.model.CompressionType;
 
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
@@ -34,6 +35,7 @@ public class S3Source implements Source<Record<Event>> {
     private final PluginMetrics pluginMetrics;
     private final S3SourceConfig s3SourceConfig;
     private SqsService sqsService;
+    private S3ScanService s3ScanService;
     private final PluginFactory pluginFactory;
     private final Optional<S3ScanScanOptions> s3ScanScanOptional;
     private final AcknowledgementSetManager acknowledgementSetManager;
@@ -60,10 +62,8 @@ public class S3Source implements Source<Record<Event>> {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
-
         final ConfigBucketOwnerProviderFactory configBucketOwnerProviderFactory = new ConfigBucketOwnerProviderFactory();
         final BucketOwnerProvider bucketOwnerProvider = configBucketOwnerProviderFactory.createBucketOwnerProvider(s3SourceConfig);
-
         Optional<S3SelectOptions> s3SelectOptional = Optional.ofNullable(s3SourceConfig.getS3SelectOptions());
         S3ObjectPluginMetrics s3ObjectPluginMetrics = new S3ObjectPluginMetrics(pluginMetrics);
 
@@ -82,6 +82,7 @@ public class S3Source implements Source<Record<Event>> {
                     .serializationFormatOption(s3SelectOptional.get().getS3SelectSerializationFormatOption())
                     .s3AsyncClient(s3ClientBuilderFactory.getS3AsyncClient())
                     .eventConsumer(eventMetadataModifier)
+                    .bucketOwnerProvider(bucketOwnerProvider)
                     .s3SelectCSVOption(csvOption)
                     .s3SelectJsonOption(jsonOption)
                     .expressionType(s3SelectOptional.get().getExpressionType())
@@ -101,14 +102,13 @@ public class S3Source implements Source<Record<Event>> {
                     .build();
             s3Handler = new S3ObjectWorker(s3ObjectRequest);
         }
-        final S3Service s3Service = new S3Service(s3Handler);
-        sqsService = new SqsService(acknowledgementSetManager, s3SourceConfig, s3Service, pluginMetrics);
-
-        sqsService.start();
-        final S3ScanService s3ScanService;
+        if(Objects.nonNull(s3SourceConfig.getSqsOptions())) {
+            final S3Service s3Service = new S3Service(s3Handler);
+            sqsService = new SqsService(acknowledgementSetManager, s3SourceConfig, s3Service, pluginMetrics);
+            sqsService.start();
+        }
         if(s3ScanScanOptional.isPresent()) {
-            s3ScanService = new S3ScanService(s3SourceConfig,buffer,bucketOwnerProvider,new EventMetadataModifier(
-                    s3SourceConfig.getMetadataRootKey()),s3ObjectPluginMetrics,pluginFactory,s3ClientBuilderFactory);
+            s3ScanService = new S3ScanService(s3SourceConfig,s3ClientBuilderFactory,s3Handler);
             s3ScanService.start();
         }
     }

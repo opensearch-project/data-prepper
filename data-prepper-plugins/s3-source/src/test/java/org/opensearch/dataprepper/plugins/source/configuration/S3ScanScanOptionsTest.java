@@ -4,27 +4,48 @@
  */
 package org.opensearch.dataprepper.plugins.source.configuration;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.Test;
-import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.util.Arrays;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class S3ScanScanOptionsTest {
 
-    @Test
-    public void s3ScanScanOptionsTest() throws NoSuchFieldException, IllegalAccessException {
-        final List<S3ScanBucketOptions> s3ScanBucketOptions = Arrays.asList(new S3ScanBucketOptions());
-        S3ScanScanOptions s3ScanScanOptions = new S3ScanScanOptions();
-        ReflectivelySetField.setField(S3ScanScanOptions.class,s3ScanScanOptions,"startTime","2023-03-07T10:00:00");
-        ReflectivelySetField.setField(S3ScanScanOptions.class,s3ScanScanOptions,"range","2d");
-        ReflectivelySetField.setField(S3ScanScanOptions.class,s3ScanScanOptions,"buckets",s3ScanBucketOptions);
+    private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
-        assertThat(s3ScanScanOptions.getStartTime(),notNullValue());
-        assertThat(s3ScanScanOptions.getRange(),notNullValue());
-        assertThat(s3ScanScanOptions.getBuckets(),notNullValue());
+    @Test
+    public void s3scan_options_test_with_scan_yaml_configuration_test() throws JsonProcessingException {
+        final String scanYaml = "        start_time: 2023-01-21T18:00:00\n" +
+                "        range: P90DT3H4M\n" +
+                "        end_time: 2023-04-21T18:00:00\n" +
+                "        buckets:\n" +
+                "          - bucket:\n" +
+                "              name: test-s3-source-test-output\n" +
+                "              key_path:\n" +
+                "                include:\n" +
+                "                  - bucket2\n" +
+                "                exclude:\n" +
+                "                  - .jpeg";
+        final S3ScanScanOptions s3ScanScanOptions = objectMapper.readValue(scanYaml, S3ScanScanOptions.class);
+        assertThat(s3ScanScanOptions.getStartTime(),equalTo(LocalDateTime.parse("2023-01-21T18:00:00")));
+        assertThat(s3ScanScanOptions.getEndTime(),equalTo(LocalDateTime.parse("2023-04-21T18:00:00")));
+        assertThat(s3ScanScanOptions.getRange(),equalTo(Duration.parse("P90DT3H4M")));
+        assertThat(s3ScanScanOptions.getBuckets(),instanceOf(List.class));
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getName(),equalTo("test-s3-source-test-output"));
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getKeyPath().getS3ScanExcludeOptions(),instanceOf(List.class));
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getKeyPath().getS3scanIncludeOptions(),instanceOf(List.class));
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getKeyPath().getS3scanIncludeOptions().get(0),
+                equalTo("bucket2"));
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getKeyPath().getS3ScanExcludeOptions().get(0),
+                equalTo(".jpeg"));
     }
 }

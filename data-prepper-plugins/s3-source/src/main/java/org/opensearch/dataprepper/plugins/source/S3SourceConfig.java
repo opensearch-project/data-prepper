@@ -26,7 +26,6 @@ public class S3SourceConfig {
     static final String DEFAULT_METADATA_ROOT_KEY = "s3/";
 
     @JsonProperty("notification_type")
-    @NotNull
     private NotificationTypeOption notificationType;
 
     @JsonProperty("compression")
@@ -36,7 +35,6 @@ public class S3SourceConfig {
     private PluginModel codec;
 
     @JsonProperty("sqs")
-    @NotNull
     private SqsOptions sqsOptions;
 
     @JsonProperty("aws")

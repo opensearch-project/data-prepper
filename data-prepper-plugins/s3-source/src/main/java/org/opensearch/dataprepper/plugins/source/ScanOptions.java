@@ -4,68 +4,43 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
-import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
-import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
-import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import software.amazon.awssdk.services.s3.model.CompressionType;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 /**
  * Class consists the scan related properties.
  */
 public class ScanOptions {
-    private String startDate;
-    private String range;
+    private LocalDateTime startDateTime;
+    private Duration range;
     private String bucket;
     private String expression;
     private S3SelectSerializationFormatOption serializationFormatOption;
-    private List<String> keys;
-    private InputCodec codec;
     private CompressionOption compressionOption;
 
     private CompressionType compressionType;
 
-    private S3SelectCSVOption s3SelectCSVOption;
+    private List<String> includeKeyPaths;
 
-    private S3SelectJsonOption s3SelectJsonOption;
+    private List<String> excludeKeyPaths;
 
-    private String expressionType;
+    private LocalDateTime endDateTime;
 
-    public String getExpressionType() {
-        return expressionType;
-    }
-
-    public ScanOptions setExpressionType(String expressionType) {
-        this.expressionType = expressionType;
+    public ScanOptions setStartDateTime(LocalDateTime startDateTime) {
+        this.startDateTime = startDateTime;
         return this;
     }
 
-    public S3SelectCSVOption getS3SelectCSVOption() {
-        return s3SelectCSVOption;
-    }
-
-    public ScanOptions setS3SelectCSVOption(S3SelectCSVOption s3SelectCSVOption) {
-        this.s3SelectCSVOption = s3SelectCSVOption;
+    public ScanOptions setEndDateTime(LocalDateTime endDateTime) {
+        this.endDateTime = endDateTime;
         return this;
     }
 
-    public S3SelectJsonOption getS3SelectJsonOption() {
-        return s3SelectJsonOption;
-    }
-
-    public ScanOptions setS3SelectJsonOption(S3SelectJsonOption s3SelectJsonOption) {
-        this.s3SelectJsonOption = s3SelectJsonOption;
-        return this;
-    }
-
-    public ScanOptions setStartDate(String startDate) {
-        this.startDate = startDate;
-        return this;
-    }
-
-    public ScanOptions setRange(String range) {
+    public ScanOptions setRange(Duration range) {
         this.range = range;
         return this;
     }
@@ -85,13 +60,13 @@ public class ScanOptions {
         return this;
     }
 
-    public ScanOptions setKeys(List<String> keys) {
-        this.keys = keys;
+    public ScanOptions setIncludeKeyPaths(List<String> includeKeyPaths) {
+        this.includeKeyPaths = includeKeyPaths;
         return this;
     }
 
-    public ScanOptions setCodec(InputCodec codec) {
-        this.codec = codec;
+    public ScanOptions setExcludeKeyPaths(List<String> excludeKeyPaths) {
+        this.excludeKeyPaths = excludeKeyPaths;
         return this;
     }
 
@@ -105,11 +80,15 @@ public class ScanOptions {
         return this;
     }
 
-    public String getStartDate() {
-        return startDate;
+    public LocalDateTime getStartDateTime() {
+        return startDateTime;
     }
 
-    public String getRange() {
+    public LocalDateTime getEndDateTime() {
+        return endDateTime;
+    }
+
+    public Duration getRange() {
         return range;
     }
 
@@ -125,19 +104,19 @@ public class ScanOptions {
         return serializationFormatOption;
     }
 
-    public List<String> getKeys() {
-        return keys;
-    }
-
-    public InputCodec getCodec() {
-        return codec;
-    }
-
     public CompressionOption getCompressionOption() {
         return compressionOption;
     }
 
     public CompressionType getCompressionType() {
         return compressionType;
+    }
+
+    public List<String> getIncludeKeyPaths() {
+        return includeKeyPaths;
+    }
+
+    public List<String> getExcludeKeyPaths() {
+        return excludeKeyPaths;
     }
 }

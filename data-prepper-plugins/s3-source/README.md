@@ -2,6 +2,7 @@
 
 This source allows Data Prepper to use S3 as a source. It uses SQS for notifications
 of which S3 objects are new and loads those new objects to parse out events.
+It supports scan pipeline to slurp the data from s3 buckets and loads those new objects to parse out events.
 
 ## Basic Usage
 
@@ -69,23 +70,18 @@ source-pipeline:
         region: "us-east-1"
         sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
       scan:
-        start_time: 2023-03-25T10:00:00
-        range: 1d
+        start_time: 2023-01-21T18:00:00
+        range: P90DT3H4M
+        end_time: 2023-04-21T18:00:00
         buckets:
           - bucket:
               name: my-bucket-1
-              codec:
-                csv:
               key_path:
-                - my/prefix/a
-                - my/prefix/b
-          - bucket:
-              name: my-bucket-2
-              s3_select:
-                expression: "select * from s3object s LIMIT 10000"
-                input_serialization: parquet
-              key_path:
-                - my/prefix/a
+                include:
+                  - bucket2/
+                exclude:
+                  - .jpeg
+                  - .png
 ```
 
 ## Configuration Options
@@ -116,19 +112,25 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `bucket_name` : Provide S3 bucket name.
 
-* `key_prefixes` : Provide Key Names.
+* `key_path` : Provide include and exclude the list items.
 
-* `start_time` : Provide the start time to slurp the data example : `2023-01-23T10:00:00`.
+* `include` : Provide the list of key path.
 
-* `range` : Provide the duration to scan the data example : `day` , `week` , `month` , `year`.
+* `exclude` : Provide the extension type of exclude files. 
 
-* `notification_type` : Must be `sqs`.
+* `start_time` (Optional) : Provide the start time to slurp the data example : `2023-01-23T10:00:00`.
+
+* `end_time` (Optional) : Provide the end time to slurp the data example : `2023-01-23T10:00:00`.
+
+* `range` (Optional) : Provide the duration to scan the data example : `day` , `week` , `month` , `year`.
+
+* `notification_type` (Optional) : Must be `sqs`.
 
 * `compression` (Optional) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
 
 * `codec` (Required) : The codec to apply. Must be either `newline`, `csv` or `json`.
 
-* `sqs` (Required) : The SQS configuration. See [SQS Configuration](#sqs_configuration) for details.
+* `sqs` (Optional) : The SQS configuration. See [SQS Configuration](#sqs_configuration) for details.
 
 * `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details.
 

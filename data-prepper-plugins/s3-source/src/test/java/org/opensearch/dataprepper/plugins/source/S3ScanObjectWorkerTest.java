@@ -8,17 +8,16 @@ package org.opensearch.dataprepper.plugins.source;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -26,6 +25,10 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Object;
+import software.amazon.awssdk.services.s3.model.SelectObjectContentRequest;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -33,16 +36,20 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
-import java.util.function.BiConsumer;
+import java.util.concurrent.CompletableFuture;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,17 +57,11 @@ class S3ScanObjectWorkerTest {
     @Mock
     private Buffer<Record<Event>> buffer;
     @Mock
-    private int numberOfRecordsToAccumulate;
-    @Mock
     private Duration bufferTimeout;
-    @Mock
-    private BiConsumer<Event, S3ObjectReference> eventMetadataModifier;
     @Mock
     private BucketOwnerProvider bucketOwnerProvider;
     @Mock
     private S3Client s3Client;
-    @Mock
-    private S3AsyncClient s3AsyncClient;
     @Mock
     private Counter s3ObjectsFailedCounter;
     @Mock
@@ -84,25 +85,51 @@ class S3ScanObjectWorkerTest {
     private long objectSize;
     private int recordsToAccumulate;
     @Mock
-    private InputCodec codec;
-    @Mock
     private CompressionEngine compressionEngine;
 
-    ScanObjectWorker createScanWorker(final ScanOptions scanOptionsBuilder) throws IOException {
+    @Mock
+    private ListObjectsV2Response listObjectsV2Response;
+
+    @Mock
+    private S3ObjectRequest s3ObjectRequest;
+
+    @Mock
+    private S3SelectResponseHandlerFactory responseHandlerFactory;
+
+    @Mock
+    private S3SelectResponseHandler selectResponseHandler;
+
+    @Mock
+    private S3AsyncClient s3AsyncClient;
+
+    @Mock
+    private S3ObjectHandler s3ObjectHandler;
+
+    ScanObjectWorker createScanWorker(final ScanOptions scanOptions,
+                                      final String scanObjectName,
+                                      final S3ObjectHandler s3ObjectHandlerForCheck) throws IOException {
         Random random = new Random();
         recordsToAccumulate = random.nextInt(10) + 2;
         objectSize = random.nextInt(100_000) + 10_000;
         objectInputStream = mock(ResponseInputStream.class);
         getObjectResponse = mock(GetObjectResponse.class);
+        s3Client = mock(S3Client.class);
         lenient().when(objectInputStream.response()).thenReturn(getObjectResponse);
         lenient().when(getObjectResponse.contentLength()).thenReturn(objectSize);
-        lenient().when(getObjectResponse.lastModified()).thenReturn(LocalDateTime.of(2023,03,06,10,10).atZone(ZoneId.systemDefault()).toInstant());
-        s3Client = mock(S3Client.class);
+        lenient().when(getObjectResponse.lastModified()).thenReturn(LocalDateTime.of(2023, 03, 06, 10, 10).atZone(ZoneId.systemDefault()).toInstant());
+        listObjectsV2Response = mock(ListObjectsV2Response.class);
+        S3Object s3Object = mock(S3Object.class);
+        when(s3Object.key()).thenReturn(scanObjectName);
+        when(listObjectsV2Response.contents()).thenReturn(Arrays.asList(s3Object));
+        when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(listObjectsV2Response);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenReturn(objectInputStream);
         s3ObjectsFailedCounter = mock(Counter.class);
         s3ObjectsSucceededCounter = mock(Counter.class);
         s3ObjectReadTimer = mock(Timer.class);
+        compressionEngine = mock(CompressionEngine.class);
+        bucketOwnerProvider = mock(BucketOwnerProvider.class);
+        s3ObjectRequest = mock(S3ObjectRequest.class);
         S3ObjectPluginMetrics s3PluginMetrics = mock(S3ObjectPluginMetrics.class);
         when(s3PluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
         when(s3PluginMetrics.getS3ObjectsFailedNotFoundCounter()).thenReturn(s3ObjectsFailedNotFoundCounter);
@@ -113,76 +140,237 @@ class S3ScanObjectWorkerTest {
         when(s3PluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(s3ObjectSizeProcessedSummary);
         when(s3PluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3PluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
-
-        compressionEngine = mock(CompressionEngine.class);
+        when(s3ObjectRequest.getS3ObjectPluginMetrics()).thenReturn(s3PluginMetrics);
+        when(bucketOwnerProvider.getBucketOwner("my-bucket-1")).thenReturn(Optional.of("my-bucket-1"));
+        when(s3ObjectRequest.getBucketOwnerProvider()).thenReturn(bucketOwnerProvider);
         lenient().when(compressionEngine.createInputStream("file1.csv", objectInputStream)).thenReturn(objectInputStream);
-        bucketOwnerProvider = mock(BucketOwnerProvider.class);
-        S3ObjectRequest s3ObjectRequest = new S3ObjectRequest.Builder(buffer,numberOfRecordsToAccumulate,bufferTimeout,s3PluginMetrics)
-                .bucketOwnerProvider(bucketOwnerProvider)
-                .s3AsyncClient(s3AsyncClient).s3Client(s3Client)
-                .eventConsumer(eventMetadataModifier).build();
-        return new ScanObjectWorker(s3ObjectRequest,Arrays.asList(scanOptionsBuilder));
+        if (s3ObjectHandlerForCheck instanceof S3ObjectWorker)
+            s3ObjectHandler = new S3ObjectWorker(s3ObjectRequest);
+        else if (s3ObjectHandlerForCheck instanceof S3SelectObjectWorker) {
+            selectResponseHandler = mock(S3SelectResponseHandler.class);
+            s3AsyncClient = mock(S3AsyncClient.class);
+            S3SelectCSVOption s3SelectCSVOption = mock(S3SelectCSVOption.class);
+            responseHandlerFactory = mock(S3SelectResponseHandlerFactory.class);
+            given(s3ObjectRequest.getS3AsyncClient()).willReturn(s3AsyncClient);
+            when(s3SelectCSVOption.getFileHeaderInfo()).thenReturn("csv");
+            when(s3ObjectRequest.getS3SelectCSVOption()).thenReturn(s3SelectCSVOption);
+            when(s3ObjectRequest.getSerializationFormatOption()).thenReturn(S3SelectSerializationFormatOption.CSV);
+            given(s3ObjectRequest.getS3SelectResponseHandlerFactory()).willReturn(responseHandlerFactory);
+            given(responseHandlerFactory.provideS3SelectResponseHandler()).willReturn(selectResponseHandler);
+            final CompletableFuture<Void> selectObjectResponseFuture = mock(CompletableFuture.class);
+            given(selectObjectResponseFuture.join()).willReturn(mock(Void.class));
+            given(s3AsyncClient.selectObjectContent(any(SelectObjectContentRequest.class),
+                    eq(selectResponseHandler))).willReturn(selectObjectResponseFuture);
+            s3ObjectHandler = new S3SelectObjectWorker(s3ObjectRequest);
+        }
+
+        return new ScanObjectWorker(s3Client, Arrays.asList(scanOptions), s3ObjectHandler);
     }
-    @ParameterizedTest
-    @CsvSource({"1w","2d","3m","1y"})
-    void fileScanBucketWithS3ObjectVerifyingRangeInYears(final String range) throws IOException{
-        final String startDateTime= "2023-03-07T10:00:00";
-        final String bucketName = "my-bucket-2";
-        final List<String> keyPathList = Arrays.asList("sample.csv");
-        final ScanOptions scanOptionsBuilder = new ScanOptions().setStartDate(startDateTime).setRange(range)
-                .setBucket(bucketName).setExpression(null).setSerializationFormatOption(null).setKeys(keyPathList)
-                .setCodec(codec).setCompressionOption(CompressionOption.NONE);
+
+    @Test
+    void s3_scan_bucket_with_s3Object_verify_start_time_and_range_combination() throws IOException {
+        final String scanObjectName = "sample.csv";
+        final ScanOptions scanOptions = new ScanOptions()
+                .setStartDateTime(LocalDateTime.parse("2023-03-06T00:00:00"))
+                .setRange(Duration.parse("P2DT1H"))
+                .setBucket("my-bucket-1")
+                .setIncludeKeyPaths(List.of(scanObjectName))
+                .setExcludeKeyPaths(List.of(".json"))
+                .setCompressionOption(CompressionOption.NONE);
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
                     .thenReturn(bufferAccumulator);
-            final ScanObjectWorker scanWorker = createScanWorker(scanOptionsBuilder);
+            final ScanObjectWorker scanWorker = createScanWorker(scanOptions, scanObjectName, mock(S3ObjectWorker.class));
+            scanWorker.run();
+        }
+        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
+
+        verify(s3ObjectsSucceededCounter).increment();
+        final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        assertThat(actualGetObjectRequest, notNullValue());
+        assertThat(actualGetObjectRequest.bucket(), equalTo("my-bucket-1"));
+        assertThat(actualGetObjectRequest.key(), equalTo(scanObjectName));
+
+    }
+
+    @Test
+    void s3_scan_bucket_with_s3Object_verify_start_time_and_end_time_combination() throws IOException {
+        final String scanObjectName = "sample1.csv";
+        final ScanOptions scanOptions = new ScanOptions()
+                .setStartDateTime(LocalDateTime.parse("2023-03-06T00:00:00"))
+                .setEndDateTime(LocalDateTime.parse("2023-04-09T00:00:00"))
+                .setBucket("my-bucket-1")
+                .setIncludeKeyPaths(List.of(scanObjectName))
+                .setExcludeKeyPaths(List.of(".json"))
+                .setCompressionOption(CompressionOption.NONE);
+        final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
+                    .thenReturn(bufferAccumulator);
+            final ScanObjectWorker scanWorker = createScanWorker(scanOptions, scanObjectName, mock(S3ObjectWorker.class));
+            scanWorker.run();
+        }
+        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
+
+        verify(s3ObjectsSucceededCounter).increment();
+        final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        assertThat(actualGetObjectRequest, notNullValue());
+        assertThat(actualGetObjectRequest.bucket(), equalTo("my-bucket-1"));
+        assertThat(actualGetObjectRequest.key(), equalTo(scanObjectName));
+    }
+
+    @Test
+    void s3_scan_bucket_with_s3Object_verify_end_time_and_range_combination() throws IOException {
+        final String scanObjectName = "test.csv";
+        final ScanOptions scanOptions = new ScanOptions()
+                .setEndDateTime(LocalDateTime.parse("2023-03-09T00:00:00"))
+                .setRange(Duration.parse("P10DT2H"))
+                .setBucket("my-bucket-1")
+                .setIncludeKeyPaths(List.of(scanObjectName))
+                .setExcludeKeyPaths(List.of(".json"))
+                .setCompressionOption(CompressionOption.NONE);
+        final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
+                    .thenReturn(bufferAccumulator);
+            final ScanObjectWorker scanWorker = createScanWorker(scanOptions, scanObjectName, mock(S3ObjectWorker.class));
+            scanWorker.run();
+        }
+        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
+
+        verify(s3ObjectsSucceededCounter).increment();
+        final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        assertThat(actualGetObjectRequest, notNullValue());
+        assertThat(actualGetObjectRequest.bucket(), equalTo("my-bucket-1"));
+        assertThat(actualGetObjectRequest.key(), equalTo(scanObjectName));
+    }
+
+    @Test
+    void s3_scan_bucket_with_s3Object_skip_processed_key() throws IOException {
+        final String scanObjectName = "test.csv";
+        final ScanOptions scanOptions = new ScanOptions()
+                .setEndDateTime(LocalDateTime.parse("2023-03-09T00:00:00"))
+                .setRange(Duration.parse("P10DT2H"))
+                .setBucket("my-bucket-1")
+                .setIncludeKeyPaths(List.of(scanObjectName))
+                .setExcludeKeyPaths(List.of(".json"))
+                .setCompressionOption(CompressionOption.NONE);
+        final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
+                    .thenReturn(bufferAccumulator);
+            final ScanObjectWorker scanWorker = createScanWorker(scanOptions, scanObjectName, mock(S3ObjectWorker.class));
+            scanWorker.run();
+        }
+        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
+
+        verify(s3ObjectsSucceededCounter, times(0)).increment();
+        final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        assertThat(actualGetObjectRequest, notNullValue());
+        assertThat(actualGetObjectRequest.bucket(), equalTo("my-bucket-1"));
+        assertThat(actualGetObjectRequest.key(), equalTo(scanObjectName));
+    }
+
+    @Test
+    void s3_scan_bucket_with_s3_select_verify_end_time_and_range_combination() throws IOException {
+        final String startDateTime = "2023-03-07T10:00:00";
+        final String bucketName = "my-bucket-1";
+        final List<String> keyPathList = Arrays.asList("file3.csv");
+        final S3SelectSerializationFormatOption s3SelectSerializationFormatOption =
+                S3SelectSerializationFormatOption.valueOf("CSV");
+        final ScanOptions scanOptions = new ScanOptions()
+                .setEndDateTime(LocalDateTime.parse(startDateTime))
+                .setRange(Duration.parse("P10DT2H"))
+                .setBucket(bucketName)
+                .setExpression("select * from s3Object")
+                .setSerializationFormatOption(s3SelectSerializationFormatOption)
+                .setIncludeKeyPaths(keyPathList)
+                .setExcludeKeyPaths(List.of(".txt"))
+                .setCompressionOption(CompressionOption.NONE);
+        final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
+                    .thenReturn(bufferAccumulator);
+            final ScanObjectWorker scanWorker = createScanWorker(scanOptions, keyPathList.get(0), mock(S3SelectObjectWorker.class));
             scanWorker.run();
         }
         final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
         verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
 
         final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        verify(s3ObjectsSucceededCounter).increment();
         assertThat(actualGetObjectRequest, notNullValue());
         assertThat(actualGetObjectRequest.bucket(), equalTo(bucketName));
-        assertThat(actualGetObjectRequest.key(), equalTo("sample.csv"));
+        assertThat(actualGetObjectRequest.key(), equalTo(keyPathList.get(0)));
+
     }
-    @ParameterizedTest
-    @CsvSource({
-            "2d,select count(*) from s3Object s,CSV",
-            "5d,select count(*) from s3Object s,JSON",
-            "20d,select count(*) from s3Object s,PARQUET",
-            "1w,select s._1 from s3Object s,CSV",
-            "2w,select s._4 from s3Object s,JSON",
-            "3w,select s._3 from s3Object s,CSV",
-            "1m,select s._9 from s3Object s,JSON",
-            "2m,select s._9 from s3Object s,PARQUET",
-            "3m,select * from s3Object s,PARQUET",
-            "1y,select *._9 from s3Object s,CSV",
-            "5y,select * from s3Object s,JSON",
-            "3y,select s.* from s3Object s,PARQUET"
-    })
-    void scanBucketWithS3SelectVerifyingRangeInDays(String range,final String queryStatement,final String dataSerializingFormat) throws IOException {
-        final String startDateTime= "2023-03-07T10:00:00";
+
+    @Test
+    void s3_scan_bucket_with_s3_select_verify_start_time_and_range_combination() throws IOException {
+        final String bucketName = "my-bucket-1";
+        final List<String> keyPathList = Arrays.asList("file2.csv");
+        final S3SelectSerializationFormatOption s3SelectSerializationFormatOption =
+                S3SelectSerializationFormatOption.valueOf("CSV");
+        final ScanOptions scanOptions = new ScanOptions()
+                .setStartDateTime(LocalDateTime.parse("2023-03-05T10:00:00"))
+                .setRange(Duration.parse("P10DT2H"))
+                .setBucket(bucketName)
+                .setExpression("select * from s3Object")
+                .setSerializationFormatOption(s3SelectSerializationFormatOption)
+                .setIncludeKeyPaths(keyPathList)
+                .setExcludeKeyPaths(List.of(".txt"))
+                .setCompressionOption(CompressionOption.NONE);
+        final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
+        try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
+            bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
+                    .thenReturn(bufferAccumulator);
+            final ScanObjectWorker scanWorker = createScanWorker(scanOptions, keyPathList.get(0), mock(S3SelectObjectWorker.class));
+            scanWorker.run();
+        }
+        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
+
+        final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        verify(s3ObjectsSucceededCounter).increment();
+        assertThat(actualGetObjectRequest, notNullValue());
+        assertThat(actualGetObjectRequest.bucket(), equalTo(bucketName));
+        assertThat(actualGetObjectRequest.key(), equalTo(keyPathList.get(0)));
+    }
+
+    @Test
+    void s3_scan_bucket_with_s3_select_verify_start_time_and_end_time_combination() throws IOException {
         final String bucketName = "my-bucket-1";
         final List<String> keyPathList = Arrays.asList("file1.csv");
-        final S3SelectSerializationFormatOption s3SelectSerializationFormatOption = S3SelectSerializationFormatOption.valueOf(dataSerializingFormat);
-        final ScanOptions scanOptionsBuilder = new ScanOptions().setStartDate(startDateTime)
-                .setRange(range).setBucket(bucketName).setExpression(queryStatement)
-                .setSerializationFormatOption(s3SelectSerializationFormatOption).setKeys(keyPathList).setCodec(null).setCompressionOption(CompressionOption.NONE);
+        final S3SelectSerializationFormatOption s3SelectSerializationFormatOption =
+                S3SelectSerializationFormatOption.valueOf("CSV");
+        final ScanOptions scanOptions = new ScanOptions()
+                .setStartDateTime(LocalDateTime.parse("2023-03-05T10:00:00"))
+                .setEndDateTime(LocalDateTime.parse("2023-04-09T00:00:00"))
+                .setBucket(bucketName)
+                .setExpression("select * from s3Object")
+                .setSerializationFormatOption(s3SelectSerializationFormatOption)
+                .setIncludeKeyPaths(keyPathList)
+                .setExcludeKeyPaths(List.of(".txt"))
+                .setCompressionOption(CompressionOption.NONE);
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
                     .thenReturn(bufferAccumulator);
-            final ScanObjectWorker scanWorker = createScanWorker(scanOptionsBuilder);
+            final ScanObjectWorker scanWorker = createScanWorker(scanOptions, keyPathList.get(0), mock(S3SelectObjectWorker.class));
             scanWorker.run();
         }
         final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
         verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
 
         final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        verify(s3ObjectsSucceededCounter).increment();
         assertThat(actualGetObjectRequest, notNullValue());
         assertThat(actualGetObjectRequest.bucket(), equalTo(bucketName));
-        assertThat(actualGetObjectRequest.key(), equalTo("file1.csv"));
+        assertThat(actualGetObjectRequest.key(), equalTo(keyPathList.get(0)));
     }
 }

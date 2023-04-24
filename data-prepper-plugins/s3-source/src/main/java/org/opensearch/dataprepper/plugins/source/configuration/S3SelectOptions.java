@@ -31,10 +31,10 @@ public class S3SelectOptions {
 	private String compressionType = DEFAULT_COMPRESSION_TYPE;
 
 	@JsonProperty("csv")
-	private S3SelectCSVOption s3SelectCSVOption;
+	private S3SelectCSVOption s3SelectCSVOption = new S3SelectCSVOption();
 
 	@JsonProperty("json")
-	private S3SelectJsonOption s3SelectJsonOption;
+	private S3SelectJsonOption s3SelectJsonOption = new S3SelectJsonOption();
 
 	public String getExpression() {
 		return expression;
