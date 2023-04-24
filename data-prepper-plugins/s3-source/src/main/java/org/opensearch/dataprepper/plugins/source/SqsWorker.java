@@ -150,6 +150,9 @@ public class SqsWorker implements Runnable {
             Thread.currentThread().interrupt();
             throw new SqsRetriesExhaustedException("SQS retries exhausted. Make sure that SQS configuration is valid, SQS queue exists, and IAM role has required permissions.");
         }
+        final Duration delayDuration = Duration.ofMillis(delayMillis);
+        LOG.info("Pausing SQS processing for {}.{} seconds due to an error in processing.",
+                delayDuration.getSeconds(), delayDuration.toMillisPart());
         try {
             Thread.sleep(delayMillis);
         } catch (final InterruptedException e){
