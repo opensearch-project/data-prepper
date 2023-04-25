@@ -118,9 +118,9 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `exclude` : Provide the extension type of exclude files. 
 
-* `start_time` (Optional) : Provide the start time to slurp the data example : `2023-01-23T10:00:00`.
+* `start_time` (Optional) : Provide the start time to slurp the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
 
-* `end_time` (Optional) : Provide the end time to slurp the data example : `2023-01-23T10:00:00`.
+* `end_time` (Optional) : Provide the end time to slurp the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
 
 * `range` (Optional) : Provide the duration to scan the data example : `day` , `week` , `month` , `year`.
 
