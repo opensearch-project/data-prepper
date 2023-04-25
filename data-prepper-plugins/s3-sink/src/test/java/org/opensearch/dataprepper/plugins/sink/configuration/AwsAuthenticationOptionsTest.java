@@ -5,39 +5,25 @@
 
 package org.opensearch.dataprepper.plugins.sink.configuration;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
-import java.lang.reflect.Field;
-import java.util.Collections;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Consumer;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.MockedStatic;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.StsClientBuilder;
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 class AwsAuthenticationOptionsTest {
 
     private AwsAuthenticationOptions awsAuthenticationOptions;
+    private final String TEST_ROLE = "arn:aws:iam::123456789012:role/test-role";
 
     @BeforeEach
     void setUp() {
@@ -46,17 +32,36 @@ class AwsAuthenticationOptionsTest {
 
     @Test
     void getAwsRegion_returns_null_when_region_is_null() throws NoSuchFieldException, IllegalAccessException {
-        reflectivelySetField(awsAuthenticationOptions, "awsRegion", null);
+        ReflectivelySetField.setField(AwsAuthenticationOptions.class,awsAuthenticationOptions, "awsRegion", null);
         assertThat(awsAuthenticationOptions.getAwsRegion(), nullValue());
     }
-    private void reflectivelySetField(final AwsAuthenticationOptions awsAuthenticationOptions, final String fieldName,
-            final Object value) throws NoSuchFieldException, IllegalAccessException {
-        final Field field = AwsAuthenticationOptions.class.getDeclaredField(fieldName);
-        try {
-            field.setAccessible(true);
-            field.set(awsAuthenticationOptions, value);
-        } finally {
-            field.setAccessible(false);
+
+    @Test
+    void getAwsRegion_returns_Region_of() throws NoSuchFieldException, IllegalAccessException {
+        final String regionString = UUID.randomUUID().toString();
+        Region expectedRegionObject = mock(Region.class);
+        ReflectivelySetField.setField(AwsAuthenticationOptions.class,awsAuthenticationOptions, "awsRegion", regionString);
+        final Region actualRegion;
+        try(final MockedStatic<Region> regionMockedStatic = mockStatic(Region.class)) {
+            regionMockedStatic.when(() -> Region.of(regionString)).thenReturn(expectedRegionObject);
+            actualRegion = awsAuthenticationOptions.getAwsRegion();
         }
+        assertThat(actualRegion, equalTo(expectedRegionObject));
+    }
+
+    @Test
+    void authenticateAWSConfiguration_should_return_s3Client_without_sts_role_arn() throws NoSuchFieldException, IllegalAccessException {
+
+        ReflectivelySetField.setField(AwsAuthenticationOptions.class,awsAuthenticationOptions, "awsRegion", "us-east-1");
+        ReflectivelySetField.setField(AwsAuthenticationOptions.class,awsAuthenticationOptions, "awsStsRoleArn", null);
+
+        final DefaultCredentialsProvider mockedCredentialsProvider = mock(DefaultCredentialsProvider.class);
+        final AwsCredentialsProvider actualCredentialsProvider;
+        try (final MockedStatic<DefaultCredentialsProvider> defaultCredentialsProviderMockedStatic = mockStatic(DefaultCredentialsProvider.class)) {
+            defaultCredentialsProviderMockedStatic.when(DefaultCredentialsProvider::create)
+                    .thenReturn(mockedCredentialsProvider);
+            actualCredentialsProvider = awsAuthenticationOptions.authenticateAwsConfiguration();
+        }
+        assertThat(actualCredentialsProvider, sameInstance(mockedCredentialsProvider));
     }
 }
