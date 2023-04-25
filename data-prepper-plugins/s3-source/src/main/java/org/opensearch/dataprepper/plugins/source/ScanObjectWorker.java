@@ -16,7 +16,6 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -89,10 +88,9 @@ public class ScanObjectWorker implements Runnable{
                                      final ScanOptions scanOptions){
         final S3ObjectDetails s3ObjDetails = getS3ObjectDetails(s3ObjectReference);
         final boolean isKeyMatchedBetweenTimeRange = isKeyMatchedBetweenTimeRange(s3ObjDetails.getS3ObjectLastModifiedTimestamp(),
-                scanOptions.getRange(),
-                scanOptions.getStartDateTime(),
-                scanOptions.getEndDateTime());
-        if(isKeyMatchedBetweenTimeRange && (isKeyProcessedByS3Scan(s3ObjDetails))){
+                scanOptions.getUseStartDateTime(),
+                scanOptions.getUseEndDateTime());
+        if(isKeyMatchedBetweenTimeRange && (isKeyNotProcessedByS3Scan(s3ObjDetails))){
             updateKeyProcessedByS3Scan(s3ObjDetails);
             try{
                 s3ObjectHandler.parseS3Object(s3ObjectReference,null);
@@ -106,14 +104,14 @@ public class ScanObjectWorker implements Runnable{
      * Method will identify already processed key.
      * @return boolean
      */
-    public boolean isKeyProcessedByS3Scan(final S3ObjectDetails s3ObjectDetails) {
+    private boolean isKeyNotProcessedByS3Scan(final S3ObjectDetails s3ObjectDetails) {
         return stateSaveMap.get(s3ObjectDetails.getBucket()+s3ObjectDetails.getKey()) == null;
     }
 
     /**
      * store the processed bucket key in the map.
      */
-    public void updateKeyProcessedByS3Scan(final S3ObjectDetails s3ObjectDetails) {
+    private void updateKeyProcessedByS3Scan(final S3ObjectDetails s3ObjectDetails) {
         stateSaveMap.put((s3ObjectDetails.getBucket() + s3ObjectDetails.getKey()),s3ObjectDetails);
     }
     private void deleteKeyProcessedByS3Scan(S3ObjectDetails s3ObjDetails) {
@@ -124,7 +122,7 @@ public class ScanObjectWorker implements Runnable{
      * fetch the s3 object last modified time.
      * @return S3ObjectDetails
      */
-    public S3ObjectDetails getS3ObjectDetails(final S3ObjectReference s3ObjectReference){
+    private S3ObjectDetails getS3ObjectDetails(final S3ObjectReference s3ObjectReference){
         GetObjectRequest getObjectRequest = GetObjectRequest.builder().bucket(s3ObjectReference.getBucketName()).key(s3ObjectReference.getKey()).build();
         ResponseInputStream<GetObjectResponse> s3ObjectResp = s3Client.getObject(getObjectRequest);
         final Instant instant = s3ObjectResp.response().lastModified();
@@ -133,43 +131,13 @@ public class ScanObjectWorker implements Runnable{
     }
 
     /**
-     * used for identifying the slurping start date based on the range string.
-     * @return LocalDateTime
-     */
-    public LocalDateTime getSlurpingStartDateByRange(final Duration range,
-                                                     final LocalDateTime endDateTime){
-        return endDateTime.minus(range);
-    }
-
-    public LocalDateTime getSlurpingEndDateByRange(final Duration range,
-                                                     final LocalDateTime startDateTime){
-        return startDateTime.plus(range);
-    }
-
-    /**
      * Used for identifying s3 object last modified time match with slurping date range.
      * @return boolean
      */
-    public boolean isKeyMatchedBetweenTimeRange(final LocalDateTime lastModifiedTime,
-                                                final Duration range,
+    private boolean isKeyMatchedBetweenTimeRange(final LocalDateTime lastModifiedTime,
                                                 final LocalDateTime startDateTime,
                                                 final LocalDateTime endDateTime){
-        if(Objects.nonNull(startDateTime) && Objects.nonNull(range) && Objects.nonNull(endDateTime))
-            scanRangeDateValidationError();
-        else if(Objects.nonNull(startDateTime) && Objects.nonNull(endDateTime))
-            return lastModifiedTime.isAfter(startDateTime) && lastModifiedTime.isBefore(endDateTime);
-        else if (Objects.nonNull(endDateTime) && Objects.nonNull(range))
-            return lastModifiedTime.isAfter(getSlurpingStartDateByRange(range,endDateTime))
-                    && lastModifiedTime.isBefore(endDateTime);
-        else if(Objects.nonNull(startDateTime) && Objects.nonNull(range))
-            return lastModifiedTime.isAfter(startDateTime)
-                    && lastModifiedTime.isBefore(getSlurpingEndDateByRange(range,startDateTime));
-        else
-            scanRangeDateValidationError();
-        return false;
+        return lastModifiedTime.isAfter(startDateTime) && lastModifiedTime.isBefore(endDateTime);
     }
-    private void scanRangeDateValidationError(){
-        throw new IllegalArgumentException("start_date/range,start_date/end_date,end_date/range any two combinations " +
-                "are required to process scan range");
-    }
+
 }

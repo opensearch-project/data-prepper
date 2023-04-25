@@ -73,6 +73,6 @@ public class S3ScanServiceTest {
         assertThat(scanOptionsBuilder.get(0).getIncludeKeyPaths(),sameInstance(includeKeyPathList));
         assertThat(scanOptionsBuilder.get(0).getBucket(),sameInstance(bucketName));
         assertThat(scanOptionsBuilder.get(0).getRange(),equalTo(Duration.parse(range)));
-        assertThat(scanOptionsBuilder.get(0).getStartDateTime(),equalTo(LocalDateTime.parse(startDate)));
+        assertThat(scanOptionsBuilder.get(0).getUseStartDateTime(),equalTo(LocalDateTime.parse(startDate)));
     }
 }

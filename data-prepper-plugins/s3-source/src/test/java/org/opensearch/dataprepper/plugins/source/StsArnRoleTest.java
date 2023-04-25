@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.net.MalformedURLException;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -32,11 +32,18 @@ class StsArnRoleTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "arn:aws:iam::250994255:role/dtest",
-            "arn:aws:iam:::role/dtest",
+            "arn:aws:iam::1:role/dtest",
             "arn:aws:iam::1234567:role/dtest"
     })
     void parse_throws_when_arn_has_invalid_paths(final String arn) {
         assertThrows(IllegalArgumentException.class, () -> StsArnRole.parse(arn));
+    }
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "arn:aws:iam:::role/dtest"
+    })
+    void parse_throws_when_arn_has_empty_accountId_path(final String arn) {
+        assertThrows(NoSuchElementException.class, () -> StsArnRole.parse(arn));
     }
 
     @ParameterizedTest
@@ -53,7 +60,7 @@ class StsArnRoleTest {
     }
 
     @Test
-    void getAccountId_returns_accountId_part() throws MalformedURLException {
+    void getAccountId_returns_accountId_part() {
         final String accountId = randomAccountId();
         final String stsArnString = String.format("arn:aws:iam::%s:role/dtest", accountId);
 

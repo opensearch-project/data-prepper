@@ -59,12 +59,12 @@ public class S3ScanService {
 
     private void buildScanOptions(final List<ScanOptions> scanOptionsList, final S3ScanBucketOptions scanBucketOptions) {
         final S3ScanBucketOption bucket = scanBucketOptions.getS3ScanBucketOption();
-        scanOptionsList.add(new ScanOptions()
+        scanOptionsList.add(new ScanOptions.Builder()
                 .setStartDateTime(startDateTime)
                 .setEndDateTime(endDateTime)
                 .setRange(range)
                 .setBucket(bucket.getName())
                 .setIncludeKeyPaths(bucket.getKeyPath().getS3scanIncludeOptions())
-                .setExcludeKeyPaths(bucket.getKeyPath().getS3ScanExcludeOptions()));
+                .setExcludeKeyPaths(bucket.getKeyPath().getS3ScanExcludeOptions()).build());
     }
 }

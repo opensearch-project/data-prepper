@@ -46,13 +46,7 @@ public class ConfigBucketOwnerProviderFactory {
     }
 
     private String extractStsRoleArnAccountId(final S3SourceConfig s3SourceConfig) {
-        final String stsRoleArn = s3SourceConfig.getAwsAuthenticationOptions().getAwsStsRoleArn();
-        final String accountId;
-        try {
-            accountId = StsArnRole.parse(stsRoleArn).getAccountId();
-        } catch (final MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-        return accountId;
+        return StsArnRole.parse(s3SourceConfig.getAwsAuthenticationOptions().getAwsStsRoleArn())
+                .getAccountId();
     }
 }

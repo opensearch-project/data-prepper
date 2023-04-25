@@ -1,34 +1,29 @@
 package org.opensearch.dataprepper.plugins.source;
 
-import java.net.MalformedURLException;
+import software.amazon.awssdk.arns.Arn;
+
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Optional;
 
 public class StsArnRole {
     private final String accountId;
 
-    private StsArnRole(final String arn) {
-        Pattern pattern = Pattern.compile("arn:aws:iam::(\\d{12}):role/.*");
-        Matcher matcher = pattern.matcher(arn);
-        String accountIdMatcher = null;
-        if (matcher.matches()) {
-            accountIdMatcher = matcher.group(1);
-        }else{
+    private StsArnRole(final String roleArn) {
+        final Arn arnObj = Arn.fromString(roleArn);
+        final Optional<String> accountId = arnObj.accountId();
+        if (accountId.isPresent() && accountId.get().length() != 12)
             throw new IllegalArgumentException("ARN has accountId of invalid length.");
-        }
-        this.accountId = accountIdMatcher;
-        if(Objects.nonNull(accountId) && !accountId.chars().allMatch(Character::isDigit)) {
+        if(!accountId.get().chars().allMatch(Character::isDigit))
             throw new IllegalArgumentException("ARN has accountId with invalid characters.");
-        }
+        this.accountId = accountId.get();
     }
 
     public String getAccountId() {
         return accountId;
     }
 
-    public static StsArnRole parse(final String queueUrl) throws MalformedURLException {
-        Objects.requireNonNull(queueUrl);
-        return new StsArnRole(queueUrl);
+    public static StsArnRole parse(final String roleArn) {
+        Objects.requireNonNull(roleArn);
+        return new StsArnRole(roleArn);
     }
 }

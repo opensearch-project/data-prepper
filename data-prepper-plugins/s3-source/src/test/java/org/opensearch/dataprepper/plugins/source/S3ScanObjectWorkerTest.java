@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
-import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
@@ -170,13 +169,12 @@ class S3ScanObjectWorkerTest {
     @Test
     void s3_scan_bucket_with_s3Object_verify_start_time_and_range_combination() throws IOException {
         final String scanObjectName = "sample.csv";
-        final ScanOptions scanOptions = new ScanOptions()
+        final ScanOptions scanOptions = new ScanOptions.Builder()
                 .setStartDateTime(LocalDateTime.parse("2023-03-06T00:00:00"))
                 .setRange(Duration.parse("P2DT1H"))
                 .setBucket("my-bucket-1")
                 .setIncludeKeyPaths(List.of(scanObjectName))
-                .setExcludeKeyPaths(List.of(".json"))
-                .setCompressionOption(CompressionOption.NONE);
+                .setExcludeKeyPaths(List.of(".json")).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
@@ -198,13 +196,12 @@ class S3ScanObjectWorkerTest {
     @Test
     void s3_scan_bucket_with_s3Object_verify_start_time_and_end_time_combination() throws IOException {
         final String scanObjectName = "sample1.csv";
-        final ScanOptions scanOptions = new ScanOptions()
+        final ScanOptions scanOptions = new ScanOptions.Builder()
                 .setStartDateTime(LocalDateTime.parse("2023-03-06T00:00:00"))
                 .setEndDateTime(LocalDateTime.parse("2023-04-09T00:00:00"))
                 .setBucket("my-bucket-1")
                 .setIncludeKeyPaths(List.of(scanObjectName))
-                .setExcludeKeyPaths(List.of(".json"))
-                .setCompressionOption(CompressionOption.NONE);
+                .setExcludeKeyPaths(List.of(".json")).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
@@ -225,13 +222,12 @@ class S3ScanObjectWorkerTest {
     @Test
     void s3_scan_bucket_with_s3Object_verify_end_time_and_range_combination() throws IOException {
         final String scanObjectName = "test.csv";
-        final ScanOptions scanOptions = new ScanOptions()
+        final ScanOptions scanOptions = new ScanOptions.Builder()
                 .setEndDateTime(LocalDateTime.parse("2023-03-09T00:00:00"))
                 .setRange(Duration.parse("P10DT2H"))
                 .setBucket("my-bucket-1")
                 .setIncludeKeyPaths(List.of(scanObjectName))
-                .setExcludeKeyPaths(List.of(".json"))
-                .setCompressionOption(CompressionOption.NONE);
+                .setExcludeKeyPaths(List.of(".json")).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
@@ -252,13 +248,12 @@ class S3ScanObjectWorkerTest {
     @Test
     void s3_scan_bucket_with_s3Object_skip_processed_key() throws IOException {
         final String scanObjectName = "test.csv";
-        final ScanOptions scanOptions = new ScanOptions()
+        final ScanOptions scanOptions = new ScanOptions.Builder()
                 .setEndDateTime(LocalDateTime.parse("2023-03-09T00:00:00"))
                 .setRange(Duration.parse("P10DT2H"))
                 .setBucket("my-bucket-1")
                 .setIncludeKeyPaths(List.of(scanObjectName))
-                .setExcludeKeyPaths(List.of(".json"))
-                .setCompressionOption(CompressionOption.NONE);
+                .setExcludeKeyPaths(List.of(".json")).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
@@ -281,17 +276,13 @@ class S3ScanObjectWorkerTest {
         final String startDateTime = "2023-03-07T10:00:00";
         final String bucketName = "my-bucket-1";
         final List<String> keyPathList = Arrays.asList("file3.csv");
-        final S3SelectSerializationFormatOption s3SelectSerializationFormatOption =
-                S3SelectSerializationFormatOption.valueOf("CSV");
-        final ScanOptions scanOptions = new ScanOptions()
+        final ScanOptions scanOptions = new ScanOptions.Builder()
                 .setEndDateTime(LocalDateTime.parse(startDateTime))
                 .setRange(Duration.parse("P10DT2H"))
                 .setBucket(bucketName)
                 .setExpression("select * from s3Object")
-                .setSerializationFormatOption(s3SelectSerializationFormatOption)
                 .setIncludeKeyPaths(keyPathList)
-                .setExcludeKeyPaths(List.of(".txt"))
-                .setCompressionOption(CompressionOption.NONE);
+                .setExcludeKeyPaths(List.of(".txt")).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
@@ -316,15 +307,13 @@ class S3ScanObjectWorkerTest {
         final List<String> keyPathList = Arrays.asList("file2.csv");
         final S3SelectSerializationFormatOption s3SelectSerializationFormatOption =
                 S3SelectSerializationFormatOption.valueOf("CSV");
-        final ScanOptions scanOptions = new ScanOptions()
+        final ScanOptions scanOptions = new ScanOptions.Builder()
                 .setStartDateTime(LocalDateTime.parse("2023-03-05T10:00:00"))
                 .setRange(Duration.parse("P10DT2H"))
                 .setBucket(bucketName)
                 .setExpression("select * from s3Object")
-                .setSerializationFormatOption(s3SelectSerializationFormatOption)
                 .setIncludeKeyPaths(keyPathList)
-                .setExcludeKeyPaths(List.of(".txt"))
-                .setCompressionOption(CompressionOption.NONE);
+                .setExcludeKeyPaths(List.of(".txt")).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
@@ -348,15 +337,13 @@ class S3ScanObjectWorkerTest {
         final List<String> keyPathList = Arrays.asList("file1.csv");
         final S3SelectSerializationFormatOption s3SelectSerializationFormatOption =
                 S3SelectSerializationFormatOption.valueOf("CSV");
-        final ScanOptions scanOptions = new ScanOptions()
+        final ScanOptions scanOptions = new ScanOptions.Builder()
                 .setStartDateTime(LocalDateTime.parse("2023-03-05T10:00:00"))
                 .setEndDateTime(LocalDateTime.parse("2023-04-09T00:00:00"))
                 .setBucket(bucketName)
                 .setExpression("select * from s3Object")
-                .setSerializationFormatOption(s3SelectSerializationFormatOption)
                 .setIncludeKeyPaths(keyPathList)
-                .setExcludeKeyPaths(List.of(".txt"))
-                .setCompressionOption(CompressionOption.NONE);
+                .setExcludeKeyPaths(List.of(".txt")).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, recordsToAccumulate, bufferTimeout))
