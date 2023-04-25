@@ -28,7 +28,7 @@ public class PeerForwarderConfiguration {
     public static final String DEFAULT_CERTIFICATE_FILE_PATH = "config/default_certificate.pem";
     public static final String DEFAULT_PRIVATE_KEY_FILE_PATH = "config/default_private_key.pem";
     private static final String S3_PREFIX = "s3://";
-    private static final int MAX_FORWARDING_BATCH_SIZE = 15000;
+    public static final int MAX_FORWARDING_BATCH_SIZE = 15000;
 
     private Integer serverPort = 4994;
     private Integer requestTimeout = 10_000;
