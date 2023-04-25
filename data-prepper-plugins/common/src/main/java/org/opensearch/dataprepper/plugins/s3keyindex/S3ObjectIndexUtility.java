@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 /**
  * Class responsible for creation of s3 key pattern based on date time stamp
  */
-public class S3ObjectIndex {
+public class S3ObjectIndexUtility {
 
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "\\%{";
 
@@ -33,7 +33,7 @@ public class S3ObjectIndex {
 
     private static final ZoneId UTC_ZONE_ID = ZoneId.of(TimeZone.getTimeZone("UTC").getID());
 
-    S3ObjectIndex() {
+    S3ObjectIndexUtility() {
     }
 
     /**
