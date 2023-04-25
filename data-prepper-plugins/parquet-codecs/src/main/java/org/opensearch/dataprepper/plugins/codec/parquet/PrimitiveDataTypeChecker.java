@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
 import org.apache.parquet.example.data.simple.SimpleGroup;
@@ -10,7 +15,7 @@ public class PrimitiveDataTypeChecker {
 
     }
 
-    public static Object checkPrimitiveDataType(Type field, SimpleGroup simpleGroup, int fieldIndex) {
+    public static Object checkPrimitiveDataType(Type field, SimpleGroup simpleGroup, int fieldIndex) throws Exception {
         String fieldPrimitiveDataType;
         if (field.isPrimitive()) {
             PrimitiveType primitiveType = field.asPrimitiveType();
@@ -34,6 +39,9 @@ public class PrimitiveDataTypeChecker {
                 default:
                     //
             }
+        }
+        else{
+            throw new Exception("The Parquet Codec doesn't support this data-type yet.");
         }
         return null;
     }
