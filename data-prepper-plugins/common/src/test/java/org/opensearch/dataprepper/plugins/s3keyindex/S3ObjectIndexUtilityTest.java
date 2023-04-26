@@ -21,91 +21,91 @@ class S3ObjectIndexUtilityTest {
     @Test
     void testObjectDateTimePatterns_not_equal() throws IllegalArgumentException {
 
-        String expectedIndex = S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-MM-dd}");
-        String actualIndex = S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-MM-dd}");
-        assertFalse(actualIndex.contains(expectedIndex));
+        String expectedYearMonthDateFormatter = S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-MM-dd}");
+        String actualYearMonthDateFormatter = S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-MM-dd}");
+        assertFalse(actualYearMonthDateFormatter.contains(expectedYearMonthDateFormatter));
     }
     
     @Test
-    void testgetObjectPathPrefix_not_equal() throws IllegalArgumentException {
+    void test_getObjectPathPrefix_equal() throws IllegalArgumentException {
 
-        String expectedIndex = S3ObjectIndexUtility.getObjectPathPrefix("events-%{yyyy}");
-        String actualIndex = S3ObjectIndexUtility.getObjectPathPrefix("events-%{yyyy}");
-        assertTrue(actualIndex.contains(expectedIndex));
+        String expectedYearFormatter = S3ObjectIndexUtility.getObjectPathPrefix("events-%{yyyy}");
+        String actualYearFormatter = S3ObjectIndexUtility.getObjectPathPrefix("events-%{yyyy}");
+        assertTrue(actualYearFormatter.contains(expectedYearFormatter));
     }
 
     @Test
-    void testObjectTimePattern_Exceptional_time_TooGranular() throws IllegalArgumentException {
+    void test_objectTimePattern_Exceptional_time_TooGranular() throws IllegalArgumentException {
         assertThrows(IllegalArgumentException.class, () -> {
-            S3ObjectIndexUtility.getDatePatternFormatter("events-%{yyyy-AA-dd}");
+            S3ObjectIndexUtility.validateAndGetDateTimeFormatter("events-%{yyyy-AA-dd}");
         });
     }
 
     @Test
-    void testObjectTimePatterns_equal() throws IllegalArgumentException {
+    void test_objectTimePatterns_equal() throws IllegalArgumentException {
 
-        DateTimeFormatter expectedIndex = S3ObjectIndexUtility.getDatePatternFormatter("events-%{yyyy-MM-dd}");
-        DateTimeFormatter actualIndex = S3ObjectIndexUtility.getDatePatternFormatter("events-%{yyyy-MM-dd}");
-        assertEquals(actualIndex.toString(), expectedIndex.toString());
+        DateTimeFormatter expectedTimeFormatter = S3ObjectIndexUtility.validateAndGetDateTimeFormatter("events-%{yyyy-MM-dd}");
+        DateTimeFormatter actualTimeFormatter = S3ObjectIndexUtility.validateAndGetDateTimeFormatter("events-%{yyyy-MM-dd}");
+        assertEquals(actualTimeFormatter.toString(), expectedTimeFormatter.toString());
     }
 
     @Test
     void test_utc_current_time() throws IllegalArgumentException {
 
-        ZonedDateTime expectedIndex = S3ObjectIndexUtility.getCurrentUtcTime();
-        ZonedDateTime actualIndex = S3ObjectIndexUtility.getCurrentUtcTime();
+        ZonedDateTime expectedUtcTime = S3ObjectIndexUtility.getCurrentUtcTime();
+        ZonedDateTime actualUtcTime = S3ObjectIndexUtility.getCurrentUtcTime();
 
-        assertEquals(expectedIndex.getDayOfYear(), actualIndex.getDayOfYear());
-        assertEquals(expectedIndex.getDayOfMonth(), actualIndex.getDayOfMonth());
-        assertEquals(expectedIndex.getDayOfWeek(), actualIndex.getDayOfWeek());
+        assertEquals(expectedUtcTime.getDayOfYear(), actualUtcTime.getDayOfYear());
+        assertEquals(expectedUtcTime.getDayOfMonth(), actualUtcTime.getDayOfMonth());
+        assertEquals(expectedUtcTime.getDayOfWeek(), actualUtcTime.getDayOfWeek());
     }
 
     @Test
-    void testObjectTimePattern_Exceptional_TooGranular() {
+    void test_objectTimePattern_Exceptional_TooGranular() {
         assertThrows(IllegalArgumentException.class, () -> {
-            S3ObjectIndexUtility.getDatePatternFormatter("events-%{yyyy-AA-ddThh:mm}");
+            S3ObjectIndexUtility.validateAndGetDateTimeFormatter("events-%{yyyy-AA-ddThh:mm}");
         });
     }
 
     @Test
-    void testObjectTimePattern_Exceptional_at_theEnd() {
+    void test_objectTimePattern_Exceptional_at_theEnd() {
         assertThrows(IllegalArgumentException.class, () -> {
-            S3ObjectIndexUtility.getDatePatternFormatter("events-%{yyy{MM}dd}");
+            S3ObjectIndexUtility.validateAndGetDateTimeFormatter("events-%{yyy{MM}dd}");
         });
     }
 
     @Test
-    void testObject_allows_one_date_time_pattern_Exceptional() {
+    void test_object_allows_one_date_time_pattern_Exceptional() {
         assertThrows(IllegalArgumentException.class, () -> {
-            S3ObjectIndexUtility.getDatePatternFormatter("events-%{yyyy-MM-dd}-%{yyyy-MM-dd}");
+            S3ObjectIndexUtility.validateAndGetDateTimeFormatter("events-%{yyyy-MM-dd}-%{yyyy-MM-dd}");
         });
     }
 
     @Test
-    void testObject_nested_pattern_Exceptional() {
+    void test_object_nested_pattern_Exceptional() {
         assertThrows(IllegalArgumentException.class, () -> {
-            S3ObjectIndexUtility.getDatePatternFormatter("bucket-name-\\%{\\%{yyyy.MM.dd}}");
+            S3ObjectIndexUtility.validateAndGetDateTimeFormatter("bucket-name-\\%{\\%{yyyy.MM.dd}}");
         });
     }
 
     @Test
-    void testObject_null_time_pattern() throws NullPointerException {
-        assertNull(S3ObjectIndexUtility.getDatePatternFormatter("bucket-name"));
+    void test_object_null_time_pattern() throws NullPointerException {
+        assertNull(S3ObjectIndexUtility.validateAndGetDateTimeFormatter("bucket-name"));
     }
 
     @Test
-    void testObjectAliasWithDatePrefix_Exceptional_time_TooGranular() throws IllegalArgumentException {
+    void test_objectAliasWithDatePrefix_Exceptional_time_TooGranular() throws IllegalArgumentException {
         assertThrows(IllegalArgumentException.class, () -> {
             S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-AA-dd}");
         });
     }
 
     @Test
-    void testObjectAliasWithDatePrefix_equal() throws IllegalArgumentException {
+    void test_objectAliasWithDatePrefix_equal() throws IllegalArgumentException {
 
-        String expectedIndex = S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-MM-dd}");
-        String actualIndex = S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-MM-dd}");
-        assertNotEquals(actualIndex.toString(), expectedIndex.toString());
+        String expectedTimeFormatter = S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-MM-dd}");
+        String actualTimeFormatter = S3ObjectIndexUtility.getObjectNameWithDateTimeId("events-%{yyyy-MM-dd}");
+        assertNotEquals(actualTimeFormatter.toString(), expectedTimeFormatter.toString());
     }
 
     @Test
