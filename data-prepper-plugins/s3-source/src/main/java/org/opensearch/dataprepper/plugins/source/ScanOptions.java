@@ -4,9 +4,10 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
+
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -22,25 +23,23 @@ public class ScanOptions {
 
     private String expression;
 
-    private List<String> includeKeyPaths;
-
-    private List<String> excludeKeyPaths;
     private LocalDateTime endDateTime;
 
     private LocalDateTime useStartDateTime;
 
     private LocalDateTime useEndDateTime;
 
+    private S3ScanKeyPathOption s3ScanKeyPathOption;
+
     private ScanOptions(Builder builder){
         this.startDateTime = builder.startDateTime;
         this.range = builder.range;
         this.bucket = builder.bucket;
         this.expression = builder.expression;
-        this.includeKeyPaths = builder.includeKeyPaths;
-        this.excludeKeyPaths = builder.excludeKeyPaths;
         this.endDateTime = builder.endDateTime;
         this.useStartDateTime = builder.useStartDateTime;
         this.useEndDateTime = builder.useEndDateTime;
+        this.s3ScanKeyPathOption = builder.s3ScanKeyPathOption;
 
     }
     public Duration getRange() {
@@ -55,20 +54,16 @@ public class ScanOptions {
         return expression;
     }
 
-    public List<String> getIncludeKeyPaths() {
-        return includeKeyPaths;
-    }
-
-    public List<String> getExcludeKeyPaths() {
-        return excludeKeyPaths;
-    }
-
     public LocalDateTime getUseStartDateTime() {
         return useStartDateTime;
     }
 
     public LocalDateTime getUseEndDateTime() {
         return useEndDateTime;
+    }
+
+    public S3ScanKeyPathOption getS3ScanKeyPathOption() {
+        return s3ScanKeyPathOption;
     }
 
     @Override
@@ -87,18 +82,22 @@ public class ScanOptions {
 
         private String expression;
 
-        private List<String> includeKeyPaths;
-
-        private List<String> excludeKeyPaths;
-
         private LocalDateTime endDateTime;
 
         private LocalDateTime useStartDateTime;
         private LocalDateTime useEndDateTime;
 
+        private S3ScanKeyPathOption s3ScanKeyPathOption;
+
         Builder(){
 
         }
+
+        public Builder setS3ScanKeyPathOption(S3ScanKeyPathOption s3ScanKeyPathOption) {
+            this.s3ScanKeyPathOption = s3ScanKeyPathOption;
+            return this;
+        }
+
         public Builder setStartDateTime(LocalDateTime startDateTime) {
             this.startDateTime = startDateTime;
             return this;
@@ -116,15 +115,6 @@ public class ScanOptions {
 
         public Builder setExpression(String expression) {
             this.expression = expression;
-            return this;
-        }
-        public Builder setIncludeKeyPaths(List<String> includeKeyPaths) {
-            this.includeKeyPaths = includeKeyPaths;
-            return this;
-        }
-
-        public Builder setExcludeKeyPaths(List<String> excludeKeyPaths) {
-            this.excludeKeyPaths = excludeKeyPaths;
             return this;
         }
 

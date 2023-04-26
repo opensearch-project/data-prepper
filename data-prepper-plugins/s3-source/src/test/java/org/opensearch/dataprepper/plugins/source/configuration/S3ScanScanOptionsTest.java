@@ -30,7 +30,7 @@ public class S3ScanScanOptionsTest {
                 "        buckets:\n" +
                 "          - bucket:\n" +
                 "              name: test-s3-source-test-output\n" +
-                "              key_path:\n" +
+                "              key_prefix:\n" +
                 "                include:\n" +
                 "                  - bucket2\n" +
                 "                exclude:\n" +
@@ -41,11 +41,11 @@ public class S3ScanScanOptionsTest {
         assertThat(s3ScanScanOptions.getRange(),equalTo(Duration.parse("P90DT3H4M")));
         assertThat(s3ScanScanOptions.getBuckets(),instanceOf(List.class));
         assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getName(),equalTo("test-s3-source-test-output"));
-        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getKeyPath().getS3ScanExcludeOptions(),instanceOf(List.class));
-        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getKeyPath().getS3scanIncludeOptions(),instanceOf(List.class));
-        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getKeyPath().getS3scanIncludeOptions().get(0),
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3ScanExcludeOptions(),instanceOf(List.class));
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3scanIncludeOptions(),instanceOf(List.class));
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3scanIncludeOptions().get(0),
                 equalTo("bucket2"));
-        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getKeyPath().getS3ScanExcludeOptions().get(0),
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3ScanExcludeOptions().get(0),
                 equalTo(".jpeg"));
     }
 }

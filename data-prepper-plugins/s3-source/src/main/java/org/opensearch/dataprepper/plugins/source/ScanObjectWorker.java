@@ -5,6 +5,8 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;
@@ -12,7 +14,6 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
-import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.io.IOException;
@@ -20,10 +21,12 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Class responsible for processing the s3 scan objects with the help of <code>S3ObjectWorker</code>
@@ -41,12 +44,16 @@ public class ScanObjectWorker implements Runnable{
 
     private final S3ObjectHandler s3ObjectHandler;
 
+    private final BucketOwnerProvider bucketOwnerProvider;
+
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
-                            final S3ObjectHandler s3ObjectHandler){
+                            final S3ObjectHandler s3ObjectHandler,
+                            final BucketOwnerProvider bucketOwnerProvider){
         this.s3Client = s3Client;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
         this.s3ObjectHandler= s3ObjectHandler;
+        this.bucketOwnerProvider = bucketOwnerProvider;
     }
 
     /**
@@ -62,25 +69,38 @@ public class ScanObjectWorker implements Runnable{
      * Method will parse the s3 object and write to {@link Buffer}
      */
     void parseS3ScanObjects(final ScanOptions scanOptions) {
-        scanIncludeObjectsValidationCheck(scanOptions);
-        scanOptions.getIncludeKeyPaths().forEach(key ->{
-            ListObjectsV2Request request = ListObjectsV2Request.builder()
-                    .bucket(scanOptions.getBucket())
-                    .prefix(key).build();
+        final List<String> scanObjects = new ArrayList<>();
+        final List<String> excludeItems = new ArrayList<>();
+        final S3ScanKeyPathOption s3ScanKeyPathOption = scanOptions.getS3ScanKeyPathOption();
+        final ListObjectsV2Request.Builder listObjectsV2Request = ListObjectsV2Request.builder()
+                .bucket(scanOptions.getBucket());
+        bucketOwnerProvider.getBucketOwner(scanOptions.getBucket())
+                .ifPresent(listObjectsV2Request::expectedBucketOwner);
 
-            final ListObjectsV2Response s3ObjectResponse = s3Client.listObjectsV2(request);
-            s3ObjectResponse.contents().stream().map(S3Object::key).filter(s3ObjKey-> s3ObjKey.lastIndexOf(".")!=-1)
-                    .filter(s -> !scanOptions.getExcludeKeyPaths().contains(s.substring(s.lastIndexOf("."))))
-                    .forEach(s3Object ->
-                        processS3ObjectKeys(S3ObjectReference.bucketAndKey(scanOptions.getBucket(),
-                                s3Object).build(),s3ObjectHandler, scanOptions));
-        });
+        if(Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3ScanExcludeOptions()))
+            excludeItems.addAll(s3ScanKeyPathOption.getS3ScanExcludeOptions());
+
+        if(Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3scanIncludeOptions()))
+            s3ScanKeyPathOption.getS3scanIncludeOptions().stream().forEach(includePath -> {
+                listObjectsV2Request.prefix(includePath);
+                scanObjects.addAll(listS3Objects(excludeItems, listObjectsV2Request));
+            });
+        else
+            scanObjects.addAll(listS3Objects(excludeItems, listObjectsV2Request));
+
+        if(scanObjects.isEmpty())
+            LOG.info("s3 objects are not found in configured scan pipeline.");
+
+        scanObjects.stream().forEach(key ->
+                processS3ObjectKeys(S3ObjectReference.bucketAndKey(scanOptions.getBucket(),
+                        key).build(),s3ObjectHandler, scanOptions));
     }
 
-    private static void scanIncludeObjectsValidationCheck(final ScanOptions scanOptions) {
-        if(Objects.isNull(scanOptions.getIncludeKeyPaths()) || Objects.isNull(scanOptions.getExcludeKeyPaths())){
-            throw new IllegalArgumentException("include/exclude list should not be empty in pipeline yaml configuration");
-        }
+    private List<String> listS3Objects(List<String> excludeKeyPaths, ListObjectsV2Request.Builder listObjectsV2Request) {
+        return s3Client.listObjectsV2(listObjectsV2Request.build()).contents().stream().map(S3Object::key)
+                .filter(s3ObjKey-> s3ObjKey.lastIndexOf(".")!=-1)
+                .filter(includeKeyPath -> !excludeKeyPaths.stream()
+                        .anyMatch(excludeItem -> includeKeyPath.contains(excludeItem))).collect(Collectors.toList());
     }
 
     private void processS3ObjectKeys(final S3ObjectReference s3ObjectReference,

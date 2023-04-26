@@ -76,7 +76,7 @@ source-pipeline:
         buckets:
           - bucket:
               name: my-bucket-1
-              key_path:
+              key_prefix:
                 include:
                   - bucket2/
                 exclude:
@@ -112,11 +112,11 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `bucket_name` : Provide S3 bucket name.
 
-* `key_path` : Provide include and exclude the list items.
+* `key_prefix` (Optional) : Provide include and exclude the list items.
 
-* `include` : Provide the list of key path.
+* `include` (Optional) : Provide the list of include key path prefix.
 
-* `exclude` : Provide the extension type of exclude files. 
+* `exclude` (Optional) : Provide the list of exclude items. 
 
 * `start_time` (Optional) : Provide the start time to slurp the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
 

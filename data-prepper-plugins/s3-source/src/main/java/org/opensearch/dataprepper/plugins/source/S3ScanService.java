@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptions;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -27,20 +28,24 @@ public class S3ScanService {
 
     private Thread scanObjectWorkerThread;
 
+    private final BucketOwnerProvider bucketOwnerProvider;
+
     public S3ScanService(final S3SourceConfig s3SourceConfig,
                          final S3ClientBuilderFactory s3ClientBuilderFactory,
-                         final S3ObjectHandler s3ObjectHandler) {
+                         final S3ObjectHandler s3ObjectHandler,
+                         final BucketOwnerProvider bucketOwnerProvider ) {
         this.s3ScanBucketOptions = s3SourceConfig.getS3ScanScanOptions().getBuckets();
         this.s3ClientBuilderFactory = s3ClientBuilderFactory;
         this.endDateTime = s3SourceConfig.getS3ScanScanOptions().getEndTime();
         this.startDateTime = s3SourceConfig.getS3ScanScanOptions().getStartTime();
         this.range = s3SourceConfig.getS3ScanScanOptions().getRange();
         this.s3ObjectHandler = s3ObjectHandler;
+        this.bucketOwnerProvider = bucketOwnerProvider;
     }
 
     public void start() {
         scanObjectWorkerThread = new Thread(new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
-                getScanOptions(),s3ObjectHandler));
+                getScanOptions(),s3ObjectHandler,bucketOwnerProvider));
         scanObjectWorkerThread.start();
     }
 
@@ -58,13 +63,12 @@ public class S3ScanService {
     }
 
     private void buildScanOptions(final List<ScanOptions> scanOptionsList, final S3ScanBucketOptions scanBucketOptions) {
-        final S3ScanBucketOption bucket = scanBucketOptions.getS3ScanBucketOption();
+        final S3ScanBucketOption s3ScanBucketOption = scanBucketOptions.getS3ScanBucketOption();
         scanOptionsList.add(new ScanOptions.Builder()
                 .setStartDateTime(startDateTime)
                 .setEndDateTime(endDateTime)
                 .setRange(range)
-                .setBucket(bucket.getName())
-                .setIncludeKeyPaths(bucket.getKeyPath().getS3scanIncludeOptions())
-                .setExcludeKeyPaths(bucket.getKeyPath().getS3ScanExcludeOptions()).build());
+                .setBucket(s3ScanBucketOption.getName())
+                .setS3ScanKeyPathOption(s3ScanBucketOption.getkeyPrefix()).build());
     }
 }

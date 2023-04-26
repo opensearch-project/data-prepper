@@ -22,7 +22,7 @@ public class S3ScanBucketOptionTest {
     @Test
     public void s3scan_bucket_options_with_scan_buckets_yaml_configuration_test() throws JsonProcessingException {
         final String bucketOptionsYaml = "              name: test-s3-source-test-output\n" +
-                "              key_path:\n" +
+                "              key_prefix:\n" +
                 "                include:\n" +
                 "                  - bucket2\n" +
                 "                exclude:\n" +
@@ -35,10 +35,10 @@ public class S3ScanBucketOptionTest {
                 "                  - .gzip";
         final S3ScanBucketOption s3ScanBucketOption = objectMapper.readValue(bucketOptionsYaml, S3ScanBucketOption.class);
         assertThat(s3ScanBucketOption.getName(), equalTo("test-s3-source-test-output"));
-        assertThat(s3ScanBucketOption.getKeyPath(), instanceOf(S3ScanKeyPathOption.class));
-        assertThat(s3ScanBucketOption.getKeyPath().getS3scanIncludeOptions(),instanceOf(List.class));
-        assertThat(s3ScanBucketOption.getKeyPath().getS3scanIncludeOptions().get(0),equalTo("bucket2"));
-        assertThat(s3ScanBucketOption.getKeyPath().getS3ScanExcludeOptions(),instanceOf(List.class));
-        assertThat(s3ScanBucketOption.getKeyPath().getS3ScanExcludeOptions().get(1),equalTo(".png"));
+        assertThat(s3ScanBucketOption.getkeyPrefix(), instanceOf(S3ScanKeyPathOption.class));
+        assertThat(s3ScanBucketOption.getkeyPrefix().getS3scanIncludeOptions(),instanceOf(List.class));
+        assertThat(s3ScanBucketOption.getkeyPrefix().getS3scanIncludeOptions().get(0),equalTo("bucket2"));
+        assertThat(s3ScanBucketOption.getkeyPrefix().getS3ScanExcludeOptions(),instanceOf(List.class));
+        assertThat(s3ScanBucketOption.getkeyPrefix().getS3ScanExcludeOptions().get(1),equalTo(".png"));
     }
 }

@@ -5,7 +5,6 @@
 package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
@@ -14,10 +13,8 @@ import java.util.List;
  */
 public class S3ScanKeyPathOption {
     @JsonProperty("include")
-    @NotNull
     private List<String> s3scanIncludeOptions;
     @JsonProperty("exclude")
-    @NotNull
     private List<String> s3ScanExcludeOptions;
 
     public List<String> getS3scanIncludeOptions() {

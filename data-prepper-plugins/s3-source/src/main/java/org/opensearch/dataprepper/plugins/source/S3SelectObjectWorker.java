@@ -100,6 +100,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
 
     public void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
         try{
+            LOG.info("Read S3 object: {}", s3ObjectReference);
             selectObject(s3ObjectReference, acknowledgementSet);
         } catch (Exception e){
             LOG.error("Unable to process object reference: {}", s3ObjectReference, e);

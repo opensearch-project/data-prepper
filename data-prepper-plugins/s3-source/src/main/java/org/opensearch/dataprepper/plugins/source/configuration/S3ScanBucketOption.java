@@ -12,20 +12,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public class S3ScanBucketOption {
     @JsonProperty("name")
     private String name;
-    @JsonProperty("key_path")
-    private S3ScanKeyPathOption keyPath;
-    @JsonProperty("compression")
-    private CompressionOption compression;
+    @JsonProperty("key_prefix")
+    private S3ScanKeyPathOption keyPrefix;
 
     public String getName() {
         return name;
     }
 
-    public S3ScanKeyPathOption getKeyPath() {
-        return keyPath;
-    }
-
-    public CompressionOption getCompression() {
-        return compression;
+    public S3ScanKeyPathOption getkeyPrefix() {
+        return keyPrefix;
     }
 }
