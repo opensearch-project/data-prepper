@@ -22,7 +22,7 @@ class ThresholdOptionsTest {
 
     @Test
     void get_event_collection_duration_test() {
-        assertThat(new ThresholdOptions().getEventCollect(), equalTo(null));
+        assertThat(new ThresholdOptions().getEventCollectTimeOut(), equalTo(null));
     }
 
     @Test

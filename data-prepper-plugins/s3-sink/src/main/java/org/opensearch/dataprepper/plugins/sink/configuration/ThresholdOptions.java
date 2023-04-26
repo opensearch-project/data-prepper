@@ -28,17 +28,17 @@ public class ThresholdOptions {
     @JsonProperty("maximum_size")
     private String maximumSize = DEFAULT_BYTE_CAPACITY;
 
-    @JsonProperty("event_collect")
+    @JsonProperty("event_collect_timeout")
     @DurationMin(seconds = 1)
     @DurationMax(seconds = 3600)
     @NotNull
-    private Duration eventCollect;
+    private Duration eventCollectTimeOut;
 
     /**
      * Read event collection duration configuration
      */
-    public Duration getEventCollect() {
-        return eventCollect;
+    public Duration getEventCollectTimeOut() {
+        return eventCollectTimeOut;
     }
 
     /**

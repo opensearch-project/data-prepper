@@ -15,7 +15,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 /**
- * An implementation class of s3 sink configuration
+ * s3 sink configuration class contains properties, used to read yaml configuration.
  */
 public class S3SinkConfig {
 
