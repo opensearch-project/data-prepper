@@ -76,8 +76,10 @@ public class S3Source implements Source<Record<Event>> {
                     s3SelectOptional.get().getS3SelectJsonOption() : new S3SelectJsonOption();
             S3ObjectRequest s3ObjectRequest = s3ObjectRequestBuilder.expression(s3SelectOptional.get().getExpression())
                     .serializationFormatOption(s3SelectOptional.get().getS3SelectSerializationFormatOption())
-                    .s3AsyncClient(s3ClientBuilderFactory.getS3AsyncClient()).eventConsumer(eventMetadataModifier).
-                    s3SelectCSVOption(csvOption).s3SelectJsonOption(jsonOption)
+                    .s3AsyncClient(s3ClientBuilderFactory.getS3AsyncClient())
+                    .eventConsumer(eventMetadataModifier)
+                    .s3SelectCSVOption(csvOption)
+                    .s3SelectJsonOption(jsonOption)
                     .expressionType(s3SelectOptional.get().getExpressionType())
                     .compressionType(CompressionType.valueOf(s3SelectOptional.get().getCompressionType().toUpperCase()))
                     .s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).build();

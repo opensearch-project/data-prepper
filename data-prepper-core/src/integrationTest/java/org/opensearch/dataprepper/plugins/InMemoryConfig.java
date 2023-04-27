@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonAlias;
 
 /**
  * Configuration for an in_memory plugin.
@@ -15,9 +14,8 @@ class InMemoryConfig {
     @JsonProperty("testing_key")
     private String testingKey;
 
-    @JsonProperty("acknowledgements")
-    @JsonAlias("acknowledgments")
-    private Boolean acknowledgements = false;
+    @JsonProperty("acknowledgments")
+    private Boolean acknowledgments = false;
 
     public String getTestingKey() {
         return testingKey;
@@ -28,7 +26,7 @@ class InMemoryConfig {
     }
 
     public Boolean getAcknowledgements() {
-        return acknowledgements;
+        return acknowledgments;
     }
 
 }

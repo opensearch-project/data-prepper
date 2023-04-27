@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -44,7 +45,8 @@ public class S3DlqWriter implements DlqWriter {
     static final String S3_DLQ_REQUEST_FAILED = "dlqS3RequestFailed";
     static final String S3_DLQ_REQUEST_LATENCY = "dlqS3RequestLatency";
     static final String S3_DLQ_REQUEST_SIZE_BYTES = "dlqS3RequestSizeBytes";
-    private static final String KEY_NAME_FORMAT = "dlq-v%s-%s-%s-%s-%s";
+    static final String DLQ_OBJECTS = "dlqObjects";
+    private static final String KEY_NAME_FORMAT = "dlq-v%s-%s-%s-%s-%s.json";
     private static final String FULL_KEY_FORMAT = "%s/%s";
 
     private static final Logger LOG = LoggerFactory.getLogger(S3DlqWriter.class);
@@ -133,7 +135,9 @@ public class S3DlqWriter implements DlqWriter {
 
     private String deserialize(final List<DlqObject> dlqObjects) throws IOException {
         try {
-            final String content = objectMapper.writeValueAsString(dlqObjects);
+            final Map<String, Object> output = Map.of(DLQ_OBJECTS, dlqObjects);
+
+            final String content = objectMapper.writeValueAsString(output);
 
             dlqS3RequestSizeBytesSummary.record(content.getBytes(StandardCharsets.UTF_8).length);
 

@@ -42,8 +42,9 @@ public class IndexConfiguration {
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
-    public static final String AWS_SERVERLESS = "aws_serverless";
+    public static final String SERVERLESS = "serverless";
     public static final String AWS_OPTION = "aws";
+    public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
     private IndexType indexType;
     private final String indexAlias;
@@ -56,14 +57,15 @@ public class IndexConfiguration {
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
     private final S3Client s3Client;
-    private final boolean awsServerless;
+    private final boolean serverless;
+    private final String documentRootKey;
 
     private static final String S3_PREFIX = "s3://";
     private static final String DEFAULT_AWS_REGION = "us-east-1";
 
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
-        this.awsServerless = builder.awsServerless;
+        this.serverless = builder.serverless;
         determineIndexType(builder);
 
         this.s3AwsRegion = builder.s3AwsRegion;
@@ -103,6 +105,7 @@ public class IndexConfiguration {
         this.documentIdField = documentIdField;
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
+        this.documentRootKey = builder.documentRootKey;
     }
 
     private void determineIndexType(Builder builder) {
@@ -111,7 +114,7 @@ public class IndexConfiguration {
             indexType = mappedIndexType.orElseThrow(
                     () -> new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
                     + IndexType.getIndexTypeValues()));
-        } else if (builder.awsServerless) {
+        } else if (builder.serverless) {
             this.indexType = IndexType.MANAGEMENT_DISABLED;
         } else {
             this.indexType  = IndexType.CUSTOM;
@@ -160,18 +163,14 @@ public class IndexConfiguration {
         }
 
         Map<String, Object> awsOption = pluginSetting.getTypedMap(AWS_OPTION, String.class, Object.class);
-        boolean awsOptionUsed = false;
         if (awsOption != null && !awsOption.isEmpty()) {
-            awsOptionUsed = true;
-            builder.withAwsServerless((Boolean)awsOption.getOrDefault(AWS_SERVERLESS.substring(4), false));
+            builder.withServerless((Boolean)awsOption.getOrDefault(SERVERLESS, false));
+        } else {
+            builder.withServerless(false);
         }
-        final boolean awsServerless = pluginSetting.getBooleanOrDefault(AWS_SERVERLESS, false);
-        if (awsServerless) {
-            if (awsOptionUsed) {
-                throw new RuntimeException(String.format("%s option cannot be used along with %s option", AWS_SERVERLESS, AWS_OPTION));
-            }
-            builder.withAwsServerless(awsServerless);
-        }
+
+        final String documentRootKey = pluginSetting.getStringOrDefault(DOCUMENT_ROOT_KEY, null);
+        builder.withDocumentRootKey(documentRootKey);
 
         return builder.build();
     }
@@ -216,8 +215,12 @@ public class IndexConfiguration {
         return s3AwsStsRoleArn;
     }
 
-    public boolean getAwsServerless() {
-        return awsServerless;
+    public boolean getServerless() {
+        return serverless;
+    }
+
+    public String getDocumentRootKey() {
+        return documentRootKey;
     }
 
     /**
@@ -275,7 +278,8 @@ public class IndexConfiguration {
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
         private S3Client s3Client;
-        private boolean awsServerless;
+        private boolean serverless;
+        private String documentRootKey;
 
         public Builder withIndexAlias(final String indexAlias) {
             checkArgument(indexAlias != null, "indexAlias cannot be null.");
@@ -359,8 +363,16 @@ public class IndexConfiguration {
             return this;
         }
 
-        public Builder withAwsServerless(final boolean awsServerless) {
-            this.awsServerless = awsServerless;
+        public Builder withServerless(final boolean serverless) {
+            this.serverless = serverless;
+            return this;
+        }
+
+        public Builder withDocumentRootKey(final String documentRootKey) {
+            if (documentRootKey != null) {
+                checkArgument(!documentRootKey.isEmpty(), "documentRootKey cannot be empty string");
+            }
+            this.documentRootKey = documentRootKey;
             return this;
         }
 

@@ -6,12 +6,17 @@
 package org.opensearch.dataprepper.peerforwarder.codec;
 
 import com.google.common.collect.Sets;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.document.JacksonDocument;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
@@ -25,6 +30,7 @@ import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.trace.DefaultTraceGroupFields;
 import org.opensearch.dataprepper.model.trace.JacksonSpan;
+import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.model.PeerForwardingEvents;
 import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
@@ -58,6 +64,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.containsString;
@@ -71,6 +78,8 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 
 /**
  * Verifies the behavior of the {@link ObjectInputFilter} provided by {@link PeerForwarderCodecAppConfig}.
@@ -82,9 +91,18 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
  * {@link org.opensearch.dataprepper.peerforwarder.codec.JavaPeerForwarderCodec} will throw class casting exceptions,
  * but we want to be sure the exception comes from the filter, not the cast.
  */
+@ExtendWith(MockitoExtension.class)
 class PeerForwarderCodecAppConfig_SerializationFilterIT {
+    @Mock(lenient = true)
+    private PeerForwarderConfiguration peerForwarderConfiguration;
+
+    @BeforeEach
+    void setUp() {
+        when(peerForwarderConfiguration.getForwardingBatchSize()).thenReturn(100);
+    }
+
     private ObjectInputFilter createObjectUnderTest() {
-        return new PeerForwarderCodecAppConfig().objectInputFilter();
+        return new PeerForwarderCodecAppConfig().objectInputFilter(peerForwarderConfiguration);
     }
 
     @ParameterizedTest
@@ -257,6 +275,201 @@ class PeerForwarderCodecAppConfig_SerializationFilterIT {
         final Sets.SetView<Class<? extends Event>> difference = Sets.difference(allConcreteSubTypes, classesVerified);
         assertThat("If this test is failing, then a Data Prepper Event model was created which is unable to be deserialized in Core Peer Forwarder. These classes as not verified: " + difference,
                 difference, empty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {100, 1500, PeerForwarderConfiguration.MAX_FORWARDING_BATCH_SIZE})
+    void filter_will_not_deserialize_when_array_length_is_beyond_forwardingBatchSize(final int batchSize) throws IOException {
+        reset(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getForwardingBatchSize()).thenReturn(batchSize);
+        final PeerForwardingEvents outerObject = createPeerForwardingEvents(batchSize + 1);
+
+        final byte[] serializedBytes = createByteArrayWithObject(outerObject);
+
+        final ObjectInputFilter filterUnderTest = createObjectUnderTest();
+
+        assertThat(filterUnderTest, notNullValue());
+
+        final InvalidClassException actualException;
+        try (final InputStream inputStream = new ByteArrayInputStream(serializedBytes);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            objectInputStream.setObjectInputFilter(filterUnderTest);
+            actualException = assertThrows(InvalidClassException.class, objectInputStream::readObject);
+        }
+
+        assertThat(actualException.getMessage(), containsString("REJECTED"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {PeerForwarderConfiguration.MAX_FORWARDING_BATCH_SIZE})
+    void filter_will_not_deserialize_when_array_length_is_beyond_max_forwarding_batch_size(final int batchSize) throws IOException {
+        reset(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getForwardingBatchSize()).thenReturn(null);
+        final PeerForwardingEvents outerObject = createPeerForwardingEvents(batchSize + 1);
+
+        final byte[] serializedBytes = createByteArrayWithObject(outerObject);
+
+        final ObjectInputFilter filterUnderTest = createObjectUnderTest();
+
+        assertThat(filterUnderTest, notNullValue());
+
+        final InvalidClassException actualException;
+        try (final InputStream inputStream = new ByteArrayInputStream(serializedBytes);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            objectInputStream.setObjectInputFilter(filterUnderTest);
+            actualException = assertThrows(InvalidClassException.class, objectInputStream::readObject);
+        }
+
+        assertThat(actualException.getMessage(), containsString("REJECTED"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {100, 1500, PeerForwarderConfiguration.MAX_FORWARDING_BATCH_SIZE})
+    void filter_will_deserialize_when_array_length_is_at_forwardingBatchSize(final int batchSize) throws IOException, ClassNotFoundException {
+        reset(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getForwardingBatchSize()).thenReturn(batchSize);
+        final PeerForwardingEvents outerObject = createPeerForwardingEvents(batchSize);
+
+        final byte[] serializedBytes = createByteArrayWithObject(outerObject);
+
+        final ObjectInputFilter filterUnderTest = createObjectUnderTest();
+
+        assertThat(filterUnderTest, notNullValue());
+
+        final Object actualObject;
+        try (final InputStream inputStream = new ByteArrayInputStream(serializedBytes);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            objectInputStream.setObjectInputFilter(filterUnderTest);
+            actualObject = objectInputStream.readObject();
+        }
+
+        assertThat(actualObject, not(sameInstance(outerObject)));
+        assertThat(actualObject, instanceOf(PeerForwardingEvents.class));
+        final PeerForwardingEvents deserializedPeerForwardingEvents = (PeerForwardingEvents) actualObject;
+        assertThat(deserializedPeerForwardingEvents.getEvents(), notNullValue());
+        assertThat(deserializedPeerForwardingEvents.getEvents().size(), equalTo(batchSize));
+    }
+
+
+    @ParameterizedTest
+    @ValueSource(ints = {100, 1500, PeerForwarderConfiguration.MAX_FORWARDING_BATCH_SIZE})
+    void filter_will_deserialize_when_array_length_is_less_than_or_equal_to_maximum_forwardingBatchSize_and_not_in_configuration(final int batchSize) throws IOException, ClassNotFoundException {
+        reset(peerForwarderConfiguration);
+        when(peerForwarderConfiguration.getForwardingBatchSize()).thenReturn(null);
+        final PeerForwardingEvents outerObject = createPeerForwardingEvents(batchSize);
+
+        final byte[] serializedBytes = createByteArrayWithObject(outerObject);
+
+        final ObjectInputFilter filterUnderTest = createObjectUnderTest();
+
+        assertThat(filterUnderTest, notNullValue());
+
+        final Object actualObject;
+        try (final InputStream inputStream = new ByteArrayInputStream(serializedBytes);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            objectInputStream.setObjectInputFilter(filterUnderTest);
+            actualObject = objectInputStream.readObject();
+        }
+
+        assertThat(actualObject, not(sameInstance(outerObject)));
+        assertThat(actualObject, instanceOf(PeerForwardingEvents.class));
+        final PeerForwardingEvents deserializedPeerForwardingEvents = (PeerForwardingEvents) actualObject;
+        assertThat(deserializedPeerForwardingEvents.getEvents(), notNullValue());
+        assertThat(deserializedPeerForwardingEvents.getEvents().size(), equalTo(batchSize));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {11, 12, 25})
+    void filter_will_not_deserialize_when_depth_is_less_greater_than_max(final int depth) throws IOException {
+        final Map<String, Object> outerObject = createObjectWithDepth(depth);
+
+        final byte[] serializedBytes = createByteArrayWithObject(outerObject);
+
+        final ObjectInputFilter filterUnderTest = createObjectUnderTest();
+
+        assertThat(filterUnderTest, notNullValue());
+
+        final InvalidClassException actualException;
+        try (final InputStream inputStream = new ByteArrayInputStream(serializedBytes);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            objectInputStream.setObjectInputFilter(filterUnderTest);
+            actualException = assertThrows(InvalidClassException.class, objectInputStream::readObject);
+        }
+
+        assertThat(actualException.getMessage(), containsString("REJECTED"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 9, 10})
+    void filter_will_deserialize_when_depth_is_less_than_or_equal_to_max(final int depth) throws IOException, ClassNotFoundException {
+        final Map<String, Object> outerObject = createObjectWithDepth(depth);
+
+        final byte[] serializedBytes = createByteArrayWithObject(outerObject);
+
+        final ObjectInputFilter filterUnderTest = createObjectUnderTest();
+
+        assertThat(filterUnderTest, notNullValue());
+
+        final Object actualObject;
+        try (final InputStream inputStream = new ByteArrayInputStream(serializedBytes);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            objectInputStream.setObjectInputFilter(filterUnderTest);
+            actualObject = objectInputStream.readObject();
+        }
+
+        assertThat(actualObject, not(sameInstance(outerObject)));
+        assertThat(actualObject, equalTo(outerObject));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {10, 11, 25})
+    void filter_will_deserialize_event_regardless_of_Event_depth_since_this_serializes_as_JSON(final int depth) throws IOException, ClassNotFoundException {
+        final Map<String, Object> eventData = createObjectWithDepth(depth);
+        final Event event = JacksonEvent.builder()
+                .withEventType(UUID.randomUUID().toString())
+                .withData(eventData)
+                .build();
+
+        final PeerForwardingEvents peerForwardingEvents = new PeerForwardingEvents(Collections.singletonList(event), UUID.randomUUID().toString(), UUID.randomUUID().toString());
+
+        final byte[] serializedBytes = createByteArrayWithObject(peerForwardingEvents);
+
+        final ObjectInputFilter filterUnderTest = createObjectUnderTest();
+
+        assertThat(filterUnderTest, notNullValue());
+
+        final Object actualObject;
+        try (final InputStream inputStream = new ByteArrayInputStream(serializedBytes);
+             final ObjectInputStream objectInputStream = new ObjectInputStream(inputStream)) {
+            objectInputStream.setObjectInputFilter(filterUnderTest);
+            actualObject = objectInputStream.readObject();
+        }
+
+        assertThat(actualObject, not(sameInstance(eventData)));
+        assertThat(actualObject, instanceOf(PeerForwardingEvents.class));
+        final PeerForwardingEvents deserializedPeerForwardingEvents = (PeerForwardingEvents) actualObject;
+        assertThat(deserializedPeerForwardingEvents.getEvents(), notNullValue());
+        assertThat(deserializedPeerForwardingEvents.getEvents().size(), equalTo(1));
+        assertThat(deserializedPeerForwardingEvents.getEvents().get(0), notNullValue());
+    }
+
+    private static PeerForwardingEvents createPeerForwardingEvents(final int numberOfEvents) {
+        final List<Event> innerList = IntStream.range(0, numberOfEvents)
+                .mapToObj(i -> Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString()))
+                .map(data -> JacksonEvent.builder()
+                        .withEventType(UUID.randomUUID().toString())
+                        .withData(data)
+                        .build())
+                .collect(Collectors.toList());
+
+        return new PeerForwardingEvents(innerList, UUID.randomUUID().toString(), UUID.randomUUID().toString());
+    }
+
+    private static Map<String, Object> createObjectWithDepth(final int depth) {
+        if(depth == 1)
+            return Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+
+        return Collections.singletonMap(UUID.randomUUID().toString(), createObjectWithDepth(depth - 1));
     }
 
     private byte[] createByteArrayWithObject(final Object object) throws IOException {

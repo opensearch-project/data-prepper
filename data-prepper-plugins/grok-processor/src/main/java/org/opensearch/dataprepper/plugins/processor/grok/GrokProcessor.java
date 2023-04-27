@@ -6,6 +6,11 @@
 package org.opensearch.dataprepper.plugins.processor.grok;
 
 
+import io.krakens.grok.api.Grok;
+import io.krakens.grok.api.GrokCompiler;
+import io.krakens.grok.api.Match;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -13,11 +18,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import io.krakens.grok.api.Grok;
-import io.krakens.grok.api.GrokCompiler;
-import io.krakens.grok.api.Match;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +58,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     static final long EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = 300L;
 
     private static final Logger LOG = LoggerFactory.getLogger(GrokProcessor.class);
+
+    private static final String DATA_PREPPER_GROK_PATTERNS_FILE = "grok-patterns/patterns";
 
     static final String GROK_PROCESSING_MATCH = "grokProcessingMatch";
     static final String GROK_PROCESSING_MISMATCH = "grokProcessingMismatch";
@@ -163,8 +165,19 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     private void registerPatterns() {
         grokCompiler.registerDefaultPatterns();
+        registerBuiltInDataPrepperGrokPatterns();
         grokCompiler.register(grokProcessorConfig.getPatternDefinitions());
         registerPatternsDirectories();
+    }
+
+    private void registerBuiltInDataPrepperGrokPatterns() {
+        try (
+                final InputStream directoryStream = getClass().getClassLoader().getResourceAsStream(DATA_PREPPER_GROK_PATTERNS_FILE);
+        ) {
+            grokCompiler.register(directoryStream);
+        } catch (final Exception e) {
+            LOG.error("An exception occurred while initializing built in grok patterns for Data Prepper", e);
+        }
     }
 
     private void registerPatternsDirectories() {

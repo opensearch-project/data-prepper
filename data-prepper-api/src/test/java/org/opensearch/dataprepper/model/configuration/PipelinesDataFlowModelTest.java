@@ -31,6 +31,7 @@ class PipelinesDataFlowModelTest {
 
     private static final String RESOURCE_PATH = "/pipelines_data_flow_serialized.yaml";
     private static final String RESOURCE_PATH_WITH_ROUTE = "/pipelines_data_flow_route.yaml";
+    private static final String RESOURCE_PATH_WITH_ROUTES = "/pipelines_data_flow_routes.yaml";
     private static final String RESOURCE_PATH_WITH_SHORT_HAND_VERSION = "/pipeline_with_short_hand_version.yaml";
     private static final String RESOURCE_PATH_WITH_VERSION = "/pipeline_with_version.yaml";
     private ObjectMapper objectMapper;
@@ -146,6 +147,49 @@ class PipelinesDataFlowModelTest {
     void deserialize_PipelinesDataFlowModel_with_route() throws IOException {
 
         final InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH_WITH_ROUTE);
+
+        final PipelinesDataFlowModel actualModel = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+
+        final String pipelineName = "test-pipeline";
+
+        assertThat(actualModel, notNullValue());
+        assertThat(actualModel.getPipelines(), notNullValue());
+        assertThat(actualModel.getPipelines().size(), equalTo(1));
+        assertThat(actualModel.getPipelines(), hasKey(pipelineName));
+
+        final PipelineModel pipelineModel = actualModel.getPipelines().get(pipelineName);
+
+        assertThat(pipelineModel, notNullValue());
+
+        assertThat(pipelineModel.getSource(), notNullValue());
+        assertThat(pipelineModel.getSource().getPluginName(), equalTo("testSource"));
+
+        assertThat(pipelineModel.getProcessors(), notNullValue());
+        assertThat(pipelineModel.getProcessors().size(), equalTo(1));
+        assertThat(pipelineModel.getProcessors().get(0), notNullValue());
+        assertThat(pipelineModel.getProcessors().get(0).getPluginName(), equalTo("testPrepper"));
+
+        assertThat(pipelineModel.getSinks(), notNullValue());
+        assertThat(pipelineModel.getSinks().size(), equalTo(1));
+        assertThat(pipelineModel.getSinks().get(0), notNullValue());
+        assertThat(pipelineModel.getSinks().get(0).getPluginName(), equalTo("testSink"));
+        assertThat(pipelineModel.getSinks().get(0).getRoutes(), notNullValue());
+        assertAll(
+                () -> assertThat(pipelineModel.getSinks().get(0).getRoutes().size(), equalTo(1)),
+                () -> assertThat(pipelineModel.getSinks().get(0).getRoutes(), hasItem("my-route"))
+        );
+
+        assertThat(pipelineModel.getRoutes(), notNullValue());
+        assertThat(pipelineModel.getRoutes().size(), equalTo(1));
+        assertThat(pipelineModel.getRoutes().get(0), notNullValue());
+        assertThat(pipelineModel.getRoutes().get(0).getName(), equalTo("my-route"));
+        assertThat(pipelineModel.getRoutes().get(0).getCondition(), equalTo("/a==b"));
+    }
+
+    @Test
+    void deserialize_PipelinesDataFlowModel_with_routes() throws IOException {
+
+        final InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH_WITH_ROUTES);
 
         final PipelinesDataFlowModel actualModel = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
 

@@ -22,14 +22,18 @@ import org.opensearch.dataprepper.pipeline.server.DataPrepperServer;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class DataPrepperTests {
@@ -44,6 +48,8 @@ public class DataPrepperTests {
     private DataPrepperServer dataPrepperServer;
     @Mock
     private PeerForwarderServer peerForwarderServer;
+    @Mock
+    private Predicate<Map<String, Pipeline>> shouldShutdownOnPipelineFailurePredicate;
 
     @BeforeEach
     public void before() {
@@ -57,7 +63,7 @@ public class DataPrepperTests {
     }
 
     private DataPrepper createObjectUnderTest() throws NoSuchFieldException, IllegalAccessException {
-        final DataPrepper dataPrepper = new DataPrepper(pipelineParser, pluginFactory, peerForwarderServer);
+        final DataPrepper dataPrepper = new DataPrepper(pipelineParser, pluginFactory, peerForwarderServer, shouldShutdownOnPipelineFailurePredicate);
         final Field dataPrepperServerField = dataPrepper.getClass().getDeclaredField("dataPrepperServer");
         dataPrepperServerField.setAccessible(true);
         dataPrepperServerField.set(dataPrepper, dataPrepperServer);
@@ -80,7 +86,7 @@ public class DataPrepperTests {
 
         assertThrows(
                 RuntimeException.class,
-                () -> new DataPrepper(pipelineParser, pluginFactory, peerForwarderServer),
+                () -> new DataPrepper(pipelineParser, pluginFactory, peerForwarderServer, shouldShutdownOnPipelineFailurePredicate),
                 "Exception should be thrown if pipeline parser has no pipeline configuration");
     }
 
@@ -140,17 +146,39 @@ public class DataPrepperTests {
     }
 
     @Test
-    void dataPrepper_shuts_down_when_last_pipeline_is_shutdown() throws NoSuchFieldException, IllegalAccessException {
+    void dataPrepper_shuts_down_when_shouldShutdownOnPipelineFailurePredicate_is_true() throws NoSuchFieldException, IllegalAccessException {
         final DataPrepper objectUnderTest = createObjectUnderTest();
         objectUnderTest.execute();
         final ArgumentCaptor<PipelineObserver> pipelineObserverArgumentCaptor = ArgumentCaptor.forClass(PipelineObserver.class);
         verify(pipeline).addShutdownObserver(pipelineObserverArgumentCaptor.capture());
 
         final PipelineObserver pipelineObserver = pipelineObserverArgumentCaptor.getValue();
+        when(shouldShutdownOnPipelineFailurePredicate.test(anyMap()))
+                .thenReturn(true);
         pipelineObserver.shutdown(pipeline);
 
         verify(dataPrepperServer).stop();
         verify(peerForwarderServer).stop();
+
+        final Map<String, Pipeline> transformationPipelines = objectUnderTest.getTransformationPipelines();
+        assertThat(transformationPipelines, notNullValue());
+        assertThat(transformationPipelines.size(), equalTo(0));
+    }
+
+    @Test
+    void dataPrepper_does_not_shut_down_when_shouldShutdownOnPipelineFailurePredicate_is_false() throws NoSuchFieldException, IllegalAccessException {
+        final DataPrepper objectUnderTest = createObjectUnderTest();
+        objectUnderTest.execute();
+        final ArgumentCaptor<PipelineObserver> pipelineObserverArgumentCaptor = ArgumentCaptor.forClass(PipelineObserver.class);
+        verify(pipeline).addShutdownObserver(pipelineObserverArgumentCaptor.capture());
+
+        final PipelineObserver pipelineObserver = pipelineObserverArgumentCaptor.getValue();
+        when(shouldShutdownOnPipelineFailurePredicate.test(anyMap()))
+                .thenReturn(false);
+        pipelineObserver.shutdown(pipeline);
+
+        verify(dataPrepperServer, never()).stop();
+        verify(peerForwarderServer, never()).stop();
 
         final Map<String, Pipeline> transformationPipelines = objectUnderTest.getTransformationPipelines();
         assertThat(transformationPipelines, notNullValue());
