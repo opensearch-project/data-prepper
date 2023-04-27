@@ -6,10 +6,14 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import io.micrometer.core.instrument.DistributionSummary;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import io.micrometer.core.instrument.Counter;
@@ -19,15 +23,12 @@ import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.noop.NoopTimer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
-import org.junit.jupiter.params.provider.ArgumentsSource;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CompressionType;
-import software.amazon.awssdk.services.s3.model.FileHeaderInfo;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -112,15 +113,22 @@ class S3SelectObjectWorkerIT {
 
     private S3SelectObjectWorker createObjectUnderTest(final int numberOfRecordsToAccumulate,
                                                        final CompressionType compressionType,
-                                                       final RecordsGenerator recordsGenerator) {
+                                                       final RecordsGenerator recordsGenerator,
+                                                       final String expression) {
+        S3SelectCSVOption s3SelectCSVOption = mock(S3SelectCSVOption.class);
+        when(s3SelectCSVOption.getFileHeaderInfo()).thenReturn("none");
         final S3ObjectRequest request = new S3ObjectRequest.Builder(buffer, numberOfRecordsToAccumulate,
-                Duration.ofMillis(TIMEOUT_IN_MILLIS), s3ObjectPluginMetrics).bucketOwnerProvider(bucketOwnerProvider).
-                fileHeaderInfo(FileHeaderInfo.NONE)
-               .s3AsyncClient(s3AsyncClient).eventConsumer(eventMetadataModifier)
-               .serializationFormatOption(S3SelectSerializationFormatOption.valueOf(
+                Duration.ofMillis(TIMEOUT_IN_MILLIS), s3ObjectPluginMetrics)
+                .bucketOwnerProvider(bucketOwnerProvider)
+                .s3SelectCSVOption(s3SelectCSVOption)
+                .s3SelectJsonOption(new S3SelectJsonOption())
+                .s3AsyncClient(s3AsyncClient)
+                .eventConsumer(eventMetadataModifier).expressionType("SQL")
+                .serializationFormatOption(S3SelectSerializationFormatOption.valueOf(
                         recordsGenerator.getFileExtension().toUpperCase()))
-                .queryStatement(recordsGenerator.getQueryStatement()).compressionType(compressionType).
-                s3SelectResponseHandler(new S3SelectResponseHandler()).build();
+                .expression(expression)
+                .compressionType(compressionType).
+                s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).build();
         return new S3SelectObjectWorker(request);
     }
 
@@ -134,7 +142,10 @@ class S3SelectObjectWorkerIT {
 
         final String key = getKeyString(recordsGenerator, numberOfRecords, shouldCompress);
         final CompressionType compressionType = shouldCompress ? CompressionType.GZIP : CompressionType.NONE;
-        final S3SelectObjectWorker objectUnderTest = createObjectUnderTest(numberOfRecordsToAccumulate, compressionType,recordsGenerator);
+        final S3SelectObjectWorker objectUnderTest = createObjectUnderTest(numberOfRecordsToAccumulate,
+                compressionType,
+                recordsGenerator,
+                recordsGenerator.getS3SelectExpression());
 
         s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);
         stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
@@ -150,23 +161,24 @@ class S3SelectObjectWorkerIT {
 
 
     @ParameterizedTest
-    @CsvSource({"25,100,false",
-            "100,500,false",
-            "500,1000,false"})
+    @CsvSource({"25,10,select * from s3Object limit 25",
+            "100,25,select * from s3Object limit 100",
+            "50000,25,select * from s3Object limit 50000"})
     void parseS3Object_parquet_correctly_loads_data_into_Buffer(
             final int numberOfRecords,
             final int numberOfRecordsToAccumulate,
-            final boolean shouldCompress) throws Exception {
+            final String expression) throws Exception {
         final RecordsGenerator parquetRecordsGenerator = new ParquetRecordsGenerator();
-        final String key = getKeyString(parquetRecordsGenerator, numberOfRecords, shouldCompress);
-        final CompressionType compressionType = shouldCompress ? CompressionType.GZIP : CompressionType.NONE;
-        final S3SelectObjectWorker objectUnderTest = createObjectUnderTest(numberOfRecordsToAccumulate, compressionType,parquetRecordsGenerator);
+        final String key = getKeyString(parquetRecordsGenerator, numberOfRecords, Boolean.FALSE);
+        final S3SelectObjectWorker objectUnderTest = createObjectUnderTest(numberOfRecordsToAccumulate,
+                CompressionType.NONE,
+                parquetRecordsGenerator,
+                expression);
 
-        s3ObjectGenerator.write(numberOfRecords, key, parquetRecordsGenerator, shouldCompress);
+        s3ObjectGenerator.write(numberOfRecords, key, parquetRecordsGenerator, Boolean.FALSE);
         stubBufferWriter(parquetRecordsGenerator::assertEventIsCorrect, key);
 
         parseObject(key, objectUnderTest);
-
         final int expectedWrites = numberOfRecords / numberOfRecordsToAccumulate + (numberOfRecords % numberOfRecordsToAccumulate != 0 ? 1 : 0);
 
         verify(buffer, times(expectedWrites)).writeAll(anyCollection(), eq(TIMEOUT_IN_MILLIS));
@@ -181,7 +193,7 @@ class S3SelectObjectWorkerIT {
 
     private void parseObject(final String key, final S3SelectObjectWorker objectUnderTest) throws IOException {
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        objectUnderTest.parseS3Object(s3ObjectReference);
+        objectUnderTest.parseS3Object(s3ObjectReference,null);
     }
 
     static class IntegrationTestArguments implements ArgumentsProvider {

@@ -55,7 +55,7 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
     }
 
     @Override
-    public String getQueryStatement() {
+    public String getS3SelectExpression() {
         return null;
     }
 

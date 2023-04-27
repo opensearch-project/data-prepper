@@ -67,7 +67,7 @@ class JsonRecordsGenerator implements RecordsGenerator {
     }
 
     @Override
-    public String getQueryStatement() {
+    public String getS3SelectExpression() {
         return "select  s.* from  S3Object[*].Records[*] s";
     }
 

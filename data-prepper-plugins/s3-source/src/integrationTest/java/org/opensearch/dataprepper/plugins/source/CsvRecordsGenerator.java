@@ -92,7 +92,7 @@ class CsvRecordsGenerator implements RecordsGenerator {
     }
 
     @Override
-    public String getQueryStatement() {
+    public String getS3SelectExpression() {
         return "SELECT * FROM S3OBJECT";
     }
 }
