@@ -119,7 +119,7 @@ public final class BulkRetryStrategy {
     private final Counter bulkRequestServerErrors;
     private static final Logger LOG = LoggerFactory.getLogger(BulkRetryStrategy.class);
 
-    class BulkOperationRequestResponse {
+    static class BulkOperationRequestResponse {
         final AccumulatingBulkRequest bulkRequest;
         final BulkResponse response;
         public BulkOperationRequestResponse(final AccumulatingBulkRequest bulkRequest, final BulkResponse response) {
@@ -230,7 +230,7 @@ public final class BulkRetryStrategy {
             }
         }
         if (doRetry && retryCount < maxRetries) {
-            if (retryCount % 5 == 0) {
+            if ((retryCount > 0) && (retryCount % 5 == 0)) {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, e);
             }
             bulkRequestNumberOfRetries.increment();
@@ -283,7 +283,7 @@ public final class BulkRetryStrategy {
 
     private AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> createBulkRequestForRetry(
             final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> request, final BulkResponse response) {
-        int newCount = retryCountMap.containsKey(request) ? (retryCountMap.get(request) + 1) : 1;
+        int newCount = retryCountMap.containsKey(request) ? (retryCountMap.get(request) + 1) : 0;
         if (response == null) {
             retryCountMap.put(request, newCount);
             // first attempt or retry due to Exception
