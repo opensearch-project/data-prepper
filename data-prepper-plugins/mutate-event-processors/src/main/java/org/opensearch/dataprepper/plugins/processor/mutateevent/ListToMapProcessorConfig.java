@@ -61,6 +61,9 @@ public class ListToMapProcessorConfig {
     @JsonProperty("flattened_element")
     private FlattenedElement flattenedElement = FlattenedElement.FIRST;
 
+    @JsonProperty("list_to_map_when")
+    private String listToMapWhen;
+
     public String getSource() {
         return source;
     }
@@ -80,6 +83,8 @@ public class ListToMapProcessorConfig {
     public boolean getFlatten() {
         return flatten;
     }
+
+    public String getListToMapWhen() { return listToMapWhen; }
 
     public FlattenedElement getFlattenedElement() {
         return flattenedElement;

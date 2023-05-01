@@ -5,21 +5,22 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
-import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.UUID;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -36,6 +37,9 @@ public class ConvertEntryTypeProcessorTests {
     @Mock
     private ConvertEntryTypeProcessorConfig mockConfig;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     private ConvertEntryTypeProcessor typeConversionProcessor;
 
     static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
@@ -48,6 +52,7 @@ public class ConvertEntryTypeProcessorTests {
     @BeforeEach
     private void setup() {
         when(mockConfig.getKey()).thenReturn(TEST_KEY);
+        when(mockConfig.getConvertWhen()).thenReturn(null);
     }
 
     private Record<Event> getMessage(String message, String key, Object value) {
@@ -67,11 +72,20 @@ public class ConvertEntryTypeProcessorTests {
         return event;
     }
 
+    private Event executeAndGetProcessedEvent(final Record<Event> record) {
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) typeConversionProcessor.doExecute(Collections.singletonList(record));
+        assertThat(processedRecords.size(), equalTo(1));
+        assertThat(processedRecords.get(0), notNullValue());
+        Event event = processedRecords.get(0).getData();
+        assertThat(event, notNullValue());
+        return event;
+    }
+
     @Test
     void testStringToIntegerConvertEntryTypeProcessor() {
         Integer testValue = 123;
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue.toString());
         assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue));
     }
@@ -81,7 +95,7 @@ public class ConvertEntryTypeProcessorTests {
         int testValue = 1;
         Boolean testBooleanValue = true;
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testBooleanValue);
         assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue));
     }
@@ -90,7 +104,7 @@ public class ConvertEntryTypeProcessorTests {
     void testIntegerConvertEntryTypeProcessorWithInvalidType() {
         Map<String, String> testValue = Map.of("key", "value");
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         assertThrows(IllegalArgumentException.class, () -> executeAndGetProcessedEvent(testValue));
     }
 
@@ -98,7 +112,7 @@ public class ConvertEntryTypeProcessorTests {
     void testStringToDoubleConvertEntryTypeProcessor() {
         Double testValue = 123.123;
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("double"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue.toString());
         assertThat(event.get(TEST_KEY, Double.class), equalTo(testValue));
     }
@@ -107,7 +121,7 @@ public class ConvertEntryTypeProcessorTests {
     void testLongToDoubleConvertEntryTypeProcessor() {
         Long testValue = (long)123;
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("double"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue);
         assertThat(event.get(TEST_KEY, Double.class), equalTo((double)testValue));
     }
@@ -116,7 +130,7 @@ public class ConvertEntryTypeProcessorTests {
     void testStringToBooleanConvertEntryTypeProcessor() {
         Boolean testValue = false;
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("boolean"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue.toString());
         assertThat(event.get(TEST_KEY, Boolean.class), equalTo(testValue));
     }
@@ -126,7 +140,7 @@ public class ConvertEntryTypeProcessorTests {
         Long testValue = (long)200;
         Boolean expectedValue = true;
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("boolean"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue);
         assertThat(event.get(TEST_KEY, Boolean.class), equalTo(expectedValue));
     }
@@ -136,7 +150,7 @@ public class ConvertEntryTypeProcessorTests {
         Integer testValue = 200;
         String expectedValue = testValue.toString();
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("string"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue);
         assertThat(event.get(TEST_KEY, String.class), equalTo(expectedValue));
     }
@@ -146,7 +160,7 @@ public class ConvertEntryTypeProcessorTests {
         Double testValue = (double)123.456;
         String expectedValue = testValue.toString();
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("string"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue);
         assertThat(event.get(TEST_KEY, String.class), equalTo(expectedValue));
     }
@@ -156,7 +170,7 @@ public class ConvertEntryTypeProcessorTests {
         Boolean testValue = false;
         String expectedValue = testValue.toString();
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("string"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue);
         assertThat(event.get(TEST_KEY, String.class), equalTo(expectedValue));
     }
@@ -165,7 +179,21 @@ public class ConvertEntryTypeProcessorTests {
     void testInvalidConvertEntryTypeProcessor() {
         Double testDoubleValue = (double)123.789;
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
-        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         assertThrows(IllegalArgumentException.class, () -> executeAndGetProcessedEvent(testDoubleValue));
+    }
+
+    @Test
+    void testNoConversionWhenConvertWhenIsFalse() {
+        Integer testValue = 123;
+        final String convertWhen = UUID.randomUUID().toString();
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        when(mockConfig.getConvertWhen()).thenReturn(convertWhen);
+
+        final Record<Event> record = getMessage(UUID.randomUUID().toString(), TEST_KEY, testValue);
+        when(expressionEvaluator.evaluate(convertWhen, record.getData())).thenReturn(false);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        Event event = executeAndGetProcessedEvent(record);
+        assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue));
     }
 }

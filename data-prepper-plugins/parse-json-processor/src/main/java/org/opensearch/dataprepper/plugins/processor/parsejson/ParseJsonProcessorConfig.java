@@ -24,6 +24,9 @@ public class ParseJsonProcessorConfig {
     @JsonProperty("pointer")
     private String pointer;
 
+    @JsonProperty("parse_when")
+    private String parseWhen;
+
     /**
      * The field of the Event that contains the JSON data.
      *
@@ -54,6 +57,8 @@ public class ParseJsonProcessorConfig {
     public String getPointer() {
         return pointer;
     }
+
+    public String getParseWhen() { return parseWhen; }
 
     @AssertTrue(message = "destination cannot be empty, whitespace, or a front slash (/)")
     boolean isValidDestination() {

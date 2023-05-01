@@ -27,6 +27,9 @@ public class RenameKeyProcessorConfig {
         @JsonProperty("overwrite_if_to_key_exists")
         private boolean overwriteIfToKeyExists = false;
 
+        @JsonProperty("rename_when")
+        private String renameWhen;
+
         public String getFromKey() {
             return fromKey;
         }
@@ -39,10 +42,13 @@ public class RenameKeyProcessorConfig {
             return overwriteIfToKeyExists;
         }
 
-        public Entry(final String fromKey, final String toKey, final boolean overwriteIfKeyExists) {
+        public String getRenameWhen() { return renameWhen; }
+
+        public Entry(final String fromKey, final String toKey, final boolean overwriteIfKeyExists, final String renameWhen) {
             this.fromKey = fromKey;
             this.toKey = toKey;
             this.overwriteIfToKeyExists = overwriteIfKeyExists;
+            this.renameWhen = renameWhen;
         }
 
         public Entry() {

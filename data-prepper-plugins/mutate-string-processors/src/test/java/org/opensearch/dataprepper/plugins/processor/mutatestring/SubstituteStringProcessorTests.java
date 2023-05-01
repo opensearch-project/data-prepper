@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -20,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.PatternSyntaxException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -37,10 +39,13 @@ public class SubstituteStringProcessorTests {
     @Mock
     private SubstituteStringProcessorConfig config;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     @BeforeEach
     public void setup() {
-        lenient().when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", "a", "b")));
-        lenient().when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "a", "b")));
+        lenient().when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", "a", "b", null)));
+        lenient().when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "a", "b", null)));
     }
 
     @Test
@@ -65,10 +70,10 @@ public class SubstituteStringProcessorTests {
 
     @Test
     public void testHappyPathMultiSubstituteStringProcessor() {
-        when(config.getIterativeConfig()).thenReturn(Arrays.asList(createEntry("message", "a", "b"),
-                createEntry("message2", "c", "d")));
-        when(config.getEntries()).thenReturn(Arrays.asList(createEntry("message", "a", "b"),
-                createEntry("message2", "c", "d")));
+        when(config.getIterativeConfig()).thenReturn(Arrays.asList(createEntry("message", "a", "b", null),
+                createEntry("message2", "c", "d", null)));
+        when(config.getEntries()).thenReturn(Arrays.asList(createEntry("message", "a", "b", null),
+                createEntry("message2", "c", "d", null)));
 
         final SubstituteStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("abcd");
@@ -83,10 +88,10 @@ public class SubstituteStringProcessorTests {
 
     @Test
     public void testHappyPathMultiMixedSubstituteStringProcessor() {
-        when(config.getIterativeConfig()).thenReturn(Arrays.asList(createEntry("message", "[?\\\\+]", "b"),
-                createEntry("message2", "c", "d")));
-        when(config.getEntries()).thenReturn(Arrays.asList(createEntry("message", "[?\\\\+]", "b"),
-                createEntry("message2", "c", "d")));
+        when(config.getIterativeConfig()).thenReturn(Arrays.asList(createEntry("message", "[?\\\\+]", "b", null),
+                createEntry("message2", "c", "d", null)));
+        when(config.getEntries()).thenReturn(Arrays.asList(createEntry("message", "[?\\\\+]", "b", null),
+                createEntry("message2", "c", "d", null)));
 
         final SubstituteStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("this?is\\a+message");
@@ -133,6 +138,22 @@ public class SubstituteStringProcessorTests {
     }
 
     @Test
+    public void test_events_are_identical_when_substituteWhen_condition_returns_false() {
+        final String substituteWhen = UUID.randomUUID().toString();
+
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", "[?\\\\+]", "b", substituteWhen)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "[?\\\\+]", "b", substituteWhen)));
+
+        final SubstituteStringProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("abcd");
+
+        when(expressionEvaluator.evaluate(substituteWhen, record.getData())).thenReturn(false);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().toMap(), equalTo(record.getData().toMap()));
+    }
+
+    @Test
     public void testShutdown() {
         final SubstituteStringProcessor processor = createObjectUnderTest();
         assertThat(processor.isReadyForShutdown(), is(true));
@@ -140,10 +161,10 @@ public class SubstituteStringProcessorTests {
 
     @Test
     void testBothKeyValuesDefinedErrorKeyValueProcessor() {
-        lenient().when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", "[", "b")));
-        lenient().when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "[", "b")));
+        lenient().when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", "[", "b", null)));
+        lenient().when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", "[", "b", null)));
 
-        assertThrows(PatternSyntaxException.class, () -> new SubstituteStringProcessor(pluginMetrics, config));
+        assertThrows(PatternSyntaxException.class, () -> new SubstituteStringProcessor(pluginMetrics, config, expressionEvaluator));
     }
 
     private static class TestObject {
@@ -159,14 +180,14 @@ public class SubstituteStringProcessorTests {
         }
     }
 
-    private SubstituteStringProcessorConfig.Entry createEntry(final String source, final String from, final String to) {
-        final SubstituteStringProcessorConfig.Entry entry = new SubstituteStringProcessorConfig.Entry(source, from, to);
+    private SubstituteStringProcessorConfig.Entry createEntry(final String source, final String from, final String to, final String substituteWhen) {
+        final SubstituteStringProcessorConfig.Entry entry = new SubstituteStringProcessorConfig.Entry(source, from, to, substituteWhen);
 
         return entry;
     }
 
     private SubstituteStringProcessor createObjectUnderTest() {
-        return new SubstituteStringProcessor(pluginMetrics, config);
+        return new SubstituteStringProcessor(pluginMetrics, config, expressionEvaluator);
     }
 
     private Record<Event> getEvent(Object message) {
