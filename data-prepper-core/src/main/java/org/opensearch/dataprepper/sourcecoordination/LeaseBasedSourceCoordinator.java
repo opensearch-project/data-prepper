@@ -25,17 +25,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(LeaseBasedSourceCoordinator.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
-    // These three could be configurable by the sources
-    static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(8);
-
-    static final Long DEFAULT_MAX_CLOSED_COUNT = 5L;
-    private static final Duration DEFAULT_REOPEN_AT = Duration.ofMinutes(15);
+    static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
 
     private static final String hostName;
 
@@ -48,7 +45,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     static {
         try {
-            // Is there a better identifier for the instance
             hostName = InetAddress.getLocalHost().getHostName();
         } catch (final UnknownHostException e) {
             throw new RuntimeException(e);
@@ -68,7 +64,40 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     }
 
     @Override
-    public void createPartitions(final List<PartitionIdentifier> partitionIdentifiers) {
+    public Optional<SourcePartition<T>> getNextPartition(final Supplier<List<PartitionIdentifier>> partitionsCreatorSupplier) {
+        if (partitionManager.getActivePartition().isPresent()) {
+            return partitionManager.getActivePartition();
+        }
+
+        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition();
+
+        if (ownedPartitions.isEmpty()) {
+            // Potential metric (AcquirePartitionMisses). May indicate that the number of nodes could be lowered or new partitions need to be added
+            LOG.info("Partition owner {} did not acquire any partitions. Running partition creation supplier to create more partitions", ownerId);
+
+            createPartitions(partitionsCreatorSupplier.get());
+
+            ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition();
+        }
+
+        if (ownedPartitions.isEmpty()) {
+            LOG.info("Partition owner {} did not acquire any partitions even after running the partition creation supplier", ownerId);
+            return Optional.empty();
+        }
+
+        final SourcePartition<T> sourcePartition = SourcePartition.builder(partitionProgressStateClass)
+                .withPartitionKey(ownedPartitions.get().getSourcePartitionKey())
+                .withPartitionState(convertStringToPartitionProgressStateClass(ownedPartitions.get().getPartitionProgressState()))
+                .build();
+
+        partitionManager.setActivePartition(sourcePartition);
+
+        LOG.debug("Partition key {} was acquired by owner {}", sourcePartition.getPartitionKey(), ownerId);
+
+        return Optional.of(sourcePartition);
+    }
+
+    private void createPartitions(final List<PartitionIdentifier> partitionIdentifiers) {
         for (final PartitionIdentifier partitionIdentifier : partitionIdentifiers) {
             final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey());
 
@@ -86,33 +115,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             if (partitionCreated) {
                 LOG.info("Partition successfully created by owner {} for source partition key {}", ownerId, partitionIdentifier.getPartitionKey());
             }
-        }
-    }
-
-    @Override
-    public Optional<SourcePartition<T>> getNextPartition() {
-        if (partitionManager.getActivePartition().isPresent()) {
-            // renew lease timeout here? Or is renewing on save state enough?
-            return partitionManager.getActivePartition();
-        }
-
-        final Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition();
-
-        if (ownedPartitions.isEmpty()) {
-            // Potential metric (AcquirePartitionMisses). May indicate that the number of nodes could be lowered or new partitions need to be added
-            LOG.info("Partition owner {} did not acquire any partitions", ownerId);
-            return Optional.empty();
-        } else {
-            final SourcePartition<T> sourcePartition = SourcePartition.builder(partitionProgressStateClass)
-                    .withPartitionKey(ownedPartitions.get().getSourcePartitionKey())
-                    .withPartitionState(convertStringToPartitionProgressStateClass(ownedPartitions.get().getPartitionProgressState()))
-                    .build();
-
-            partitionManager.setActivePartition(sourcePartition);
-
-            LOG.debug("Partition key {} was acquired by owner {}", sourcePartition.getPartitionKey(), ownerId);
-
-            return Optional.of(sourcePartition);
         }
     }
 
@@ -153,7 +155,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     }
 
     @Override
-    public boolean closePartition(final String partitionKey, final Duration reopenAfter) {
+    public boolean closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount) {
         if (!isActivelyOwnedPartition(partitionKey)) {
             throw new PartitionNotOwnedException(
                     String.format("Unable to close the partition because partition key %s is not owned by this instance of Data Prepper for owner %s", partitionKey, ownerId)
@@ -171,11 +173,11 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
         itemToUpdate.setPartitionOwner(null);
         itemToUpdate.setPartitionOwnershipTimeout(null);
-        if (itemToUpdate.getClosedCount() >= DEFAULT_MAX_CLOSED_COUNT) {
+        if (itemToUpdate.getClosedCount() >= maxClosedCount) {
             itemToUpdate.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
         } else {
             itemToUpdate.setSourcePartitionStatus(SourcePartitionStatus.CLOSED);
-            itemToUpdate.setReOpenAt(Instant.now().plus(DEFAULT_REOPEN_AT));
+            itemToUpdate.setReOpenAt(Instant.now().plus(reopenAfter));
             itemToUpdate.setClosedCount(itemToUpdate.getClosedCount() + 1);
         }
 
@@ -241,9 +243,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
                 final boolean releasedPartition = sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
                 if (!releasedPartition) {
-                    // Should these booleans and logs be exceptions that bubble up from SourceCoordinationStore and get logged here?
-                    // Would show exact conditional check that failed in case of ddb, and other stores could have detailed errors logged.
-                    // This would keep them from having to log themselves as they could just throw custom exception PartitionItemUpdateException?
                     LOG.warn("Unable to release partition for owner {} with partition key {}.",
                             ownerId, updateItem.getSourcePartitionKey());
                 } else {
@@ -268,8 +267,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     }
 
     private void validatePartitionOwnership(final SourcePartitionStoreItem item) {
-        // Should we also validate that partitionOwnershipTimeout is not in the past? Seems ok to give that a pass here,
-        // because even though this instance didn't renew lease timeout in time, no other instance has grabbed the partition if owner still matches
         if (Objects.isNull(item.getPartitionOwner()) || !item.getPartitionOwner().equals(ownerId)) {
             partitionManager.removeActivePartition();
             throw new PartitionNotOwnedException(String.format("The partition is no longer owned by this instance of Data Prepper. " +
