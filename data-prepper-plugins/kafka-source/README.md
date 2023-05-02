@@ -45,17 +45,11 @@ log-pipeline:
               key_deserializer: org.apache.kafka.common.serialization.StringDeserializer
               value_deserializer: org.apache.kafka.common.serialization.StringDeserializer
               schema_type: plaintext
-              record_type: plaintext
-            ssl:
-              ssl_truststore_location: C:/Users/AM20395480/kafka.jksa
-              ssl_truststore_password: kafkasource
-              ssl_keystore_location: C:/Users/AM20395480/Music/certificates/identity.jks
-              ssl_keystore_password: kafkasource
-              ssl_key_password: kafkasource  
+              record_type: plaintext 
          - topic:
             name: my-topic-1
             auth_type: sasl_ssl
-            consumer_group:
+            consumer:
               group_name: kafka-consumer-group-1
               group_id: DPKafkaProj-1
               workers: 10
@@ -65,12 +59,6 @@ log-pipeline:
               value_deserializer: org.apache.kafka.common.serialization.StringDeserializer
               schema_type: plaintext
               record_type: plaintext
-            ssl:
-              ssl_truststore_location: C:/Users/AM20395480/kafka.jksa
-              ssl_truststore_password: kafkasource
-              ssl_keystore_location: C:/Users/AM20395480/Music/certificates/identity.jks
-              ssl_keystore_password: kafkasource
-              ssl_key_password: kafkasource  
   sink:
     - stdout:
 ```
@@ -134,13 +122,6 @@ Defaults to `52428800`.
 - `schema_type` (Optional) : The type of schema format reading from the broker. This Kafka Consumer plugin supports String and json schema types. Defaults to `plaintext`.
 
 - `record_type` (Optional) : The type of record format reading from the broker. This Kafka Consumer plugin supports String and json record types. Defaults to `plaintext`.
-
-### <a name="ssl_configuration">SSL Auth Configuration</a>
-- `ssl_truststore_location` (Optional) : The location of the trust store file.
-- `ssl_truststore_password` (Optional) : The password for the trust store file.
-- `ssl_keystore_location` (Optional) : The location of the key store file.
-- `ssl_keystore_password` (Optional) : The store password for the key store file. This is optional for client and only needed if 'ssl.keystore.location' is configured.
-- `ssl_key_password` (Optional) :The password of the private key in the key store file or the PEM key specified in 'ssl.keystore.key'.
 
 ## Developer Guide
 
