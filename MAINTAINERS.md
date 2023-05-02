@@ -10,6 +10,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Chase Engelbrecht    | [engechas](https://github.com/engechas)               | Amazon      |
 | Taylor Gray          | [graytaylor0](https://github.com/graytaylor0)         | Amazon      |
 | Dinu John            | [dinujoh](https://github.com/dinujoh)                 | Amazon      |
+| Krishna Kondaka      | [kkondaka](https://github.com/kkondaka)               | Amazon      |
 | Christopher Manning  | [cmanning09](https://github.com/cmanning09)           | Amazon      |
 | Asif Sohail Mohammed | [asifsmohammed](https://github.com/asifsmohammed)     | Amazon      |
 | David Venable        | [dlvenable](https://github.com/dlvenable)             | Amazon      |
