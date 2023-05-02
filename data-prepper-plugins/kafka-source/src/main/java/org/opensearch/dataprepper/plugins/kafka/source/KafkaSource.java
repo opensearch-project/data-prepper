@@ -22,6 +22,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.source.configuration.TopicsConfig;
 import org.opensearch.dataprepper.plugins.kafka.source.consumer.MultithreadedConsumer;
+import org.opensearch.dataprepper.plugins.kafka.source.deserializer.KafkaSourceJsonDeserializer;
+import org.opensearch.dataprepper.plugins.kafka.source.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,5 +124,15 @@ public class KafkaSource implements Source<Record<Object>> {
   }
 
   private void setPropertiesForSchemaType(TopicsConfig topicConfig, Properties properties, String schemaType) {
+    if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
+      properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+              topicConfig.getTopic().getSchemaConfig().getKeyDeserializer());
+      properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
+    } else if (schemaType.equalsIgnoreCase(MessageFormat.PLAINTEXT.toString())) {
+      properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+              topicConfig.getTopic().getSchemaConfig().getKeyDeserializer());
+      properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+              topicConfig.getTopic().getSchemaConfig().getValueDeserializer());
+    }
   }
 }
