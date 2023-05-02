@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 public enum BufferTypeOptions {
 
     INMEMORY("in_memory", new InMemoryBuffer());
-    //LOCALFILE("local_file", new LocalFileBuffer());
 
     private final String option;
     private final Buffer bufferType;
