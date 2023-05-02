@@ -21,8 +21,6 @@ public class ScanOptions {
 
     private String bucket;
 
-    private String expression;
-
     private LocalDateTime endDateTime;
 
     private LocalDateTime useStartDateTime;
@@ -35,7 +33,6 @@ public class ScanOptions {
         this.startDateTime = builder.startDateTime;
         this.range = builder.range;
         this.bucket = builder.bucket;
-        this.expression = builder.expression;
         this.endDateTime = builder.endDateTime;
         this.useStartDateTime = builder.useStartDateTime;
         this.useEndDateTime = builder.useEndDateTime;
@@ -48,10 +45,6 @@ public class ScanOptions {
 
     public String getBucket() {
         return bucket;
-    }
-
-    public String getExpression() {
-        return expression;
     }
 
     public LocalDateTime getUseStartDateTime() {
@@ -79,8 +72,6 @@ public class ScanOptions {
         private Duration range;
 
         private String bucket;
-
-        private String expression;
 
         private LocalDateTime endDateTime;
 
@@ -113,11 +104,6 @@ public class ScanOptions {
             return this;
         }
 
-        public Builder setExpression(String expression) {
-            this.expression = expression;
-            return this;
-        }
-
         public Builder setEndDateTime(LocalDateTime endDateTime) {
             this.endDateTime = endDateTime;
             return this;
@@ -143,6 +129,13 @@ public class ScanOptions {
         private void scanRangeDateValidationError(){
             throw new IllegalArgumentException("start_date/range,start_date/end_date,end_date/range any two combinations " +
                     "are required to process scan range");
+        }
+
+        @Override
+        public String toString() {
+            return "startDateTime=" + startDateTime +
+                    ", range=" + range +
+                    ", endDateTime=" + endDateTime;
         }
     }
 }

@@ -25,7 +25,7 @@ public class S3ScanBucketOptionTest {
                 "              key_prefix:\n" +
                 "                include:\n" +
                 "                  - bucket2\n" +
-                "                exclude:\n" +
+                "                exclude_suffix:\n" +
                 "                  - .jpeg\n" +
                 "                  - .png\n" +
                 "                  - .exe\n" +
@@ -38,7 +38,7 @@ public class S3ScanBucketOptionTest {
         assertThat(s3ScanBucketOption.getkeyPrefix(), instanceOf(S3ScanKeyPathOption.class));
         assertThat(s3ScanBucketOption.getkeyPrefix().getS3scanIncludeOptions(),instanceOf(List.class));
         assertThat(s3ScanBucketOption.getkeyPrefix().getS3scanIncludeOptions().get(0),equalTo("bucket2"));
-        assertThat(s3ScanBucketOption.getkeyPrefix().getS3ScanExcludeOptions(),instanceOf(List.class));
-        assertThat(s3ScanBucketOption.getkeyPrefix().getS3ScanExcludeOptions().get(1),equalTo(".png"));
+        assertThat(s3ScanBucketOption.getkeyPrefix().getS3ScanExcludeSuffixOptions(),instanceOf(List.class));
+        assertThat(s3ScanBucketOption.getkeyPrefix().getS3ScanExcludeSuffixOptions().get(1),equalTo(".png"));
     }
 }

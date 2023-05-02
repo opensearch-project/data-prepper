@@ -14,14 +14,14 @@ import java.util.List;
 public class S3ScanKeyPathOption {
     @JsonProperty("include")
     private List<String> s3scanIncludeOptions;
-    @JsonProperty("exclude")
-    private List<String> s3ScanExcludeOptions;
+    @JsonProperty("exclude_suffix")
+    private List<String> s3ScanExcludeSuffixOptions;
 
     public List<String> getS3scanIncludeOptions() {
         return s3scanIncludeOptions;
     }
 
-    public List<String> getS3ScanExcludeOptions() {
-        return s3ScanExcludeOptions;
+    public List<String> getS3ScanExcludeSuffixOptions() {
+        return s3ScanExcludeSuffixOptions;
     }
 }

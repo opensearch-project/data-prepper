@@ -77,11 +77,11 @@ public class ScanObjectWorker implements Runnable{
         bucketOwnerProvider.getBucketOwner(scanOptions.getBucket())
                 .ifPresent(listObjectsV2Request::expectedBucketOwner);
 
-        if(Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3ScanExcludeOptions()))
-            excludeItems.addAll(s3ScanKeyPathOption.getS3ScanExcludeOptions());
+        if(Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions()))
+            excludeItems.addAll(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions());
 
         if(Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3scanIncludeOptions()))
-            s3ScanKeyPathOption.getS3scanIncludeOptions().stream().forEach(includePath -> {
+            s3ScanKeyPathOption.getS3scanIncludeOptions().forEach(includePath -> {
                 listObjectsV2Request.prefix(includePath);
                 scanObjects.addAll(listS3Objects(excludeItems, listObjectsV2Request));
             });
@@ -91,16 +91,16 @@ public class ScanObjectWorker implements Runnable{
         if(scanObjects.isEmpty())
             LOG.info("s3 objects are not found in configured scan pipeline.");
 
-        scanObjects.stream().forEach(key ->
+        scanObjects.forEach(key ->
                 processS3ObjectKeys(S3ObjectReference.bucketAndKey(scanOptions.getBucket(),
                         key).build(),s3ObjectHandler, scanOptions));
     }
 
     private List<String> listS3Objects(List<String> excludeKeyPaths, ListObjectsV2Request.Builder listObjectsV2Request) {
-        return s3Client.listObjectsV2(listObjectsV2Request.build()).contents().stream().map(S3Object::key)
-                .filter(s3ObjKey-> s3ObjKey.lastIndexOf(".")!=-1)
-                .filter(includeKeyPath -> !excludeKeyPaths.stream()
-                        .anyMatch(excludeItem -> includeKeyPath.contains(excludeItem))).collect(Collectors.toList());
+          return s3Client.listObjectsV2(listObjectsV2Request.fetchOwner(true).build()).contents().stream().map(S3Object::key)
+                .filter(path -> !path.endsWith("/"))
+                .filter(includeKeyPath -> excludeKeyPaths.stream()
+                        .noneMatch(excludeItem -> includeKeyPath.endsWith(excludeItem))).collect(Collectors.toList());
     }
 
     private void processS3ObjectKeys(final S3ObjectReference s3ObjectReference,
@@ -151,7 +151,7 @@ public class ScanObjectWorker implements Runnable{
     }
 
     /**
-     * Used for identifying s3 object last modified time match with slurping date range.
+     * Used for identifying s3 object last modified time match with scan the date range.
      * @return boolean
      */
     private boolean isKeyMatchedBetweenTimeRange(final LocalDateTime lastModifiedTime,

@@ -33,7 +33,7 @@ public class S3ScanScanOptionsTest {
                 "              key_prefix:\n" +
                 "                include:\n" +
                 "                  - bucket2\n" +
-                "                exclude:\n" +
+                "                exclude_suffix:\n" +
                 "                  - .jpeg";
         final S3ScanScanOptions s3ScanScanOptions = objectMapper.readValue(scanYaml, S3ScanScanOptions.class);
         assertThat(s3ScanScanOptions.getStartTime(),equalTo(LocalDateTime.parse("2023-01-21T18:00:00")));
@@ -41,11 +41,11 @@ public class S3ScanScanOptionsTest {
         assertThat(s3ScanScanOptions.getRange(),equalTo(Duration.parse("P90DT3H4M")));
         assertThat(s3ScanScanOptions.getBuckets(),instanceOf(List.class));
         assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getName(),equalTo("test-s3-source-test-output"));
-        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3ScanExcludeOptions(),instanceOf(List.class));
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3ScanExcludeSuffixOptions(),instanceOf(List.class));
         assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3scanIncludeOptions(),instanceOf(List.class));
         assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3scanIncludeOptions().get(0),
                 equalTo("bucket2"));
-        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3ScanExcludeOptions().get(0),
+        assertThat(s3ScanScanOptions.getBuckets().get(0).getS3ScanBucketOption().getkeyPrefix().getS3ScanExcludeSuffixOptions().get(0),
                 equalTo(".jpeg"));
     }
 }

@@ -287,7 +287,6 @@ class S3ScanObjectWorkerTest {
                 .setEndDateTime(LocalDateTime.parse(startDateTime))
                 .setRange(Duration.parse("P10DT2H"))
                 .setBucket(bucketName)
-                .setExpression("select * from s3Object")
                 .setS3ScanKeyPathOption(s3ScanKeyPathOption).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
@@ -319,7 +318,6 @@ class S3ScanObjectWorkerTest {
                 .setStartDateTime(LocalDateTime.parse("2023-03-05T10:00:00"))
                 .setRange(Duration.parse("P10DT2H"))
                 .setBucket(bucketName)
-                .setExpression("select * from s3Object")
                 .setS3ScanKeyPathOption(s3ScanKeyPathOption).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
@@ -348,7 +346,6 @@ class S3ScanObjectWorkerTest {
                 .setStartDateTime(LocalDateTime.parse("2023-03-05T10:00:00"))
                 .setEndDateTime(LocalDateTime.parse("2023-04-09T00:00:00"))
                 .setBucket(bucketName)
-                .setExpression("select * from s3Object")
                 .setS3ScanKeyPathOption(s3ScanKeyPathOption).build();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
