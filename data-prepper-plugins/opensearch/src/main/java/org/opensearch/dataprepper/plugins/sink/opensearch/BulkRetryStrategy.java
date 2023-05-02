@@ -222,7 +222,7 @@ public final class BulkRetryStrategy {
                                           final BulkResponse bulkResponse,
                                           Exception e) throws InterruptedException {
         final boolean doRetry = (Objects.isNull(e)) ? canRetry(bulkResponse) : canRetry(e);
-        if (!Objects.isNull(bulkResponse) && retryCount == 1) { // first attempt
+        if (!Objects.isNull(bulkResponse) && retryCount == 0) { // first attempt
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if (bulkItemResponse.error() == null) {
                     sentDocumentsOnFirstAttemptCounter.increment();
@@ -268,7 +268,7 @@ public final class BulkRetryStrategy {
             return handleRetriesAndFailures(bulkRequestForRetry, retryCount, bulkResponse, null);
         } else {
             final int numberOfDocs = bulkRequestForRetry.getOperationsCount();
-            final boolean firstAttempt = (retryCount == 1);
+            final boolean firstAttempt = (retryCount == 0);
             if (firstAttempt) {
                 sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
             }
