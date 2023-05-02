@@ -318,7 +318,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       }
     } else {
       dlqObjects.forEach(dlqObject -> {
-        LOG.warn(SENSITIVE, "Document [{}] has failure.", dlqObject.getFailedData(), failure);
+        LOG.warn(SENSITIVE, "Document [{}] has failure. DLQ not configured", dlqObject.getFailedData(), failure);
         dlqObject.releaseEventHandle(false);
       });
     }
