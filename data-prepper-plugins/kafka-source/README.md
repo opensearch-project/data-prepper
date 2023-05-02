@@ -20,7 +20,7 @@ log-pipeline:
         - topic:
             name: my-topic-2
             auth_type: SASL_OAUTH #optional
-            consumer_group:
+            consumer:
               group_name: kafka-consumer-group-2
               group_id: DPKafkaProj-2
               workers: 10 #optional and default is 10
