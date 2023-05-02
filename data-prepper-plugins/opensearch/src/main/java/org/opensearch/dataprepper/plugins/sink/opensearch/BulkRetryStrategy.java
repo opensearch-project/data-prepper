@@ -222,7 +222,7 @@ public final class BulkRetryStrategy {
                                           final BulkResponse bulkResponse,
                                           Exception e) throws InterruptedException {
         final boolean doRetry = (Objects.isNull(e)) ? canRetry(bulkResponse) : canRetry(e);
-        if (!Objects.isNull(bulkResponse) && retryCount == 0) { // first attempt
+        if (!Objects.isNull(bulkResponse) && retryCount == 1) { // first attempt
             for (final BulkResponseItem bulkItemResponse : bulkResponse.items()) {
                 if (bulkItemResponse.error() == null) {
                     sentDocumentsOnFirstAttemptCounter.increment();
@@ -230,7 +230,7 @@ public final class BulkRetryStrategy {
             }
         }
         if (doRetry && retryCount < maxRetries) {
-            if ((retryCount > 0) && (retryCount % 5 == 0)) {
+            if (retryCount % 5 == 0) {
                 LOG.warn("Bulk Operation Failed. Number of retries {}. Retrying... ", retryCount, e);
             }
             bulkRequestNumberOfRetries.increment();
@@ -268,7 +268,7 @@ public final class BulkRetryStrategy {
             return handleRetriesAndFailures(bulkRequestForRetry, retryCount, bulkResponse, null);
         } else {
             final int numberOfDocs = bulkRequestForRetry.getOperationsCount();
-            final boolean firstAttempt = (retryCount == 0);
+            final boolean firstAttempt = (retryCount == 1);
             if (firstAttempt) {
                 sentDocumentsOnFirstAttemptCounter.increment(numberOfDocs);
             }
@@ -283,7 +283,7 @@ public final class BulkRetryStrategy {
 
     private AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> createBulkRequestForRetry(
             final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> request, final BulkResponse response) {
-        int newCount = retryCountMap.containsKey(request) ? (retryCountMap.get(request) + 1) : 0;
+        int newCount = retryCountMap.containsKey(request) ? (retryCountMap.get(request) + 1) : 1;
         if (response == null) {
             retryCountMap.put(request, newCount);
             // first attempt or retry due to Exception
