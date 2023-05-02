@@ -167,7 +167,7 @@ public class S3ScanObjectWorkerIT {
 
         final String includeOptionsYaml = "                include:\n" +
                 "                  - "+keyPrefix+"\n" +
-                "                exclude:\n" +
+                "                exclude_suffix:\n" +
                 "                  - .csv\n" +
                 "                  - .json\n" +
                 "                  - .txt\n" +
@@ -210,7 +210,7 @@ public class S3ScanObjectWorkerIT {
         final String key = getKeyString(keyPrefix,recordsGenerator, shouldCompress);
         final String includeOptionsYaml = "                include:\n" +
                 "                  - "+keyPrefix+"\n" +
-                "                exclude:\n" +
+                "                exclude_suffix:\n" +
                 "                  - .parquet";
         scanOptions.setS3ScanKeyPathOption(objectMapper.readValue(includeOptionsYaml, S3ScanKeyPathOption.class));
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest(recordsGenerator,

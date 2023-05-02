@@ -2,7 +2,7 @@
 
 This source allows Data Prepper to use S3 as a source. It uses SQS for notifications
 of which S3 objects are new and loads those new objects to parse out events.
-It supports scan pipeline to slurp the data from s3 buckets and loads those new objects to parse out events.
+It supports scan pipeline to scan the data from s3 buckets and loads those new objects to parse out events.
 
 ## Basic Usage
 
@@ -79,7 +79,7 @@ source-pipeline:
               key_prefix:
                 include:
                   - bucket2/
-                exclude:
+                exclude_suffix:
                   - .jpeg
                   - .png
 ```
@@ -116,11 +116,11 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `include` (Optional) : Provide the list of include key path prefix.
 
-* `exclude` (Optional) : Provide the list of exclude items. 
+* `exclude_suffix` (Optional) : Provide the list of suffix to exclude items. 
 
-* `start_time` (Optional) : Provide the start time to slurp the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
+* `start_time` (Optional) : Provide the start time to scan the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
 
-* `end_time` (Optional) : Provide the end time to slurp the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
+* `end_time` (Optional) : Provide the end time to scan the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
 
 * `range` (Optional) : Provide the duration to scan the data example : `day` , `week` , `month` , `year`.
 

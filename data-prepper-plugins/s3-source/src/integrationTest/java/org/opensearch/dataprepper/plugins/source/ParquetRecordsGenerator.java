@@ -16,8 +16,6 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 public class ParquetRecordsGenerator implements RecordsGenerator{
     private static final Logger LOG = LoggerFactory.getLogger(ParquetRecordsGenerator.class);
 
@@ -47,9 +45,10 @@ public class ParquetRecordsGenerator implements RecordsGenerator{
         assertThat(messageMap, notNullValue());
         assertThat(messageMap.get("Year"),equalTo("2018"));
         assertThat(messageMap.get("count"),nullValue());
-        assertTrue(Integer.valueOf(String.valueOf(messageMap.get("Sex")))>=1);
-        assertTrue(Integer.valueOf(String.valueOf(messageMap.get("Ethnic")))>=1);
-        assertTrue(Integer.valueOf(String.valueOf(messageMap.get("Area")))>=1);
+        assertThat(messageMap.get("Age"),equalTo("1"));
+        assertThat(messageMap.get("Sex"),equalTo("2"));
+        assertThat(messageMap.get("Ethnic"),equalTo("9999"));
+        assertThat(messageMap.get("Area"),equalTo("14"));
     }
     @Override
     public String getS3SelectExpression() {
