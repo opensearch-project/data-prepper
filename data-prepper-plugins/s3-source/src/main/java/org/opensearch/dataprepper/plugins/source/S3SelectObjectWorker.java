@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -78,6 +79,8 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private final S3SelectJsonOption s3SelectJsonOption;
     private final String expressionType;
 
+    private final BucketOwnerProvider bucketOwnerProvider;
+
     public S3SelectObjectWorker(final S3ObjectRequest s3ObjectRequest) {
         this.buffer = s3ObjectRequest.getBuffer();
         this.numberOfRecordsToAccumulate = s3ObjectRequest.getNumberOfRecordsToAccumulate();
@@ -92,10 +95,12 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         this.s3SelectCSVOption = s3ObjectRequest.getS3SelectCSVOption();
         this.s3SelectJsonOption = s3ObjectRequest.getS3SelectJsonOption();
         this.expressionType = s3ObjectRequest.getExpressionType();
+        this.bucketOwnerProvider = s3ObjectRequest.getBucketOwnerProvider();
     }
 
     public void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
         try{
+            LOG.info("Read S3 object: {}", s3ObjectReference);
             selectObject(s3ObjectReference, acknowledgementSet);
         } catch (Exception e){
             LOG.error("Unable to process object reference: {}", s3ObjectReference, e);
@@ -227,16 +232,19 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     }
 
     private SelectObjectContentRequest getS3SelectObjRequest(final S3ObjectReference s3ObjectReference,
-                                                             final InputSerialization inputSerialization, final ScanRange scanRange) {
-        return SelectObjectContentRequest.builder()
+                                                             final InputSerialization inputSerialization,
+                                                             final ScanRange scanRange) {
+        final SelectObjectContentRequest.Builder selectObjectContentRequestBuilder = SelectObjectContentRequest.builder()
                 .bucket(s3ObjectReference.getBucketName())
                 .key(s3ObjectReference.getKey())
                 .expressionType(expressionType)
                 .expression(expression)
                 .inputSerialization(inputSerialization)
                 .outputSerialization(outputSerialization -> outputSerialization.json(SdkBuilder::build))
-                .scanRange(scanRange)
-                .build();
+                .scanRange(scanRange);
+        bucketOwnerProvider.getBucketOwner(s3ObjectReference.getBucketName())
+                .ifPresent(selectObjectContentRequestBuilder::expectedBucketOwner);
+        return selectObjectContentRequestBuilder.build();
     }
 
     private void parseCompleteStreamFromResponseHeader(final AcknowledgementSet acknowledgementSet,
@@ -261,7 +269,6 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                     } catch (final Exception ex) {
                         LOG.error("Failed writing S3 objects to buffer due to: {}", ex.getMessage());
                     }
-
                 }
             }
         }
