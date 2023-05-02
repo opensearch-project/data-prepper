@@ -23,7 +23,6 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.time.Instant;
 
 @DataPrepperPlugin(name = "aggregate", pluginType = Processor.class, pluginConfigurationType = AggregateProcessorConfig.class)
@@ -85,11 +84,14 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
         final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(forceConclude);
         for (final Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup> groupEntry : groupsToConclude) {
-            final Optional<Event> concludeGroupEvent = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
+            final AggregateActionOutput actionOutput = aggregateActionSynchronizer.concludeGroup(groupEntry.getKey(), groupEntry.getValue(), forceConclude);
 
-            if (concludeGroupEvent.isPresent()) {
-                recordsOut.add(new Record(concludeGroupEvent.get()));
-                actionConcludeGroupEventsOutCounter.increment();
+            final List<Event> concludeGroupEvents = actionOutput != null ? actionOutput.getEvents() : null;
+            if (concludeGroupEvents != null && !concludeGroupEvents.isEmpty()) {
+                concludeGroupEvents.stream().forEach((event) -> {
+                    recordsOut.add(new Record(event));
+                    actionConcludeGroupEventsOutCounter.increment();
+                });
             } else {
                 actionConcludeGroupEventsDroppedCounter.increment();
             }

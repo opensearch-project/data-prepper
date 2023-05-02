@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import java.util.Map;
+import java.util.function.Function;
+import java.time.Duration;
 
 /**
  * Implementing classes are able to be passed to the functions of {@link AggregateAction}
@@ -25,4 +27,13 @@ public interface AggregateActionInput {
      * @since 2.1
      */
     Map<Object, Object> getIdentificationKeys();
+
+    /**
+     * Sets custom shouldConclude function
+     *
+     * @param customShouldConclude function doing custom check
+     * @since 2.2
+     */
+    default void setCustomShouldConclude(Function<Duration, Boolean> customShouldConclude) {
+    }
 }

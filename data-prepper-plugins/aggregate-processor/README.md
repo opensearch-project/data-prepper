@@ -44,6 +44,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     * [histogram](#histogram)
     * [rate_limiter](#rate_limiter)
     * [percent_sampler](#percent_sampler)
+    * [tail_sampler](#tail_sampler)
 ### <a name="group_duration"></a>
 * `group_duration` (Optional): A `String` that represents the amount of time that a group should exist before it is concluded automatically. Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms"). Default value is `180s`.
 
@@ -177,7 +178,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
 * `percent_sampler`: Processes the events and controls the number of events aggregated based on the configuration. Only specified `percent` of the events are allowed and the rest are dropped.
     * It supports the following config options
        * `percent`: percent of events to be allowed during aggregation window
-    * When the following three events arrive with in one second and the `percent` is set 50
+    * When the following four events arrive with in one aggregataion period and the `percent` is set 50
       ```json
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 2500 }
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
@@ -186,6 +187,35 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```
       The following Events will be allowed, and no event is generated when the group is concluded
       ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 3100 }
+      ```
+
+### <a name="tail_sampler"></a>
+* `tail_sampler`: The system processes incoming events and determines whether or not they should be allowed based on two criteria. The first criterion is based on whether or not an error condition is present. If any of the aggregated events meet this condition, then all events are allowed to be output. The second criterion is triggered when no error condition is specified or if it is false. In this case, only a subset of the events is allowed to pass through, determined by a probabilistic outcome based on the configured percent value. Since it is difficult to determine exactly when "tail sampling" should occur, the wait_period configuration parameter is used to determine when to conduct this sampling based on the idle time after the last received event. When this action is used, the aggregate `group_duration` is not relevant as the conclusion is based on the `wait_period` and not on the group duration.
+    * It supports the following config options
+       * `percent`: percent of events to be allowed during aggregation window
+       * `wait_period`: minimum idle time before tail sampling is triggered
+       * `error_condition`: optional condition to indicate the error case for tail sampling
+    * When the following three events arrive with `percent` is set to 33, and no error condition specified (or error condition evaluates to false)
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 2500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 1000 }
+      ```
+      The following Events may be allowed, and no event is generated when the group is concluded (Since this is probablistic sampling, exact output is fully deterministic)
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
+      ```
+    * When the following three events arrive with in one second and the `error_condition` is set to `/bytes > 3000`
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 2500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 3100 }
+      ```
+      The following Events (all) will be allowed, and no event is generated when the group is concluded
+      ```json
+        { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 2500 }
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 500 }
         { "sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "bytes": 3100 }
       ```
