@@ -2,6 +2,7 @@
 
 This source allows Data Prepper to use S3 as a source. It uses SQS for notifications
 of which S3 objects are new and loads those new objects to parse out events.
+It supports scan pipeline to scan the data from s3 buckets and loads those new objects to parse out events.
 
 ## Basic Usage
 
@@ -43,7 +44,7 @@ source:
       sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
 ```
 
-The following configuration shows a minimum configuration for reading content using S3 select service from S3 bucket which
+The following configuration shows a minimum configuration for reading content using S3 select service and Scanning from S3 bucket which
 are not compressed.
 
 ```
@@ -68,6 +69,19 @@ source-pipeline:
       aws:
         region: "us-east-1"
         sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
+      scan:
+        start_time: 2023-01-21T18:00:00
+        range: P90DT3H4M
+        end_time: 2023-04-21T18:00:00
+        buckets:
+          - bucket:
+              name: my-bucket-1
+              key_prefix:
+                include:
+                  - bucket2/
+                exclude_suffix:
+                  - .jpeg
+                  - .png
 ```
 
 ## Configuration Options
@@ -96,13 +110,27 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `type` (Optional) : Provide the type attribute to process the json type data example: `Lines` , `Document` Default is `Document`.
 
-* `notification_type` : Must be `sqs`.
+* `bucket_name` : Provide S3 bucket name.
+
+* `key_prefix` (Optional) : Provide include and exclude the list items.
+
+* `include` (Optional) : Provide the list of include key path prefix.
+
+* `exclude_suffix` (Optional) : Provide the list of suffix to exclude items. 
+
+* `start_time` (Optional) : Provide the start time to scan the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
+
+* `end_time` (Optional) : Provide the end time to scan the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
+
+* `range` (Optional) : Provide the duration to scan the data example : `day` , `week` , `month` , `year`.
+
+* `notification_type` (Optional) : Must be `sqs`.
 
 * `compression` (Optional) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
 
 * `codec` (Required) : The codec to apply. Must be either `newline`, `csv` or `json`.
 
-* `sqs` (Required) : The SQS configuration. See [SQS Configuration](#sqs_configuration) for details.
+* `sqs` (Optional) : The SQS configuration. See [SQS Configuration](#sqs_configuration) for details.
 
 * `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details.
 

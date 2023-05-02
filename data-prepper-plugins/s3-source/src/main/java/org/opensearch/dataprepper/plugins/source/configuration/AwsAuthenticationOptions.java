@@ -54,6 +54,10 @@ public class AwsAuthenticationOptions {
         }
     }
 
+    public String getAwsStsRoleArn() {
+        return awsStsRoleArn;
+    }
+
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
