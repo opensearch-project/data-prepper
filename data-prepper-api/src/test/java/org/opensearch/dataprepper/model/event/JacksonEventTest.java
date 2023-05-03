@@ -638,6 +638,21 @@ public class JacksonEventTest {
         assertThat(event.getEventHandle(), equalTo(testEventHandle));
     }
 
+    @Test
+    void testEventToJsonStringWithTags() {
+        final String jsonString = "{\"foo\": \"bar\"}";
+
+        final JacksonEvent event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .build();
+        final EventMetadata eventMetadata = event.getMetadata();
+        eventMetadata.setTag("tag1");
+        eventMetadata.setTag("tag2");
+        final String expectedJsonString = "{\"foo\":\"bar\",\"tags\":[tag1, tag2]}";
+        assertThat(event.toJsonStringWithTags("tags"), equalTo(expectedJsonString));
+    }
+
     private static Map<String, Object> createComplexDataMap() {
         final Map<String, Object> dataObject = new HashMap<>();
         final int fullDepth = 6;

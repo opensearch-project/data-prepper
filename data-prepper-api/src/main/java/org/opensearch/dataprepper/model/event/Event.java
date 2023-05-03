@@ -68,6 +68,14 @@ public interface Event extends Serializable {
     String toJsonString();
 
     /**
+     * Generates a serialized Json string of the entire Event
+     * @param tagsKey key name for tags
+     * @return Json string of the event with Tags under key
+     * @since 2.3
+     */
+    String toJsonStringWithTags(final String tagsKey);
+
+    /**
      * Gets a serialized Json string of the specific key in the Event
      * @param key the field to be returned
      * @return Json string of the field
