@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import org.opensearch.dataprepper.model.event.Event;
 
-import java.util.List;
 import java.util.Collections;
 
 /**
