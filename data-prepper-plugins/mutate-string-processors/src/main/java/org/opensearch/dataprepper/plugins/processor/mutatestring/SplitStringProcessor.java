@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -13,16 +14,19 @@ import org.opensearch.dataprepper.model.processor.Processor;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @DataPrepperPlugin(name = "split_string", pluginType = Processor.class, pluginConfigurationType = SplitStringProcessorConfig.class)
 public class SplitStringProcessor extends AbstractStringProcessor<SplitStringProcessorConfig.Entry> {
 
     private final Map<String, Pattern> patternMap = new HashMap<>();
+    private final ExpressionEvaluator<Boolean> expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public SplitStringProcessor(final PluginMetrics pluginMetrics, final SplitStringProcessorConfig config) {
+    public SplitStringProcessor(final PluginMetrics pluginMetrics, final SplitStringProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
         super(pluginMetrics, config);
+        this.expressionEvaluator = expressionEvaluator;
 
         for (SplitStringProcessorConfig.Entry entry: config.getEntries()) {
             if(entry.getDelimiterRegex() != null && !entry.getDelimiterRegex().isEmpty()
@@ -43,6 +47,10 @@ public class SplitStringProcessor extends AbstractStringProcessor<SplitStringPro
 
     @Override
     protected void performKeyAction(final Event recordEvent, final SplitStringProcessorConfig.Entry entry, final String value) {
+        if (Objects.nonNull(entry.getSplitWhen()) && !expressionEvaluator.evaluate(entry.getSplitWhen(), recordEvent)) {
+            return;
+        }
+
         final String lookup;
         if(entry.getDelimiterRegex() != null && !entry.getDelimiterRegex().isEmpty()) {
             lookup = entry.getDelimiterRegex();

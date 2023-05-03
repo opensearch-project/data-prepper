@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -18,6 +19,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -31,9 +33,13 @@ public class DeleteEntryProcessorTests {
     @Mock
     private DeleteEntryProcessorConfig mockConfig;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     @Test
     public void testSingleDeleteProcessorTest() {
         when(mockConfig.getWithKeys()).thenReturn(new String[] { "message" });
+        when(mockConfig.getDeleteWhen()).thenReturn(null);
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -47,6 +53,7 @@ public class DeleteEntryProcessorTests {
     @Test
     public void testWithKeyDneDeleteProcessorTest() {
         when(mockConfig.getWithKeys()).thenReturn(new String[] { "message2" });
+        when(mockConfig.getDeleteWhen()).thenReturn(null);
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -61,6 +68,7 @@ public class DeleteEntryProcessorTests {
     @Test
     public void testMultiDeleteProcessorTest() {
         when(mockConfig.getWithKeys()).thenReturn(new String[] { "message", "message2" });
+        when(mockConfig.getDeleteWhen()).thenReturn(null);
 
         final DeleteEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -73,8 +81,25 @@ public class DeleteEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
     }
 
+    @Test
+    public void testKeyIsNotDeleted_when_deleteWhen_returns_false() {
+        when(mockConfig.getWithKeys()).thenReturn(new String[] { "message" });
+        final String deleteWhen = UUID.randomUUID().toString();
+        when(mockConfig.getDeleteWhen()).thenReturn(deleteWhen);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        record.getData().put("newMessage", "test");
+
+        when(expressionEvaluator.evaluate(deleteWhen, record.getData())).thenReturn(false);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+    }
+
     private DeleteEntryProcessor createObjectUnderTest() {
-        return new DeleteEntryProcessor(pluginMetrics, mockConfig);
+        return new DeleteEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
 
     private Record<Event> getEvent(String message) {

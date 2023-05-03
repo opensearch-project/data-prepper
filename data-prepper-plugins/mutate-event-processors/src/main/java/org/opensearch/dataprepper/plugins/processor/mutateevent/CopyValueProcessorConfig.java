@@ -24,6 +24,9 @@ public class CopyValueProcessorConfig {
         @JsonProperty("to_key")
         private String toKey;
 
+        @JsonProperty("copy_when")
+        private String copyWhen;
+
         @JsonProperty("overwrite_if_to_key_exists")
         private boolean overwriteIfToKeyExists = false;
 
@@ -39,10 +42,13 @@ public class CopyValueProcessorConfig {
             return overwriteIfToKeyExists;
         }
 
-        public Entry(final String fromKey, final String toKey, final boolean overwriteIfToKeyExists) {
+        public String getCopyWhen() { return copyWhen; }
+
+        public Entry(final String fromKey, final String toKey, final boolean overwriteIfToKeyExists, final String copyWhen) {
             this.fromKey = fromKey;
             this.toKey = toKey;
             this.overwriteIfToKeyExists = overwriteIfToKeyExists;
+            this.copyWhen = copyWhen;
         }
 
         public Entry() {

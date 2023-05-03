@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutatestring;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -24,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -41,16 +43,19 @@ class SplitStringProcessorTests {
     @Mock
     private SplitStringProcessorConfig config;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     private SplitStringProcessor createObjectUnderTest() {
-        return new SplitStringProcessor(pluginMetrics, config);
+        return new SplitStringProcessor(pluginMetrics, config, expressionEvaluator);
     }
 
     @ParameterizedTest
     @ArgumentsSource(SplitStringArgumentsProvider.class)
     void testSingleSplitProcessor(final String message, final List<String> splitMessage) {
 
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", null)));
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", null)));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", null, null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", null, null)));
 
         final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
@@ -62,16 +67,16 @@ class SplitStringProcessorTests {
 
     @Test
     public void testBothDefinedThrowsError() {
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", "a")));
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", "a")));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", "a", null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", "a", null)));
 
         assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest());
     }
 
     @Test
     public void testNeitherDefinedThrowsError() {
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, null)));
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, null)));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, null, null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, null, null)));
 
         assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest());
     }
@@ -80,8 +85,8 @@ class SplitStringProcessorTests {
     @ArgumentsSource(SplitStringDelimiterArgumentsProvider.class)
     void testDelimiterSplitProcessor(final String message, final List<String> splitMessage) {
 
-        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, "?")));
-        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, "?")));
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", null, "?", null)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", null, "?", null)));
 
         final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
@@ -91,9 +96,26 @@ class SplitStringProcessorTests {
         assertThat(splitRecords.get(0).getData().get("message", Object.class), equalTo(splitMessage));
     }
 
+    @Test
+    void test_event_is_the_same_when_splitWhen_condition_returns_false() {
 
-    private SplitStringProcessorConfig.Entry createEntry(final String source, final String delimiterRegex, final String delimiter) {
-        return new SplitStringProcessorConfig.Entry(source, delimiterRegex, delimiter);
+        final String splitWhen = UUID.randomUUID().toString();
+        final String message = UUID.randomUUID().toString();
+
+        when(config.getIterativeConfig()).thenReturn(Collections.singletonList(createEntry("message", ",", null, splitWhen)));
+        when(config.getEntries()).thenReturn(Collections.singletonList(createEntry("message", ",", null, splitWhen)));
+
+        final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
+        final Record<Event> record = createEvent(message);
+        when(expressionEvaluator.evaluate(splitWhen, record.getData())).thenReturn(false);
+        final List<Record<Event>> splitRecords = (List<Record<Event>>) splitStringProcessor.doExecute(Collections.singletonList(record));
+
+        assertThat(splitRecords.get(0).getData().toMap(), equalTo(record.getData().toMap()));
+    }
+
+
+    private SplitStringProcessorConfig.Entry createEntry(final String source, final String delimiterRegex, final String delimiter, final String splitWhen) {
+        return new SplitStringProcessorConfig.Entry(source, delimiterRegex, delimiter, splitWhen);
     }
 
     private Record<Event> createEvent(final String message) {
