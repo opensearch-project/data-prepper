@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.locks.Lock;
+import java.util.Collections;
 
 /**
  * An {@link AggregateAction} contains two functons, {@link AggregateAction#concludeGroup(AggregateActionInput)} and {@link AggregateAction#handleEvent(Event, AggregateActionInput)},
@@ -53,7 +54,7 @@ class AggregateActionSynchronizer {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 
-        AggregateActionOutput actionOutput = new AggregateActionOutput(List.of());
+        AggregateActionOutput actionOutput = new AggregateActionOutput(Collections.emptyList());
         if (concludeGroupLock.tryLock()) {
             handleEventForGroupLock.lock();
 
