@@ -35,9 +35,9 @@ public class S3SinkService {
     private final Codec codec;
     private final S3Client s3Client;
     private Buffer currentBuffer;
-    private final int numEvents;
-    private final ByteCount byteCapacity;
-    private final long duration;
+    private final int maxEvents;
+    private final ByteCount maxBytes;
+    private final long maxCollectionDuration;
 
     /**
      * @param s3SinkConfig s3 sink related configuration.
@@ -50,9 +50,9 @@ public class S3SinkService {
         this.s3Client = createS3Client();
         reentrantLock = new ReentrantLock();
 
-        numEvents = s3SinkConfig.getThresholdOptions().getEventCount();
-        byteCapacity = s3SinkConfig.getThresholdOptions().getMaximumSize();
-        duration = s3SinkConfig.getThresholdOptions().getEventCollectTimeOut().getSeconds();
+        maxEvents = s3SinkConfig.getThresholdOptions().getEventCount();
+        maxBytes = s3SinkConfig.getThresholdOptions().getMaximumSize();
+        maxCollectionDuration = s3SinkConfig.getThresholdOptions().getEventCollectTimeOut().getSeconds();
     }
 
     /**
@@ -74,7 +74,7 @@ public class S3SinkService {
                 if (willExceedThreshold()) {
                     LOG.info("Snapshot info : Byte_capacity = {} Bytes," +
                             " Event_count = {} Records & Event_collection_duration = {} Sec",
-                            byteCapacity.getBytes(), currentBuffer.getEventCount(), currentBuffer.getDuration());
+                            maxBytes.getBytes(), currentBuffer.getEventCount(), currentBuffer.getDuration());
                     boolean isUploadedToS3 = currentBuffer.flushToS3(s3Client, bucket, generateKey());
                     if (isUploadedToS3) {
                         LOG.info("Snapshot uploaded successfully");
@@ -106,13 +106,13 @@ public class S3SinkService {
      * @return boolean value whether the threshold are met.
      */
     private boolean willExceedThreshold() {
-        if (numEvents > 0) {
-            return currentBuffer.getEventCount() + 1 > numEvents ||
-                    currentBuffer.getDuration() > duration ||
-                    currentBuffer.getSize() > byteCapacity.getBytes();
+        if (maxEvents > 0) {
+            return currentBuffer.getEventCount() + 1 > maxEvents ||
+                    currentBuffer.getDuration() > maxCollectionDuration ||
+                    currentBuffer.getSize() > maxBytes.getBytes();
         } else {
-            return currentBuffer.getDuration() > duration ||
-                    currentBuffer.getSize() > byteCapacity.getBytes();
+            return currentBuffer.getDuration() > maxCollectionDuration ||
+                    currentBuffer.getSize() > maxBytes.getBytes();
         }
     }
 

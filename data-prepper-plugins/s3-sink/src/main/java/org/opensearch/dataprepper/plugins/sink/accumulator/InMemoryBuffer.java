@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -21,14 +22,13 @@ import java.util.concurrent.TimeUnit;
 public class InMemoryBuffer implements Buffer {
 
     private static final Logger LOG = LoggerFactory.getLogger(InMemoryBuffer.class);
-    private final ByteArrayOutputStream byteArrayOutputStream;
+    private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     private int eventCount;
     private final StopWatch watch;
 
     InMemoryBuffer() {
-        byteArrayOutputStream = new ByteArrayOutputStream();
+        byteArrayOutputStream.reset();
         eventCount = 0;
-
         watch = new StopWatch();
         watch.start();
     }
@@ -43,15 +43,16 @@ public class InMemoryBuffer implements Buffer {
         return eventCount;
     }
 
-    public long getDuration(){
+    public long getDuration() {
         return watch.getTime(TimeUnit.SECONDS);
     }
 
     /**
      * Upload accumulated data to amazon s3
+     *
      * @param s3Client s3 client object.
-     * @param bucket bucket name.
-     * @param key s3 object key path.
+     * @param bucket   bucket name.
+     * @param key      s3 object key path.
      * @return boolean based on file upload status.
      */
     @Override
@@ -63,7 +64,7 @@ public class InMemoryBuffer implements Buffer {
                     PutObjectRequest.builder().bucket(bucket).key(key).build(),
                     RequestBody.fromBytes(byteArray));
             isUploadedToS3 = Boolean.TRUE;
-        }catch (Exception e){
+        } catch (Exception e) {
             LOG.error("Exception while flushing data to Amazon s3 bucket :", e);
         }
         return isUploadedToS3;
@@ -71,6 +72,7 @@ public class InMemoryBuffer implements Buffer {
 
     /**
      * write byte array to output stream.
+     *
      * @param bytes byte array.
      * @throws IOException while writing to output stream fails.
      */
