@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import org.opensearch.dataprepper.model.event.Event;
 
-import java.util.Optional;
+import java.util.List;
 
 /**
  * Interface for creating custom actions to be used with the {@link AggregateProcessor}.
@@ -37,7 +37,8 @@ public interface AggregateAction {
      * should not pass an event
      * @since 1.3
      */
-    default Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
-        return Optional.empty();
+    default AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
+        return new AggregateActionOutput(List.of());
     }
+
 }

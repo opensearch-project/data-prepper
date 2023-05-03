@@ -14,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
@@ -22,7 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -62,12 +63,13 @@ public class CountAggregateActionTest {
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final Optional<Event> result = countAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(true));
+        final AggregateActionOutput actionOutput = countAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertThat(result.size(), equalTo(1));
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap(key, value));
         expectedEventMap.put(CountAggregateActionConfig.DEFAULT_COUNT_KEY, testCount);
-        expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
-        assertThat(result.get().toMap(), hasKey(CountAggregateActionConfig.DEFAULT_START_TIME_KEY));
+        expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
+        assertThat(result.get(0).toMap(), hasKey(CountAggregateActionConfig.DEFAULT_START_TIME_KEY));
     }
 
     @ParameterizedTest
@@ -90,8 +92,9 @@ public class CountAggregateActionTest {
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final Optional<Event> result = countAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(true));
+        final AggregateActionOutput actionOutput = countAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertThat(result.size(), equalTo(1));
         Map<String, Object> expectedEventMap = new HashMap<>();
         expectedEventMap.put("value", (double)testCount);
         expectedEventMap.put("name", "count");
@@ -99,11 +102,11 @@ public class CountAggregateActionTest {
         expectedEventMap.put("isMonotonic", true);
         expectedEventMap.put("aggregationTemporality", "AGGREGATION_TEMPORALITY_DELTA");
         expectedEventMap.put("unit", "1");
-        expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
-        assertThat(result.get().toMap().get("attributes"), equalTo(eventMap));
-        JacksonMetric metric = (JacksonMetric) result.get();
+        expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
+        assertThat(result.get(0).toMap().get("attributes"), equalTo(eventMap));
+        JacksonMetric metric = (JacksonMetric) result.get(0);
         assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
-        assertThat(result.get().toMap(), hasKey("startTime"));
-        assertThat(result.get().toMap(), hasKey("time"));
+        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey("time"));
     }
 }

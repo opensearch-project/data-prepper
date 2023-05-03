@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
@@ -22,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -289,9 +289,10 @@ public class AppendAggregateActionTest {
             groupState.putAll(eventMap);
         }
 
-        final Optional<Event> result = appendAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(true));
-        assertThat(result.get().getMetadata().getEventType(), equalTo(AppendAggregateAction.EVENT_TYPE));
-        assertThat(result.get().toMap(), equalTo(groupState));
+        final AggregateActionOutput actionOutput = appendAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertThat(result.size(), equalTo(1));
+        assertThat(result.get(0).getMetadata().getEventType(), equalTo(AppendAggregateAction.EVENT_TYPE));
+        assertThat(result.get(0).toMap(), equalTo(groupState));
     }
 }
