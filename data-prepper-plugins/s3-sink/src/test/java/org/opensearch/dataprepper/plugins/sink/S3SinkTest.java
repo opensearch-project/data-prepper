@@ -14,14 +14,12 @@ import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.UUID;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -38,28 +36,23 @@ import software.amazon.awssdk.regions.Region;
 class S3SinkTest {
 
     private S3SinkConfig s3SinkConfig;
-    private ThresholdOptions thresholdOptions;
-    private AwsAuthenticationOptions awsAuthenticationOptions;
     private AwsCredentialsProvider awsCredentialsProvider;
-    private ObjectKeyOptions objectKeyOptions;
-    private Codec codec;
     private S3Sink s3Sink;
     private PluginSetting pluginSetting;
     private PluginFactory pluginFactory;
-    private PluginModel pluginModel;
     private BucketOptions bucketOptions;
 
     @BeforeEach
     void setUp() {
 
         s3SinkConfig = mock(S3SinkConfig.class);
-        thresholdOptions = mock(ThresholdOptions.class);
-        awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
-        codec = mock(JsonCodec.class);
-        objectKeyOptions = mock(ObjectKeyOptions.class);
+        ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
+        AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
+        Codec codec = mock(JsonCodec.class);
+        ObjectKeyOptions objectKeyOptions = mock(ObjectKeyOptions.class);
         bucketOptions = mock(BucketOptions.class);
         pluginSetting = mock(PluginSetting.class);
-        pluginModel = mock(PluginModel.class);
+        PluginModel pluginModel = mock(PluginModel.class);
         pluginFactory = mock(PluginFactory.class);
 
         when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
@@ -111,15 +104,5 @@ class S3SinkTest {
         s3Sink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();
         s3Sink.doOutput(records);
-    }
-
-    private Collection<Record<Event>> generateRandomStringEventRecord() {
-
-        Collection<Record<Event>> records = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
-            final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-            records.add(new Record<>(event));
-        }
-        return records;
     }
 }

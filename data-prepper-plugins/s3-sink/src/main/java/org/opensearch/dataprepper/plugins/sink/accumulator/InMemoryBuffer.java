@@ -8,10 +8,11 @@ package org.opensearch.dataprepper.plugins.sink.accumulator;
 import org.apache.commons.lang3.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -56,17 +57,28 @@ public class InMemoryBuffer implements Buffer {
      * @return boolean based on file upload status.
      */
     @Override
-    public boolean flushToS3(S3Client s3Client, String bucket, String key) {
+    public boolean flushToS3(S3Client s3Client, String bucket, String key, final int maxRetries)
+            throws InterruptedException {
         boolean isUploadedToS3 = Boolean.FALSE;
         final byte[] byteArray = byteArrayOutputStream.toByteArray();
-        try {
-            s3Client.putObject(
-                    PutObjectRequest.builder().bucket(bucket).key(key).build(),
-                    RequestBody.fromBytes(byteArray));
-            isUploadedToS3 = Boolean.TRUE;
-        } catch (Exception e) {
-            LOG.error("Exception while flushing data to Amazon s3 bucket :", e);
-        }
+        int retryCount = maxRetries;
+        do {
+            try {
+                s3Client.putObject(
+                        PutObjectRequest.builder().bucket(bucket).key(key).build(),
+                        RequestBody.fromBytes(byteArray));
+                isUploadedToS3 = Boolean.TRUE;
+            } catch (AwsServiceException | SdkClientException e) {
+                LOG.error("Exception occurred while upload records to s3 bucket. Retry countdown  : {} | exception:",
+                        retryCount, e);
+                LOG.info("Error Massage {}", e.getMessage());
+                --retryCount;
+                if (retryCount == 0) {
+                    return isUploadedToS3;
+                }
+                Thread.sleep(5000);
+            }
+        } while (!isUploadedToS3);
         return isUploadedToS3;
     }
 

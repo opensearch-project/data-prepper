@@ -78,7 +78,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
      * Initialize {@link S3SinkService}
      */
     private void doInitializeInternal() {
-        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec);
+        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, pluginMetrics);
         sinkInitialized = Boolean.TRUE;
     }
 

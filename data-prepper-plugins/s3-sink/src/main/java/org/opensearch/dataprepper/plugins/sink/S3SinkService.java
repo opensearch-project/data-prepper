@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -29,30 +32,49 @@ import software.amazon.awssdk.services.s3.S3Client;
 public class S3SinkService {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3SinkService.class);
+    public static final String SNAPSHOT_SUCCESS = "snapshotSuccess";
+    public static final String SNAPSHOT_FAILED = "snapshotFailed";
+    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS = "numberOfRecordsFlushedToS3Success";
+    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED = "numberOfRecordsFlushedToS3Failed";
+    static final String S3_OBJECTS_SIZE = "s3ObjectSizeRecords";
     private final S3SinkConfig s3SinkConfig;
     private final Lock reentrantLock;
     private final BufferFactory bufferFactory;
     private final Codec codec;
+    private final PluginMetrics pluginMetrics;
     private final S3Client s3Client;
     private Buffer currentBuffer;
     private final int maxEvents;
     private final ByteCount maxBytes;
     private final long maxCollectionDuration;
+    private final Counter snapshotSuccessCounter;
+    private final Counter snapshotFailedCounter;
+    private final Counter numberOfRecordsSuccessCounter;
+    private final Counter numberOfRecordsFailedCounter;
+    private final DistributionSummary s3ObjectSizeSummary;
 
     /**
-     * @param s3SinkConfig s3 sink related configuration.
-     * @param codec        parser
+     * @param s3SinkConfig  s3 sink related configuration.
+     * @param codec         parser
+     * @param pluginMetrics metrics
      */
-    public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory, final Codec codec) {
+    public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory, final Codec codec, PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
+        this.pluginMetrics = pluginMetrics;
         this.s3Client = createS3Client();
         reentrantLock = new ReentrantLock();
 
         maxEvents = s3SinkConfig.getThresholdOptions().getEventCount();
         maxBytes = s3SinkConfig.getThresholdOptions().getMaximumSize();
         maxCollectionDuration = s3SinkConfig.getThresholdOptions().getEventCollectTimeOut().getSeconds();
+
+        snapshotSuccessCounter = pluginMetrics.counter(SNAPSHOT_SUCCESS);
+        snapshotFailedCounter = pluginMetrics.counter(SNAPSHOT_FAILED);
+        numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS);
+        numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED);
+        s3ObjectSizeSummary = pluginMetrics.summary(S3_OBJECTS_SIZE);
     }
 
     /**
@@ -61,6 +83,7 @@ public class S3SinkService {
     void output(Collection<Record<Event>> records) {
         reentrantLock.lock();
         final String bucket = s3SinkConfig.getBucketOptions().getBucketName();
+        final int maxRetries = s3SinkConfig.getMaxUploadRetries();
         if (currentBuffer == null) {
             currentBuffer = bufferFactory.getBuffer();
         }
@@ -72,21 +95,27 @@ public class S3SinkService {
                 encodedEvent = codec.parse(event);
                 final byte[] encodedBytes = encodedEvent.getBytes();
                 if (willExceedThreshold()) {
+                    s3ObjectSizeSummary.record(currentBuffer.getEventCount());
                     LOG.info("Snapshot info : Byte_capacity = {} Bytes," +
                             " Event_count = {} Records & Event_collection_duration = {} Sec",
                             maxBytes.getBytes(), currentBuffer.getEventCount(), currentBuffer.getDuration());
-                    boolean isUploadedToS3 = currentBuffer.flushToS3(s3Client, bucket, generateKey());
+                    boolean isUploadedToS3 = currentBuffer.flushToS3(s3Client, bucket, generateKey(), maxRetries);
                     if (isUploadedToS3) {
                         LOG.info("Snapshot uploaded successfully");
+                        numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
+                        snapshotSuccessCounter.increment();
                     } else {
                         LOG.info("Snapshot upload failed");
+                        numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
+                        snapshotFailedCounter.increment();
                     }
                     currentBuffer = bufferFactory.getBuffer();
                 }
                 currentBuffer.writeEvent(encodedBytes);
             }
-        } catch (NullPointerException | IOException e) {
+        } catch (NullPointerException | IOException | InterruptedException e) {
             LOG.error("Exception while write event into buffer :", e);
+            Thread.currentThread().interrupt();
         }
         reentrantLock.unlock();
     }
