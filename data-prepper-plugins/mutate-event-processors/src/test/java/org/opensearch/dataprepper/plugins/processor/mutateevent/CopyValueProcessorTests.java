@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -34,9 +36,12 @@ public class CopyValueProcessorTests {
     @Mock
     private CopyValueProcessorConfig mockConfig;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     @Test
     public void testSingleCopyProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false, null)));
 
         final CopyValueProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -50,8 +55,8 @@ public class CopyValueProcessorTests {
 
     @Test
     public void testMultiCopyProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false),
-                createEntry("message2", "entry", false)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false, null),
+                createEntry("message2", "entry", false, null)));
 
         final CopyValueProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -70,7 +75,7 @@ public class CopyValueProcessorTests {
 
     @Test
     public void testNoOverwriteSingleCopyProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false, null)));
 
         final CopyValueProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -99,7 +104,7 @@ public class CopyValueProcessorTests {
 
     @Test
     public void testNestedObjectCopyProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true, null)));
 
         final CopyValueProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -116,7 +121,7 @@ public class CopyValueProcessorTests {
 
     @Test
     public void testFromKeyDneCopyProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2", "newMessage", false)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2", "newMessage", false, null)));
 
         final CopyValueProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -129,7 +134,7 @@ public class CopyValueProcessorTests {
 
     @Test
     public void testOverwriteSingleCopyProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true, null)));
 
         final CopyValueProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -144,8 +149,8 @@ public class CopyValueProcessorTests {
 
     @Test
     public void testOverwriteMixedSingleCopyProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false),
-                createEntry("message2", "entry", true)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false, null),
+                createEntry("message2", "entry", true, null)));
 
         final CopyValueProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -164,12 +169,29 @@ public class CopyValueProcessorTests {
         assertThat(editedRecords.get(0).getData().get("entry", Object.class), equalTo("test2"));
     }
 
-    private CopyValueProcessor createObjectUnderTest() {
-        return new CopyValueProcessor(pluginMetrics, mockConfig);
+    @Test
+    public void testKey_is_not_copied_when_copyWhen_returns_false() {
+        final String copyWhen = UUID.randomUUID().toString();
+
+
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2", "newMessage", true, copyWhen)));
+
+        final CopyValueProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        when(expressionEvaluator.evaluate(copyWhen, record.getData())).thenReturn(false);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
-    private CopyValueProcessorConfig.Entry createEntry(final String fromKey, final String toKey, final boolean overwriteIfToKeyExists) {
-        return new CopyValueProcessorConfig.Entry(fromKey, toKey, overwriteIfToKeyExists);
+    private CopyValueProcessor createObjectUnderTest() {
+        return new CopyValueProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+    }
+
+    private CopyValueProcessorConfig.Entry createEntry(final String fromKey, final String toKey, final boolean overwriteIfToKeyExists, final String copyWhen) {
+        return new CopyValueProcessorConfig.Entry(fromKey, toKey, overwriteIfToKeyExists, copyWhen);
     }
 
     private List<CopyValueProcessorConfig.Entry> createListOfEntries(final CopyValueProcessorConfig.Entry... entries) {
