@@ -6,27 +6,28 @@
 package org.opensearch.dataprepper.model.source.coordinator;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * The class that will be provided to {@link org.opensearch.dataprepper.model.source.Source} plugins
  * that implement {@link UsesSourceCoordination} to identify the partition of
- * data that the source should process. This is returned in a call to {@link SourceCoordinator#getNextPartition()}.
+ * data that the source should process. This is returned in a call to {@link SourceCoordinator#getNextPartition(Supplier)}.
  * @since 2.2
  */
 public class SourcePartition<T> {
 
-    private final PartitionIdentifier partitionIdentifier;
+    private final String partitionKey;
     private final T partitionState;
 
     private SourcePartition(final Builder<T> builder) {
-        Objects.requireNonNull(builder.partitionIdentifier);
+        Objects.requireNonNull(builder.partitionKey);
 
-        this.partitionIdentifier = builder.partitionIdentifier;
+        this.partitionKey = builder.partitionKey;
         this.partitionState = builder.partitionState;
     }
 
-    public PartitionIdentifier getPartition() {
-        return partitionIdentifier;
+    public String getPartitionKey() {
+        return partitionKey;
     }
 
     public T getPartitionState() {
@@ -39,15 +40,15 @@ public class SourcePartition<T> {
 
     public static class Builder<T> {
 
-        private PartitionIdentifier partitionIdentifier;
+        private String partitionKey;
         private T partitionState;
 
         public Builder(Class<T> clazz) {
 
         }
 
-        public Builder<T> withPartition(final PartitionIdentifier partitionIdentifier) {
-            this.partitionIdentifier = partitionIdentifier;
+        public Builder<T> withPartitionKey(final String partitionKey) {
+            this.partitionKey = partitionKey;
             return this;
         }
 

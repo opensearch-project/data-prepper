@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.metrics;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import java.util.StringJoiner;
-import java.util.function.ToDoubleFunction;
-
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+
+import java.util.StringJoiner;
+import java.util.function.ToDoubleFunction;
 
 /**
  * Provides reference to APIs that register timer, counter, gauge into global registry.
