@@ -91,7 +91,6 @@ class S3SinkServiceIT {
         S3SinkService s3SinkService = createObjectUnderTest();
         s3SinkService.output(setEventQueue());
         int s3ObjectCountAfterIngest = gets3ObjectCount();
-        assertThat(s3ObjectCountAfterIngest, greaterThan(s3ObjectCountBeforeIngest));
         assertThat(s3ObjectCountAfterIngest, equalTo(s3ObjectCountBeforeIngest + 1));
     }
 
