@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.mutateevent;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -34,9 +36,12 @@ public class RenameKeyProcessorTests {
     @Mock
     private RenameKeyProcessorConfig mockConfig;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     @Test
     public void testSingleOverwriteRenameProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true, null)));
 
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -50,7 +55,7 @@ public class RenameKeyProcessorTests {
 
     @Test
     public void testSingleNoOverwriteRenameProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false, null)));
 
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -64,7 +69,7 @@ public class RenameKeyProcessorTests {
 
     @Test
     public void testFromKeyDneRenameProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2", "newMessage", false)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message2", "newMessage", false, null)));
 
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -77,8 +82,8 @@ public class RenameKeyProcessorTests {
 
     @Test
     public void testMultiMixedOverwriteRenameProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true),
-                createEntry("message2", "existingMessage", false)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true, null),
+                createEntry("message2", "existingMessage", false, null)));
 
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -95,8 +100,8 @@ public class RenameKeyProcessorTests {
 
     @Test
     public void testChainRenamingRenameProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true),
-                createEntry("newMessage", "message3", true)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", true, null),
+                createEntry("newMessage", "message3", true, null)));
 
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -108,12 +113,30 @@ public class RenameKeyProcessorTests {
         assertThat(editedRecords.get(0).getData().get("message3", Object.class), equalTo("thisisamessage"));
     }
 
-    private RenameKeyProcessor createObjectUnderTest() {
-        return new RenameKeyProcessor(pluginMetrics, mockConfig);
+    @Test
+    public void testNoRename_when_RenameWhen_returns_false() {
+        final String renameWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("message", "newMessage", false, renameWhen)));
+
+        final RenameKeyProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+
+        when(expressionEvaluator.evaluate(renameWhen, record.getData())).thenReturn(false);
+
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
+        assertThat(editedRecords.get(0).getData().get("message", Object.class), equalTo("thisisamessage"));
     }
 
-    private RenameKeyProcessorConfig.Entry createEntry(final String fromKey, final String toKey, final boolean overwriteIfToKeyExists) {
-        return new RenameKeyProcessorConfig.Entry(fromKey, toKey, overwriteIfToKeyExists);
+    private RenameKeyProcessor createObjectUnderTest() {
+        return new RenameKeyProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+    }
+
+    private RenameKeyProcessorConfig.Entry createEntry(final String fromKey, final String toKey, final boolean overwriteIfToKeyExists, final String renameWhen) {
+        return new RenameKeyProcessorConfig.Entry(fromKey, toKey, overwriteIfToKeyExists, renameWhen);
     }
 
     private List<RenameKeyProcessorConfig.Entry> createListOfEntries(final RenameKeyProcessorConfig.Entry... entries) {

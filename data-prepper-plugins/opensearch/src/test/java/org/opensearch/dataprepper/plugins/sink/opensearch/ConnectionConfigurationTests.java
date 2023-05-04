@@ -52,7 +52,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration.AWS_SERVERLESS;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration.SERVERLESS;
 
 @ExtendWith(MockitoExtension.class)
 class ConnectionConfigurationTests {
@@ -64,6 +64,7 @@ class ConnectionConfigurationTests {
     private final Integer TEST_CONNECT_TIMEOUT = 5;
     private final Integer TEST_SOCKET_TIMEOUT = 10;
     private final String TEST_CERT_PATH = Objects.requireNonNull(getClass().getClassLoader().getResource("test-ca.pem")).getFile();
+    private final String TEST_ROLE = "arn:aws:iam::123456789012:role/test-role";
 
     @Mock
     private ApacheHttpClient.Builder apacheHttpClientBuilder;
@@ -87,24 +88,13 @@ class ConnectionConfigurationTests {
     }
 
     @Test
-    void testReadConnectionConfigurationAwsServerlessDefault() {
-        final Map<String, Object> configMetadata = generateConfigurationMetadata(
-                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
-        configMetadata.put(AWS_SERVERLESS, true);
-        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
-        final ConnectionConfiguration connectionConfiguration =
-                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertTrue(connectionConfiguration.isAwsServerless());
-    }
-
-    @Test
     void testReadConnectionConfigurationAwsOptionServerlessDefault() {
-        final String testArn = "arn:aws:iam::123456789012:iam-role";
+        final String testArn = TEST_ROLE;
         final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, TEST_CERT_PATH, false, Collections.emptyMap());
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertTrue(connectionConfiguration.isAwsServerless());
+        assertTrue(connectionConfiguration.isServerless());
     }
 
     @Test
@@ -137,7 +127,7 @@ class ConnectionConfigurationTests {
     void testCreateOpenSearchClientAwsServerlessDefault() throws IOException {
         final Map<String, Object> configMetadata = generateConfigurationMetadata(
                 TEST_HOSTS, null, null, null, null, true, null, null, null, false);
-        configMetadata.put(AWS_SERVERLESS, true);
+        configMetadata.put(SERVERLESS, true);
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -294,13 +284,13 @@ class ConnectionConfigurationTests {
     @Test
     void testCreateClientWithAWSSigV4AndSTSRole() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
+                TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.getAwsRegion(), equalTo("us-east-1"));
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
-        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
         assertThat(connectionConfiguration.getPipelineName(), equalTo(TEST_PIPELINE_NAME));
 
         final StsClient stsClient = mock(StsClient.class);
@@ -322,7 +312,7 @@ class ConnectionConfigurationTests {
             connectionConfiguration.createClient();
         }
 
-        verify(assumeRoleRequestBuilder).roleArn("arn:aws:iam::123456789012:iam-role");
+        verify(assumeRoleRequestBuilder).roleArn(TEST_ROLE);
         verify(assumeRoleRequestBuilder).roleSessionName(anyString());
         verify(assumeRoleRequestBuilder).build();
         verifyNoMoreInteractions(assumeRoleRequestBuilder);
@@ -331,13 +321,13 @@ class ConnectionConfigurationTests {
     @Test
     void testCreateOpenSearchClientWithAWSSigV4AndSTSRole() throws IOException {
         final PluginSetting pluginSetting = generatePluginSetting(
-                TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
+                TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.getAwsRegion(), equalTo("us-east-1"));
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
-        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
         assertThat(connectionConfiguration.getPipelineName(), equalTo(TEST_PIPELINE_NAME));
 
         final StsClient stsClient = mock(StsClient.class);
@@ -364,7 +354,7 @@ class ConnectionConfigurationTests {
         assertTrue(openSearchClient._transport() instanceof AwsSdk2Transport);
         final AwsSdk2Transport opensearchTransport = (AwsSdk2Transport) openSearchClient._transport();
         assertTrue(opensearchTransport.options().credentials() instanceof StsAssumeRoleCredentialsProvider);
-        verify(assumeRoleRequestBuilder, times(2)).roleArn("arn:aws:iam::123456789012:iam-role");
+        verify(assumeRoleRequestBuilder, times(2)).roleArn(TEST_ROLE);
         verify(assumeRoleRequestBuilder, times(2)).roleSessionName(anyString());
         verify(assumeRoleRequestBuilder, times(2)).build();
         verifyNoMoreInteractions(assumeRoleRequestBuilder);
@@ -376,7 +366,7 @@ class ConnectionConfigurationTests {
         final String headerValue1 = UUID.randomUUID().toString();
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
-        final String testArn = "arn:aws:iam::123456789012:iam-role";
+        final String testArn = TEST_ROLE;
         final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
@@ -384,7 +374,7 @@ class ConnectionConfigurationTests {
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
-        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final StsClient stsClient = mock(StsClient.class);
         final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
@@ -430,7 +420,7 @@ class ConnectionConfigurationTests {
         final String headerValue1 = UUID.randomUUID().toString();
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
-        final String testArn = "arn:aws:iam::123456789012:iam-role";
+        final String testArn = TEST_ROLE;
         final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
@@ -438,7 +428,7 @@ class ConnectionConfigurationTests {
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
-        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final StsClient stsClient = mock(StsClient.class);
         final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
@@ -490,7 +480,7 @@ class ConnectionConfigurationTests {
         final String headerValue1 = UUID.randomUUID().toString();
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
         configurationMetadata.put("aws_sts_header_overrides", Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
@@ -498,7 +488,7 @@ class ConnectionConfigurationTests {
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
-        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final StsClient stsClient = mock(StsClient.class);
         final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
@@ -524,7 +514,7 @@ class ConnectionConfigurationTests {
         final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
 
         verify(assumeRoleRequestBuilder).overrideConfiguration(configurationCaptor.capture());
-        verify(assumeRoleRequestBuilder).roleArn("arn:aws:iam::123456789012:iam-role");
+        verify(assumeRoleRequestBuilder).roleArn(TEST_ROLE);
         verify(assumeRoleRequestBuilder).roleSessionName(anyString());
         verify(assumeRoleRequestBuilder).build();
         verifyNoMoreInteractions(assumeRoleRequestBuilder);
@@ -544,7 +534,7 @@ class ConnectionConfigurationTests {
         final String headerValue1 = UUID.randomUUID().toString();
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, "arn:aws:iam::123456789012:iam-role", TEST_CERT_PATH, false);
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadata(TEST_HOSTS, null, null, null, null, true, null, TEST_ROLE, TEST_CERT_PATH, false);
         configurationMetadata.put("aws_sts_header_overrides", Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
@@ -552,7 +542,7 @@ class ConnectionConfigurationTests {
 
         assertThat(connectionConfiguration, notNullValue());
         assertThat(connectionConfiguration.isAwsSigv4(), equalTo(true));
-        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo("arn:aws:iam::123456789012:iam-role"));
+        assertThat(connectionConfiguration.getAwsStsRoleArn(), equalTo(TEST_ROLE));
 
         final StsClient stsClient = mock(StsClient.class);
         final AssumeRoleRequest.Builder assumeRoleRequestBuilder = mock(AssumeRoleRequest.Builder.class);
@@ -585,7 +575,7 @@ class ConnectionConfigurationTests {
         final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
 
         verify(assumeRoleRequestBuilder, times(2)).overrideConfiguration(configurationCaptor.capture());
-        verify(assumeRoleRequestBuilder, times(2)).roleArn("arn:aws:iam::123456789012:iam-role");
+        verify(assumeRoleRequestBuilder, times(2)).roleArn(TEST_ROLE);
         verify(assumeRoleRequestBuilder, times(2)).roleSessionName(anyString());
         verify(assumeRoleRequestBuilder, times(2)).build();
         verifyNoMoreInteractions(assumeRoleRequestBuilder);

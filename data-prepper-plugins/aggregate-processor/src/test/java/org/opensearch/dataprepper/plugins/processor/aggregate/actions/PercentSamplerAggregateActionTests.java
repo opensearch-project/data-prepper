@@ -12,6 +12,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
@@ -21,11 +22,12 @@ import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(MockitoExtension.class)
 public class PercentSamplerAggregateActionTests {
@@ -67,8 +69,9 @@ public class PercentSamplerAggregateActionTests {
                 allowedEvents++;
             }
         }
-        final Optional<Event> result = percentSamplerAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(false));
+        final AggregateActionOutput actionOutput = percentSamplerAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertTrue(result.isEmpty());
         assertThat(allowedEvents, equalTo((int)(totalEvents * testPercent/100.0)));
     }
 }

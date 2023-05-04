@@ -14,8 +14,8 @@ class InMemoryConfig {
     @JsonProperty("testing_key")
     private String testingKey;
 
-    @JsonProperty("end_to_end_acknowledgements")
-    private Boolean endToEndAcknowledgements = false;
+    @JsonProperty("acknowledgments")
+    private Boolean acknowledgments = false;
 
     public String getTestingKey() {
         return testingKey;
@@ -25,8 +25,8 @@ class InMemoryConfig {
         this.testingKey = testingKey;
     }
 
-    public Boolean getEndToEndAcknowledgements() {
-        return endToEndAcknowledgements;
+    public Boolean getAcknowledgements() {
+        return acknowledgments;
     }
 
 }

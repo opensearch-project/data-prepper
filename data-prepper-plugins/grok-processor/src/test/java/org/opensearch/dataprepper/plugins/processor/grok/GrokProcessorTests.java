@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.grok;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -98,6 +99,9 @@ public class GrokProcessorTests {
     @Mock
     private Timer grokProcessingTime;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     private PluginSetting pluginSetting;
     private final String PLUGIN_NAME = "grok";
     private Map<String, Object> capture;
@@ -145,7 +149,7 @@ public class GrokProcessorTests {
     private GrokProcessor createObjectUnderTest() {
         try (MockedStatic<PluginMetrics> pluginMetricsMockedStatic = mockStatic(PluginMetrics.class)) {
             pluginMetricsMockedStatic.when(() -> PluginMetrics.fromPluginSetting(pluginSetting)).thenReturn(pluginMetrics);
-            return new GrokProcessor(pluginSetting, grokCompiler, executorService);
+            return new GrokProcessor(pluginSetting, grokCompiler, executorService, expressionEvaluator);
         }
     }
 
@@ -588,7 +592,32 @@ public class GrokProcessorTests {
                 GrokProcessorConfig.DEFAULT_PATTERNS_FILES_GLOB,
                 Collections.emptyMap(),
                 GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS,
-                GrokProcessorConfig.DEFAULT_TARGET_KEY);
+                GrokProcessorConfig.DEFAULT_TARGET_KEY,
+                null);
+    }
+
+    @Test
+    public void testNoGrok_when_GrokWhen_returns_false() throws JsonProcessingException {
+        final String grokWhen = UUID.randomUUID().toString();
+        pluginSetting.getSettings().put(GrokProcessorConfig.GROK_WHEN, grokWhen);
+        grokProcessor = createObjectUnderTest();
+
+        capture.put("key_capture_1", "value_capture_1");
+        capture.put("key_capture_2", "value_capture_2");
+        capture.put("key_capture_3", "value_capture_3");
+
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", messageInput);
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        when(expressionEvaluator.evaluate(grokWhen, record.getData())).thenReturn(false);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertThat(grokkedRecords.get(0), notNullValue());
+        assertRecordsAreEqual(grokkedRecords.get(0), record);
+        verifyNoInteractions(grok, grokSecondMatch);
     }
 
     private PluginSetting completePluginSettingForGrokProcessor(final boolean breakOnMatch,
@@ -600,7 +629,8 @@ public class GrokProcessorTests {
                                                               final String patternsFilesGlob,
                                                               final Map<String, String> patternDefinitions,
                                                               final int timeoutMillis,
-                                                              final String targetKey) {
+                                                              final String targetKey,
+                                                              final String grokWhen) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(GrokProcessorConfig.BREAK_ON_MATCH, breakOnMatch);
         settings.put(GrokProcessorConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
@@ -612,6 +642,7 @@ public class GrokProcessorTests {
         settings.put(GrokProcessorConfig.PATTERNS_FILES_GLOB, patternsFilesGlob);
         settings.put(GrokProcessorConfig.TIMEOUT_MILLIS, timeoutMillis);
         settings.put(GrokProcessorConfig.TARGET_KEY, targetKey);
+        settings.put(GrokProcessorConfig.GROK_WHEN, grokWhen);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }

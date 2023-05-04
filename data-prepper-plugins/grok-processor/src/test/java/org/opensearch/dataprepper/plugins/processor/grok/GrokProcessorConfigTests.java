@@ -73,6 +73,7 @@ public class GrokProcessorConfigTests {
         assertThat(grokProcessorConfig.getTargetKey(), equalTo(DEFAULT_TARGET_KEY));
         assertThat(grokProcessorConfig.isNamedCapturesOnly(), equalTo(DEFAULT_NAMED_CAPTURES_ONLY));
         assertThat(grokProcessorConfig.getTimeoutMillis(), equalTo(DEFAULT_TIMEOUT_MILLIS));
+        assertThat(grokProcessorConfig.getGrokWhen(), equalTo(null));
     }
 
     @Test

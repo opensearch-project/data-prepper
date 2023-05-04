@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.source;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.codec.Codec;
+import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.s3.model.CompressionType;
 
 import java.time.Duration;
 import java.util.function.BiConsumer;
+
 public class S3ObjectRequest {
     private final Buffer<Record<Event>> buffer;
     private final int numberOfRecordsToAccumulate;
@@ -30,7 +31,7 @@ public class S3ObjectRequest {
     private final S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
     private final CompressionEngine compressionEngine;
     private final BucketOwnerProvider bucketOwnerProvider;
-    private final Codec codec;
+    private final InputCodec codec;
     private final BiConsumer<Event, S3ObjectReference> eventConsumer;
     private final S3Client s3Client;
     private final CompressionType compressionType;
@@ -38,9 +39,11 @@ public class S3ObjectRequest {
     private final S3SelectJsonOption s3SelectJsonOption;
     private final String expressionType;
 
+
     private S3ObjectRequest(Builder builder) {
         this.buffer = builder.buffer;
         this.numberOfRecordsToAccumulate =builder.numberOfRecordsToAccumulate;
+
         this.bufferTimeout = builder.bufferTimeout;
         this.s3ObjectPluginMetrics = builder.s3ObjectPluginMetrics;
         this.expression = builder.expression;
@@ -98,7 +101,7 @@ public class S3ObjectRequest {
         return bucketOwnerProvider;
     }
 
-    public Codec getCodec() {
+    public InputCodec getCodec() {
         return codec;
     }
 
@@ -137,7 +140,7 @@ public class S3ObjectRequest {
         private S3AsyncClient s3AsyncClient;
         private S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
         private CompressionEngine compressionEngine;
-        private Codec codec;
+        private InputCodec codec;
         private BiConsumer<Event, S3ObjectReference> eventConsumer;
         private S3Client s3Client;
         private CompressionType compressionType;
@@ -146,9 +149,9 @@ public class S3ObjectRequest {
         private String expressionType;
 
         public Builder(final Buffer<Record<Event>> buffer,
-                                      final int numberOfRecordsToAccumulate,
-                                      final Duration bufferTimeout,
-                                      final S3ObjectPluginMetrics s3ObjectPluginMetrics){
+                       final int numberOfRecordsToAccumulate,
+                       final Duration bufferTimeout,
+                       final S3ObjectPluginMetrics s3ObjectPluginMetrics){
             this.buffer = buffer;
             this.numberOfRecordsToAccumulate=numberOfRecordsToAccumulate;
             this.bufferTimeout = bufferTimeout;
@@ -184,7 +187,8 @@ public class S3ObjectRequest {
             this.compressionEngine = compressionEngine;
             return this;
         }
-        public Builder codec(Codec codec) {
+
+        public Builder codec(InputCodec codec) {
             this.codec = codec;
             return this;
         }

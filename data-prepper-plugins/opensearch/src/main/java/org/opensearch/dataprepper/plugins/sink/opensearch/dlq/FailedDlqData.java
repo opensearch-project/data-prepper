@@ -1,6 +1,8 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.dlq;
 
 import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
 public class FailedDlqData {
@@ -10,6 +12,8 @@ public class FailedDlqData {
     private final int status;
     private final String message;
     private final Object document;
+
+    @JsonIgnore
     private final EventHandle eventHandle;
 
     private FailedDlqData(final String index, final String indexId, final int status, final String message, final Object document, final EventHandle eventHandle) {

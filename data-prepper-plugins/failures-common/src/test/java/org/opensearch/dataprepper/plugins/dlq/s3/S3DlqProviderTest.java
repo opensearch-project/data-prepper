@@ -10,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.Optional;
@@ -30,24 +29,35 @@ public class S3DlqProviderTest {
     private S3DlqWriterConfig s3DlqWriterConfig;
 
     @Mock
-    private PluginMetrics pluginMetrics;
-
-    @Mock
     private S3Client s3Client;
 
     @Test
     public void testGetDlqWriterReturnsDlqWriter() {
-        final S3DlqProvider s3DlqProvider = new S3DlqProvider(s3DlqWriterConfig, pluginMetrics);
+        final S3DlqProvider s3DlqProvider = new S3DlqProvider(s3DlqWriterConfig);
         when(s3DlqWriterConfig.getS3Client()).thenReturn(s3Client);
         when(s3DlqWriterConfig.getBucket()).thenReturn(UUID.randomUUID().toString());
 
-        final Optional<DlqWriter> result = s3DlqProvider.getDlqWriter();
+        final Optional<DlqWriter> result = s3DlqProvider.getDlqWriter("myPipeline.opensearch");
         assertThat(result, notNullValue());
         assertThat(result.isPresent(), is(equalTo(true)));
     }
 
     @Test
-    public void testGetDlqWriterWithInvalidConfigThrowsException() {
-        assertThrows(NullPointerException.class, () -> new S3DlqProvider(null, pluginMetrics));
+    public void testS3DlqProviderWithInvalidConfigThrowsException() {
+        assertThrows(NullPointerException.class, () -> new S3DlqProvider(null));
+    }
+
+    @Test
+    public void testGetDlqWriterWithEmptyScope() {
+        final S3DlqProvider s3DlqProvider = new S3DlqProvider(s3DlqWriterConfig);
+
+        assertThrows(IllegalArgumentException.class, () -> s3DlqProvider.getDlqWriter(""));
+    }
+
+    @Test
+    public void testGetDlqWriterWithNullScope() {
+        final S3DlqProvider s3DlqProvider = new S3DlqProvider(s3DlqWriterConfig);
+
+        assertThrows(NullPointerException.class, () -> s3DlqProvider.getDlqWriter(null));
     }
 }

@@ -69,8 +69,6 @@ pipeline:
 - `cert`(optional): CA certificate that is pem encoded. Accepts both .pem or .crt. This enables the client to trust the CA that has signed the certificate that the OpenSearch cluster is using.
 Default is null.
 
-- `aws_serverless`: A boolean flag to indicate the OpenSearch backend is Amazon OpenSearch Serverless. Default to `false`.
-
 - `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Only applies to Amazon OpenSearch Service. See [security](security.md) for details. Default to `false`.
 
 - `aws_region`: A String represents the region of Amazon OpenSearch Service domain, e.g. us-west-2. Only applies to Amazon OpenSearch Service. Defaults to `us-east-1`.
@@ -81,7 +79,7 @@ Default is null.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
 
-- `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details. If this option is present, `aws_` options are not expected to be present. If any of `aws_` options are present along with this, error is thrown.
+- `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details. SigV4 is enabled by default when this option is used. If this option is present, `aws_` options are not expected to be present. If any of `aws_` options are present along with this, error is thrown.
 
 - `socket_timeout`(optional): An integer value indicates the timeout in milliseconds for waiting for data (or, put differently, a maximum period inactivity between two consecutive data packets). A timeout value of zero is interpreted as an infinite timeout. If this timeout value is either negative or not set, the underlying Apache HttpClient would rely on operating system settings for managing socket timeouts.
 
@@ -93,7 +91,7 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `aws_serverless` is `false`, otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling. 
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling. 
 
 ```
     APM trace analytics raw span data type example:
@@ -164,6 +162,31 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 - `trace_analytics_raw`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
 
 - `trace_analytics_service_map`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
+
+- `document_root_key`: The key in the event that will be used as the root in the document. The default is the root of the event. If the key does not exist the entire event is written as the document. If the value at the `document_root_key` is a basic type (ie String, int, etc), the document will have a structure of `{"data": <value of the document_root_key>}`. For example, If we have the following sample event: 
+
+```
+{
+    status: 200,
+    message: null,
+    metadata: {
+        sourceIp: "123.212.49.58",
+        destinationIp: "79.54.67.231",
+        bytes: 3545,
+        duration: "15 ms"
+    }
+}
+```
+With the `document_root_key` set to `status`. The document structure would be `{"data": 200}`. Alternatively if, the `document_root_key` was provided as `metadata`. The document written to OpenSearch would be:
+
+```
+{
+    sourceIp: "123.212.49.58"
+    destinationIp: "79.54.67.231"
+    bytes: 3545,
+    duration: "15 ms"
+}
+```
 
 ### <a name="aws_configuration">AWS Configuration</a>
 

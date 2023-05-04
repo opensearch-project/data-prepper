@@ -11,8 +11,8 @@ import io.micrometer.core.instrument.Counter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
 import java.util.concurrent.locks.Lock;
+import java.util.Collections;
 
 /**
  * An {@link AggregateAction} contains two functons, {@link AggregateAction#concludeGroup(AggregateActionInput)} and {@link AggregateAction#handleEvent(Event, AggregateActionInput)},
@@ -49,18 +49,18 @@ class AggregateActionSynchronizer {
         this.actionConcludeGroupEventsProcessingErrors = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_PROCESSING_ERRORS);
     }
 
-    Optional<Event> concludeGroup(final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
+    AggregateActionOutput concludeGroup(final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 
-        Optional<Event> concludeGroupEvent = Optional.empty();
+        AggregateActionOutput actionOutput = new AggregateActionOutput(Collections.emptyList());
         if (concludeGroupLock.tryLock()) {
             handleEventForGroupLock.lock();
 
             try {
                 if (aggregateGroup.shouldConcludeGroup(aggregateGroupManager.getGroupDuration()) || forceConclude) {
                     LOG.debug("Start critical section in concludeGroup");
-                    concludeGroupEvent = aggregateAction.concludeGroup(aggregateGroup);
+                    actionOutput = aggregateAction.concludeGroup(aggregateGroup);
                     aggregateGroupManager.closeGroup(hash, aggregateGroup);
                 }
             } catch (final Exception e) {
@@ -71,7 +71,7 @@ class AggregateActionSynchronizer {
                 concludeGroupLock.unlock();
             }
         }
-        return concludeGroupEvent;
+        return actionOutput;
     }
 
     AggregateActionResponse handleEventForGroup(final Event event, final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup) {

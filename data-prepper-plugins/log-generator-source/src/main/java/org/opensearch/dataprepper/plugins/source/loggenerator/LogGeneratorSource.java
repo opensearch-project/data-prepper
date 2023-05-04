@@ -63,6 +63,15 @@ public class LogGeneratorSource implements Source<Record<Event>> {
     @Override
     public void stop() {
         stopGenerating.set(true);
+
+        scheduledExecutorService.shutdown();
+        try {
+            if (!scheduledExecutorService.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                scheduledExecutorService.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduledExecutorService.shutdownNow();
+        }
     }
 
     private boolean hasNotReachedLogCount() {

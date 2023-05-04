@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import static org.opensearch.dataprepper.plugins.processor.aggregate.AggregateProcessor.getTimeNanos;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Optional;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action will create a combined event with histogram buckets of the values 
@@ -151,7 +151,7 @@ public class HistogramAggregateAction implements AggregateAction {
     }
 
     @Override
-    public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
         Event event;
         Instant startTime = (Instant)groupState.get(startTimeKey);
@@ -208,6 +208,6 @@ public class HistogramAggregateAction implements AggregateAction {
             event = (Event)histogram;
         }
         
-        return Optional.of(event);
+        return new AggregateActionOutput(List.of(event));
     }
 }

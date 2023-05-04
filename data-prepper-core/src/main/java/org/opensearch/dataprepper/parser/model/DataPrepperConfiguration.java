@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
+import org.opensearch.dataprepper.pipeline.PipelineShutdownOption;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -27,6 +28,7 @@ public class DataPrepperConfiguration {
 
     static final int MAX_TAGS_NUMBER = 3;
     private static final List<MetricRegistryType> DEFAULT_METRIC_REGISTRY_TYPE = Collections.singletonList(MetricRegistryType.Prometheus);
+    private static final PipelineShutdownOption DEFAULT_PIPELINE_SHUTDOWN = PipelineShutdownOption.ON_ANY_PIPELINE_FAILURE;
     private int serverPort = 4900;
     private boolean ssl = true;
     private String keyStoreFilePath = "";
@@ -36,6 +38,7 @@ public class DataPrepperConfiguration {
     private PluginModel authentication;
     private CircuitBreakerConfig circuitBreakerConfig;
     private SourceCoordinationConfig sourceCoordinationConfig;
+    private PipelineShutdownOption pipelineShutdown;
     private Map<String, String> metricTags = new HashMap<>();
     private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
     private PeerForwarderConfiguration peerForwarderConfiguration;
@@ -78,11 +81,12 @@ public class DataPrepperConfiguration {
             @JsonAlias("sinkShutdownTimeout")
             final Duration sinkShutdownTimeout,
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig,
-            @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig
-            ) {
+            @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig,
+            @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown) {
         this.authentication = authentication;
         this.circuitBreakerConfig = circuitBreakerConfig;
         this.sourceCoordinationConfig = sourceCoordinationConfig;
+        this.pipelineShutdown = pipelineShutdown != null ? pipelineShutdown : DEFAULT_PIPELINE_SHUTDOWN;
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";
         this.keyStorePassword = keyStorePassword != null ? keyStorePassword : "";
@@ -201,4 +205,8 @@ public class DataPrepperConfiguration {
     }
 
     public SourceCoordinationConfig getSourceCoordinationConfig() { return sourceCoordinationConfig; }
+
+    public PipelineShutdownOption getPipelineShutdown() {
+        return pipelineShutdown;
+    }
 }

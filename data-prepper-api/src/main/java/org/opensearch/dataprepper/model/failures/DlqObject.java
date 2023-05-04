@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.model.failures;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.event.EventHandle;
 
@@ -37,6 +40,7 @@ public class DlqObject {
 
     private final String timestamp;
 
+    @JsonIgnore
     private final EventHandle eventHandle;
 
     private DlqObject(final String pluginId, final String pluginName, final String pipelineName,

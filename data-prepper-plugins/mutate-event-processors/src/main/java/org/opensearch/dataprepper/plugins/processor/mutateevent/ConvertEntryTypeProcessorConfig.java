@@ -16,6 +16,9 @@ public class ConvertEntryTypeProcessorConfig  {
     @JsonProperty("type")
     private TargetType type = TargetType.INTEGER;
 
+    @JsonProperty("convert_when")
+    private String convertWhen;
+
     public String getKey() {
         return key;
     }
@@ -23,4 +26,6 @@ public class ConvertEntryTypeProcessorConfig  {
     public TargetType getType() {
         return type;
     }
+
+    public String getConvertWhen() { return convertWhen; }
 }

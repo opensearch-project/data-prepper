@@ -14,10 +14,12 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
+import java.time.Duration;
+
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
-    static final int INITIAL_DELAY = 1000;
-    static final int MAXIMUM_DELAY = 5 * 60 * 1000;
+    static final long INITIAL_DELAY = Duration.ofSeconds(20).toMillis();
+    static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
     static final double JITTER_RATE = 0.20;
 
     private final S3SourceConfig s3SourceConfig;

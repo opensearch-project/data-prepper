@@ -6,18 +6,20 @@
 package org.opensearch.dataprepper.plugins.processor.grok;
 
 
+import io.krakens.grok.api.Grok;
+import io.krakens.grok.api.GrokCompiler;
+import io.krakens.grok.api.Match;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import io.krakens.grok.api.Grok;
-import io.krakens.grok.api.GrokCompiler;
-import io.krakens.grok.api.Match;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +41,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -59,6 +62,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     private static final Logger LOG = LoggerFactory.getLogger(GrokProcessor.class);
 
+    private static final String DATA_PREPPER_GROK_PATTERNS_FILE = "grok-patterns/patterns";
+
     static final String GROK_PROCESSING_MATCH = "grokProcessingMatch";
     static final String GROK_PROCESSING_MISMATCH = "grokProcessingMismatch";
     static final String GROK_PROCESSING_ERRORS = "grokProcessingErrors";
@@ -77,17 +82,21 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final Set<String> keysToOverwrite;
     private final ExecutorService executorService;
 
-    public GrokProcessor(final PluginSetting pluginSetting) {
-        this(pluginSetting, GrokCompiler.newInstance(), Executors.newSingleThreadExecutor());
+    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+
+    @DataPrepperPluginConstructor
+    public GrokProcessor(final PluginSetting pluginSetting, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+        this(pluginSetting, GrokCompiler.newInstance(), Executors.newSingleThreadExecutor(), expressionEvaluator);
     }
 
-    GrokProcessor(final PluginSetting pluginSetting, final GrokCompiler grokCompiler, final ExecutorService executorService) {
+    GrokProcessor(final PluginSetting pluginSetting, final GrokCompiler grokCompiler, final ExecutorService executorService, final ExpressionEvaluator<Boolean> expressionEvaluator) {
         super(pluginSetting);
         this.grokProcessorConfig = GrokProcessorConfig.buildConfig(pluginSetting);
         this.keysToOverwrite = new HashSet<>(grokProcessorConfig.getkeysToOverwrite());
         this.grokCompiler = grokCompiler;
         this.fieldToGrok = new LinkedHashMap<>();
         this.executorService = executorService;
+        this.expressionEvaluator = expressionEvaluator;
 
         grokProcessingMatchCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH);
         grokProcessingMismatchCounter = pluginMetrics.counter(GROK_PROCESSING_MISMATCH);
@@ -111,6 +120,10 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         for (final Record<Event> record : records) {
             try {
                 final Event event = record.getData();
+
+                if (Objects.nonNull(grokProcessorConfig.getGrokWhen()) && !expressionEvaluator.evaluate(grokProcessorConfig.getGrokWhen(), event)) {
+                    continue;
+                }
 
                 if (grokProcessorConfig.getTimeoutMillis() == 0) {
                     grokProcessingTime.record(() -> matchAndMerge(event));
@@ -163,8 +176,19 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     private void registerPatterns() {
         grokCompiler.registerDefaultPatterns();
+        registerBuiltInDataPrepperGrokPatterns();
         grokCompiler.register(grokProcessorConfig.getPatternDefinitions());
         registerPatternsDirectories();
+    }
+
+    private void registerBuiltInDataPrepperGrokPatterns() {
+        try (
+                final InputStream directoryStream = getClass().getClassLoader().getResourceAsStream(DATA_PREPPER_GROK_PATTERNS_FILE);
+        ) {
+            grokCompiler.register(directoryStream);
+        } catch (final Exception e) {
+            LOG.error("An exception occurred while initializing built in grok patterns for Data Prepper", e);
+        }
     }
 
     private void registerPatternsDirectories() {
