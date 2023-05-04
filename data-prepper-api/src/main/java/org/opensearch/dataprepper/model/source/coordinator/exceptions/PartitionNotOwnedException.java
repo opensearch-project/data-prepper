@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.source.coordinator.exceptions;
 
+import org.opensearch.dataprepper.model.annotations.SkipTestCoverageGenerated;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 
 import java.util.function.Supplier;
@@ -16,6 +17,7 @@ import java.util.function.Supplier;
  * to grab a new partition to process
  * @since 2.2
  */
+@SkipTestCoverageGenerated
 public class PartitionNotOwnedException extends RuntimeException {
     public PartitionNotOwnedException(final String message) {
         super(message);

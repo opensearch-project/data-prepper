@@ -50,7 +50,6 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     }
 
     @Override
-    public boolean tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem) {
-        return false;
+    public void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem) {
     }
 }

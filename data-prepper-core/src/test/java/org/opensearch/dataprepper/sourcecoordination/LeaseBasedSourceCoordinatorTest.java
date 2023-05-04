@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 
 import java.net.InetAddress;
@@ -42,6 +43,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -217,21 +220,22 @@ public class LeaseBasedSourceCoordinatorTest {
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
         given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(ownerPrefix + ":" + InetAddress.getLocalHost().getHostName());
+
         given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
-        given(sourceCoordinationStore.tryUpdateSourcePartitionItem(sourcePartitionStoreItem)).willReturn(updatedItemSuccessfully);
-
-        final boolean completedSuccessfully = createObjectUnderTest().completePartition(sourcePartition.getPartitionKey());
-
-        assertThat(completedSuccessfully, equalTo(updatedItemSuccessfully));
-
-        verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
-        verify(sourcePartitionStoreItem).setReOpenAt(null);
-        verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(null);
-        verify(sourcePartitionStoreItem).setPartitionOwner(null);
-
         if (updatedItemSuccessfully) {
+            doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+            createObjectUnderTest().completePartition(sourcePartition.getPartitionKey());
+
+            verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
+            verify(sourcePartitionStoreItem).setReOpenAt(null);
+            verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(null);
+            verify(sourcePartitionStoreItem).setPartitionOwner(null);
+
             verify(partitionManager).removeActivePartition();
+        } else {
+            doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+            assertThrows(PartitionUpdateException.class, () -> createObjectUnderTest().completePartition(sourcePartition.getPartitionKey()));
         }
     }
 
@@ -289,26 +293,27 @@ public class LeaseBasedSourceCoordinatorTest {
         given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(ownerPrefix + ":" + InetAddress.getLocalHost().getHostName());
         given(sourcePartitionStoreItem.getClosedCount()).willReturn(closedCount);
         given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
-        given(sourceCoordinationStore.tryUpdateSourcePartitionItem(sourcePartitionStoreItem)).willReturn(updatedItemSuccessfully);
 
         final int maxClosedCount = 2;
-        final boolean completedSuccessfully = createObjectUnderTest().closePartition(sourcePartition.getPartitionKey(), Duration.ofMinutes(2), maxClosedCount);
-
-        assertThat(completedSuccessfully, equalTo(updatedItemSuccessfully));
-
-        verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(null);
-        verify(sourcePartitionStoreItem).setPartitionOwner(null);
-
-        if (closedCount >= maxClosedCount) {
-            verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
-        } else {
-            verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.CLOSED);
-            verify(sourcePartitionStoreItem).setReOpenAt(any(Instant.class));
-            verify(sourcePartitionStoreItem).setClosedCount(closedCount + 1L);
-        }
-
         if (updatedItemSuccessfully) {
+            doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+            createObjectUnderTest().closePartition(sourcePartition.getPartitionKey(), Duration.ofMinutes(2), maxClosedCount);
+
+            verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(null);
+            verify(sourcePartitionStoreItem).setPartitionOwner(null);
+
+            if (closedCount >= maxClosedCount) {
+                verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
+            } else {
+                verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.CLOSED);
+                verify(sourcePartitionStoreItem).setReOpenAt(any(Instant.class));
+                verify(sourcePartitionStoreItem).setClosedCount(closedCount + 1L);
+            }
+
             verify(partitionManager).removeActivePartition();
+        } else {
+            doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+            assertThrows(PartitionUpdateException.class, () -> createObjectUnderTest().closePartition(sourcePartition.getPartitionKey(), Duration.ofMinutes(2), maxClosedCount));
         }
     }
 
@@ -369,21 +374,20 @@ public class LeaseBasedSourceCoordinatorTest {
         given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(ownerPrefix + ":" + InetAddress.getLocalHost().getHostName());
         given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
-        given(sourceCoordinationStore.tryUpdateSourcePartitionItem(sourcePartitionStoreItem)).willReturn(updatedItemSuccessfully);
+        if (updatedItemSuccessfully) {
+            doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+            createObjectUnderTest().saveProgressStateForPartition(sourcePartition.getPartitionKey(), newProgressState);
 
-        final boolean completedSuccessfully = createObjectUnderTest().saveProgressStateForPartition(sourcePartition.getPartitionKey(), newProgressState);
+            final ArgumentCaptor<Instant> argumentCaptorForPartitionOwnershipTimeout = ArgumentCaptor.forClass(Instant.class);
+            verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(argumentCaptorForPartitionOwnershipTimeout.capture());
+            final Instant newPartitionOwnershipTimeout = argumentCaptorForPartitionOwnershipTimeout.getValue();
+            assertThat(newPartitionOwnershipTimeout.isAfter(beforeSave.plus(DEFAULT_LEASE_TIMEOUT)), equalTo(true));
 
-        assertThat(completedSuccessfully, equalTo(updatedItemSuccessfully));
-
-        final ArgumentCaptor<Instant> argumentCaptorForPartitionOwnershipTimeout = ArgumentCaptor.forClass(Instant.class);
-
-
-
-        verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(argumentCaptorForPartitionOwnershipTimeout.capture());
-        final Instant newPartitionOwnershipTimeout = argumentCaptorForPartitionOwnershipTimeout.getValue();
-        assertThat(newPartitionOwnershipTimeout.isAfter(beforeSave.plus(DEFAULT_LEASE_TIMEOUT)), equalTo(true));
-
-        verify(sourcePartitionStoreItem).setPartitionProgressState(newProgressState);
+            verify(sourcePartitionStoreItem).setPartitionProgressState(newProgressState);
+        } else {
+            doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+            assertThrows(PartitionUpdateException.class, () -> createObjectUnderTest().saveProgressStateForPartition(sourcePartition.getPartitionKey(), newProgressState));
+        }
     }
 
     @Test
@@ -403,23 +407,6 @@ public class LeaseBasedSourceCoordinatorTest {
         verifyNoMoreInteractions(sourceCoordinationStore);
     }
 
-    @Test
-    void giveUpPartitions_with_owned_partition_key_and_existing_store_item_with_invalid_owner_throws_PartitionNotOwnedException() {
-        final SourcePartition<String> sourcePartition = SourcePartition.builder(String.class)
-                .withPartitionKey(UUID.randomUUID().toString())
-                .withPartitionState(null)
-                .build();
-
-        given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(UUID.randomUUID().toString());
-        given(sourcePartitionStoreItem.getSourcePartitionKey()).willReturn(sourcePartition.getPartitionKey());
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
-
-        assertThrows(PartitionNotOwnedException.class, () -> createObjectUnderTest().closePartition(sourcePartition.getPartitionKey(), Duration.ofMinutes(2), 1));
-
-        verify(partitionManager).removeActivePartition();
-    }
-
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     void giveUpPartitions_with_owned_partition_and_existing_store_item_with_valid_owner_returns_expected_result(final boolean updatedItemSuccessfully) throws UnknownHostException {
@@ -432,15 +419,19 @@ public class LeaseBasedSourceCoordinatorTest {
         given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(ownerPrefix + ":" + InetAddress.getLocalHost().getHostName());
         given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
-        given(sourceCoordinationStore.tryUpdateSourcePartitionItem(sourcePartitionStoreItem)).willReturn(updatedItemSuccessfully);
+        if (updatedItemSuccessfully) {
+            doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+            createObjectUnderTest().giveUpPartitions();
 
-        createObjectUnderTest().giveUpPartitions();
+            verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.UNASSIGNED);
+            verify(sourcePartitionStoreItem).setPartitionOwner(null);
+            verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(null);
 
-        verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.UNASSIGNED);
-        verify(sourcePartitionStoreItem).setPartitionOwner(null);
-        verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(null);
-
-        verify(partitionManager).removeActivePartition();
+            verify(partitionManager).removeActivePartition();
+        } else {
+            doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
+            assertThrows(PartitionUpdateException.class, () -> createObjectUnderTest().giveUpPartitions());
+        }
     }
 
     static Stream<Object[]> getClosedCountArgs() {

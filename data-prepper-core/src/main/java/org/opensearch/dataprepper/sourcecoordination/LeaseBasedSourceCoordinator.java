@@ -72,7 +72,6 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition();
 
         if (ownedPartitions.isEmpty()) {
-            // Potential metric (AcquirePartitionMisses). May indicate that the number of nodes could be lowered or new partitions need to be added
             LOG.info("Partition owner {} did not acquire any partitions. Running partition creation supplier to create more partitions", ownerId);
 
             createPartitions(partitionsCreatorSupplier.get());
@@ -119,21 +118,9 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     }
 
     @Override
-    public boolean completePartition(final String partitionKey) {
+    public void completePartition(final String partitionKey) {
 
-        if (!isActivelyOwnedPartition(partitionKey)) {
-            throw new PartitionNotOwnedException(
-                    String.format("Unable to complete the partition because partition key %s is not owned by this instance of Data Prepper for owner %s", partitionKey, ownerId)
-            );
-        }
-
-        final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionKey);
-
-        if (optionalPartitionItem.isEmpty()) {
-            throw new PartitionNotFoundException(String.format("Unable to complete the partition because partition key %s was not found by owner %s. It may have been deleted.", partitionKey, ownerId));
-        }
-
-        final SourcePartitionStoreItem itemToUpdate = optionalPartitionItem.get();
+        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "complete");
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -141,34 +128,16 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         itemToUpdate.setPartitionOwnershipTimeout(null);
         itemToUpdate.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
 
-        final boolean completedSuccessfully = sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
-
-        if (!completedSuccessfully) {
-            LOG.warn("Unable to complete the partition for owner {} with partition key {}", ownerId, partitionKey);
-            return false;
-        }
-
-        LOG.debug("Partition key {} was completed by owner {}.", partitionKey, ownerId);
-
+        sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
         partitionManager.removeActivePartition();
-        return true;
+
+        LOG.info("Partition key {} was completed by owner {}.", partitionKey, ownerId);
     }
 
     @Override
-    public boolean closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount) {
-        if (!isActivelyOwnedPartition(partitionKey)) {
-            throw new PartitionNotOwnedException(
-                    String.format("Unable to close the partition because partition key %s is not owned by this instance of Data Prepper for owner %s", partitionKey, ownerId)
-            );
-        }
+    public void closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount) {
 
-        final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionKey);
-
-        if (optionalPartitionItem.isEmpty()) {
-            throw new PartitionNotFoundException(String.format("Unable to close the partition because partition key %s was not found by owner %s", partitionKey, ownerId));
-        }
-
-        final SourcePartitionStoreItem itemToUpdate = optionalPartitionItem.get();
+        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "close");
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -182,50 +151,25 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         }
 
 
-        final boolean closedSuccessfully = sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
-
-        if (!closedSuccessfully) {
-            LOG.warn("Unable to close the partition for partition owner {} with partition key {}", ownerId, partitionKey);
-            return false;
-        }
-
-        LOG.debug("Partition key {} was closed by owner {}. The resulting status of the partition is now {}", partitionKey, ownerId, itemToUpdate.getSourcePartitionStatus());
-
+        sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
         partitionManager.removeActivePartition();
-        return true;
+
+        LOG.info("Partition key {} was closed by owner {}. The resulting status of the partition is now {}", partitionKey, ownerId, itemToUpdate.getSourcePartitionStatus());
     }
 
     @Override
-    public <S extends T> boolean saveProgressStateForPartition(final String partitionKey, final S partitionProgressState) {
-        if (!isActivelyOwnedPartition(partitionKey)) {
-            throw new PartitionNotOwnedException(
-                    String.format("Unable to save state for the partition because partition key %s is not owned by this instance of Data Prepper for owner %s", partitionKey, ownerId)
-            );
-        }
+    public <S extends T> void saveProgressStateForPartition(final String partitionKey, final S partitionProgressState) {
 
-        final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionKey);
-
-        if (optionalPartitionItem.isEmpty()) {
-            throw new PartitionNotFoundException(String.format("Unable to save state for the partition because partition key %s was not found by owner %s", partitionKey, ownerId));
-        }
-
-        final SourcePartitionStoreItem itemToUpdate = optionalPartitionItem.get();
+        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "save state");
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
         itemToUpdate.setPartitionProgressState(convertPartitionProgressStateClasstoString(partitionProgressState));
 
-        final boolean savedStateSuccessfully = sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
-
-        if (!savedStateSuccessfully) {
-            LOG.warn("Unable to save state for the partition for owner {} with partition key {}", ownerId, partitionKey);
-            return false;
-        }
+        sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
 
         LOG.debug("State was saved for partition key {} by owner {}. The saved state is: {}",
                 partitionKey, ownerId, itemToUpdate.getPartitionProgressState());
-
-        return true;
     }
 
     @Override
@@ -241,13 +185,9 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                 updateItem.setPartitionOwner(null);
                 updateItem.setPartitionOwnershipTimeout(null);
 
-                final boolean releasedPartition = sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
-                if (!releasedPartition) {
-                    LOG.warn("Unable to release partition for owner {} with partition key {}.",
-                            ownerId, updateItem.getSourcePartitionKey());
-                } else {
-                    LOG.debug("Partition key {} was given up by owner {}", updateItem.getSourcePartitionKey(), ownerId);
-                }
+                sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
+
+                LOG.debug("Partition key {} was given up by owner {}", updateItem.getSourcePartitionKey(), ownerId);
             }
             partitionManager.removeActivePartition();
         }
@@ -273,5 +213,21 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                     "The partition ownership timeout most likely expired and was grabbed by another instance of Data Prepper for partition owner %s and partition key %s.",
                     ownerId, item.getSourcePartitionKey()));
         }
+    }
+
+    private SourcePartitionStoreItem validateAndGetSourcePartitionStoreItem(final String partitionKey, final String action) {
+        if (!isActivelyOwnedPartition(partitionKey)) {
+            throw new PartitionNotOwnedException(
+                    String.format("Unable to %s for the partition because partition key %s is not owned by this instance of Data Prepper for owner %s", action, partitionKey, ownerId)
+            );
+        }
+
+        final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionKey);
+
+        if (optionalPartitionItem.isEmpty()) {
+            throw new PartitionNotFoundException(String.format("Unable to %s for the partition because partition key %s was not found by owner %s", action, partitionKey, ownerId));
+        }
+
+        return optionalPartitionItem.get();
     }
 }

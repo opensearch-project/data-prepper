@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.model.event;
 
 import com.google.common.collect.ImmutableMap;
-import org.opensearch.dataprepper.model.annotations.SkipTestCoverageGenerated;
 
 import java.time.Instant;
 import java.util.Map;
@@ -62,7 +61,6 @@ public class DefaultEventMetadata implements EventMetadata {
     }
 
     @Override
-    @SkipTestCoverageGenerated
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

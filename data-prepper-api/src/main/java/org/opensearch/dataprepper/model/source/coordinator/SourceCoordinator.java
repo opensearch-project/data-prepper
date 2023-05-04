@@ -34,12 +34,13 @@ public interface SourceCoordinator<T> {
 
     /**
      * Should be called by the source when it has fully processed a given partition
-     *
+     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException if the partition key could not be found in the distributed store
+     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException if the partition is not owned by this instance of SourceCoordinator
+     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition can not be completed
      * @param partitionKey - The partition key that uniquely identifies the partition of work that was fully processed
-     * @return Whether the partition was marked as completed successfully or not. If this returns false, the operation is safe to retry.
      * @since 2.2
      */
-    boolean completePartition(final String partitionKey);
+    void completePartition(final String partitionKey);
 
     /**
      * Should be called by the source when it has processed all that it can up to this point in time for a given partition,
@@ -50,12 +51,12 @@ public interface SourceCoordinator<T> {
      * @param reopenAfter  - The duration from the current time to wait before this partition should be processed further at a later date
      * @param maxClosedCount - The number of times to allow this partition to be closed. Will mark the partition as completed if the partition has been closed this many times or more
      *                       in the past
-     * @return Whether the partition was closed successfully or not. If this returns false, the operation is safe to retry.
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException if the partition key could not be found in the distributed store
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException if the partition is not owned by this instance of SourceCoordinator
+     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition can not be closed
      * @since 2.2
      */
-    boolean closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount);
+    void closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount);
 
     /**
      * Should be called by the source when it has completed some work for a partition, and needs to save its progress before continuing work on the partition.
@@ -65,18 +66,20 @@ public interface SourceCoordinator<T> {
      * @param <S>                    The partition state type
      * @param partitionKey           partition key that uniquely represents the partition
      * @param partitionProgressState The object to represent the latest partition progress state
-     * @return Whether the state was saved successfully for the partition. If the return value is false, the source can choose to retry
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException if the partition key could not be found in the distributed store.
              Grab a new partition to process with {@link #getNextPartition(Supplier)} ()}
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException if the partition is not owned by this instance of SourceCoordinator.
      *      Grab a new partition to process with {@link #getNextPartition(Supplier)} ()}
+     *
+     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition state can not be saved
      * @since 2.2
      */
-    <S extends T> boolean saveProgressStateForPartition(final String partitionKey, final S partitionProgressState);
+    <S extends T> void saveProgressStateForPartition(final String partitionKey, final S partitionProgressState);
 
     /**
      * Should be called by the source when it is shutting down to indicate that it will no longer be able to perform work on partitions,
      * or can be called to give up ownership of its partitions in order to pick up new ones with {@link #getNextPartition(Supplier)} ()}.
+     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition could not be given up due to some failure
      * @since 2.2
      */
     void giveUpPartitions();
