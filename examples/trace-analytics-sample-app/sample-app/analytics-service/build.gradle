@@ -5,14 +5,14 @@
 
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '2.7.3'
-    id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+    id 'org.springframework.boot' version '2.7.11'
+    id 'io.spring.dependency-management' version '1.1.0'
 }
 
 
 group = 'com.example.restservice'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '1.8'
+sourceCompatibility = '11'
 
 repositories {
     mavenCentral()
