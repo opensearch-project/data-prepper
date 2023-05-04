@@ -78,7 +78,7 @@ public class DefaultEventMetadata implements EventMetadata {
     }
 
     @Override
-    public void setTag(final String tag) {
+    public void addTag(final String tag) {
         tags.add(tag);
     }
 

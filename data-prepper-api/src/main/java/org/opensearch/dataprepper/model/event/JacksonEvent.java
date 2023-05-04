@@ -279,7 +279,15 @@ public class JacksonEvent implements Event {
     @Override
     public String toJsonStringWithTags(final String tagsKey) {
         String result = jsonNode.toString();
-        return result.substring(0, result.length()-1) + ",\""+tagsKey+"\":"+ getMetadata().getTags()+"}";
+        String separator = "";
+
+        result = result.substring(0, result.length()-1) + ",\"tags\":[";
+        for (final String tag: getMetadata().getTags()) {
+            result += separator + "\"" + tag + "\"";
+            separator = ", ";
+        }
+        result += "]}";
+        return result;
     }
 
     @Override

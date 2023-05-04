@@ -57,5 +57,5 @@ public interface EventMetadata extends Serializable {
      * @param tag to be set
      * @since 2.3
      */
-    void setTag(final String tag);
+    void addTag(final String tag);
 }

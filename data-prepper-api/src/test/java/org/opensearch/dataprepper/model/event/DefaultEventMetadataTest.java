@@ -190,7 +190,7 @@ public class DefaultEventMetadataTest {
         assertThat(result, notNullValue());
 
         assertThat(result.getTags(), equalTo(testTags));
-        result.setTag("tag3");
+        result.addTag("tag3");
         assertTrue(result.hasTag("tag1"));
         assertTrue(result.hasTag("tag2"));
         assertTrue(result.hasTag("tag3"));
