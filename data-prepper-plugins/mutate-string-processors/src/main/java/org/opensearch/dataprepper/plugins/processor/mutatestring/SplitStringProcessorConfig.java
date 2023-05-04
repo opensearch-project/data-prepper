@@ -27,6 +27,9 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
         @Size(min = 1, max = 1)
         private String delimiter;
 
+        @JsonProperty("split_when")
+        private String splitWhen;
+
         public String getSource() {
             return source;
         }
@@ -39,10 +42,13 @@ public class SplitStringProcessorConfig implements StringProcessorConfig<SplitSt
             return delimiter;
         }
 
-        public Entry(final String source, final String delimiterRegex, final String delimiter) {
+        public String getSplitWhen() { return splitWhen; }
+
+        public Entry(final String source, final String delimiterRegex, final String delimiter, final String splitWhen) {
             this.source = source;
             this.delimiterRegex = delimiterRegex;
             this.delimiter = delimiter;
+            this.splitWhen = splitWhen;
         }
 
         public Entry() {}

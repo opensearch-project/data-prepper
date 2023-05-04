@@ -10,10 +10,11 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 
-import java.util.Optional;
+import java.util.List;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action will add the unique keys of each smaller Event to the overall groupState,
@@ -33,13 +34,13 @@ public class PutAllAggregateAction implements AggregateAction {
     }
 
     @Override
-    public Optional<Event> concludeGroup(final AggregateActionInput aggregateActionInput) {
+    public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
 
         final Event event = JacksonEvent.builder()
                 .withEventType(EVENT_TYPE)
                 .withData(aggregateActionInput.getGroupState())
                 .build();
 
-        return Optional.of(event);
+        return new AggregateActionOutput(List.of(event));
     }
 }

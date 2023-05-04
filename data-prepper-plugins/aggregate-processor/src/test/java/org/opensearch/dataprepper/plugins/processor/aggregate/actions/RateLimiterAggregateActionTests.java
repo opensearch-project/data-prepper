@@ -12,17 +12,19 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -61,8 +63,9 @@ public class RateLimiterAggregateActionTests {
             assertThat(aggregateActionResponse.getEvent(), equalTo(testEvent));
             Thread.sleep(1000/testEventsPerSecond);
         }
-        final Optional<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(false));
+        final AggregateActionOutput actionOutput = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertTrue(result.isEmpty());
     }
 
     @ParameterizedTest
@@ -89,8 +92,9 @@ public class RateLimiterAggregateActionTests {
             } 
         }
         assertThat(numFailed, greaterThan(0));
-        final Optional<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(false));
+        final AggregateActionOutput actionOutput = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertTrue(result.isEmpty());
     }
 
     @ParameterizedTest
@@ -119,7 +123,8 @@ public class RateLimiterAggregateActionTests {
             }
         }
         assertThat(numFailed, equalTo(0));
-        final Optional<Event> result = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(false));
+        final AggregateActionOutput actionOutput = rateLimiterAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertTrue(result.isEmpty());
     }
 }

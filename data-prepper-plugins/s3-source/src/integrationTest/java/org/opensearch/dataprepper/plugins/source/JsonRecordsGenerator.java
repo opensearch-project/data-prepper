@@ -66,6 +66,11 @@ class JsonRecordsGenerator implements RecordsGenerator {
         assertThat(messageMap.get(EVENT_VERSION_FIELD), equalTo(EVENT_VERSION_VALUE));
     }
 
+    @Override
+    public String getS3SelectExpression() {
+        return "select  s.* from  S3Object[*].Records[*] s";
+    }
+
     private void writeSingleRecord(final JsonGenerator jsonGenerator) throws IOException {
         jsonGenerator.writeStartObject();
 
