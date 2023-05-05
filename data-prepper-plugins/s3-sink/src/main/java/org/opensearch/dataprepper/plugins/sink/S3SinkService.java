@@ -96,16 +96,16 @@ public class S3SinkService {
                 final byte[] encodedBytes = encodedEvent.getBytes();
                 if (willExceedThreshold()) {
                     s3ObjectSizeSummary.record(currentBuffer.getEventCount());
-                    LOG.info("Snapshot info : Byte_capacity = {} Bytes," +
+                    LOG.info("Event collection Object info : Byte_capacity = {} Bytes," +
                             " Event_count = {} Records & Event_collection_duration = {} Sec",
                             maxBytes.getBytes(), currentBuffer.getEventCount(), currentBuffer.getDuration());
                     boolean isUploadedToS3 = currentBuffer.flushToS3(s3Client, bucket, generateKey(), maxRetries);
                     if (isUploadedToS3) {
-                        LOG.info("Snapshot uploaded successfully");
+                        LOG.info("Event collection Object uploaded successfully");
                         numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
                         snapshotSuccessCounter.increment();
                     } else {
-                        LOG.info("Snapshot upload failed");
+                        LOG.info("Event collection Object upload failed");
                         numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
                         snapshotFailedCounter.increment();
                     }
