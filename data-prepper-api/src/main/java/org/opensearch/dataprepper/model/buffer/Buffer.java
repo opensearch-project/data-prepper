@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.model.buffer;
 
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.record.Record;
 
 import java.util.Collection;
 import java.util.Map;

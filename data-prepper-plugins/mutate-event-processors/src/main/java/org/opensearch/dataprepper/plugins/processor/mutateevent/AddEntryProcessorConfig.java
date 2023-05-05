@@ -24,6 +24,9 @@ public class AddEntryProcessorConfig {
 
         private String format;
 
+        @JsonProperty("add_when")
+        private String addWhen;
+
         @JsonProperty("overwrite_if_key_exists")
         private boolean overwriteIfKeyExists = false;
 
@@ -43,17 +46,24 @@ public class AddEntryProcessorConfig {
             return overwriteIfKeyExists;
         }
 
+        public String getAddWhen() { return addWhen; }
+
         @AssertTrue(message = "Either value or format must be specified")
         public boolean hasValueOrFormat() {
             return Objects.nonNull(value) || Objects.nonNull(format);
         }
 
-        public Entry(final String key, final Object value, final String format, final boolean overwriteIfKeyExists)
+        public Entry(final String key,
+                     final Object value,
+                     final String format,
+                     final boolean overwriteIfKeyExists,
+                     final String addWhen)
         {
             this.key = key;
             this.value = value;
             this.format = format;
             this.overwriteIfKeyExists = overwriteIfKeyExists;
+            this.addWhen = addWhen;
         }
 
         public Entry() {

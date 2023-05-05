@@ -9,6 +9,7 @@ import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.source.configuration.NotificationTypeOption;
 import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
@@ -25,7 +26,6 @@ public class S3SourceConfig {
     static final String DEFAULT_METADATA_ROOT_KEY = "s3/";
 
     @JsonProperty("notification_type")
-    @NotNull
     private NotificationTypeOption notificationType;
 
     @JsonProperty("compression")
@@ -35,7 +35,6 @@ public class S3SourceConfig {
     private PluginModel codec;
 
     @JsonProperty("sqs")
-    @NotNull
     private SqsOptions sqsOptions;
 
     @JsonProperty("aws")
@@ -62,6 +61,9 @@ public class S3SourceConfig {
     private String metadataRootKey = DEFAULT_METADATA_ROOT_KEY;
     @JsonProperty("s3_select")
     private S3SelectOptions s3SelectOptions;
+
+    @JsonProperty("scan")
+    private S3ScanScanOptions s3ScanScanOptions;
 
     @AssertTrue(message = "A codec is required for reading objects.")
     boolean isCodecProvidedWhenNeeded() {
@@ -113,7 +115,13 @@ public class S3SourceConfig {
     public String getMetadataRootKey() {
         return metadataRootKey;
     }
-	public S3SelectOptions getS3SelectOptions() {
-		return s3SelectOptions;
-	}
+
+    public S3SelectOptions getS3SelectOptions() {
+        return s3SelectOptions;
+    }
+
+    public S3ScanScanOptions getS3ScanScanOptions() {
+        return s3ScanScanOptions;
+    }
+
 }

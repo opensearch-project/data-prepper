@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.model.failures;
 
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.model.event.EventHandle;
 
 import java.time.Instant;
 import java.time.ZoneId;

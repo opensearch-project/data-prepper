@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.model.CompressionType;
@@ -38,6 +39,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -111,6 +113,9 @@ class S3SelectObjectWorkerTest {
 
     private int numberOfObjectScans;
 
+    @Mock
+    private BucketOwnerProvider bucketOwnerProvider;
+
     @BeforeEach
     void setup() {
 
@@ -146,12 +151,13 @@ class S3SelectObjectWorkerTest {
         lenient().when(selectJsonOption.getType()).thenReturn(JSON_LINES_TYPE);
 
         given(s3ObjectRequest.getS3ObjectPluginMetrics()).willReturn(s3ObjectPluginMetrics);
-
+        bucketOwnerProvider = mock(BucketOwnerProvider.class);
+        given(bucketOwnerProvider.getBucketOwner(any(String.class))).willReturn(Optional.of("my-bucket-1"));
+        given(s3ObjectRequest.getBucketOwnerProvider()).willReturn(bucketOwnerProvider);
         final CompletableFuture<HeadObjectResponse> headObjectResponseCompletableFuture = mock(CompletableFuture.class);
         final HeadObjectResponse headObjectResponse = mock(HeadObjectResponse.class);
         lenient().when(headObjectResponse.contentLength()).thenReturn(MAX_S3_OBJECT_CHUNK_SIZE * numberOfObjectScans);
         lenient().when(headObjectResponseCompletableFuture.join()).thenReturn(headObjectResponse);
-
 
         argumentCaptorForHeadObjectRequest = ArgumentCaptor.forClass(HeadObjectRequest.class);
         lenient().when(s3AsyncClient.headObject(argumentCaptorForHeadObjectRequest.capture())).thenReturn(headObjectResponseCompletableFuture);

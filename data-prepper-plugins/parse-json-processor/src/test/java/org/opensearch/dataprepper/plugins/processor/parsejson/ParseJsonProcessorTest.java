@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.parsejson;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -21,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 import static java.util.Map.entry;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -37,6 +39,9 @@ class ParseJsonProcessorTest {
     @Mock
     private PluginMetrics pluginMetrics;
 
+    @Mock
+    private ExpressionEvaluator<Boolean> expressionEvaluator;
+
     private ParseJsonProcessor parseJsonProcessor;
 
     @BeforeEach
@@ -45,12 +50,11 @@ class ParseJsonProcessorTest {
         when(processorConfig.getSource()).thenReturn(defaultConfig.getSource());
         when(processorConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         when(processorConfig.getPointer()).thenReturn(defaultConfig.getPointer());
-
-        parseJsonProcessor = createObjectUnderTest();
+        when(processorConfig.getParseWhen()).thenReturn(null);
     }
 
     private ParseJsonProcessor createObjectUnderTest() {
-        return new ParseJsonProcessor(pluginMetrics, processorConfig);
+        return new ParseJsonProcessor(pluginMetrics, processorConfig, expressionEvaluator);
     }
 
     @Test
@@ -91,6 +95,8 @@ class ParseJsonProcessorTest {
 
     @Test
     void test_when_valueIsEmpty_then_notParsed() {
+        parseJsonProcessor = createObjectUnderTest();
+
         final Map<String, Object> emptyData = Collections.singletonMap("key",""); // invalid JSON
 
         final String serializedMessage = convertMapToJSONString(emptyData);
@@ -102,6 +108,8 @@ class ParseJsonProcessorTest {
 
     @Test
     void test_when_deeplyNestedFieldInRoot_then_canReachDeepestLayer() {
+        parseJsonProcessor = createObjectUnderTest();
+
         final int numberOfLayers = 200;
         final Map<String, Object> messageMap = constructArbitrarilyDeepJsonMap(numberOfLayers);
         final String serializedMessage = convertMapToJSONString(messageMap);
@@ -134,6 +142,8 @@ class ParseJsonProcessorTest {
 
     @Test
     void test_when_nestedJSONArray_then_parsedIntoArrayAndIndicesAccessible() {
+        parseJsonProcessor = createObjectUnderTest();
+
         final String key = "key";
         final ArrayList<String> value = new ArrayList<>(List.of("Element0","Element1","Element2"));
         final String jsonArray = "{\"key\":[\"Element0\",\"Element1\",\"Element2\"]}";
@@ -147,6 +157,8 @@ class ParseJsonProcessorTest {
 
     @Test
     void test_when_nestedJSONArrayOfJSON_then_parsedIntoArrayAndIndicesAccessible() {
+        parseJsonProcessor = createObjectUnderTest();
+
         final String key = "key";
         final ArrayList<Map<String, Object>> value = new ArrayList<>(List.of(Collections.singletonMap("key0","value0"),
                 Collections.singletonMap("key1","value1")));
@@ -229,6 +241,7 @@ class ParseJsonProcessorTest {
 
     @Test
     void test_when_invalidPointer_then_logsErrorAndParsesEntireEvent() {
+
         final String pointer = "key/10000";
         when(processorConfig.getPointer()).thenReturn(pointer);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
@@ -242,16 +255,36 @@ class ParseJsonProcessorTest {
         assertThatKeyEquals(parsedEvent, "key", value);
     }
 
-
-
     @Test
     void test_when_multipleChildren_then_allAreParsedOut() {
+        parseJsonProcessor = createObjectUnderTest();
+
         final Map<String, Object> data = Collections.singletonMap("key", "{inner1:value1,inner2:value2}");
         final String serializedMessage = convertMapToJSONString(data);
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
 
         assertThatKeyEquals(parsedEvent, "key/inner1", "value1");
         assertThatKeyEquals(parsedEvent, "key/inner2", "value2");
+    }
+
+    @Test
+    void test_when_condition_skips_processing_when_evaluates_to_false() {
+        final String source = "different_source";
+        final String destination = "destination_key";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(destination);
+        final String whenCondition = UUID.randomUUID().toString();
+        when(processorConfig.getParseWhen()).thenReturn(whenCondition);
+        final Map<String, Object> data = Collections.singletonMap("key", "value");
+        final String serializedMessage = convertMapToJSONString(data);
+        final Record<Event> testEvent = createMessageEvent(serializedMessage);
+        when(expressionEvaluator.evaluate(whenCondition, testEvent.getData())).thenReturn(false);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+
+        final Event parsedEvent = createAndParseMessageEvent(testEvent);
+
+        assertThat(parsedEvent.toMap(), equalTo(testEvent.getData().toMap()));
+
     }
 
     private String constructDeeplyNestedJsonPointer(final int numberOfLayers) {
@@ -294,6 +327,12 @@ class ParseJsonProcessorTest {
         final Record<Event> eventUnderTest = createMessageEvent(message);
         final List<Record<Event>> editedEvents = (List<Record<Event>>) parseJsonProcessor.doExecute(
                 Collections.singletonList(eventUnderTest));
+        return editedEvents.get(0).getData();
+    }
+
+    private Event createAndParseMessageEvent(final Record<Event> inputEvent) {
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) parseJsonProcessor.doExecute(
+                Collections.singletonList(inputEvent));
         return editedEvents.get(0).getData();
     }
 

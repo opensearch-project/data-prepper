@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.s3.model.CompressionType;
 
 import java.time.Duration;
 import java.util.function.BiConsumer;
+
 public class S3ObjectRequest {
     private final Buffer<Record<Event>> buffer;
     private final int numberOfRecordsToAccumulate;
@@ -38,9 +39,11 @@ public class S3ObjectRequest {
     private final S3SelectJsonOption s3SelectJsonOption;
     private final String expressionType;
 
+
     private S3ObjectRequest(Builder builder) {
         this.buffer = builder.buffer;
         this.numberOfRecordsToAccumulate =builder.numberOfRecordsToAccumulate;
+
         this.bufferTimeout = builder.bufferTimeout;
         this.s3ObjectPluginMetrics = builder.s3ObjectPluginMetrics;
         this.expression = builder.expression;
@@ -146,9 +149,9 @@ public class S3ObjectRequest {
         private String expressionType;
 
         public Builder(final Buffer<Record<Event>> buffer,
-                                      final int numberOfRecordsToAccumulate,
-                                      final Duration bufferTimeout,
-                                      final S3ObjectPluginMetrics s3ObjectPluginMetrics){
+                       final int numberOfRecordsToAccumulate,
+                       final Duration bufferTimeout,
+                       final S3ObjectPluginMetrics s3ObjectPluginMetrics){
             this.buffer = buffer;
             this.numberOfRecordsToAccumulate=numberOfRecordsToAccumulate;
             this.bufferTimeout = bufferTimeout;
@@ -184,6 +187,7 @@ public class S3ObjectRequest {
             this.compressionEngine = compressionEngine;
             return this;
         }
+
         public Builder codec(InputCodec codec) {
             this.codec = codec;
             return this;
