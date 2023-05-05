@@ -7,17 +7,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.sink.S3SinkConfig;
 import software.amazon.awssdk.services.s3.S3Client;
 import java.io.IOException;
-import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 @ExtendWith(MockitoExtension.class)
 class InMemoryBufferTest {
 
+    public static final int MAX_EVENTS = 55;
+    public static final int MAX_RETRIES = 5;
     @Mock
     private S3Client s3Client;
     private InMemoryBuffer inMemoryBuffer;
@@ -26,29 +24,35 @@ class InMemoryBufferTest {
     void test_with_write_event_into_buffer() throws IOException {
         inMemoryBuffer = new InMemoryBuffer();
 
-        while (inMemoryBuffer.getEventCount() < 55) {
+        while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
             inMemoryBuffer.writeEvent(generateByteArray());
         }
-        assertThat(inMemoryBuffer.getSize(), greaterThan(1l));
-        assertThat(inMemoryBuffer.getEventCount(), equalTo(55));
+        assertThat(inMemoryBuffer.getSize(), greaterThanOrEqualTo(54110L));
+        assertThat(inMemoryBuffer.getEventCount(), equalTo(MAX_EVENTS));
         assertThat(inMemoryBuffer.getDuration(), greaterThanOrEqualTo(0L));
 
     }
 
     @Test
-    void test_without_write_event_into_buffer() {
+    void test_with_write_event_into_buffer_and_flush_toS3() throws IOException, InterruptedException {
         inMemoryBuffer = new InMemoryBuffer();
-        assertThat(inMemoryBuffer.getSize(), equalTo(0L));
-        assertThat(inMemoryBuffer.getEventCount(), equalTo(0));
-        assertThat(inMemoryBuffer.getDuration(), lessThanOrEqualTo(0L));
 
+        while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
+            inMemoryBuffer.writeEvent(generateByteArray());
+        }
+        assertThat(inMemoryBuffer.getSize(), greaterThanOrEqualTo(54110L));
+        assertThat(inMemoryBuffer.getEventCount(), equalTo(MAX_EVENTS));
+        assertThat(inMemoryBuffer.getDuration(), greaterThanOrEqualTo(0L));
+
+        boolean isUploadedToS3 = inMemoryBuffer.flushToS3(s3Client, "data-prepper", "log.txt", MAX_RETRIES);
+        Assertions.assertTrue(isUploadedToS3);
     }
 
     @Test
     void test_uploadedToS3_success() throws InterruptedException {
         inMemoryBuffer = new InMemoryBuffer();
         Assertions.assertNotNull(inMemoryBuffer);
-        boolean isUploadedToS3 = inMemoryBuffer.flushToS3(s3Client, "data-prepper", "log.txt", 5);
+        boolean isUploadedToS3 = inMemoryBuffer.flushToS3(s3Client, "data-prepper", "log.txt", MAX_RETRIES);
         Assertions.assertTrue(isUploadedToS3);
     }
 

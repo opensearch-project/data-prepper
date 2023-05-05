@@ -30,13 +30,20 @@ import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOp
 import org.opensearch.dataprepper.plugins.sink.configuration.BucketOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
 class S3SinkTest {
 
+    public static final int MAX_EVENTS = 100;
+    public static final int MAX_RETRIES = 5;
+    public static final String BUCKET_NAME = "dataprepper";
+    public static final String S3_REGION = "us-east-1";
+    public static final String MAXIMUM_SIZE = "1kb";
+    public static final String OBJECT_KEY_NAME_PATTERN = "my-elb-%{yyyy-MM-dd'T'hh-mm-ss}";
+    public static final String CODEC_PLUGIN_NAME = "json";
+    public static final String SINK_PLUGIN_NAME = "s3";
+    public static final String SINK_PIPELINE_NAME = "S3-sink-pipeline";
     private S3SinkConfig s3SinkConfig;
-    private AwsCredentialsProvider awsCredentialsProvider;
     private S3Sink s3Sink;
     private PluginSetting pluginSetting;
     private PluginFactory pluginFactory;
@@ -57,18 +64,17 @@ class S3SinkTest {
 
         when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
         when(s3SinkConfig.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(s3SinkConfig.getThresholdOptions().getEventCount()).thenReturn(100);
-        when(s3SinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse("1kb"));
-        when(s3SinkConfig.getThresholdOptions().getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(5));
-        when(objectKeyOptions.getNamePattern()).thenReturn("my-elb-%{yyyy-MM-dd'T'hh-mm-ss}");
+        when(s3SinkConfig.getThresholdOptions().getEventCount()).thenReturn(MAX_EVENTS);
+        when(s3SinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse(MAXIMUM_SIZE));
+        when(s3SinkConfig.getThresholdOptions().getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(MAX_RETRIES));
+        when(objectKeyOptions.getNamePattern()).thenReturn(OBJECT_KEY_NAME_PATTERN);
         when(s3SinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of("us-east-1"));
-        when(awsAuthenticationOptions.authenticateAwsConfiguration()).thenReturn(awsCredentialsProvider);
+        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(S3_REGION));
         when(s3SinkConfig.getCodec()).thenReturn(pluginModel);
-        when(pluginModel.getPluginName()).thenReturn("json");
+        when(pluginModel.getPluginName()).thenReturn(CODEC_PLUGIN_NAME);
         when(pluginFactory.loadPlugin(any(), any())).thenReturn(codec);
-        when(pluginSetting.getName()).thenReturn("s3");
-        when(pluginSetting.getPipelineName()).thenReturn("S3-sink-pipeline");
+        when(pluginSetting.getName()).thenReturn(SINK_PLUGIN_NAME);
+        when(pluginSetting.getPipelineName()).thenReturn(SINK_PIPELINE_NAME);
     }
 
     @Test
@@ -98,7 +104,7 @@ class S3SinkTest {
     @Test
     void test_doOutput_with_empty_records() {
         when(s3SinkConfig.getBucketOptions()).thenReturn(bucketOptions);
-        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn("dataprepper");
+        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn(BUCKET_NAME);
         s3Sink = new S3Sink(pluginSetting, s3SinkConfig, pluginFactory);
         Assertions.assertNotNull(s3Sink);
         s3Sink.doInitialize();
