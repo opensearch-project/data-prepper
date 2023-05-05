@@ -194,7 +194,7 @@ public final class BulkRetryStrategy {
                 request = operationResponse.getBulkRequest();
                 response = operationResponse.getResponse();
                 if (delayMillis < 0) {
-                    RuntimeException e = new RuntimeException(String.format("Number of retries reached the limit of max retries(configured value %d)", maxRetries));
+                    RuntimeException e = new RuntimeException(String.format("Number of retries reached the limit of max retries (configured value %d)", maxRetries));
                     handleFailures(request, null, e);
                     break;
                 }
