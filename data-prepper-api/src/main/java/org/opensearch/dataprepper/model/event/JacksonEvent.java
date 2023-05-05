@@ -416,6 +416,10 @@ public class JacksonEvent implements Event {
         };
     }
 
+    public static JsonStringBuilder jsonBuilder() {
+        return new JsonStringBuilder();
+    }
+
     public static JacksonEvent fromEvent(final Event event) {
         if (event instanceof JacksonEvent) {
             return new JacksonEvent((JacksonEvent) event);
@@ -510,6 +514,33 @@ public class JacksonEvent implements Event {
          */
         public JacksonEvent build() {
             return new JacksonEvent(this);
+        }
+    }
+
+    public static class JsonStringBuilder {
+        private String tagsKey;
+        private JacksonEvent event;
+
+        public JsonStringBuilder withEvent(final JacksonEvent event) {
+            this.event = event;
+            return this;
+        }
+
+        public JsonStringBuilder includeTags(String key) {
+            tagsKey = key;
+            return this;
+        }
+
+        public String toJsonString() {
+            if (event == null) {
+                return null;
+            }
+            final String jsonString = event.toJsonString().trim();
+            if(tagsKey != null) {
+                final JsonNode tagsNode = mapper.valueToTree(event.getMetadata().getTags());
+                return jsonString.substring(0, jsonString.length()-1) + ",\""+tagsKey+"\":" + tagsNode.toString()+"}";
+            }
+            return jsonString;
         }
     }
 }
