@@ -39,7 +39,7 @@ public class SourceCoordinatorFactoryTest {
     void provideSourceCoordinatorWithNullSourceCoordinationConfig_returns_null() {
 
 
-        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
+        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class, UUID.randomUUID().toString());
 
         assertThat(sourceCoordinator, nullValue());
     }
@@ -48,7 +48,7 @@ public class SourceCoordinatorFactoryTest {
     void provideSourceCoordinatorWithNullSourceCoordinationStoreConfig_returns_null() {
         given(sourceCoordinationConfig.getSourceCoordinationStoreConfig()).willReturn(null);
 
-        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
+        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class, UUID.randomUUID().toString());
 
         assertThat(sourceCoordinator, nullValue());
     }
@@ -61,7 +61,7 @@ public class SourceCoordinatorFactoryTest {
         given(sourceCoordinationConfig.getSourceCoordinationStoreConfig()).willReturn(pluginSetting);
         given(pluginSetting.getName()).willReturn(null);
 
-        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
+        final SourceCoordinator<String> sourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class, UUID.randomUUID().toString());
 
         assertThat(sourceCoordinator, nullValue());
     }
@@ -77,7 +77,7 @@ public class SourceCoordinatorFactoryTest {
 
         given(pluginFactory.loadPlugin(SourceCoordinationStore.class, pluginSetting)).willReturn(expectedSourceCoordinationStore);
 
-        final SourceCoordinator<String> actualSourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class);
+        final SourceCoordinator<String> actualSourceCoordinator = createObjectUnderTest().provideSourceCoordinator(String.class, UUID.randomUUID().toString());
 
         assertThat(actualSourceCoordinator, notNullValue());
     }

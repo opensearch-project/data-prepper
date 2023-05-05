@@ -81,7 +81,7 @@ subprojects {
         }
     }
     dependencies {
-        implementation platform('com.fasterxml.jackson:jackson-bom:2.14.1')
+        implementation platform('com.fasterxml.jackson:jackson-bom:2.15.0')
         implementation platform('io.micrometer:micrometer-bom:1.10.5')
         implementation libs.guava.core
         implementation libs.slf4j.api
@@ -119,6 +119,12 @@ subprojects {
                     require '3.21.11'
                 }
                 because 'Fixes CVE-2022-3509, CVE-2022-3510'
+            }
+            implementation('org.yaml:snakeyaml') {
+                version {
+                    require '2.0'
+                }
+                because 'Fixes CVE-2022-1471'
             }
         }
     }

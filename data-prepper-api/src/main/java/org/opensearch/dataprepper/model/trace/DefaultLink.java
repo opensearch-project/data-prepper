@@ -8,8 +8,8 @@ package org.opensearch.dataprepper.model.trace;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * The default implementation of {@link Link}, a pointer from the current span to another span in a trace.

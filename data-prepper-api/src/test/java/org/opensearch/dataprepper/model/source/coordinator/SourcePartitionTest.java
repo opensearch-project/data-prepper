@@ -21,7 +21,7 @@ public class SourcePartitionTest {
 
         assertThrows(NullPointerException.class, () -> {
             SourcePartition.builder(String.class)
-                    .withPartition(null)
+                    .withPartitionKey(null)
                     .withPartitionState(UUID.randomUUID().toString())
                     .build();
         });
@@ -30,17 +30,15 @@ public class SourcePartitionTest {
     @Test
     void sourcePartitionBuilder_returns_expected_SourcePartition() {
         final String partitionKey = UUID.randomUUID().toString();
-        final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(partitionKey).build();
         final String partitionState = UUID.randomUUID().toString();
 
         final SourcePartition<String> sourcePartition = SourcePartition.builder(String.class)
-                .withPartition(partitionIdentifier)
+                .withPartitionKey(partitionKey)
                 .withPartitionState(partitionState)
                 .build();
 
         assertThat(sourcePartition, notNullValue());
-        assertThat(sourcePartition.getPartition(), equalTo(partitionIdentifier));
-        assertThat(sourcePartition.getPartition().getPartitionKey(), equalTo(partitionKey));
+        assertThat(sourcePartition.getPartitionKey(), equalTo(partitionKey));
         assertThat(sourcePartition.getPartitionState(), equalTo(partitionState));
     }
 }

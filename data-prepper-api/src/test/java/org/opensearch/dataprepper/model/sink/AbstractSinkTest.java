@@ -5,20 +5,21 @@
 
 package org.opensearch.dataprepper.model.sink;
 
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Statistic;
+import org.junit.Assert;
+import org.junit.Test;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.UUID;
-import io.micrometer.core.instrument.Measurement;
-import io.micrometer.core.instrument.Statistic;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class AbstractSinkTest {
     @Test

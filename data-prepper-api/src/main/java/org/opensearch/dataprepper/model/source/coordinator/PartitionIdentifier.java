@@ -5,11 +5,11 @@
 
 package org.opensearch.dataprepper.model.source.coordinator;
 
-import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
- * The model class to be passed to {@link SourceCoordinator#createPartitions(List)}.
+ * The model class to be passed to {@link SourceCoordinator#getNextPartition(Supplier)}.
  * The partitionKey should uniquely identify the partition
  * @since 2.2
  */
