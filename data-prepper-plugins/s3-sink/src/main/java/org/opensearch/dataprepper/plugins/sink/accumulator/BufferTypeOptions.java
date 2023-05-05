@@ -33,6 +33,6 @@ public enum BufferTypeOptions {
 
     @JsonCreator
     static BufferTypeOptions fromOptionValue(final String option) {
-        return OPTIONS_MAP.get(option.toLowerCase());
+        return OPTIONS_MAP.get(option);
     }
 }
