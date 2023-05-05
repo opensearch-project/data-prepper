@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.allOf;
@@ -28,6 +29,7 @@ import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -173,6 +175,25 @@ public class DefaultEventMetadataTest {
         assertThat(copiedMetadata.getTimeReceived(), equalTo(timeReceived));
         assertThat(copiedMetadata.getAttributes(), equalTo(attributes));
         assertThat(copiedMetadata.getAttributes(), not(sameInstance(attributes)));
+    }
+
+    @Test
+    public void testBuild_withTags() {
+        final String testEventType = UUID.randomUUID().toString();
+
+        final Set<String> testTags = Set.of("tag1", "tag2");
+        final EventMetadata result = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .withTags(testTags)
+                .build();
+
+        assertThat(result, notNullValue());
+
+        assertThat(result.getTags(), equalTo(testTags));
+        result.addTag("tag3");
+        assertTrue(result.hasTag("tag1"));
+        assertTrue(result.hasTag("tag2"));
+        assertTrue(result.hasTag("tag3"));
     }
 
     @Nested
