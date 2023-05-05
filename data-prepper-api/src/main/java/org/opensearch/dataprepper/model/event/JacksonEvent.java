@@ -277,20 +277,6 @@ public class JacksonEvent implements Event {
     }
 
     @Override
-    public String toJsonStringWithTags(final String tagsKey) {
-        String result = jsonNode.toString();
-        String separator = "";
-
-        result = result.substring(0, result.length()-1) + ",\"tags\":[";
-        for (final String tag: getMetadata().getTags()) {
-            result += separator + "\"" + tag + "\"";
-            separator = ", ";
-        }
-        result += "]}";
-        return result;
-    }
-
-    @Override
     public String getAsJsonString(final String key) {
         final String trimmedKey = checkAndTrimKey(key);
 
@@ -430,6 +416,10 @@ public class JacksonEvent implements Event {
         };
     }
 
+    public static JsonStringBuilder jsonBuilder() {
+        return new JsonStringBuilder();
+    }
+
     public static JacksonEvent fromEvent(final Event event) {
         if (event instanceof JacksonEvent) {
             return new JacksonEvent((JacksonEvent) event);
@@ -524,6 +514,33 @@ public class JacksonEvent implements Event {
          */
         public JacksonEvent build() {
             return new JacksonEvent(this);
+        }
+    }
+
+    public static class JsonStringBuilder {
+        private String tagsKey;
+        private JacksonEvent event;
+
+        public JsonStringBuilder withEvent(final JacksonEvent event) {
+            this.event = event;
+            return this;
+        }
+
+        public JsonStringBuilder includeTags(String key) {
+            tagsKey = key;
+            return this;
+        }
+
+        public String toJsonString() {
+            if (event == null) {
+                return null;
+            }
+            final String jsonString = event.toJsonString().trim();
+            if(tagsKey != null) {
+                final JsonNode tagsNode = mapper.valueToTree(event.getMetadata().getTags());
+                return jsonString.substring(0, jsonString.length()-1) + ",\""+tagsKey+"\":" + tagsNode.toString()+"}";
+            }
+            return jsonString;
         }
     }
 }
