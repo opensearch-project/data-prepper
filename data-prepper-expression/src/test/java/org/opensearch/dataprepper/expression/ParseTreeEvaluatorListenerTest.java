@@ -12,6 +12,7 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -127,6 +128,22 @@ class ParseTreeEvaluatorListenerTest {
         final Event testEvent = createTestEvent(data);
         final String equalStatement = String.format("/%s == %d", testKey, testValue);
         final String notEqualStatement = String.format("/%s != %d", testKey, testValue + 1);
+        assertThat(evaluateStatementOnEvent(equalStatement, testEvent), is(true));
+        assertThat(evaluateStatementOnEvent(notEqualStatement, testEvent), is(true));
+    }
+
+    @Test
+    void testSimpleEqualityOperatorExpressionWithFunctionType() {
+        final String testKey = RandomStringUtils.randomAlphabetic(5);
+        final String testValue = RandomStringUtils.randomAlphabetic(10);
+        final Map<String, String> data = Map.of(testKey, testValue);
+        final Event testEvent = createTestEvent(data);
+        String equalStatement = String.format("length(/%s) == %d", testKey, testValue.length());
+        String notEqualStatement = String.format("length(/%s) != %d", testKey, testValue.length() + 1);
+        assertThat(evaluateStatementOnEvent(equalStatement, testEvent), is(true));
+        assertThat(evaluateStatementOnEvent(notEqualStatement, testEvent), is(true));
+        equalStatement = String.format("length(\"%s\") == %d", testValue, testValue.length());
+        notEqualStatement = String.format("length(\"%s\") != %d", testValue, testValue.length() + 1);
         assertThat(evaluateStatementOnEvent(equalStatement, testEvent), is(true));
         assertThat(evaluateStatementOnEvent(notEqualStatement, testEvent), is(true));
     }
