@@ -5,17 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import java.util.List;
-
-import org.joda.time.DateTime;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import org.joda.time.DateTime;
 import software.amazon.awssdk.utils.http.SdkHttpUtils;
+
+import java.util.List;
 
 /**
  * A helper class that represents a strongly typed S3 EventNotification item sent
