@@ -71,6 +71,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
+  private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
 
   private DlqWriter dlqWriter;
   private BufferedWriter dlqFileWriter;
@@ -105,7 +106,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
                         final PluginFactory pluginFactory) {
-    super(pluginSetting);
+    super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);

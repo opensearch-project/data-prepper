@@ -31,10 +31,12 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
     private Buffer<T> buffer;
     private AtomicBoolean isStopRequested;
     private boolean areAcknowledgementsEnabled;
+    private boolean ready;
 
     public PipelineConnector() {
         isStopRequested = new AtomicBoolean(false);
         areAcknowledgementsEnabled = false;
+        ready = false;
     }
 
     public PipelineConnector(final String sinkPipelineName) {
@@ -49,6 +51,10 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
 
     public void enableAcknowledgements() {
         areAcknowledgementsEnabled = true;
+    }
+
+    public void setReady() {
+        ready = true;
     }
 
     @Override
@@ -67,7 +73,7 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
 
     @Override
     public boolean isReady() {
-        return true;
+        return ready;
     }
 
     @Override

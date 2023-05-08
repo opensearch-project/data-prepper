@@ -211,7 +211,21 @@ public class Pipeline {
                 final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(partionProgressModelClass, name);
                 ((UsesSourceCoordination) source).setSourceCoordinator(sourceCoordinator);
             }
-            source.start(buffer);
+
+            sinkExecutorService.submit(() -> {
+                while (!isReady()) {
+                    LOG.info("Pipeline {} Waiting for Sink to be ready", name);
+                    try {
+                        Thread.sleep(10000);
+                    } catch (Exception e){}
+                }
+                if(source instanceof PipelineConnector) {
+                    ((PipelineConnector)source).setReady();
+                }
+                LOG.info("Pipeline {} Sink is ready, starting source...", name);
+                source.start(buffer);
+            }, null);
+
             LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
             for (int i = 0; i < processorThreads; i++) {
                 final int finalI = i;
