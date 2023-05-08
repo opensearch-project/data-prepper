@@ -61,6 +61,7 @@ public class SqsWorker implements Runnable {
     private final Counter sqsMessagesDeleteFailedCounter;
     private final Counter acknowledgementSetCallbackCounter;
     private final Timer sqsMessageDelayTimer;
+    private final S3EventMessageParser s3EventMessageParser;
     private final Backoff standardBackoff;
     private int failedAttemptCount;
     private boolean endToEndAcknowledgementsEnabled;
@@ -71,11 +72,13 @@ public class SqsWorker implements Runnable {
                      final S3Service s3Service,
                      final S3SourceConfig s3SourceConfig,
                      final PluginMetrics pluginMetrics,
+                     final S3EventMessageParser s3EventMessageParser,
                      final Backoff backoff) {
         this.sqsClient = sqsClient;
         this.s3Service = s3Service;
         this.s3SourceConfig = s3SourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.s3EventMessageParser = s3EventMessageParser;
         this.standardBackoff = backoff;
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         sqsOptions = s3SourceConfig.getSqsOptions();
@@ -178,7 +181,7 @@ public class SqsWorker implements Runnable {
 
     private ParsedMessage convertS3EventMessages(final Message message) {
         try {
-            final S3EventNotification s3EventNotification = S3EventNotification.parseJson(message.body());
+            final S3EventNotification s3EventNotification = s3EventMessageParser.parseMessage(message.body());
             if (s3EventNotification.getRecords() != null)
                 return new ParsedMessage(message, s3EventNotification.getRecords());
             else {
