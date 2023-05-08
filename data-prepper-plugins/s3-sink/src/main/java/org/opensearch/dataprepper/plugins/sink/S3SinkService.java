@@ -21,7 +21,9 @@ import org.opensearch.dataprepper.plugins.sink.accumulator.ObjectKey;
 import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.s3.S3Client;
 
@@ -41,12 +43,12 @@ public class S3SinkService {
     private final Lock reentrantLock;
     private final BufferFactory bufferFactory;
     private final Codec codec;
-    private final PluginMetrics pluginMetrics;
-    private final S3Client s3Client;
     private Buffer currentBuffer;
     private final int maxEvents;
     private final ByteCount maxBytes;
     private final long maxCollectionDuration;
+    private final String bucket;
+    private final int maxRetries;
     private final Counter snapshotSuccessCounter;
     private final Counter snapshotFailedCounter;
     private final Counter numberOfRecordsSuccessCounter;
@@ -58,17 +60,19 @@ public class S3SinkService {
      * @param codec         parser
      * @param pluginMetrics metrics
      */
-    public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory, final Codec codec, PluginMetrics pluginMetrics) {
+    public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
+                         final Codec codec, PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
-        this.pluginMetrics = pluginMetrics;
-        this.s3Client = createS3Client();
         reentrantLock = new ReentrantLock();
 
         maxEvents = s3SinkConfig.getThresholdOptions().getEventCount();
         maxBytes = s3SinkConfig.getThresholdOptions().getMaximumSize();
         maxCollectionDuration = s3SinkConfig.getThresholdOptions().getEventCollectTimeOut().getSeconds();
+
+        bucket = s3SinkConfig.getBucketOptions().getBucketName();
+        maxRetries = s3SinkConfig.getMaxUploadRetries();
 
         snapshotSuccessCounter = pluginMetrics.counter(SNAPSHOT_SUCCESS);
         snapshotFailedCounter = pluginMetrics.counter(SNAPSHOT_FAILED);
@@ -82,8 +86,6 @@ public class S3SinkService {
      */
     void output(Collection<Record<Event>> records) {
         reentrantLock.lock();
-        final String bucket = s3SinkConfig.getBucketOptions().getBucketName();
-        final int maxRetries = s3SinkConfig.getMaxUploadRetries();
         if (currentBuffer == null) {
             currentBuffer = bufferFactory.getBuffer();
         }
@@ -94,13 +96,14 @@ public class S3SinkService {
                 final String encodedEvent;
                 encodedEvent = codec.parse(event);
                 final byte[] encodedBytes = encodedEvent.getBytes();
-                if (willExceedThreshold()) {
+
+                if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                     s3ObjectSizeSummary.record(currentBuffer.getEventCount());
                     LOG.info("Event collection Object info : Byte_capacity = {} Bytes," +
-                            " Event_count = {} Records & Event_collection_duration = {} Sec",
-                            maxBytes.getBytes(), currentBuffer.getEventCount(), currentBuffer.getDuration());
-                    boolean isUploadedToS3 = currentBuffer.flushToS3(s3Client, bucket, generateKey(), maxRetries);
-                    if (isUploadedToS3) {
+                                    " Event_count = {} Records & Event_collection_duration = {} Sec",
+                            currentBuffer.getSize(), currentBuffer.getEventCount(), currentBuffer.getDuration());
+                    boolean isFlushToS3 = retryFlushToS3(currentBuffer);
+                    if (isFlushToS3) {
                         LOG.info("Event collection Object uploaded successfully");
                         numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
                         snapshotSuccessCounter.increment();
@@ -121,6 +124,32 @@ public class S3SinkService {
     }
 
     /**
+     * perform retry in-case any issue occurred, based on max_upload_retries configuration.
+     * @return boolean based on object upload status.
+     * @throws InterruptedException interruption during sleep.
+     */
+    protected boolean retryFlushToS3(Buffer currentBuffer) throws InterruptedException {
+        boolean isUploadedToS3 = Boolean.FALSE;
+        int retryCount = maxRetries;
+        do {
+            try {
+                currentBuffer.flushToS3(createS3Client(), bucket, generateKey());
+                isUploadedToS3 = Boolean.TRUE;
+            } catch (AwsServiceException | SdkClientException e) {
+                LOG.error("Exception occurred while uploading records to s3 bucket. Retry countdown  : {} | exception:",
+                        retryCount, e);
+                LOG.info("Error Massage {}", e.getMessage());
+                --retryCount;
+                if (retryCount == 0) {
+                    return isUploadedToS3;
+                }
+                Thread.sleep(5000);
+            }
+        } while (!isUploadedToS3);
+        return isUploadedToS3;
+    }
+
+    /**
      * Generate the s3 object path prefix & object file name.
      * @return object key path.
      */
@@ -131,26 +160,10 @@ public class S3SinkService {
     }
 
     /**
-     * Check threshold limits.
-     * @return boolean value whether the threshold are met.
-     */
-    private boolean willExceedThreshold() {
-        if (maxEvents > 0) {
-            return currentBuffer.getEventCount() + 1 > maxEvents ||
-                    currentBuffer.getDuration() > maxCollectionDuration ||
-                    currentBuffer.getSize() > maxBytes.getBytes();
-        } else {
-            return currentBuffer.getDuration() > maxCollectionDuration ||
-                    currentBuffer.getSize() > maxBytes.getBytes();
-        }
-    }
-
-    /**
      * create s3 client instance.
      * @return {@link S3Client}
      */
     public S3Client createS3Client() {
-        LOG.info("Creating S3 client");
         return S3Client.builder().region(s3SinkConfig.getAwsAuthenticationOptions().getAwsRegion())
                 .credentialsProvider(s3SinkConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
                 .overrideConfiguration(ClientOverrideConfiguration.builder().retryPolicy(RetryPolicy.builder()

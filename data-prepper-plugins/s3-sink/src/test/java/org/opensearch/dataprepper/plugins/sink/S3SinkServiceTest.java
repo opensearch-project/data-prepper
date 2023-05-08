@@ -7,7 +7,9 @@ package org.opensearch.dataprepper.plugins.sink;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -36,6 +38,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.sink.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory;
@@ -51,6 +54,14 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 class S3SinkServiceTest {
 
+    public static final int MAX_EVENTS = 10;
+    public static final int MAX_RETRIES = 3;
+    public static final String BUCKET_NAME = "dataprepper";
+    public static final String S3_REGION = "us-east-1";
+    public static final String MAXIMUM_SIZE = "1kb";
+    public static final String OBJECT_KEY_NAME_PATTERN = "my-elb-%{yyyy-MM-dd'T'hh-mm-ss}";
+    public static final String CODEC_PLUGIN_NAME = "json";
+    public static final String PATH_PREFIX = "logdata/";
     private S3SinkConfig s3SinkConfig;
     private AwsCredentialsProvider awsCredentialsProvider;
     private JsonCodec codec;
@@ -79,27 +90,30 @@ class S3SinkServiceTest {
 
         bufferFactory = new InMemoryBufferFactory();
 
-        when(objectKeyOptions.getNamePattern()).thenReturn("my-elb-%{yyyy-MM-dd'T'hh-mm-ss}");
+        when(objectKeyOptions.getNamePattern()).thenReturn(OBJECT_KEY_NAME_PATTERN);
+        when(s3SinkConfig.getMaxUploadRetries()).thenReturn(MAX_RETRIES);
         when(s3SinkConfig.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(s3SinkConfig.getThresholdOptions().getEventCount()).thenReturn(10);
-        when(s3SinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse("1kb"));
+        when(s3SinkConfig.getThresholdOptions().getEventCount()).thenReturn(MAX_EVENTS);
+        when(s3SinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse(MAXIMUM_SIZE));
         when(s3SinkConfig.getThresholdOptions().getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(5));
         when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
         when(s3SinkConfig.getBucketOptions()).thenReturn(bucketOptions);
         when(s3SinkConfig.getBucketOptions().getObjectKeyOptions()).thenReturn(objectKeyOptions);
-        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn("dataprepper");
-        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions().getPathPrefix()).thenReturn("logdata/");
+        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions().getPathPrefix()).thenReturn(PATH_PREFIX);
         when(s3SinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of("us-east-1"));
+        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(S3_REGION));
         when(awsAuthenticationOptions.authenticateAwsConfiguration()).thenReturn(awsCredentialsProvider);
         when(s3SinkConfig.getCodec()).thenReturn(pluginModel);
-        when(pluginModel.getPluginName()).thenReturn("json");
+        when(pluginModel.getPluginName()).thenReturn(CODEC_PLUGIN_NAME);
         when(pluginFactory.loadPlugin(Codec.class, pluginSetting)).thenReturn(codec);
 
         lenient().when(pluginMetrics.counter(S3SinkService.SNAPSHOT_SUCCESS)).thenReturn(snapshotSuccessCounter);
         lenient().when(pluginMetrics.counter(S3SinkService.SNAPSHOT_FAILED)).thenReturn(snapshotFailedCounter);
-        lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS)).thenReturn(numberOfRecordsSuccessCounter);
-        lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).thenReturn(numberOfRecordsFailedCounter);
+        lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS)).
+                thenReturn(numberOfRecordsSuccessCounter);
+        lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
+                thenReturn(numberOfRecordsFailedCounter);
         lenient().when(pluginMetrics.summary(S3SinkService.S3_OBJECTS_SIZE)).thenReturn(s3ObjectSizeSummary);
     }
 
@@ -182,7 +196,6 @@ class S3SinkServiceTest {
 
     @Test
     void test_output_with_uploadedToS3_success() throws IOException {
-        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn("dataprepper");
         when(codec.parse(any())).thenReturn("{\"message\":\"31824252-adba-4c47-a2ac-05d16c5b8140\"}");
         S3SinkService s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, pluginMetrics);
         assertNotNull(s3SinkService);
@@ -203,6 +216,29 @@ class S3SinkServiceTest {
         verify(snapshotSuccessCounter, times(0)).increment();
     }
 
+    @Test
+    void test_retryFlushToS3_positive() throws InterruptedException, IOException {
+        S3SinkService s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, pluginMetrics);
+        assertNotNull(s3SinkService);
+        Buffer buffer = bufferFactory.getBuffer();
+        assertNotNull(buffer);
+        buffer.writeEvent(generateByteArray());
+        boolean isUploadedToS3 = s3SinkService.retryFlushToS3(buffer);
+        assertTrue(isUploadedToS3);
+    }
+
+    @Test
+    void test_retryFlushToS3_negative() throws InterruptedException, IOException {
+        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn("");
+        S3SinkService s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, pluginMetrics);
+        assertNotNull(s3SinkService);
+        Buffer buffer = bufferFactory.getBuffer();
+        assertNotNull(buffer);
+        buffer.writeEvent(generateByteArray());
+        boolean isUploadedToS3 = s3SinkService.retryFlushToS3(buffer);
+        assertFalse(isUploadedToS3);
+    }
+
     private Collection<Record<Event>> generateRandomStringEventRecord() {
         Collection<Record<Event>> records = new ArrayList<>();
         for (int i = 0; i < 55; i++) {
@@ -219,5 +255,13 @@ class S3SinkServiceTest {
             records.add(new Record<>(event));
         }
         return records;
+    }
+
+    private byte[] generateByteArray() {
+        byte[] bytes = new byte[1000];
+        for (int i = 0; i < 1000; i++) {
+            bytes[i] = (byte) i;
+        }
+        return bytes;
     }
 }

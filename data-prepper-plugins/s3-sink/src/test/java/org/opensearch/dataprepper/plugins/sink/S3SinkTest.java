@@ -75,6 +75,8 @@ class S3SinkTest {
         when(pluginFactory.loadPlugin(any(), any())).thenReturn(codec);
         when(pluginSetting.getName()).thenReturn(SINK_PLUGIN_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(SINK_PIPELINE_NAME);
+        when(s3SinkConfig.getBucketOptions()).thenReturn(bucketOptions);
+        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn(BUCKET_NAME);
     }
 
     @Test

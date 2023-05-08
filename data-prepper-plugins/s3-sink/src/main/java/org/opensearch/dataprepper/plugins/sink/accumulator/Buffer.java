@@ -21,6 +21,6 @@ public interface Buffer {
 
     long getDuration();
 
-    boolean flushToS3(S3Client s3Client, String bucket, String key, final int maxRetries) throws InterruptedException ;
+    void flushToS3(S3Client s3Client, String bucket, String key) ;
     void writeEvent(byte[] bytes) throws IOException;
 }
