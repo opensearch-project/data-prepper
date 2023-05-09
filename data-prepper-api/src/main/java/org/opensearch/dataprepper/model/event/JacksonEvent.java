@@ -521,13 +521,11 @@ public class JacksonEvent implements Event {
         private Event event;
 
         public JsonStringBuilder(final Event event) {
+            checkNotNull(event, "event cannot be null");
             this.event = event;
         }
 
         public String toJsonString() {
-            if (event == null) {
-                return null;
-            }
             final String jsonString = event.toJsonString().trim();
             final String tagsKey = getTagsKey();
             if(tagsKey != null) {
