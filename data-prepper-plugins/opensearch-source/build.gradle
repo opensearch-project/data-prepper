@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+}
+
+group 'org.opensearch.dataprepper'
+version '2.3.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(path: ':data-prepper-api')
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
+    implementation 'org.apache.httpcomponents.core5:httpcore5-h2:5.2.1'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+    implementation group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
+    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation group: 'org.opensearch.client', name: 'opensearch-rest-client', version: '2.6.0'
+    implementation 'org.opensearch.client:opensearch-java:2.4.0'
+    implementation 'software.amazon.awssdk:aws-sdk-java:2.17.148'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+test {
+    useJUnitPlatform()
+}
