@@ -416,8 +416,8 @@ public class JacksonEvent implements Event {
         };
     }
 
-    public static JsonStringBuilder jsonBuilder() {
-        return new JsonStringBuilder();
+    public JsonStringBuilder jsonBuilder() {
+        return new JsonStringBuilder(this);
     }
 
     public static JacksonEvent fromEvent(final Event event) {
@@ -517,18 +517,11 @@ public class JacksonEvent implements Event {
         }
     }
 
-    public static class JsonStringBuilder {
-        private String tagsKey;
-        private JacksonEvent event;
+    public class JsonStringBuilder extends Event.JsonStringBuilder {
+        private Event event;
 
-        public JsonStringBuilder withEvent(final JacksonEvent event) {
+        public JsonStringBuilder(final Event event) {
             this.event = event;
-            return this;
-        }
-
-        public JsonStringBuilder includeTags(String key) {
-            tagsKey = key;
-            return this;
         }
 
         public String toJsonString() {
@@ -536,6 +529,7 @@ public class JacksonEvent implements Event {
                 return null;
             }
             final String jsonString = event.toJsonString().trim();
+            final String tagsKey = getTagsKey();
             if(tagsKey != null) {
                 final JsonNode tagsNode = mapper.valueToTree(event.getMetadata().getTags());
                 return jsonString.substring(0, jsonString.length()-1) + ",\""+tagsKey+"\":" + tagsNode.toString()+"}";
