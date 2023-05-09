@@ -24,16 +24,20 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ParseTreeEvaluatorListenerTest {
+    private final ExpressionFunctionProvider expressionFunctionProvider = mock(ExpressionFunctionProvider.class);
     private final Random random = new Random();
     private final ParseTreeWalker walker = new ParseTreeWalker();
     private final ParseTreeParser parseTreeParser = constructParseTreeParser();
     private final OperatorConfiguration operatorConfiguration = new OperatorConfiguration();
     private final LiteralTypeConversionsConfiguration literalTypeConversionsConfiguration = new LiteralTypeConversionsConfiguration();
     private final ParseTreeCoercionService coercionService = new ParseTreeCoercionService(
-            literalTypeConversionsConfiguration.literalTypeConversions());
+            literalTypeConversionsConfiguration.literalTypeConversions(), expressionFunctionProvider);
     private final List<Operator<?>> operators = Arrays.asList(
             new AndOperator(), new OrOperator(),
             operatorConfiguration.inSetOperator(), operatorConfiguration.notInSetOperator(),
@@ -138,6 +142,7 @@ class ParseTreeEvaluatorListenerTest {
         final String testValue = RandomStringUtils.randomAlphabetic(10);
         final Map<String, String> data = Map.of(testKey, testValue);
         final Event testEvent = createTestEvent(data);
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class))).thenReturn(testValue.length());
         String equalStatement = String.format("length(/%s) == %d", testKey, testValue.length());
         String notEqualStatement = String.format("length(/%s) != %d", testKey, testValue.length() + 1);
         assertThat(evaluateStatementOnEvent(equalStatement, testEvent), is(true));

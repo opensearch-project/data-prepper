@@ -13,42 +13,19 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.io.Serializable;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.function.Function;
 
 @Named
 class ParseTreeCoercionService {
     private final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions;
+    private ExpressionFunctionProvider expressionFunctionProvider;
 
     @Inject
-    public ParseTreeCoercionService(final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions) {
+    public ParseTreeCoercionService(final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions, ExpressionFunctionProvider expressionFunctionProvider) {
         this.literalTypeConversions = literalTypeConversions;
-    }
-
-    public Object applyFunction(final String functionName, final String[] args, Event event) {
-        // Supports length(String) and length(JsonPointer)
-        // For example., length("abcd"), length("/keyName")
-        if (functionName.equals("length")) {
-            if (args.length > 1) {
-                throw new RuntimeException("length() takes only one argument");
-            }
-            String arg = args[0].trim();
-            if (arg.charAt(0) == '\"') {
-                if (arg.charAt(arg.length()-1) != '\"') {
-                    throw new RuntimeException("Invalid string passed to length()");
-                }
-                return Integer.valueOf(arg.length()-2);
-            } else if (arg.charAt(0) == '/') {
-                String s = (String)resolveJsonPointerValue(arg, event);
-                if (s != null) {
-                    return Integer.valueOf(s.length());
-                }
-            } else {
-                throw new RuntimeException("Unexpected argument to length()");
-            }
-        } else {
-            throw new RuntimeException("Unknown function");
-        }
-        return null;
+        this.expressionFunctionProvider = expressionFunctionProvider;
     }
 
     public Object coercePrimaryTerminalNode(final TerminalNode node, final Event event) {
@@ -61,7 +38,18 @@ class ParseTreeCoercionService {
                 final int argsEndIndex = nodeStringValue.indexOf(")", funcNameIndex);
                 final String argsStr = nodeStringValue.substring(funcNameIndex+1, argsEndIndex);
                 final String[] args = argsStr.split(",");
-                return applyFunction(functionName, args, event);
+                List<Object> argList = new ArrayList<>();
+                for (final String arg: args) {
+                    String trimmedArg = arg.trim();
+                    if (trimmedArg.charAt(0) == '/') {
+                        argList.add(resolveJsonPointerValue(arg, event));
+                    } else if (trimmedArg.charAt(0) == '"') {
+                        argList.add(trimmedArg);
+                    } else {
+                        throw new RuntimeException("Unsupported type passed as function argument");
+                    }
+                }
+                return expressionFunctionProvider.provideFunction(functionName, argList);
             case DataPrepperExpressionParser.EscapedJsonPointer:
                 final String jsonPointerWithoutQuotes = nodeStringValue.substring(1, nodeStringValue.length() - 1);
                 return resolveJsonPointerValue(jsonPointerWithoutQuotes, event);
