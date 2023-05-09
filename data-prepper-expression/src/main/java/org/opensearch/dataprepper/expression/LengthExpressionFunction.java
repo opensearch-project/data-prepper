@@ -23,6 +23,9 @@ public class LengthExpressionFunction implements ExpressionFunction {
             throw new RuntimeException("length() takes only String type arguments");
         }
         String argStr = ((String)arg).trim();
+        if (argStr.length() == 0) {
+            return 0;
+        }
         if (argStr.charAt(0) == '\"') {
             if (argStr.charAt(argStr.length()-1) != '\"') {
                 throw new RuntimeException("Invalid string passed to length() "+argStr);
