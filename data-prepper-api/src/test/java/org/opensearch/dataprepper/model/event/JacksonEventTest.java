@@ -650,9 +650,8 @@ public class JacksonEventTest {
         eventMetadata.addTag("tag1");
         eventMetadata.addTag("tag2");
         final String expectedJsonString = "{\"foo\":\"bar\",\"tags\":[\"tag1\",\"tag2\"]}";
-        assertThat(JacksonEvent.jsonBuilder().withEvent(event).includeTags("tags").toJsonString(), equalTo(expectedJsonString));
-        assertThat(JacksonEvent.jsonBuilder().withEvent(event).toJsonString(), equalTo(jsonString));
-        assertThat(JacksonEvent.jsonBuilder().toJsonString(), equalTo(null));
+        assertThat(event.jsonBuilder().includeTags("tags").toJsonString(), equalTo(expectedJsonString));
+        assertThat(event.jsonBuilder().toJsonString(), equalTo(jsonString));
     }
 
     private static Map<String, Object> createComplexDataMap() {
