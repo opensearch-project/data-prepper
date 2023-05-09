@@ -1,0 +1,36 @@
+log-pipeline:
+  source:
+    kafka:
+      bootstrap_servers:
+        - 127.0.0.1:9092, 127.0.0.1:9093, 127.0.0.1:9094, 127.0.0.1:9095, 127.0.0.1:9096
+      topics:
+        - topic:
+            name: my-topic-10
+            auth_type: sasl_ssl
+            consumer:
+              group_name: kafka-consumer-group-10
+              group_id: DPKafkaProj-10
+              workers: 10 #optional and default is 10
+              autocommit: false  #optional and default is false
+              autocommit_interval: 5  #optional and default is 5s
+              session_timeout: 45  #optional and default is 45s
+              max_retry_attempts: 1000 #optional and default is 5
+              auto_offset_reset: earliest  #optional and default is earliest
+              thread_waiting_time: 1  #optional and default is 1s
+              max_record_fetch_time: 4 #optional and default is 4s
+              heart_beat_interval: 3  #optional and default is 3s
+              buffer_default_timeout: 5  #optional and default is 5s
+              fetch_max_bytes: 52428800  #optional and default is 52428800
+              fetch_max_wait: 500  #optional and default is 500
+              fetch_min_bytes: 1  #optional and default is 1
+              retry_backoff: 100  #optional and default is 10s
+              max_poll_interval: 300000  #optional and default is 300000s
+              consumer_max_poll_records: 500  #optional and default is 500
+            schema:
+              registry_url: http://localhost:8081/
+              key_deserializer: org.apache.kafka.common.serialization.StringDeserializer
+              value_deserializer: org.apache.kafka.common.serialization.StringDeserializer
+              schema_type: plaintext
+              record_type: plaintext
+  sink:
+    - stdout:
