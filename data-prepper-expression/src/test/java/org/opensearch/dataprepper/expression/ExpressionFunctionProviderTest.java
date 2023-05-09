@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.model.event.Event;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -23,12 +24,14 @@ class ExpressionFunctionProviderTest {
     private String testFunctionName;
     private Object testResultObject;
     private ExpressionFunction expressionFunction;
+    private Event testEvent;
 
     public ExpressionFunctionProvider createObjectUnderTest() {
         expressionFunction = mock(ExpressionFunction.class);
         testFunctionName = RandomStringUtils.randomAlphabetic(8);
+        testEvent = mock(Event.class);
         testResultObject = mock(Object.class);
-        lenient().when(expressionFunction.evaluate(any(List.class))).thenReturn(testResultObject);
+        lenient().when(expressionFunction.evaluate(any(List.class), any(Event.class))).thenReturn(testResultObject);
         lenient().when(expressionFunction.getFunctionName()).thenReturn(testFunctionName);
 
         return new ExpressionFunctionProvider(List.of(expressionFunction));
@@ -38,13 +41,13 @@ class ExpressionFunctionProviderTest {
     void testUnknownFunction() {
         objectUnderTest = createObjectUnderTest();
         String unknownFunctionName = RandomStringUtils.randomAlphabetic(8);
-        assertThat(objectUnderTest.provideFunction(unknownFunctionName, List.of()), equalTo(null));
+        assertThat(objectUnderTest.provideFunction(unknownFunctionName, List.of(), testEvent), equalTo(null));
     }
 
     @Test
     void testFunctionBasic() {
         objectUnderTest = createObjectUnderTest();
-        assertThat(objectUnderTest.provideFunction(testFunctionName, List.of()), equalTo(testResultObject));
+        assertThat(objectUnderTest.provideFunction(testFunctionName, List.of(), testEvent), equalTo(testResultObject));
     }
 
 }

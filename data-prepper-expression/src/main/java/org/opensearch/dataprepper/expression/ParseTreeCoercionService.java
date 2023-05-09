@@ -49,7 +49,7 @@ class ParseTreeCoercionService {
                         throw new RuntimeException("Unsupported type passed as function argument");
                     }
                 }
-                return expressionFunctionProvider.provideFunction(functionName, argList);
+                return expressionFunctionProvider.provideFunction(functionName, argList, event);
             case DataPrepperExpressionParser.EscapedJsonPointer:
                 final String jsonPointerWithoutQuotes = nodeStringValue.substring(1, nodeStringValue.length() - 1);
                 return resolveJsonPointerValue(jsonPointerWithoutQuotes, event);

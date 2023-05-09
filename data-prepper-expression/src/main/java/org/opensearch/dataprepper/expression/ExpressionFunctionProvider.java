@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.model.event.Event;
 import javax.inject.Named;
 import javax.inject.Inject;
 import java.util.Map;
@@ -20,11 +21,11 @@ public class ExpressionFunctionProvider {
         expressionFunctionsMap = expressionFunctions.stream().collect(Collectors.toMap(e -> e.getFunctionName(), e -> e));
     }
 
-    public Object provideFunction(final String functionName, final List<Object> argList) {
+    public Object provideFunction(final String functionName, final List<Object> argList, Event event) {
         if (!expressionFunctionsMap.containsKey(functionName)) {
             return null;
         }
-        return expressionFunctionsMap.get(functionName).evaluate(argList);
+        return expressionFunctionsMap.get(functionName).evaluate(argList, event);
     }
     
 }

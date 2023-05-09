@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.opensearch.dataprepper.model.event.Event;
 import java.util.List;
 import javax.inject.Named;
 
@@ -14,7 +15,7 @@ public class LengthExpressionFunction implements ExpressionFunction {
         return "length";
     }
 
-    public Object evaluate(final List<Object> args) {
+    public Object evaluate(final List<Object> args, Event event) {
         if (args.size() != 1) {
             throw new RuntimeException("length() takes only one argument");
         }

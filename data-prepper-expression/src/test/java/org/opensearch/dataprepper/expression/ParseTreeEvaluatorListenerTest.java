@@ -142,7 +142,7 @@ class ParseTreeEvaluatorListenerTest {
         final String testValue = RandomStringUtils.randomAlphabetic(10);
         final Map<String, String> data = Map.of(testKey, testValue);
         final Event testEvent = createTestEvent(data);
-        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class))).thenReturn(testValue.length());
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class))).thenReturn(testValue.length());
         String equalStatement = String.format("length(/%s) == %d", testKey, testValue.length());
         String notEqualStatement = String.format("length(/%s) != %d", testKey, testValue.length() + 1);
         assertThat(evaluateStatementOnEvent(equalStatement, testEvent), is(true));
