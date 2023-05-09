@@ -520,7 +520,7 @@ public class JacksonEvent implements Event {
     public class JsonStringBuilder extends Event.JsonStringBuilder {
         private Event event;
 
-        public JsonStringBuilder(final Event event) {
+        private JsonStringBuilder(final Event event) {
             checkNotNull(event, "event cannot be null");
             this.event = event;
         }
