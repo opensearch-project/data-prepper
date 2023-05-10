@@ -180,3 +180,8 @@ White space is **required** surrounding Set Initializers, Priority Expressions, 
 | `==`, `!=`           | Equality Operators       | No                   | `/status == 200`<br>`/status_code==200`                        |                                       |
 | `and`, `or`, `not`   | Conditional Operators    | Yes                  | `/a<300 and /b>200`                                            | `/b<300and/b>200`                     |
 | `,`                  | Set Value Delimiter      | No                   | `/a in {200, 202}`<br>`/a in {200,202}`<br>`/a in {200 , 202}` | `/a in {200,}`                        |
+
+## JsonPointers
+
+The event data structure can be nested and have multiple levels of data. JsonPointers can be leveraged within expressions
+to reference elements throughout an event.
