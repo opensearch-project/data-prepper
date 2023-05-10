@@ -17,6 +17,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.lenient;
 
 import java.util.List;
+import java.util.function.Function;
 
 @ExtendWith(MockitoExtension.class)
 class ExpressionFunctionProviderTest {
@@ -24,14 +25,16 @@ class ExpressionFunctionProviderTest {
     private String testFunctionName;
     private Object testResultObject;
     private ExpressionFunction expressionFunction;
+    private Function<Object, Object> testFunction;
     private Event testEvent;
 
     public ExpressionFunctionProvider createObjectUnderTest() {
         expressionFunction = mock(ExpressionFunction.class);
+        testFunction = mock(Function.class);
         testFunctionName = RandomStringUtils.randomAlphabetic(8);
         testEvent = mock(Event.class);
         testResultObject = mock(Object.class);
-        lenient().when(expressionFunction.evaluate(any(List.class), any(Event.class))).thenReturn(testResultObject);
+        lenient().when(expressionFunction.evaluate(any(List.class), any(Event.class), any(Function.class))).thenReturn(testResultObject);
         lenient().when(expressionFunction.getFunctionName()).thenReturn(testFunctionName);
 
         return new ExpressionFunctionProvider(List.of(expressionFunction));
@@ -41,13 +44,13 @@ class ExpressionFunctionProviderTest {
     void testUnknownFunction() {
         objectUnderTest = createObjectUnderTest();
         String unknownFunctionName = RandomStringUtils.randomAlphabetic(8);
-        assertThat(objectUnderTest.provideFunction(unknownFunctionName, List.of(), testEvent), equalTo(null));
+        assertThat(objectUnderTest.provideFunction(unknownFunctionName, List.of(), testEvent, testFunction), equalTo(null));
     }
 
     @Test
     void testFunctionBasic() {
         objectUnderTest = createObjectUnderTest();
-        assertThat(objectUnderTest.provideFunction(testFunctionName, List.of(), testEvent), equalTo(testResultObject));
+        assertThat(objectUnderTest.provideFunction(testFunctionName, List.of(), testEvent, testFunction), equalTo(testResultObject));
     }
 
 }

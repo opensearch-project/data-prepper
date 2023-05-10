@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.expression;
 import org.opensearch.dataprepper.model.event.Event;
 import java.util.List;
 import javax.inject.Named;
+import java.util.function.Function;
 
 @Named
 public class LengthExpressionFunction implements ExpressionFunction {
@@ -15,7 +16,7 @@ public class LengthExpressionFunction implements ExpressionFunction {
         return "length";
     }
 
-    public Object evaluate(final List<Object> args, Event event) {
+    public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
         if (args.size() != 1) {
             throw new RuntimeException("length() takes only one argument");
         }
@@ -28,12 +29,18 @@ public class LengthExpressionFunction implements ExpressionFunction {
             return 0;
         }
         if (argStr.charAt(0) == '\"') {
-            if (argStr.charAt(argStr.length()-1) != '\"') {
-                throw new RuntimeException("Invalid string passed to length() "+argStr);
-            }
             return Integer.valueOf(argStr.length()-2);
         } else {
-            return Integer.valueOf(argStr.length());
+            // argStr must be JsonPointer
+            final Object value = event.get(argStr, Object.class);
+            if (value == null) {
+                return null;
+            } 
+            
+            if (!(value instanceof String)) {
+                throw new RuntimeException(argStr + " is not String type");
+            }
+            return Integer.valueOf(((String)value).length());
         }
     }
 }

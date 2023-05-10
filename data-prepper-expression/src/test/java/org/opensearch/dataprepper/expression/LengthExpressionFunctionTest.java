@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -16,13 +17,20 @@ import org.apache.commons.lang3.RandomStringUtils;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 class LengthExpressionFunctionTest {
     private LengthExpressionFunction lengthExpressionFunction;
     private Event testEvent;
+    private Function<Object, Object> testFunction;
+
+    private Event createTestEvent(final Object data) {
+        return JacksonEvent.builder().withEventType("event").withData(data).build();
+    }
 
     public LengthExpressionFunction createObjectUnderTest() {
-        testEvent = mock(Event.class);
+        testFunction = mock(Function.class);
         return new LengthExpressionFunction();
     }
 
@@ -31,31 +39,33 @@ class LengthExpressionFunctionTest {
     void testWithOneStringArgumentWithOutQuotes(int stringLength) {
         lengthExpressionFunction = createObjectUnderTest();
         String testString = RandomStringUtils.randomAlphabetic(stringLength);
-        assertThat(lengthExpressionFunction.evaluate(List.of(testString), testEvent), equalTo(testString.length()));
+        testEvent = createTestEvent(Map.of("key", testString));
+        assertThat(lengthExpressionFunction.evaluate(List.of("/key"), testEvent, testFunction), equalTo(testString.length()));
     }
 
     @Test
     void testWithOneStringArgumentWithQuotes() {
         lengthExpressionFunction = createObjectUnderTest();
         String testString = RandomStringUtils.randomAlphabetic(5);
-        assertThat(lengthExpressionFunction.evaluate(List.of("\""+testString + "\""), testEvent), equalTo(testString.length()));
+        assertThat(lengthExpressionFunction.evaluate(List.of("\""+testString + "\""), testEvent, testFunction), equalTo(testString.length()));
     }
 
     @Test
     void testWithTwoArgs() {
         lengthExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("arg1", "arg2"), testEvent));
+        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("arg1", "arg2"), testEvent, testFunction));
     }
     
     @Test
     void testWithNonStringArgument() {
         lengthExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of(10), testEvent));
+        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of(10), testEvent, testFunction));
     }
     
     @Test
-    void testWithInvalidStringArgument() {
+    void testWithInvalidArgument() {
         lengthExpressionFunction = createObjectUnderTest();
-        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("\"arg1"), testEvent));
+        testEvent = createTestEvent(Map.of("key", 10));
+        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("/key"), testEvent, testFunction));
     }
 }

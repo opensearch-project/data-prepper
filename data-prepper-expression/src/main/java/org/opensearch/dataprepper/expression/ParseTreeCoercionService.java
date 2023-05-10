@@ -21,10 +21,18 @@ import java.util.function.Function;
 class ParseTreeCoercionService {
     private final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions;
     private ExpressionFunctionProvider expressionFunctionProvider;
+    private Function<Object, Object> convertLiteralType;
 
     @Inject
     public ParseTreeCoercionService(final Map<Class<? extends Serializable>, Function<Object, Object>> literalTypeConversions, ExpressionFunctionProvider expressionFunctionProvider) {
         this.literalTypeConversions = literalTypeConversions;
+        convertLiteralType = (value) -> {
+                if (literalTypeConversions.containsKey(value.getClass())) {
+                    return literalTypeConversions.get(value.getClass()).apply(value);
+                } else {
+                    throw new ExpressionCoercionException("Unsupported type for value " + value);
+                }
+            };
         this.expressionFunctionProvider = expressionFunctionProvider;
     }
 
@@ -42,14 +50,17 @@ class ParseTreeCoercionService {
                 for (final String arg: args) {
                     String trimmedArg = arg.trim();
                     if (trimmedArg.charAt(0) == '/') {
-                        argList.add(resolveJsonPointerValue(arg, event));
+                        argList.add(trimmedArg);
                     } else if (trimmedArg.charAt(0) == '"') {
+                        if (trimmedArg.charAt(trimmedArg.length()-1) != '"') {
+                            throw new RuntimeException("Invalid string argument. Missing double quote at the end");
+                        }
                         argList.add(trimmedArg);
                     } else {
                         throw new RuntimeException("Unsupported type passed as function argument");
                     }
                 }
-                return expressionFunctionProvider.provideFunction(functionName, argList, event);
+                return expressionFunctionProvider.provideFunction(functionName, argList, event, convertLiteralType);
             case DataPrepperExpressionParser.EscapedJsonPointer:
                 final String jsonPointerWithoutQuotes = nodeStringValue.substring(1, nodeStringValue.length() - 1);
                 return resolveJsonPointerValue(jsonPointerWithoutQuotes, event);
@@ -87,10 +98,7 @@ class ParseTreeCoercionService {
         final Object value = event.get(jsonPointer, Object.class);
         if (value == null) {
             return null;
-        } else if (literalTypeConversions.containsKey(value.getClass())) {
-            return literalTypeConversions.get(value.getClass()).apply(value);
-        } else {
-            throw new ExpressionCoercionException("Unsupported type for value " + value);
-        }
+        } 
+        return convertLiteralType.apply(value);
     }
 }

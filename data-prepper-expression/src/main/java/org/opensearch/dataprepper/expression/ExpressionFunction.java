@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
 import java.util.List;
+import java.util.function.Function;
 
 interface ExpressionFunction {
     /**
@@ -21,5 +22,5 @@ interface ExpressionFunction {
      * @return the result of function evaluation
      * @since 2.3
      */
-    Object evaluate(final List<Object> args, Event event);
+    Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType);
 }

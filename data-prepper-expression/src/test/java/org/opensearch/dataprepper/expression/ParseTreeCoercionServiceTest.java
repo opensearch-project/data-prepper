@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -240,12 +241,12 @@ class ParseTreeCoercionServiceTest {
         final Event testEvent = createTestEvent(Map.of(key, value));
         when(terminalNode.getSymbol()).thenReturn(token);
         when(terminalNode.getText()).thenReturn("length(/"+key+")");
-        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class))).thenReturn(value.length());
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(value.length());
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         assertThat(objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent), equalTo(value.length()));
         final String testString = RandomStringUtils.randomAlphabetic(10);
         when(terminalNode.getText()).thenReturn("length(\""+testString+"\")");
-        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class))).thenReturn(testString.length());
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(testString.length());
         assertThat(objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent), equalTo(testString.length()));
     }
 

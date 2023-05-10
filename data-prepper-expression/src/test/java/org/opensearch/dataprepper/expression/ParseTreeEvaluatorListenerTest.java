@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Function;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -142,7 +143,7 @@ class ParseTreeEvaluatorListenerTest {
         final String testValue = RandomStringUtils.randomAlphabetic(10);
         final Map<String, String> data = Map.of(testKey, testValue);
         final Event testEvent = createTestEvent(data);
-        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class))).thenReturn(testValue.length());
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(testValue.length());
         String equalStatement = String.format("length(/%s) == %d", testKey, testValue.length());
         String notEqualStatement = String.format("length(/%s) != %d", testKey, testValue.length() + 1);
         assertThat(evaluateStatementOnEvent(equalStatement, testEvent), is(true));
