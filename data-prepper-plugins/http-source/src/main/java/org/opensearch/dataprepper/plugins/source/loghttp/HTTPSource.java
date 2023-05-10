@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import com.linecorp.armeria.server.encoding.DecodingService;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -126,7 +128,12 @@ public class HTTPSource implements Source<Record<Log>> {
             final String httpSourcePath = sourceConfig.getPath().replace(PIPELINE_NAME_PLACEHOLDER, pipelineName);
             sb.decorator(httpSourcePath, ThrottlingService.newDecorator(logThrottlingStrategy, logThrottlingRejectHandler));
             final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
-            sb.annotatedService(httpSourcePath, logHTTPService);
+
+            if (CompressionOption.NONE.equals(sourceConfig.getCompression())) {
+                sb.annotatedService(httpSourcePath, logHTTPService);
+            } else {
+                sb.annotatedService(httpSourcePath, logHTTPService, DecodingService.newDecorator());
+            }
 
             if (sourceConfig.hasHealthCheckService()) {
                 LOG.info("HTTP source health check is enabled");

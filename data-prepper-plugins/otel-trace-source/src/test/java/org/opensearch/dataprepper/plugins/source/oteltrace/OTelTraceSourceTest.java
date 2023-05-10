@@ -54,6 +54,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -201,6 +202,7 @@ class OTelTraceSourceTest {
         when(oTelTraceSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
         when(oTelTraceSourceConfig.getMaxConnectionCount()).thenReturn(10);
         when(oTelTraceSourceConfig.getThreadCount()).thenReturn(5);
+        when(oTelTraceSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -176,6 +177,7 @@ class HTTPSourceTest {
         lenient().when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
         lenient().when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
         lenient().when(sourceConfig.hasHealthCheckService()).thenReturn(true);
+        lenient().when(sourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
 
         MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);

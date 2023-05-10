@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -188,6 +189,7 @@ class OTelLogsSourceTest {
         when(oTelLogsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
         when(oTelLogsSourceConfig.getMaxConnectionCount()).thenReturn(10);
         when(oTelLogsSourceConfig.getThreadCount()).thenReturn(5);
+        when(oTelLogsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
         pluginMetrics = PluginMetrics.fromNames("otel_logs", "pipeline");
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
