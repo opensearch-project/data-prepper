@@ -28,7 +28,6 @@ public class MultithreadedConsumer implements Runnable {
 	private KafkaConsumer<String, JsonNode> jsonConsumer = null;
 	private static final Logger LOG = LoggerFactory.getLogger(MultithreadedConsumer.class);
 	private final AtomicBoolean status = new AtomicBoolean(false);
-
 	private final TopicConfig topicConfig;
 	private final Buffer<Record<Object>> buffer;
 	private String consumerId;

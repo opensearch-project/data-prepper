@@ -40,7 +40,6 @@ import io.micrometer.core.instrument.Counter;
 @SuppressWarnings("deprecation")
 @DataPrepperPlugin(name = "kafka", pluginType = Source.class, pluginConfigurationType = KafkaSourceConfig.class)
 public class KafkaSource implements Source<Record<Object>> {
-
   private static final Logger LOG = LoggerFactory.getLogger(KafkaSource.class);
   private final KafkaSourceConfig sourceConfig;
   private Set<MultithreadedConsumer> consumers = new HashSet<>();
