@@ -35,9 +35,15 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDbSourceCoordinationStore.class);
 
-    static final String AVAILABLE_PARTITIONS_FILTER_EXPRESSION = "contains(sourcePartitionStatus, :s) " +
-            "and (attribute_not_exists(reOpenAt) or reOpenAt = :null or reOpenAt <= :ro) " +
-            "and (attribute_not_exists(partitionOwnershipTimeout) or partitionOwnershipTimeout = :null or partitionOwnershipTimeout <= :t)";
+    /**
+     * This filter expression considers partitions available in the following scenarios
+     * 1. The partition status is UNASSIGNED
+     * 2. The partition status is CLOSED and the reOpenAt timestamp has passed
+     * 3. The partition status is ASSIGNED and the partitionOwnershipTimeout has passed
+     */
+    static final String AVAILABLE_PARTITIONS_FILTER_EXPRESSION = "contains(sourcePartitionStatus, :unassigned) " +
+            "or ((contains(sourcePartitionStatus, :closed) and attribute_not_exists(reOpenAt) or reOpenAt = :null or reOpenAt <= :ro)) " +
+            "or ((contains(sourcePartitionStatus, :assigned) and attribute_not_exists(partitionOwnershipTimeout) or partitionOwnershipTimeout = :null or partitionOwnershipTimeout <= :t)";
 
     private final DynamoStoreSettings dynamoStoreSettings;
     private final PluginMetrics pluginMetrics;
@@ -82,7 +88,9 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
         final Optional<PageIterable<DynamoDbSourcePartitionItem>> dynamoDbSourcePartitionItemPageIterable =
                 dynamoDbClientWrapper.getSourcePartitionItems(Expression.builder()
                         .expressionValues(Map.of(
-                                ":s", AttributeValue.builder().s(SourcePartitionStatus.UNASSIGNED.name()).build(),
+                                ":unassigned", AttributeValue.builder().s(SourcePartitionStatus.UNASSIGNED.name()).build(),
+                                ":assigned", AttributeValue.builder().s(SourcePartitionStatus.ASSIGNED.name()).build(),
+                                ":closed", AttributeValue.builder().s(SourcePartitionStatus.CLOSED.name()).build(),
                                 ":t", AttributeValue.builder().s(Instant.now().toString()).build(),
                                 ":ro", AttributeValue.builder().s(Instant.now().toString()).build(),
                                 ":null", AttributeValue.builder().nul(true).build()))

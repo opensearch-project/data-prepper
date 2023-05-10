@@ -25,6 +25,12 @@ public interface SourceCoordinationStore {
                                    final Long closedCount,
                                    final String partitionProgressState);
 
+    /**
+     * The following scenarios should qualify a partition as available to be acquired
+     * 1. The partition status is UNASSIGNED
+     * 2. The partition status is CLOSED and the reOpenAt timestamp has passed
+     * 3. The partition status is ASSIGNED and the partitionOwnershipTimeout has passed
+     */
     Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String ownerId, final Duration ownershipTimeout);
 
     /**

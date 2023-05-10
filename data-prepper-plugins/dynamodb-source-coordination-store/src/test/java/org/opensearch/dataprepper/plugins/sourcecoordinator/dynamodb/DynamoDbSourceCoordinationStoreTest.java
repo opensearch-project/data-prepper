@@ -154,7 +154,9 @@ public class DynamoDbSourceCoordinationStoreTest {
         final Expression expression = expressionArgumentCaptor.getValue();
         assertThat(expression.expression(), equalTo(AVAILABLE_PARTITIONS_FILTER_EXPRESSION));
         assertThat(expression.expressionValues().size(), equalTo(4));
-        assertThat(expression.expressionValues().containsKey(":s"), equalTo(true));
+        assertThat(expression.expressionValues().containsKey(":unassigned"), equalTo(true));
+        assertThat(expression.expressionValues().containsKey(":closed"), equalTo(true));
+        assertThat(expression.expressionValues().containsKey(":assigned"), equalTo(true));
         assertThat(expression.expressionValues().containsKey(":t"), equalTo(true));
         assertThat(expression.expressionValues().containsKey(":ro"), equalTo(true));
         assertThat(expression.expressionValues().containsKey(":null"), equalTo(true));
