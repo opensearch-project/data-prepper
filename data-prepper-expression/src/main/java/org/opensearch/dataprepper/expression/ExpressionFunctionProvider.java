@@ -24,7 +24,7 @@ public class ExpressionFunctionProvider {
 
     public Object provideFunction(final String functionName, final List<Object> argList, Event event, Function<Object, Object> convertLiteralType) {
         if (!expressionFunctionsMap.containsKey(functionName)) {
-            return null;
+            throw new RuntimeException("Unknown function in the expression");
         }
         return expressionFunctionsMap.get(functionName).evaluate(argList, event, convertLiteralType);
     }

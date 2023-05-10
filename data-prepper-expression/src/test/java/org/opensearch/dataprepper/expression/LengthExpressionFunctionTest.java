@@ -68,4 +68,18 @@ class LengthExpressionFunctionTest {
         testEvent = createTestEvent(Map.of("key", 10));
         assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("/key"), testEvent, testFunction));
     }
+
+    @Test
+    void testWithUnknownKeyArgument() {
+        lengthExpressionFunction = createObjectUnderTest();
+        testEvent = createTestEvent(Map.of("key", "value"));
+        assertThat(lengthExpressionFunction.evaluate(List.of("/unknownKey"), testEvent, testFunction), equalTo(null));
+    }
+
+    @Test
+    void testWithZeroLengthString() {
+        lengthExpressionFunction = createObjectUnderTest();
+        testEvent = createTestEvent(Map.of("key", 10));
+        assertThat(lengthExpressionFunction.evaluate(List.of(""), testEvent, testFunction), equalTo(0));
+    }
 }

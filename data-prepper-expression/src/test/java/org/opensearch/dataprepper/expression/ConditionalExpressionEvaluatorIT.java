@@ -194,7 +194,7 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("not/status_code", event("{\"status_code\": 200}")),
                 Arguments.of("trueand/status_code", event("{\"status_code\": 200}")),
                 Arguments.of("trueor/status_code", event("{\"status_code\": 200}")),
-                Arguments.of("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true)
+                Arguments.of("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}"))
         );
     }
 

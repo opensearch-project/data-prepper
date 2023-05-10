@@ -251,6 +251,31 @@ class ParseTreeCoercionServiceTest {
     }
 
     @Test
+    void testCoerceTerminalNodeLengthFunctionWithInvalidString() {
+        final String key = RandomStringUtils.randomAlphabetic(5);
+        final String value = RandomStringUtils.randomAlphabetic(10);
+        final Event testEvent = createTestEvent(Map.of(key, value));
+        final String testString = RandomStringUtils.randomAlphabetic(10);
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn("length(\""+testString+")");
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(value.length());
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
+        assertThrows(RuntimeException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
+    }
+
+    @Test
+    void testCoerceTerminalNodeLengthFunctionWithInvalidArgument() {
+        final String key = RandomStringUtils.randomAlphabetic(5);
+        final String value = RandomStringUtils.randomAlphabetic(10);
+        final Event testEvent = createTestEvent(Map.of(key, value));
+        when(terminalNode.getSymbol()).thenReturn(token);
+        when(terminalNode.getText()).thenReturn("length(10)");
+        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(value.length());
+        when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
+        assertThrows(RuntimeException.class, () -> objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent));
+    }
+
+    @Test
     void testCoerceTerminalNodeLengthFunctionKeyNotInEvent() {
         final String key = RandomStringUtils.randomAlphabetic(5);
         final String value = RandomStringUtils.randomAlphabetic(10);

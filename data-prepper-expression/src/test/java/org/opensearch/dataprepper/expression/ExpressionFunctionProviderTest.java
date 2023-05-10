@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.apache.commons.lang3.RandomStringUtils;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.lenient;
@@ -44,7 +45,7 @@ class ExpressionFunctionProviderTest {
     void testUnknownFunction() {
         objectUnderTest = createObjectUnderTest();
         String unknownFunctionName = RandomStringUtils.randomAlphabetic(8);
-        assertThat(objectUnderTest.provideFunction(unknownFunctionName, List.of(), testEvent, testFunction), equalTo(null));
+        assertThrows(RuntimeException.class, () -> objectUnderTest.provideFunction(unknownFunctionName, List.of(), testEvent, testFunction));
     }
 
     @Test
