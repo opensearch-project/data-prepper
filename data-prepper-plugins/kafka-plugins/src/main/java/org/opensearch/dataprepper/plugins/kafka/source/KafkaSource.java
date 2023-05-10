@@ -76,7 +76,6 @@ public class KafkaSource implements Source<Record<Object>> {
         });
       } catch (Exception e) {
         LOG.error("Failed to setup the Kafka Source Plugin.", e);
-        kafkaWorkerThreadProcessingErrors.increment();
       }
     });
   }
