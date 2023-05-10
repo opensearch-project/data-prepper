@@ -206,7 +206,7 @@ class ParquetInputCodecTest {
                     GenericRecord record = new GenericData.Record(schema);
                     for (Type field : fileSchema.getFields()) {
 
-                        Object dataTypeValue = PrimitiveDataTypeChecker.checkPrimitiveDataType(field,simpleGroup,fieldIndex);
+                        Object dataTypeValue = DataTypeChecker.checkDataType(field,simpleGroup,fieldIndex);
                         record.put(field.getName(),dataTypeValue);
 
                         fieldIndex++;

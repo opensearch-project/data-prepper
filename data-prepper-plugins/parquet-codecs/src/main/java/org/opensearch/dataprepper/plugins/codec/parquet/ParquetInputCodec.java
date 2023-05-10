@@ -5,11 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
+import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
@@ -82,7 +84,7 @@ public class ParquetInputCodec implements InputCodec {
                         for (Type field : schema.getFields()) {
 
                             try {
-                                Object dataTypeValue = PrimitiveDataTypeChecker.checkPrimitiveDataType(field,simpleGroup,fieldIndex);
+                                Object dataTypeValue = DataTypeChecker.checkDataType(field,simpleGroup,fieldIndex);
                                 eventData.put(field.getName(),dataTypeValue);
                             }
                             catch (Exception parquetException){
