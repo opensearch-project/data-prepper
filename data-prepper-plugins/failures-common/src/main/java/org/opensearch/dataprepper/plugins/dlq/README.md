@@ -36,6 +36,11 @@ Example:
 dlq-v2-apache-log-pipeline-opensearch-2023-04-05T15:26:19.152938Z-e7eb675a-f558-4048-8566-dac15a4f8343
 ```
 
+The full key path for a file written to the S3 DLQ will have the following pattern using the `key_path_prefix` from the 
+configuration and the file name specified above: `${key_path_prefix}${file name}`. If the `key_prefix` is non-null and is
+not suffixed with a `/`, one will be added by default. This will enforce a `/` is always between the `key_path_prefix`
+and `file name` when a `key_path_prefix` is provided. 
+
 The DLQ file will JSON file with an array of failed [DLQ Objects](#DLQ-Objects).
 
 ### Configurations
