@@ -29,7 +29,7 @@ public class LengthExpressionFunction implements ExpressionFunction {
             return 0;
         }
         if (argStr.charAt(0) == '\"') {
-            return Integer.valueOf(argStr.length()-2);
+            throw new RuntimeException("Literal strings not supported as arguments to length()");
         } else {
             // argStr must be JsonPointer
             final Object value = event.get(argStr, Object.class);

@@ -166,8 +166,7 @@ class ConditionalExpressionEvaluatorIT {
                         true),
                 Arguments.of("/durationInNanos > 5000000000", event("{\"durationInNanos\": 6000000000}"), true),
                 Arguments.of("/response == \"OK\"", event("{\"response\": \"OK\"}"), true),
-                Arguments.of("length(/response) == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true),
-                Arguments.of("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true)
+                Arguments.of("length(/response) == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true)
         );
     }
 
@@ -194,7 +193,8 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("not/status_code", event("{\"status_code\": 200}")),
                 Arguments.of("trueand/status_code", event("{\"status_code\": 200}")),
                 Arguments.of("trueor/status_code", event("{\"status_code\": 200}")),
-                Arguments.of("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}"))
+                Arguments.of("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
+                Arguments.of("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}"))
         );
     }
 

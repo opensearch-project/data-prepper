@@ -244,10 +244,6 @@ class ParseTreeCoercionServiceTest {
         when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(value.length());
         when(token.getType()).thenReturn(DataPrepperExpressionParser.Function);
         assertThat(objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent), equalTo(value.length()));
-        final String testString = RandomStringUtils.randomAlphabetic(10);
-        when(terminalNode.getText()).thenReturn("length(\""+testString+"\")");
-        when(expressionFunctionProvider.provideFunction(eq("length"), any(List.class), any(Event.class), any(Function.class))).thenReturn(testString.length());
-        assertThat(objectUnderTest.coercePrimaryTerminalNode(terminalNode, testEvent), equalTo(testString.length()));
     }
 
     @Test

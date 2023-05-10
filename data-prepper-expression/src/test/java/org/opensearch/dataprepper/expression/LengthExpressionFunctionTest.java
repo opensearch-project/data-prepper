@@ -47,7 +47,7 @@ class LengthExpressionFunctionTest {
     void testWithOneStringArgumentWithQuotes() {
         lengthExpressionFunction = createObjectUnderTest();
         String testString = RandomStringUtils.randomAlphabetic(5);
-        assertThat(lengthExpressionFunction.evaluate(List.of("\""+testString + "\""), testEvent, testFunction), equalTo(testString.length()));
+        assertThrows(RuntimeException.class, () -> lengthExpressionFunction.evaluate(List.of("\"" + testString + "\""), testEvent, testFunction));
     }
 
     @Test
