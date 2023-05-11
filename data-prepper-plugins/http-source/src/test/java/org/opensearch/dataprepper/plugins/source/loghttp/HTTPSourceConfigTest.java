@@ -5,11 +5,20 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.opensearch.dataprepper.compression.CompressionOption;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -17,6 +26,13 @@ import static org.junit.Assert.assertEquals;
 import static org.opensearch.dataprepper.plugins.source.loghttp.HTTPSourceConfig.S3_PREFIX;
 
 public class HTTPSourceConfigTest {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String PLUGIN_NAME = "http";
+
+    private static Stream<Arguments> provideCompressionOption() {
+        return Stream.of(Arguments.of(CompressionOption.GZIP));
+    }
+
     @Test
     void testDefault() {
         // Prepare
@@ -33,6 +49,7 @@ public class HTTPSourceConfigTest {
         assertEquals(HTTPSourceConfig.DEFAULT_ACM_CERTIFICATE_TIMEOUT_MILLIS, sourceConfig.getAcmCertificateTimeoutMillis());
         assertEquals((int)(HTTPSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS * HTTPSourceConfig.BUFFER_TIMEOUT_FRACTION),
                      sourceConfig.getBufferTimeoutInMillis());
+        assertEquals(CompressionOption.NONE, sourceConfig.getCompression());
     }
 
     @Nested
@@ -225,6 +242,21 @@ public class HTTPSourceConfigTest {
 
             assertThat(objectUnderTest.isAcmCertificateArnValid(), equalTo(true));
         }
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideCompressionOption")
+    void testValidCompression(final CompressionOption compressionOption) {
+        // Prepare
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put(HTTPSourceConfig.COMPRESSION, compressionOption.name());
+
+        final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+        final HTTPSourceConfig httpSourceConfig = OBJECT_MAPPER.convertValue(
+                pluginSetting.getSettings(), HTTPSourceConfig.class);
+
+        // When/Then
+        assertEquals(compressionOption, httpSourceConfig.getCompression());
     }
 
     @Test
