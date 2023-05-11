@@ -176,7 +176,7 @@ Currently the following functions are supported
    - takes at least one argument
    - all arguments must be of String type
    - returns true if all arguments are present in the event's tags, returns false otherwise
-   For example, if event has tags "tag1", "tag2", and "tag3", `hasTags("tag1")` or `hasTags("tag1", "tag2")` would return true and `hasTags("tag4")` would return false.
+   For example, if event has tags "tag1", "tag2", and "tag3", `hasTags("tag1")` or `hasTags("tag1", "tag2")` would return true and `hasTags("tag4")` and `hadTags("tag1", "tag4")` would return false.
 
 
 ## White Space
