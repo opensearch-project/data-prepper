@@ -39,6 +39,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -251,7 +252,7 @@ class PipelineTests {
         final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
 
         final SourceCoordinator sourceCoordinator = mock(SourceCoordinator.class);
-        given(sourceCoordinatorFactory.provideSourceCoordinator(String.class)).willReturn(sourceCoordinator);
+        given(sourceCoordinatorFactory.provideSourceCoordinator(String.class, UUID.randomUUID().toString())).willReturn(sourceCoordinator);
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
         try {
             testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),

@@ -23,4 +23,13 @@ public interface SourceCoordinationStore {
                                    final SourcePartitionStatus sourcePartitionStatus,
                                    final Long closedCount,
                                    final String partitionProgressState);
+
+    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition();
+
+    /**
+     * This method attempts to update the partition item to the desired state
+     * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException when the partition was not updated successfully
+     * @param updateItem - The item to update in the source coordination store
+     */
+    void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem);
 }

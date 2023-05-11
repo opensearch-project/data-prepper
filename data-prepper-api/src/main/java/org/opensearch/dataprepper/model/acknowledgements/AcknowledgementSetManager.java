@@ -5,10 +5,11 @@
 
 package org.opensearch.dataprepper.model.acknowledgements;
 
-import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.Event;
-import java.util.function.Consumer;
+import org.opensearch.dataprepper.model.event.EventHandle;
+
 import java.time.Duration;
+import java.util.function.Consumer;
 
 /**
  * AcknowledgementSetManager manages acknowledgement sets created by

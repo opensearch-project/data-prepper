@@ -9,8 +9,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -636,6 +636,22 @@ public class JacksonEventTest {
                 .build();
         event.setEventHandle(testEventHandle);
         assertThat(event.getEventHandle(), equalTo(testEventHandle));
+    }
+
+    @Test
+    void testJsonStringBuilder() {
+        final String jsonString = "{\"foo\":\"bar\"}";
+
+        final JacksonEvent event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .build();
+        final EventMetadata eventMetadata = event.getMetadata();
+        eventMetadata.addTag("tag1");
+        eventMetadata.addTag("tag2");
+        final String expectedJsonString = "{\"foo\":\"bar\",\"tags\":[\"tag1\",\"tag2\"]}";
+        assertThat(event.jsonBuilder().includeTags("tags").toJsonString(), equalTo(expectedJsonString));
+        assertThat(event.jsonBuilder().toJsonString(), equalTo(jsonString));
     }
 
     private static Map<String, Object> createComplexDataMap() {

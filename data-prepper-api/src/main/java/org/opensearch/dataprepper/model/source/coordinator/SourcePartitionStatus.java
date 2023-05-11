@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.source.coordinator;
 
+import org.opensearch.dataprepper.model.annotations.SkipTestCoverageGenerated;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 
 /**
@@ -12,6 +13,7 @@ import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
  * and {@link SourceCoordinationStore}
  * @since 2.2
  */
+@SkipTestCoverageGenerated
 public enum SourcePartitionStatus {
     /**
      * Represents a source partition that is owned by either this instance of data prepper, or another instance of data prepper
