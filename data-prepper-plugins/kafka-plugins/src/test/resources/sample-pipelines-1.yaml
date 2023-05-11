@@ -1,0 +1,20 @@
+log-pipeline:
+  source:
+    kafka:
+      bootstrap_servers:
+        - 127.0.0.1:9092, 127.0.0.1:9093, 127.0.0.1:9094
+      topics:
+        - topic:
+            name: my-topic-10
+            auth_type: sasl_ssl
+            consumer:
+              group_name: kafka-consumer-group-10
+              group_id: DPKafkaProj-10
+            schema:
+              registry_url: http://localhost:8081/
+              key_deserializer: org.apache.kafka.common.serialization.StringDeserializer
+              value_deserializer: org.apache.kafka.common.serialization.StringDeserializer
+              schema_type: plaintext
+              record_type: plaintext
+  sink:
+    - stdout:
