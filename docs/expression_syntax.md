@@ -166,12 +166,11 @@ Escaped Example
 ### Function
 DataPrepper has some in-built functions that can be used as operand in an expression. For example
 `length(/message) > 20`
-will extract `message` field from the event and compares it's length with 20. The value of `message` field is expected to be of String type. If the field is not present in the event, null is returned and the function is not applied on it.
+will extract `message` field from the event and compares it's length with 20. The value of `message` field is expected to be of String type. If the field is not present in the event, null is returned and the function is not applied on it. If the field's value is not String then error is thrown.
 Currently the following functions are supported
- * `length`
-   - takes one argument of string or JsonPointer type
-   - returns the length of the string if the input is of the string type. For example, `length("abcd")` returns 4.
-   - returns the length of the value of type string if the input is of JsonPointer type. For example, `length("/message")` returns 10 if the key `message` exists in the event and has the value of `"1234567890"`.
+ * `length()`
+   - takes one argument of JsonPointer type
+   - returns the length of the value of the argument passed if it's type is string. For example, `length("/message")` returns 10 if the key `message` exists in the event and has the value of `"1234567890"`.
 
 
 ## White Space
