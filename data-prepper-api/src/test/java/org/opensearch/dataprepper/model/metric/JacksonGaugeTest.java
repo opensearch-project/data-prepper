@@ -5,12 +5,12 @@
 
 package org.opensearch.dataprepper.model.metric;
 
-import org.opensearch.dataprepper.model.event.TestObject;
 import com.google.common.collect.ImmutableMap;
 import io.micrometer.core.instrument.util.IOUtils;
 import org.json.JSONException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.TestObject;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.util.Arrays;
@@ -21,9 +21,9 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class JacksonGaugeTest {

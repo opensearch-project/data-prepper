@@ -54,6 +54,11 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
         assertThat(message, containsString(KNOWN_HTTP_LINE));
     }
 
+    @Override
+    public String getS3SelectExpression() {
+        return null;
+    }
+
     private void writeLine(final PrintWriter printWriter) {
         final String dateString = dateTimeFormatter.format(LocalDateTime.now());
         final String line = "127.0.0.1 - - [" + dateString + "] " + KNOWN_HTTP_LINE + " " + random.nextInt(3000) + " \"http://localhost\" \"Mozilla/5.0\"";

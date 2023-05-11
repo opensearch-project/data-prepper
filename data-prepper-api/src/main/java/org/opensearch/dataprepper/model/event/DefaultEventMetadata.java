@@ -10,6 +10,8 @@ import com.google.common.collect.ImmutableMap;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -27,6 +29,8 @@ public class DefaultEventMetadata implements EventMetadata {
 
     private final ImmutableMap<String, Object> attributes;
 
+    private Set<String> tags;
+
     private DefaultEventMetadata(final Builder builder) {
 
         checkNotNull(builder.eventType, "eventType cannot be null");
@@ -37,12 +41,15 @@ public class DefaultEventMetadata implements EventMetadata {
         this.timeReceived = builder.timeReceived == null ? Instant.now() : builder.timeReceived;
 
         this.attributes = builder.attributes == null ? ImmutableMap.of() : ImmutableMap.copyOf(builder.attributes);
+
+        this.tags = builder.tags == null ? new HashSet<>() : new HashSet(builder.tags);
     }
 
     private DefaultEventMetadata(final EventMetadata eventMetadata) {
         this.eventType = eventMetadata.getEventType();
         this.timeReceived = eventMetadata.getTimeReceived();
         this.attributes = ImmutableMap.copyOf(eventMetadata.getAttributes());
+        this.tags = new HashSet<>(eventMetadata.getTags());
     }
 
     @Override
@@ -61,13 +68,29 @@ public class DefaultEventMetadata implements EventMetadata {
     }
 
     @Override
+    public Set<String> getTags() {
+        return tags;
+    }
+
+    @Override
+    public Boolean hasTag(final String tag) {
+        return tags.contains(tag);
+    }
+
+    @Override
+    public void addTag(final String tag) {
+        tags.add(tag);
+    }
+
+    @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         final DefaultEventMetadata that = (DefaultEventMetadata) o;
         return Objects.equals(eventType, that.eventType)
                 && Objects.equals(timeReceived, that.timeReceived)
-                && Objects.equals(attributes, that.attributes);
+                && Objects.equals(attributes, that.attributes)
+                && Objects.equals(tags, that.tags);
     }
 
     @Override
@@ -81,6 +104,7 @@ public class DefaultEventMetadata implements EventMetadata {
                 "eventType='" + eventType + '\'' +
                 ", timeReceived=" + timeReceived +
                 ", attributes=" + attributes +
+                ", tags=" + tags +
                 '}';
     }
 
@@ -106,6 +130,7 @@ public class DefaultEventMetadata implements EventMetadata {
         private String eventType;
         private Instant timeReceived;
         private Map<String, Object> attributes;
+        private Set<String> tags;
 
         /**
          * Sets the event type. A non-null or empty event type is required, otherwise it will cause {@link #build()} to fail.
@@ -137,6 +162,17 @@ public class DefaultEventMetadata implements EventMetadata {
          */
         public Builder withAttributes(final Map<String, Object> attributes) {
             this.attributes = attributes;
+            return this;
+        }
+
+        /**
+         * Sets the tags. An empty set is the default value.
+         * @param tags a set of string tags
+         * @return returns the builder
+         * @since 2.3
+         */
+        public Builder withTags(final Set<String> tags) {
+            this.tags = tags;
             return this;
         }
 

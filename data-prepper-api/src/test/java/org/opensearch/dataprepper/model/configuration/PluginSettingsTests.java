@@ -6,8 +6,8 @@
 package org.opensearch.dataprepper.model.configuration;
 
 import com.google.common.collect.ImmutableMap;
-import org.junit.Test;
 import org.junit.Before;
+import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;

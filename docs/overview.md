@@ -114,7 +114,7 @@ The above configuration uses the Pipeline Connectors. `input-pipeline` is config
 ## Conditional Routing
 
 In many situations, pipeline authors want to route some events to certain sinks. They can configure their pipeline to do this by using Data Prepper's route feature. The pipeline author
-first configures routes in `route:` part of the pipeline configuration.
+first configures routes in `route:` or `routes:` part of the pipeline configuration. 
 
 The following shows how this is configured. In the example below, `info_level` and `warn_and_above` are the names of two different routes. As a pipeline author, you can define these
 names to match your use-case. After the names of the routes, you can define the conditions that must apply to any route to make it applicable for any given event. For more information
@@ -122,6 +122,12 @@ on how to define conditions see the [Data Prepper Expression Syntax](expression_
 
 ```
 route:
+  - info_level: '/loglevel == "INFO"'
+  - warn_and_above: '/loglevel == "WARN" or /loglevel == "ERROR"'
+```
+or alternatively, you can use `routes`
+```
+routes:
   - info_level: '/loglevel == "INFO"'
   - warn_and_above: '/loglevel == "WARN" or /loglevel == "ERROR"'
 ```

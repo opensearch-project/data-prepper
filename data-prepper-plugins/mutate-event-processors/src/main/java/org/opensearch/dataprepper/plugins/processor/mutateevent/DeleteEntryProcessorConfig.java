@@ -15,7 +15,14 @@ public class DeleteEntryProcessorConfig {
     @JsonProperty("with_keys")
     private String[] withKeys;
 
+    @JsonProperty("delete_when")
+    private String deleteWhen;
+
     public String[] getWithKeys() {
         return withKeys;
+    }
+
+    public String getDeleteWhen() {
+        return deleteWhen;
     }
 }

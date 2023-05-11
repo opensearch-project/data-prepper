@@ -208,7 +208,7 @@ public class Pipeline {
         try {
             if (source instanceof UsesSourceCoordination) {
                 final Class<?> partionProgressModelClass = ((UsesSourceCoordination) source).getPartitionProgressStateClass();
-                final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(partionProgressModelClass);
+                final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(partionProgressModelClass, name);
                 ((UsesSourceCoordination) source).setSourceCoordinator(sourceCoordinator);
             }
             source.start(buffer);

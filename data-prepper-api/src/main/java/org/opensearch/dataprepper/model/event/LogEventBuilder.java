@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.model.event;
 
-import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.log.Log;
 
 public interface LogEventBuilder extends BaseEventBuilder<Log> {
     /**

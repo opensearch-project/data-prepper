@@ -20,4 +20,12 @@ public interface SourcePartitionStoreItem {
     Instant getPartitionOwnershipTimeout();
     Instant getReOpenAt();
     Long getClosedCount();
+
+    void setSourcePartitionKey(final String sourcePartitionKey);
+    void setPartitionOwner(final String partitionOwner);
+    void setPartitionProgressState(final String partitionProgressState);
+    void setSourcePartitionStatus(final SourcePartitionStatus sourcePartitionStatus);
+    void setPartitionOwnershipTimeout(final Instant partitionOwnershipTimeout);
+    void setReOpenAt(final Instant reOpenAt);
+    void setClosedCount(final Long closedCount);
 }

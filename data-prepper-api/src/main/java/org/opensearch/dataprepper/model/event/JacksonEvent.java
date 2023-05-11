@@ -276,6 +276,17 @@ public class JacksonEvent implements Event {
         return jsonNode.toString();
     }
 
+    @Override
+    public String getAsJsonString(final String key) {
+        final String trimmedKey = checkAndTrimKey(key);
+
+        final JsonNode node = getNode(trimmedKey);
+        if (node.isMissingNode()) {
+            return null;
+        }
+        return node.toString();
+    }
+
     /**
      * returns a string with formatted parts replaced by their values. The input
      * string may contain parts with format "${.../.../...}" which are replaced
@@ -405,6 +416,10 @@ public class JacksonEvent implements Event {
         };
     }
 
+    public JsonStringBuilder jsonBuilder() {
+        return new JsonStringBuilder(this);
+    }
+
     public static JacksonEvent fromEvent(final Event event) {
         if (event instanceof JacksonEvent) {
             return new JacksonEvent((JacksonEvent) event);
@@ -499,6 +514,25 @@ public class JacksonEvent implements Event {
          */
         public JacksonEvent build() {
             return new JacksonEvent(this);
+        }
+    }
+
+    public class JsonStringBuilder extends Event.JsonStringBuilder {
+        private Event event;
+
+        private JsonStringBuilder(final Event event) {
+            checkNotNull(event, "event cannot be null");
+            this.event = event;
+        }
+
+        public String toJsonString() {
+            final String jsonString = event.toJsonString().trim();
+            final String tagsKey = getTagsKey();
+            if(tagsKey != null) {
+                final JsonNode tagsNode = mapper.valueToTree(event.getMetadata().getTags());
+                return jsonString.substring(0, jsonString.length()-1) + ",\""+tagsKey+"\":" + tagsNode.toString()+"}";
+            }
+            return jsonString;
         }
     }
 }

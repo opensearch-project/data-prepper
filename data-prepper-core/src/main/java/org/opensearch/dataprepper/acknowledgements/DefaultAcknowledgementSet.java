@@ -33,28 +33,17 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private boolean result;
     private final Map<EventHandle, AtomicInteger> pendingAcknowledgments;
     private Future<?> callbackFuture;
+    private final DefaultAcknowledgementSetMetrics metrics;
 
-    private final AtomicInteger numInvalidAcquires;
-    private final AtomicInteger numInvalidReleases;
-
-    public DefaultAcknowledgementSet(final ExecutorService executor, final Consumer<Boolean> callback, final Duration expiryTime) {
+    public DefaultAcknowledgementSet(final ExecutorService executor, final Consumer<Boolean> callback, final Duration expiryTime, final DefaultAcknowledgementSetMetrics metrics) {
         this.callback = callback;
         this.result = true;
         this.executor = executor;
         this.expiryTime = Instant.now().plusMillis(expiryTime.toMillis());
         this.callbackFuture = null;
+        this.metrics = metrics;
         pendingAcknowledgments = new HashMap<>();
         lock = new ReentrantLock(true);
-        this.numInvalidAcquires = new AtomicInteger(0);
-        this.numInvalidReleases = new AtomicInteger(0);
-    }
-
-    public int getNumInvalidAcquires() {
-        return numInvalidAcquires.get();
-    }
-
-    public int getNumInvalidReleases() {
-        return numInvalidReleases.get();
     }
 
     @Override
@@ -76,7 +65,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         try {
             if (!pendingAcknowledgments.containsKey(eventHandle)) {
                 LOG.warn("Unexpected event handle acquire");
-                numInvalidAcquires.incrementAndGet();
+                metrics.increment(DefaultAcknowledgementSetMetrics.INVALID_ACQUIRES_METRIC_NAME);
                 return;
             }
             pendingAcknowledgments.get(eventHandle).incrementAndGet();
@@ -89,12 +78,14 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         lock.lock();
         try {
             if (callbackFuture != null && callbackFuture.isDone()) {
+                metrics.increment(DefaultAcknowledgementSetMetrics.COMPLETED_METRIC_NAME);
                 return true;
             }
             if (Instant.now().isAfter(expiryTime)) {
                 if (callbackFuture != null) {
                     callbackFuture.cancel(true);
                 }
+                metrics.increment(DefaultAcknowledgementSetMetrics.EXPIRED_METRIC_NAME);
                 return true;
             }
         } finally {
@@ -118,7 +109,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
             if (!pendingAcknowledgments.containsKey(eventHandle) ||
                 pendingAcknowledgments.get(eventHandle).get() == 0) {
                 LOG.warn("Unexpected event handle release");
-                numInvalidReleases.incrementAndGet();
+                metrics.increment(DefaultAcknowledgementSetMetrics.INVALID_RELEASES_METRIC_NAME);
                 return false;
             }
             if (pendingAcknowledgments.get(eventHandle).decrementAndGet() == 0) {

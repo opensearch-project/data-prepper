@@ -14,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
+import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionResponse;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionTestUtils;
 
@@ -26,7 +27,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -103,8 +103,9 @@ public class HistogramAggregateActionTests {
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final Optional<Event> result = histogramAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(true));
+        final AggregateActionOutput actionOutput = histogramAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertThat(result.size(), equalTo(1));
         final String expectedCountKey = histogramAggregateActionConfig.getCountKey();
         final String expectedStartTimeKey = histogramAggregateActionConfig.getStartTimeKey();
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap(expectedCountKey, testCount));
@@ -115,12 +116,12 @@ public class HistogramAggregateActionTests {
         expectedEventMap.put(expectedMaxKey, expectedMax);
         final String expectedMinKey = histogramAggregateActionConfig.getMinKey();
         expectedEventMap.put(expectedMinKey, expectedMin);
-        expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k,v)));
-        assertThat(result.get().toMap(), hasKey(expectedStartTimeKey));
+        expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k,v)));
+        assertThat(result.get(0).toMap(), hasKey(expectedStartTimeKey));
         final String expectedDurationKey = histogramAggregateActionConfig.getDurationKey();
-        assertThat(result.get().toMap(), hasKey(expectedDurationKey));
+        assertThat(result.get(0).toMap(), hasKey(expectedDurationKey));
         final String expectedBucketCountsKey = histogramAggregateActionConfig.getBucketCountsKey();
-        final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get().toMap().get(expectedBucketCountsKey);
+        final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get(0).toMap().get(expectedBucketCountsKey);
         for (int i = 0; i < expectedBucketCounts.length; i++) {
             assertThat(expectedBucketCounts[i], equalTo(bucketCountsFromResult.get(i)));
         }
@@ -184,8 +185,9 @@ public class HistogramAggregateActionTests {
             assertThat(aggregateActionResponse.getEvent(), equalTo(null));
         }
 
-        final Optional<Event> result = histogramAggregateAction.concludeGroup(aggregateActionInput);
-        assertThat(result.isPresent(), equalTo(true));
+        final AggregateActionOutput actionOutput = histogramAggregateAction.concludeGroup(aggregateActionInput);
+        final List<Event> result = actionOutput.getEvents();
+        assertThat(result.size(), equalTo(1));
         final String expectedCountKey = histogramAggregateActionConfig.getCountKey();
         final String expectedStartTimeKey = histogramAggregateActionConfig.getStartTimeKey();
         Map<String, Object> expectedEventMap = new HashMap<>(Collections.singletonMap("count", (long)testCount));
@@ -197,26 +199,26 @@ public class HistogramAggregateActionTests {
         expectedEventMap.put("bucketCounts", expectedBucketCounts.length);
         expectedEventMap.put("explicitBoundsCount", expectedBucketCounts.length-1);
         
-        expectedEventMap.forEach((k, v) -> assertThat(result.get().toMap(), hasEntry(k, v)));
-        assertThat(result.get().toMap(), hasKey("startTime"));
-        assertThat(result.get().toMap(), hasKey("time"));
-        final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get().toMap().get("bucketCountsList");
+        expectedEventMap.forEach((k, v) -> assertThat(result.get(0).toMap(), hasEntry(k, v)));
+        assertThat(result.get(0).toMap(), hasKey("startTime"));
+        assertThat(result.get(0).toMap(), hasKey("time"));
+        final List<Long> bucketCountsFromResult = (ArrayList<Long>)result.get(0).toMap().get("bucketCountsList");
         for (int i = 0; i < expectedBucketCounts.length; i++) {
             assertThat(expectedBucketCounts[i], equalTo(bucketCountsFromResult.get(i)));
         }
-        assertThat(((Map<String, String>)result.get().toMap().get("attributes")), hasEntry(HistogramAggregateAction.HISTOGRAM_METRIC_NAME+"_key", testKey));
-        assertThat(((Map<String, String>)result.get().toMap().get("attributes")), hasEntry(dataKey, dataValue));
+        assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(HistogramAggregateAction.HISTOGRAM_METRIC_NAME+"_key", testKey));
+        assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(dataKey, dataValue));
         final String expectedDurationKey = histogramAggregateActionConfig.getDurationKey();
-        assertThat(((Map<String, String>)result.get().toMap().get("attributes")), hasKey(expectedDurationKey));
-        JacksonMetric metric = (JacksonMetric) result.get();
+        assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasKey(expectedDurationKey));
+        JacksonMetric metric = (JacksonMetric) result.get(0);
         assertThat(metric.toJsonString().indexOf("attributes"), not(-1));
-        final List<Double> explicitBoundsFromResult = (ArrayList<Double>)result.get().toMap().get("explicitBounds");
+        final List<Double> explicitBoundsFromResult = (ArrayList<Double>)result.get(0).toMap().get("explicitBounds");
         double bucketVal = TEST_VALUE_RANGE_MIN;
         for (int i = 0; i < explicitBoundsFromResult.size(); i++) {
             assertThat(explicitBoundsFromResult.get(i), equalTo(bucketVal));
             bucketVal += TEST_VALUE_RANGE_STEP;
         }
-        final List<Map<String, Object>> bucketsFromResult = (ArrayList<Map<String, Object>>)result.get().toMap().get("buckets");
+        final List<Map<String, Object>> bucketsFromResult = (ArrayList<Map<String, Object>>)result.get(0).toMap().get("buckets");
         double expectedBucketMin = -Float.MAX_VALUE;
         double expectedBucketMax = TEST_VALUE_RANGE_MIN;
         for (int i = 0; i < bucketsFromResult.size(); i++) {

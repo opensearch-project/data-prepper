@@ -10,11 +10,11 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.opensearch.dataprepper.model.record.RecordMetadata.RECORD_TYPE;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
+import static org.opensearch.dataprepper.model.record.RecordMetadata.RECORD_TYPE;
 
 public class RecordTests {
     private static final String TEST_DATA = "TEST";

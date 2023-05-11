@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -42,6 +43,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -59,6 +61,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     static final String S3_BUCKET_REFERENCE_NAME = "s3";
 
     static final String CSV_FILE_HEADER_INFO_NONE = "none";
+    static final String JSON_LINES_TYPE = "LINES";
 
     private final S3AsyncClient s3AsyncClient;
     private final Duration bufferTimeout;
@@ -76,6 +79,8 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     private final S3SelectJsonOption s3SelectJsonOption;
     private final String expressionType;
 
+    private final BucketOwnerProvider bucketOwnerProvider;
+
     public S3SelectObjectWorker(final S3ObjectRequest s3ObjectRequest) {
         this.buffer = s3ObjectRequest.getBuffer();
         this.numberOfRecordsToAccumulate = s3ObjectRequest.getNumberOfRecordsToAccumulate();
@@ -90,11 +95,13 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         this.s3SelectCSVOption = s3ObjectRequest.getS3SelectCSVOption();
         this.s3SelectJsonOption = s3ObjectRequest.getS3SelectJsonOption();
         this.expressionType = s3ObjectRequest.getExpressionType();
+        this.bucketOwnerProvider = s3ObjectRequest.getBucketOwnerProvider();
     }
 
     public void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
         try{
-            selectObjectInBatches(s3ObjectReference, acknowledgementSet);
+            LOG.info("Read S3 object: {}", s3ObjectReference);
+            selectObject(s3ObjectReference, acknowledgementSet);
         } catch (Exception e){
             LOG.error("Unable to process object reference: {}", s3ObjectReference, e);
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
@@ -102,11 +109,47 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         }
     }
 
-    private void selectObjectInBatches(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
+    private void selectObject(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
         final InputSerialization inputSerialization = getInputSerializationFormat(serializationFormatOption);
-        InputStream inputStreamList;
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
 
+        if (isScanRangeSupported()) {
+            selectObjectInBatches(s3ObjectReference, acknowledgementSet, inputSerialization, bufferAccumulator);
+        } else {
+            final SelectObjectContentRequest selectObjectContentRequest = getS3SelectObjRequest(s3ObjectReference, inputSerialization, null);
+            processSelectObjectRequest(selectObjectContentRequest, s3ObjectReference, acknowledgementSet, bufferAccumulator);
+        }
+
+        s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
+    }
+
+    private boolean isScanRangeSupported() {
+        // Supported configurations:
+        // https://docs.aws.amazon.com/AmazonS3/latest/userguide/selecting-content-from-objects.html#selecting-content-from-objects-contructing-request
+        return isScanRangeSupportedForParquetConfiguration() || isScanRangeSupportedForJsonConfiguration() || isScanRangeSupportedForCsvConfiguration();
+
+    }
+
+    private boolean isScanRangeSupportedForParquetConfiguration() {
+        return S3SelectSerializationFormatOption.PARQUET.equals(serializationFormatOption);
+    }
+
+    private boolean isScanRangeSupportedForJsonConfiguration() {
+        return S3SelectSerializationFormatOption.JSON.equals(serializationFormatOption) &&
+                Objects.nonNull(s3SelectJsonOption) &&
+                s3SelectJsonOption.getType().equalsIgnoreCase(JSON_LINES_TYPE) &&
+                CompressionType.NONE.equals(compressionType);
+    }
+
+    private boolean isScanRangeSupportedForCsvConfiguration() {
+        return S3SelectSerializationFormatOption.CSV.equals(serializationFormatOption) &&
+                Objects.nonNull(s3SelectCSVOption) &&
+                !isQuotedRecordDelimiterAllowed() &&
+                CompressionType.NONE.equals(compressionType);
+    }
+
+    private void selectObjectInBatches(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet,
+                                       final InputSerialization inputSerialization, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
         final long objectSize = getObjectSize(s3ObjectReference);
 
         long startRange = 0;
@@ -116,28 +159,13 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                     .start(startRange)
                     .end(endRange)
                     .build();
+
             final SelectObjectContentRequest selectObjectContentRequest = getS3SelectObjRequest(s3ObjectReference, inputSerialization, scanRange);
-
-            final S3SelectResponseHandler s3SelectResponseHandler = s3SelectResponseHandlerFactory.provideS3SelectResponseHandler();
-            s3AsyncClient.selectObjectContent(selectObjectContentRequest, s3SelectResponseHandler).join();
-            if (s3SelectResponseHandler.getException() != null)
-                throw new IOException(s3SelectResponseHandler.getException());
-
-            final List<SelectObjectContentEventStream> receivedEvents = s3SelectResponseHandler.getS3SelectContentEvents();
-            if (!receivedEvents.isEmpty()) {
-                inputStreamList = getInputStreamFromResponseHeader(s3SelectResponseHandler);
-                parseCompleteStreamFromResponseHeader(acknowledgementSet, s3ObjectReference, bufferAccumulator, inputStreamList);
-                s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(bufferAccumulator.getTotalWritten());
-                receivedEvents.clear();
-            } else {
-                LOG.info("S3 Select returned no events for S3 object {}", s3ObjectReference);
-            }
+            processSelectObjectRequest(selectObjectContentRequest, s3ObjectReference, acknowledgementSet, bufferAccumulator);
 
             startRange = endRange;
             endRange += Math.min(MAX_S3_OBJECT_CHUNK_SIZE, objectSize - endRange);
         }
-
-        s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
     }
 
     private Long getObjectSize(final S3ObjectReference s3ObjectReference) {
@@ -150,6 +178,24 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         return headObjectResponse.contentLength();
     }
 
+    private void processSelectObjectRequest(final SelectObjectContentRequest selectObjectContentRequest, final S3ObjectReference s3ObjectReference,
+                                            final AcknowledgementSet acknowledgementSet, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
+        final S3SelectResponseHandler s3SelectResponseHandler = s3SelectResponseHandlerFactory.provideS3SelectResponseHandler();
+        s3AsyncClient.selectObjectContent(selectObjectContentRequest, s3SelectResponseHandler).join();
+        if (s3SelectResponseHandler.getException() != null)
+            throw new IOException(s3SelectResponseHandler.getException());
+
+        final List<SelectObjectContentEventStream> receivedEvents = s3SelectResponseHandler.getS3SelectContentEvents();
+        if (!receivedEvents.isEmpty()) {
+            final InputStream inputStreamList = getInputStreamFromResponseHeader(s3SelectResponseHandler);
+            parseCompleteStreamFromResponseHeader(acknowledgementSet, s3ObjectReference, bufferAccumulator, inputStreamList);
+            s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(bufferAccumulator.getTotalWritten());
+            receivedEvents.clear();
+        } else {
+            LOG.info("S3 Select returned no events for S3 object {}", s3ObjectReference);
+        }
+    }
+
     private InputSerialization getInputSerializationFormat(final S3SelectSerializationFormatOption serializationFormatOption) {
         InputSerialization inputSerialization = null;
         switch (serializationFormatOption) {
@@ -158,9 +204,7 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                         .csv( csv -> csv.fileHeaderInfo(s3SelectCSVOption.getFileHeaderInfo())
                                 .quoteEscapeCharacter(s3SelectCSVOption.getQuiteEscape())
                                 .comments(s3SelectCSVOption.getComments())
-                                .allowQuotedRecordDelimiter(
-                                        (s3SelectCSVOption.getQuiteEscape() != null ||
-                                                s3SelectCSVOption.getComments() != null) ? true : false).build())
+                                .allowQuotedRecordDelimiter(isQuotedRecordDelimiterAllowed()).build())
                         .compressionType(compressionType).build();
                 break;
             case JSON:
@@ -175,6 +219,10 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         return inputSerialization;
     }
 
+    private boolean isQuotedRecordDelimiterAllowed() {
+        return s3SelectCSVOption.getQuiteEscape() != null || s3SelectCSVOption.getComments() != null;
+    }
+
     private InputStream getInputStreamFromResponseHeader(final S3SelectResponseHandler responseHand) {
         final List<InputStream> inputStreams = responseHand.getS3SelectContentEvents().stream()
                 .filter(e -> e.sdkEventType() == SelectObjectContentEventStream.EventType.RECORDS)
@@ -184,14 +232,19 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
     }
 
     private SelectObjectContentRequest getS3SelectObjRequest(final S3ObjectReference s3ObjectReference,
-                                                             final InputSerialization inputSerialization, final ScanRange scanRange) {
-        return SelectObjectContentRequest.builder().bucket(s3ObjectReference.getBucketName())
-                .key(s3ObjectReference.getKey()).expressionType(expressionType)
+                                                             final InputSerialization inputSerialization,
+                                                             final ScanRange scanRange) {
+        final SelectObjectContentRequest.Builder selectObjectContentRequestBuilder = SelectObjectContentRequest.builder()
+                .bucket(s3ObjectReference.getBucketName())
+                .key(s3ObjectReference.getKey())
+                .expressionType(expressionType)
                 .expression(expression)
                 .inputSerialization(inputSerialization)
                 .outputSerialization(outputSerialization -> outputSerialization.json(SdkBuilder::build))
-                .scanRange(scanRange)
-                .build();
+                .scanRange(scanRange);
+        bucketOwnerProvider.getBucketOwner(s3ObjectReference.getBucketName())
+                .ifPresent(selectObjectContentRequestBuilder::expectedBucketOwner);
+        return selectObjectContentRequestBuilder.build();
     }
 
     private void parseCompleteStreamFromResponseHeader(final AcknowledgementSet acknowledgementSet,
@@ -216,7 +269,6 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                     } catch (final Exception ex) {
                         LOG.error("Failed writing S3 objects to buffer due to: {}", ex.getMessage());
                     }
-
                 }
             }
         }

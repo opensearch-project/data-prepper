@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -33,16 +34,23 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
     private static final Logger LOG = LoggerFactory.getLogger(ListToMapProcessor.class);
     private final ListToMapProcessorConfig config;
 
+    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+
     @DataPrepperPluginConstructor
-    public ListToMapProcessor(final PluginMetrics pluginMetrics, final ListToMapProcessorConfig config) {
+    public ListToMapProcessor(final PluginMetrics pluginMetrics, final ListToMapProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
         super(pluginMetrics);
         this.config = config;
+        this.expressionEvaluator = expressionEvaluator;
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
+
+            if (Objects.nonNull(config.getListToMapWhen()) && !expressionEvaluator.evaluate(config.getListToMapWhen(), recordEvent)) {
+                continue;
+            }
 
             final JsonNode sourceNode;
             try {

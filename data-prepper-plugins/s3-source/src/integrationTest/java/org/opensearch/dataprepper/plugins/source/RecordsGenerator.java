@@ -19,4 +19,5 @@ interface RecordsGenerator {
     String getFileExtension();
 
     void assertEventIsCorrect(Event event);
+    String getS3SelectExpression();
 }

@@ -68,6 +68,14 @@ public interface Event extends Serializable {
     String toJsonString();
 
     /**
+     * Gets a serialized Json string of the specific key in the Event
+     * @param key the field to be returned
+     * @return Json string of the field
+     * @since 2.2
+     */
+    String getAsJsonString(String key);
+
+    /**
      * Retrieves the EventMetadata
      * @return EventMetadata for the event
      * @since 1.2
@@ -112,4 +120,34 @@ public interface Event extends Serializable {
      * @since 2.2
      */
     EventHandle getEventHandle();
+
+    JsonStringBuilder jsonBuilder();
+
+    public abstract class JsonStringBuilder {
+        private String tagsKey;
+
+        /**
+         * @param key key to be used for tags
+         * @return JsonStringString with tags included
+         * @since 2.3
+         */
+        public JsonStringBuilder includeTags(String key) {
+            this.tagsKey = key;
+            return this;
+        }
+
+        /**
+         * @return key used for tags
+         * @since 2.3
+         */
+        public String getTagsKey() {
+            return tagsKey;
+        }
+
+        /**
+         * @return json string
+         * @since 2.3
+         */
+        public abstract String toJsonString();
+    }
 }

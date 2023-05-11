@@ -15,7 +15,7 @@ import java.util.Collection;
 import java.util.List;
 
 public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private List<T> entries;
+    private final List<T> entries;
 
     @DataPrepperPluginConstructor
     public AbstractStringProcessor(final PluginMetrics pluginMetrics, final StringProcessorConfig<T> config) {
@@ -36,6 +36,8 @@ public abstract class AbstractStringProcessor<T> extends AbstractProcessor<Recor
     private void performStringAction(final Event recordEvent)
     {
         for(T entry : entries) {
+
+
             final String key = getKey(entry);
 
             if(recordEvent.containsKey(key)) {

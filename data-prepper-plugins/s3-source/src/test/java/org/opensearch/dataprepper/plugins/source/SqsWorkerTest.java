@@ -12,7 +12,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -34,6 +38,7 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -46,6 +51,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -53,6 +59,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -83,6 +90,7 @@ class SqsWorkerTest {
     private Timer sqsMessageDelayTimer;
     private AcknowledgementSetManager acknowledgementSetManager;
     private AcknowledgementSet acknowledgementSet;
+    private S3EventMessageParser s3EventMessageParser;
 
     @BeforeEach
     void setUp() {
@@ -96,6 +104,8 @@ class SqsWorkerTest {
 
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
+
+        s3EventMessageParser = new S3EventMessageParser();
 
         SqsOptions sqsOptions = mock(SqsOptions.class);
         when(sqsOptions.getSqsUrl()).thenReturn("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue");
@@ -117,7 +127,7 @@ class SqsWorkerTest {
         when(pluginMetrics.counter(SQS_MESSAGES_DELETE_FAILED_METRIC_NAME)).thenReturn(sqsMessagesDeleteFailedCounter);
         when(pluginMetrics.timer(SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(sqsMessageDelayTimer);
 
-        sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
+        sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, s3EventMessageParser, backoff);
     }
 
     @AfterEach
@@ -181,7 +191,7 @@ class SqsWorkerTest {
         void processSqsMessages_should_return_number_of_messages_processed_with_acknowledgements(final String eventName) throws IOException {
             when(acknowledgementSetManager.create(any(), any(Duration.class))).thenReturn(acknowledgementSet);
             when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
-            sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
+            sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, s3EventMessageParser, backoff);
             Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
             final Message message = mock(Message.class);
             when(message.body()).thenReturn(createEventNotification(eventName, startTime));
@@ -363,8 +373,10 @@ class SqsWorkerTest {
         verify(sqsMessageDelayTimer, times(6)).record(any(Duration.class));
     }
 
-    @Test
-    void processSqsMessages_should_report_correct_metrics_for_DeleteMessages_when_request_fails() throws IOException {
+    @ParameterizedTest
+    @ArgumentsSource(DeleteExceptionToBackoffCalls.class)
+    void processSqsMessages_should_report_correct_metrics_for_DeleteMessages_when_request_fails(
+            final Class<Exception> exClass, final int timesToCallBackoff) throws IOException {
         Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
         final List<Message> messages = IntStream.range(0, 6).mapToObj(i -> {
                     final Message message = mock(Message.class);
@@ -380,7 +392,7 @@ class SqsWorkerTest {
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
         when(receiveMessageResponse.messages()).thenReturn(messages);
 
-        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class))).thenThrow(SqsException.class);
+        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class))).thenThrow(exClass);
 
         final int messagesProcessed = sqsWorker.processSqsMessages();
 
@@ -399,6 +411,7 @@ class SqsWorkerTest {
         verify(sqsMessagesDeleteFailedCounter).increment(6);
 
         verify(sqsMessageDelayTimer, times(6)).record(any(Duration.class));
+        verify(backoff, times(timesToCallBackoff)).nextDelayMillis(1);
     }
 
     @Test
@@ -479,5 +492,15 @@ class SqsWorkerTest {
                 "\"x-amz-id-2\":\"abcd\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"s3SourceEventNotification\"," +
                 "\"bucket\":{\"name\":\"bucketName\",\"ownerIdentity\":{\"principalId\":\"ID\"},\"arn\":\"arn:aws:s3:::bucketName\"}," +
                 "\"object\":{\"key\":\"File.gz\",\"size\":72,\"eTag\":\"abcd\",\"sequencer\":\"ABCD\"}}}]}";
+    }
+
+    static class DeleteExceptionToBackoffCalls implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+            return Stream.of(
+                    arguments(SqsException.class, 0),
+                    arguments(StsException.class, 1)
+            );
+        }
     }
 }

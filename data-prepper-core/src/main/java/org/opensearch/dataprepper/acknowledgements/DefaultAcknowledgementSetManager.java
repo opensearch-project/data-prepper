@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -23,7 +24,8 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
     private final AcknowledgementSetMonitor acknowledgementSetMonitor;
     private final ExecutorService executor;
     private final AcknowledgementSetMonitorThread acknowledgementSetMonitorThread;
-
+    private PluginMetrics pluginMetrics;
+    private DefaultAcknowledgementSetMetrics metrics;
 
     @Inject
     public DefaultAcknowledgementSetManager(
@@ -36,11 +38,14 @@ public class DefaultAcknowledgementSetManager implements AcknowledgementSetManag
         this.executor = Objects.requireNonNull(callbackExecutor);
         acknowledgementSetMonitorThread = new AcknowledgementSetMonitorThread(acknowledgementSetMonitor, waitTime);
         acknowledgementSetMonitorThread.start();
+        pluginMetrics = PluginMetrics.fromNames("acknowledgementSetManager", "acknowledgements");
+        metrics = new DefaultAcknowledgementSetMetrics(pluginMetrics);
     }
 
     public AcknowledgementSet create(final Consumer<Boolean> callback, final Duration timeout) {
-        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(executor, callback, timeout);
+        AcknowledgementSet acknowledgementSet = new DefaultAcknowledgementSet(executor, callback, timeout, metrics);
         acknowledgementSetMonitor.add(acknowledgementSet);
+        metrics.increment(DefaultAcknowledgementSetMetrics.CREATED_METRIC_NAME);
         return acknowledgementSet;
     }
 

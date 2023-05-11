@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.parsejson;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -36,14 +37,21 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
     private final String source;
     private final String destination;
     private final String pointer;
+    private final String parseWhen;
+
+    private final ExpressionEvaluator<Boolean> expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public ParseJsonProcessor(final PluginMetrics pluginMetrics, final ParseJsonProcessorConfig parseJsonProcessorConfig) {
+    public ParseJsonProcessor(final PluginMetrics pluginMetrics,
+                              final ParseJsonProcessorConfig parseJsonProcessorConfig,
+                              final ExpressionEvaluator<Boolean> expressionEvaluator) {
         super(pluginMetrics);
 
         source = parseJsonProcessorConfig.getSource();
         destination = parseJsonProcessorConfig.getDestination();
         pointer = parseJsonProcessorConfig.getPointer();
+        parseWhen = parseJsonProcessorConfig.getParseWhen();
+        this.expressionEvaluator = expressionEvaluator;
     }
 
     @Override
@@ -54,7 +62,16 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
 
         for (final Record<Event> record : records) {
             final Event event = record.getData();
+
+            if (Objects.nonNull(parseWhen) && !expressionEvaluator.evaluate(parseWhen, event)) {
+                continue;
+            }
+
             final String message = event.get(source, String.class);
+            if (Objects.isNull(message)) {
+                continue;
+            }
+
             try {
                 final TypeReference<HashMap<String, Object>> hashMapTypeReference = new TypeReference<HashMap<String, Object>>() {};
                 Map<String, Object> parsedJson = objectMapper.readValue(message, hashMapTypeReference);

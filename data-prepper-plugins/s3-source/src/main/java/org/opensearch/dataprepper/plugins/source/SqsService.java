@@ -14,10 +14,12 @@ import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
+import java.time.Duration;
+
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
-    static final int INITIAL_DELAY = 1000;
-    static final int MAXIMUM_DELAY = 5 * 60 * 1000;
+    static final long INITIAL_DELAY = Duration.ofSeconds(20).toMillis();
+    static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
     static final double JITTER_RATE = 0.20;
 
     private final S3SourceConfig s3SourceConfig;
@@ -25,6 +27,7 @@ public class SqsService {
     private final SqsClient sqsClient;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final S3EventMessageParser s3EventMessageParser;
 
     private Thread sqsWorkerThread;
 
@@ -37,12 +40,13 @@ public class SqsService {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sqsClient = createSqsClient();
+        s3EventMessageParser = new S3EventMessageParser();
     }
 
     public void start() {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-        sqsWorkerThread = new Thread(new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
+        sqsWorkerThread = new Thread(new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, s3EventMessageParser, backoff));
         sqsWorkerThread.start();
     }
 

@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.model.trace;
 
-import org.opensearch.dataprepper.model.event.TestObject;
 import com.google.common.collect.ImmutableMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.event.TestObject;
 
 import java.util.HashMap;
 import java.util.Map;
