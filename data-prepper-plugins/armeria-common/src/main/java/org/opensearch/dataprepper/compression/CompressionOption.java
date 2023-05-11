@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public enum CompressionOption {
@@ -24,6 +25,7 @@ public enum CompressionOption {
 
     @JsonCreator
     static CompressionOption fromOptionValue(final String option) {
-        return OPTIONS_MAP.get(option.toLowerCase());
+        return Optional.ofNullable(OPTIONS_MAP.get(option.toLowerCase())).orElseThrow(
+                () -> new IllegalArgumentException("Unrecognized compression: " + option));
     }
 }
