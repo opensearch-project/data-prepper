@@ -12,7 +12,6 @@ import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
-import software.amazon.awssdk.core.retry.conditions.RetryCondition;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -49,7 +48,7 @@ public class DynamoDbClientFactory {
 
         final RetryPolicy retryPolicy = RetryPolicy.builder()
                 .numRetries(DYNAMO_CLIENT_RETRIES)
-                .retryCondition(RetryCondition.defaultRetryCondition())
+                .retryCondition(new DdbClientCustomRetryCondition())
                 .backoffStrategy(backoffStrategy)
                 .throttlingBackoffStrategy(backoffStrategy)
                 .build();

@@ -24,7 +24,6 @@ import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedExce
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
-import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.waiters.DynamoDbWaiter;
 
@@ -51,9 +50,8 @@ public class DynamoDbClientWrapper {
         return new DynamoDbClientWrapper(region, stsRoleArn);
     }
 
-    public boolean tryCreateTable(final String tableName,
+    public void tryCreateTable(final String tableName,
                                   final ProvisionedThroughput provisionedThroughput) {
-        boolean createdTable = false;
 
         this.table = dynamoDbEnhancedClient.table(tableName, TableSchema.fromBean(DynamoDbSourcePartitionItem.class));
 
@@ -62,7 +60,6 @@ public class DynamoDbClientWrapper {
                             .provisionedThroughput(provisionedThroughput)
                             .build();
             table.createTable(createTableEnhancedRequest);
-            createdTable = true;
         } catch (final ResourceInUseException e) {
             LOG.info("The table creation for {} was already triggered by another instance of data prepper", tableName);
         }
@@ -79,11 +76,10 @@ public class DynamoDbClientWrapper {
 
             LOG.info("DynamoDB table {} was created successfully for source coordination", describeTableResponse.table().tableName());
         }
-
-        return createdTable;
     }
 
     public boolean tryCreatePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
+
         try {
             table.putItem(PutItemEnhancedRequest.builder(DynamoDbSourcePartitionItem.class)
                     .item(dynamoDbSourcePartitionItem)
@@ -94,16 +90,31 @@ public class DynamoDbClientWrapper {
             return true;
         } catch (final ConditionalCheckFailedException e) {
             return false;
-        } catch (final ProvisionedThroughputExceededException e) {
-            LOG.error("Unable to create partition item for {} in DynamoDb due to throttling even after exponential backoff and retry {}", dynamoDbSourcePartitionItem.getSourcePartitionKey(), e.getMessage());
-            return false;
         } catch (final Exception e) {
             LOG.error("An exception occurred while attempting to create a DynamoDb partition item {}", dynamoDbSourcePartitionItem.getSourcePartitionKey());
             return false;
         }
     }
 
+    public boolean tryAcquirePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
+        try {
+            tryUpdateItem(dynamoDbSourcePartitionItem);
+            return true;
+        } catch (final Exception e) {
+            return false;
+        }
+    }
+
     public void tryUpdatePartitionItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
+        try {
+            tryUpdateItem(dynamoDbSourcePartitionItem);
+        } catch (final PartitionUpdateException e) {
+            LOG.warn(e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    private void tryUpdateItem(final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem) {
         try {
             dynamoDbSourcePartitionItem.setVersion(dynamoDbSourcePartitionItem.getVersion() + 1L);
             table.putItem(PutItemEnhancedRequest.builder(DynamoDbSourcePartitionItem.class)
@@ -118,13 +129,7 @@ public class DynamoDbClientWrapper {
                     "ConditionalCheckFailed while updating partition %s. This partition item was either deleted from the dynamo table, " +
                             "or another instance of Data Prepper has modified it.",
                     dynamoDbSourcePartitionItem.getSourcePartitionKey());
-            LOG.warn(message, e);
             throw new PartitionUpdateException(message, e);
-        } catch (final ProvisionedThroughputExceededException e) {
-            final String errorMessage = String.format("Unable to update partition item for %s in DynamoDb due to throttling even after exponential backoff and retry",
-                    dynamoDbSourcePartitionItem.getSourcePartitionKey());
-            LOG.error(errorMessage, e);
-            throw new PartitionUpdateException(errorMessage, e);
         } catch (final Exception e) {
             final String errorMessage = String.format("An exception occurred while attempting to update a DynamoDb partition item %s",
                     dynamoDbSourcePartitionItem.getSourcePartitionKey());
@@ -145,11 +150,8 @@ public class DynamoDbClientWrapper {
                 return Optional.empty();
             }
             return Optional.of(result);
-        } catch (final ProvisionedThroughputExceededException e) {
-            LOG.error("Unable to update partition item for {} in DynamoDb due to throttling even after exponential backoff and retry {}", sourcePartitionKey, e.getMessage());
-            return Optional.empty();
         } catch (final Exception e) {
-            LOG.error("An exception occurred while attempting to update a DynamoDb partition item {}", sourcePartitionKey, e);
+            LOG.error("An exception occurred while attempting to get a DynamoDb partition item for {}", sourcePartitionKey, e);
             return Optional.empty();
         }
     }
@@ -162,8 +164,6 @@ public class DynamoDbClientWrapper {
 
         try {
             return Optional.of(table.scan(scanRequest));
-        } catch (final ProvisionedThroughputExceededException e) {
-            LOG.error("Unable to get source partition items to acquire in DynamoDb due to throttling even after exponential backoff and retry: {}", e.getMessage());
         } catch (final Exception e) {
             LOG.error("An exception occurred while attempting to get source partition items to acquire in DynamoDb", e);
         }

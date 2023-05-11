@@ -34,14 +34,15 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbSourceCoordinationStore.AVAILABLE_PARTITIONS_FILTER_EXPRESSION;
@@ -61,18 +62,28 @@ public class DynamoDbSourceCoordinationStoreTest {
     @BeforeEach
     void setup() {
         given(dynamoStoreSettings.getRegion()).willReturn(UUID.randomUUID().toString());
-        given(dynamoStoreSettings.getTableName()).willReturn(UUID.randomUUID().toString());
-        given(dynamoStoreSettings.getProvisionedReadCapacityUnits()).willReturn((long) new Random().nextInt(10));
-        given(dynamoStoreSettings.getProvisionedWriteCapacityUnits()).willReturn((long) new Random().nextInt(10));
+        given(dynamoStoreSettings.getStsRoleArn()).willReturn(UUID.randomUUID().toString());
     }
 
     private DynamoDbSourceCoordinationStore createObjectUnderTest() {
         try (final MockedStatic<DynamoDbClientWrapper> dynamoDbClientWrapperMockedStatic = mockStatic(DynamoDbClientWrapper.class)) {
             dynamoDbClientWrapperMockedStatic.when(() -> DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(), dynamoStoreSettings.getStsRoleArn()))
                             .thenReturn(dynamoDbClientWrapper);
-            given(dynamoDbClientWrapper.tryCreateTable(eq(dynamoStoreSettings.getTableName()), any(ProvisionedThroughput.class))).willReturn(true);
             return new DynamoDbSourceCoordinationStore(dynamoStoreSettings, pluginMetrics);
         }
+    }
+
+    @Test
+    void initializeStore_calls_tryCreateTable() {
+        given(dynamoStoreSettings.getTableName()).willReturn(UUID.randomUUID().toString());
+        given(dynamoStoreSettings.getProvisionedReadCapacityUnits()).willReturn((long) new Random().nextInt(10));
+        given(dynamoStoreSettings.getProvisionedWriteCapacityUnits()).willReturn((long) new Random().nextInt(10));
+
+        final DynamoDbSourceCoordinationStore objectUnderTest = createObjectUnderTest();
+
+        objectUnderTest.initializeStore();
+
+        verify(dynamoDbClientWrapper).tryCreateTable(eq(dynamoStoreSettings.getTableName()), any(ProvisionedThroughput.class));
     }
 
     @Test
@@ -90,43 +101,25 @@ public class DynamoDbSourceCoordinationStoreTest {
     }
 
     @Test
-    void tryCreatePartitionItem_creates_item_when_it_does_not_exist() {
+    void tryCreatePartitionItem_calls_dynamoDbClientWrapper_correctly() {
         final String partitionKey = UUID.randomUUID().toString();
         final SourcePartitionStatus sourcePartitionStatus = SourcePartitionStatus.UNASSIGNED;
         final Long closedCount = 0L;
         final String partitionProgressState = UUID.randomUUID().toString();
 
-        given(dynamoDbClientWrapper.getSourcePartitionItem(partitionKey)).willReturn(Optional.empty());
-
-        final ArgumentCaptor<DynamoDbSourcePartitionItem> itemArgumentCaptor = ArgumentCaptor.forClass(DynamoDbSourcePartitionItem.class);
-
-        given(dynamoDbClientWrapper.tryCreatePartitionItem(itemArgumentCaptor.capture())).willReturn(true);
+        final ArgumentCaptor<DynamoDbSourcePartitionItem> argumentCaptor = ArgumentCaptor.forClass(DynamoDbSourcePartitionItem.class);
+        given(dynamoDbClientWrapper.tryCreatePartitionItem(argumentCaptor.capture())).willReturn(true);
 
         final boolean result = createObjectUnderTest().tryCreatePartitionItem(partitionKey, sourcePartitionStatus, closedCount, partitionProgressState);
 
         assertThat(result, equalTo(true));
 
-        final DynamoDbSourcePartitionItem newItem = itemArgumentCaptor.getValue();
-        assertThat(newItem.getSourcePartitionKey(), equalTo(partitionKey));
-        assertThat(newItem.getPartitionProgressState(), equalTo(partitionProgressState));
-        assertThat(newItem.getClosedCount(), equalTo(closedCount));
-        assertThat(newItem.getSourcePartitionStatus(), equalTo(sourcePartitionStatus));
-        assertThat(newItem.getPartitionOwner(), equalTo(null));
-    }
-
-    @Test
-    void tryCreatePartitionItem_does_not_create_item_when_it_exists() {
-        final String partitionKey = UUID.randomUUID().toString();
-        final SourcePartitionStatus sourcePartitionStatus = SourcePartitionStatus.UNASSIGNED;
-        final Long closedCount = 0L;
-        final String partitionProgressState = UUID.randomUUID().toString();
-
-        given(dynamoDbClientWrapper.getSourcePartitionItem(partitionKey)).willReturn(Optional.of(mock(SourcePartitionStoreItem.class)));
-
-        final boolean result = createObjectUnderTest().tryCreatePartitionItem(partitionKey, sourcePartitionStatus, closedCount, partitionProgressState);
-
-        assertThat(result, equalTo(false));
-        verify(dynamoDbClientWrapper, never()).tryCreatePartitionItem(any(DynamoDbSourcePartitionItem.class));
+        final DynamoDbSourcePartitionItem createdItem = argumentCaptor.getValue();
+        assertThat(createdItem, notNullValue());
+        assertThat(createdItem.getSourcePartitionKey(), equalTo(partitionKey));
+        assertThat(createdItem.getSourcePartitionStatus(), equalTo(SourcePartitionStatus.UNASSIGNED));
+        assertThat(createdItem.getClosedCount(), equalTo(closedCount));
+        assertThat(createdItem.getPartitionProgressState(), equalTo(partitionProgressState));
     }
 
     @Test
@@ -153,7 +146,7 @@ public class DynamoDbSourceCoordinationStoreTest {
 
         final Expression expression = expressionArgumentCaptor.getValue();
         assertThat(expression.expression(), equalTo(AVAILABLE_PARTITIONS_FILTER_EXPRESSION));
-        assertThat(expression.expressionValues().size(), equalTo(4));
+        assertThat(expression.expressionValues().size(), equalTo(6));
         assertThat(expression.expressionValues().containsKey(":unassigned"), equalTo(true));
         assertThat(expression.expressionValues().containsKey(":closed"), equalTo(true));
         assertThat(expression.expressionValues().containsKey(":assigned"), equalTo(true));
@@ -175,8 +168,8 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(pageIterable.items()).willReturn(itemList::iterator);
         given(dynamoDbClientWrapper.getSourcePartitionItems(any(Expression.class))).willReturn(Optional.of(pageIterable));
 
-        doThrow(RuntimeException.class).when(dynamoDbClientWrapper).tryUpdatePartitionItem(itemList.get(0));
-        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem(itemList.get(1));
+        doReturn(false).when(dynamoDbClientWrapper).tryAcquirePartitionItem(itemList.get(0));
+        doReturn(true).when(dynamoDbClientWrapper).tryAcquirePartitionItem(itemList.get(1));
 
         final ArgumentCaptor<Instant> argumentCaptor = ArgumentCaptor.forClass(Instant.class);
         doNothing().when(itemList.get(0)).setPartitionOwnershipTimeout(argumentCaptor.capture());
@@ -210,9 +203,7 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(pageIterable.items()).willReturn(itemList::iterator);
         given(dynamoDbClientWrapper.getSourcePartitionItems(any(Expression.class))).willReturn(Optional.of(pageIterable));
 
-        doThrow(exception).when(dynamoDbClientWrapper).tryUpdatePartitionItem(itemList.get(0));
-        doThrow(exception).when(dynamoDbClientWrapper).tryUpdatePartitionItem(itemList.get(1));
-        doThrow(exception).when(dynamoDbClientWrapper).tryUpdatePartitionItem(itemList.get(2));
+        doThrow(exception).when(dynamoDbClientWrapper).tryAcquirePartitionItem(itemList.get(0));
 
         final ArgumentCaptor<Instant> argumentCaptor = ArgumentCaptor.forClass(Instant.class);
         doNothing().when(itemList.get(0)).setPartitionOwnershipTimeout(argumentCaptor.capture());

@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.UninitializedSourceCoordinatorException;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 
 import java.net.InetAddress;
@@ -74,7 +75,27 @@ public class LeaseBasedSourceCoordinatorTest {
     }
 
     private SourceCoordinator<String> createObjectUnderTest() {
-        return new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        doNothing().when(sourceCoordinationStore).initializeStore();
+        objectUnderTest.initialize();
+        return objectUnderTest;
+    }
+
+    @Test
+    void initialize_calls_initializeStore() {
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        objectUnderTest.initialize();
+
+        verify(sourceCoordinationStore).initializeStore();
+    }
+
+    @Test
+    void getNextPartition_throws_UninitializedSourceCoordinatorException_when_called_before_initialize() {
+        final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
+        final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
+
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        assertThrows(UninitializedSourceCoordinatorException.class, () -> objectUnderTest.getNextPartition(partitionCreationSupplier));
     }
 
     @Test
@@ -135,7 +156,7 @@ public class LeaseBasedSourceCoordinatorTest {
         assertThat(result.get().getPartitionKey(), equalTo(sourcePartition.getPartitionKey()));
         assertThat(result.get().getPartitionState(), equalTo(null));
 
-        verifyNoInteractions(sourceCoordinationStore);
+        verifyNoMoreInteractions(sourceCoordinationStore);
     }
 
     @Test

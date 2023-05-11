@@ -18,6 +18,8 @@ import java.util.Optional;
  */
 public interface SourceCoordinationStore {
 
+    void initializeStore();
+
     Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String partitionKey);
 
     boolean tryCreatePartitionItem(final String partitionKey,

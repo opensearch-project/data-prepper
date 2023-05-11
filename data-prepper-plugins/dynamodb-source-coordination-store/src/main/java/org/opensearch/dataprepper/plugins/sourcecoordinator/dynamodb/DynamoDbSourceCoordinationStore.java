@@ -17,7 +17,6 @@ import software.amazon.awssdk.enhanced.dynamodb.Expression;
 import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
-import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -42,8 +41,8 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
      * 3. The partition status is ASSIGNED and the partitionOwnershipTimeout has passed
      */
     static final String AVAILABLE_PARTITIONS_FILTER_EXPRESSION = "contains(sourcePartitionStatus, :unassigned) " +
-            "or ((contains(sourcePartitionStatus, :closed) and attribute_not_exists(reOpenAt) or reOpenAt = :null or reOpenAt <= :ro)) " +
-            "or ((contains(sourcePartitionStatus, :assigned) and attribute_not_exists(partitionOwnershipTimeout) or partitionOwnershipTimeout = :null or partitionOwnershipTimeout <= :t)";
+            "or (contains(sourcePartitionStatus, :closed) and (attribute_not_exists(reOpenAt) or reOpenAt = :null or reOpenAt <= :ro)) " +
+            "or (contains(sourcePartitionStatus, :assigned) and (attribute_not_exists(partitionOwnershipTimeout) or partitionOwnershipTimeout = :null or partitionOwnershipTimeout <= :t))";
 
     private final DynamoStoreSettings dynamoStoreSettings;
     private final PluginMetrics pluginMetrics;
@@ -54,6 +53,10 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
         this.dynamoStoreSettings = dynamoStoreSettings;
         this.pluginMetrics = pluginMetrics;
         this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(), dynamoStoreSettings.getStsRoleArn());
+    }
+
+    @Override
+    public void initializeStore() {
         dynamoDbClientWrapper.tryCreateTable(dynamoStoreSettings.getTableName(), constructProvisionedThroughput(
                 dynamoStoreSettings.getProvisionedReadCapacityUnits(), dynamoStoreSettings.getProvisionedWriteCapacityUnits()));
     }
@@ -75,12 +78,7 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
         newPartitionItem.setPartitionProgressState(partitionProgressState);
         newPartitionItem.setVersion(0L);
 
-        final Optional<SourcePartitionStoreItem> optionalPartitionItem = dynamoDbClientWrapper.getSourcePartitionItem(partitionKey);
-        if (optionalPartitionItem.isEmpty()) {
-             return dynamoDbClientWrapper.tryCreatePartitionItem(newPartitionItem);
-        }
-
-        return false;
+        return dynamoDbClientWrapper.tryCreatePartitionItem(newPartitionItem);
     }
 
     @Override
@@ -106,16 +104,14 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
                 item.setPartitionOwner(ownerId);
                 item.setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeout));
                 item.setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
-                final boolean acquired = tryAcquireItem(item);
+                final boolean acquired = dynamoDbClientWrapper.tryAcquirePartitionItem(item);
 
                 if (acquired) {
                     return Optional.of(item);
                 }
             }
-        } catch (final ProvisionedThroughputExceededException e) {
-            LOG.error("Throttling occurred from DynamoDb during a scan to acquire a partition item: {}", e.getMessage());
         } catch (final Exception e) {
-            LOG.error("An exception occurred while attempting to scan partition items to acquire in DynamoDb", e);
+            LOG.error("An exception occurred while iterating on items to acquire in DynamoDb", e);
         }
 
         return Optional.empty();
@@ -133,14 +129,5 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
                 .readCapacityUnits(readCapacityUnits)
                 .writeCapacityUnits(writeCapacityUnits)
                 .build();
-    }
-
-    private boolean tryAcquireItem(final DynamoDbSourcePartitionItem item) {
-        try {
-            dynamoDbClientWrapper.tryUpdatePartitionItem(item);
-            return true;
-        } catch (final Exception e) {
-            return false;
-        }
     }
 }

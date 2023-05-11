@@ -31,7 +31,6 @@ import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedExce
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
-import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.TableDescription;
 import software.amazon.awssdk.services.dynamodb.waiters.DynamoDbWaiter;
@@ -106,9 +105,7 @@ public class DynamoDbClientWrapperTest {
             given(describeTableResponse.table()).willReturn(tableDescription);
             given(tableDescription.tableName()).willReturn(tableName);
 
-            final boolean createdTable = objectUnderTest.tryCreateTable(tableName, provisionedThroughput);
-
-            assertThat(createdTable, equalTo(true));
+            objectUnderTest.tryCreateTable(tableName, provisionedThroughput);
         }
     }
 
@@ -138,9 +135,7 @@ public class DynamoDbClientWrapperTest {
             given(describeTableResponse.table()).willReturn(tableDescription);
             given(tableDescription.tableName()).willReturn(tableName);
 
-            final boolean createdTable = objectUnderTest.tryCreateTable(tableName, provisionedThroughput);
-
-            assertThat(createdTable, equalTo(false));
+            objectUnderTest.tryCreateTable(tableName, provisionedThroughput);
         }
     }
 
@@ -236,6 +231,24 @@ public class DynamoDbClientWrapperTest {
         assertThat(putItemEnhancedRequest.conditionExpression().expressionValues().get(":v"), notNullValue());
         assertThat(putItemEnhancedRequest.conditionExpression().expressionValues().get(":v").n(), equalTo(version.toString()));
 
+    }
+
+    @ParameterizedTest
+    @MethodSource("exceptionProvider")
+    void tryAcquirePartitionItem_catches_exception_from_putItem_and_returns_false(final Class exception) throws NoSuchFieldException, IllegalAccessException {
+        final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = mock(DynamoDbSourcePartitionItem.class);
+        final Long version = (long) new Random().nextInt(10);
+        given(dynamoDbSourcePartitionItem.getVersion()).willReturn(version).willReturn(version + 1L);
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        doThrow(exception).when(table).putItem(any(PutItemEnhancedRequest.class));
+
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+
+        reflectivelySetField(objectUnderTest, "table", table);
+
+        final boolean result = objectUnderTest.tryAcquirePartitionItem(dynamoDbSourcePartitionItem);
+        verify(dynamoDbSourcePartitionItem).setVersion(version + 1L);
     }
 
     @ParameterizedTest
@@ -366,7 +379,7 @@ public class DynamoDbClientWrapperTest {
     }
 
     static Stream<Class> exceptionProvider() {
-        return Stream.of(ConditionalCheckFailedException.class, ProvisionedThroughputExceededException.class, RuntimeException.class);
+        return Stream.of(ConditionalCheckFailedException.class, RuntimeException.class, PartitionUpdateException.class);
     }
 
     private void reflectivelySetField(final DynamoDbClientWrapper dynamoDbClientWrapper, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {
