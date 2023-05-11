@@ -2,16 +2,16 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.source;
+package org.opensearch.dataprepper.plugins.source.opensearch;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.opensearch.dataprepper.plugins.source.configuration.ConnectionConfiguration;
-import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthenticationConfiguration;
-import org.opensearch.dataprepper.plugins.source.configuration.IndexParametersConfiguration;
-import org.opensearch.dataprepper.plugins.source.configuration.QueryParameterConfiguration;
-import org.opensearch.dataprepper.plugins.source.configuration.SchedulingParameterConfiguration;
-import org.opensearch.dataprepper.plugins.source.configuration.RetryConfiguration;
-import org.opensearch.dataprepper.plugins.source.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.QueryParameterConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.RetryConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
 
 
 import java.util.Map;
@@ -69,4 +69,7 @@ public class OpenSearchSourceConfiguration {
         return indexNames;
     }
 
+    public RetryConfiguration getRetryConfiguration() {
+        return retryConfiguration;
+    }
 }

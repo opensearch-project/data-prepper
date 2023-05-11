@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.configuration;
+package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.List;
 
 public class SearchConfiguration {
 
@@ -13,20 +15,20 @@ public class SearchConfiguration {
     private Integer batchSize;
 
     @JsonProperty("expand_wildcards")
-    private String expandWildcards;
+    private WildCardOptions expandWildcards = WildCardOptions.ALL;
 
     @JsonProperty("sorting")
-    private SortingConfiguration sorting;
+    private List<SortingConfiguration> sorting;
 
     public Integer getBatchSize() {
         return batchSize;
     }
 
-    public String getExpandWildcards() {
+    public WildCardOptions getExpandWildcards() {
         return expandWildcards;
     }
 
-    public SortingConfiguration getSorting() {
+    public List<SortingConfiguration> getSorting() {
         return sorting;
     }
 }

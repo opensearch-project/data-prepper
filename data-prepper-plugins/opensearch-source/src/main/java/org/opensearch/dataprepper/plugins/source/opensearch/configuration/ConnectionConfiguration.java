@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.source.configuration;
+package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
@@ -33,27 +33,27 @@ public class ConnectionConfiguration {
   @JsonProperty("insecure")
   private boolean insecure;
 
-  List<String> getHosts() {
+  public List<String> getHosts() {
     return hosts;
   }
 
-  String getUsername() {
+  public String getUsername() {
     return username;
   }
 
-  String getPassword() {
+  public String getPassword() {
     return password;
   }
 
-  Path getCertPath() {
+  public Path getCertPath() {
     return certPath;
   }
 
-  Integer getSocketTimeout() {
+  public Integer getSocketTimeout() {
     return socketTimeout;
   }
 
-  Integer getConnectTimeout() {
+  public Integer getConnectTimeout() {
     return connectTimeout;
   }
 
