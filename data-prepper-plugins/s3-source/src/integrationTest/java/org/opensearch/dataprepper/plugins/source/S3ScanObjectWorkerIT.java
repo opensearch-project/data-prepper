@@ -148,7 +148,7 @@ public class S3ScanObjectWorkerIT {
                 .compressionType(shouldCompress ? CompressionType.GZIP : CompressionType.NONE)
                 .s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).build();
         return new ScanObjectWorker(s3Client,List.of(scanOptions),createObjectUnderTest(s3ObjectRequest)
-        ,bucketOwnerProvider);
+        ,bucketOwnerProvider,null);
     }
 
     @ParameterizedTest
@@ -199,7 +199,7 @@ public class S3ScanObjectWorkerIT {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(S3ScanObjectWorkerIT.IntegrationTestArguments.class)
+    @ArgumentsSource(IntegrationTestArguments.class)
     void parseS3Object_correctly_with_bucket_scan_and_loads_data_into_Buffer(
             final RecordsGenerator recordsGenerator,
             final int numberOfRecords,

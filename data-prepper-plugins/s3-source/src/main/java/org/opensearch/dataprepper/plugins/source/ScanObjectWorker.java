@@ -5,6 +5,9 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
@@ -13,10 +16,11 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
-import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -26,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -46,14 +51,18 @@ public class ScanObjectWorker implements Runnable{
 
     private final BucketOwnerProvider bucketOwnerProvider;
 
+    private final SourceCoordinator sourceCoordinator;
+
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
                             final S3ObjectHandler s3ObjectHandler,
-                            final BucketOwnerProvider bucketOwnerProvider){
+                            final BucketOwnerProvider bucketOwnerProvider,
+                            final SourceCoordinator sourceCoordinator){
         this.s3Client = s3Client;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
         this.s3ObjectHandler= s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
+        this.sourceCoordinator = sourceCoordinator;
     }
 
     /**
@@ -113,8 +122,9 @@ public class ScanObjectWorker implements Runnable{
         if(isKeyMatchedBetweenTimeRange && (isKeyNotProcessedByS3Scan(s3ObjDetails))){
             updateKeyProcessedByS3Scan(s3ObjDetails);
             try{
-                s3ObjectHandler.parseS3Object(s3ObjectReference,null);
-            }catch (IOException ex){
+                //s3ObjectHandler.parseS3Object(s3ObjectReference,null);
+                processPartitions(s3ObjectReference);
+            }catch (Exception ex){
                 deleteKeyProcessedByS3Scan(s3ObjDetails);
                 LOG.error("Error while process the parseS3Object. ",ex);
             }
@@ -158,6 +168,26 @@ public class ScanObjectWorker implements Runnable{
                                                 final LocalDateTime startDateTime,
                                                 final LocalDateTime endDateTime){
         return lastModifiedTime.isAfter(startDateTime) && lastModifiedTime.isBefore(endDateTime);
+    }
+
+    private void processPartitions(final S3ObjectReference s3ObjectReference) {
+        final Optional<SourcePartition<String>> activePartition = sourceCoordinator.getNextPartition(
+                () -> getS3Objects(s3ObjectReference.getBucketName()));
+        activePartition.ifPresent(sourcePartition -> {
+            try {
+                s3ObjectHandler.parseS3Object(s3ObjectReference,null);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            sourceCoordinator.completePartition(sourcePartition.getPartitionKey());
+        });
+    }
+
+    private List<PartitionIdentifier> getS3Objects(final String bucketName) {
+        final ListObjectsResponse response = s3Client.listObjects(ListObjectsRequest.builder()
+                .bucket(bucketName)
+                .build());
+        return response.contents().stream().map(s3Object -> PartitionIdentifier.builder().withPartitionKey(s3Object.key()).build()).collect(Collectors.toList());
     }
 
 }

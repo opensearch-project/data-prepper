@@ -82,7 +82,7 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
         given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
         given(sourceCoordinationStore.tryCreatePartitionItem(partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(true);
 
@@ -96,7 +96,7 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
         given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(partitionCreationSupplier);
@@ -111,7 +111,7 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
         given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
         given(sourceCoordinationStore.tryCreatePartitionItem(partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(false);
 
@@ -141,7 +141,7 @@ public class LeaseBasedSourceCoordinatorTest {
     @Test
     void getNextPartition_with_no_active_partition_and_unsuccessful_tryAcquireAvailablePartition_returns_empty_Optional() {
         given(partitionManager.getActivePartition()).willReturn(Optional.empty());
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.empty()).willReturn(Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn(Optional.empty());
 
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(Collections::emptyList);
@@ -154,7 +154,7 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.empty());
         given(sourcePartitionStoreItem.getSourcePartitionKey()).willReturn(UUID.randomUUID().toString());
         given(sourcePartitionStoreItem.getPartitionProgressState()).willReturn(UUID.randomUUID().toString());
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(Collections::emptyList);
 

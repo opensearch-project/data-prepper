@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.source;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -24,7 +25,7 @@ public interface SourceCoordinationStore {
                                    final Long closedCount,
                                    final String partitionProgressState);
 
-    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition();
+    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String ownerId, final Duration ownershipTimeout);
 
     /**
      * This method attempts to update the partition item to the desired state

@@ -164,7 +164,7 @@ class S3ScanObjectWorkerTest {
             s3ObjectHandler = new S3SelectObjectWorker(s3ObjectRequest);
         }
 
-        return new ScanObjectWorker(s3Client, Arrays.asList(scanOptions), s3ObjectHandler,bucketOwnerProvider);
+        return new ScanObjectWorker(s3Client, Arrays.asList(scanOptions), s3ObjectHandler,bucketOwnerProvider,null);
     }
 
     @Test
