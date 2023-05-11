@@ -47,6 +47,7 @@ class SqsWorkerIT {
     private PluginMetrics pluginMetrics;
     private S3ObjectGenerator s3ObjectGenerator;
     private String bucket;
+    private S3EventMessageParser s3EventMessageParser;
     private Backoff backoff;
     private AcknowledgementSetManager acknowledgementSetManager;
 
@@ -58,6 +59,7 @@ class SqsWorkerIT {
                 .build();
         bucket = System.getProperty("tests.s3source.bucket");
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
+        s3EventMessageParser = new S3EventMessageParser();
 
         sqsClient = SqsClient.builder()
                 .region(Region.of(System.getProperty("tests.s3source.region")))
@@ -88,7 +90,7 @@ class SqsWorkerIT {
     }
 
     private SqsWorker createObjectUnderTest() {
-        return new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
+        return new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, s3EventMessageParser, backoff);
     }
 
     @AfterEach

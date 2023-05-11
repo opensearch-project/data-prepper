@@ -5,22 +5,19 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import java.util.List;
-
-import org.joda.time.DateTime;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import org.joda.time.DateTime;
 import software.amazon.awssdk.utils.http.SdkHttpUtils;
+
+import java.util.List;
 
 /**
  * A helper class that represents a strongly typed S3 EventNotification item sent
  * to SQS, SNS, or Lambda.
- *
+ * <p>
  * This class is derived from <code>S3EventNotification</code> in the AWS SDKv1 for Java.
  */
 public class S3EventNotification {
@@ -32,30 +29,6 @@ public class S3EventNotification {
       @JsonProperty(value = "Records") List<S3EventNotificationRecord> records)
   {
     this.records = records;
-  }
-
-  /**
-   * <p>
-   * Parse the JSON string into a S3EventNotification object.
-   * </p>
-   * <p>
-   * The function will try its best to parse input JSON string as best as it can.
-   * It will not fail even if the JSON string contains unknown properties.
-   * The function will throw SdkClientException if the input JSON string is
-   * not valid JSON.
-   * </p>
-   * @param json
-   *         JSON string to parse. Typically this is the body of your SQS
-   *         notification message body.
-   *
-   * @return The resulting S3EventNotification object.
-   */
-  public static S3EventNotification parseJson(String json) throws JsonProcessingException {
-    if (json == null) {
-      return null;
-    }
-    final ObjectMapper objectMapper = new ObjectMapper();
-    return objectMapper.readValue(json, S3EventNotification.class);
   }
 
   /**
