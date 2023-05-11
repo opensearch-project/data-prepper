@@ -6,8 +6,8 @@
 package org.opensearch.dataprepper.expression;
 
 import org.opensearch.dataprepper.model.event.Event;
+import java.util.stream.Collectors;
 import java.util.List;
-import java.util.Set;
 import javax.inject.Named;
 import java.util.function.Function;
 
@@ -21,16 +21,13 @@ public class HasTagsExpressionFunction implements ExpressionFunction {
         if (args.size() == 0) {
             throw new RuntimeException("hasTags() takes at least one argument");
         }
-        Set<String> tags = event.getMetadata().getTags();
-        for (final Object arg: args) {
-            if (!(arg instanceof String)) {
-                throw new RuntimeException("hasTags() takes only String type arguments");
-            }
-            if (!tags.contains((String)arg)) {
-                return Boolean.FALSE;
-            }
+        if(!args.stream().allMatch(a -> a instanceof String)) {
+            throw new RuntimeException("hasTags() takes only String type arguments");
         }
-        return Boolean.TRUE;
+        final List<String> tags = args.stream()
+                                    .map(a -> (String) a)
+                                    .collect(Collectors.toList());
+        return event.getMetadata().hasTags(tags);
     }
 }
 

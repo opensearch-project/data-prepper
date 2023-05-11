@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -191,9 +192,9 @@ public class DefaultEventMetadataTest {
 
         assertThat(result.getTags(), equalTo(testTags));
         result.addTag("tag3");
-        assertTrue(result.hasTag("tag1"));
-        assertTrue(result.hasTag("tag2"));
-        assertTrue(result.hasTag("tag3"));
+        assertTrue(result.hasTags(List.of("tag1")));
+        assertTrue(result.hasTags(List.of("tag1", "tag2")));
+        assertTrue(result.hasTags(List.of("tag1", "tag2", "tag3")));
     }
 
     @Nested

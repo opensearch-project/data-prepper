@@ -8,6 +8,8 @@ package org.opensearch.dataprepper.expression;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.BeforeEach;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -18,7 +20,6 @@ import static org.mockito.Mockito.mock;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.Random;
 import java.util.function.Function;
 
 class HasTagsExpressionFunctionTest {
@@ -26,7 +27,6 @@ class HasTagsExpressionFunctionTest {
     private Event testEvent;
     private Function<Object, Object> testFunction;
     private List<Object> tags;
-    private int numTags;
 
     private Event createTestEvent(final Object data) {
         return JacksonEvent.builder().withEventType("event").withData(data).build();
@@ -38,30 +38,35 @@ class HasTagsExpressionFunctionTest {
         String value = RandomStringUtils.randomAlphabetic(10);
         testEvent = createTestEvent(Map.of(key, value));
         tags = new ArrayList<>();
-        Random random = new Random();
-        numTags = random.nextInt(9) + 1;
+        testFunction = mock(Function.class);
+    }
+
+    public void generateTags(Event event, int numTags) {
         for (int i = 0; i < numTags; i++) {
             String tag = RandomStringUtils.randomAlphabetic(5);
             testEvent.getMetadata().addTag(tag);
             tags.add(tag);
         }
-        testFunction = mock(Function.class);
     }
 
     public HasTagsExpressionFunction createObjectUnderTest() {
         return new HasTagsExpressionFunction();
     }
 
-    @Test
-    void testHasTagsBasic() {
+    @ParameterizedTest
+    @ValueSource(ints={1, 2, 10})
+    void testHasTagsBasic(int numTags) {
         hasTagsExpressionFunction = createObjectUnderTest();
+        generateTags(testEvent, numTags);
         for (int i = 1; i <= numTags; i++) {
             assertThat(hasTagsExpressionFunction.evaluate(tags.subList(0, i), testEvent, testFunction), equalTo(true));
         }
     }
 
-    @Test
-    void testHasTagsWithOneUnknownTag() {
+    @ParameterizedTest
+    @ValueSource(ints={1, 2, 10})
+    void testHasTagsWithOneUnknownTag(int numTags) {
+        generateTags(testEvent, numTags);
         hasTagsExpressionFunction = createObjectUnderTest();
         for (int i = 0; i < numTags; i++) {
             String unknownTag = RandomStringUtils.randomAlphabetic(5);
