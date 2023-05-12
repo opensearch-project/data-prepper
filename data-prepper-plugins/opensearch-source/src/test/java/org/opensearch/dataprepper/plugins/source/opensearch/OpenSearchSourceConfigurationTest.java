@@ -31,10 +31,12 @@ public class OpenSearchSourceConfigurationTest {
     @Test
     public void open_search_source_config_values_test() throws JsonProcessingException {
 
-        final String sourceConfigurationYaml = "connection:\n" +
-                "  hosts: [\"http://localhost:9200\"]\n" +
-                "  username: test\n" +
-                "  password: test\n" +
+        final String sourceConfigurationYaml = "max_retries: 5\n" +
+                "hosts: [\"http://localhost:9200\"]\n" +
+                "username: test\n" +
+                "password: test\n" +
+                "connection:\n" +
+                "  insecure: true\n" +
                 "  cert: \"cert\"\n" +
                 "indices:\n" +
                 "  include:\n" +
@@ -52,18 +54,21 @@ public class OpenSearchSourceConfigurationTest {
                 "  batch_size: 1000\n" +
                 "  expand_wildcards: \"open\"\n" +
                 "  sorting:\n" +
-                "retry: \n" +
-                "  max_retries: 3";
+                "   - sort_key: name\n" +
+                "     order: desc";
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
         final ConnectionConfiguration connectionConfig = sourceConfiguration.getConnectionConfiguration();
         final SearchConfiguration searchConfiguration = sourceConfiguration.getSearchConfiguration();
         final AwsAuthenticationConfiguration awsAuthenticationOptions = sourceConfiguration.getAwsAuthenticationOptions();
         final SchedulingParameterConfiguration schedulingParameterConfiguration = sourceConfiguration.getSchedulingParameterConfiguration();
+
+        assertThat(sourceConfiguration.getMaxRetries(),equalTo(5));
         assertThat(awsAuthenticationOptions.getAwsRegion(),equalTo(Region.US_EAST_1));
-        assertThat(connectionConfig.getHosts().get(0),equalTo("http://localhost:9200"));
-        assertThat(connectionConfig.getUsername(),equalTo("test"));
-        assertThat(connectionConfig.getPassword(),equalTo("test"));
+        assertThat(sourceConfiguration.getHosts().get(0),equalTo("http://localhost:9200"));
+        assertThat(sourceConfiguration.getUsername(),equalTo("test"));
+        assertThat(sourceConfiguration.getPassword(),equalTo("test"));
         assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
+        assertThat(connectionConfig.isInsecure(),equalTo(true));
         assertThat(searchConfiguration.getExpandWildcards(),equalTo(WildCardOptions.OPEN));
         assertThat(searchConfiguration.getBatchSize(),equalTo(1000));
         assertThat(sourceConfiguration.getQueryParameterConfiguration().getFields(),equalTo(List.of("test_variable : test_value")));
@@ -71,6 +76,7 @@ public class OpenSearchSourceConfigurationTest {
         assertThat(schedulingParameterConfiguration.getJobCount(),equalTo(3));
         assertThat(schedulingParameterConfiguration.getStartTime(),equalTo(LocalDateTime.parse("2023-05-05T18:00:00")));
         assertThat(sourceConfiguration.getIndexParametersConfiguration().getInclude().get(0),equalTo("shakespeare"));
-        assertThat(sourceConfiguration.getRetryConfiguration().getMaxRetries(),equalTo(3));
+        assertThat(searchConfiguration.getSorting().get(0).getSortKey(),equalTo("name"));
+        assertThat(searchConfiguration.getSorting().get(0).getOrder(),equalTo("desc"));
     }
 }

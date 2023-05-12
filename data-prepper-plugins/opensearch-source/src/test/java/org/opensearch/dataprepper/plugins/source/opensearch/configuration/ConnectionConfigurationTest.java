@@ -20,19 +20,15 @@ public class ConnectionConfigurationTest {
     @Test
     public void connection_configuration_values_test() throws JsonProcessingException {
 
-        final String connectionYaml = "  hosts: [\"http://localhost:9200\"]\n" +
-                "  username: test\n" +
-                "  password: test\n" +
+        final String connectionYaml =
                 "  cert: \"cert\"\n" +
                 "  insecure: true\n" +
                 "  socket_timeout: 500\n" +
                 "  connection_timeout: 500";
         final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
-        assertThat(connectionConfig.getHosts().get(0),equalTo("http://localhost:9200"));
-        assertThat(connectionConfig.getUsername(),equalTo("test"));
-        assertThat(connectionConfig.getPassword(),equalTo("test"));
         assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
         assertThat(connectionConfig.getSocketTimeout(),equalTo(500));
         assertThat(connectionConfig.getConnectTimeout(),equalTo(500));
+        assertThat(connectionConfig.isInsecure(),equalTo(true));
     }
 }
