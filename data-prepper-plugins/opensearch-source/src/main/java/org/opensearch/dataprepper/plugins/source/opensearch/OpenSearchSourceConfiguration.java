@@ -5,18 +5,30 @@
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.QueryParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.RetryConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
 
-
-import java.util.Map;
+import java.util.List;
 
 public class OpenSearchSourceConfiguration {
+
+    @JsonProperty("max_retries")
+    private Integer maxRetries;
+
+    @NotNull
+    @JsonProperty("hosts")
+    private List<String> hosts;
+
+    @JsonProperty("username")
+    private String username;
+
+    @JsonProperty("password")
+    private String password;
 
     @JsonProperty("connection")
     private ConnectionConfiguration connectionConfiguration;
@@ -36,10 +48,21 @@ public class OpenSearchSourceConfiguration {
     @JsonProperty("search_options")
     private SearchConfiguration searchConfiguration;
 
-    @JsonProperty("retry")
-    private RetryConfiguration retryConfiguration;
+    public Integer getMaxRetries() {
+        return maxRetries;
+    }
 
-    private Map<String,String> indexNames;
+    public List<String> getHosts() {
+        return hosts;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
 
     public ConnectionConfiguration getConnectionConfiguration() {
         return connectionConfiguration;
@@ -65,11 +88,4 @@ public class OpenSearchSourceConfiguration {
         return searchConfiguration;
     }
 
-    public Map<String, String> getIndexNames() {
-        return indexNames;
-    }
-
-    public RetryConfiguration getRetryConfiguration() {
-        return retryConfiguration;
-    }
 }
