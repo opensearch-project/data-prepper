@@ -24,7 +24,11 @@ import java.util.UUID;
 
 public class DynamoDbClientFactory {
 
-    private static final int DYNAMO_CLIENT_RETRIES = 10;
+    /**
+     * Set to infinite retries for ProvisionedThroughputExceededException.
+     * All other retryable exceptions will retry 10 times due to {@link DdbClientCustomRetryCondition}
+     */
+    private static final int DYNAMO_CLIENT_RETRIES = Integer.MAX_VALUE;
     private static final long DYNAMO_CLIENT_BASE_BACKOFF_MILLIS = 1000L;
     private static final long DYNAMO_CLIENT_MAX_BACKOFF_MILLIS = 60000L;
 

@@ -13,6 +13,7 @@ import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExcee
 
 public class DdbClientCustomRetryCondition implements RetryCondition {
     private static final Logger LOG = LoggerFactory.getLogger(DdbClientCustomRetryCondition.class);
+    private static final int DEFAULT_RETRIES = 10;
 
     private final RetryCondition defaultRetryCondition;
 
@@ -27,6 +28,11 @@ public class DdbClientCustomRetryCondition implements RetryCondition {
             LOG.warn("Received throttling from DynamoDb after {} attempts, retrying: {}", context.retriesAttempted(), context.exception().getMessage());
             return true;
         }
+
+        if (context.retriesAttempted() >= DEFAULT_RETRIES) {
+            return false;
+        }
+
         return defaultRetryCondition.shouldRetry(context);
     }
 }
