@@ -81,6 +81,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final GrokProcessorConfig grokProcessorConfig;
     private final Set<String> keysToOverwrite;
     private final ExecutorService executorService;
+    private final String tagOnMatchFailure;
 
     private final ExpressionEvaluator<Boolean> expressionEvaluator;
 
@@ -97,6 +98,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         this.fieldToGrok = new LinkedHashMap<>();
         this.executorService = executorService;
         this.expressionEvaluator = expressionEvaluator;
+        this.tagOnMatchFailure = grokProcessorConfig.getTagOnMatchFailure();
 
         grokProcessingMatchCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH);
         grokProcessingMismatchCounter = pluginMetrics.counter(GROK_PROCESSING_MISMATCH);
@@ -258,6 +260,9 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
 
         if (grokkedCaptures.isEmpty()) {
+            if (tagOnMatchFailure != null) {
+                event.getMetadata().addTag(tagOnMatchFailure);
+            }
             grokProcessingMismatchCounter.increment();
         } else {
             grokProcessingMatchCounter.increment();
