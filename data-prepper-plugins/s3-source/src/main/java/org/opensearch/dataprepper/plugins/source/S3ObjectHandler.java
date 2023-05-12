@@ -4,8 +4,9 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
-import java.io.IOException;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+
+import java.io.IOException;
 
 /**
  * A S3ObjectHandler interface must be extended/implement for S3 Object parsing
@@ -19,5 +20,6 @@ public interface S3ObjectHandler {
      *
      * @throws IOException exception is thrown every time because this is not supported
      */
-    void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException;
+    void parseS3Object(final S3ObjectReference s3ObjectReference,
+                       final AcknowledgementSet acknowledgementSet) throws IOException;
 }
