@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -30,6 +31,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -190,10 +192,16 @@ public class DefaultEventMetadataTest {
         assertThat(result, notNullValue());
 
         assertThat(result.getTags(), equalTo(testTags));
+        assertFalse(result.hasTags(List.of("tag3")));
+        assertFalse(result.hasTags(List.of("tag3", "tag1")));
         result.addTag("tag3");
-        assertTrue(result.hasTag("tag1"));
-        assertTrue(result.hasTag("tag2"));
-        assertTrue(result.hasTag("tag3"));
+        assertTrue(result.hasTags(List.of("tag1")));
+        assertTrue(result.hasTags(List.of("tag1", "tag2")));
+        assertTrue(result.hasTags(List.of("tag1", "tag2", "tag3")));
+        assertFalse(result.hasTags(List.of("notPresentTag")));
+        assertFalse(result.hasTags(List.of("notPresentTag1", "notPresentTag2")));
+        assertFalse(result.hasTags(List.of("tag1", "notPresentTag")));
+        assertFalse(result.hasTags(List.of("tag1", "tag2", "notPresentTag")));
     }
 
     @Nested

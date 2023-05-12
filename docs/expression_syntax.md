@@ -170,7 +170,13 @@ will extract `message` field from the event and compares it's length with 20. Th
 Currently the following functions are supported
  * `length()`
    - takes one argument of JsonPointer type
-   - returns the length of the value of the argument passed if it's type is string. For example, `length("/message")` returns 10 if the key `message` exists in the event and has the value of `"1234567890"`.
+   - returns the length of the value of the argument passed if it's type is string.
+   For example, `length("/message")` returns 10 if the key `message` exists in the event and has the value of `"1234567890"`.
+ * `hasTags()`
+   - takes at least one argument
+   - all arguments must be of String type
+   - returns true if all arguments are present in the event's tags, returns false otherwise
+   For example, if event has tags "tag1", "tag2", and "tag3", `hasTags("tag1")` or `hasTags("tag1", "tag2")` would return true and `hasTags("tag4")` and `hadTags("tag1", "tag4")` would return false.
 
 
 ## White Space
@@ -190,3 +196,8 @@ White space is **required** surrounding Set Initializers, Priority Expressions, 
 | `==`, `!=`           | Equality Operators       | No                   | `/status == 200`<br>`/status_code==200`                        |                                       |
 | `and`, `or`, `not`   | Conditional Operators    | Yes                  | `/a<300 and /b>200`                                            | `/b<300and/b>200`                     |
 | `,`                  | Set Value Delimiter      | No                   | `/a in {200, 202}`<br>`/a in {200,202}`<br>`/a in {200 , 202}` | `/a in {200,}`                        |
+
+## JsonPointers
+
+The event data structure can be nested and have multiple levels of data. JsonPointers can be leveraged within expressions
+to reference elements throughout an event.

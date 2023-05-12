@@ -8,10 +8,11 @@ package org.opensearch.dataprepper.model.event;
 import com.google.common.collect.ImmutableMap;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.HashSet;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -73,8 +74,13 @@ public class DefaultEventMetadata implements EventMetadata {
     }
 
     @Override
-    public Boolean hasTag(final String tag) {
-        return tags.contains(tag);
+    public Boolean hasTags(final List<String> tagsList) {
+        for (final String tag: tagsList) {
+            if (!tags.contains(tag)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
