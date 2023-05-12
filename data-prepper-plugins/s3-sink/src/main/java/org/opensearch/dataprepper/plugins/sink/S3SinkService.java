@@ -57,8 +57,9 @@ public class S3SinkService {
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
-     * @param codec         parser
-     * @param pluginMetrics metrics
+     * @param bufferFactory  factory of buffer.
+     * @param codec         parser.
+     * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
                          final Codec codec, PluginMetrics pluginMetrics) {
@@ -125,6 +126,7 @@ public class S3SinkService {
 
     /**
      * perform retry in-case any issue occurred, based on max_upload_retries configuration.
+     * @param currentBuffer current buffer.
      * @return boolean based on object upload status.
      * @throws InterruptedException interruption during sleep.
      */
@@ -150,7 +152,7 @@ public class S3SinkService {
     }
 
     /**
-     * Generate the s3 object path prefix & object file name.
+     * Generate the s3 object path prefix and object file name.
      * @return object key path.
      */
     protected String generateKey() {

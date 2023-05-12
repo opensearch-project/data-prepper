@@ -14,7 +14,9 @@ import org.opensearch.dataprepper.model.event.Event;
  */
 public interface Codec {
     /**
-     * @param event
+     * @param event input data.
+     * @return parse string.
+     * @throws IOException exception.
      */
     String parse(Event event) throws IOException;
 }

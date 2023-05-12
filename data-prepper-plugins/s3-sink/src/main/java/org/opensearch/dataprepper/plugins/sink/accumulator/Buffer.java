@@ -15,6 +15,7 @@ public interface Buffer {
 
     /**
      * Gets the current size of the buffer. This should be the number of bytes.
+     * @return buffer size.
      */
     long getSize();
     int getEventCount();
