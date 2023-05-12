@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.event;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -46,11 +47,11 @@ public interface EventMetadata extends Serializable {
 
     /**
      * Indicates if a tag is present
-     * @param tag name of the tag to be looked up
-     * @return true if the tag is present, false otherwise
+     * @param tags list of the tags to be looked up
+     * @return true if all tags are present, false otherwise
      * @since 2.3
      */
-    Boolean hasTag(final String tag);
+    Boolean hasTags(final List<String> tags);
 
     /**
      * Adds a tag to the Metadata
