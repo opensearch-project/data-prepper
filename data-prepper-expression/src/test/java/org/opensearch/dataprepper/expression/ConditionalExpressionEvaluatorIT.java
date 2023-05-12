@@ -135,6 +135,7 @@ class ConditionalExpressionEvaluatorIT {
         String testTag4 = RandomStringUtils.randomAlphabetic(7);
         longEvent.getMetadata().addTag(testTag1);
         longEvent.getMetadata().addTag(testTag2);
+        longEvent.getMetadata().addTag(testTag3);
 
         Random random = new Random();
         int testStringLength = random.nextInt(10);
@@ -176,7 +177,8 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("length(/response) == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true),
                 Arguments.of("hasTags(\""+ testTag1+"\")", longEvent, true),
                 Arguments.of("hasTags(\""+ testTag1+"\",\""+testTag2+"\")", longEvent, true),
-                Arguments.of("hasTags(\""+ testTag3+"\")", longEvent, false),
+                Arguments.of("hasTags(\""+ testTag1+"\", \""+testTag2+"\", \""+testTag3+"\")", longEvent, true),
+                Arguments.of("hasTags(\""+ testTag4+"\")", longEvent, false),
                 Arguments.of("hasTags(\""+ testTag3+"\",\""+testTag4+"\")", longEvent, false)
         );
     }
