@@ -78,6 +78,7 @@ class HasTagsExpressionFunctionTest {
 
     @Test
     void testHasTagsWithZeroTags() {
+        hasTagsExpressionFunction = createObjectUnderTest();
         assertThrows(RuntimeException.class, () -> hasTagsExpressionFunction.evaluate(List.of(), testEvent, testFunction));
     }
 
@@ -89,6 +90,7 @@ class HasTagsExpressionFunctionTest {
 
     @Test
     void testHasTagsWithNonStringTags() {
+        hasTagsExpressionFunction = createObjectUnderTest();
         assertThrows(RuntimeException.class, () -> hasTagsExpressionFunction.evaluate(List.of(30), testEvent, testFunction));
     }
 
