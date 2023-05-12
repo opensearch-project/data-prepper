@@ -20,6 +20,7 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcher.isExpres
 import static org.opensearch.dataprepper.expression.util.ContextMatcher.isOperator;
 import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.isParseTree;
 import static org.opensearch.dataprepper.expression.util.JsonPointerMatcher.isJsonPointerUnaryTree;
+import static org.opensearch.dataprepper.expression.util.FunctionMatcher.isFunctionUnaryTree;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
 
 class ParseTreeTest extends GrammarTest {
@@ -96,6 +97,22 @@ class ParseTreeTest extends GrammarTest {
                         EQUALITY_OPERATOR_EXPRESSION
                 ).withChildrenMatching(
                         isJsonPointerUnaryTree(),
+                        isOperator(EQUALITY_OPERATOR),
+                        isUnaryTree()
+                )
+        ));
+        assertThat(errorListener.isErrorFound(), is(false));
+    }
+
+    @Test
+    void testFunction() {
+        final ParserRuleContext expression = parseExpression("length(\"abcd\") == 4");
+
+        assertThat(expression, isExpression(isParseTree(
+                        CONDITIONAL_EXPRESSION,
+                        EQUALITY_OPERATOR_EXPRESSION
+                ).withChildrenMatching(
+                        isFunctionUnaryTree(),
                         isOperator(EQUALITY_OPERATOR),
                         isUnaryTree()
                 )
