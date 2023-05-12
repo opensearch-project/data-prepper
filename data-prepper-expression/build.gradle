@@ -28,6 +28,7 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     testImplementation testLibs.spring.test
+    testImplementation "org.apache.commons:commons-lang3:3.12.0"
     testImplementation 'com.fasterxml.jackson.core:jackson-databind'
 }
 

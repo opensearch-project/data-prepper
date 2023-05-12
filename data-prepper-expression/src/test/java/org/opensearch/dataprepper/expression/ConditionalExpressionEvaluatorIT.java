@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import java.util.Random;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -33,6 +34,7 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.apache.commons.lang3.RandomStringUtils;
 
 class ConditionalExpressionEvaluatorIT {
     /**
@@ -127,6 +129,9 @@ class ConditionalExpressionEvaluatorIT {
                 .withData(eventMap)
                 .build();
 
+        Random random = new Random();
+        int testStringLength = random.nextInt(10);
+        String testString = RandomStringUtils.randomAlphabetic(testStringLength);
         return Stream.of(
                 Arguments.of("true", event("{}"), true),
                 Arguments.of("/status_code == 200", event("{\"status_code\": 200}"), true),
@@ -160,11 +165,15 @@ class ConditionalExpressionEvaluatorIT {
                         complexEvent(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS, true),
                         true),
                 Arguments.of("/durationInNanos > 5000000000", event("{\"durationInNanos\": 6000000000}"), true),
-                Arguments.of("/response == \"OK\"", event("{\"response\": \"OK\"}"), true)
+                Arguments.of("/response == \"OK\"", event("{\"response\": \"OK\"}"), true),
+                Arguments.of("length(/response) == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true)
         );
     }
 
     private static Stream<Arguments> invalidExpressionArguments() {
+        Random random = new Random();
+        int testStringLength = random.nextInt(10);
+        String testString = RandomStringUtils.randomAlphabetic(testStringLength);
         return Stream.of(
                 Arguments.of("/missing", event("{}")),
                 Arguments.of("/success < /status_code", event("{\"success\": true, \"status_code\": 200}")),
@@ -183,7 +192,9 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("not null", event("{}")),
                 Arguments.of("not/status_code", event("{\"status_code\": 200}")),
                 Arguments.of("trueand/status_code", event("{\"status_code\": 200}")),
-                Arguments.of("trueor/status_code", event("{\"status_code\": 200}"))
+                Arguments.of("trueor/status_code", event("{\"status_code\": 200}")),
+                Arguments.of("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
+                Arguments.of("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}"))
         );
     }
 
