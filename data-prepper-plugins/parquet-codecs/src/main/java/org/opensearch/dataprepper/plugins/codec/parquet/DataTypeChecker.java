@@ -21,11 +21,15 @@ public class DataTypeChecker {
 
     }
 
+    private static  ObjectMapper mapper = new ObjectMapper();
+
     public static Object checkDataType(Type field, SimpleGroup simpleGroup, int fieldIndex) throws Exception {
         String fieldPrimitiveDataType;
-        if (field.isPrimitive()) {
+        if (field.isPrimitive() && field.getLogicalTypeAnnotation() == null) {
+
             PrimitiveType primitiveType = field.asPrimitiveType();
             fieldPrimitiveDataType = primitiveType.getPrimitiveTypeName().name();
+
             switch (fieldPrimitiveDataType) {
                 case "INT32":
                     return simpleGroup.getInteger(fieldIndex, 0);
@@ -42,11 +46,14 @@ public class DataTypeChecker {
                     return simpleGroup.getLong(fieldIndex,0);
                 case "FIXED_LEN_BYTE_ARRAY":
                     return simpleGroup.getValueToString(fieldIndex, 0);
+                case "BINARY":
+                    return simpleGroup.getBinary(fieldIndex,0);
                 default:
-                    throw new RuntimeException("The Parquet Codec doesn't support this data-type yet.");
+                    throw new RuntimeException("The Parquet Codec doesn't support the '"+fieldPrimitiveDataType+"' data-type yet.");
             }
         }
-        else if (field.getLogicalTypeAnnotation() != null) {
+
+        else{
                 if (field.getLogicalTypeAnnotation().equals(LogicalTypeAnnotation.dateType())) {
 
                     return simpleGroup.getInteger(fieldIndex, 0);
@@ -74,20 +81,16 @@ public class DataTypeChecker {
                 else if (field.getLogicalTypeAnnotation().equals(LogicalTypeAnnotation.uuidType())){
 
                     byte[] uuidBytes = simpleGroup.getBinary(fieldIndex,0).getBytes();
-                    return UUID.fromString(new String(uuidBytes));
+                    return new String(uuidBytes);
                 }
                 else if (field.getLogicalTypeAnnotation().equals(LogicalTypeAnnotation.jsonType())){
 
-                    ObjectMapper mapper = new ObjectMapper();
                     JsonNode jsonNode = mapper.readTree(simpleGroup.getBinary(fieldIndex,0).getBytes());
                     return jsonNode.get(field.getName().toString());
                 }
                 else{
-                    throw new RuntimeException("The Parquet Codec doesn't support this logical data-type yet.");
+                    throw new RuntimeException("The Parquet Codec doesn't support the '"+field.getLogicalTypeAnnotation().toString()+"' logical data-type yet.");
                 }
-            }
-        else {
-            throw new RuntimeException("The Parquet Codec doesn't support this data-type yet.");
         }
     }
 }
