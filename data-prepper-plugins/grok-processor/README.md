@@ -70,6 +70,7 @@ processor:
 
 * `named_captures_only` (Optional): A `boolean` that specifies whether to only keep named captures. Default value is `true`
 
+* `match_fail_tag` (Optional): A `string` that specifies the tag to be set in the event when grok fails to match. This tag may be used in conditional expressions in other parts of the configuration
 
   Named captures are those that follow the configuration of `%{SYNTAX:SEMANTIC}`. However, the `SEMANTIC` is optional, and patterns that are
   defined simply as `%{SYNTAX}` are considered unnamed captures. 
