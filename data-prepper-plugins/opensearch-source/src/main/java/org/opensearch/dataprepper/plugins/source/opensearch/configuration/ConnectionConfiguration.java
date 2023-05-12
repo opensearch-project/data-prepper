@@ -5,9 +5,21 @@
 package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotNull;
 import java.nio.file.Path;
+import java.util.List;
 
 public class ConnectionConfiguration {
+
+  @NotNull
+  @JsonProperty("hosts")
+  private List<String> hosts;
+
+  @JsonProperty("username")
+  private String username;
+
+  @JsonProperty("password")
+  private String password;
 
   @JsonProperty("cert")
   private Path certPath;
@@ -21,6 +33,18 @@ public class ConnectionConfiguration {
   @JsonProperty("insecure")
   private boolean insecure;
 
+  public List<String> getHosts() {
+    return hosts;
+  }
+
+  public String getUsername() {
+    return username;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
   public Path getCertPath() {
     return certPath;
   }
@@ -33,7 +57,4 @@ public class ConnectionConfiguration {
     return connectTimeout;
   }
 
-  public boolean isInsecure() {
-    return insecure;
-  }
 }
