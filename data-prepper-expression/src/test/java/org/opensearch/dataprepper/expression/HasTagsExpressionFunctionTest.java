@@ -45,7 +45,7 @@ class HasTagsExpressionFunctionTest {
         for (int i = 0; i < numTags; i++) {
             String tag = RandomStringUtils.randomAlphabetic(5);
             testEvent.getMetadata().addTag(tag);
-            tags.add(tag);
+            tags.add("\""+tag+"\"");
         }
     }
 
@@ -69,7 +69,7 @@ class HasTagsExpressionFunctionTest {
         generateTags(testEvent, numTags);
         hasTagsExpressionFunction = createObjectUnderTest();
         for (int i = 0; i < numTags; i++) {
-            String unknownTag = RandomStringUtils.randomAlphabetic(5);
+            String unknownTag = "\""+RandomStringUtils.randomAlphabetic(5)+"\"";
             List<Object> tagsList = tags.subList(0, i);
             tagsList.add((Object)unknownTag);
             assertThat(hasTagsExpressionFunction.evaluate(tagsList, testEvent, testFunction), equalTo(false));
@@ -83,15 +83,27 @@ class HasTagsExpressionFunctionTest {
     }
 
     @Test
+    void testHasTagsWithMissingTag() {
+        hasTagsExpressionFunction = createObjectUnderTest();
+        assertThrows(RuntimeException.class, () -> hasTagsExpressionFunction.evaluate(List.of(""), testEvent, testFunction));
+    }
+
+    @Test
     void testHasTagsWithEmptyTag() {
         hasTagsExpressionFunction = createObjectUnderTest();
-        assertThat(hasTagsExpressionFunction.evaluate(List.of(""), testEvent, testFunction), equalTo(false));
+        assertThat(hasTagsExpressionFunction.evaluate(List.of("\"\""), testEvent, testFunction), equalTo(false));
     }
 
     @Test
     void testHasTagsWithNonStringTags() {
         hasTagsExpressionFunction = createObjectUnderTest();
         assertThrows(RuntimeException.class, () -> hasTagsExpressionFunction.evaluate(List.of(30), testEvent, testFunction));
+    }
+
+    @Test
+    void testHasTagsWithStringTagsWithOutQuotes() {
+        hasTagsExpressionFunction = createObjectUnderTest();
+        assertThrows(RuntimeException.class, () -> hasTagsExpressionFunction.evaluate(List.of("tag"), testEvent, testFunction));
     }
 
 }
