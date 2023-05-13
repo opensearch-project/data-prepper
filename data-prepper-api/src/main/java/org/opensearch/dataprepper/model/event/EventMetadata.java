@@ -54,9 +54,9 @@ public interface EventMetadata extends Serializable {
     Boolean hasTags(final List<String> tags);
 
     /**
-     * Adds a tag to the Metadata
-     * @param tag to be added
+     * Adds a tags to the Metadata
+     * @param tags to be added
      * @since 2.3
      */
-    void addTag(final String tag);
+    void addTags(final List<String> tags);
 }

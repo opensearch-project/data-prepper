@@ -81,7 +81,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final GrokProcessorConfig grokProcessorConfig;
     private final Set<String> keysToOverwrite;
     private final ExecutorService executorService;
-    private final String tagOnMatchFailure;
+    private final List<String> tagsOnMatchFailure;
 
     private final ExpressionEvaluator<Boolean> expressionEvaluator;
 
@@ -98,8 +98,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         this.fieldToGrok = new LinkedHashMap<>();
         this.executorService = executorService;
         this.expressionEvaluator = expressionEvaluator;
-        this.tagOnMatchFailure = grokProcessorConfig.getTagOnMatchFailure();
-
+        this.tagsOnMatchFailure = grokProcessorConfig.getTagsOnMatchFailure();
         grokProcessingMatchCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH);
         grokProcessingMismatchCounter = pluginMetrics.counter(GROK_PROCESSING_MISMATCH);
         grokProcessingErrorsCounter = pluginMetrics.counter(GROK_PROCESSING_ERRORS);
@@ -143,6 +142,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 LOG.error(EVENT, "Matching on record [{}] was interrupted", record.getData(), e);
                 grokProcessingErrorsCounter.increment();
             } catch (RuntimeException e) {
+                event.getMetadata().addTags(tagsOnMatchFailure);
                 LOG.error(EVENT, "Unknown exception occurred when matching record [{}]", record.getData(), e);
                 grokProcessingErrorsCounter.increment();
             }
@@ -260,8 +260,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
 
         if (grokkedCaptures.isEmpty()) {
-            if (tagOnMatchFailure != null) {
-                event.getMetadata().addTag(tagOnMatchFailure);
+            if (tagsOnMatchFailure != null && tagsOnMatchFailure.size() > 0) {
+                event.getMetadata().addTags(tagsOnMatchFailure);
             }
             grokProcessingMismatchCounter.increment();
         } else {

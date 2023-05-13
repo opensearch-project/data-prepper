@@ -88,7 +88,7 @@ public class GrokProcessorIT {
                                                               final int timeoutMillis,
                                                               final String targetKey,
                                                               final String grokWhen,
-                                                              final String tagOnMatchFailure
+                                                              final List<String> tagsOnMatchFailure
 ) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(GrokProcessorConfig.BREAK_ON_MATCH, breakOnMatch);
@@ -102,7 +102,7 @@ public class GrokProcessorIT {
         settings.put(GrokProcessorConfig.TIMEOUT_MILLIS, timeoutMillis);
         settings.put(GrokProcessorConfig.TARGET_KEY, targetKey);
         settings.put(GrokProcessorConfig.GROK_WHEN, grokWhen);
-        settings.put(GrokProcessorConfig.TAG_ON_MATCH_FAILURE, tagOnMatchFailure);
+        settings.put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatchFailure);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }
@@ -469,13 +469,14 @@ public class GrokProcessorIT {
     }
 
     @Test
-    public void testMatchWithNoCapturesAndTag() throws JsonProcessingException {
+    public void testMatchWithNoCapturesAndTags() throws JsonProcessingException {
         final Map<String, List<String>> matchConfig = new HashMap<>();
         matchConfig.put("message", Collections.singletonList("%{GREEDYDATA:greedy_data} (?<mynumber>\\d\\d\\d-\\d\\d\\d-\\d\\d\\d)"));
-        final String tagOnMatchFailure = UUID.randomUUID().toString();
+        final String tagOnMatchFailure1 = UUID.randomUUID().toString();
+        final String tagOnMatchFailure2 = UUID.randomUUID().toString();
 
         pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
-        pluginSetting.getSettings().put(GrokProcessorConfig.TAG_ON_MATCH_FAILURE, tagOnMatchFailure);
+        pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
         grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
 
         final Map<String, Object> testData = new HashMap();
@@ -487,7 +488,8 @@ public class GrokProcessorIT {
 
         assertThat(grokkedRecords.size(), equalTo(1));
         assertRecordsAreEqual(grokkedRecords.get(0), record);
-        assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure));
+        assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure1));
+        assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure2));
     }
 
     @Test

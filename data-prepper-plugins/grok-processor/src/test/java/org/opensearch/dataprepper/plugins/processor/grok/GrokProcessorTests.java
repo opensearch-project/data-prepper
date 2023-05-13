@@ -509,8 +509,9 @@ public class GrokProcessorTests {
 
         @Test
         public void testNoCapturesWithTag() throws JsonProcessingException {
-            final String tagOnMatchFailure = UUID.randomUUID().toString();
-            pluginSetting.getSettings().put(GrokProcessorConfig.TAG_ON_MATCH_FAILURE, tagOnMatchFailure);
+            final String tagOnMatchFailure1 = UUID.randomUUID().toString();
+            final String tagOnMatchFailure2 = UUID.randomUUID().toString();
+            pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
 
             grokProcessor = createObjectUnderTest();
             lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
@@ -525,7 +526,8 @@ public class GrokProcessorTests {
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
             assertRecordsAreEqual(grokkedRecords.get(0), record);
-            assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure));
+            assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure1));
+            assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure2));
             verify(grokProcessingMismatchCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
             verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
