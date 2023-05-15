@@ -194,7 +194,7 @@ public class DefaultEventMetadataTest {
         assertThat(result.getTags(), equalTo(testTags));
         assertFalse(result.hasTags(List.of("tag3")));
         assertFalse(result.hasTags(List.of("tag3", "tag1")));
-        result.addTag("tag3");
+        result.addTags(List.of("tag3"));
         assertTrue(result.hasTags(List.of("tag1")));
         assertTrue(result.hasTags(List.of("tag1", "tag2")));
         assertTrue(result.hasTags(List.of("tag1", "tag2", "tag3")));

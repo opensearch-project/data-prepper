@@ -119,9 +119,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for (final Record<Event> record : records) {
+            final Event event = record.getData();
             try {
-                final Event event = record.getData();
-
                 if (Objects.nonNull(grokProcessorConfig.getGrokWhen()) && !expressionEvaluator.evaluate(grokProcessorConfig.getGrokWhen(), event)) {
                     continue;
                 }
