@@ -16,7 +16,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory;
+import org.opensearch.dataprepper.plugins.sink.accumulator.LocalFileBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +54,11 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
         sinkInitialized = Boolean.FALSE;
 
-        bufferFactory = new InMemoryBufferFactory();
+        if (s3SinkConfig.getBufferType().equals(BufferTypeOptions.LOCALFILE)) {
+            bufferFactory = new LocalFileBufferFactory();
+        } else {
+            bufferFactory = new InMemoryBufferFactory();
+        }
     }
 
     @Override
