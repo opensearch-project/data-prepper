@@ -66,7 +66,7 @@ public class LocalFileBuffer implements Buffer {
     }
 
     /**
-     * Upload accumulated data to amazon s3
+     * Upload accumulated data to amazon s3.
      * @param s3Client s3 client object.
      * @param bucket bucket name.
      * @param key s3 object key path.
