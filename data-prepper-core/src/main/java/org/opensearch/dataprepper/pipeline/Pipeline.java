@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -48,7 +49,7 @@ import static java.lang.String.format;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
-    private volatile boolean stopRequested;
+    private volatile AtomicBoolean stopRequested;
 
     private final String name;
     private final Source source;
@@ -130,7 +131,7 @@ public class Pipeline {
         this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
-        stopRequested = false;
+        stopRequested = new AtomicBoolean(false);
     }
 
     AcknowledgementSetManager getAcknowledgementSetManager() {
@@ -169,7 +170,7 @@ public class Pipeline {
     }
 
     public boolean isStopRequested() {
-        return stopRequested;
+        return stopRequested.get();
     }
 
     public Duration getPeerForwarderDrainTimeout() {
@@ -213,14 +214,11 @@ public class Pipeline {
             }
 
             sinkExecutorService.submit(() -> {
-                while (!isReady()) {
+                while (!isReady() && !isStopRequested()) {
                     LOG.info("Pipeline {} Waiting for Sink to be ready", name);
                     try {
                         Thread.sleep(10000);
                     } catch (Exception e){}
-                }
-                if(source instanceof PipelineConnector) {
-                    ((PipelineConnector)source).setReady();
                 }
                 LOG.info("Pipeline {} Sink is ready, starting source...", name);
                 source.start(buffer);
@@ -261,7 +259,7 @@ public class Pipeline {
                 name, processorShutdownTimeout, sinkShutdownTimeout);
         try {
             source.stop();
-            stopRequested = true;
+            stopRequested.set(true);
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +
                     "proceeding with termination of process workers", name);

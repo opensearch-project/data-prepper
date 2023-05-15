@@ -53,13 +53,10 @@ public final class PipelineConnector<T extends Record<?>> implements Source<T>, 
         areAcknowledgementsEnabled = true;
     }
 
-    public void setReady() {
-        ready = true;
-    }
-
     @Override
     public void start(final Buffer<T> buffer) {
         this.buffer = buffer;
+        ready = true;
     }
 
     @Override
