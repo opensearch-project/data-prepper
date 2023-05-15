@@ -60,6 +60,7 @@ public class LocalFileBuffer implements Buffer {
         return eventCount;
     }
 
+    @Override
     public long getDuration(){
         return watch.getTime(TimeUnit.SECONDS);
     }
