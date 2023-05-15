@@ -22,6 +22,7 @@ public class BucketOptions {
 
     /**
      * Read s3 bucket name configuration.
+     * @return bucket name.
      */
     public String getBucketName() {
         return bucketName;
@@ -29,6 +30,7 @@ public class BucketOptions {
 
     /**
      * S3 {@link ObjectKeyOptions} configuration Options.
+     * @return object key options.
      */
     public ObjectKeyOptions getObjectKeyOptions() {
         if (objectKeyOptions == null) {

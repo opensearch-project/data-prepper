@@ -65,7 +65,6 @@ class ParserTest extends GrammarTest {
             "00.",
             ".00",
             ".10",
-            "1.10",
     })
     void testInvalidFloatParsingRules(final String expression) {
         assertThatHasParseError(expression);

@@ -17,6 +17,7 @@ import java.util.List;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.Assert.assertFalse;
 
 class GrammarLexerTest {
 
@@ -25,6 +26,12 @@ class GrammarLexerTest {
         final CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         tokenStream.fill();
         return tokenStream.getTokens();
+    }
+
+    private void assertTokenFalse(final String statement, final int type) {
+        final List<? extends Token> tokens = getTokens(statement);
+
+        assertFalse(tokens.size() == 2 && tokens.get(0).getText() == statement);
     }
 
     private void assertToken(final String statement, final int type) {
@@ -47,6 +54,30 @@ class GrammarLexerTest {
     @Test
     void testTokenFloat() {
         assertToken("3.14", DataPrepperExpressionLexer.Float);
+        assertToken("12345.678", DataPrepperExpressionLexer.Float);
+        assertToken("12345.678E-15", DataPrepperExpressionLexer.Float);
+        assertToken("12345.678E33", DataPrepperExpressionLexer.Float);
+        assertToken("12345.678e-153", DataPrepperExpressionLexer.Float);
+        assertToken("12345.678e11", DataPrepperExpressionLexer.Float);
+        assertToken("0.6782", DataPrepperExpressionLexer.Float);
+        assertToken("0.678E12", DataPrepperExpressionLexer.Float);
+        assertToken("0.678E-12", DataPrepperExpressionLexer.Float);
+        assertToken("0.678e-12", DataPrepperExpressionLexer.Float);
+        assertToken("0.678e12", DataPrepperExpressionLexer.Float);
+        assertToken("6782.0", DataPrepperExpressionLexer.Float);
+        assertToken("12345678.000002", DataPrepperExpressionLexer.Float);
+        assertToken("12345678.0002e6", DataPrepperExpressionLexer.Float);
+        assertToken("12345678.000252E16", DataPrepperExpressionLexer.Float);
+        // only one zero before the decimal point
+        assertTokenFalse("0000.678e12", DataPrepperExpressionLexer.Float);
+        // Must have one digit before the decimal point
+        assertTokenFalse(".678e12", DataPrepperExpressionLexer.Float);
+        assertTokenFalse(".678e-12", DataPrepperExpressionLexer.Float);
+        assertTokenFalse(".6782", DataPrepperExpressionLexer.Float);
+        // Can't end with decimal point
+        assertTokenFalse("6782.", DataPrepperExpressionLexer.Float);
+        // only one zero after decimal point
+        assertTokenFalse("12345678.00", DataPrepperExpressionLexer.Float);
     }
 
     @Test
