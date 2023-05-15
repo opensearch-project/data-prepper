@@ -214,10 +214,13 @@ public class Pipeline {
             }
 
             sinkExecutorService.submit(() -> {
+                long retryCount = 0;
                 while (!isReady() && !isStopRequested()) {
-                    LOG.info("Pipeline {} Waiting for Sink to be ready", name);
+                    if (++retryCount % 60 == 0) {
+                        LOG.info("Pipeline {} Waiting for Sink to be ready", name);
+                    }
                     try {
-                        Thread.sleep(10000);
+                        Thread.sleep(1000);
                     } catch (Exception e){}
                 }
                 LOG.info("Pipeline {} Sink is ready, starting source...", name);
