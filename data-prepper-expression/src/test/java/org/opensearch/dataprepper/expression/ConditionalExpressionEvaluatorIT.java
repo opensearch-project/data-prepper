@@ -152,6 +152,7 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("/value == 12345.678E12", event("{\"value\": 12345.678E12}"), true),
                 Arguments.of("/value == 12345.678e-12", event("{\"value\": 12345.678e-12}"), true),
                 Arguments.of("/value == 12345.0000012", event("{\"value\": 12345.0000012}"), true),
+                Arguments.of("/value == 12345.00012E6", event("{\"value\": 12345.00012E6}"), true),
                 Arguments.of("true == (/is_cool == true)", event("{\"is_cool\": true}"), true),
                 Arguments.of("not /is_cool", event("{\"is_cool\": true}"), false),
                 Arguments.of("/status_code < 300", event("{\"status_code\": 200}"), true),

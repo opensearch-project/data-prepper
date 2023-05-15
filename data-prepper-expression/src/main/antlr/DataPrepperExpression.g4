@@ -147,7 +147,7 @@ Integer
 
 Float
     : Integer '.' ZERO* Integer
-    | Integer '.' Integer EXPONENTLETTER SUBTRACT? Integer
+    | Integer '.' ZERO* Integer EXPONENTLETTER SUBTRACT? Integer
     ;
 
 fragment

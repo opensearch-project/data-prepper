@@ -66,6 +66,8 @@ class GrammarLexerTest {
         assertToken("0.678e12", DataPrepperExpressionLexer.Float);
         assertToken("6782.0", DataPrepperExpressionLexer.Float);
         assertToken("12345678.000002", DataPrepperExpressionLexer.Float);
+        assertToken("12345678.0002e6", DataPrepperExpressionLexer.Float);
+        assertToken("12345678.000252E16", DataPrepperExpressionLexer.Float);
         // only one zero before the decimal point
         assertTokenFalse("0000.678e12", DataPrepperExpressionLexer.Float);
         // Must have one digit before the decimal point
