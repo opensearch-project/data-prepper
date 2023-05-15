@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.UninitializedSourceCoordinatorException;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     private final Class<T> partitionProgressStateClass;
     private final String ownerId;
+    private boolean initialized = false;
 
     static {
         try {
@@ -64,19 +66,27 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     }
 
     @Override
+    public void initialize() {
+        sourceCoordinationStore.initializeStore();
+        initialized = true;
+    }
+
+    @Override
     public Optional<SourcePartition<T>> getNextPartition(final Supplier<List<PartitionIdentifier>> partitionsCreatorSupplier) {
+        validateIsInitialized();
+
         if (partitionManager.getActivePartition().isPresent()) {
             return partitionManager.getActivePartition();
         }
 
-        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition();
+        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(ownerId, DEFAULT_LEASE_TIMEOUT);
 
         if (ownedPartitions.isEmpty()) {
             LOG.info("Partition owner {} did not acquire any partitions. Running partition creation supplier to create more partitions", ownerId);
 
             createPartitions(partitionsCreatorSupplier.get());
 
-            ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition();
+            ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(ownerId, DEFAULT_LEASE_TIMEOUT);
         }
 
         if (ownedPartitions.isEmpty()) {
@@ -119,6 +129,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public void completePartition(final String partitionKey) {
+        validateIsInitialized();
 
         final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "complete");
         validatePartitionOwnership(itemToUpdate);
@@ -136,18 +147,21 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public void closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount) {
+        validateIsInitialized();
 
         final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "close");
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
         itemToUpdate.setPartitionOwnershipTimeout(null);
+        itemToUpdate.setPartitionProgressState(null);
+        itemToUpdate.setClosedCount(itemToUpdate.getClosedCount() + 1L);
         if (itemToUpdate.getClosedCount() >= maxClosedCount) {
             itemToUpdate.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
+            itemToUpdate.setReOpenAt(null);
         } else {
             itemToUpdate.setSourcePartitionStatus(SourcePartitionStatus.CLOSED);
             itemToUpdate.setReOpenAt(Instant.now().plus(reopenAfter));
-            itemToUpdate.setClosedCount(itemToUpdate.getClosedCount() + 1);
         }
 
 
@@ -159,6 +173,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public <S extends T> void saveProgressStateForPartition(final String partitionKey, final S partitionProgressState) {
+        validateIsInitialized();
 
         final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "save state");
         validatePartitionOwnership(itemToUpdate);
@@ -174,6 +189,8 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public void giveUpPartitions() {
+        validateIsInitialized();
+
         final Optional<SourcePartition<T>> activePartition = partitionManager.getActivePartition();
         if (activePartition.isPresent()) {
             final Optional<SourcePartitionStoreItem> optionalItem = sourceCoordinationStore.getSourcePartitionItem(activePartition.get().getPartitionKey());
@@ -229,5 +246,11 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         }
 
         return optionalPartitionItem.get();
+    }
+
+    private void validateIsInitialized() {
+        if (!initialized) {
+            throw new UninitializedSourceCoordinatorException("The initialize method has not been called on this source coordinator. initialize must be called before further interactions with the SourceCoordinator");
+        }
     }
 }

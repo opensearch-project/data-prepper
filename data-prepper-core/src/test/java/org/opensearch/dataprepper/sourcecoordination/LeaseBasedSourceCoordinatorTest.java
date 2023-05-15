@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.UninitializedSourceCoordinatorException;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 
 import java.net.InetAddress;
@@ -74,7 +75,27 @@ public class LeaseBasedSourceCoordinatorTest {
     }
 
     private SourceCoordinator<String> createObjectUnderTest() {
-        return new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        doNothing().when(sourceCoordinationStore).initializeStore();
+        objectUnderTest.initialize();
+        return objectUnderTest;
+    }
+
+    @Test
+    void initialize_calls_initializeStore() {
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        objectUnderTest.initialize();
+
+        verify(sourceCoordinationStore).initializeStore();
+    }
+
+    @Test
+    void getNextPartition_throws_UninitializedSourceCoordinatorException_when_called_before_initialize() {
+        final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
+        final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
+
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        assertThrows(UninitializedSourceCoordinatorException.class, () -> objectUnderTest.getNextPartition(partitionCreationSupplier));
     }
 
     @Test
@@ -82,7 +103,7 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
         given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
         given(sourceCoordinationStore.tryCreatePartitionItem(partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(true);
 
@@ -96,7 +117,7 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
         given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(partitionCreationSupplier);
@@ -111,7 +132,7 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
         given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
         given(sourceCoordinationStore.tryCreatePartitionItem(partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(false);
 
@@ -135,13 +156,13 @@ public class LeaseBasedSourceCoordinatorTest {
         assertThat(result.get().getPartitionKey(), equalTo(sourcePartition.getPartitionKey()));
         assertThat(result.get().getPartitionState(), equalTo(null));
 
-        verifyNoInteractions(sourceCoordinationStore);
+        verifyNoMoreInteractions(sourceCoordinationStore);
     }
 
     @Test
     void getNextPartition_with_no_active_partition_and_unsuccessful_tryAcquireAvailablePartition_returns_empty_Optional() {
         given(partitionManager.getActivePartition()).willReturn(Optional.empty());
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.empty()).willReturn(Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn(Optional.empty());
 
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(Collections::emptyList);
@@ -154,7 +175,7 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.empty());
         given(sourcePartitionStoreItem.getSourcePartitionKey()).willReturn(UUID.randomUUID().toString());
         given(sourcePartitionStoreItem.getPartitionProgressState()).willReturn(UUID.randomUUID().toString());
-        given(sourceCoordinationStore.tryAcquireAvailablePartition()).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(Collections::emptyList);
 

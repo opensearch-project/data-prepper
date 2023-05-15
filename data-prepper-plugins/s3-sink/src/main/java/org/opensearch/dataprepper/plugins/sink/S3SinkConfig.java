@@ -49,49 +49,56 @@ public class S3SinkConfig {
     private int maxUploadRetries = DEFAULT_UPLOAD_RETRIES;
 
     /**
-     * Aws Authentication configuration Options
+     * Aws Authentication configuration Options.
+     * @return aws authentication options.
      */
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
     }
 
     /**
-     * Threshold configuration Options
+     * Threshold configuration Options.
+     * @return threshold option object.
      */
     public ThresholdOptions getThresholdOptions() {
         return thresholdOptions;
     }
 
     /**
-     * S3 bucket configuration Options
+     * S3 bucket configuration Options.
+     * @return  bucket option object.
      */
     public BucketOptions getBucketOptions() {
         return bucketOptions;
     }
 
     /**
-     * Sink codec configuration Options
+     * Sink codec configuration Options.
+     * @return  codec plugin model.
      */
     public PluginModel getCodec() {
         return codec;
     }
 
     /**
-     * Buffer type configuration Options
+     * Buffer type configuration Options.
+     * @return buffer type option object.
      */
     public BufferTypeOptions getBufferType() {
         return bufferType;
     }
 
     /**
-     * S3 client connection retries configuration Options
+     * S3 client connection retries configuration Options.
+     * @return max connection retries value.
      */
     public int getMaxConnectionRetries() {
         return maxConnectionRetries;
     }
 
     /**
-     * S3 object upload retries configuration Options
+     * S3 object upload retries configuration Options.
+     * @return maximum upload retries value.
      */
     public int getMaxUploadRetries() {
         return maxUploadRetries;

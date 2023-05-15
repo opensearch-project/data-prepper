@@ -17,6 +17,14 @@ import java.util.function.Supplier;
  * @since 2.2
  */
 public interface SourceCoordinator<T> {
+
+    /**
+     * This method should be called by the source on startup when it is using source coordination. This method is meant to
+     * explicitly say that source coordination should be used, since a source that implements {@link UsesSourceCoordination}
+     * does not always use source coordination
+     */
+    void initialize();
+
     /**
      * This should be called by the source when it needs to get the next partition it should process on.
      * This method will attempt to acquire a partition for this instance of the source to work on, and if no partition is acquired, the partitionCreatorSupplier will be called to potentially create

@@ -86,7 +86,6 @@ setInitializer
     : LBRACE primary (SET_DELIMITER primary)* RBRACE
     ;
 
-
 unaryOperator
     : NOT
     | SUBTRACT
@@ -94,6 +93,7 @@ unaryOperator
 
 primary
     : jsonPointer
+    | function
     | variableIdentifier
     | setInitializer
     | literal
@@ -102,6 +102,25 @@ primary
 jsonPointer
     : JsonPointer
     | EscapedJsonPointer
+    ;
+
+function
+    : Function
+    ;
+
+Function
+    : JsonPointerCharacters LPAREN FunctionArgs RPAREN
+    ;
+
+fragment
+FunctionArgs
+    : (FunctionArg SPACE* COMMA)* SPACE* FunctionArg
+    ;
+
+fragment
+FunctionArg
+    : JsonPointer
+    | String
     ;
 
 variableIdentifier
@@ -227,7 +246,10 @@ EscapeSequence
     : '\\' [btnfr"'\\$]
     ;
 
-SET_DELIMITER : ',';
+SET_DELIMITER
+    : COMMA
+    ;
+COMMA : ',';
 EQUAL : '==';
 NOT_EQUAL : '!=';
 LT : '<';
