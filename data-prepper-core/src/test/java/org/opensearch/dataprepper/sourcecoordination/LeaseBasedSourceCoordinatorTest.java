@@ -412,6 +412,15 @@ public class LeaseBasedSourceCoordinatorTest {
     }
 
     @Test
+    void giveUpPartitions_with_nonInitialized_store_does_nothing_and_returns() {
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+
+        objectUnderTest.giveUpPartitions();
+
+        verifyNoInteractions(sourceCoordinationStore, partitionManager);
+    }
+
+    @Test
     void giveUpPartitions_with_active_partitionKey_that_does_not_exist_in_the_store_removes_the_active_partition() {
         final SourcePartition<String> sourcePartition = SourcePartition.builder(String.class)
                 .withPartitionKey(UUID.randomUUID().toString())
