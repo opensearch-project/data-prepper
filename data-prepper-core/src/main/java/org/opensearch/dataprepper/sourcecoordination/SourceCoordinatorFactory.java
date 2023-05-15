@@ -9,6 +9,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A factory class that will create the {@link SourceCoordinator} implementation based on the
@@ -16,6 +18,8 @@ import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
  * @since 2.2
  */
 public class SourceCoordinatorFactory {
+    private static final Logger LOG = LoggerFactory.getLogger(SourceCoordinatorFactory.class);
+
     private final SourceCoordinationConfig sourceCoordinationConfig;
     private final PluginFactory pluginFactory;
 
@@ -33,9 +37,13 @@ public class SourceCoordinatorFactory {
             return null;
         }
 
+
+
         final SourceCoordinationStore sourceCoordinationStore =
                 pluginFactory.loadPlugin(SourceCoordinationStore.class, sourceCoordinationConfig.getSourceCoordinationStoreConfig());
 
+        LOG.info("Creating LeaseBasedSourceCoordinator with coordination store {} for sub-pipeline {}",
+                sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName(), ownerPrefix);
         return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig, new PartitionManager<>(), ownerPrefix);
     }
 }
