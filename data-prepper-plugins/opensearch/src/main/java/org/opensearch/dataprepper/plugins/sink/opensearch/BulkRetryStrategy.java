@@ -202,7 +202,7 @@ public final class BulkRetryStrategy {
                 try {
                     Thread.sleep(delayMillis);
                 } catch (final InterruptedException e){
-                    LOG.error("Thread is interrupted while polling SQS with retry.", e);
+                    LOG.error("Thread is interrupted while attempting to bulk write to OpenSearch with retry.", e);
                 }
             }
         } while (operationResponse != null);
