@@ -29,9 +29,9 @@ import static org.mockito.Mockito.verify;
 class LocalFileBufferTest {
 
     public static final String BUCKET_NAME = UUID.randomUUID().toString();
-    public static final String KEY = UUID.randomUUID().toString() + ".temp";
+    public static final String KEY = UUID.randomUUID().toString() + ".log";
     public static final String PREFIX = "local";
-    public static final String SUFFIX = ".temp";
+    public static final String SUFFIX = ".log";
     @Mock
     private S3Client s3Client;
     private LocalFileBuffer localFileBuffer;
