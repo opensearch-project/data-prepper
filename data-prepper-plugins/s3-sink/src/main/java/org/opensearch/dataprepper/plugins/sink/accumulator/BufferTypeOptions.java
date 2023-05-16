@@ -6,6 +6,9 @@
 package org.opensearch.dataprepper.plugins.sink.accumulator;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -16,7 +19,15 @@ import java.util.stream.Collectors;
 public enum BufferTypeOptions {
 
     INMEMORY("in_memory", new InMemoryBuffer()),
-    LOCALFILE("local_file", new LocalFileBuffer());
+    LOCALFILE("local_file", new Object() {
+        LocalFileBuffer evaluate() {
+            try {
+                return new LocalFileBuffer(File.createTempFile("local", null));
+            } catch (IOException e) {
+                return null;
+            }
+        }
+    }.evaluate());
 
     private final String option;
     private final Buffer bufferType;

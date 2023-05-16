@@ -13,11 +13,12 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -26,21 +27,15 @@ import java.util.concurrent.TimeUnit;
 public class LocalFileBuffer implements Buffer {
 
     private static final Logger LOG = LoggerFactory.getLogger(LocalFileBuffer.class);
-    private BufferedOutputStream bufferedOutputStream;
+    private final OutputStream outputStream;
     private int eventCount;
     private final StopWatch watch;
-    private File localFile;
+    private final File localFile;
 
-    LocalFileBuffer() {
-        try {
-            localFile = new File(String.valueOf(UUID.randomUUID()));
-            bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(localFile));
-        } catch (IOException e) {
-            LOG.error("Unable to create local file ", e);
-        }
-
+    LocalFileBuffer(File tempFile) throws FileNotFoundException {
+        localFile = tempFile;
+        outputStream = new BufferedOutputStream(new FileOutputStream(tempFile));
         eventCount = 0;
-
         watch = new StopWatch();
         watch.start();
     }
@@ -48,7 +43,7 @@ public class LocalFileBuffer implements Buffer {
     @Override
     public long getSize() {
         try {
-            bufferedOutputStream.flush();
+            outputStream.flush();
         } catch (IOException e) {
             LOG.error("An exception occurred while flushing data to buffered output stream :", e);
         }
@@ -73,12 +68,7 @@ public class LocalFileBuffer implements Buffer {
      */
     @Override
     public void flushToS3(S3Client s3Client, String bucket, String key) {
-        try {
-            bufferedOutputStream.flush();
-            bufferedOutputStream.close();
-        } catch (IOException e) {
-            LOG.error("An exception occurred while flushing data to buffered output stream :", e);
-        }
+        flushAndCloseStream();
         s3Client.putObject(
                 PutObjectRequest.builder().bucket(bucket).key(key).build(),
                 RequestBody.fromFile(localFile));
@@ -92,15 +82,27 @@ public class LocalFileBuffer implements Buffer {
      */
     @Override
     public void writeEvent(byte[] bytes) throws IOException {
-        bufferedOutputStream.write(bytes);
-        bufferedOutputStream.write(System.lineSeparator().getBytes());
+        outputStream.write(bytes);
+        outputStream.write(System.lineSeparator().getBytes());
         eventCount++;
+    }
+
+    /**
+     * Flushing the buffered data into the output stream.
+     */
+    protected void flushAndCloseStream(){
+        try {
+            outputStream.flush();
+            outputStream.close();
+        } catch (IOException e) {
+            LOG.error("An exception occurred while flushing data to buffered output stream :", e);
+        }
     }
 
     /**
      * Remove the local temp file after flushing data to s3.
      */
-    private void removeTemporaryFile() {
+    protected void removeTemporaryFile() {
         if (localFile != null) {
             try {
                 Files.deleteIfExists(Paths.get(localFile.toString()));
