@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -25,6 +27,8 @@ import java.util.Optional;
 @DataPrepperPlugin(name = "in_memory", pluginType = SourceCoordinationStore.class)
 public class InMemorySourceCoordinationStore implements SourceCoordinationStore {
 
+    private static final Logger LOG = LoggerFactory.getLogger(InMemorySourceCoordinationStore.class);
+
     private final InMemoryPartitionAccessor inMemoryPartitionAccessor;
 
     @DataPrepperPluginConstructor
@@ -32,14 +36,17 @@ public class InMemorySourceCoordinationStore implements SourceCoordinationStore 
         this(new InMemoryPartitionAccessor());
     }
 
-    // For testing
+    /**
+     * For Testing
+     */
     public InMemorySourceCoordinationStore(final InMemoryPartitionAccessor inMemoryPartitionAccessor) {
         this.inMemoryPartitionAccessor = inMemoryPartitionAccessor;
     }
 
     @Override
     public void initializeStore() {
-
+        LOG.warn("The in_memory source coordination store is not recommended for production workloads. It is only effective in single node environments of Data Prepper, " +
+                "and can run into memory limitations over time if the number of partitions is too great.");
     }
 
     @Override
@@ -49,13 +56,13 @@ public class InMemorySourceCoordinationStore implements SourceCoordinationStore 
 
     @Override
     public boolean tryCreatePartitionItem(final String partitionKey, final SourcePartitionStatus sourcePartitionStatus, final Long closedCount, final String partitionProgressState) {
-        final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem = new InMemorySourcePartitionStoreItem();
-        inMemorySourcePartitionStoreItem.setSourcePartitionKey(partitionKey);
-        inMemorySourcePartitionStoreItem.setSourcePartitionStatus(sourcePartitionStatus);
-        inMemorySourcePartitionStoreItem.setClosedCount(closedCount);
-        inMemorySourcePartitionStoreItem.setPartitionProgressState(partitionProgressState);
 
         if (inMemoryPartitionAccessor.getItem(partitionKey).isEmpty()) {
+            final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem = new InMemorySourcePartitionStoreItem();
+            inMemorySourcePartitionStoreItem.setSourcePartitionKey(partitionKey);
+            inMemorySourcePartitionStoreItem.setSourcePartitionStatus(sourcePartitionStatus);
+            inMemorySourcePartitionStoreItem.setClosedCount(closedCount);
+            inMemorySourcePartitionStoreItem.setPartitionProgressState(partitionProgressState);
             inMemoryPartitionAccessor.queuePartition(inMemorySourcePartitionStoreItem);
             return true;
         }
