@@ -5,11 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.source.oteltrace;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +15,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
