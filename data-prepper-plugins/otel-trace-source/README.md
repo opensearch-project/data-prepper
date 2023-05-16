@@ -38,6 +38,9 @@ For more information on migrating from Data Prepper 1.x to Data Prepper 2.x, see
 * max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`. 
 * authentication(Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
 * record_type(Optional) => A string represents the supported record data type that is written into the buffer plugin. Value options are `otlp` or `event`. Default is `otlp`.
+* compression (Optional) : The compression type applied on the client request payload. Defaults to `none`. Supported values are:
+    * `none`: no compression
+    * `gzip`: apply GZip de-compression on the incoming request.
 
 ### Authentication Configurations
 
