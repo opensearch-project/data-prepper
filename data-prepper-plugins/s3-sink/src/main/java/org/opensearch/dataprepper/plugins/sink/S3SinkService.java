@@ -98,6 +98,7 @@ public class S3SinkService {
                 encodedEvent = codec.parse(event);
                 final byte[] encodedBytes = encodedEvent.getBytes();
 
+                currentBuffer.writeEvent(encodedBytes);
                 if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                     s3ObjectSizeSummary.record(currentBuffer.getEventCount());
                     LOG.info("Event collection Object info : Byte_capacity = {} Bytes," +
@@ -115,7 +116,6 @@ public class S3SinkService {
                     }
                     currentBuffer = bufferFactory.getBuffer();
                 }
-                currentBuffer.writeEvent(encodedBytes);
             }
         } catch (NullPointerException | IOException | InterruptedException e) {
             LOG.error("Exception while write event into buffer :", e);
