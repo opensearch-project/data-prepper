@@ -59,8 +59,8 @@ class BufferAccumulator<T extends Record<?>> {
 
     void add(final T record) throws Exception {
         recordsAccumulated.add(record);
-        if (recordsAccumulated.size() == numberOfRecordsToAccumulate) {
-            flushAccumulatedToBuffer();
+        if (recordsAccumulated.size() >= numberOfRecordsToAccumulate) {
+            flush();
         }
     }
 
