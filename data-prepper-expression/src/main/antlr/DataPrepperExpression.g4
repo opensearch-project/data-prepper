@@ -114,7 +114,7 @@ Function
 
 fragment
 FunctionArgs
-    : (FunctionArg SPACE* COMMA)* SPACE* FunctionArg
+    : (FunctionArg SPACE* COMMA SPACE*)* SPACE* FunctionArg
     ;
 
 fragment
@@ -141,20 +141,18 @@ literal
 
 
 Integer
-    : '0'
+    : ZERO
     | NonZeroDigit Digit*
     ;
 
 Float
-    : NonZeroDigit? Digit '.' Digit
-    | NonZeroDigit? Digit '.' Digit+ NonZeroDigit
-    | '.' Digit
-    | '.' Digit* NonZeroDigit
+    : Integer '.' ZERO* Integer
+    | Integer '.' ZERO* Integer EXPONENTLETTER SUBTRACT? Integer
     ;
 
 fragment
 Digit
-    : '0'
+    : ZERO
     | NonZeroDigit
     ;
 
@@ -270,6 +268,11 @@ LBRACE : '{';
 RBRACE : '}';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
+ZERO : '0';
+EXPONENTLETTER
+    : 'E'
+    | 'e'
+    ;
 
 fragment
 SPACE : ' ';

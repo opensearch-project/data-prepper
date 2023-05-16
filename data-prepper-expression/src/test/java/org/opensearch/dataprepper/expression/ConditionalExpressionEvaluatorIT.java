@@ -135,6 +135,7 @@ class ConditionalExpressionEvaluatorIT {
         String testTag4 = RandomStringUtils.randomAlphabetic(7);
         longEvent.getMetadata().addTag(testTag1);
         longEvent.getMetadata().addTag(testTag2);
+        longEvent.getMetadata().addTag(testTag3);
 
         Random random = new Random();
         int testStringLength = random.nextInt(10);
@@ -148,6 +149,11 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("/success == /status_code", event("{\"success\": true, \"status_code\": 200}"), false),
                 Arguments.of("/success != /status_code", event("{\"success\": true, \"status_code\": 200}"), true),
                 Arguments.of("/pi == 3.14159", event("{\"pi\": 3.14159}"), true),
+                Arguments.of("/value == 12345.678", event("{\"value\": 12345.678}"), true),
+                Arguments.of("/value == 12345.678E12", event("{\"value\": 12345.678E12}"), true),
+                Arguments.of("/value == 12345.678e-12", event("{\"value\": 12345.678e-12}"), true),
+                Arguments.of("/value == 12345.0000012", event("{\"value\": 12345.0000012}"), true),
+                Arguments.of("/value == 12345.00012E6", event("{\"value\": 12345.00012E6}"), true),
                 Arguments.of("true == (/is_cool == true)", event("{\"is_cool\": true}"), true),
                 Arguments.of("not /is_cool", event("{\"is_cool\": true}"), false),
                 Arguments.of("/status_code < 300", event("{\"status_code\": 200}"), true),
@@ -176,7 +182,8 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("length(/response) == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true),
                 Arguments.of("hasTags(\""+ testTag1+"\")", longEvent, true),
                 Arguments.of("hasTags(\""+ testTag1+"\",\""+testTag2+"\")", longEvent, true),
-                Arguments.of("hasTags(\""+ testTag3+"\")", longEvent, false),
+                Arguments.of("hasTags(\""+ testTag1+"\", \""+testTag2+"\", \""+testTag3+"\")", longEvent, true),
+                Arguments.of("hasTags(\""+ testTag4+"\")", longEvent, false),
                 Arguments.of("hasTags(\""+ testTag3+"\",\""+testTag4+"\")", longEvent, false)
         );
     }
