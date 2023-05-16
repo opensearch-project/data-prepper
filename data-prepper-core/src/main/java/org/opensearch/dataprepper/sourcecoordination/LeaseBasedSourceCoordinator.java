@@ -189,7 +189,10 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     @Override
     public void giveUpPartitions() {
-        validateIsInitialized();
+
+        if (!initialized) {
+            return;
+        }
 
         final Optional<SourcePartition<T>> activePartition = partitionManager.getActivePartition();
         if (activePartition.isPresent()) {
@@ -204,7 +207,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
                 sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
 
-                LOG.debug("Partition key {} was given up by owner {}", updateItem.getSourcePartitionKey(), ownerId);
+                LOG.info("Partition key {} was given up by owner {}", updateItem.getSourcePartitionKey(), ownerId);
             }
             partitionManager.removeActivePartition();
         }
@@ -250,7 +253,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     private void validateIsInitialized() {
         if (!initialized) {
-            throw new UninitializedSourceCoordinatorException("The initialize method has not been called on this source coordinator. initialize must be called before further interactions with the SourceCoordinator");
+            throw new UninitializedSourceCoordinatorException("The initialize method has not been called on this source coordinator. initialize() must be called before further interactions with the SourceCoordinator");
         }
     }
 }
