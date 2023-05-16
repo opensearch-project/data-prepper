@@ -133,9 +133,8 @@ class ConditionalExpressionEvaluatorIT {
         String testTag2 = RandomStringUtils.randomAlphabetic(7);
         String testTag3 = RandomStringUtils.randomAlphabetic(6);
         String testTag4 = RandomStringUtils.randomAlphabetic(7);
-        longEvent.getMetadata().addTag(testTag1);
-        longEvent.getMetadata().addTag(testTag2);
-        longEvent.getMetadata().addTag(testTag3);
+
+        longEvent.getMetadata().addTags(List.of(testTag1, testTag2, testTag3));
 
         Random random = new Random();
         int testStringLength = random.nextInt(10);
@@ -200,8 +199,7 @@ class ConditionalExpressionEvaluatorIT {
                 .build();
         String testTag1 = RandomStringUtils.randomAlphabetic(6);
         String testTag2 = RandomStringUtils.randomAlphabetic(7);
-        tagEvent.getMetadata().addTag(testTag1);
-        tagEvent.getMetadata().addTag(testTag2);
+        tagEvent.getMetadata().addTags(List.of(testTag1, testTag2));
 
         int testStringLength = random.nextInt(10);
         String testString = RandomStringUtils.randomAlphabetic(testStringLength);

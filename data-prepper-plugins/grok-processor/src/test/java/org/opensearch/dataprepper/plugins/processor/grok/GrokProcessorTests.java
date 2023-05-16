@@ -43,6 +43,7 @@ import java.util.concurrent.TimeoutException;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
@@ -501,6 +502,32 @@ public class GrokProcessorTests {
             assertThat(grokkedRecords.size(), equalTo(1));
             assertThat(grokkedRecords.get(0), notNullValue());
             assertRecordsAreEqual(grokkedRecords.get(0), record);
+            verify(grokProcessingMismatchCounter, times(1)).increment();
+            verify(grokProcessingTime, times(1)).record(any(Runnable.class));
+            verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);
+        }
+
+        @Test
+        public void testNoCapturesWithTag() throws JsonProcessingException {
+            final String tagOnMatchFailure1 = UUID.randomUUID().toString();
+            final String tagOnMatchFailure2 = UUID.randomUUID().toString();
+            pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
+
+            grokProcessor = createObjectUnderTest();
+            lenient().when(grokSecondMatch.match(messageInput)).thenReturn(secondMatch);
+            lenient().when(secondMatch.capture()).thenReturn(secondCapture);
+
+            final Map<String, Object> testData = new HashMap();
+            testData.put("message", messageInput);
+            final Record<Event> record = buildRecordWithEvent(testData);
+
+            final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+            assertThat(grokkedRecords.size(), equalTo(1));
+            assertThat(grokkedRecords.get(0), notNullValue());
+            assertRecordsAreEqual(grokkedRecords.get(0), record);
+            assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure1));
+            assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure2));
             verify(grokProcessingMismatchCounter, times(1)).increment();
             verify(grokProcessingTime, times(1)).record(any(Runnable.class));
             verifyNoInteractions(grokProcessingErrorsCounter, grokProcessingMatchCounter, grokProcessingTimeoutsCounter);

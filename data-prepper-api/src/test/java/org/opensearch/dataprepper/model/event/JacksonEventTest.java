@@ -647,8 +647,7 @@ public class JacksonEventTest {
                 .withData(jsonString)
                 .build();
         final EventMetadata eventMetadata = event.getMetadata();
-        eventMetadata.addTag("tag1");
-        eventMetadata.addTag("tag2");
+        eventMetadata.addTags(List.of("tag1", "tag2"));
         final String expectedJsonString = "{\"foo\":\"bar\",\"tags\":[\"tag1\",\"tag2\"]}";
         assertThat(event.jsonBuilder().includeTags("tags").toJsonString(), equalTo(expectedJsonString));
         assertThat(event.jsonBuilder().toJsonString(), equalTo(jsonString));

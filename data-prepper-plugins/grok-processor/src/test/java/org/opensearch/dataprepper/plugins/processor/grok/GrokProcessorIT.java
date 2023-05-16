@@ -25,11 +25,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorTests.buildRecordWithEvent;
@@ -59,6 +61,7 @@ public class GrokProcessorIT {
                 Collections.emptyMap(),
                 GrokProcessorConfig.DEFAULT_TIMEOUT_MILLIS,
                 GrokProcessorConfig.DEFAULT_TARGET_KEY,
+                null,
                 null);
 
         pluginSetting.setPipelineName("grokPipeline");
@@ -84,7 +87,9 @@ public class GrokProcessorIT {
                                                               final Map<String, String> patternDefinitions,
                                                               final int timeoutMillis,
                                                               final String targetKey,
-                                                              final String grokWhen) {
+                                                              final String grokWhen,
+                                                              final List<String> tagsOnMatchFailure
+) {
         final Map<String, Object> settings = new HashMap<>();
         settings.put(GrokProcessorConfig.BREAK_ON_MATCH, breakOnMatch);
         settings.put(GrokProcessorConfig.NAMED_CAPTURES_ONLY, namedCapturesOnly);
@@ -97,6 +102,7 @@ public class GrokProcessorIT {
         settings.put(GrokProcessorConfig.TIMEOUT_MILLIS, timeoutMillis);
         settings.put(GrokProcessorConfig.TARGET_KEY, targetKey);
         settings.put(GrokProcessorConfig.GROK_WHEN, grokWhen);
+        settings.put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, tagsOnMatchFailure);
 
         return new PluginSetting(PLUGIN_NAME, settings);
     }
@@ -460,6 +466,30 @@ public class GrokProcessorIT {
         assertThat(grokkedRecords.size(), equalTo(1));
         assertThat(grokkedRecords.get(0), notNullValue());
         assertRecordsAreEqual(grokkedRecords.get(0), resultRecord);
+    }
+
+    @Test
+    public void testMatchWithNoCapturesAndTags() throws JsonProcessingException {
+        final Map<String, List<String>> matchConfig = new HashMap<>();
+        matchConfig.put("message", Collections.singletonList("%{GREEDYDATA:greedy_data} (?<mynumber>\\d\\d\\d-\\d\\d\\d-\\d\\d\\d)"));
+        final String tagOnMatchFailure1 = UUID.randomUUID().toString();
+        final String tagOnMatchFailure2 = UUID.randomUUID().toString();
+
+        pluginSetting.getSettings().put(GrokProcessorConfig.MATCH, matchConfig);
+        pluginSetting.getSettings().put(GrokProcessorConfig.TAGS_ON_MATCH_FAILURE, List.of(tagOnMatchFailure1, tagOnMatchFailure2));
+        grokProcessor = new GrokProcessor(pluginSetting, expressionEvaluator);
+
+        final Map<String, Object> testData = new HashMap();
+        testData.put("log", "This is my greedy data before matching with my phone number 123-456-789");
+
+        final Record<Event> record = buildRecordWithEvent(testData);
+
+        final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
+
+        assertThat(grokkedRecords.size(), equalTo(1));
+        assertRecordsAreEqual(grokkedRecords.get(0), record);
+        assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure1));
+        assertTrue(((Event)record.getData()).getMetadata().getTags().contains(tagOnMatchFailure2));
     }
 
     @Test

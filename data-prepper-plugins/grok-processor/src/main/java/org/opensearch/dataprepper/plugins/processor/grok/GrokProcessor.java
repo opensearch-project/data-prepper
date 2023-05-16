@@ -81,6 +81,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final GrokProcessorConfig grokProcessorConfig;
     private final Set<String> keysToOverwrite;
     private final ExecutorService executorService;
+    private final List<String> tagsOnMatchFailure;
 
     private final ExpressionEvaluator<Boolean> expressionEvaluator;
 
@@ -97,7 +98,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         this.fieldToGrok = new LinkedHashMap<>();
         this.executorService = executorService;
         this.expressionEvaluator = expressionEvaluator;
-
+        this.tagsOnMatchFailure = grokProcessorConfig.getTagsOnMatchFailure();
         grokProcessingMatchCounter = pluginMetrics.counter(GROK_PROCESSING_MATCH);
         grokProcessingMismatchCounter = pluginMetrics.counter(GROK_PROCESSING_MISMATCH);
         grokProcessingErrorsCounter = pluginMetrics.counter(GROK_PROCESSING_ERRORS);
@@ -118,9 +119,8 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for (final Record<Event> record : records) {
+            final Event event = record.getData();
             try {
-                final Event event = record.getData();
-
                 if (Objects.nonNull(grokProcessorConfig.getGrokWhen()) && !expressionEvaluator.evaluate(grokProcessorConfig.getGrokWhen(), event)) {
                     continue;
                 }
@@ -141,6 +141,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 LOG.error(EVENT, "Matching on record [{}] was interrupted", record.getData(), e);
                 grokProcessingErrorsCounter.increment();
             } catch (RuntimeException e) {
+                event.getMetadata().addTags(tagsOnMatchFailure);
                 LOG.error(EVENT, "Unknown exception occurred when matching record [{}]", record.getData(), e);
                 grokProcessingErrorsCounter.increment();
             }
@@ -258,6 +259,9 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
 
         if (grokkedCaptures.isEmpty()) {
+            if (tagsOnMatchFailure != null && tagsOnMatchFailure.size() > 0) {
+                event.getMetadata().addTags(tagsOnMatchFailure);
+            }
             grokProcessingMismatchCounter.increment();
         } else {
             grokProcessingMatchCounter.increment();
