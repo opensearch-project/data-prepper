@@ -52,7 +52,7 @@ class ParseTreeCoercionService {
                     if (trimmedArg.charAt(0) == '/') {
                         argList.add(trimmedArg);
                     } else if (trimmedArg.charAt(0) == '"') {
-                        if (trimmedArg.charAt(trimmedArg.length()-1) != '"') {
+                        if (trimmedArg.length() < 2 || trimmedArg.charAt(trimmedArg.length()-1) != '"') {
                             throw new RuntimeException("Invalid string argument. Missing double quote at the end");
                         }
                         argList.add(trimmedArg);
