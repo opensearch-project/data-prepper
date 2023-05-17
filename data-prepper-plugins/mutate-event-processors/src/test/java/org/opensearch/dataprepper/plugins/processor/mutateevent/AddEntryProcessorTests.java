@@ -26,6 +26,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,7 +46,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testSingleAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -59,8 +60,8 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testMultiAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, null, false, null),
-                createEntry("message2", 4, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, false, null),
+                createEntry("message2", null, 4, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -76,7 +77,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testSingleNoOverwriteAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -91,7 +92,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testSingleOverwriteAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, null, true, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -106,8 +107,8 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testMultiOverwriteMixedAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, null, true, null),
-                createEntry("message", 4, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, true, null),
+                createEntry("message", null, 4, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -122,7 +123,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testIntAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -136,7 +137,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testBoolAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", true, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, true, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -150,7 +151,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testStringAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", "string", null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, "string", null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -164,7 +165,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testNullAddProcessorTests() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, null, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -190,7 +191,7 @@ public class AddEntryProcessorTests {
     public void testNestedAddProcessorTests() {
         TestObject obj = new TestObject();
         obj.a = "test";
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", obj, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, obj, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -205,7 +206,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testArrayAddProcessorTests() {
         Object[] array = new Object[] { 1, 1.2, "string", true, null };
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", array, null, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, array, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -220,7 +221,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testFloatAddProcessorTests() {
         when(mockConfig.getEntries())
-                .thenReturn(createListOfEntries(createEntry("newMessage", 1.2, null, false, null)));
+                .thenReturn(createListOfEntries(createEntry("newMessage", null, 1.2, null, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -235,7 +236,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testAddSingleFormatEntry() {
         when(mockConfig.getEntries())
-                .thenReturn(createListOfEntries(createEntry("date-time", null, TEST_FORMAT, false, null)));
+                .thenReturn(createListOfEntries(createEntry("date-time", null, null, TEST_FORMAT, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -250,8 +251,8 @@ public class AddEntryProcessorTests {
     @Test
     public void testAddMultipleFormatEntries() {
         when(mockConfig.getEntries())
-                .thenReturn(createListOfEntries(createEntry("date-time", null, TEST_FORMAT, false, null),
-                        createEntry("date-time2", null, ANOTHER_TEST_FORMAT, false, null)));
+                .thenReturn(createListOfEntries(createEntry("date-time", null, null, TEST_FORMAT, false, null),
+                        createEntry("date-time2", null, null, ANOTHER_TEST_FORMAT, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -268,7 +269,7 @@ public class AddEntryProcessorTests {
     public void testFormatOverwritesExistingEntry() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry("time", null, TEST_FORMAT, true, null)));
+                        createListOfEntries(createEntry("time", null, null, TEST_FORMAT, true, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -283,7 +284,7 @@ public class AddEntryProcessorTests {
     public void testFormatNotOverwriteExistingEntry() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry("time", null, TEST_FORMAT, false, null)));
+                        createListOfEntries(createEntry("time", null, null, TEST_FORMAT, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -299,7 +300,7 @@ public class AddEntryProcessorTests {
     public void testFormatPrecedesValue() {
         when(mockConfig.getEntries())
                 .thenReturn(
-                        createListOfEntries(createEntry("date-time", "date-time-value", TEST_FORMAT, false, null)));
+                        createListOfEntries(createEntry("date-time", null, "date-time-value", TEST_FORMAT, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -314,7 +315,7 @@ public class AddEntryProcessorTests {
     @Test
     public void testFormatVariousDataTypes() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(
-                "newField", null, "${number-key}-${boolean-key}-${string-key}", false, null)));
+                "newField", null, null, "${number-key}-${boolean-key}-${string-key}", false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
@@ -326,7 +327,7 @@ public class AddEntryProcessorTests {
 
     @Test
     public void testBadFormatThenEntryNotAdded() {
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("data-time", null, BAD_TEST_FORMAT, false, null)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("data-time", null, null, BAD_TEST_FORMAT, false, null)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleFields();
@@ -342,7 +343,7 @@ public class AddEntryProcessorTests {
     public void testKeyIsNotAdded_when_addWhen_condition_is_false() {
         final String addWhen = UUID.randomUUID().toString();
 
-        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", 3, null, false, addWhen)));
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("newMessage", null, 3, null, false, addWhen)));
 
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
@@ -355,13 +356,41 @@ public class AddEntryProcessorTests {
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(false));
     }
 
+    @Test
+    public void testMetadataKeySet() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(
+            createEntry(null, "newField", "newValue", null, false, null), 
+            createEntry(null, "newIntField", 123, null, false, null), 
+            createEntry(null, "newBooleanField", true, null, false, null)
+            ));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithMetadata("message", Map.of("key1", "value1"));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        Map<String, Object> attributes = editedRecords.get(0).getData().getMetadata().getAttributes();
+        assertThat(attributes.get("newField"), equalTo("newValue"));
+        assertThat(attributes.get("newIntField"), equalTo(123));
+        assertThat(attributes.get("newBooleanField"), equalTo(true));
+    }
+
+    @Test
+    public void testMetadataKeyAndKeyBothNotSetThrows() {
+        assertThrows(IllegalArgumentException.class, () -> createEntry(null, null, "newValue", null, false, null));
+    }
+
+    @Test
+    public void testMetadataKeyAndKeyBothSetThrows() {
+        assertThrows(IllegalArgumentException.class, () -> createEntry("newKey", "newMetadataKey", "newValue", null, false, null));
+    }
+
     private AddEntryProcessor createObjectUnderTest() {
         return new AddEntryProcessor(pluginMetrics, mockConfig, expressionEvaluator);
     }
 
     private AddEntryProcessorConfig.Entry createEntry(
-            final String key, final Object value, final String format, final boolean overwriteIfKeyExists, final String addWhen) {
-        return new AddEntryProcessorConfig.Entry(key, value, format, overwriteIfKeyExists, addWhen);
+            final String key, final String metadataKey, final Object value, final String format, final boolean overwriteIfKeyExists, final String addWhen) {
+        return new AddEntryProcessorConfig.Entry(key, metadataKey, value, format, overwriteIfKeyExists, addWhen);
     }
 
     private List<AddEntryProcessorConfig.Entry> createListOfEntries(final AddEntryProcessorConfig.Entry... entries) {
@@ -393,4 +422,15 @@ public class AddEntryProcessorTests {
                 .withEventType("event")
                 .build());
     }
+
+    private Record<Event> getEventWithMetadata(String message, Map<String, Object> attributes) {
+        final Map<String, Object> testData = new HashMap<>();
+        testData.put("message", message);
+        return new Record<>(JacksonEvent.builder()
+                .withData(testData)
+                .withEventMetadataAttributes(attributes)
+                .withEventType("event")
+                .build());
+    }
+
 }
