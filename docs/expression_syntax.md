@@ -177,6 +177,10 @@ Currently the following functions are supported
    - all arguments must be of String type
    - returns true if all arguments are present in the event's tags, returns false otherwise
    For example, if event has tags "tag1", "tag2", and "tag3", `hasTags("tag1")` or `hasTags("tag1", "tag2")` would return true and `hasTags("tag4")` and `hadTags("tag1", "tag4")` would return false.
+ * `getMetadata()`
+   - takes one String literal as argument. This is the key to lookup in the event's metadata. If the key contains "/", then recursive lookup into the metadata attributes is done.
+   - returns the value corresponding to the argument (key) passed. Value can be of any type.
+   For example, if metadata contains {"key1": "value2", "key2": 10}, then `getMetadata("key1")` returns "value2", and `getMetadata("key2")` return 10.
 
 
 ## White Space
