@@ -118,7 +118,7 @@ RequestsInstrumentor().instrument(tracer_provider=tracerProvider)
 retry_strategy = Retry(
     total=2,
     status_forcelist=[401, 401.1, 429, 503],
-    method_whitelist=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"]
+    allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS", "TRACE"]
 )
 
 

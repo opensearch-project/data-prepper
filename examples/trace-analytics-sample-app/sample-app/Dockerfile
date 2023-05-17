@@ -13,7 +13,7 @@ RUN gradle bootJar --daemon
 
 RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.0.1/opentelemetry-javaagent-all.jar
 
-FROM openjdk:8-jre-alpine
+FROM fabric8/java-alpine-openjdk11-jre
 
 RUN apk update \
 && apk upgrade \
