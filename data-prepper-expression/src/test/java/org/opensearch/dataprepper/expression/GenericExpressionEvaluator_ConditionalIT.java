@@ -36,7 +36,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.apache.commons.lang3.RandomStringUtils;
 
-class ConditionalExpressionEvaluatorIT {
+class GenericExpressionEvaluator_ConditionalIT {
     /**
      * {@link JacksonEvent#get(String, Class)} supports a String matching the following regex expression:
      * ^[A-Za-z0-9]+([A-Za-z0-9.-_][A-Za-z0-9])*$

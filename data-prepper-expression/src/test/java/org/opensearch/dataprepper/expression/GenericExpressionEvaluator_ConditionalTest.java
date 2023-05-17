@@ -27,7 +27,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class ConditionalExpressionEvaluatorTest {
+class GenericExpressionEvaluator_ConditionalTest {
 
     @Mock
     private Parser<ParseTree> parser;

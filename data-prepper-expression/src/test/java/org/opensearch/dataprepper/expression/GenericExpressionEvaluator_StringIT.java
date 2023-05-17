@@ -31,10 +31,9 @@ import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.not;
 import org.apache.commons.lang3.RandomStringUtils;
 
-class ArithmeticExpressionEvaluatorIT {
+class GenericExpressionEvaluator_StringIT {
 
     private AnnotationConfigApplicationContext applicationContext;
 
@@ -46,13 +45,13 @@ class ArithmeticExpressionEvaluatorIT {
     }
 
     @Test
-    void testArithmeticExpressionEvaluatorBeanAvailable() {
+    void testStringExpressionEvaluatorBeanAvailable() {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
         assertThat(evaluator, isA(GenericExpressionEvaluator.class));
     }
 
     @Test
-    void testArithmeticExpressionEvaluatorBeanSingleton() {
+    void testStringExpressionEvaluatorBeanSingleton() {
         final GenericExpressionEvaluator instanceA = applicationContext.getBean(GenericExpressionEvaluator.class);
         final GenericExpressionEvaluator instanceB = applicationContext.getBean(GenericExpressionEvaluator.class);
         assertThat(instanceA, sameInstance(instanceB));
@@ -73,10 +72,10 @@ class ArithmeticExpressionEvaluatorIT {
 
     @ParameterizedTest
     @MethodSource("validExpressionArguments")
-    void testArithmeticExpressionEvaluator(final String expression, final Event event, final Number expected, final Class expectedClass) {
+    void testStringExpressionEvaluator(final String expression, final Event event, final String expected, final Class expectedClass) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        final Number actual = (Number)evaluator.evaluate(expression, event);
+        final String actual = (String)evaluator.evaluate(expression, event);
 
         assertThat(actual, is(expected));
         assertThat(actual, instanceOf(expectedClass));
@@ -84,23 +83,23 @@ class ArithmeticExpressionEvaluatorIT {
 
     @ParameterizedTest
     @MethodSource("validExpressionArguments")
-    void testArithmeticExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Number expected, final Class expectedClass) {
+    void testStringExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final String expected, final Class expectedClass) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
         final int numberOfThreads = 50;
         final ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
 
-        List<Number> evaluationResults = Collections.synchronizedList(new ArrayList<>());
+        List<String> evaluationResults = Collections.synchronizedList(new ArrayList<>());
 
         for (int i = 0; i < numberOfThreads; i++) {
-            executorService.execute(() -> evaluationResults.add((Number)evaluator.evaluate(expression, event)));
+            executorService.execute(() -> evaluationResults.add((String)evaluator.evaluate(expression, event)));
         }
 
         await().atMost(5, TimeUnit.SECONDS)
                 .until(() -> evaluationResults.size() == numberOfThreads);
 
         assertThat(evaluationResults.size(), equalTo(numberOfThreads));
-        for (Number evaluationResult : evaluationResults) {
+        for (String evaluationResult : evaluationResults) {
             assertThat(evaluationResult, equalTo(expected));
             assertThat(evaluationResult, instanceOf(expectedClass));
         }
@@ -108,23 +107,20 @@ class ArithmeticExpressionEvaluatorIT {
 
     @ParameterizedTest
     @MethodSource("invalidExpressionArguments")
-    void testArithmeticExpressionEvaluatorInvalidInput(final String expression, final Event event, final Class expectedClass) {
+    void testStringExpressionEvaluatorInvalidInput(final String expression, final Event event, final Class expectedClass) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
-        Object result = evaluator.evaluate(expression, event);
+
+        final Object result = evaluator.evaluate(expression, event);
         assertThat(result, not(instanceOf(expectedClass)));
     }
 
     private static Stream<Arguments> validExpressionArguments() {
         Random random = new Random();
-        int randomInt = random.nextInt(10000);
-        float randomFloat = random.nextFloat();
         int testStringLength = random.nextInt(30);
         String testString = RandomStringUtils.randomAlphabetic(testStringLength);
         return Stream.of(
-                Arguments.of(""+randomInt, event("{}"), randomInt, Integer.class),
-                Arguments.of("/status_code", event("{\"status_code\": "+randomInt+"}"), randomInt, Integer.class),
-                Arguments.of("/status_code", event("{\"status_code\": "+randomFloat+"}"), randomFloat, Float.class),
-                Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), testString.length(), Integer.class)
+                Arguments.of("\""+testString+"\"", event("{}"), testString, String.class),
+                Arguments.of("/status_message", event("{\"status_message\": \""+testString+"\"}"), testString, String.class)
         );
     }
 
@@ -132,12 +128,11 @@ class ArithmeticExpressionEvaluatorIT {
         Random random = new Random();
         int testStringLength = random.nextInt(10);
         String testString = RandomStringUtils.randomAlphabetic(testStringLength);
+        int randomInt = random.nextInt(10000);
         return Stream.of(
-                Arguments.of("/missing", event("{}"), Integer.class),
-                Arguments.of("/message", event("{\"message\": \""+testString+"\"}"), Integer.class),
-                Arguments.of("/status", event("{\"status\": true}"), Integer.class),
-                Arguments.of("/status", event("{\"status\": 5.55}"), Integer.class),
-                Arguments.of("/status", event("{\"status\": 200}"), Float.class)
+                Arguments.of("/missing", event("{}"), String.class),
+                Arguments.of("/value", event("{\"value\": "+randomInt+"}"), String.class),
+                Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), String.class)
         );
     }
 
@@ -145,3 +140,4 @@ class ArithmeticExpressionEvaluatorIT {
         return JacksonEvent.builder().withEventType("event").withData(data).build();
     }
 }
+
