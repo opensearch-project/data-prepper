@@ -41,7 +41,7 @@ public class KafkaSourceConfig {
   @Valid
   private SchemaConfig schemaConfig;
 
-  @JsonProperty("schema")
+  @JsonProperty("authentication")
   @NotNull
   @Valid
   private AuthConfig authConfig;
