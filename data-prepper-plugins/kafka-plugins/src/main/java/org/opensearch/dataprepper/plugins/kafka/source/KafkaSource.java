@@ -7,11 +7,12 @@ package org.opensearch.dataprepper.plugins.kafka.source;
 
 import java.util.List;
 import java.util.Properties;
+
+import java.util.stream.IntStream;
+import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
-import java.util.Comparator;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -71,9 +72,13 @@ public class KafkaSource implements Source<Record<Object>> {
                   consumerGroupID, consumerProperties, sourceConfig, buffer, pluginMetrics);
           executorService.submit(multithreadedConsumer);
         });
-      } catch (Exception e) {
+      } catch (RuntimeException e) {
         LOG.error("Failed to setup the Kafka Source Plugin.", e);
-        throw new RuntimeException();
+        try {
+          throw new InterruptedException();
+        } catch (InterruptedException ex) {
+          throw new RuntimeException(ex);
+        }
       }
     });
   }
