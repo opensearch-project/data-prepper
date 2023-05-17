@@ -10,7 +10,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,19 +28,23 @@ public class MultithreadedConsumer implements Runnable {
 	private KafkaConsumer<String, JsonNode> jsonConsumer = null;
 	private static final Logger LOG = LoggerFactory.getLogger(MultithreadedConsumer.class);
 	private final AtomicBoolean status = new AtomicBoolean(false);
-	private final TopicConfig topicConfig;
+	private final KafkaSourceConfig sourceConfig;
 	private final Buffer<Record<Object>> buffer;
 	private String consumerId;
 	private String consumerGroupId;
 	private Properties consumerProperties;
 	private PluginMetrics pluginMetrics;
 
-	public MultithreadedConsumer(String consumerId, String consumerGroupId, Properties properties,
-								 TopicConfig topicConfig, Buffer<Record<Object>> buffer, PluginMetrics pluginMetric) {
+	public MultithreadedConsumer(String consumerId,
+								 String consumerGroupId,
+								 Properties properties,
+								 KafkaSourceConfig sourceConfig,
+								 Buffer<Record<Object>> buffer,
+								 PluginMetrics pluginMetric) {
 		this.consumerProperties = Objects.requireNonNull(properties);
 		this.consumerId = consumerId;
 		this.consumerGroupId = consumerGroupId;
-		this.topicConfig = topicConfig;
+		this.sourceConfig = sourceConfig;
 		this.buffer = buffer;
 		this.pluginMetrics = pluginMetric;
 		this.jsonConsumer = new KafkaConsumer<>(consumerProperties);

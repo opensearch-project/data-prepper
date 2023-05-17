@@ -17,17 +17,8 @@ public class SchemaConfig {
   @JsonProperty("registry_url")
   private String registryURL;
 
-  @JsonProperty("key_deserializer")
-  private String keyDeserializer;
-
-  @JsonProperty("value_deserializer")
-  private String valueDeserializer;
-
-  @JsonProperty("schema_type")
-  private String schemaType;
-
-  @JsonProperty("record_type")
-  private String recordType;
+  @JsonProperty("version")
+  private int version;
 
   public String getRegistryURL() {
     return registryURL;
@@ -37,35 +28,11 @@ public class SchemaConfig {
     this.registryURL = registryURL;
   }
 
-  public String getKeyDeserializer() {
-    return keyDeserializer;
+  public int getVersion() {
+    return version;
   }
 
-  public void setKeyDeserializer(String keyDeserializer) {
-    this.keyDeserializer = keyDeserializer;
-  }
-
-  public String getValueDeserializer() {
-    return valueDeserializer;
-  }
-
-  public void setValueDeserializer(String valueDeserializer) {
-    this.valueDeserializer = valueDeserializer;
-  }
-
-  public String getSchemaType() {
-    return schemaType;
-  }
-
-  public void setSchemaType(String schemaType) {
-    this.schemaType = schemaType;
-  }
-
-  public String getRecordType() {
-    return recordType;
-  }
-
-  public void setRecordType(String recordType) {
-    this.recordType = recordType;
+  public void setVersion(int version) {
+    this.version = version;
   }
 }

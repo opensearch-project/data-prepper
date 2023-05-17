@@ -11,8 +11,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * An enum class which helps to identify the different message formats for the
- * schema type.
+ * An enum class which helps to identify the different message formats like avro, jason etc.
+ * for the schema type.
  */
 public enum MessageFormat {
 	PLAINTEXT("plaintext"), JSON("json"), AVRO("avro");

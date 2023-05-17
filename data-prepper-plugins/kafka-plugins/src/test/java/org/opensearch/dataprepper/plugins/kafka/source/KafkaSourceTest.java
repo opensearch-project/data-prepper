@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Assertions;
@@ -19,9 +20,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.ConsumerConfigs;
 import org.opensearch.dataprepper.plugins.kafka.consumer.MultithreadedConsumer;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -33,11 +32,13 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.verify;
+
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -63,27 +64,12 @@ class KafkaSourceTest {
 	@Mock
 	List<TopicsConfig> mockList = new ArrayList<TopicsConfig>();
 	
-	@Mock
-	private TopicConfig topicConfig;
-	
 	@BeforeEach
 	void setUp() throws Exception {
 		when(sourceConfig.getTopics()).thenReturn((mockList));
 		when(mockList.get(0)).thenReturn(topicsConfig);
-		when(topicsConfig.getTopic()).thenReturn(topicConfig);
-		
-		when(topicConfig.getSchemaConfig()).thenReturn(schemaConfig);
-		
-		when(topicConfig.getConsumerGroupConfig()).thenReturn(mock(ConsumerConfigs.class));
-		when(topicConfig.getSchemaConfig()).thenReturn(mock(SchemaConfig.class));
-		when(topicConfig.getConsumerGroupConfig().getWorkers()).thenReturn(1);
-		when(topicConfig.getConsumerGroupConfig().getGroupName()).thenReturn("DPKafkaProj");
-		when(topicConfig.getConsumerGroupConfig().getAutoOffsetReset()).thenReturn("earliest");
-		when(sourceConfig.getBootStrapServers()).thenReturn(Arrays.asList("localhost:9092"));
-		when(topicConfig.getConsumerGroupConfig().getGroupId()).thenReturn("DPKafkaProj");
-		when(topicConfig.getConsumerGroupConfig().getAutoCommit()).thenReturn("false");
-		when(topicConfig.getName()).thenReturn(("my-topic"));
-
+		when(sourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
+		when(sourceConfig.getSchemaConfig()).thenReturn(mock(SchemaConfig.class));
 	}
 
 	@Test
@@ -107,14 +93,13 @@ class KafkaSourceTest {
 	private List<MultithreadedConsumer> buildKafkaSourceConsumer() {
 		List<MultithreadedConsumer> consumers = new ArrayList<>();
 		Properties prop = new Properties();
-		prop.put(org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-		prop.put(org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		prop.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-
+		prop.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+		prop.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,StringDeserializer.class);
 		MultithreadedConsumer kafkaSourceConsumer = new MultithreadedConsumer(
-				topicConfig.getConsumerGroupConfig().getGroupId(), 
-				topicConfig.getConsumerGroupConfig().getGroupId(),
-				prop, topicConfig, null, pluginMetrics);
+				topicsConfig.getGroupId(),
+				topicsConfig.getGroupId(),
+				prop, sourceConfig, null, pluginMetrics);
 		consumers.add(kafkaSourceConsumer);
 		return consumers;
 	}
@@ -122,28 +107,22 @@ class KafkaSourceTest {
 
 	@Test
 	void test_kafkaSource_start_execution_string_schemaType() throws Exception {
-		List<TopicsConfig> list = new ArrayList<TopicsConfig>();
-		TopicConfig topicConfig = new TopicConfig();
+		List<TopicsConfig> topicsConfigList = new ArrayList<TopicsConfig>();
 		KafkaSourceConfig sourceConfig = new KafkaSourceConfig();
 		TopicsConfig topicsConfig = new TopicsConfig();
-		ConsumerConfigs consumerConfigs = new ConsumerConfigs();
 		SchemaConfig schemaConfig = new SchemaConfig();
-		schemaConfig.setKeyDeserializer("org.apache.kafka.common.serialization.StringDeserializer");
-		schemaConfig.setValueDeserializer("org.apache.kafka.common.serialization.StringDeserializer");
-		schemaConfig.setSchemaType("plaintext");
-		consumerConfigs.setAutoCommitInterval(Duration.ofMillis(1000));
-		consumerConfigs.setAutoOffsetReset("earliest");
-		consumerConfigs.setAutoCommit("false");
-		consumerConfigs.setGroupId("DPKafkaProj");
-		consumerConfigs.setWorkers(3);
 
-		topicConfig.setConsumerGroupConfig(consumerConfigs);
-		topicConfig.setSchemaConfig(schemaConfig);
-		topicConfig.setTopic("my-topic");
+		topicsConfig.setAutoCommitInterval(Duration.ofMillis(1000));
+		topicsConfig.setAutoOffsetReset("earliest");
+		topicsConfig.setAutoCommit("false");
+		topicsConfig.setGroupId("DPKafkaProj");
+		topicsConfig.setWorkers(3);
 
-		topicsConfig.setTopics(topicConfig);
-		list.add(topicsConfig);
-		sourceConfig.setTopics(list);
+		sourceConfig.setSchemaConfig(schemaConfig);
+		topicsConfig.setName("my-topic");
+
+		topicsConfigList.add(topicsConfig);
+		sourceConfig.setTopics(topicsConfigList);
 		sourceConfig.setBootStrapServers(Arrays.asList("localhost:9093"));
 
 		source = new KafkaSource(sourceConfig, pluginMetrics);
@@ -156,27 +135,24 @@ class KafkaSourceTest {
 	@Test
 	void test_kafkaSource_start_execution_json_schemaType() throws Exception {
 
-		List<TopicsConfig> list = new ArrayList<TopicsConfig>();
-		TopicConfig topicConfig = new TopicConfig();
+		List<TopicsConfig> topicsConfigList = new ArrayList<TopicsConfig>();
 		KafkaSourceConfig sourceConfig = new KafkaSourceConfig();
 		TopicsConfig topicsConfig = new TopicsConfig();
-		ConsumerConfigs consumerConfigs = new ConsumerConfigs();
 		SchemaConfig schemaConfig = new SchemaConfig();
-		schemaConfig.setKeyDeserializer("org.apache.kafka.common.serialization.StringDeserializer");
-		schemaConfig.setSchemaType("json");
-		consumerConfigs.setAutoCommitInterval(Duration.ofMillis(1000));
-		consumerConfigs.setAutoOffsetReset("earliest");
-		consumerConfigs.setAutoCommit("false");
-		consumerConfigs.setGroupId("DPKafkaProj");
-		consumerConfigs.setWorkers(3);
 
-		topicConfig.setConsumerGroupConfig(consumerConfigs);
-		topicConfig.setSchemaConfig(schemaConfig);
-		topicConfig.setTopic("my-topic");
+		topicsConfig.setAutoCommitInterval(Duration.ofMillis(1000));
+		topicsConfig.setAutoOffsetReset("earliest");
+		topicsConfig.setAutoCommit("false");
+		topicsConfig.setGroupId("DPKafkaProj");
+		topicsConfig.setWorkers(3);
 
-		topicsConfig.setTopics(topicConfig);
-		list.add(topicsConfig);
-		sourceConfig.setTopics(list);
+		sourceConfig.setSchemaConfig(schemaConfig);
+		topicsConfig.setName("my-topic");
+
+		topicsConfigList.add(topicsConfig);
+		sourceConfig.setTopics(topicsConfigList);
+
+
 		sourceConfig.setBootStrapServers(Arrays.asList("localhost:9093"));
 		source = new KafkaSource(sourceConfig, pluginMetrics);
 		KafkaSource spySource = spy(source);
