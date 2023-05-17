@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
+import com.linecorp.armeria.server.encoding.DecodingService;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import com.linecorp.armeria.server.Server;
@@ -120,7 +122,11 @@ public class OTelLogsSource implements Source<Record<Object>> {
 
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
-            sb.service(grpcServiceBuilder.build());
+            if (CompressionOption.NONE.equals(oTelLogsSourceConfig.getCompression())) {
+                sb.service(grpcServiceBuilder.build());
+            } else {
+                sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
+            }
             sb.requestTimeoutMillis(oTelLogsSourceConfig.getRequestTimeoutInMillis());
 
             // ACM Cert for SSL takes preference

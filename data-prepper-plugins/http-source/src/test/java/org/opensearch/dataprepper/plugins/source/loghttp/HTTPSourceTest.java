@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import com.linecorp.armeria.common.HttpHeaderNames;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -46,6 +48,7 @@ import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthentication
 import org.opensearch.dataprepper.plugins.HttpBasicArmeriaHttpAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -63,6 +66,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
@@ -160,6 +164,15 @@ class HTTPSourceTest {
                         .add(LogHTTPService.PAYLOAD_SIZE).toString());
     }
 
+    private byte[] createGZipCompressedPayload(final String payload) throws IOException {
+        // Create a GZip compressed request body
+        final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        try (final GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream)) {
+            gzipStream.write(payload.getBytes(StandardCharsets.UTF_8));
+        }
+        return byteStream.toByteArray();
+    }
+
     @BeforeEach
     public void setUp() {
         lenient().when(serverBuilder.annotatedService(any())).thenReturn(serverBuilder);
@@ -176,6 +189,7 @@ class HTTPSourceTest {
         lenient().when(sourceConfig.getMaxConnectionCount()).thenReturn(500);
         lenient().when(sourceConfig.getMaxPendingRequests()).thenReturn(1024);
         lenient().when(sourceConfig.hasHealthCheckService()).thenReturn(true);
+        lenient().when(sourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
 
         MetricsTestUtil.initMetrics();
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
@@ -253,6 +267,50 @@ class HTTPSourceTest {
         final Measurement payloadSizeMax = MetricsTestUtil.getMeasurementFromList(
                 payloadSizeSummaryMeasurements, Statistic.MAX);
         Assertions.assertEquals(testPayloadSize, payloadSizeMax.getValue());
+    }
+
+    @Test
+    public void testHttpCompressionResponse200() throws IOException {
+        // Prepare
+        final String testData = "[{\"log\": \"somelog\"}]";
+        when(sourceConfig.getCompression()).thenReturn(CompressionOption.GZIP);
+        HTTPSourceUnderTest = new HTTPSource(sourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
+        HTTPSourceUnderTest.start(testBuffer);
+        refreshMeasurements();
+
+        // When
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:2021")
+                                .method(HttpMethod.POST)
+                                .path("/log/ingest")
+                                .add(HttpHeaderNames.CONTENT_ENCODING, "gzip")
+                                .build(),
+                        createGZipCompressedPayload(testData))
+                .aggregate()
+                .whenComplete((i, ex) -> assertSecureResponseWithStatusCode(i, HttpStatus.OK)).join();
+
+        // Then
+        Assertions.assertFalse(testBuffer.isEmpty());
+
+        final Map.Entry<Collection<Record<Log>>, CheckpointState> result = testBuffer.read(100);
+        List<Record<Log>> records = new ArrayList<>(result.getKey());
+        Assertions.assertEquals(1, records.size());
+        final Record<Log> record = records.get(0);
+        Assertions.assertEquals("somelog", record.getData().get("log", String.class));
+        // Verify metrics
+        final Measurement requestReceivedCount = MetricsTestUtil.getMeasurementFromList(
+                requestsReceivedMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestReceivedCount.getValue());
+        final Measurement successRequestsCount = MetricsTestUtil.getMeasurementFromList(
+                successRequestsMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, successRequestsCount.getValue());
+        final Measurement requestProcessDurationCount = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.COUNT);
+        Assertions.assertEquals(1.0, requestProcessDurationCount.getValue());
+        final Measurement requestProcessDurationMax = MetricsTestUtil.getMeasurementFromList(
+                requestProcessDurationMeasurements, Statistic.MAX);
+        Assertions.assertTrue(requestProcessDurationMax.getValue() > 0);
     }
 
     @Test

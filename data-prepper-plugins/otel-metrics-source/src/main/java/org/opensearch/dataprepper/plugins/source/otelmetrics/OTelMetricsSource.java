@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.otelmetrics;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
@@ -19,6 +20,7 @@ import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -121,7 +123,11 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
 
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
-            sb.service(grpcServiceBuilder.build());
+            if (CompressionOption.NONE.equals(oTelMetricsSourceConfig.getCompression())) {
+                sb.service(grpcServiceBuilder.build());
+            } else {
+                sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
+            }
 
             if(oTelMetricsSourceConfig.enableHttpHealthCheck()) {
                 sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
