@@ -9,6 +9,7 @@ import com.linecorp.armeria.common.util.BlockingTaskExecutor;
 import com.linecorp.armeria.server.HttpService;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
+import com.linecorp.armeria.server.encoding.DecodingService;
 import com.linecorp.armeria.server.grpc.GrpcService;
 import com.linecorp.armeria.server.grpc.GrpcServiceBuilder;
 import com.linecorp.armeria.server.healthcheck.HealthCheckService;
@@ -20,6 +21,7 @@ import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -123,17 +125,21 @@ public class OTelTraceSource implements Source<Record<Object>> {
 
             final ServerBuilder sb = Server.builder();
             sb.disableServerHeader();
-            sb.service(grpcServiceBuilder.build());
+            if (CompressionOption.NONE.equals(oTelTraceSourceConfig.getCompression())) {
+                sb.service(grpcServiceBuilder.build());
+            } else {
+                sb.service(grpcServiceBuilder.build(), DecodingService.newDecorator());
+            }
 
-            if(oTelTraceSourceConfig.enableHttpHealthCheck()) {
+            if (oTelTraceSourceConfig.enableHttpHealthCheck()) {
                 sb.service(HTTP_HEALTH_CHECK_PATH, HealthCheckService.builder().longPolling(0).build());
             }
 
-            if(oTelTraceSourceConfig.getAuthentication() != null) {
+            if (oTelTraceSourceConfig.getAuthentication() != null) {
                 final Optional<Function<? super HttpService, ? extends HttpService>> optionalHttpAuthenticationService =
                         authenticationProvider.getHttpAuthenticationService();
 
-                if(oTelTraceSourceConfig.isUnauthenticatedHealthCheck()) {
+                if (oTelTraceSourceConfig.isUnauthenticatedHealthCheck()) {
                     optionalHttpAuthenticationService.ifPresent(httpAuthenticationService ->
                             sb.decorator(REGEX_HEALTH, httpAuthenticationService));
                 } else {

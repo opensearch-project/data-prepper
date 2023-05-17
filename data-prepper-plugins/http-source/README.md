@@ -30,6 +30,9 @@ source:
 * max_connection_count (Optional) => An `int` larger than 0 represents the maximum allowed number of open connections. Default is `500`.
 * max_pending_requests (Optional) => An `int` larger than 0 represents the maximum allowed number of tasks in the ScheduledThreadPool work queue. Default is `1024`.
 * authentication (Optional) => An authentication configuration. By default, this runs an unauthenticated server. See below for more information.
+* compression (Optional) : The compression type applied on the client request payload. Defaults to `none`. Supported values are: 
+  * `none`: no compression 
+  * `gzip`: apply GZip de-compression on the incoming request.
 
 ### Authentication Configurations
 

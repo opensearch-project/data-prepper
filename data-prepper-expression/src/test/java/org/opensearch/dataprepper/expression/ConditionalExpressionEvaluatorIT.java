@@ -123,10 +123,15 @@ class ConditionalExpressionEvaluatorIT {
     private static Stream<Arguments> validExpressionArguments() {
         final String key = "status_code";
         final Long value = 200L;
+        final String value3 = RandomStringUtils.randomAlphabetic(5);
+        final int value4 = 2000;
+        final Boolean value5 = false;
         Map<Object, Object> eventMap = Collections.singletonMap(key, value);
+        final Map<String, Object> attributesMap = Map.of("key1", value3, "key2", value4, "key3", value5);
         Event longEvent = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(eventMap)
+                .withEventMetadataAttributes(attributesMap)
                 .build();
 
         String testTag1 = RandomStringUtils.randomAlphabetic(6);
@@ -183,7 +188,15 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("hasTags(\""+ testTag1+"\",\""+testTag2+"\")", longEvent, true),
                 Arguments.of("hasTags(\""+ testTag1+"\", \""+testTag2+"\", \""+testTag3+"\")", longEvent, true),
                 Arguments.of("hasTags(\""+ testTag4+"\")", longEvent, false),
-                Arguments.of("hasTags(\""+ testTag3+"\",\""+testTag4+"\")", longEvent, false)
+                Arguments.of("hasTags(\""+ testTag3+"\",\""+testTag4+"\")", longEvent, false),
+                Arguments.of("getMetadata(\"key1\") == \""+value3+"\"", longEvent, true),
+                Arguments.of("getMetadata(\"key2\") == "+value4, longEvent, true),
+                Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
+                Arguments.of("getMetadata(\"/key1\") == \""+value3+"\"", longEvent, true),
+                Arguments.of("getMetadata(\"/key2\") == "+value4, longEvent, true),
+                Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
+                Arguments.of("getMetadata(\"/key6\") == \""+value5+"\"", longEvent, false),
+                Arguments.of("getMetadata(\"key6\") == "+value5, longEvent, false)
         );
     }
 
@@ -200,6 +213,7 @@ class ConditionalExpressionEvaluatorIT {
         String testTag1 = RandomStringUtils.randomAlphabetic(6);
         String testTag2 = RandomStringUtils.randomAlphabetic(7);
         tagEvent.getMetadata().addTags(List.of(testTag1, testTag2));
+        String testMetadataKey = RandomStringUtils.randomAlphabetic(5);
 
         int testStringLength = random.nextInt(10);
         String testString = RandomStringUtils.randomAlphabetic(testStringLength);
@@ -229,7 +243,10 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("hasTags(\""+ testTag1+")", tagEvent),
                 Arguments.of("hasTags(\""+ testTag1+"\","+testTag2+"\")", tagEvent),
                 Arguments.of("hasTags(,\""+testTag2+"\")", tagEvent),
-                Arguments.of("hasTags(\""+testTag2+"\",)", tagEvent)
+                Arguments.of("hasTags(\""+testTag2+"\",)", tagEvent),
+                Arguments.of("getMetadata(10)", tagEvent),
+                Arguments.of("getMetadata("+ testMetadataKey+ ")", tagEvent),
+                Arguments.of("getMetadata(\""+ testMetadataKey+")", tagEvent)
         );
     }
 

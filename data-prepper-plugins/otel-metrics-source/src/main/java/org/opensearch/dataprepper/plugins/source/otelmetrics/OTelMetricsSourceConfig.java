@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class OTelMetricsSourceConfig {
@@ -28,6 +29,7 @@ public class OTelMetricsSourceConfig {
     static final String THREAD_COUNT = "thread_count";
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
+    static final String COMPRESSION = "compression";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21891;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -97,6 +99,9 @@ public class OTelMetricsSourceConfig {
 
     @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
     private boolean unauthenticatedHealthCheck = false;
+
+    @JsonProperty(COMPRESSION)
+    private CompressionOption compression = CompressionOption.NONE;
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -210,6 +215,10 @@ public class OTelMetricsSourceConfig {
 
     public boolean isUnauthenticatedHealthCheck() {
         return unauthenticatedHealthCheck;
+    }
+
+    public CompressionOption getCompression() {
+        return compression;
     }
 }
 
