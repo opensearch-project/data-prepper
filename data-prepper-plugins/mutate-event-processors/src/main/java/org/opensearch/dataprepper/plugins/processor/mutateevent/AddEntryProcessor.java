@@ -27,10 +27,10 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     private static final Logger LOG = LoggerFactory.getLogger(AddEntryProcessor.class);
     private final List<AddEntryProcessorConfig.Entry> entries;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
@@ -43,7 +43,7 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             for(AddEntryProcessorConfig.Entry entry : entries) {
 
-                if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluate(entry.getAddWhen(), recordEvent)) {
+                if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluateConditional(entry.getAddWhen(), recordEvent)) {
                     continue;
                 }
 

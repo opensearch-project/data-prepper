@@ -54,15 +54,15 @@ class ConditionalExpressionEvaluatorIT {
     }
 
     @Test
-    void testConditionalExpressionEvaluatorBeanAvailable() {
-        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
-        assertThat(evaluator, isA(ConditionalExpressionEvaluator.class));
+    void testGenericExpressionEvaluatorBeanAvailable() {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+        assertThat(evaluator, isA(GenericExpressionEvaluator.class));
     }
 
     @Test
-    void testConditionalExpressionEvaluatorBeanSingleton() {
-        final ConditionalExpressionEvaluator instanceA = applicationContext.getBean(ConditionalExpressionEvaluator.class);
-        final ConditionalExpressionEvaluator instanceB = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+    void testGenericExpressionEvaluatorBeanSingleton() {
+        final GenericExpressionEvaluator instanceA = applicationContext.getBean(GenericExpressionEvaluator.class);
+        final GenericExpressionEvaluator instanceB = applicationContext.getBean(GenericExpressionEvaluator.class);
         assertThat(instanceA, sameInstance(instanceB));
     }
 
@@ -82,17 +82,17 @@ class ConditionalExpressionEvaluatorIT {
     @ParameterizedTest
     @MethodSource("validExpressionArguments")
     void testConditionalExpressionEvaluator(final String expression, final Event event, final Boolean expected) {
-        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        final Boolean actual = evaluator.evaluate(expression, event);
+        final Boolean actual = evaluator.evaluateConditional(expression, event);
 
         assertThat(actual, is(expected));
     }
 
     @ParameterizedTest
     @MethodSource("validExpressionArguments")
-    void testConditionalExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Boolean expected) {
-        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+    void testGenericExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Boolean expected) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
         final int numberOfThreads = 50;
         final ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
@@ -100,7 +100,7 @@ class ConditionalExpressionEvaluatorIT {
         List<Boolean> evaluationResults = Collections.synchronizedList(new ArrayList<>());
 
         for (int i = 0; i < numberOfThreads; i++) {
-            executorService.execute(() -> evaluationResults.add(evaluator.evaluate(expression, event)));
+            executorService.execute(() -> evaluationResults.add(evaluator.evaluateConditional(expression, event)));
         }
 
         await().atMost(5, TimeUnit.SECONDS)
@@ -114,10 +114,10 @@ class ConditionalExpressionEvaluatorIT {
 
     @ParameterizedTest
     @MethodSource("invalidExpressionArguments")
-    void testConditionalExpressionEvaluatorThrows(final String expression, final Event event) {
-        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+    void testGenericExpressionEvaluatorThrows(final String expression, final Event event) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        assertThrows(RuntimeException.class, () -> evaluator.evaluate(expression, event));
+        assertThrows(RuntimeException.class, () -> evaluator.evaluateConditional(expression, event));
     }
 
     private static Stream<Arguments> validExpressionArguments() {

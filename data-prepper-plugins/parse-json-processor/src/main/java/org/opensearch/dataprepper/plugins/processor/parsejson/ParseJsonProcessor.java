@@ -39,12 +39,12 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
     private final String pointer;
     private final String parseWhen;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
     public ParseJsonProcessor(final PluginMetrics pluginMetrics,
                               final ParseJsonProcessorConfig parseJsonProcessorConfig,
-                              final ExpressionEvaluator<Boolean> expressionEvaluator) {
+                              final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
 
         source = parseJsonProcessorConfig.getSource();
@@ -63,7 +63,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event event = record.getData();
 
-            if (Objects.nonNull(parseWhen) && !expressionEvaluator.evaluate(parseWhen, event)) {
+            if (Objects.nonNull(parseWhen) && !expressionEvaluator.evaluateConditional(parseWhen, event)) {
                 continue;
             }
 

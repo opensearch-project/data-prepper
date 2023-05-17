@@ -21,10 +21,10 @@ import java.util.regex.Pattern;
 public class SplitStringProcessor extends AbstractStringProcessor<SplitStringProcessorConfig.Entry> {
 
     private final Map<String, Pattern> patternMap = new HashMap<>();
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public SplitStringProcessor(final PluginMetrics pluginMetrics, final SplitStringProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public SplitStringProcessor(final PluginMetrics pluginMetrics, final SplitStringProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics, config);
         this.expressionEvaluator = expressionEvaluator;
 
@@ -47,7 +47,7 @@ public class SplitStringProcessor extends AbstractStringProcessor<SplitStringPro
 
     @Override
     protected void performKeyAction(final Event recordEvent, final SplitStringProcessorConfig.Entry entry, final String value) {
-        if (Objects.nonNull(entry.getSplitWhen()) && !expressionEvaluator.evaluate(entry.getSplitWhen(), recordEvent)) {
+        if (Objects.nonNull(entry.getSplitWhen()) && !expressionEvaluator.evaluateConditional(entry.getSplitWhen(), recordEvent)) {
             return;
         }
 

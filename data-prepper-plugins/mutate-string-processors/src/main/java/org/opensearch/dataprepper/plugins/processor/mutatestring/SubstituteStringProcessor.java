@@ -25,10 +25,10 @@ import java.util.regex.Pattern;
 @DataPrepperPlugin(name = "substitute_string", pluginType = Processor.class, pluginConfigurationType = SubstituteStringProcessorConfig.class)
 public class SubstituteStringProcessor extends AbstractStringProcessor<SubstituteStringProcessorConfig.Entry> {
     private final Map<String, Pattern> patternMap = new HashMap<>();
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public SubstituteStringProcessor(final PluginMetrics pluginMetrics, final SubstituteStringProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public SubstituteStringProcessor(final PluginMetrics pluginMetrics, final SubstituteStringProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics, config);
         this.expressionEvaluator = expressionEvaluator;
 
@@ -40,7 +40,7 @@ public class SubstituteStringProcessor extends AbstractStringProcessor<Substitut
     @Override
     protected void performKeyAction(final Event recordEvent, final SubstituteStringProcessorConfig.Entry entry, final String value)
     {
-        if (Objects.nonNull(entry.getSubstituteWhen()) && !expressionEvaluator.evaluate(entry.getSubstituteWhen(), recordEvent)) {
+        if (Objects.nonNull(entry.getSubstituteWhen()) && !expressionEvaluator.evaluateConditional(entry.getSubstituteWhen(), recordEvent)) {
             return;
         }
 

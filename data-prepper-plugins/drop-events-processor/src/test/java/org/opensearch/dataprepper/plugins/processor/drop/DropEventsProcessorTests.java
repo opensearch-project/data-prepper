@@ -40,7 +40,7 @@ public class DropEventsProcessorTests {
     @Mock
     private DropEventProcessorConfig dropEventProcessorConfig;
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
     private String whenSetting;
     private String messageInput;
     private DropEventsProcessor dropProcessor;
@@ -112,7 +112,7 @@ public class DropEventsProcessorTests {
                 true,
                 repeatedReturnValue
         ).when(expressionEvaluator)
-                .evaluate(eq(whenSetting), eq(event));
+                .evaluateConditional(eq(whenSetting), eq(event));
         doReturn(event)
                 .when(record)
                 .getData();

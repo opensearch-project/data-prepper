@@ -24,12 +24,12 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
     private final TypeConverter converter;
     private final String convertWhen;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
     public ConvertEntryTypeProcessor(final PluginMetrics pluginMetrics,
                                      final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig,
-                                     final ExpressionEvaluator<Boolean> expressionEvaluator) {
+                                     final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.key = convertEntryTypeProcessorConfig.getKey();
         this.converter = convertEntryTypeProcessorConfig.getType().getTargetConverter();
@@ -42,7 +42,7 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (Objects.nonNull(convertWhen) && !expressionEvaluator.evaluate(convertWhen, recordEvent)) {
+            if (Objects.nonNull(convertWhen) && !expressionEvaluator.evaluateConditional(convertWhen, recordEvent)) {
                 continue;
             }
 
