@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
+import com.linecorp.armeria.common.HttpHeaderNames;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -68,6 +70,7 @@ import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -84,6 +87,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.GZIPOutputStream;
 
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
@@ -188,6 +192,7 @@ class OTelLogsSourceTest {
         when(oTelLogsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
         when(oTelLogsSourceConfig.getMaxConnectionCount()).thenReturn(10);
         when(oTelLogsSourceConfig.getThreadCount()).thenReturn(5);
+        when(oTelLogsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
         pluginMetrics = PluginMetrics.fromNames("otel_logs", "pipeline");
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
@@ -281,6 +286,26 @@ class OTelLogsSourceTest {
                                 .contentType(MediaType.JSON_UTF_8)
                                 .build(),
                         HttpData.copyOf(JsonFormat.printer().print(LOGS_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpCompressionWithUnframedRequests() throws IOException {
+        when(oTelLogsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelLogsSourceConfig.getCompression()).thenReturn(CompressionOption.GZIP);
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21892")
+                                .method(HttpMethod.POST)
+                                .path("/opentelemetry.proto.collector.logs.v1.LogsService/Export")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .add(HttpHeaderNames.CONTENT_ENCODING, "gzip")
+                                .build(),
+                        createGZipCompressedPayload(JsonFormat.printer().print(LOGS_REQUEST)))
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
@@ -775,6 +800,15 @@ class OTelLogsSourceTest {
                 .map(AsciiString::toString)
                 .collect(Collectors.toList());
         assertThat("Response Header Keys", headerKeys, not(contains("server")));
+    }
+
+    private byte[] createGZipCompressedPayload(final String payload) throws IOException {
+        // Create a GZip compressed request body
+        final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        try (final GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream)) {
+            gzipStream.write(payload.getBytes(StandardCharsets.UTF_8));
+        }
+        return byteStream.toByteArray();
     }
 
 }

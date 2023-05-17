@@ -14,6 +14,7 @@ import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
+import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
@@ -55,6 +56,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.armeria.authentication.HttpBasicAuthenticationConfig;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -68,6 +70,7 @@ import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otelmetrics.certificate.CertificateProviderFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -84,6 +87,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.zip.GZIPOutputStream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
@@ -187,6 +191,7 @@ class OTelMetricsSourceTest {
         when(oTelMetricsSourceConfig.getRequestTimeoutInMillis()).thenReturn(DEFAULT_REQUEST_TIMEOUT_MS);
         when(oTelMetricsSourceConfig.getMaxConnectionCount()).thenReturn(10);
         when(oTelMetricsSourceConfig.getThreadCount()).thenReturn(5);
+        when(oTelMetricsSourceConfig.getCompression()).thenReturn(CompressionOption.NONE);
 
         when(pluginFactory.loadPlugin(eq(GrpcAuthenticationProvider.class), any(PluginSetting.class)))
                 .thenReturn(authenticationProvider);
@@ -278,6 +283,26 @@ class OTelMetricsSourceTest {
                                 .contentType(MediaType.JSON_UTF_8)
                                 .build(),
                         HttpData.copyOf(JsonFormat.printer().print(METRICS_REQUEST).getBytes()))
+                .aggregate()
+                .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
+                .join();
+    }
+
+    @Test
+    void testHttpCompressionWithUnframedRequests() throws IOException {
+        when(oTelMetricsSourceConfig.enableUnframedRequests()).thenReturn(true);
+        when(oTelMetricsSourceConfig.getCompression()).thenReturn(CompressionOption.GZIP);
+        SOURCE.start(buffer);
+
+        WebClient.of().execute(RequestHeaders.builder()
+                                .scheme(SessionProtocol.HTTP)
+                                .authority("127.0.0.1:21891")
+                                .method(HttpMethod.POST)
+                                .path("/opentelemetry.proto.collector.metrics.v1.MetricsService/Export")
+                                .contentType(MediaType.JSON_UTF_8)
+                                .add(HttpHeaderNames.CONTENT_ENCODING, "gzip")
+                                .build(),
+                        createGZipCompressedPayload(JsonFormat.printer().print(METRICS_REQUEST)))
                 .aggregate()
                 .whenComplete((response, throwable) -> assertSecureResponseWithStatusCode(response, HttpStatus.OK, throwable))
                 .join();
@@ -985,5 +1010,14 @@ class OTelMetricsSourceTest {
                 .map(AsciiString::toString)
                 .collect(Collectors.toList());
         assertThat("Response Header Keys", headerKeys, not(contains("server")));
+    }
+
+    private byte[] createGZipCompressedPayload(final String payload) throws IOException {
+        // Create a GZip compressed request body
+        final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        try (final GZIPOutputStream gzipStream = new GZIPOutputStream(byteStream)) {
+            gzipStream.write(payload.getBytes(StandardCharsets.UTF_8));
+        }
+        return byteStream.toByteArray();
     }
 }
