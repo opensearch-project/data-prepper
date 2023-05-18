@@ -37,6 +37,8 @@ public class SourceCoordinatorFactory {
             return null;
         }
 
+        sourceCoordinationConfig.getSourceCoordinationStoreConfig().getPipelineName();
+
 
 
         final SourceCoordinationStore sourceCoordinationStore =
