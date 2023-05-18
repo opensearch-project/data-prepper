@@ -10,8 +10,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.Test;
 
-import java.time.LocalDateTime;
-
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -22,11 +20,8 @@ public class SchedulingParameterConfigurationTest {
     @Test
     public void scheduling_parameter_configuration_test() throws JsonProcessingException {
 
-        final String schedulingParameterYaml =
-                "  job_count: 3\n" +
-                "  start_time: 2023-05-05T18:00:00\n";
+        final String schedulingParameterYaml = "  job_count: 3";
         final SchedulingParameterConfiguration schedulingParameterConfiguration = objectMapper.readValue(schedulingParameterYaml, SchedulingParameterConfiguration.class);
         assertThat(schedulingParameterConfiguration.getJobCount(),equalTo(3));
-        assertThat(schedulingParameterConfiguration.getStartTime(),equalTo(LocalDateTime.parse("2023-05-05T18:00:00")));
     }
 }

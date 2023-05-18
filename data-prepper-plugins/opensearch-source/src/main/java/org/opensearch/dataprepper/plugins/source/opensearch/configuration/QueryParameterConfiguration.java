@@ -13,6 +13,9 @@ public class QueryParameterConfiguration {
     @JsonProperty("fields")
     private List<String> fields;
 
+    @JsonProperty("query_string")
+    private String queryString;
+
     public List<String> getFields() {
         return fields;
     }

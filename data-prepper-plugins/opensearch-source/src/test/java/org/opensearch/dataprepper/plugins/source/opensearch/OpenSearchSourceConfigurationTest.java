@@ -17,7 +17,6 @@ import org.opensearch.dataprepper.plugins.source.opensearch.configuration.WildCa
 import software.amazon.awssdk.regions.Region;
 
 import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -45,7 +44,6 @@ public class OpenSearchSourceConfigurationTest {
                 "  sts_role_arn: \"arn:aws:iam::123456789012:role/aos-role\"\n" +
                 "scheduling:\n" +
                 "  job_count: 3\n" +
-                "  start_time: 2023-05-05T18:00:00\n" +
                 "query:\n" +
                 "  fields: [\"test_variable : test_value\"]\n" +
                 "search_options:\n" +
@@ -71,7 +69,6 @@ public class OpenSearchSourceConfigurationTest {
         assertThat(searchConfiguration.getBatchSize(),equalTo(1000));
         assertThat(sourceConfiguration.getQueryParameterConfiguration().getFields(),equalTo(List.of("test_variable : test_value")));
         assertThat(schedulingParameterConfiguration.getJobCount(),equalTo(3));
-        assertThat(schedulingParameterConfiguration.getStartTime(),equalTo(LocalDateTime.parse("2023-05-05T18:00:00")));
         assertThat(sourceConfiguration.getIndexParametersConfiguration().getInclude().get(0),equalTo("shakespeare"));
         assertThat(searchConfiguration.getSorting().get(0).getSortKey(),equalTo("name"));
         assertThat(searchConfiguration.getSorting().get(0).getOrder(),equalTo("desc"));

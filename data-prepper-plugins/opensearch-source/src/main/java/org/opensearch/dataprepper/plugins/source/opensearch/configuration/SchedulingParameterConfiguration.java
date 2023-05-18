@@ -6,14 +6,10 @@
 package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import jakarta.validation.constraints.Min;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public class SchedulingParameterConfiguration {
 
@@ -24,10 +20,8 @@ public class SchedulingParameterConfiguration {
     @JsonProperty("job_count")
     private int jobCount = 1;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     @JsonProperty("start_time")
-    private LocalDateTime startTime = LocalDateTime.now();
+    private Instant startTime = Instant.now();
 
     public Duration getRate() {
         return rate;
@@ -37,7 +31,7 @@ public class SchedulingParameterConfiguration {
         return jobCount;
     }
 
-    public LocalDateTime getStartTime() {
+    public Instant getStartTime() {
         return startTime;
     }
 }
