@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreI
 import java.time.Instant;
 
 public class InMemorySourcePartitionStoreItem implements SourcePartitionStoreItem {
+    private String sourceIdentifier;
     private String sourcePartitionKey;
     private String partitionOwner;
     private String partitionProgressState;
@@ -18,6 +19,11 @@ public class InMemorySourcePartitionStoreItem implements SourcePartitionStoreIte
     private Instant partitionOwnershipTimeout;
     private Instant reOpenAt;
     private Long closedCount;
+
+    @Override
+    public String getSourceIdentifier() {
+        return sourceIdentifier;
+    }
 
     @Override
     public String getSourcePartitionKey() {
@@ -87,5 +93,9 @@ public class InMemorySourcePartitionStoreItem implements SourcePartitionStoreIte
     @Override
     public void setClosedCount(final Long closedCount) {
         this.closedCount = closedCount;
+    }
+
+    public void setSourceIdentifier(final String sourceIdentifier) {
+        this.sourceIdentifier = sourceIdentifier;
     }
 }

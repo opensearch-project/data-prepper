@@ -41,14 +41,15 @@ public class InMemorySourceCoordinationStoreTest {
 
     @Test
     void getSourcePartitionItem_returns_result_from_inMemoryPartitionAccessor_getItem() {
-
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String partitionKey = UUID.randomUUID().toString();
+
         final SourcePartitionStoreItem item = mock(SourcePartitionStoreItem.class);
-        given(inMemoryPartitionAccessor.getItem(partitionKey)).willReturn(Optional.of(item));
+        given(inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey)).willReturn(Optional.of(item));
 
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
 
-        final Optional<SourcePartitionStoreItem> result = objectUnderTest.getSourcePartitionItem(partitionKey);
+        final Optional<SourcePartitionStoreItem> result = objectUnderTest.getSourcePartitionItem(sourceIdentifier, partitionKey);
 
         assertThat(result.isPresent(), equalTo(true));
         assertThat(result.get(), equalTo(item));
@@ -56,18 +57,19 @@ public class InMemorySourceCoordinationStoreTest {
 
     @Test
     void tryAcquireAvailablePartition_returns_empty_optional_when_no_item_is_available() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String ownerId = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(2);
 
         given(inMemoryPartitionAccessor.getNextItem()).willReturn(Optional.empty());
 
-        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(ownerId, ownershipTimeout);
+        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(sourceIdentifier, ownerId, ownershipTimeout);
         assertThat(result.isEmpty(), equalTo(true));
     }
 
     @Test
     void tryAcquireAvailablePartition_gets_item_from_inMemoryPartitionAccessor_and_modifies_it_correctly() {
-
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String ownerId = UUID.randomUUID().toString();
         final Duration ownershipTimeout = Duration.ofMinutes(2);
         final Instant now = Instant.now();
@@ -78,7 +80,7 @@ public class InMemorySourceCoordinationStoreTest {
 
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
 
-        final Optional<SourcePartitionStoreItem> result = objectUnderTest.tryAcquireAvailablePartition(ownerId, ownershipTimeout);
+        final Optional<SourcePartitionStoreItem> result = objectUnderTest.tryAcquireAvailablePartition(sourceIdentifier, ownerId, ownershipTimeout);
         assertThat(result.isPresent(), equalTo(true));
         assertThat(result.get(), equalTo(item));
         assertThat(result.get().getSourcePartitionStatus(), equalTo(SourcePartitionStatus.ASSIGNED));
@@ -98,22 +100,24 @@ public class InMemorySourceCoordinationStoreTest {
 
     @Test
     void tryCreatePartitionItem_for_item_that_exists_does_not_queuePartition_and_returns_false() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String partitionKey = UUID.randomUUID().toString();
         final SourcePartitionStatus status = SourcePartitionStatus.UNASSIGNED;
         final Long closedCount = 0L;
         final String partitionProgressState = UUID.randomUUID().toString();
 
 
-        given(inMemoryPartitionAccessor.getItem(partitionKey)).willReturn(Optional.of(mock(SourcePartitionStoreItem.class)));
+        given(inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey)).willReturn(Optional.of(mock(SourcePartitionStoreItem.class)));
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
 
-        final boolean created = objectUnderTest.tryCreatePartitionItem(partitionKey, status, closedCount, partitionProgressState);
+        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState);
         assertThat(created, equalTo(false));
         verify(inMemoryPartitionAccessor, never()).queuePartition(any());
     }
 
     @Test
     void tryCreatePartitionItem_for_item_that_does_not_exist_queues_that_partition() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String partitionKey = UUID.randomUUID().toString();
         final SourcePartitionStatus status = SourcePartitionStatus.UNASSIGNED;
         final Long closedCount = 0L;
@@ -122,15 +126,16 @@ public class InMemorySourceCoordinationStoreTest {
         final ArgumentCaptor<InMemorySourcePartitionStoreItem> argumentCaptor = ArgumentCaptor.forClass(InMemorySourcePartitionStoreItem.class);
 
 
-        given(inMemoryPartitionAccessor.getItem(partitionKey)).willReturn(Optional.empty());
+        given(inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey)).willReturn(Optional.empty());
         doNothing().when(inMemoryPartitionAccessor).queuePartition(argumentCaptor.capture());
         final InMemorySourceCoordinationStore objectUnderTest = createObjectUnderTest();
 
-        final boolean created = objectUnderTest.tryCreatePartitionItem(partitionKey, status, closedCount, partitionProgressState);
+        final boolean created = objectUnderTest.tryCreatePartitionItem(sourceIdentifier, partitionKey, status, closedCount, partitionProgressState);
         assertThat(created, equalTo(true));
 
         final InMemorySourcePartitionStoreItem createdItem = argumentCaptor.getValue();
         assertThat(createdItem, notNullValue());
+        assertThat(createdItem.getSourceIdentifier(), equalTo(sourceIdentifier));
         assertThat(createdItem.getSourcePartitionKey(), equalTo(partitionKey));
         assertThat(createdItem.getSourcePartitionStatus(), equalTo(status));
         assertThat(createdItem.getPartitionProgressState(), equalTo(partitionProgressState));

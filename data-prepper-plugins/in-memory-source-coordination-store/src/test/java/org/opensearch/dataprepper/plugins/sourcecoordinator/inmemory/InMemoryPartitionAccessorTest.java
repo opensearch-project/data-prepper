@@ -31,9 +31,10 @@ public class InMemoryPartitionAccessorTest {
     }
 
     @Test
-    void getItem_with_no_item_returns_empty_optional() {
+    void getItem_with_no_sourceIdentifier_returns_empty_optional() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String partitionKey = UUID.randomUUID().toString();
-        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getItem(partitionKey);
+        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
 
         assertThat(resultItem.isEmpty(), equalTo(true));
     }
@@ -46,82 +47,152 @@ public class InMemoryPartitionAccessorTest {
     }
 
     @Test
-    void queuePartition_followed_by_get_partition_returns_expected_partition() {
+    void queue_unassigned_partitions_followed_by_get_partitions_returns_expected_partitions() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String partitionKey = UUID.randomUUID().toString();
         final InMemorySourcePartitionStoreItem item = mock(InMemorySourcePartitionStoreItem.class);
+        given(item.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(item.getSourcePartitionKey()).willReturn(partitionKey);
+        given(item.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
 
-        objectUnderTest.queuePartition(item);
-
-        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getItem(partitionKey);
-
-        assertThat(resultItem.isPresent(), equalTo(true));
-        assertThat(resultItem.get(), equalTo(item));
-    }
-
-    @Test
-    void queuePartitions_followed_by_get_next_item_returns_items_in_order_they_were_queued() {
-        final String partitionKey = UUID.randomUUID().toString();
         final String secondPartitionKey = UUID.randomUUID().toString();
-
-        final InMemorySourcePartitionStoreItem item = mock(InMemorySourcePartitionStoreItem.class);
-        given(item.getSourcePartitionKey()).willReturn(partitionKey);
-
         final InMemorySourcePartitionStoreItem secondItem = mock(InMemorySourcePartitionStoreItem.class);
+        given(secondItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(secondItem.getSourcePartitionKey()).willReturn(secondPartitionKey);
+        given(secondItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
 
         objectUnderTest.queuePartition(item);
         objectUnderTest.queuePartition(secondItem);
 
-        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getNextItem();
+        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
 
         assertThat(resultItem.isPresent(), equalTo(true));
         assertThat(resultItem.get(), equalTo(item));
 
-        final Optional<SourcePartitionStoreItem> secondResultItem = objectUnderTest.getNextItem();
+        final Optional<SourcePartitionStoreItem> acquiredItem = objectUnderTest.getNextItem();
+        assertThat(acquiredItem.isPresent(), equalTo(true));
+        assertThat(acquiredItem.get(), equalTo(item));
 
-        assertThat(secondResultItem.isPresent(), equalTo(true));
-        assertThat(secondResultItem.get(), equalTo(secondItem));
+        final Optional<SourcePartitionStoreItem> secondAcquiredItem = objectUnderTest.getNextItem();
+        assertThat(secondAcquiredItem.isPresent(), equalTo(true));
+        assertThat(secondAcquiredItem.get(), equalTo(secondItem));
+
+        final Optional<SourcePartitionStoreItem> emptyItem = objectUnderTest.getNextItem();
+        assertThat(emptyItem.isEmpty(), equalTo(true));
     }
 
     @Test
-    void getNextItem_with_closed_item_that_has_not_reopened_moves_item_to_back_of_queue_and_is_processed_when_reached_again() {
+    void queue_closed_partitions_followed_by_get_returns_expected_partitions() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String partitionKey = UUID.randomUUID().toString();
-        final String secondPartitionKey = UUID.randomUUID().toString();
-
         final InMemorySourcePartitionStoreItem item = mock(InMemorySourcePartitionStoreItem.class);
+        given(item.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(item.getSourcePartitionKey()).willReturn(partitionKey);
         given(item.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.CLOSED);
-        given(item.getReOpenAt()).willReturn(Instant.now().plusSeconds(10))
-                .willReturn(Instant.now().plusSeconds(10))
-                .willReturn(Instant.now().minusSeconds(10))
-                .willReturn(Instant.now().minusSeconds(10));
+        given(item.getReOpenAt()).willReturn(Instant.now().minusSeconds(60));
 
+        final String secondPartitionKey = UUID.randomUUID().toString();
         final InMemorySourcePartitionStoreItem secondItem = mock(InMemorySourcePartitionStoreItem.class);
+        given(secondItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(secondItem.getSourcePartitionKey()).willReturn(secondPartitionKey);
+        given(secondItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.CLOSED);
+        given(secondItem.getReOpenAt()).willReturn(Instant.now().minusSeconds(120));
 
         objectUnderTest.queuePartition(item);
         objectUnderTest.queuePartition(secondItem);
 
-        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getNextItem();
+        final Optional<SourcePartitionStoreItem> acquiredItem = objectUnderTest.getNextItem();
+        assertThat(acquiredItem.isPresent(), equalTo(true));
+        assertThat(acquiredItem.get(), equalTo(secondItem));
 
-        assertThat(resultItem.isPresent(), equalTo(true));
-        assertThat(resultItem.get(), equalTo(secondItem));
+        final Optional<SourcePartitionStoreItem> secondAcquiredItem = objectUnderTest.getNextItem();
+        assertThat(secondAcquiredItem.isPresent(), equalTo(true));
+        assertThat(secondAcquiredItem.get(), equalTo(item));
 
-        final Optional<SourcePartitionStoreItem> secondResultItem = objectUnderTest.getNextItem();
+        final Optional<SourcePartitionStoreItem> emptyItem = objectUnderTest.getNextItem();
+        assertThat(emptyItem.isEmpty(), equalTo(true));
+    }
 
-        assertThat(secondResultItem.isPresent(), equalTo(true));
-        assertThat(secondResultItem.get(), equalTo(item));
+    @Test
+    void queue_closed_then_unassigned_partitions_followed_by_get_returns_expected_partitions() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final String partitionKey = UUID.randomUUID().toString();
+        final InMemorySourcePartitionStoreItem item = mock(InMemorySourcePartitionStoreItem.class);
+        given(item.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(item.getSourcePartitionKey()).willReturn(partitionKey);
+        given(item.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.CLOSED);
+        given(item.getReOpenAt()).willReturn(Instant.now().minusSeconds(60));
+
+        final String secondPartitionKey = UUID.randomUUID().toString();
+        final InMemorySourcePartitionStoreItem secondItem = mock(InMemorySourcePartitionStoreItem.class);
+        given(secondItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(secondItem.getSourcePartitionKey()).willReturn(secondPartitionKey);
+        given(secondItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.CLOSED);
+        given(secondItem.getReOpenAt()).willReturn(Instant.now().plusSeconds(120));
+
+        final String thirdPartitionKey = UUID.randomUUID().toString();
+        final InMemorySourcePartitionStoreItem thirdItem = mock(InMemorySourcePartitionStoreItem.class);
+        given(thirdItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(thirdItem.getSourcePartitionKey()).willReturn(thirdPartitionKey);
+        given(thirdItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
+
+        objectUnderTest.queuePartition(item);
+        objectUnderTest.queuePartition(secondItem);
+        objectUnderTest.queuePartition(thirdItem);
+
+        final Optional<SourcePartitionStoreItem> acquiredItem = objectUnderTest.getNextItem();
+        assertThat(acquiredItem.isPresent(), equalTo(true));
+        assertThat(acquiredItem.get(), equalTo(item));
+
+        final Optional<SourcePartitionStoreItem> secondAcquiredItem = objectUnderTest.getNextItem();
+        assertThat(secondAcquiredItem.isPresent(), equalTo(true));
+        assertThat(secondAcquiredItem.get(), equalTo(thirdItem));
     }
 
     @Test
     void updateItem_that_does_not_exist_does_not_update_or_queue_item() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String partitionKey = UUID.randomUUID().toString();
 
         final InMemorySourcePartitionStoreItem updateItem = mock(InMemorySourcePartitionStoreItem.class);
         given(updateItem.getSourcePartitionKey()).willReturn(partitionKey);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
 
         objectUnderTest.updateItem(updateItem);
+
+        final Optional<SourcePartitionStoreItem> emptyItem = objectUnderTest.getNextItem();
+        assertThat(emptyItem.isEmpty(), equalTo(true));
+    }
+
+    @Test
+    void update_item_with_completed_status_adds_to_completed_set_but_is_not_requeued() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final String partitionKey = UUID.randomUUID().toString();
+
+        final InMemorySourcePartitionStoreItem originalItem = mock(InMemorySourcePartitionStoreItem.class);
+        given(originalItem.getSourcePartitionKey()).willReturn(partitionKey);
+        given(originalItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(originalItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
+
+        objectUnderTest.queuePartition(originalItem);
+
+        final Optional<SourcePartitionStoreItem> acquiredItem = objectUnderTest.getNextItem();
+        assertThat(acquiredItem.isPresent(), equalTo(true));
+        assertThat(acquiredItem.get(), equalTo(originalItem));
+
+        final InMemorySourcePartitionStoreItem updateItem = mock(InMemorySourcePartitionStoreItem.class);
+        given(updateItem.getSourcePartitionKey()).willReturn(partitionKey);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.COMPLETED);
+
+        objectUnderTest.updateItem(updateItem);
+
+        final Optional<SourcePartitionStoreItem> completedItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
+        assertThat(completedItem.isPresent(), equalTo(true));
+        assertThat(completedItem.get().getSourceIdentifier(), equalTo(sourceIdentifier));
+        assertThat(completedItem.get().getSourcePartitionKey(), equalTo(partitionKey));
+        assertThat(completedItem.get().getSourcePartitionStatus(), equalTo(SourcePartitionStatus.COMPLETED));
 
         final Optional<SourcePartitionStoreItem> emptyItem = objectUnderTest.getNextItem();
         assertThat(emptyItem.isEmpty(), equalTo(true));
@@ -131,10 +202,13 @@ public class InMemoryPartitionAccessorTest {
     @ParameterizedTest
     @ValueSource(strings = {"CLOSED", "UNASSIGNED"})
     void updateItem_with_unassigned_or_closed_status_requeues_the_item(final String status) {
+        final String sourceIdentifier = UUID.randomUUID().toString();
         final String partitionKey = UUID.randomUUID().toString();
 
         final InMemorySourcePartitionStoreItem item = mock(InMemorySourcePartitionStoreItem.class);
+        given(item.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(item.getSourcePartitionKey()).willReturn(partitionKey);
+        given(item.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
 
         objectUnderTest.queuePartition(item);
 
@@ -144,14 +218,23 @@ public class InMemoryPartitionAccessorTest {
         assertThat(originalItem.get(), equalTo(item));
 
         final InMemorySourcePartitionStoreItem updateItem = mock(InMemorySourcePartitionStoreItem.class);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(updateItem.getSourcePartitionKey()).willReturn(partitionKey);
         given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.valueOf(status));
+
+        if (status.equals(SourcePartitionStatus.CLOSED.toString())) {
+            given(updateItem.getReOpenAt()).willReturn(Instant.now().minusSeconds(120));
+        }
 
         objectUnderTest.updateItem(updateItem);
 
         final Optional<SourcePartitionStoreItem> updatedItem = objectUnderTest.getNextItem();
         assertThat(updatedItem.isPresent(), equalTo(true));
         assertThat(updatedItem.get(), equalTo(updateItem));
+
+        final Optional<SourcePartitionStoreItem> getUpdatedItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
+        assertThat(getUpdatedItem.isPresent(), equalTo(true));
+        assertThat(getUpdatedItem.get(), equalTo(updateItem));
     }
 
 }

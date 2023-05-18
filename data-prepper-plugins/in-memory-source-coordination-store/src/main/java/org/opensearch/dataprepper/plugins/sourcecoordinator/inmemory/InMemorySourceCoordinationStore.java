@@ -50,41 +50,55 @@ public class InMemorySourceCoordinationStore implements SourceCoordinationStore 
     }
 
     @Override
-    public Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String partitionKey) {
-        return inMemoryPartitionAccessor.getItem(partitionKey);
+    public Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String sourceIdentifier, final String partitionKey) {
+        synchronized (this) {
+            return inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey);
+        }
     }
 
     @Override
-    public boolean tryCreatePartitionItem(final String partitionKey, final SourcePartitionStatus sourcePartitionStatus, final Long closedCount, final String partitionProgressState) {
-
-        if (inMemoryPartitionAccessor.getItem(partitionKey).isEmpty()) {
-            final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem = new InMemorySourcePartitionStoreItem();
-            inMemorySourcePartitionStoreItem.setSourcePartitionKey(partitionKey);
-            inMemorySourcePartitionStoreItem.setSourcePartitionStatus(sourcePartitionStatus);
-            inMemorySourcePartitionStoreItem.setClosedCount(closedCount);
-            inMemorySourcePartitionStoreItem.setPartitionProgressState(partitionProgressState);
-            inMemoryPartitionAccessor.queuePartition(inMemorySourcePartitionStoreItem);
-            return true;
+    public boolean tryCreatePartitionItem(final String sourceIdentifier,
+                                          final String partitionKey,
+                                          final SourcePartitionStatus sourcePartitionStatus,
+                                          final Long closedCount,
+                                          final String partitionProgressState) {
+        synchronized (this) {
+            if (inMemoryPartitionAccessor.getItem(sourceIdentifier, partitionKey).isEmpty()) {
+                final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem = new InMemorySourcePartitionStoreItem();
+                inMemorySourcePartitionStoreItem.setSourceIdentifier(sourceIdentifier);
+                inMemorySourcePartitionStoreItem.setSourcePartitionKey(partitionKey);
+                inMemorySourcePartitionStoreItem.setSourcePartitionStatus(sourcePartitionStatus);
+                inMemorySourcePartitionStoreItem.setClosedCount(closedCount);
+                inMemorySourcePartitionStoreItem.setPartitionProgressState(partitionProgressState);
+                inMemoryPartitionAccessor.queuePartition(inMemorySourcePartitionStoreItem);
+                return true;
+            }
         }
 
         return false;
     }
 
     @Override
-    public Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String ownerId, final Duration ownershipTimeout) {
-        final Optional<SourcePartitionStoreItem> nextItem = inMemoryPartitionAccessor.getNextItem();
+    public Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String sourceIdentifier,
+                                                                           final String ownerId, final Duration ownershipTimeout) {
 
-        if (nextItem.isPresent()) {
-            nextItem.get().setPartitionOwner(ownerId);
-            nextItem.get().setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeout));
-            nextItem.get().setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
+        synchronized (this) {
+            final Optional<SourcePartitionStoreItem> nextItem = inMemoryPartitionAccessor.getNextItem();
+
+            if (nextItem.isPresent()) {
+                nextItem.get().setPartitionOwner(ownerId);
+                nextItem.get().setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeout));
+                nextItem.get().setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
+            }
+
+            return nextItem;
         }
-
-        return nextItem;
     }
 
     @Override
     public void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem) {
-        inMemoryPartitionAccessor.updateItem((InMemorySourcePartitionStoreItem) updateItem);
+        synchronized (this) {
+            inMemoryPartitionAccessor.updateItem((InMemorySourcePartitionStoreItem) updateItem);
+        }
     }
 }

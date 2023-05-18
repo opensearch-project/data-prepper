@@ -20,50 +20,70 @@ import java.util.Set;
 
 public class InMemoryPartitionAccessor {
 
-    private final Queue<QueuedPartitionsItem> queuedPartitions;
-    private final Map<String, InMemorySourcePartitionStoreItem> partitionLookup;
+    private final Queue<QueuedPartitionsItem> unassignedPartitions;
+    private final Queue<QueuedPartitionsItem> closedPartitions;
+    private final Set<String> completedPartitions;
+    private final Map<String, Map<String, InMemorySourcePartitionStoreItem>> partitionLookup;
 
     public InMemoryPartitionAccessor() {
-        this.queuedPartitions = new PriorityQueue<>();
+        this.unassignedPartitions = new PriorityQueue<>();
+        this.closedPartitions = new PriorityQueue<>();
+        this.completedPartitions = new HashSet<>();
         this.partitionLookup = new HashMap<>();
     }
 
-    public Optional<SourcePartitionStoreItem> getItem(final String partitionKey) {
+    public Optional<SourcePartitionStoreItem> getItem(final String sourceIdentifier, final String partitionKey) {
 
-        final InMemorySourcePartitionStoreItem item = partitionLookup.get(partitionKey);
+        if (!partitionLookup.containsKey(sourceIdentifier)) {
+            return Optional.empty();
+        }
+
+        if (completedPartitions.contains(sourceIdentifier + ":" + partitionKey)) {
+            final InMemorySourcePartitionStoreItem placeHolderItem = new InMemorySourcePartitionStoreItem();
+            placeHolderItem.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
+            placeHolderItem.setSourceIdentifier(sourceIdentifier);
+            placeHolderItem.setSourcePartitionKey(partitionKey);
+
+            return Optional.of(placeHolderItem);
+        }
+
+        final InMemorySourcePartitionStoreItem item = partitionLookup.get(sourceIdentifier).get(partitionKey);
 
         return Optional.ofNullable(item);
     }
 
     public void queuePartition(final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem) {
-        queuedPartitions.add(new QueuedPartitionsItem(inMemorySourcePartitionStoreItem.getSourcePartitionKey(), inMemorySourcePartitionStoreItem.getReOpenAt()));
-        partitionLookup.put(inMemorySourcePartitionStoreItem.getSourcePartitionKey(), inMemorySourcePartitionStoreItem);
+
+        final Map<String, InMemorySourcePartitionStoreItem> partitionMap = partitionLookup.get(inMemorySourcePartitionStoreItem.getSourceIdentifier());
+
+        if (Objects.isNull(partitionMap)) {
+            final Map<String, InMemorySourcePartitionStoreItem> newPartitionMap = new HashMap<>();
+            newPartitionMap.put(inMemorySourcePartitionStoreItem.getSourcePartitionKey(), inMemorySourcePartitionStoreItem);
+            partitionLookup.put(inMemorySourcePartitionStoreItem.getSourceIdentifier(), newPartitionMap);
+            queuePartitionItem(inMemorySourcePartitionStoreItem);
+            return;
+        }
+
+        partitionMap.put(inMemorySourcePartitionStoreItem.getSourcePartitionKey(), inMemorySourcePartitionStoreItem);
+        queuePartitionItem(inMemorySourcePartitionStoreItem);
     }
 
     public Optional<SourcePartitionStoreItem> getNextItem() {
+        final QueuedPartitionsItem nextClosedPartitionItem = closedPartitions.peek();
 
-        final Set<String> seenPartitionKeys = new HashSet<>();
-        while (!queuedPartitions.isEmpty()) {
-            final QueuedPartitionsItem nextPartitionItem = queuedPartitions.peek();
-
-            // Keep from having infinite loop (or infinite until a reopenAt timestamp is met) when only CLOSED partitions are left
-            if (seenPartitionKeys.contains(nextPartitionItem.partitionKey)) {
-                break;
+        if (Objects.nonNull(nextClosedPartitionItem)) {
+            if (nextClosedPartitionItem.sortedTimestamp.isBefore(Instant.now()) && partitionLookup.containsKey(nextClosedPartitionItem.sourceIdentifier)) {
+                closedPartitions.remove();
+                return Optional.ofNullable(partitionLookup.get(nextClosedPartitionItem.sourceIdentifier).get(nextClosedPartitionItem.partitionKey));
             }
-            seenPartitionKeys.add(nextPartitionItem.partitionKey);
+        }
 
-            final InMemorySourcePartitionStoreItem nextItem = partitionLookup.get(nextPartitionItem.partitionKey);
-            if (Objects.isNull(nextItem)) {
-                queuedPartitions.remove();
-            } else if (SourcePartitionStatus.CLOSED.equals(nextItem.getSourcePartitionStatus())
-                            && Objects.nonNull(nextItem.getReOpenAt())
-                            && nextItem.getReOpenAt().isAfter(Instant.now())) {
-                // Put back into the queue when partition is closed and has not reached reopenAt instant
-                queuedPartitions.remove();
-                queuedPartitions.add(nextPartitionItem);
-            } else {
-                queuedPartitions.remove();
-                return Optional.of(nextItem);
+        final QueuedPartitionsItem nextUnassignedPartitionItem = unassignedPartitions.peek();
+
+        if (Objects.nonNull(nextUnassignedPartitionItem)) {
+            if (partitionLookup.containsKey(nextUnassignedPartitionItem.sourceIdentifier)) {
+                unassignedPartitions.remove();
+                return Optional.ofNullable(partitionLookup.get(nextUnassignedPartitionItem.sourceIdentifier).get(nextUnassignedPartitionItem.partitionKey));
             }
         }
 
@@ -72,47 +92,60 @@ public class InMemoryPartitionAccessor {
 
     public void updateItem(final InMemorySourcePartitionStoreItem item) {
 
-        // If marking as unassigned or closed means the request is to process the next partition, so will requeue this one
-        if (SourcePartitionStatus.UNASSIGNED.equals(item.getSourcePartitionStatus())
-                || SourcePartitionStatus.CLOSED.equals(item.getSourcePartitionStatus())) {
-            queuedPartitions.add(new QueuedPartitionsItem(item.getSourcePartitionKey(), item.getReOpenAt()));
+        if (!partitionLookup.containsKey(item.getSourceIdentifier()) || completedPartitions.contains(
+                item.getSourceIdentifier() + ":" + item.getSourcePartitionKey())) {
+            return;
         }
 
-        // The partition lookup map grows infinitely as more and more partitions are created
-        // I don't think there's a great solution to this, but seems ok since it is advised for non-production use
+        if (SourcePartitionStatus.COMPLETED.equals(item.getSourcePartitionStatus())) {
+            completedPartitions.add(item.getSourceIdentifier() + ":" + item.getSourcePartitionKey());
+            partitionLookup.get(item.getSourceIdentifier()).remove(item.getSourcePartitionKey());
+            return;
+        }
 
-        final InMemorySourcePartitionStoreItem itemToUpdate = partitionLookup.get(item.getSourcePartitionKey());
+        // If marking as unassigned or closed means the request is to process the next partition, so will requeue this one
+        queuePartitionItem(item);
 
-        if (Objects.nonNull(itemToUpdate)) {
-            partitionLookup.put(item.getSourcePartitionKey(), item);
+        partitionLookup.get(item.getSourceIdentifier()).put(item.getSourcePartitionKey(), item);
+    }
+
+    private void queuePartitionItem(final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem) {
+        if (SourcePartitionStatus.UNASSIGNED.equals(inMemorySourcePartitionStoreItem.getSourcePartitionStatus())) {
+            unassignedPartitions.add(new QueuedPartitionsItem(inMemorySourcePartitionStoreItem.getSourceIdentifier(),
+                    inMemorySourcePartitionStoreItem.getSourcePartitionKey(), Instant.now()));
+        } else if (SourcePartitionStatus.CLOSED.equals(inMemorySourcePartitionStoreItem.getSourcePartitionStatus())) {
+            closedPartitions.add(new QueuedPartitionsItem(inMemorySourcePartitionStoreItem.getSourceIdentifier(),
+                    inMemorySourcePartitionStoreItem.getSourcePartitionKey(), inMemorySourcePartitionStoreItem.getReOpenAt()));
         }
     }
 
     protected static class QueuedPartitionsItem implements Comparable<QueuedPartitionsItem> {
 
+        private final String sourceIdentifier;
         private final String partitionKey;
-        private final Instant reOpenAt;
+        private final Instant sortedTimestamp;
 
-        public QueuedPartitionsItem(final String partitionKey, final Instant reOpenAt) {
+        public QueuedPartitionsItem(final String sourceIdentifier, final String partitionKey, final Instant sortedTimestamp) {
+            this.sourceIdentifier = sourceIdentifier;
             this.partitionKey = partitionKey;
-            this.reOpenAt = reOpenAt;
+            this.sortedTimestamp = sortedTimestamp;
         }
 
         @Override
         public int compareTo(final QueuedPartitionsItem o) {
-            if (Objects.isNull(this.reOpenAt) && Objects.isNull(o.reOpenAt)) {
+            if (Objects.isNull(this.sortedTimestamp) && Objects.isNull(o.sortedTimestamp)) {
                 return 0;
             }
 
-            if (Objects.isNull(this.reOpenAt)) {
+            if (Objects.isNull(this.sortedTimestamp)) {
                 return -1;
             }
 
-            if (Objects.isNull(o.reOpenAt)) {
+            if (Objects.isNull(o.sortedTimestamp)) {
                 return 1;
             }
 
-            return this.reOpenAt.compareTo(o.reOpenAt);
+            return this.sortedTimestamp.compareTo(o.sortedTimestamp);
         }
     }
 }

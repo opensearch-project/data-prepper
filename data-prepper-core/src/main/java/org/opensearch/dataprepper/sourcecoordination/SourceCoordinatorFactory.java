@@ -40,7 +40,6 @@ public class SourceCoordinatorFactory {
             return null;
         }
 
-
         final SourceCoordinationStore sourceCoordinationStore =
                 pluginFactory.loadPlugin(SourceCoordinationStore.class, sourceCoordinationConfig.getSourceCoordinationStoreConfig());
 
