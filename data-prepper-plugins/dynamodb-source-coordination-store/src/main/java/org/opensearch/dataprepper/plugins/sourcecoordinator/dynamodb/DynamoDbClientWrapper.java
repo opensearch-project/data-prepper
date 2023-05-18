@@ -40,6 +40,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbSourceCoordinationStore.SOURCE_STATUS_COMBINATION_KEY_FORMAT;
+
 public class DynamoDbClientWrapper {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientWrapper.class);
@@ -175,13 +177,14 @@ public class DynamoDbClientWrapper {
     public Optional<SourcePartitionStoreItem> getAvailablePartition(final String ownerId,
                                                                     final Duration ownershipTimeout,
                                                                     final SourcePartitionStatus sourcePartitionStatus,
-                                                                    final String sourceStatusCombinationKey) {
+                                                                    final String sourceStatusCombinationKey,
+                                                                    final int pageLimit) {
         try {
 
             final DynamoDbIndex<DynamoDbSourcePartitionItem> sourceStatusIndex = table.index(SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX);
 
             final QueryEnhancedRequest queryEnhancedRequest = QueryEnhancedRequest.builder()
-                    .limit(10)
+                    .limit(pageLimit)
                     .queryConditional(QueryConditional.keyEqualTo(Key.builder().partitionValue(sourceStatusCombinationKey).build()))
                     .build();
 
@@ -207,7 +210,7 @@ public class DynamoDbClientWrapper {
                     item.setPartitionOwner(ownerId);
                     item.setPartitionOwnershipTimeout(partitionOwnershipTimeout);
                     item.setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
-                    item.setSourceStatusCombinationKey(item.getSourceIdentifier() + "|" + SourcePartitionStatus.ASSIGNED);
+                    item.setSourceStatusCombinationKey(String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, item.getSourceIdentifier(), SourcePartitionStatus.ASSIGNED));
                     item.setPartitionPriority(partitionOwnershipTimeout.toString());
                     final boolean acquired = this.tryAcquirePartitionItem(item);
 

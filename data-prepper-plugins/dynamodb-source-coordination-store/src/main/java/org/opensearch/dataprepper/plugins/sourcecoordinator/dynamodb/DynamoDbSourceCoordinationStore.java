@@ -34,6 +34,8 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     private final PluginMetrics pluginMetrics;
     private final DynamoDbClientWrapper dynamoDbClientWrapper;
 
+    static final String SOURCE_STATUS_COMBINATION_KEY_FORMAT = "%s|%s";
+
     @DataPrepperPluginConstructor
     public DynamoDbSourceCoordinationStore(final DynamoStoreSettings dynamoStoreSettings, final PluginMetrics pluginMetrics) {
         this.dynamoStoreSettings = dynamoStoreSettings;
@@ -60,7 +62,7 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
                                           final String partitionProgressState) {
         final DynamoDbSourcePartitionItem newPartitionItem = new DynamoDbSourcePartitionItem();
         newPartitionItem.setSourceIdentifier(sourceIdentifier);
-        newPartitionItem.setSourceStatusCombinationKey(sourceIdentifier + "|" + sourcePartitionStatus);
+        newPartitionItem.setSourceStatusCombinationKey(String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, sourcePartitionStatus));
         newPartitionItem.setPartitionPriority(Instant.now().toString());
         newPartitionItem.setSourcePartitionKey(sourcePartitionKey);
         newPartitionItem.setSourcePartitionStatus(sourcePartitionStatus);
@@ -74,27 +76,31 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     @Override
     public Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String sourceIdentifier, final String ownerId, final Duration ownershipTimeout) {
         final Optional<SourcePartitionStoreItem> acquiredAssignedItem = dynamoDbClientWrapper.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.ASSIGNED, sourceIdentifier + "|" + SourcePartitionStatus.ASSIGNED);
+                ownerId, ownershipTimeout, SourcePartitionStatus.ASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED), 1);
 
         if (acquiredAssignedItem.isPresent()) {
             return acquiredAssignedItem;
         }
 
         final Optional<SourcePartitionStoreItem> acquiredClosedItem = dynamoDbClientWrapper.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.CLOSED, sourceIdentifier + "|" + SourcePartitionStatus.CLOSED);
+                ownerId, ownershipTimeout, SourcePartitionStatus.CLOSED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED), 1);
 
         if (acquiredClosedItem.isPresent()) {
             return acquiredClosedItem;
         }
 
         return dynamoDbClientWrapper.getAvailablePartition(
-                ownerId, ownershipTimeout, SourcePartitionStatus.UNASSIGNED, sourceIdentifier + "|" + SourcePartitionStatus.UNASSIGNED);
+                ownerId, ownershipTimeout, SourcePartitionStatus.UNASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.UNASSIGNED), 5);
     }
 
     @Override
     public void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem) {
         final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = (DynamoDbSourcePartitionItem) updateItem;
-        dynamoDbSourcePartitionItem.setSourceStatusCombinationKey(updateItem.getSourceIdentifier() + "|" + updateItem.getSourcePartitionStatus());
+        dynamoDbSourcePartitionItem.setSourceStatusCombinationKey(
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, updateItem.getSourceIdentifier(), updateItem.getSourcePartitionStatus()));
 
         if (SourcePartitionStatus.CLOSED.equals(updateItem.getSourcePartitionStatus())) {
             dynamoDbSourcePartitionItem.setPartitionPriority(updateItem.getReOpenAt().toString());
