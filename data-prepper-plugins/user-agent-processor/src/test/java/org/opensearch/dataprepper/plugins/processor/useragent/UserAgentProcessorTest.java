@@ -30,6 +30,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UserAgentProcessorTest {
 
+    private static final int TEST_CACHE_SIZE = 100;
+
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -42,6 +44,7 @@ class UserAgentProcessorTest {
             String uaString, String uaName, String uaVersion, String osName, String osVersion, String osFull, String deviceName) {
         when(mockConfig.getSource()).thenReturn("source");
         when(mockConfig.getTarget()).thenReturn("user_agent");
+        when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
 
         final UserAgentProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(uaString);
@@ -63,6 +66,7 @@ class UserAgentProcessorTest {
             String uaString, String uaName, String uaVersion, String osName, String osVersion, String osFull, String deviceName) {
         when(mockConfig.getSource()).thenReturn("source");
         when(mockConfig.getTarget()).thenReturn("my_target");
+        when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
 
         final UserAgentProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(uaString);
@@ -85,6 +89,7 @@ class UserAgentProcessorTest {
         when(mockConfig.getSource()).thenReturn("source");
         when(mockConfig.getTarget()).thenReturn("user_agent");
         when(mockConfig.getExcludeOriginal()).thenReturn(true);
+        when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
 
         final UserAgentProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(uaString);
@@ -103,6 +108,7 @@ class UserAgentProcessorTest {
     @Test
     public void testParsingWhenUserAgentStringNotExist() {
         when(mockConfig.getSource()).thenReturn("bad_source");
+        when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
 
         final UserAgentProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord(UUID.randomUUID().toString());
@@ -110,6 +116,25 @@ class UserAgentProcessorTest {
         final Event resultEvent = resultRecord.get(0).getData();
 
         assertThat(resultEvent.containsKey("user_agent"), is(false));
+    }
+
+    @Test
+    public void testTagsAddedOnParseFailure() {
+        when(mockConfig.getSource()).thenReturn("bad_source");
+        when(mockConfig.getCacheSize()).thenReturn(TEST_CACHE_SIZE);
+
+        final String tagOnFailure1 = UUID.randomUUID().toString();
+        final String tagOnFailure2 = UUID.randomUUID().toString();
+        when(mockConfig.getTagsOnParseFailure()).thenReturn(List.of(tagOnFailure1, tagOnFailure2));
+
+        final UserAgentProcessor processor = createObjectUnderTest();
+        final Record<Event> testRecord = createTestRecord(UUID.randomUUID().toString());
+        final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
+        final Event resultEvent = resultRecord.get(0).getData();
+
+        assertThat(resultEvent.containsKey("user_agent"), is(false));
+        assertThat(resultEvent.getMetadata().getTags().contains(tagOnFailure1), is(true));
+        assertThat(resultEvent.getMetadata().getTags().contains(tagOnFailure2), is(true));
     }
 
     private UserAgentProcessor createObjectUnderTest() {

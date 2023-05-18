@@ -20,6 +20,7 @@ import ua_parser.Parser;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -35,7 +36,7 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
     public UserAgentProcessor(final PluginMetrics pluginMetrics, final UserAgentProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
-        this.userAgentParser = new CachingParser();
+        this.userAgentParser = new CachingParser(config.getCacheSize());
     }
 
     @Override
@@ -43,12 +44,10 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event event = record.getData();
 
-            final String userAgentStr = event.get(config.getSource(), String.class);
-            if (Objects.isNull(userAgentStr)) {
-                continue;
-            }
-
             try {
+                final String userAgentStr = event.get(config.getSource(), String.class);
+                Objects.requireNonNull(userAgentStr);
+
                 final Client clientInfo = this.userAgentParser.parse(userAgentStr);
 
                 final Map<String, Object> parsedUserAgent = getParsedUserAgent(clientInfo);
@@ -59,6 +58,11 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
             } catch (Exception e) {
                 LOG.error(EVENT, "An exception occurred when parsing user agent data from event [{}] with source key [{}]",
                         event, config.getSource(), e);
+
+                final List<String> tagsOnParseFailure = config.getTagsOnParseFailure();
+                if (Objects.nonNull(tagsOnParseFailure) && tagsOnParseFailure.size() > 0) {
+                    event.getMetadata().addTags(tagsOnParseFailure);
+                }
             }
         }
         return records;
@@ -95,9 +99,9 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
         } else if (Objects.isNull(minor)) {
             return major;
         } else if (Objects.isNull(patch)) {
-            return String.format("%s.%s", major, minor);
+            return major + "." + minor;
         }
-        return String.format("%s.%s.%s", major, minor, patch);
+        return major + "." + minor + "." + patch;
     }
 
     private Map<String, String> getParsedOS(Client clientInfo) {
@@ -105,7 +109,7 @@ public class UserAgentProcessor extends AbstractProcessor<Record<Event>, Record<
         return Map.of(
                 "name", clientInfo.os.family,
                 "version", version,
-                "full", version.isEmpty() ? clientInfo.os.family : String.format("%s %s", clientInfo.os.family, version)
+                "full", version.isEmpty() ? clientInfo.os.family : (clientInfo.os.family + " " + version)
         );
     }
 
