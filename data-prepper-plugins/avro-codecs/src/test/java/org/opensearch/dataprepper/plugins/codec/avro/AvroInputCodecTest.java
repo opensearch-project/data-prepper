@@ -8,9 +8,11 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
+import org.apache.avro.util.Utf8;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -166,18 +168,40 @@ public class AvroInputCodecTest {
         }
     }
 
-    private static Event getEvent(int index){
+    private static Event getEvent(int index) throws Exception {
         List<GenericRecord> recordList=generateRecords(parseSchema(),numberOfRecords);
         GenericRecord record=recordList.get(index);
-        Schema schema=parseSchema();
-        final Map<String, Object> eventData = new HashMap<>();
-        for(Schema.Field field : schema.getFields()) {
-
-            eventData.put(field.name(), record.get(field.name()));
-
-        }
+        Schema schema = record.getSchema();
+        final Map<String, Object> eventData = convertRecordToMap(record, schema);
         final Event event = JacksonLog.builder().withData(eventData).build();
         return event;
+    }
+
+    private static Map<String, Object> convertRecordToMap(GenericRecord record, Schema schema) throws Exception {
+
+        final Map<String, Object> eventData = new HashMap<>();
+
+        for(Schema.Field field : schema.getFields()){
+
+            Object value = record.get(field.name());
+
+            if(value instanceof GenericRecord){
+                Schema schemaOfNestedRecord = ((GenericRecord) value).getSchema();
+                value = convertRecordToMap((GenericRecord) value, schemaOfNestedRecord);
+            }
+
+            else if(value instanceof GenericEnumSymbol){
+                value = value.toString();
+            }
+
+            else if(value instanceof Utf8){
+                byte[] utf8Bytes = value.toString().getBytes("UTF-8");
+                value = new String(utf8Bytes, "UTF-8");
+            }
+
+            eventData.put(field.name(), value);
+        }
+        return eventData;
     }
 
 
@@ -211,9 +235,13 @@ public class AvroInputCodecTest {
         for(int rows = 0; rows < numberOfRecords; rows++){
 
             GenericRecord record = new GenericData.Record(schema);
+            GenericRecord innerRecord = new GenericData.Record(parseInnerSchemaForNestedRecord());
+            innerRecord.put("firstFieldInNestedRecord", "testString"+rows);
+            innerRecord.put("secondFieldInNestedRecord", rows);
 
             record.put("name", "Person"+rows);
             record.put("age", rows);
+            record.put("nestedRecord", innerRecord);
             recordList.add((record));
 
         }
@@ -224,12 +252,27 @@ public class AvroInputCodecTest {
 
     private static Schema  parseSchema() {
 
+        Schema innerSchema=parseInnerSchemaForNestedRecord();
         return SchemaBuilder.record("Person")
                 .fields()
                 .name("name").type().stringType().noDefault()
                 .name("age").type().intType().noDefault()
+                .name("nestedRecord").type(innerSchema).noDefault()
                 .endRecord();
 
+    }
+
+    private static Schema parseInnerSchemaForNestedRecord(){
+        return SchemaBuilder
+                .record("InnerRecord")
+                .fields()
+                .name("firstFieldInNestedRecord")
+                .type(Schema.create(Schema.Type.STRING))
+                .noDefault()
+                .name("secondFieldInNestedRecord")
+                .type(Schema.create(Schema.Type.INT))
+                .noDefault()
+                .endRecord();
     }
 
     private static InputStream createInvalidAvroStream() {
