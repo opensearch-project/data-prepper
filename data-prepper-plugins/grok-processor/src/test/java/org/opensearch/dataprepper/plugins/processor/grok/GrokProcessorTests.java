@@ -101,7 +101,7 @@ public class GrokProcessorTests {
     private Timer grokProcessingTime;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     private PluginSetting pluginSetting;
     private final String PLUGIN_NAME = "grok";
@@ -637,7 +637,7 @@ public class GrokProcessorTests {
         testData.put("message", messageInput);
         final Record<Event> record = buildRecordWithEvent(testData);
 
-        when(expressionEvaluator.evaluate(grokWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(grokWhen, record.getData())).thenReturn(false);
 
         final List<Record<Event>> grokkedRecords = (List<Record<Event>>) grokProcessor.doExecute(Collections.singletonList(record));
 

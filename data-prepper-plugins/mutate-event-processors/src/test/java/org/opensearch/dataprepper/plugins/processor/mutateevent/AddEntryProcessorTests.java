@@ -41,7 +41,7 @@ public class AddEntryProcessorTests {
     private AddEntryProcessorConfig mockConfig;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     @Test
     public void testSingleAddProcessorTests() {
@@ -347,7 +347,7 @@ public class AddEntryProcessorTests {
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
 
-        when(expressionEvaluator.evaluate(addWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(addWhen, record.getData())).thenReturn(false);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));

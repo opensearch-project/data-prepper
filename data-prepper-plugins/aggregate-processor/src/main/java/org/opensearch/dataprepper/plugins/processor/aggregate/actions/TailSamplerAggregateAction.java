@@ -33,12 +33,12 @@ public class TailSamplerAggregateAction implements AggregateAction {
     static final String ERROR_STATUS_KEY = "error_status";
     private final double percent;
     private final Duration waitPeriod;
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
     private final String errorCondition;
     private boolean shouldCarryGroupState;
 
     @DataPrepperPluginConstructor
-    public TailSamplerAggregateAction(final TailSamplerAggregateActionConfig tailSamplerAggregateActionConfig, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public TailSamplerAggregateAction(final TailSamplerAggregateActionConfig tailSamplerAggregateActionConfig, final ExpressionEvaluator expressionEvaluator) {
         percent = tailSamplerAggregateActionConfig.getPercent();
         waitPeriod = tailSamplerAggregateActionConfig.getWaitPeriod();
         errorCondition = tailSamplerAggregateActionConfig.getErrorCondition();
@@ -60,7 +60,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
         List<Event> events = (List)groupState.getOrDefault(EVENTS_KEY, new ArrayList<>());
         events.add(event);
         groupState.put(EVENTS_KEY, events);
-        if (errorCondition != null && !errorCondition.isEmpty() && expressionEvaluator.evaluate(errorCondition, event)) {
+        if (errorCondition != null && !errorCondition.isEmpty() && expressionEvaluator.evaluateConditional(errorCondition, event)) {
             groupState.put(ERROR_STATUS_KEY, true);
         }
         groupState.put(LAST_RECEIVED_TIME_KEY, Instant.now());

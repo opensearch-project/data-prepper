@@ -44,7 +44,7 @@ class SplitStringProcessorTests {
     private SplitStringProcessorConfig config;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     private SplitStringProcessor createObjectUnderTest() {
         return new SplitStringProcessor(pluginMetrics, config, expressionEvaluator);
@@ -107,7 +107,7 @@ class SplitStringProcessorTests {
 
         final SplitStringProcessor splitStringProcessor = createObjectUnderTest();
         final Record<Event> record = createEvent(message);
-        when(expressionEvaluator.evaluate(splitWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(splitWhen, record.getData())).thenReturn(false);
         final List<Record<Event>> splitRecords = (List<Record<Event>>) splitStringProcessor.doExecute(Collections.singletonList(record));
 
         assertThat(splitRecords.get(0).getData().toMap(), equalTo(record.getData().toMap()));

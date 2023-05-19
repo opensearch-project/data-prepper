@@ -31,11 +31,11 @@ class ParseTreeEvaluator implements Evaluator<ParseTree, Event> {
     }
 
     @Override
-    public Boolean evaluate(ParseTree parseTree, Event event) {
+    public Object evaluate(ParseTree parseTree, Event event) {
         try {
             final ParseTreeEvaluatorListener listener = new ParseTreeEvaluatorListener(operatorProvider, coercionService, event);
             walker.walk(listener, parseTree);
-            return coercionService.coerce(listener.getResult(), Boolean.class);
+            return listener.getResult();
         } catch (final Exception e) {
             LOG.error("Unable to evaluate event", e);
             throw new ExpressionEvaluationException(e.getMessage(), e);

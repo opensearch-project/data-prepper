@@ -33,7 +33,7 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class DropEventsWhenConditionTest {
     @Mock
-    private ExpressionEvaluator<Boolean> evaluator;
+    private ExpressionEvaluator evaluator;
     @Mock
     private DropEventProcessorConfig dropEventProcessorConfig;
 
@@ -87,7 +87,7 @@ class DropEventsWhenConditionTest {
                 .getDropWhen();
         doReturn(evaluatorResult)
                 .when(evaluator)
-                .evaluate(eq(whenStatement), eq(event));
+                .evaluateConditional(eq(whenStatement), eq(event));
 
         final DropEventsWhenCondition whenCondition = new DropEventsWhenCondition.Builder()
                 .withDropEventsProcessorConfig(dropEventProcessorConfig)
@@ -97,7 +97,7 @@ class DropEventsWhenConditionTest {
         final boolean result = whenCondition.isStatementFalseWith(event);
 
         assertThat(result, not(is(evaluatorResult)));
-        verify(evaluator).evaluate(eq(whenStatement), eq(event));
+        verify(evaluator).evaluateConditional(eq(whenStatement), eq(event));
     }
 
 
@@ -132,7 +132,7 @@ class DropEventsWhenConditionTest {
         final String whenStatement = UUID.randomUUID().toString();
         final DropEventProcessorConfig dropEventProcessorConfig = mock(DropEventProcessorConfig.class);
 
-        doThrow(RuntimeException.class).when(evaluator).evaluate(any(), any());
+        doThrow(RuntimeException.class).when(evaluator).evaluateConditional(any(), any());
         doReturn(whenStatement).when(dropEventProcessorConfig).getDropWhen();
         doReturn(option).when(dropEventProcessorConfig).getHandleFailedEventsOption();
 

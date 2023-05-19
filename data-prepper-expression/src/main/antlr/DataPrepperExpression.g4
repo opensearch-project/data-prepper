@@ -11,7 +11,22 @@ grammar DataPrepperExpression;
 
 expression
     : conditionalExpression EOF
+    | arithmeticExpression EOF
+    | stringExpression EOF
     | OTHER {System.err.println("unknown char: " + $OTHER.text);}
+    ;
+
+stringExpression
+    : function
+    | jsonPointer
+    | String
+    ;
+
+arithmeticExpression
+    : function
+    | jsonPointer
+    | Integer
+    | Float
     ;
 
 conditionalExpression

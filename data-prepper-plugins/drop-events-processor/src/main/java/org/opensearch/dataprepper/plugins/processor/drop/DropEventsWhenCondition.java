@@ -24,7 +24,7 @@ class DropEventsWhenCondition {
 
     private final String dropWhen;
     private final HandleFailedEventsOption handleFailedEventsSetting;
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
     private final boolean notAlwaysTrue;
 
     DropEventsWhenCondition(final Builder builder) {
@@ -55,7 +55,7 @@ class DropEventsWhenCondition {
      */
     public boolean isStatementFalseWith(final Event event) {
         try {
-            return !expressionEvaluator.evaluate(dropWhen, event);
+            return !expressionEvaluator.evaluateConditional(dropWhen, event);
         } catch (final Exception e) {
             return handleFailedEventsSetting.isDropEventOption(event, e, LOG);
         }
@@ -70,7 +70,7 @@ class DropEventsWhenCondition {
         private String dropWhen;
         private HandleFailedEventsOption handleFailedEventsSetting;
 
-        private ExpressionEvaluator<Boolean> expressionEvaluator;
+        private ExpressionEvaluator expressionEvaluator;
 
         public Builder withDropEventsProcessorConfig(final DropEventProcessorConfig dropEventProcessorConfig) {
             this.dropWhen = Objects.requireNonNull(dropEventProcessorConfig.getDropWhen());
@@ -78,7 +78,7 @@ class DropEventsWhenCondition {
             return this;
         }
 
-        public Builder withExpressionEvaluator(final ExpressionEvaluator<Boolean> expressionEvaluator) {
+        public Builder withExpressionEvaluator(final ExpressionEvaluator expressionEvaluator) {
             this.expressionEvaluator = expressionEvaluator;
             return this;
         }

@@ -37,7 +37,7 @@ public class CopyValueProcessorTests {
     private CopyValueProcessorConfig mockConfig;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     @Test
     public void testSingleCopyProcessorTests() {
@@ -178,7 +178,7 @@ public class CopyValueProcessorTests {
 
         final CopyValueProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
-        when(expressionEvaluator.evaluate(copyWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(copyWhen, record.getData())).thenReturn(false);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(false));

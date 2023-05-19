@@ -50,11 +50,6 @@ class ParseTreeEvaluatorTest {
 
     @Test
     void testEvaluateSuccess() throws ExpressionCoercionException {
-        when(coercionService.coerce(any(), any())).thenAnswer(invocation -> {
-            final Object res = invocation.getArgument(0);
-            final Class<Boolean> clazz = invocation.getArgument(1);
-            return clazz.cast(res);
-        });
         try (final MockedConstruction<ParseTreeEvaluatorListener> ignored =
                      mockConstruction(ParseTreeEvaluatorListener.class, (mock, context) -> when(mock.getResult()).thenReturn(true))) {
             assertThat(objectUnderTest.evaluate(parseTree, event), is(true));
@@ -80,12 +75,4 @@ class ParseTreeEvaluatorTest {
         }
     }
 
-    @Test
-    void testEvaluateFailureInCoerce() throws ExpressionCoercionException {
-        when(coercionService.coerce(any(), any())).thenThrow(new ExpressionCoercionException("test message"));
-        try (final MockedConstruction<ParseTreeEvaluatorListener> ignored =
-                     mockConstruction(ParseTreeEvaluatorListener.class, (mock, context) -> when(mock.getResult()).thenReturn(true))) {
-            assertThrows(ExpressionEvaluationException.class, () -> objectUnderTest.evaluate(parseTree, event));
-        }
-    }
 }
