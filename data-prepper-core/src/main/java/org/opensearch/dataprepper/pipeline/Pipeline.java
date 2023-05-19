@@ -200,6 +200,36 @@ public class Pipeline {
         }
         return true;
     }
+
+    private void waitForSinkReadyThenStartSourceAndProcessors() {
+        long retryCount = 0;
+        while (!isReady() && !isStopRequested()) {
+            if (retryCount++ % 60 == 0) {
+                LOG.info("Pipeline [{}] Waiting for Sink to be ready", name);
+            }
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e){}
+        }
+        LOG.info("Pipeline [{}] Sink is ready, starting source...", name);
+        source.start(buffer);
+
+        LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
+        for (int i = 0; i < processorThreads; i++) {
+            final int finalI = i;
+            final List<Processor> processors = processorSets.stream().map(
+                    processorSet -> {
+                        if (processorSet.size() == 1) {
+                            return processorSet.get(0);
+                        } else {
+                            return processorSet.get(finalI);
+                        }
+                    }
+            ).collect(Collectors.toList());
+            processorExecutorService.submit(new ProcessWorker(buffer, processors, this));
+        }
+    }
+
     /**
      * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Processor} on the
      * read data and outputs to {@link Sink}.
@@ -214,33 +244,8 @@ public class Pipeline {
             }
 
             sinkExecutorService.submit(() -> {
-                long retryCount = 0;
-                while (!isReady() && !isStopRequested()) {
-                    if (++retryCount % 60 == 0) {
-                        LOG.info("Pipeline {} Waiting for Sink to be ready", name);
-                    }
-                    try {
-                        Thread.sleep(1000);
-                    } catch (Exception e){}
-                }
-                LOG.info("Pipeline {} Sink is ready, starting source...", name);
-                source.start(buffer);
+                waitForSinkReadyThenStartSourceAndProcessors();
             }, null);
-
-            LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
-            for (int i = 0; i < processorThreads; i++) {
-                final int finalI = i;
-                final List<Processor> processors = processorSets.stream().map(
-                        processorSet -> {
-                            if (processorSet.size() == 1) {
-                                return processorSet.get(0);
-                            } else {
-                                return processorSet.get(finalI);
-                            }
-                        }
-                ).collect(Collectors.toList());
-                processorExecutorService.submit(new ProcessWorker(buffer, processors, this));
-            }
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
             LOG.error("Pipeline [{}] encountered exception while starting the source, skipping execution", name, ex);

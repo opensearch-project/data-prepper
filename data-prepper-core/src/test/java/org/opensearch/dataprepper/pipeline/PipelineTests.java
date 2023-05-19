@@ -167,7 +167,7 @@ class PipelineTests {
     }
 
     @Test
-    void testPipelineDelayedReady() {
+    void testPipelineDelayedReady() throws InterruptedException {
         final int delayTimeSeconds = 10;
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink(delayTimeSeconds);
@@ -183,9 +183,7 @@ class PipelineTests {
         testPipeline.execute();
         assertFalse(testPipeline.isReady());
         for (int i = 0; i < delayTimeSeconds + 2; i++) {
-            try {
-                Thread.sleep(1000);
-            } catch (Exception e) {}
+            Thread.sleep(1000);
         }
         assertTrue(testPipeline.isReady());
         assertThat(Duration.between(startTime, Instant.now()), greaterThanOrEqualTo(Duration.ofSeconds(delayTimeSeconds)));
@@ -197,7 +195,7 @@ class PipelineTests {
     }
 
     @Test
-    void testPipelineDelayedReadyShutdownBeforeReady() {
+    void testPipelineDelayedReadyShutdownBeforeReady() throws InterruptedException {
         final int delayTimeSeconds = 10;
         final Source<Record<String>> testSource = new TestSource();
         final TestSink testSink = new TestSink(delayTimeSeconds);
@@ -213,9 +211,7 @@ class PipelineTests {
         testPipeline.execute();
         assertFalse(testPipeline.isReady());
         for (int i = 0; i < 1; i++) {
-            try {
-                Thread.sleep(1000);
-            } catch (Exception e) {}
+            Thread.sleep(1000);
         }
         assertFalse(testPipeline.isReady());
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
