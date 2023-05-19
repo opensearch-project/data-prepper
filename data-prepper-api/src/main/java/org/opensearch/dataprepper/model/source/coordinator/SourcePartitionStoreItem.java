@@ -13,6 +13,8 @@ import java.time.Instant;
  * @since 2.2
  */
 public interface SourcePartitionStoreItem {
+
+    String getSourceIdentifier();
     String getSourcePartitionKey();
     String getPartitionOwner();
     String getPartitionProgressState();

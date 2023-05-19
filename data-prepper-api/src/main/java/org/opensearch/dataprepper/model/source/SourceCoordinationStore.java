@@ -20,9 +20,10 @@ public interface SourceCoordinationStore {
 
     void initializeStore();
 
-    Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String partitionKey);
+    Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String sourceIdentifier, final String sourcePartitionKey);
 
-    boolean tryCreatePartitionItem(final String partitionKey,
+    boolean tryCreatePartitionItem(final String sourceIdentifier,
+                                   final String partitionKey,
                                    final SourcePartitionStatus sourcePartitionStatus,
                                    final Long closedCount,
                                    final String partitionProgressState);
@@ -33,7 +34,7 @@ public interface SourceCoordinationStore {
      * 2. The partition status is CLOSED and the reOpenAt timestamp has passed
      * 3. The partition status is ASSIGNED and the partitionOwnershipTimeout has passed
      */
-    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String ownerId, final Duration ownershipTimeout);
+    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String sourceIdentifier, final String ownerId, final Duration ownershipTimeout);
 
     /**
      * This method attempts to update the partition item to the desired state

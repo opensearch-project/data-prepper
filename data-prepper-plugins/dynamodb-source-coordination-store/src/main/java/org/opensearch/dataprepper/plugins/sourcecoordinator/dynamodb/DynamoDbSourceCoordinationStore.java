@@ -13,14 +13,10 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.enhanced.dynamodb.Expression;
-import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -34,19 +30,11 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDbSourceCoordinationStore.class);
 
-    /**
-     * This filter expression considers partitions available in the following scenarios
-     * 1. The partition status is UNASSIGNED
-     * 2. The partition status is CLOSED and the reOpenAt timestamp has passed
-     * 3. The partition status is ASSIGNED and the partitionOwnershipTimeout has passed
-     */
-    static final String AVAILABLE_PARTITIONS_FILTER_EXPRESSION = "contains(sourcePartitionStatus, :unassigned) " +
-            "or (contains(sourcePartitionStatus, :closed) and (attribute_not_exists(reOpenAt) or reOpenAt = :null or reOpenAt <= :ro)) " +
-            "or (contains(sourcePartitionStatus, :assigned) and (attribute_not_exists(partitionOwnershipTimeout) or partitionOwnershipTimeout = :null or partitionOwnershipTimeout <= :t))";
-
     private final DynamoStoreSettings dynamoStoreSettings;
     private final PluginMetrics pluginMetrics;
     private final DynamoDbClientWrapper dynamoDbClientWrapper;
+
+    static final String SOURCE_STATUS_COMBINATION_KEY_FORMAT = "%s|%s";
 
     @DataPrepperPluginConstructor
     public DynamoDbSourceCoordinationStore(final DynamoStoreSettings dynamoStoreSettings, final PluginMetrics pluginMetrics) {
@@ -62,17 +50,21 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     }
 
     @Override
-    public Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String partitionKey) {
-        return dynamoDbClientWrapper.getSourcePartitionItem(partitionKey);
+    public Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String sourceIdentifier, final String sourcePartitionKey) {
+        return dynamoDbClientWrapper.getSourcePartitionItem(sourceIdentifier, sourcePartitionKey);
     }
 
     @Override
-    public boolean tryCreatePartitionItem(final String partitionKey,
+    public boolean tryCreatePartitionItem(final String sourceIdentifier,
+                                          final String sourcePartitionKey,
                                           final SourcePartitionStatus sourcePartitionStatus,
                                           final Long closedCount,
                                           final String partitionProgressState) {
         final DynamoDbSourcePartitionItem newPartitionItem = new DynamoDbSourcePartitionItem();
-        newPartitionItem.setSourcePartitionKey(partitionKey);
+        newPartitionItem.setSourceIdentifier(sourceIdentifier);
+        newPartitionItem.setSourceStatusCombinationKey(String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, sourcePartitionStatus));
+        newPartitionItem.setPartitionPriority(Instant.now().toString());
+        newPartitionItem.setSourcePartitionKey(sourcePartitionKey);
         newPartitionItem.setSourcePartitionStatus(sourcePartitionStatus);
         newPartitionItem.setClosedCount(closedCount);
         newPartitionItem.setPartitionProgressState(partitionProgressState);
@@ -82,44 +74,42 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     }
 
     @Override
-    public Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String ownerId, final Duration ownershipTimeout) {
-        final Optional<PageIterable<DynamoDbSourcePartitionItem>> dynamoDbSourcePartitionItemPageIterable =
-                dynamoDbClientWrapper.getSourcePartitionItems(Expression.builder()
-                        .expressionValues(Map.of(
-                                ":unassigned", AttributeValue.builder().s(SourcePartitionStatus.UNASSIGNED.name()).build(),
-                                ":assigned", AttributeValue.builder().s(SourcePartitionStatus.ASSIGNED.name()).build(),
-                                ":closed", AttributeValue.builder().s(SourcePartitionStatus.CLOSED.name()).build(),
-                                ":t", AttributeValue.builder().s(Instant.now().toString()).build(),
-                                ":ro", AttributeValue.builder().s(Instant.now().toString()).build(),
-                                ":null", AttributeValue.builder().nul(true).build()))
-                        .expression(AVAILABLE_PARTITIONS_FILTER_EXPRESSION)
-                        .build());
+    public Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String sourceIdentifier, final String ownerId, final Duration ownershipTimeout) {
+        final Optional<SourcePartitionStoreItem> acquiredAssignedItem = dynamoDbClientWrapper.getAvailablePartition(
+                ownerId, ownershipTimeout, SourcePartitionStatus.ASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED), 1);
 
-        if (dynamoDbSourcePartitionItemPageIterable.isEmpty()) {
-            return Optional.empty();
+        if (acquiredAssignedItem.isPresent()) {
+            return acquiredAssignedItem;
         }
 
-        try {
-            for (final DynamoDbSourcePartitionItem item : dynamoDbSourcePartitionItemPageIterable.get().items()) {
-                item.setPartitionOwner(ownerId);
-                item.setPartitionOwnershipTimeout(Instant.now().plus(ownershipTimeout));
-                item.setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
-                final boolean acquired = dynamoDbClientWrapper.tryAcquirePartitionItem(item);
+        final Optional<SourcePartitionStoreItem> acquiredClosedItem = dynamoDbClientWrapper.getAvailablePartition(
+                ownerId, ownershipTimeout, SourcePartitionStatus.CLOSED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED), 1);
 
-                if (acquired) {
-                    return Optional.of(item);
-                }
-            }
-        } catch (final Exception e) {
-            LOG.error("An exception occurred while iterating on items to acquire in DynamoDb", e);
+        if (acquiredClosedItem.isPresent()) {
+            return acquiredClosedItem;
         }
 
-        return Optional.empty();
+        return dynamoDbClientWrapper.getAvailablePartition(
+                ownerId, ownershipTimeout, SourcePartitionStatus.UNASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.UNASSIGNED), 5);
     }
 
     @Override
     public void tryUpdateSourcePartitionItem(final SourcePartitionStoreItem updateItem) {
         final DynamoDbSourcePartitionItem dynamoDbSourcePartitionItem = (DynamoDbSourcePartitionItem) updateItem;
+        dynamoDbSourcePartitionItem.setSourceStatusCombinationKey(
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, updateItem.getSourceIdentifier(), updateItem.getSourcePartitionStatus()));
+
+        if (SourcePartitionStatus.CLOSED.equals(updateItem.getSourcePartitionStatus())) {
+            dynamoDbSourcePartitionItem.setPartitionPriority(updateItem.getReOpenAt().toString());
+        }
+
+        if (SourcePartitionStatus.ASSIGNED.equals(updateItem.getSourcePartitionStatus())) {
+            dynamoDbSourcePartitionItem.setPartitionPriority(updateItem.getPartitionOwnershipTimeout().toString());
+        }
+
         dynamoDbClientWrapper.tryUpdatePartitionItem(dynamoDbSourcePartitionItem);
     }
 
