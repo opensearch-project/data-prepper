@@ -11,27 +11,28 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * An enum class which helps to identify the different message formats like avro, jason etc.
- * for the schema type.
+ * An enum class which helps to identify the different message formats for the
+ * schema type.
  */
 public enum MessageFormat {
-	PLAINTEXT("plaintext"), JSON("json"), AVRO("avro");
 
-	private static final Map<String, MessageFormat> MESSAGE_FORMAT_MAP = Arrays.stream(MessageFormat.values())
-			.collect(Collectors.toMap(MessageFormat::toString, Function.identity()));
+    PLAINTEXT("plaintext"), JSON("json"), AVRO("avro");
 
-	private final String messageFormatName;
+    private static final Map<String, MessageFormat> MESSAGE_FORMAT_MAP = Arrays.stream(MessageFormat.values())
+            .collect(Collectors.toMap(MessageFormat::toString, Function.identity()));
 
-	MessageFormat(final String name) {
-		this.messageFormatName = name;
-	}
+    private final String messageFormatName;
 
-	@Override
-	public String toString() {
-		return this.messageFormatName;
-	}
+    MessageFormat(final String name) {
+        this.messageFormatName = name;
+    }
 
-	public static MessageFormat getByMessageFormatByName(final String name) {
-		return MESSAGE_FORMAT_MAP.get(name.toLowerCase());
-	}
+    @Override
+    public String toString() {
+        return this.messageFormatName;
+    }
+
+    public static MessageFormat getByMessageFormatByName(final String name) {
+        return MESSAGE_FORMAT_MAP.get(name.toLowerCase());
+    }
 }

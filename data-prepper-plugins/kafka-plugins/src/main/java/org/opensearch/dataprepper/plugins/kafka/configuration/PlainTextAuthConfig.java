@@ -12,6 +12,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * pipelines.yaml
  */
 public class PlainTextAuthConfig {
+
     @JsonProperty("username")
     private String username;
 

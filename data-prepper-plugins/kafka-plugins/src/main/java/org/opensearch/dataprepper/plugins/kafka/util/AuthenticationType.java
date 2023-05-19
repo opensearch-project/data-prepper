@@ -16,9 +16,10 @@ import java.util.stream.Collectors;
  */
 
 public enum AuthenticationType {
+
     PLAINTEXT("plaintext"), SSL("ssl"), OAUTH("oauth");
     private static final Map<String, AuthenticationType> AUTHENTICATION_TYPE_MAP = Arrays.stream(AuthenticationType.values())
-    .collect(Collectors.toMap(AuthenticationType::toString, Function.identity()));
+            .collect(Collectors.toMap(AuthenticationType::toString, Function.identity()));
 
     private final String authType;
 

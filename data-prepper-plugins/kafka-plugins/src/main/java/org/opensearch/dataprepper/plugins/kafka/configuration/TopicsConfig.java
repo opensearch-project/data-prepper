@@ -4,13 +4,13 @@
  */
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.Duration;
+
 /**
  * * A helper class that helps to read consumer configuration values from
  * pipelines.yaml
