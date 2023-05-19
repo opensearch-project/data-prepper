@@ -340,6 +340,20 @@ public class AddEntryProcessorTests {
     }
 
     @Test
+    public void testMetadataKeySetWithBadFormatThenEntryNotAdded() {
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null,"data-time", null, BAD_TEST_FORMAT, false, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithMetadata("message", Map.of("date", "date-value", "time", "time-value"));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        Event event = editedRecords.get(0).getData();
+        Map<String, Object> attributes = event.getMetadata().getAttributes();
+        assertThat(event.get("date", Object.class), equalTo("date-value"));
+        assertThat(event.get("time", Object.class), equalTo("time-value"));
+        assertThat(attributes.containsKey("data-time"), equalTo(false));
+    }
+    @Test
     public void testKeyIsNotAdded_when_addWhen_condition_is_false() {
         final String addWhen = UUID.randomUUID().toString();
 
@@ -357,7 +371,26 @@ public class AddEntryProcessorTests {
     }
 
     @Test
-    public void testMetadataKeySet() {
+    public void testMetadataKeyIsNotAdded_when_addWhen_condition_is_false() {
+        final String addWhen = UUID.randomUUID().toString();
+
+        when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "newMessage", 3, null, false, addWhen)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithMetadata("thisisamessage", Map.of("key", "value"));
+
+        when(expressionEvaluator.evaluate(addWhen, record.getData())).thenReturn(false);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        Event event = editedRecords.get(0).getData();
+        assertThat(event.containsKey("message"), is(true));
+        assertThat(event.get("message", Object.class), equalTo("thisisamessage"));
+        Map<String, Object> attributes = event.getMetadata().getAttributes();
+        assertThat(attributes.containsKey("newMessage"), is(false));
+    }
+
+    @Test
+    public void testMetadataKeySetWithDifferentDataTypes() {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(
             createEntry(null, "newField", "newValue", null, false, null), 
             createEntry(null, "newIntField", 123, null, false, null), 
@@ -372,6 +405,38 @@ public class AddEntryProcessorTests {
         assertThat(attributes.get("newField"), equalTo("newValue"));
         assertThat(attributes.get("newIntField"), equalTo(123));
         assertThat(attributes.get("newBooleanField"), equalTo(true));
+    }
+
+    @Test
+    public void testMetadataKeySetWithFormatNotOverwriteExistingEntry() {
+        when(mockConfig.getEntries())
+                .thenReturn(
+                        createListOfEntries(createEntry(null, "time", null, TEST_FORMAT, false, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithMetadata("message", Map.of("date", "date-value", "time", "time-value"));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        Map<String, Object> attributes = editedRecords.get(0).getData().getMetadata().getAttributes();
+        assertThat(attributes.get("date"), equalTo("date-value"));
+        assertThat(attributes.get("time"), equalTo("time-value"));
+        assertThat(attributes.containsKey("date-time"), equalTo(false));
+    }
+
+    @Test
+    public void testMetadataKeySetWithFormatOverwriteExistingEntry() {
+        when(mockConfig.getEntries())
+                .thenReturn(
+                        createListOfEntries(createEntry(null, "time", null, TEST_FORMAT, true, null)));
+
+        final AddEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEventWithMetadata("message", Map.of("date", "date-value", "time", "time-value"));
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        Map<String, Object> attributes = editedRecords.get(0).getData().getMetadata().getAttributes();
+        assertThat(attributes.get("date"), equalTo("date-value"));
+        assertThat(attributes.get("time"), equalTo("date-value time-value"));
+        assertThat(attributes.containsKey("date-time"), equalTo(false));
     }
 
     @Test
@@ -426,6 +491,8 @@ public class AddEntryProcessorTests {
     private Record<Event> getEventWithMetadata(String message, Map<String, Object> attributes) {
         final Map<String, Object> testData = new HashMap<>();
         testData.put("message", message);
+        testData.put("date", "date-value");
+        testData.put("time", "time-value");
         return new Record<>(JacksonEvent.builder()
                 .withData(testData)
                 .withEventMetadataAttributes(attributes)
