@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.micrometer.core.instrument.util.StringUtils;
@@ -18,6 +19,7 @@ public class HTTPSourceConfig {
     static final String SSL = "ssl";
     static final String SSL_CERTIFICATE_FILE = "ssl_certificate_file";
     static final String SSL_KEY_FILE = "ssl_key_file";
+    static final String COMPRESSION = "compression";
     static final boolean DEFAULT_USE_ACM_CERTIFICATE_FOR_SSL = false;
     static final int DEFAULT_ACM_CERTIFICATE_TIMEOUT_MILLIS = 120000;
     static final int DEFAULT_PORT = 2021;
@@ -86,6 +88,9 @@ public class HTTPSourceConfig {
 
     @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
     private boolean unauthenticatedHealthCheck = false;
+
+    @JsonProperty(COMPRESSION)
+    private CompressionOption compression = CompressionOption.NONE;
 
     private PluginModel authentication;
 
@@ -207,5 +212,9 @@ public class HTTPSourceConfig {
 
     public boolean isUnauthenticatedHealthCheck() {
         return unauthenticatedHealthCheck;
+    }
+
+    public CompressionOption getCompression() {
+        return compression;
     }
 }

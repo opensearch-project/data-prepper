@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -32,6 +33,9 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -82,6 +86,29 @@ public class DefaultEventMetadataTest {
 
         assertThat(attributes, is(not(anEmptyMap())));
         assertThat(attributes, is(equalTo(testAttributes)));
+    }
+
+    private static Stream<Arguments> getAttributeTestInputs() {
+        return Stream.of(Arguments.of("key1", "value3"),
+                         Arguments.of("key2", 2000),
+                         Arguments.of("key3", 12345.6789),
+                         Arguments.of("/key1", "value3"),
+                         Arguments.of("/key2", 2000),
+                         Arguments.of("/key3", 12345.6789));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getAttributeTestInputs")
+    public void testGetAttribute(final String key, final Object value) {
+        final Map<String, Object> attributesMap = Map.of("key1", "value3", "key2", 2000, "key3", 12345.6789);
+        eventMetadata = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .withTimeReceived(testTimeReceived)
+                .withAttributes(attributesMap)
+                .build();
+        assertThat(eventMetadata.getAttribute(key), equalTo(value));
+        assertThat(eventMetadata.getAttribute(key+"notPresent"), equalTo(null));
+        assertThat(eventMetadata.getAttribute(key+"/key6"), equalTo(null));
     }
 
     @Test

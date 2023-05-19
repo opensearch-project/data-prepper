@@ -36,11 +36,11 @@ public class MultithreadedConsumer implements Runnable {
 	private PluginMetrics pluginMetrics;
 
 	public MultithreadedConsumer(String consumerId,
-                                 String consumerGroupId,
-                                 Properties properties,
-                                 KafkaSourceConfig sourceConfig,
-                                 Buffer<Record<Object>> buffer,
-                                 PluginMetrics pluginMetric) {
+								 String consumerGroupId,
+								 Properties properties,
+								 KafkaSourceConfig sourceConfig,
+								 Buffer<Record<Object>> buffer,
+								 PluginMetrics pluginMetric) {
 		this.consumerProperties = Objects.requireNonNull(properties);
 		this.consumerId = consumerId;
 		this.consumerGroupId = consumerGroupId;

@@ -7,10 +7,15 @@ package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.AWS_REGION;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_MAX_CONNECTION_COUNT;
@@ -49,6 +54,10 @@ class OtelLogsSourceConfigTests {
     private static final int TEST_THREAD_COUNT = 888;
     private static final int TEST_MAX_CONNECTION_COUNT = 999;
 
+    private static Stream<Arguments> provideCompressionOption() {
+        return Stream.of(Arguments.of(CompressionOption.GZIP));
+    }
+
     @Test
     void testDefault() {
 
@@ -61,12 +70,28 @@ class OtelLogsSourceConfigTests {
         assertEquals(DEFAULT_PORT, otelLogsSourceConfig.getPort());
         assertEquals(DEFAULT_THREAD_COUNT, otelLogsSourceConfig.getThreadCount());
         assertEquals(DEFAULT_MAX_CONNECTION_COUNT, otelLogsSourceConfig.getMaxConnectionCount());
+        assertEquals(CompressionOption.NONE, otelLogsSourceConfig.getCompression());
         assertFalse(otelLogsSourceConfig.hasHealthCheck());
         assertFalse(otelLogsSourceConfig.hasProtoReflectionService());
         assertFalse(otelLogsSourceConfig.isSslCertAndKeyFileInS3());
         assertTrue(otelLogsSourceConfig.isSsl());
         assertNull(otelLogsSourceConfig.getSslKeyCertChainFile());
         assertNull(otelLogsSourceConfig.getSslKeyFile());
+    }
+
+    @ParameterizedTest
+    @MethodSource("provideCompressionOption")
+    void testValidCompression(final CompressionOption compressionOption) {
+        // Prepare
+        final Map<String, Object> settings = new HashMap<>();
+        settings.put(OTelLogsSourceConfig.COMPRESSION, compressionOption.name());
+
+        final PluginSetting pluginSetting = new PluginSetting(PLUGIN_NAME, settings);
+        final OTelLogsSourceConfig oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(
+                pluginSetting.getSettings(), OTelLogsSourceConfig.class);
+
+        // When/Then
+        assertEquals(compressionOption, oTelLogsSourceConfig.getCompression());
     }
 
     @Test

@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -131,6 +132,42 @@ class BufferAccumulatorTest {
         verify(buffer, times(expectedWrites)).writeAll(anyCollection(), eq(timeoutMillis));
 
         assertThat(actualRecordsWritten.size(), equalTo(totalRecordsToWrite));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {3, 10, 20})
+    void adding_past_accumulation_count_should_trigger_flush(final int accumulationCount) throws Exception {
+        recordsToAccumulate = 2;
+
+        doThrow(new RuntimeException()).when(buffer).writeAll(anyCollection(), anyInt());
+
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+        for (int i = 0; i < accumulationCount; i++) {
+            try {
+                objectUnderTest.add(createRecord());
+            } catch (final RuntimeException e) {
+                // swallow expected exception
+            }
+        }
+
+        doNothing().when(buffer).writeAll(anyCollection(), anyInt());
+        objectUnderTest.add(createRecord());
+
+        verify(buffer, times(accumulationCount)).writeAll(anyCollection(), eq(timeoutMillis));
+        assertThat(objectUnderTest.getTotalWritten(), equalTo(accumulationCount + 1));
+    }
+
+    @Test
+    void adding_past_accumulation_count_timeout_when_flushing_retries() throws Exception {
+        recordsToAccumulate = 1;
+
+        doThrow(new TimeoutException()).doNothing().when(buffer).writeAll(anyCollection(), anyInt());
+
+        final BufferAccumulator objectUnderTest = createObjectUnderTest();
+        objectUnderTest.add(createRecord());
+
+        verify(buffer, times(2)).writeAll(anyCollection(), eq(timeoutMillis));
+        assertThat(objectUnderTest.getTotalWritten(), equalTo(1));
     }
 
     @Test

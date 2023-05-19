@@ -39,6 +39,14 @@ public interface EventMetadata extends Serializable {
     Map<String, Object> getAttributes();
 
     /**
+     * Returns value of an attribute
+     * @param key metadata key
+     * @return value of an attribute
+     * @since 2.3
+     */
+    Object getAttribute(final String key);
+
+    /**
      * Returns the tags
      * @return a set of tags
      * @since 2.3

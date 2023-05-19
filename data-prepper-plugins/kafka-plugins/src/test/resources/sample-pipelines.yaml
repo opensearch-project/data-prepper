@@ -30,9 +30,5 @@ log-pipeline:
       schema:
         registry_url: http://localhost:8081/
         version: 1
-      authentication:
-        sasl_plaintext:
-          username: admin
-          password: admin-secret
   sink:
     - stdout:
