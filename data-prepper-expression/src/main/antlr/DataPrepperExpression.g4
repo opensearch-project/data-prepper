@@ -17,16 +17,28 @@ expression
     ;
 
 stringExpression
-    : function
+    : stringExpression DOT stringExpression
+    | function
     | jsonPointer
     | String
     ;
 
 arithmeticExpression
+    : arithmeticExpression (PLUS | MINUS) arithmeticTerm
+    | arithmeticTerm
+    ;
+
+arithmeticTerm
+    : arithmeticTerm (MULTIPLY | DIVIDE) arithmeticFactor
+    | arithmeticFactor
+    ;
+
+arithmeticFactor
     : function
     | jsonPointer
     | Integer
     | Float
+    | LPAREN arithmeticExpression RPAREN
     ;
 
 conditionalExpression
@@ -262,6 +274,12 @@ EscapeSequence
 SET_DELIMITER
     : COMMA
     ;
+DIVIDE
+    : FORWARDSLASH
+    ;
+MINUS
+    : SUBTRACT
+    ;
 COMMA : ',';
 EQUAL : '==';
 NOT_EQUAL : '!=';
@@ -284,6 +302,9 @@ RBRACE : '}';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
 ZERO : '0';
+PLUS: '+';
+MULTIPLY: '*';
+DOT : '.';
 EXPONENTLETTER
     : 'E'
     | 'e'

@@ -269,4 +269,173 @@ class OperatorConfiguration {
     public GenericInSetOperator notInSetOperator() {
         return new GenericInSetOperator(DataPrepperExpressionParser.NOT_IN_SET, inSet.negate());
     }
+
+    @Bean
+    public StringBinaryOperator concatOperator() {
+        return new StringBinaryOperator(DataPrepperExpressionParser.DOT); 
+    }
+
+    @Bean
+    public ArithmeticBinaryOperator addOperator() {
+        final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>>
+                operandsToOperationMap = new HashMap<>();
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> intOperations =
+                Map.of(
+                        Integer.class, (lhs, rhs) -> (Integer) lhs + (Integer) rhs,
+                        Float.class, (lhs, rhs) -> (Integer) lhs + (Float) rhs,
+                        Long.class, (lhs, rhs) -> (Integer) lhs + (Long) rhs,
+                        Double.class, (lhs, rhs) -> (double)(int)lhs + (Double) rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> floatOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Float) lhs + (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Float) lhs + (Float) rhs,
+                    Long.class, (lhs, rhs) -> (Float) lhs + (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Float) lhs + (Double) rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> longOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Long) lhs + (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Long) lhs + (Float)rhs,
+                    Long.class, (lhs, rhs) -> (Long) lhs + (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Long) lhs + (Double)rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> doubleOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Double) lhs + (double)(int)rhs,
+                    Float.class, (lhs, rhs) -> (Double) lhs + (Float) rhs,
+                    Long.class, (lhs, rhs) -> (Double) lhs + (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Double) lhs + (Double) rhs
+                );
+
+        operandsToOperationMap.put(Integer.class, intOperations);
+        operandsToOperationMap.put(Float.class, floatOperations);
+        operandsToOperationMap.put(Long.class, longOperations);
+        operandsToOperationMap.put(Double.class, doubleOperations);
+
+        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.PLUS, operandsToOperationMap);
+    }
+
+    @Bean
+    public ArithmeticBinaryOperator subtractOperator() {
+        final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>>
+                operandsToOperationMap = new HashMap<>();
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> intOperations =
+                Map.of(
+                        Integer.class, (lhs, rhs) -> (Integer) lhs - (Integer) rhs,
+                        Float.class, (lhs, rhs) -> (Integer) lhs - (Float) rhs,
+                        Long.class, (lhs, rhs) -> (Integer) lhs - (Long) rhs,
+                        Double.class, (lhs, rhs) -> (Integer) lhs - (Double) rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> floatOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Float) lhs - (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Float) lhs - (Float) rhs,
+                    Long.class, (lhs, rhs) -> (Float) lhs - (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Float) lhs - (Double) rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> longOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Long) lhs - (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Long) lhs - (Float)rhs,
+                    Long.class, (lhs, rhs) -> (Long) lhs - (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Long) lhs - (Double)rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> doubleOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Double) lhs - (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Double) lhs - (Float) rhs,
+                    Long.class, (lhs, rhs) -> (Double) lhs - (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Double) lhs - (Double) rhs
+                );
+
+        operandsToOperationMap.put(Integer.class, intOperations);
+        operandsToOperationMap.put(Float.class, floatOperations);
+        operandsToOperationMap.put(Long.class, longOperations);
+        operandsToOperationMap.put(Double.class, doubleOperations);
+
+        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.MINUS, operandsToOperationMap);
+    }
+
+    @Bean
+    public ArithmeticBinaryOperator multiplyOperator() {
+        final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>>
+                operandsToOperationMap = new HashMap<>();
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> intOperations =
+                Map.of(
+                        Integer.class, (lhs, rhs) -> (Integer) lhs * (Integer) rhs,
+                        Float.class, (lhs, rhs) -> (Integer) lhs * (Float) rhs,
+                        Long.class, (lhs, rhs) -> (Integer) lhs * (Long) rhs,
+                        Double.class, (lhs, rhs) -> (Integer) lhs * (Double) rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> floatOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Float) lhs * (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Float) lhs * (Float) rhs,
+                    Long.class, (lhs, rhs) -> (Float) lhs * (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Float) lhs * (Double) rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> longOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Long) lhs * (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Long) lhs * (Float)rhs,
+                    Long.class, (lhs, rhs) -> (Long) lhs * (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Long) lhs * (Double)rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> doubleOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (Double) lhs * (Integer) rhs,
+                    Float.class, (lhs, rhs) -> (Double) lhs * (Float) rhs,
+                    Long.class, (lhs, rhs) -> (Double) lhs * (Long) rhs,
+                    Double.class, (lhs, rhs) -> (Double) lhs * (Double) rhs
+                );
+
+        operandsToOperationMap.put(Integer.class, intOperations);
+        operandsToOperationMap.put(Float.class, floatOperations);
+        operandsToOperationMap.put(Long.class, longOperations);
+        operandsToOperationMap.put(Double.class, doubleOperations);
+
+        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.MULTIPLY, operandsToOperationMap);
+    }
+
+    @Bean
+    public ArithmeticBinaryOperator divideOperator() {
+        final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>>
+                operandsToOperationMap = new HashMap<>();
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> intOperations =
+                Map.of(
+                        Integer.class, (lhs, rhs) -> ((double)(int)lhs) /((double)(int)rhs),
+                        Float.class, (lhs, rhs) -> (float)(int)lhs / (Float) rhs,
+                        Long.class, (lhs, rhs) -> (double)(int)lhs / (Long) rhs,
+                        Double.class, (lhs, rhs) -> (double)lhs / (Double) rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> floatOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (float)lhs / (float)(int)rhs,
+                    Float.class, (lhs, rhs) ->  (float)lhs / (float)rhs,
+                    Long.class, (lhs, rhs) -> (float)lhs / (float)(long)rhs,
+                    Double.class, (lhs, rhs) -> (double)lhs / (double)rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> longOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (double)(long)lhs / (double)(int)rhs,
+                    Float.class, (lhs, rhs) -> (float)(long)lhs / (Float)rhs,
+                    Long.class, (lhs, rhs) -> (double)(long)lhs / (double)(long)rhs,
+                    Double.class, (lhs, rhs) -> (double)(long)lhs / (double)rhs
+                );
+        final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> doubleOperations =
+                Map.of(
+                    Integer.class, (lhs, rhs) -> (double)lhs / (double)(int)rhs,
+                    Float.class, (lhs, rhs) -> (double)lhs / (Float) rhs,
+                    Long.class, (lhs, rhs) -> (double)lhs / (double)(long)rhs,
+                    Double.class, (lhs, rhs) -> (double)lhs / (Double) rhs
+                );
+
+        operandsToOperationMap.put(Integer.class, intOperations);
+        operandsToOperationMap.put(Float.class, floatOperations);
+        operandsToOperationMap.put(Long.class, longOperations);
+        operandsToOperationMap.put(Double.class, doubleOperations);
+
+        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.DIVIDE, operandsToOperationMap);
+    }
 }

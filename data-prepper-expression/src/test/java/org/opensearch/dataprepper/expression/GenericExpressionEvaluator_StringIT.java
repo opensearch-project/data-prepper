@@ -17,6 +17,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -31,6 +32,7 @@ import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.apache.commons.lang3.RandomStringUtils;
 
 class GenericExpressionEvaluator_StringIT {
@@ -110,17 +112,28 @@ class GenericExpressionEvaluator_StringIT {
     void testStringExpressionEvaluatorInvalidInput(final String expression, final Event event, final Class expectedClass) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        final Object result = evaluator.evaluate(expression, event);
-        assertThat(result, not(instanceOf(expectedClass)));
+        if (expectedClass == null) {
+            assertThrows(ExpressionEvaluationException.class, () -> evaluator.evaluate(expression, event));
+        } else {
+            final Object result = evaluator.evaluate(expression, event);
+            assertThat(result, not(instanceOf(expectedClass)));
+        }
     }
 
     private static Stream<Arguments> validExpressionArguments() {
         Random random = new Random();
         int testStringLength = random.nextInt(30);
         String testString = RandomStringUtils.randomAlphabetic(testStringLength);
+        String testString2 = RandomStringUtils.randomAlphabetic(testStringLength);
+        Map<String, Object> attributes = Map.of("strAttr", testString);
+        String testData = "{\"key\": \"value\"}";
+        JacksonEvent testEvent =  JacksonEvent.builder().withEventType("event").withEventMetadataAttributes(attributes).withData(testData).build();
         return Stream.of(
                 Arguments.of("\""+testString+"\"", event("{}"), testString, String.class),
-                Arguments.of("/status_message", event("{\"status_message\": \""+testString+"\"}"), testString, String.class)
+                Arguments.of("/status_message", event("{\"status_message\": \""+testString+"\"}"), testString, String.class),
+                Arguments.of("\""+testString+"\".\""+testString2+"\"", event("{}"), testString+testString2, String.class),
+                Arguments.of("/status_message./message", event("{\"status_message\": \""+testString+"\", \"message\":\""+testString2+"\"}"), testString+testString2, String.class),
+                Arguments.of("getMetadata(\"strAttr\").\""+testString2+"\"./key", testEvent, testString+testString2+"value", String.class)
         );
     }
 
@@ -132,7 +145,9 @@ class GenericExpressionEvaluator_StringIT {
         return Stream.of(
                 Arguments.of("/missing", event("{}"), String.class),
                 Arguments.of("/value", event("{\"value\": "+randomInt+"}"), String.class),
-                Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), String.class)
+                Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), String.class),
+                // Can't mix Numbers and Strings when using operators
+                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}"), null)
         );
     }
 
