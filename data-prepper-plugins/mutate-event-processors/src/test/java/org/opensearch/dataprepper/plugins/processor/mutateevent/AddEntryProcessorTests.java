@@ -379,7 +379,7 @@ public class AddEntryProcessorTests {
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("thisisamessage", Map.of("key", "value"));
 
-        when(expressionEvaluator.evaluate(addWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(addWhen, record.getData())).thenReturn(false);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         Event event = editedRecords.get(0).getData();
