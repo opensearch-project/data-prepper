@@ -201,15 +201,10 @@ public class Pipeline {
         return true;
     }
 
-    private void waitForSinkReadyThenStartSourceAndProcessors() {
-        long retryCount = 0;
-        while (!isReady() && !isStopRequested()) {
-            if (retryCount++ % 60 == 0) {
-                LOG.info("Pipeline [{}] Waiting for Sink to be ready", name);
-            }
-            try {
-                Thread.sleep(1000);
-            } catch (Exception e){}
+    // This method needs to be synchronzied with shutdown
+    private synchronized void startSourceAndProcessors() {
+        if (isStopRequested()) {
+            return;
         }
         LOG.info("Pipeline [{}] Sink is ready, starting source...", name);
         source.start(buffer);
@@ -244,7 +239,16 @@ public class Pipeline {
             }
 
             sinkExecutorService.submit(() -> {
-                waitForSinkReadyThenStartSourceAndProcessors();
+                long retryCount = 0;
+                while (!isReady() && !isStopRequested()) {
+                    if (retryCount++ % 60 == 0) {
+                        LOG.info("Pipeline [{}] Waiting for Sink to be ready", name);
+                    }
+                    try {
+                        Thread.sleep(1000);
+                    } catch (Exception e){}
+                }
+                startSourceAndProcessors();
             }, null);
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
@@ -261,7 +265,7 @@ public class Pipeline {
      * 5. Shutting down processors and sinks
      * 6. Stopping the sink ExecutorService
      */
-    public void shutdown() {
+    public synchronized void shutdown() {
         LOG.info("Pipeline [{}] - Received shutdown signal with processor shutdown timeout {} and sink shutdown timeout {}." +
                         " Initiating the shutdown process",
                 name, processorShutdownTimeout, sinkShutdownTimeout);
