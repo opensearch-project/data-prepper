@@ -1,0 +1,17 @@
+log-pipeline:
+  source:
+    kafka:
+      bootstrap_servers:
+        - 127.0.0.1:9093
+      auth_type: plaintext
+      topics:
+        - name: my-topic-2
+          group_name: kafka-consumer-group-2
+          group_id: DPKafkaProj-2
+        - name: my-topic-1
+          group_id: DPKafkaProj-1
+      schema:
+        registry_url: http://localhost:8081/
+        version: 1
+  sink:
+    - stdout:

@@ -12,9 +12,11 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
@@ -30,6 +32,10 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -82,22 +88,39 @@ public class DefaultEventMetadataTest {
         assertThat(attributes, is(equalTo(testAttributes)));
     }
 
-    @Test
-    public void testAttributesMutation_throwsAnException() {
-        final Map<String, Object> attributes = eventMetadata.getAttributes();
-
-        assertThrows(UnsupportedOperationException.class, () -> attributes.put("foo", "bar"));
+    private static Stream<Arguments> getAttributeTestInputs() {
+        return Stream.of(Arguments.of("key1", "value3"),
+                         Arguments.of("key2", 2000),
+                         Arguments.of("key3", 12345.6789),
+                         Arguments.of("/key1", "value3"),
+                         Arguments.of("/key2", 2000),
+                         Arguments.of("/key3", 12345.6789));
     }
 
-    @Test
-    public void testAttributesMutation_without_attributes_throwsAnException() {
+    @ParameterizedTest
+    @MethodSource("getAttributeTestInputs")
+    public void testGetAttribute(final String key, final Object value) {
+        final Map<String, Object> attributesMap = Map.of("key1", "value3", "key2", 2000, "key3", 12345.6789);
+        eventMetadata = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .withTimeReceived(testTimeReceived)
+                .withAttributes(attributesMap)
+                .build();
+        assertThat(eventMetadata.getAttribute(key), equalTo(value));
+        assertThat(eventMetadata.getAttribute(key+"notPresent"), equalTo(null));
+        assertThat(eventMetadata.getAttribute(key+"/key6"), equalTo(null));
+    }
+
+    @ParameterizedTest
+    @MethodSource("getAttributeTestInputs")
+    public void testSetAttribute(String key, final Object value) {
         eventMetadata = DefaultEventMetadata.builder()
                 .withEventType(testEventType)
                 .withTimeReceived(testTimeReceived)
                 .build();
-        final Map<String, Object> attributes = eventMetadata.getAttributes();
-
-        assertThrows(UnsupportedOperationException.class, () -> attributes.put("foo", "bar"));
+        key = (key.charAt(0) == '/') ? key.substring(1) : key;
+        eventMetadata.setAttribute(key, value);
+        assertThat(eventMetadata.getAttribute(key), equalTo(value));
     }
 
     @Test
@@ -110,7 +133,6 @@ public class DefaultEventMetadataTest {
         assertThat(attributes, notNullValue());
         assertThat(attributes.size(), equalTo(0));
 
-        assertThrows(UnsupportedOperationException.class, () -> attributes.put("foo", "bar"));
     }
 
     @Test
@@ -190,10 +212,16 @@ public class DefaultEventMetadataTest {
         assertThat(result, notNullValue());
 
         assertThat(result.getTags(), equalTo(testTags));
-        result.addTag("tag3");
-        assertTrue(result.hasTag("tag1"));
-        assertTrue(result.hasTag("tag2"));
-        assertTrue(result.hasTag("tag3"));
+        assertFalse(result.hasTags(List.of("tag3")));
+        assertFalse(result.hasTags(List.of("tag3", "tag1")));
+        result.addTags(List.of("tag3"));
+        assertTrue(result.hasTags(List.of("tag1")));
+        assertTrue(result.hasTags(List.of("tag1", "tag2")));
+        assertTrue(result.hasTags(List.of("tag1", "tag2", "tag3")));
+        assertFalse(result.hasTags(List.of("notPresentTag")));
+        assertFalse(result.hasTags(List.of("notPresentTag1", "notPresentTag2")));
+        assertFalse(result.hasTags(List.of("tag1", "notPresentTag")));
+        assertFalse(result.hasTags(List.of("tag1", "tag2", "notPresentTag")));
     }
 
     @Nested

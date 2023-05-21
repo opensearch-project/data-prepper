@@ -17,6 +17,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.opensearch.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
@@ -30,7 +32,7 @@ import java.util.Optional;
 import java.util.function.BiConsumer;
 
 @DataPrepperPlugin(name = "s3", pluginType = Source.class, pluginConfigurationType = S3SourceConfig.class)
-public class S3Source implements Source<Record<Event>> {
+public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
 
     private final PluginMetrics pluginMetrics;
     private final S3SourceConfig s3SourceConfig;
@@ -40,6 +42,7 @@ public class S3Source implements Source<Record<Event>> {
     private final Optional<S3ScanScanOptions> s3ScanScanOptional;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final boolean acknowledgementsEnabled;
+    private SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
 
     @DataPrepperPluginConstructor
@@ -108,7 +111,7 @@ public class S3Source implements Source<Record<Event>> {
             sqsService.start();
         }
         if(s3ScanScanOptional.isPresent()) {
-            s3ScanService = new S3ScanService(s3SourceConfig,s3ClientBuilderFactory,s3Handler,bucketOwnerProvider);
+            s3ScanService = new S3ScanService(s3SourceConfig,s3ClientBuilderFactory,s3Handler,bucketOwnerProvider, sourceCoordinator);
             s3ScanService.start();
         }
     }
@@ -116,5 +119,18 @@ public class S3Source implements Source<Record<Event>> {
     @Override
     public void stop() {
         sqsService.stop();
+        if (Objects.nonNull(sourceCoordinator)) {
+            sourceCoordinator.giveUpPartitions();
+        }
+    }
+
+    @Override
+    public <T> void setSourceCoordinator(final SourceCoordinator<T> sourceCoordinator) {
+        this.sourceCoordinator = (SourceCoordinator<S3SourceProgressState>) sourceCoordinator;
+    }
+
+    @Override
+    public Class<?> getPartitionProgressStateClass() {
+        return S3SourceProgressState.class;
     }
 }

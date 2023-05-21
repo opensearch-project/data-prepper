@@ -5,13 +5,13 @@
 
 package org.opensearch.dataprepper.model.event;
 
-import com.google.common.collect.ImmutableMap;
-
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
-import java.util.HashSet;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -27,7 +27,7 @@ public class DefaultEventMetadata implements EventMetadata {
 
     private final Instant timeReceived;
 
-    private final ImmutableMap<String, Object> attributes;
+    private Map<String, Object> attributes;
 
     private Set<String> tags;
 
@@ -40,7 +40,7 @@ public class DefaultEventMetadata implements EventMetadata {
 
         this.timeReceived = builder.timeReceived == null ? Instant.now() : builder.timeReceived;
 
-        this.attributes = builder.attributes == null ? ImmutableMap.of() : ImmutableMap.copyOf(builder.attributes);
+        this.attributes = builder.attributes == null ? new HashMap<>() : new HashMap<>(builder.attributes);
 
         this.tags = builder.tags == null ? new HashSet<>() : new HashSet(builder.tags);
     }
@@ -48,7 +48,7 @@ public class DefaultEventMetadata implements EventMetadata {
     private DefaultEventMetadata(final EventMetadata eventMetadata) {
         this.eventType = eventMetadata.getEventType();
         this.timeReceived = eventMetadata.getTimeReceived();
-        this.attributes = ImmutableMap.copyOf(eventMetadata.getAttributes());
+        this.attributes = new HashMap<>(eventMetadata.getAttributes());
         this.tags = new HashSet<>(eventMetadata.getTags());
     }
 
@@ -68,18 +68,36 @@ public class DefaultEventMetadata implements EventMetadata {
     }
 
     @Override
+    public void setAttribute(final String key, final Object value) {
+        attributes.put(key, value);
+    }
+
+    @Override
+    public Object getAttribute(final String attributeKey) {
+        String key = (attributeKey.charAt(0) == '/') ? attributeKey.substring(1) : attributeKey;
+
+        // Does not support recursive or inner-object lookups for now.
+        return attributes.get(key);
+    }
+
+    @Override
     public Set<String> getTags() {
         return tags;
     }
 
     @Override
-    public Boolean hasTag(final String tag) {
-        return tags.contains(tag);
+    public Boolean hasTags(final List<String> tagsList) {
+        for (final String tag: tagsList) {
+            if (!tags.contains(tag)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
-    public void addTag(final String tag) {
-        tags.add(tag);
+    public void addTags(final List<String> newTags) {
+        tags.addAll(newTags);
     }
 
     @Override

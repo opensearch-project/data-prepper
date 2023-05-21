@@ -40,7 +40,7 @@ class ParseJsonProcessorTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     private ParseJsonProcessor parseJsonProcessor;
 
@@ -278,7 +278,7 @@ class ParseJsonProcessorTest {
         final Map<String, Object> data = Collections.singletonMap("key", "value");
         final String serializedMessage = convertMapToJSONString(data);
         final Record<Event> testEvent = createMessageEvent(serializedMessage);
-        when(expressionEvaluator.evaluate(whenCondition, testEvent.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(whenCondition, testEvent.getData())).thenReturn(false);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
         final Event parsedEvent = createAndParseMessageEvent(testEvent);

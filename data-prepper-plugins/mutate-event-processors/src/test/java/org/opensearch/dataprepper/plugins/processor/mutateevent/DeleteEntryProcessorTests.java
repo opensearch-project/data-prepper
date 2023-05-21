@@ -34,7 +34,7 @@ public class DeleteEntryProcessorTests {
     private DeleteEntryProcessorConfig mockConfig;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     @Test
     public void testSingleDeleteProcessorTest() {
@@ -91,11 +91,26 @@ public class DeleteEntryProcessorTests {
         final Record<Event> record = getEvent("thisisamessage");
         record.getData().put("newMessage", "test");
 
-        when(expressionEvaluator.evaluate(deleteWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(deleteWhen, record.getData())).thenReturn(false);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
         assertThat(editedRecords.get(0).getData().containsKey("newMessage"), is(true));
+    }
+
+    public void testNestedDeleteProcessorTest() {
+        when(mockConfig.getWithKeys()).thenReturn(new String[]{"nested/foo"});
+
+        Map<String, Object> nested = Map.of("foo", "bar", "fizz", 42);
+
+        final DeleteEntryProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("thisisamessage");
+        record.getData().put("nested", nested);
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(editedRecords.get(0).getData().containsKey("nested/foo"), is(false));
+        assertThat(editedRecords.get(0).getData().containsKey("nested/fizz"), is(true));
+        assertThat(editedRecords.get(0).getData().containsKey("message"), is(true));
     }
 
     private DeleteEntryProcessor createObjectUnderTest() {

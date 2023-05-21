@@ -23,6 +23,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import java.util.Random;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -33,8 +34,9 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.apache.commons.lang3.RandomStringUtils;
 
-class ConditionalExpressionEvaluatorIT {
+class GenericExpressionEvaluator_ConditionalIT {
     /**
      * {@link JacksonEvent#get(String, Class)} supports a String matching the following regex expression:
      * ^[A-Za-z0-9]+([A-Za-z0-9.-_][A-Za-z0-9])*$
@@ -52,15 +54,15 @@ class ConditionalExpressionEvaluatorIT {
     }
 
     @Test
-    void testConditionalExpressionEvaluatorBeanAvailable() {
-        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
-        assertThat(evaluator, isA(ConditionalExpressionEvaluator.class));
+    void testGenericExpressionEvaluatorBeanAvailable() {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+        assertThat(evaluator, isA(GenericExpressionEvaluator.class));
     }
 
     @Test
-    void testConditionalExpressionEvaluatorBeanSingleton() {
-        final ConditionalExpressionEvaluator instanceA = applicationContext.getBean(ConditionalExpressionEvaluator.class);
-        final ConditionalExpressionEvaluator instanceB = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+    void testGenericExpressionEvaluatorBeanSingleton() {
+        final GenericExpressionEvaluator instanceA = applicationContext.getBean(GenericExpressionEvaluator.class);
+        final GenericExpressionEvaluator instanceB = applicationContext.getBean(GenericExpressionEvaluator.class);
         assertThat(instanceA, sameInstance(instanceB));
     }
 
@@ -80,17 +82,17 @@ class ConditionalExpressionEvaluatorIT {
     @ParameterizedTest
     @MethodSource("validExpressionArguments")
     void testConditionalExpressionEvaluator(final String expression, final Event event, final Boolean expected) {
-        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        final Boolean actual = evaluator.evaluate(expression, event);
+        final Boolean actual = evaluator.evaluateConditional(expression, event);
 
         assertThat(actual, is(expected));
     }
 
     @ParameterizedTest
     @MethodSource("validExpressionArguments")
-    void testConditionalExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Boolean expected) {
-        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+    void testGenericExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Boolean expected) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
         final int numberOfThreads = 50;
         final ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
@@ -98,7 +100,7 @@ class ConditionalExpressionEvaluatorIT {
         List<Boolean> evaluationResults = Collections.synchronizedList(new ArrayList<>());
 
         for (int i = 0; i < numberOfThreads; i++) {
-            executorService.execute(() -> evaluationResults.add(evaluator.evaluate(expression, event)));
+            executorService.execute(() -> evaluationResults.add(evaluator.evaluateConditional(expression, event)));
         }
 
         await().atMost(5, TimeUnit.SECONDS)
@@ -112,21 +114,36 @@ class ConditionalExpressionEvaluatorIT {
 
     @ParameterizedTest
     @MethodSource("invalidExpressionArguments")
-    void testConditionalExpressionEvaluatorThrows(final String expression, final Event event) {
-        final ConditionalExpressionEvaluator evaluator = applicationContext.getBean(ConditionalExpressionEvaluator.class);
+    void testGenericExpressionEvaluatorThrows(final String expression, final Event event) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        assertThrows(RuntimeException.class, () -> evaluator.evaluate(expression, event));
+        assertThrows(RuntimeException.class, () -> evaluator.evaluateConditional(expression, event));
     }
 
     private static Stream<Arguments> validExpressionArguments() {
         final String key = "status_code";
         final Long value = 200L;
+        final String value3 = RandomStringUtils.randomAlphabetic(5);
+        final int value4 = 2000;
+        final Boolean value5 = false;
         Map<Object, Object> eventMap = Collections.singletonMap(key, value);
+        final Map<String, Object> attributesMap = Map.of("key1", value3, "key2", value4, "key3", value5);
         Event longEvent = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(eventMap)
+                .withEventMetadataAttributes(attributesMap)
                 .build();
 
+        String testTag1 = RandomStringUtils.randomAlphabetic(6);
+        String testTag2 = RandomStringUtils.randomAlphabetic(7);
+        String testTag3 = RandomStringUtils.randomAlphabetic(6);
+        String testTag4 = RandomStringUtils.randomAlphabetic(7);
+
+        longEvent.getMetadata().addTags(List.of(testTag1, testTag2, testTag3));
+
+        Random random = new Random();
+        int testStringLength = random.nextInt(10);
+        String testString = RandomStringUtils.randomAlphabetic(testStringLength);
         return Stream.of(
                 Arguments.of("true", event("{}"), true),
                 Arguments.of("/status_code == 200", event("{\"status_code\": 200}"), true),
@@ -136,6 +153,11 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("/success == /status_code", event("{\"success\": true, \"status_code\": 200}"), false),
                 Arguments.of("/success != /status_code", event("{\"success\": true, \"status_code\": 200}"), true),
                 Arguments.of("/pi == 3.14159", event("{\"pi\": 3.14159}"), true),
+                Arguments.of("/value == 12345.678", event("{\"value\": 12345.678}"), true),
+                Arguments.of("/value == 12345.678E12", event("{\"value\": 12345.678E12}"), true),
+                Arguments.of("/value == 12345.678e-12", event("{\"value\": 12345.678e-12}"), true),
+                Arguments.of("/value == 12345.0000012", event("{\"value\": 12345.0000012}"), true),
+                Arguments.of("/value == 12345.00012E6", event("{\"value\": 12345.00012E6}"), true),
                 Arguments.of("true == (/is_cool == true)", event("{\"is_cool\": true}"), true),
                 Arguments.of("not /is_cool", event("{\"is_cool\": true}"), false),
                 Arguments.of("/status_code < 300", event("{\"status_code\": 200}"), true),
@@ -160,11 +182,41 @@ class ConditionalExpressionEvaluatorIT {
                         complexEvent(ALL_JACKSON_EVENT_GET_SUPPORTED_CHARACTERS, true),
                         true),
                 Arguments.of("/durationInNanos > 5000000000", event("{\"durationInNanos\": 6000000000}"), true),
-                Arguments.of("/response == \"OK\"", event("{\"response\": \"OK\"}"), true)
+                Arguments.of("/response == \"OK\"", event("{\"response\": \"OK\"}"), true),
+                Arguments.of("length(/response) == "+testStringLength, event("{\"response\": \""+testString+"\"}"), true),
+                Arguments.of("hasTags(\""+ testTag1+"\")", longEvent, true),
+                Arguments.of("hasTags(\""+ testTag1+"\",\""+testTag2+"\")", longEvent, true),
+                Arguments.of("hasTags(\""+ testTag1+"\", \""+testTag2+"\", \""+testTag3+"\")", longEvent, true),
+                Arguments.of("hasTags(\""+ testTag4+"\")", longEvent, false),
+                Arguments.of("hasTags(\""+ testTag3+"\",\""+testTag4+"\")", longEvent, false),
+                Arguments.of("getMetadata(\"key1\") == \""+value3+"\"", longEvent, true),
+                Arguments.of("getMetadata(\"key2\") == "+value4, longEvent, true),
+                Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
+                Arguments.of("getMetadata(\"/key1\") == \""+value3+"\"", longEvent, true),
+                Arguments.of("getMetadata(\"/key2\") == "+value4, longEvent, true),
+                Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
+                Arguments.of("getMetadata(\"/key6\") == \""+value5+"\"", longEvent, false),
+                Arguments.of("getMetadata(\"key6\") == "+value5, longEvent, false)
         );
     }
 
     private static Stream<Arguments> invalidExpressionArguments() {
+        Random random = new Random();
+
+        final String key = RandomStringUtils.randomAlphabetic(5);
+        final String value = RandomStringUtils.randomAlphabetic(10);
+        Map<Object, Object> eventMap = Collections.singletonMap(key, value);
+        Event tagEvent = JacksonEvent.builder()
+                .withEventType("event")
+                .withData(eventMap)
+                .build();
+        String testTag1 = RandomStringUtils.randomAlphabetic(6);
+        String testTag2 = RandomStringUtils.randomAlphabetic(7);
+        tagEvent.getMetadata().addTags(List.of(testTag1, testTag2));
+        String testMetadataKey = RandomStringUtils.randomAlphabetic(5);
+
+        int testStringLength = random.nextInt(10);
+        String testString = RandomStringUtils.randomAlphabetic(testStringLength);
         return Stream.of(
                 Arguments.of("/missing", event("{}")),
                 Arguments.of("/success < /status_code", event("{\"success\": true, \"status_code\": 200}")),
@@ -183,7 +235,18 @@ class ConditionalExpressionEvaluatorIT {
                 Arguments.of("not null", event("{}")),
                 Arguments.of("not/status_code", event("{\"status_code\": 200}")),
                 Arguments.of("trueand/status_code", event("{\"status_code\": 200}")),
-                Arguments.of("trueor/status_code", event("{\"status_code\": 200}"))
+                Arguments.of("trueor/status_code", event("{\"status_code\": 200}")),
+                Arguments.of("length(\""+testString+") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
+                Arguments.of("length(\""+testString+"\") == "+testStringLength, event("{\"response\": \""+testString+"\"}")),
+                Arguments.of("hasTags(10)", tagEvent),
+                Arguments.of("hasTags("+ testTag1+")", tagEvent),
+                Arguments.of("hasTags(\""+ testTag1+")", tagEvent),
+                Arguments.of("hasTags(\""+ testTag1+"\","+testTag2+"\")", tagEvent),
+                Arguments.of("hasTags(,\""+testTag2+"\")", tagEvent),
+                Arguments.of("hasTags(\""+testTag2+"\",)", tagEvent),
+                Arguments.of("getMetadata(10)", tagEvent),
+                Arguments.of("getMetadata("+ testMetadataKey+ ")", tagEvent),
+                Arguments.of("getMetadata(\""+ testMetadataKey+")", tagEvent)
         );
     }
 

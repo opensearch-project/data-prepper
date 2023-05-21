@@ -38,7 +38,7 @@ public class TailSamplerAggregateActionTests {
     AggregateActionInput aggregateActionInput;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     private AggregateAction tailSamplerAggregateAction;
 
@@ -96,7 +96,7 @@ public class TailSamplerAggregateActionTests {
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
         when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
         when(tailSamplerAggregateActionConfig.getErrorCondition()).thenReturn(errorCondition);
-        when(expressionEvaluator.evaluate(any(String.class), any(Event.class))).thenReturn(true);
+        when(expressionEvaluator.evaluateConditional(any(String.class), any(Event.class))).thenReturn(true);
         tailSamplerAggregateAction = createObjectUnderTest(tailSamplerAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();

@@ -11,7 +11,22 @@ grammar DataPrepperExpression;
 
 expression
     : conditionalExpression EOF
+    | arithmeticExpression EOF
+    | stringExpression EOF
     | OTHER {System.err.println("unknown char: " + $OTHER.text);}
+    ;
+
+stringExpression
+    : function
+    | jsonPointer
+    | String
+    ;
+
+arithmeticExpression
+    : function
+    | jsonPointer
+    | Integer
+    | Float
     ;
 
 conditionalExpression
@@ -86,7 +101,6 @@ setInitializer
     : LBRACE primary (SET_DELIMITER primary)* RBRACE
     ;
 
-
 unaryOperator
     : NOT
     | SUBTRACT
@@ -94,6 +108,7 @@ unaryOperator
 
 primary
     : jsonPointer
+    | function
     | variableIdentifier
     | setInitializer
     | literal
@@ -102,6 +117,25 @@ primary
 jsonPointer
     : JsonPointer
     | EscapedJsonPointer
+    ;
+
+function
+    : Function
+    ;
+
+Function
+    : JsonPointerCharacters LPAREN FunctionArgs RPAREN
+    ;
+
+fragment
+FunctionArgs
+    : (FunctionArg SPACE* COMMA SPACE*)* SPACE* FunctionArg
+    ;
+
+fragment
+FunctionArg
+    : JsonPointer
+    | String
     ;
 
 variableIdentifier
@@ -122,20 +156,18 @@ literal
 
 
 Integer
-    : '0'
+    : ZERO
     | NonZeroDigit Digit*
     ;
 
 Float
-    : NonZeroDigit? Digit '.' Digit
-    | NonZeroDigit? Digit '.' Digit+ NonZeroDigit
-    | '.' Digit
-    | '.' Digit* NonZeroDigit
+    : Integer '.' ZERO* Integer
+    | Integer '.' ZERO* Integer EXPONENTLETTER SUBTRACT? Integer
     ;
 
 fragment
 Digit
-    : '0'
+    : ZERO
     | NonZeroDigit
     ;
 
@@ -227,7 +259,10 @@ EscapeSequence
     : '\\' [btnfr"'\\$]
     ;
 
-SET_DELIMITER : ',';
+SET_DELIMITER
+    : COMMA
+    ;
+COMMA : ',';
 EQUAL : '==';
 NOT_EQUAL : '!=';
 LT : '<';
@@ -248,6 +283,11 @@ LBRACE : '{';
 RBRACE : '}';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
+ZERO : '0';
+EXPONENTLETTER
+    : 'E'
+    | 'e'
+    ;
 
 fragment
 SPACE : ' ';

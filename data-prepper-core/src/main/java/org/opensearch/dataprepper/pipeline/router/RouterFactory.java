@@ -12,10 +12,10 @@ import java.util.Objects;
 import java.util.Set;
 
 public class RouterFactory {
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
     private final DataFlowComponentRouter dataFlowComponentRouter;
 
-    RouterFactory(final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    RouterFactory(final ExpressionEvaluator expressionEvaluator) {
         this.expressionEvaluator = Objects.requireNonNull(expressionEvaluator);
         dataFlowComponentRouter = new DataFlowComponentRouter();
     }

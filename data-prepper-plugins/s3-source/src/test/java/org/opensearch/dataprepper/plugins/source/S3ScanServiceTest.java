@@ -5,6 +5,7 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
@@ -53,7 +54,7 @@ public class S3ScanServiceTest {
         when(s3ScanScanOptions.getBuckets()).thenReturn( List.of(bucket));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         S3ScanService service = new S3ScanService(s3SourceConfig,mock(S3ClientBuilderFactory.class),
-                mock(S3ObjectHandler.class),mock(BucketOwnerProvider.class));
+                mock(S3ObjectHandler.class),mock(BucketOwnerProvider.class), mock(SourceCoordinator.class));
         final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getS3ScanKeyPathOption().getS3scanIncludeOptions(),sameInstance(includeKeyPathList));
         assertThat(scanOptionsBuilder.get(0).getBucket(),sameInstance(bucketName));

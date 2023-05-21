@@ -120,4 +120,34 @@ public interface Event extends Serializable {
      * @since 2.2
      */
     EventHandle getEventHandle();
+
+    JsonStringBuilder jsonBuilder();
+
+    public abstract class JsonStringBuilder {
+        private String tagsKey;
+
+        /**
+         * @param key key to be used for tags
+         * @return JsonStringString with tags included
+         * @since 2.3
+         */
+        public JsonStringBuilder includeTags(String key) {
+            this.tagsKey = key;
+            return this;
+        }
+
+        /**
+         * @return key used for tags
+         * @since 2.3
+         */
+        public String getTagsKey() {
+            return tagsKey;
+        }
+
+        /**
+         * @return json string
+         * @since 2.3
+         */
+        public abstract String toJsonString();
+    }
 }

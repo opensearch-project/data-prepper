@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.oteltrace;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.StringUtils;
@@ -29,6 +30,7 @@ public class OTelTraceSourceConfig {
     static final String MAX_CONNECTION_COUNT = "max_connection_count";
     static final String ENABLE_UNFRAMED_REQUESTS = "unframed_requests";
     static final String UNAUTHENTICATED_HEALTH_CHECK = "unauthenticated_health_check";
+    static final String COMPRESSION = "compression";
     static final int DEFAULT_REQUEST_TIMEOUT_MS = 10000;
     static final int DEFAULT_PORT = 21890;
     static final int DEFAULT_THREAD_COUNT = 200;
@@ -97,6 +99,9 @@ public class OTelTraceSourceConfig {
 
     @JsonProperty(UNAUTHENTICATED_HEALTH_CHECK)
     private boolean unauthenticatedHealthCheck = false;
+
+    @JsonProperty(COMPRESSION)
+    private CompressionOption compression = CompressionOption.NONE;
 
     @AssertTrue(message = "path should start with /")
     boolean isPathValid() {
@@ -210,5 +215,9 @@ public class OTelTraceSourceConfig {
 
     public boolean isUnauthenticatedHealthCheck() {
         return unauthenticatedHealthCheck;
+    }
+
+    public CompressionOption getCompression() {
+        return compression;
     }
 }

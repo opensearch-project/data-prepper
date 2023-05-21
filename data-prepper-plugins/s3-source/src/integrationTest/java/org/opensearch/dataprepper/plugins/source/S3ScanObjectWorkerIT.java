@@ -17,9 +17,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Mock;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
@@ -68,6 +70,9 @@ public class S3ScanObjectWorkerIT {
     private int recordsReceived;
     private S3ObjectGenerator s3ObjectGenerator;
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+
+    @Mock
+    private SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
     private S3ObjectHandler createObjectUnderTest(final S3ObjectRequest s3ObjectRequest){
         if(Objects.nonNull(s3ObjectRequest.getExpression()))
@@ -148,7 +153,7 @@ public class S3ScanObjectWorkerIT {
                 .compressionType(shouldCompress ? CompressionType.GZIP : CompressionType.NONE)
                 .s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).build();
         return new ScanObjectWorker(s3Client,List.of(scanOptions),createObjectUnderTest(s3ObjectRequest)
-        ,bucketOwnerProvider);
+        ,bucketOwnerProvider, sourceCoordinator);
     }
 
     @ParameterizedTest

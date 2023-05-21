@@ -56,7 +56,8 @@ then when we run with the same input, the processor will parse the message into 
 
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
-  * `key` - (required) - The key of the new entry to be added
+  * `key` - (required) - The key of the new entry to be added. One of `key` or `metadata_key` is required.
+  * `metadata_key` - (required) - The key of the new metadata attribute to be added. Argument must be a literal string key and not JsonPointer. One of `key` or `metadata_key` is required.
   * `value` - (optional) - The value of the new entry to be added. Strings, booleans, numbers, null, nested objects, and arrays containing the aforementioned data types are valid to use. Required if `format` is not specified.
   * `format` - (optional) - A format string to use as value of the new entry to be added. For example, `${key1}-${ke2}` where `key1` and `key2` are existing keys in the event. Required if `value` is not specified.
   * `overwrite_if_key_exists` - (optional) - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 

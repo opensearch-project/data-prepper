@@ -107,7 +107,9 @@ public class DataPrepperConfigurationTests {
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.Prometheus));
         assertThat(dataPrepperConfiguration.getMetricRegistryTypes(), Matchers.hasItem(MetricRegistryType.CloudWatch));
         assertThat(dataPrepperConfiguration.getSourceCoordinationConfig(), notNullValue());
+        assertThat(dataPrepperConfiguration.getSourceCoordinationConfig().getPartitionPrefix(), equalTo("some-prefix"));
         assertThat(dataPrepperConfiguration.getSourceCoordinationConfig().getSourceCoordinationStoreConfig(), notNullValue());
+        assertThat(dataPrepperConfiguration.getSourceCoordinationConfig().getSourceCoordinationStoreConfig().getName(), equalTo("dynamodb"));
     }
 
     @Test

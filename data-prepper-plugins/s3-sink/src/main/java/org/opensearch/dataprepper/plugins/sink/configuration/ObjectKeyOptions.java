@@ -18,13 +18,15 @@ public class ObjectKeyOptions {
 
     /**
      * S3 index path configuration Option
+     * @return  path prefix.
      */
     public String getPathPrefix() {
         return pathPrefix;
     }
 
     /**
-     * Read s3 object index file pattern configuration
+     * Read s3 object index file pattern configuration.
+     * @return default object name pattern.
      */
     public String getNamePattern() {
         return DEFAULT_OBJECT_NAME_PATTERN;

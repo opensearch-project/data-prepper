@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.UUID;
+import java.util.Random;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -27,46 +28,42 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
-class ConditionalExpressionEvaluatorTest {
+class GenericExpressionEvaluatorTest {
 
     @Mock
     private Parser<ParseTree> parser;
     @Mock
     private Evaluator<ParseTree, Event> evaluator;
     @InjectMocks
-    private ConditionalExpressionEvaluator statementEvaluator;
+    private GenericExpressionEvaluator statementEvaluator;
 
     @Test
     void testGivenValidParametersThenEvaluatorResultReturned() {
         final String statement = UUID.randomUUID().toString();
         final ParseTree parseTree = mock(ParseTree.class);
         final Event event = mock(Event.class);
-        final Boolean expected = true;
+        final String expectedStr = UUID.randomUUID().toString();
 
         doReturn(parseTree).when(parser).parse(eq(statement));
-        doReturn(expected).when(evaluator).evaluate(eq(parseTree), eq(event));
+        doReturn(expectedStr).when(evaluator).evaluate(eq(parseTree), eq(event));
 
-        final Boolean actual = statementEvaluator.evaluate(statement, event);
+        final Object actualStr = statementEvaluator.evaluate(statement, event);
 
-        assertThat(actual, is(expected));
+        assertThat((String)actualStr, is(expectedStr));
         verify(parser).parse(eq(statement));
         verify(evaluator).evaluate(eq(parseTree), eq(event));
-    }
 
-    @Test
-    void testGivenUnexpectedEvaluatorResultTypeThenExceptionThrown() {
-        final String statement = UUID.randomUUID().toString();
-        final ParseTree parseTree = mock(ParseTree.class);
-        final Event event = mock(Event.class);
-        final Object result = mock(Object.class);
+        final Random random = new Random();
+        final Integer expectedInt = random.nextInt(1000);
 
         doReturn(parseTree).when(parser).parse(eq(statement));
-        doReturn(result).when(evaluator).evaluate(eq(parseTree), eq(event));
+        doReturn(expectedInt).when(evaluator).evaluate(eq(parseTree), eq(event));
 
-        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluate(statement, event));
+        final Object actualInt = statementEvaluator.evaluate(statement, event);
 
-        verify(parser).parse(eq(statement));
-        verify(evaluator).evaluate(eq(parseTree), eq(event));
+        assertThat((Integer)actualInt, is(expectedInt));
+        verify(parser, times(2)).parse(eq(statement));
+        verify(evaluator, times(2)).evaluate(eq(parseTree), eq(event));
     }
 
     @Test
@@ -90,9 +87,11 @@ class ConditionalExpressionEvaluatorTest {
         doReturn(parseTree).when(parser).parse(eq(statement));
         doThrow(new RuntimeException()).when(evaluator).evaluate(eq(parseTree), eq(event));
 
-        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluate(statement, event));
+        assertThrows(ExpressionEvaluationException.class, () -> statementEvaluator.evaluateConditional(statement, event));
 
         verify(parser).parse(eq(statement));
         verify(evaluator).evaluate(eq(parseTree), eq(event));
     }
+
 }
+

@@ -60,7 +60,7 @@ pipeline:
 
 ## Developer Guide
 
-This plugin is compatible with Java 8. See
+This plugin is compatible with Java 11. See below
 
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)

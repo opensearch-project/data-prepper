@@ -35,21 +35,24 @@ public class ThresholdOptions {
     private Duration eventCollectTimeOut;
 
     /**
-     * Read event collection duration configuration
+     * Read event collection duration configuration.
+     * @return  event collect time out.
      */
     public Duration getEventCollectTimeOut() {
         return eventCollectTimeOut;
     }
 
     /**
-     * Read byte capacity configuration
+     * Read byte capacity configuration.
+     * @return maximum byte count.
      */
     public ByteCount getMaximumSize() {
         return ByteCount.parse(maximumSize);
     }
 
     /**
-     * Read the event count configuration
+     * Read the event count configuration.
+     * @return event count.
      */
     public int getEventCount() {
         return eventCount;

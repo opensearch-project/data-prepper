@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.model.source;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -17,14 +18,23 @@ import java.util.Optional;
  */
 public interface SourceCoordinationStore {
 
-    Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String partitionKey);
+    void initializeStore();
 
-    boolean tryCreatePartitionItem(final String partitionKey,
+    Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String sourceIdentifier, final String sourcePartitionKey);
+
+    boolean tryCreatePartitionItem(final String sourceIdentifier,
+                                   final String partitionKey,
                                    final SourcePartitionStatus sourcePartitionStatus,
                                    final Long closedCount,
                                    final String partitionProgressState);
 
-    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition();
+    /**
+     * The following scenarios should qualify a partition as available to be acquired
+     * 1. The partition status is UNASSIGNED
+     * 2. The partition status is CLOSED and the reOpenAt timestamp has passed
+     * 3. The partition status is ASSIGNED and the partitionOwnershipTimeout has passed
+     */
+    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String sourceIdentifier, final String ownerId, final Duration ownershipTimeout);
 
     /**
      * This method attempts to update the partition item to the desired state

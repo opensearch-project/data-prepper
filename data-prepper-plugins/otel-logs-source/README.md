@@ -22,6 +22,9 @@ source:
 * unframed_requests(Optional) => A boolean to enable requests not framed using the gRPC wire protocol. 
 * thread_count(Optional) => the number of threads to keep in the ScheduledThreadPool. Default is `200`.
 * max_connection_count(Optional) => the maximum allowed number of open connections. Default is `500`.
+* compression (Optional) : The compression type applied on the client request payload. Defaults to `none`. Supported values are:
+    * `none`: no compression
+    * `gzip`: apply GZip de-compression on the incoming request.
 
 ### SSL
 

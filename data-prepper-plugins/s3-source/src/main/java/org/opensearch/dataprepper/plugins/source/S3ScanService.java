@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
@@ -29,11 +30,13 @@ public class S3ScanService {
     private Thread scanObjectWorkerThread;
 
     private final BucketOwnerProvider bucketOwnerProvider;
+    private final SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
     public S3ScanService(final S3SourceConfig s3SourceConfig,
                          final S3ClientBuilderFactory s3ClientBuilderFactory,
                          final S3ObjectHandler s3ObjectHandler,
-                         final BucketOwnerProvider bucketOwnerProvider ) {
+                         final BucketOwnerProvider bucketOwnerProvider,
+                         final SourceCoordinator<S3SourceProgressState> sourceCoordinator) {
         this.s3ScanBucketOptions = s3SourceConfig.getS3ScanScanOptions().getBuckets();
         this.s3ClientBuilderFactory = s3ClientBuilderFactory;
         this.endDateTime = s3SourceConfig.getS3ScanScanOptions().getEndTime();
@@ -41,11 +44,12 @@ public class S3ScanService {
         this.range = s3SourceConfig.getS3ScanScanOptions().getRange();
         this.s3ObjectHandler = s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
+        this.sourceCoordinator = sourceCoordinator;
     }
 
     public void start() {
         scanObjectWorkerThread = new Thread(new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
-                getScanOptions(),s3ObjectHandler,bucketOwnerProvider));
+                getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator));
         scanObjectWorkerThread.start();
     }
 

@@ -16,12 +16,12 @@ import javax.inject.Named;
  * {@link org.opensearch.dataprepper.model.sink.Sink} and data-prepper-core objects can use to evaluate statements.
  */
 @Named
-class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
+class GenericExpressionEvaluator implements ExpressionEvaluator {
     private final Parser<ParseTree> parser;
     private final Evaluator<ParseTree, Event> evaluator;
 
     @Inject
-    public ConditionalExpressionEvaluator(final Parser<ParseTree> parser, final Evaluator<ParseTree, Event> evaluator) {
+    public GenericExpressionEvaluator(final Parser<ParseTree> parser, final Evaluator<ParseTree, Event> evaluator) {
         this.parser = parser;
         this.evaluator = evaluator;
     }
@@ -32,17 +32,10 @@ class ConditionalExpressionEvaluator implements ExpressionEvaluator<Boolean> {
      * @throws ExpressionEvaluationException if unable to evaluate or coerce the statement result to type T
      */
     @Override
-    public Boolean evaluate(final String statement, final Event context) {
+    public Object evaluate(final String statement, final Event context) {
         try {
             final ParseTree parseTree = parser.parse(statement);
-            final Object result = evaluator.evaluate(parseTree, context);
-
-            if (result instanceof Boolean) {
-                return (Boolean) result;
-            }
-            else {
-                throw new ClassCastException("Unexpected expression return type of " + result.getClass());
-            }
+            return evaluator.evaluate(parseTree, context);
         }
         catch (final Exception exception) {
             throw new ExpressionEvaluationException("Unable to evaluate statement \"" + statement + "\"", exception);

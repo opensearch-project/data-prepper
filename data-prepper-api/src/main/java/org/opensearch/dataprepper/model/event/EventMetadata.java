@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.event;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,6 +39,22 @@ public interface EventMetadata extends Serializable {
     Map<String, Object> getAttributes();
 
     /**
+     * Returns value of an attribute
+     * @param key metadata key
+     * @return value of an attribute
+     * @since 2.3
+     */
+    Object getAttribute(final String key);
+
+    /**
+     * Sets an attribute
+     * @param key to be set
+     * @param value to be set
+     * @since 2.3
+     */
+    void setAttribute(String key, Object value);
+
+    /**
      * Returns the tags
      * @return a set of tags
      * @since 2.3
@@ -46,16 +63,16 @@ public interface EventMetadata extends Serializable {
 
     /**
      * Indicates if a tag is present
-     * @param tag name of the tag to be looked up
-     * @return true if the tag is present, false otherwise
+     * @param tags list of the tags to be looked up
+     * @return true if all tags are present, false otherwise
      * @since 2.3
      */
-    Boolean hasTag(final String tag);
+    Boolean hasTags(final List<String> tags);
 
     /**
-     * Adds a tag to the Metadata
-     * @param tag to be added
+     * Adds a tags to the Metadata
+     * @param tags to be added
      * @since 2.3
      */
-    void addTag(final String tag);
+    void addTags(final List<String> tags);
 }
