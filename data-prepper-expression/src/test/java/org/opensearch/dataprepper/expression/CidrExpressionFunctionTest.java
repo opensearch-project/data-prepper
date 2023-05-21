@@ -124,11 +124,11 @@ class CidrExpressionFunctionTest {
     }
 
     @Test
-    void testIpAddressNotExistInEventThrowsException() {
+    void testIpAddressNotExistInEventReturnsFalse() {
         String network = "\"192.0.2.0/24\"";
         testEvent = createTestEvent(Map.of("sourceIp", "192.0.2.3"));
-        assertThrows(NullPointerException.class,
-                () -> cidrExpressionFunction.evaluate(List.of("/destinationIp", network), testEvent, testFunction));
+        Object expressionResult = cidrExpressionFunction.evaluate(List.of("/destinationIp", network), testEvent, testFunction);
+        assertThat((boolean)expressionResult, equalTo(false));
     }
 
     private static Stream<Arguments> ipv4AddressesInRange() {

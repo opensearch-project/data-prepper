@@ -47,7 +47,10 @@ public class CidrExpressionFunction implements ExpressionFunction {
     }
 
     private boolean isIpInCidr(final String ipAddressStr, final List<String> cidrBlockStrs) {
-        Objects.requireNonNull(ipAddressStr, "The IP address field to check with isIpInCidr() is null or cannot be found in the event.");
+        if (Objects.isNull(ipAddressStr)) {
+            // The IP address field is null or cannot be found in the event
+            return false;
+        }
 
         IPAddress address = new IPAddressString(ipAddressStr).getAddress();
         List<IPAddress> cidrBlocks = cidrBlockStrs.stream()
