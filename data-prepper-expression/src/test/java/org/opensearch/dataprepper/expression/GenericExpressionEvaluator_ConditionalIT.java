@@ -197,12 +197,12 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
                 Arguments.of("getMetadata(\"/key6\") == \""+value5+"\"", longEvent, false),
                 Arguments.of("getMetadata(\"key6\") == "+value5, longEvent, false),
-                Arguments.of("isIpInCidr(/sourceIp,\"192.0.2.0/24\")", event("{\"sourceIp\": \"192.0.2.3\"}"), true),
-                Arguments.of("isIpInCidr(/sourceIp,\"192.0.2.0/24\",\"192.1.1.0/24\")", event("{\"sourceIp\": \"192.0.2.3\"}"), true),
-                Arguments.of("isIpInCidr(/sourceIp,\"192.0.2.0/24\",\"192.1.1.0/24\")", event("{\"sourceIp\": \"192.2.2.3\"}"), false),
-                Arguments.of("isIpInCidr(/sourceIp,\"2001:0db8::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
-                Arguments.of("isIpInCidr(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
-                Arguments.of("isIpInCidr(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:abcd:aaaa:bbbb::\"}"), false)
+                Arguments.of("isIPinCIDR(/sourceIp,\"192.0.2.0/24\")", event("{\"sourceIp\": \"192.0.2.3\"}"), true),
+                Arguments.of("isIPinCIDR(/sourceIp,\"192.0.2.0/24\",\"192.1.1.0/24\")", event("{\"sourceIp\": \"192.0.2.3\"}"), true),
+                Arguments.of("isIPinCIDR(/sourceIp,\"192.0.2.0/24\",\"192.1.1.0/24\")", event("{\"sourceIp\": \"192.2.2.3\"}"), false),
+                Arguments.of("isIPinCIDR(/sourceIp,\"2001:0db8::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
+                Arguments.of("isIPinCIDR(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
+                Arguments.of("isIPinCIDR(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:abcd:aaaa:bbbb::\"}"), false)
         );
     }
 
@@ -253,8 +253,8 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("getMetadata(10)", tagEvent),
                 Arguments.of("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 Arguments.of("getMetadata(\""+ testMetadataKey+")", tagEvent),
-                Arguments.of("isIpInCidr(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
-                Arguments.of("isIpInCidr(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
+                Arguments.of("isIPinCIDR(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
+                Arguments.of("isIPinCIDR(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
         );
     }
 

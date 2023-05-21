@@ -20,7 +20,7 @@ public class CidrExpressionFunction implements ExpressionFunction {
 
     @Override
     public String getFunctionName() {
-        return "isIpInCidr";
+        return "isIPinCIDR";
     }
 
     @Override

@@ -181,11 +181,11 @@ Currently, the following functions are supported
    - takes one String literal as argument. This is the key to lookup in the event's metadata. If the key contains "/", then recursive lookup into the metadata attributes is done.
    - returns the value corresponding to the argument (key) passed. Value can be of any type.
    For example, if metadata contains {"key1": "value2", "key2": 10}, then `getMetadata("key1")` returns "value2", and `getMetadata("key2")` return 10.
-* `isIpInCidr()`
+* `isIPinCIDR()`
    - The function takes two or more arguments. The first argument is of Json Pointer type representing the key to the IP address to check; the argument(s) that follows is of String type representing CIDR block(s) to check against.
    - If the IP address is in the range of any given CIDR blocks, the function evaluates to true; otherwise, the function evaluates to false.
    - The function supports both IPv4 and IPv6 addresses.
-   For example, `isIpInCidr(/sourceIp,"192.0.2.0/24","10.0.1.0/16")` evaluates to true if the event has `sourceIp` field with value "192.0.2.5".
+   For example, `isIPinCIDR(/sourceIp,"192.0.2.0/24","10.0.1.0/16")` evaluates to true if the event has `sourceIp` field with value "192.0.2.5".
 
 
 ## White Space
