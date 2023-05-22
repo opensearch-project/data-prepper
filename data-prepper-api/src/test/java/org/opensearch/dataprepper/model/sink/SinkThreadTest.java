@@ -26,7 +26,7 @@ public class SinkThreadTest {
     @Test
     public void testSinkThread() {
         when(sink.isReady()).thenReturn(true);
-        sinkThread = new SinkThread(sink, 5);
+        sinkThread = new SinkThread(sink, 5, 1000);
         sinkThread.run();
         verify(sink, times(1)).isReady();
     }
@@ -34,7 +34,7 @@ public class SinkThreadTest {
     @Test
     public void testSinkThread2() {
         when(sink.isReady()).thenReturn(false);
-        sinkThread = new SinkThread(sink, 5);
+        sinkThread = new SinkThread(sink, 5, 1000);
         sinkThread.run();
         verify(sink, times(6)).isReady();
         try {

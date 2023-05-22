@@ -18,17 +18,26 @@ import java.util.Collection;
  * This class implements the Sink interface and records boilerplate metrics
  */
 public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
-    protected static final int NUMBER_OF_RETRIES = 600;
+    protected static final int DEFAULT_MAX_RETRIES = 600;
+    protected static final int DEFAULT_WAIT_TIME_MS = 1000;
     protected final PluginMetrics pluginMetrics;
     private final Counter recordsInCounter;
     private final Timer timeElapsedTimer;
     private Thread retryThread;
+    private int maxRetries;
+    private int waitTimeMs;
 
-    public AbstractSink(final PluginSetting pluginSetting) {
+    public AbstractSink(final PluginSetting pluginSetting, int numRetries, int waitTimeMs) {
         this.pluginMetrics = PluginMetrics.fromPluginSetting(pluginSetting);
         recordsInCounter = pluginMetrics.counter(MetricNames.RECORDS_IN);
         timeElapsedTimer = pluginMetrics.timer(MetricNames.TIME_ELAPSED);
         retryThread = null;
+        this.maxRetries = numRetries;
+        this.waitTimeMs = waitTimeMs;
+    }
+
+    public AbstractSink(final PluginSetting pluginSetting) {
+        this(pluginSetting, DEFAULT_MAX_RETRIES, DEFAULT_WAIT_TIME_MS);
     }
 
     public abstract void doInitialize();
@@ -39,7 +48,7 @@ public abstract class AbstractSink<T extends Record<?>> implements Sink<T> {
         // the exceptions which are not retryable.
         doInitialize();
         if (!isReady() && retryThread == null) {
-            retryThread = new Thread(new SinkThread(this, NUMBER_OF_RETRIES));
+            retryThread = new Thread(new SinkThread(this, maxRetries, waitTimeMs));
             retryThread.start();
         }
     }

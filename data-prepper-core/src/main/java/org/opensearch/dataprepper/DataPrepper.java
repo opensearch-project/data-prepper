@@ -19,10 +19,7 @@ import org.springframework.context.annotation.Lazy;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -83,29 +80,6 @@ public class DataPrepper implements PipelinesProvider {
      */
     public boolean execute() {
         peerForwarderServer.start();
-        Set<String> waitingPipelineNames = transformationPipelines.keySet();
-        int numRetries = 0;
-        while (waitingPipelineNames.size() > 0 && numRetries++ < MAX_RETRIES) {
-            Set<String> uninitializedPipelines = new HashSet<String>();
-            Iterator pipelineIter = waitingPipelineNames.iterator();
-            while (pipelineIter.hasNext()) {
-                String pipelineName = (String)pipelineIter.next();
-                if (!transformationPipelines.get(pipelineName).isReady()) {
-                    uninitializedPipelines.add(pipelineName);
-                }
-            }
-            waitingPipelineNames = uninitializedPipelines;
-            if (waitingPipelineNames.size() > 0) {
-                try {
-                    Thread.sleep(5000);
-                } catch (Exception e){}
-            }
-        }
-        if (waitingPipelineNames.size() > 0) {
-            LOG.info("One or more Pipelines are not ready even after {} retries. Shutting down pipelines", numRetries);
-            shutdownPipelines();
-            throw new RuntimeException("Failed to start pipelines");
-        }
         transformationPipelines.forEach((name, pipeline) -> {
             pipeline.addShutdownObserver(pipelinesObserver);
         });
