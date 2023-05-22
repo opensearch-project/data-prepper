@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
@@ -71,6 +72,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
+  private final AwsCredentialsSupplier awsCredentialsSupplier;
 
   private DlqWriter dlqWriter;
   private BufferedWriter dlqFileWriter;
@@ -104,8 +106,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
-                        final PluginFactory pluginFactory) {
+                        final PluginFactory pluginFactory,
+                        final AwsCredentialsSupplier awsCredentialsSupplier) {
     super(pluginSetting);
+    this.awsCredentialsSupplier = awsCredentialsSupplier;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
@@ -157,8 +161,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private void doInitializeInternal() throws IOException {
     LOG.info("Initializing OpenSearch sink");
-    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
-    openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient);
+    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient(awsCredentialsSupplier);
+    openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
     indexManager = indexManagerFactory.getIndexManager(indexType, openSearchClient, restHighLevelClient,
             openSearchSinkConfig, configuredIndexAlias);

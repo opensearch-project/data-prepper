@@ -1,0 +1,8 @@
+
+dependencies {
+    implementation 'software.amazon.awssdk:auth'
+}
+
+test {
+    useJUnitPlatform()
+}

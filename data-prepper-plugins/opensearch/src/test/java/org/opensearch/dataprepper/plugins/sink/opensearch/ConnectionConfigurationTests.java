@@ -103,7 +103,7 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
     }
@@ -114,8 +114,8 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, null, null, null, null, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
-        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         assertNotNull(openSearchClient);
         assertTrue(openSearchClient._transport() instanceof RestClientTransport);
         assertTrue(openSearchClient._transport().jsonpMapper() instanceof PreSerializedJsonpMapper);
@@ -131,13 +131,13 @@ class ConnectionConfigurationTests {
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         when(apacheHttpClientBuilder.tlsTrustManagersProvider(any())).thenReturn(apacheHttpClientBuilder);
         when(apacheHttpClientBuilder.build()).thenReturn(apacheHttpClient);
         final OpenSearchClient openSearchClient;
         try (final MockedStatic<ApacheHttpClient> apacheHttpClientMockedStatic = mockStatic(ApacheHttpClient.class)) {
             apacheHttpClientMockedStatic.when(ApacheHttpClient::builder).thenReturn(apacheHttpClientBuilder);
-            openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         }
         assertNotNull(openSearchClient);
         assertTrue(openSearchClient._transport() instanceof AwsSdk2Transport);
@@ -169,7 +169,7 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
     }
@@ -180,8 +180,8 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
-        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         assertNotNull(openSearchClient);
         assertEquals(client.getLowLevelClient(), ((RestClientTransport) openSearchClient._transport()).restClient());
         openSearchClient.shutdown();
@@ -194,7 +194,7 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, true);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
     }
@@ -205,8 +205,8 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, null, true);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
-        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         assertNotNull(openSearchClient);
         assertEquals(client.getLowLevelClient(), ((RestClientTransport) openSearchClient._transport()).restClient());
         openSearchClient.shutdown();
@@ -219,7 +219,7 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
     }
@@ -230,8 +230,8 @@ class ConnectionConfigurationTests {
                 TEST_HOSTS, TEST_USERNAME, TEST_PASSWORD, TEST_CONNECT_TIMEOUT, TEST_SOCKET_TIMEOUT, false, null, null, TEST_CERT_PATH, false);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
-        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+        final OpenSearchClient openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         assertNotNull(openSearchClient);
         assertEquals(client.getLowLevelClient(), ((RestClientTransport) openSearchClient._transport()).restClient());
         openSearchClient.shutdown();
@@ -309,7 +309,7 @@ class ConnectionConfigurationTests {
 
             assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
             stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
-            connectionConfiguration.createClient();
+            connectionConfiguration.createClient(awsCredentialsSupplier);
         }
 
         verify(assumeRoleRequestBuilder).roleArn(TEST_ROLE);
@@ -347,8 +347,8 @@ class ConnectionConfigurationTests {
 
             assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
             stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
-            final RestHighLevelClient client = connectionConfiguration.createClient();
-            openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+            final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         }
         assertNotNull(openSearchClient);
         assertTrue(openSearchClient._transport() instanceof AwsSdk2Transport);
@@ -394,7 +394,7 @@ class ConnectionConfigurationTests {
 
             assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
             stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
-            connectionConfiguration.createClient();
+            connectionConfiguration.createClient(awsCredentialsSupplier);
         }
 
         final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -449,8 +449,8 @@ class ConnectionConfigurationTests {
 
             assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
             stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
-            final RestHighLevelClient client = connectionConfiguration.createClient();
-            openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+            final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         }
 
         final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -508,7 +508,7 @@ class ConnectionConfigurationTests {
 
             assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
             stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
-            connectionConfiguration.createClient();
+            connectionConfiguration.createClient(awsCredentialsSupplier);
         }
 
         final ArgumentCaptor<Consumer<AwsRequestOverrideConfiguration.Builder>> configurationCaptor = ArgumentCaptor.forClass(Consumer.class);
@@ -563,8 +563,8 @@ class ConnectionConfigurationTests {
 
             assumeRoleRequestMockedStatic.when(AssumeRoleRequest::builder).thenReturn(assumeRoleRequestBuilder);
             stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
-            final RestHighLevelClient client = connectionConfiguration.createClient();
-            openSearchClient = connectionConfiguration.createOpenSearchClient(client);
+            final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
+            openSearchClient = connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier);
         }
 
         assertNotNull(openSearchClient);
@@ -599,9 +599,9 @@ class ConnectionConfigurationTests {
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
-        assertNotNull(connectionConfiguration.createOpenSearchClient(client));
+        assertNotNull(connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier));
         client.close();
     }
 
@@ -615,9 +615,9 @@ class ConnectionConfigurationTests {
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
-        assertNotNull(connectionConfiguration.createOpenSearchClient(client));
+        assertNotNull(connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier));
         client.close();
     }
 
@@ -631,9 +631,9 @@ class ConnectionConfigurationTests {
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
-        assertNotNull(connectionConfiguration.createOpenSearchClient(client));
+        assertNotNull(connectionConfiguration.createOpenSearchClient(client, awsCredentialsSupplier));
         client.close();
     }
 
@@ -647,7 +647,7 @@ class ConnectionConfigurationTests {
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
-        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient());
+        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient(awsCredentialsSupplier));
     }
 
     @Test
@@ -659,7 +659,7 @@ class ConnectionConfigurationTests {
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient());
+        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient(awsCredentialsSupplier));
     }
 
     @Test
@@ -671,7 +671,7 @@ class ConnectionConfigurationTests {
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(metadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
-        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient());
+        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient(awsCredentialsSupplier));
     }
 
     @Test
@@ -684,7 +684,7 @@ class ConnectionConfigurationTests {
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
         assertEquals(connectionConfiguration.getProxy().get(), testHttpProxy);
-        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient());
+        assertThrows(IllegalArgumentException.class, () -> connectionConfiguration.createClient(awsCredentialsSupplier));
     }
 
     @Test
@@ -692,7 +692,7 @@ class ConnectionConfigurationTests {
         final ConnectionConfiguration.Builder builder = new ConnectionConfiguration.Builder(TEST_HOSTS);
         final ConnectionConfiguration connectionConfiguration = builder.build();
         assertEquals(Optional.empty(), connectionConfiguration.getProxy());
-        final RestHighLevelClient client = connectionConfiguration.createClient();
+        final RestHighLevelClient client = connectionConfiguration.createClient(awsCredentialsSupplier);
         assertNotNull(client);
         client.close();
     }

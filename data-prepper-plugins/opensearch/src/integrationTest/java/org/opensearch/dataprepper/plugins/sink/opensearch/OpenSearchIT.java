@@ -30,7 +30,7 @@ public class OpenSearchIT {
             builder.withUsername(user);
             builder.withPassword(password);
         }
-        final RestHighLevelClient client = builder.build().createClient();
+        final RestHighLevelClient client = builder.build().createClient(awsCredentialsSupplier);
 
         // TODO: Even with the REST High Level client in OpenSearch 1.1, the standard API
         // does not work with ODFE

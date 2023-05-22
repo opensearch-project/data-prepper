@@ -115,7 +115,7 @@ public class EndToEndPeerForwarderTest {
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
-        return builder.build().createClient();
+        return builder.build().createClient(awsCredentialsSupplier);
     }
 
     private void sendHttpRequestToSource(final int port, final HttpData httpData) {

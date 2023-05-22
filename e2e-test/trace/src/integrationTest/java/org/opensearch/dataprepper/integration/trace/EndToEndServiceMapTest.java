@@ -79,7 +79,7 @@ public class EndToEndServiceMapTest {
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
-        final RestHighLevelClient restHighLevelClient = builder.build().createClient();
+        final RestHighLevelClient restHighLevelClient = builder.build().createClient(awsCredentialsSupplier);
 
         // Wait for service map processor by 2 * window_duration
         await().atMost(45, TimeUnit.SECONDS).untilAsserted(

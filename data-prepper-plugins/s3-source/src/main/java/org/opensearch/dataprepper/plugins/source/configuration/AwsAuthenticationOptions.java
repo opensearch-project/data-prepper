@@ -62,6 +62,10 @@ public class AwsAuthenticationOptions {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
 
+    public Map<String, String> getAwsStsHeaderOverrides() {
+        return awsStsHeaderOverrides;
+    }
+
     public AwsCredentialsProvider authenticateAwsConfiguration() {
 
         final AwsCredentialsProvider awsCredentialsProvider;

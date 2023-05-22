@@ -10,6 +10,8 @@ import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.aws.AwsSdk2Transport;
 import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
 import org.opensearch.client.transport.rest_client.RestClientTransport;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
@@ -240,7 +242,7 @@ public class ConnectionConfiguration {
     return pipelineName;
   }
 
-  public RestHighLevelClient createClient() {
+  public RestHighLevelClient createClient(AwsCredentialsSupplier awsCredentialsSupplier) {
     final HttpHost[] httpHosts = new HttpHost[hosts.size()];
     int i = 0;
     for (final String host : hosts) {
@@ -253,7 +255,7 @@ public class ConnectionConfiguration {
      * We will not support FGAC and Custom endpoint domains. This will be followed in the next version.
      */
     if(awsSigv4) {
-      attachSigV4(restClientBuilder);
+      attachSigV4(restClientBuilder, awsCredentialsSupplier);
     } else {
       attachUserCredentials(restClientBuilder);
     }
@@ -270,12 +272,14 @@ public class ConnectionConfiguration {
     return new RestHighLevelClient(restClientBuilder);
   }
 
-  private void attachSigV4(final RestClientBuilder restClientBuilder) {
+  private void attachSigV4(final RestClientBuilder restClientBuilder, AwsCredentialsSupplier awsCredentialsSupplier) {
     //if aws signing is enabled we will add AWSRequestSigningApacheInterceptor interceptor,
     //if not follow regular credentials process
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
     final Aws4Signer aws4Signer = Aws4Signer.create();
-    final AwsCredentialsProvider credentialsProvider;
+    final AwsCredentialsOptions awsCredentialsOptions = createAwsCredentialsOptions();
+    final AwsCredentialsProvider credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
+    /*
     if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
       AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
               .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
@@ -293,6 +297,8 @@ public class ConnectionConfiguration {
     } else {
       credentialsProvider = DefaultCredentialsProvider.create();
     }
+
+     */
     final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(AOS_SERVICE_NAME, aws4Signer,
             credentialsProvider, awsRegion);
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
@@ -301,6 +307,15 @@ public class ConnectionConfiguration {
       setHttpProxyIfApplicable(httpClientBuilder);
       return httpClientBuilder;
     });
+  }
+
+  private AwsCredentialsOptions createAwsCredentialsOptions() {
+    final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
+            .withStsRoleArn(awsStsRoleArn)
+            .withRegion(awsRegion)
+            .withStsHeaderOverrides(awsStsHeaderOverrides)
+            .build();
+    return awsCredentialsOptions;
   }
 
   private StsClient getStsClient() {
@@ -393,13 +408,15 @@ public class ConnectionConfiguration {
     }
   }
 
-  public OpenSearchClient createOpenSearchClient(final RestHighLevelClient restHighLevelClient) {
-    return new OpenSearchClient(createOpenSearchTransport(restHighLevelClient));
+  public OpenSearchClient createOpenSearchClient(final RestHighLevelClient restHighLevelClient, AwsCredentialsSupplier awsCredentialsSupplier) {
+    return new OpenSearchClient(createOpenSearchTransport(restHighLevelClient, awsCredentialsSupplier));
   }
 
-  private OpenSearchTransport createOpenSearchTransport(final RestHighLevelClient restHighLevelClient) {
+  private OpenSearchTransport createOpenSearchTransport(final RestHighLevelClient restHighLevelClient, AwsCredentialsSupplier awsCredentialsSupplier) {
     if (awsSigv4) {
-      final AwsCredentialsProvider credentialsProvider;
+      final AwsCredentialsOptions awsCredentialsOptions = createAwsCredentialsOptions();
+      final AwsCredentialsProvider credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
+      /*
       if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
         AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
                 .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
@@ -417,6 +434,8 @@ public class ConnectionConfiguration {
       } else {
         credentialsProvider = DefaultCredentialsProvider.create();
       }
+
+       */
       final String serviceName = serverless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
       return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).getHostName(),
               serviceName, Region.of(awsRegion),
