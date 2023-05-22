@@ -37,7 +37,7 @@ public class RenameKeyProcessorTests {
     private RenameKeyProcessorConfig mockConfig;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     @Test
     public void testSingleOverwriteRenameProcessorTests() {
@@ -122,7 +122,7 @@ public class RenameKeyProcessorTests {
         final RenameKeyProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("thisisamessage");
 
-        when(expressionEvaluator.evaluate(renameWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(renameWhen, record.getData())).thenReturn(false);
 
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 

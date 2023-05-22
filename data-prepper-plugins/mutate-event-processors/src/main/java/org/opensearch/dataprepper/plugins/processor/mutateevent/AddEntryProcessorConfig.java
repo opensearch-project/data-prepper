@@ -16,9 +16,9 @@ import java.util.Objects;
 
 public class AddEntryProcessorConfig {
     public static class Entry {
-        @NotEmpty
-        @NotNull
         private String key;
+
+        private String metadataKey;
 
         private Object value;
 
@@ -32,6 +32,10 @@ public class AddEntryProcessorConfig {
 
         public String getKey() {
             return key;
+        }
+
+        public String getMetadataKey() {
+            return metadataKey;
         }
 
         public Object getValue() {
@@ -54,12 +58,20 @@ public class AddEntryProcessorConfig {
         }
 
         public Entry(final String key,
+                     final String metadataKey,
                      final Object value,
                      final String format,
                      final boolean overwriteIfKeyExists,
                      final String addWhen)
         {
+            if (key != null && metadataKey != null) {
+                throw new IllegalArgumentException("Only one of the two - key and metadatakey - should be specified");
+            }
+            if (key == null && metadataKey == null) {
+                throw new IllegalArgumentException("At least one of the two - key and metadatakey - must be specified");
+            }
             this.key = key;
+            this.metadataKey = metadataKey;
             this.value = value;
             this.format = format;
             this.overwriteIfKeyExists = overwriteIfKeyExists;

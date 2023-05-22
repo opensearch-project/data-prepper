@@ -215,7 +215,7 @@ public class AggregateProcessorIT {
         for (Record<Event> record: eventBatch) {
             Event event = record.getData();
             boolean value = (count % 2 == 0) ? true : false;
-            when(expressionEvaluator.evaluate(condition, event)).thenReturn(value);
+            when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(value);
             if (!value) {
                 uniqueEventMaps.remove(event.toMap());
             }
@@ -405,7 +405,7 @@ public class AggregateProcessorIT {
         for (Record<Event> record: eventBatch) {
             Event event = record.getData();
             boolean value = (count % 2 == 0) ? true : false;
-            when(expressionEvaluator.evaluate(condition, event)).thenReturn(value);
+            when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(value);
             count++;
         }
 

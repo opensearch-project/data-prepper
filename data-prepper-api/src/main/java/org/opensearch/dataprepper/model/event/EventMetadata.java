@@ -47,6 +47,14 @@ public interface EventMetadata extends Serializable {
     Object getAttribute(final String key);
 
     /**
+     * Sets an attribute
+     * @param key to be set
+     * @param value to be set
+     * @since 2.3
+     */
+    void setAttribute(String key, Object value);
+
+    /**
      * Returns the tags
      * @return a set of tags
      * @since 2.3

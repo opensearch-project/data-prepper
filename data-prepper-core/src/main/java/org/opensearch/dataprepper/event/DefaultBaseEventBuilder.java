@@ -11,8 +11,8 @@ import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.time.Instant;
-import com.google.common.collect.ImmutableMap;
 
 abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuilder<T>{
     private EventMetadata eventMetadata;
@@ -70,7 +70,7 @@ abstract class DefaultBaseEventBuilder<T extends Event> implements BaseEventBuil
     public BaseEventBuilder<T> withEventMetadata(final EventMetadata eventMetadata) {
         this.eventType = eventMetadata.getEventType();
         this.timeReceived = eventMetadata.getTimeReceived();
-        this.attributes = ImmutableMap.copyOf(eventMetadata.getAttributes());
+        this.attributes = new HashMap<>(eventMetadata.getAttributes());
         return this;
     }
 
