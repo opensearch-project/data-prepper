@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvReadException;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import org.apache.parquet.io.InputFile;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
@@ -48,6 +49,11 @@ public class CsvInputCodec implements InputCodec {
         try (final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
             parseBufferedReader(reader, eventConsumer);
         }
+    }
+
+    @Override
+    public void parse(final InputFile inputFile, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        parse(inputFile.newStream(), eventConsumer);
     }
 
     private void parseBufferedReader(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {

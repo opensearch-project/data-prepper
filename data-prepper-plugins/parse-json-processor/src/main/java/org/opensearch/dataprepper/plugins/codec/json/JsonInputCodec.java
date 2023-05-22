@@ -9,6 +9,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.parquet.io.InputFile;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
@@ -44,8 +45,16 @@ public class JsonInputCodec implements InputCodec {
                 parseRecordsArray(jsonParser, eventConsumer);
             }
         }
-
     }
+
+    @Override
+    public void parse(final InputFile inputFile, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        Objects.requireNonNull(inputFile);
+        Objects.requireNonNull(eventConsumer);
+
+        parse(inputFile.newStream(), eventConsumer);
+    }
+
 
     private void parseRecordsArray(final JsonParser jsonParser, final Consumer<Record<Event>> eventConsumer) throws IOException {
         while (jsonParser.nextToken() != JsonToken.END_ARRAY) {

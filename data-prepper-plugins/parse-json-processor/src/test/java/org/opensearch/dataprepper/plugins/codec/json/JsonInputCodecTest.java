@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.parquet.io.InputFile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -19,10 +20,14 @@ import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 import java.util.Collections;
@@ -69,13 +74,13 @@ class JsonInputCodecTest {
         final JsonInputCodec objectUnderTest = createObjectUnderTest();
 
         assertThrows(NullPointerException.class, () ->
-                objectUnderTest.parse(null, eventConsumer));
+                objectUnderTest.parse((InputStream) null, eventConsumer));
 
         verifyNoInteractions(eventConsumer);
     }
 
     @Test
-    void parse_with_null_Consumer_throws() {
+    void parse_with_InputStream_null_Consumer_throws() {
         final JsonInputCodec objectUnderTest = createObjectUnderTest();
 
         final InputStream inputStream = mock(InputStream.class);
@@ -83,6 +88,27 @@ class JsonInputCodecTest {
                 objectUnderTest.parse(inputStream, null));
 
         verifyNoInteractions(inputStream);
+    }
+
+    @Test
+    void parse_with_null_InputFile_throws() {
+        final JsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        assertThrows(NullPointerException.class, () ->
+                objectUnderTest.parse((InputFile) null, eventConsumer));
+
+        verifyNoInteractions(eventConsumer);
+    }
+
+    @Test
+    void parse_with_InputFile_null_Consumer_throws() {
+        final JsonInputCodec objectUnderTest = createObjectUnderTest();
+
+        final InputFile inputFile = mock(InputFile.class);
+        assertThrows(NullPointerException.class, () ->
+                objectUnderTest.parse(inputFile, null));
+
+        verifyNoInteractions(inputFile);
     }
 
     @Test
@@ -119,6 +145,47 @@ class JsonInputCodecTest {
         createObjectUnderTest().parse(createInputStream(jsonWithEmptyList), eventConsumer);
 
         verifyNoInteractions(eventConsumer);
+    }
+
+    void parse_with_InputFile_calls_Consumer_with_Event(final int numberOfObjects) throws IOException {
+        final List<Map<String, Object>> jsonObjects = generateJsonObjectsAsList(numberOfObjects);
+        final InputStream inputStream = createInputStream(jsonObjects);
+
+        // write inputSteam to a file
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+
+        File testDataFile = File.createTempFile("CsvCodecTest", ".csv");
+        testDataFile.deleteOnExit();
+
+        OutputStream outStream = new FileOutputStream(testDataFile);
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outStream.write(buffer, 0, bytesRead);
+        }
+        outStream.flush();
+        outStream.close();
+
+        final InputFile inputFile = new LocalInputFile(testDataFile);
+
+        createObjectUnderTest().parse(inputFile, eventConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(eventConsumer, times(numberOfObjects)).accept(recordArgumentCaptor.capture());
+
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
+
+        assertThat(actualRecords.size(), equalTo(numberOfObjects));
+        for (int i = 0; i < actualRecords.size(); i++) {
+
+            final Record<Event> actualRecord = actualRecords.get(i);
+            assertThat(actualRecord, notNullValue());
+            assertThat(actualRecord.getData(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata(), notNullValue());
+            assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
+
+            final Map<String, Object> expectedMap = jsonObjects.get(i);
+            assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
+        }
     }
 
     @ParameterizedTest

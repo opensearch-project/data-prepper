@@ -1,231 +1,181 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
-
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
 import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.parquet.ParquetReadOptions;
-import org.apache.parquet.column.page.PageReadStore;
-import org.apache.parquet.example.data.Group;
-import org.apache.parquet.example.data.simple.SimpleGroup;
-import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
-import org.apache.parquet.hadoop.ParquetFileReader;
-import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.io.ColumnIOFactory;
-import org.apache.parquet.io.MessageColumnIO;
-import org.apache.parquet.io.RecordReader;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.Type;
-import org.junit.jupiter.api.Assertions;
+import org.apache.parquet.avro.AvroParquetWriter;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.io.InputFile;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.Mockito;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
+import org.opensearch.dataprepper.plugins.fs.LocalOutputFile;
 
-import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.*;
+import static org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec.FILE_PREFIX;
+import static org.opensearch.dataprepper.plugins.codec.parquet.ParquetInputCodec.FILE_SUFFIX;
 
+public class ParquetInputCodecTest {
 
-
-@ExtendWith(MockitoExtension.class)
-class ParquetInputCodecTest {
-
-    @Mock
-    private Consumer<Record<Event>> eventConsumer;
+    private static final String SCHEMA_JSON =
+            "{\"namespace\": \"org.example.test\"," +
+                    " \"type\": \"record\"," +
+                    " \"name\": \"TestMessage\"," +
+                    " \"fields\": [" +
+                    "     {\"name\": \"id\", \"type\": \"string\"}," +
+                    "     {\"name\": \"value\", \"type\": \"int\"}," +
+                    "     {\"name\": \"alternateIds\", \"type\": {\"type\": \"array\", \"items\": \"string\"}}," +
+                    "     {\"name\": \"metadata\", \"type\": {\"type\": \"map\", \"values\": \"string\"}}," +
+                    "     {\"name\": \"lastUpdated\", \"type\": \"long\", \"logicalType\": \"timestamp-millis\"}" +
+                    " ]}";
 
     private ParquetInputCodec parquetInputCodec;
+    private Consumer<Record<Event>> mockConsumer;
+    private ParquetReader<GenericRecord> mockReader;
+    private static File testDataFile;
 
-    private static FileInputStream fileInputStream;
-
-    private static int numberOfRecords;
-
-    private static final String FILE_NAME="test-parquet.parquet";
-
-    private static final String INVALID_PARQUET_INPUT_STREAM = "Invalid Parquet Input Stream";
-
-    private static final String RELATIVE_PATH = "\\src\\main\\resources\\test-parquet.parquet";
-
-    @TempDir
-    private static java.nio.file.Path path;
-
-    private ParquetInputCodec createObjectUnderTest() {
-        return new ParquetInputCodec();
+    @BeforeAll
+    public static void setUpAll() throws IOException {
+        testDataFile = File.createTempFile(FILE_PREFIX + "-", FILE_SUFFIX);
+        testDataFile.deleteOnExit();
+        generateTestData(testDataFile);
     }
 
+    @SuppressWarnings("unchecked")
     @BeforeEach
-    void setup() {
-        parquetInputCodec = createObjectUnderTest();
+    public void setUp() throws IOException {
+        parquetInputCodec = new ParquetInputCodec();
+        mockConsumer = Mockito.mock(Consumer.class);
+        mockReader = Mockito.mock(ParquetReader.class);
     }
 
     @Test
-    void test_when_nullInputStream_then_throwsException() {
-        assertThrows(NullPointerException.class, () ->
-                parquetInputCodec.parse(null, eventConsumer));
+    public void test_when_nullInputStream_then_throwsException(){
+        parquetInputCodec = new ParquetInputCodec();
+        Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
+        assertThrows(NullPointerException.class,()->
+                parquetInputCodec.parse((InputStream) null, eventConsumer));
 
         verifyNoInteractions(eventConsumer);
     }
 
     @Test
-    void parse_with_null_Consumer_throws()  {
-        parquetInputCodec = createObjectUnderTest();
-
-        final InputStream inputStream = mock(InputStream.class);
-        assertThrows(NullPointerException.class, () ->
+    public void test_when_InputStreamNullConfig_then_throwsException(){
+        parquetInputCodec = new ParquetInputCodec();
+        InputStream inputStream = mock(InputStream.class);
+        assertThrows(NullPointerException.class,()->
                 parquetInputCodec.parse(inputStream, null));
+
         verifyNoInteractions(inputStream);
     }
 
     @Test
-    void parse_with_empty_InputStream_does_not_call_Consumer() throws IOException {
-        final ByteArrayInputStream emptyInputStream = new ByteArrayInputStream(new byte[]{});
-        createObjectUnderTest().parse(emptyInputStream, eventConsumer);
+    public void test_when_nullInputFile_then_throwsException(){
+        parquetInputCodec = new ParquetInputCodec();
+        Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
+        assertThrows(NullPointerException.class,()->
+                parquetInputCodec.parse((InputFile) null, eventConsumer));
+
         verifyNoInteractions(eventConsumer);
     }
 
     @Test
-    void parse_with_Invalid_InputStream_then_catches_exception() {
-        Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
-        Assertions.assertDoesNotThrow(()->
-                parquetInputCodec.parse(createInvalidParquetStream(),eventConsumer));
+    public void test_when_InputFileNullConfig_then_throwsException(){
+        parquetInputCodec = new ParquetInputCodec();
+        InputFile inputFile = mock(InputFile.class);
+        assertThrows(NullPointerException.class,()->
+                parquetInputCodec.parse(inputFile, null));
+
+        verifyNoInteractions(inputFile);
     }
 
-    @ParameterizedTest
-    @ValueSource(ints = 100)
-    void test_when_HappyCaseParquetInputStream_then_callsConsumerWithParsedEvents(final int numberOfRecords) throws Exception {
-        ParquetInputCodecTest.numberOfRecords =numberOfRecords;
-        InputStream inputStream = createRandomParquetStream(numberOfRecords);
+    @Test
+    public void parseInputStream_parsesCorrectly() throws IOException {
+        InputStream targetStream = new FileInputStream(testDataFile);
 
-        parquetInputCodec.parse(inputStream,eventConsumer);
+        parquetInputCodec.parse(targetStream, mockConsumer);
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
-        verify(eventConsumer, times(numberOfRecords)).accept(recordArgumentCaptor.capture());
+        verify(mockConsumer, times(10)).accept(recordArgumentCaptor.capture());
+
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
-        assertThat(actualRecords.size(), equalTo(numberOfRecords));
-        int index=0;
-        for (final Record<Event> actualRecord : actualRecords) {
+        assertRecordsCorrect(actualRecords);
+    }
 
-            assertThat(actualRecord, notNullValue());
-            assertThat(actualRecord.getData(), notNullValue());
-            assertThat(actualRecord.getData().getMetadata(), notNullValue());
-            assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
-            Object expectedMap=getExpectedOutput(index).toMap();
-            assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
-            index++;
+
+    @Test
+    public void parseInputFile_parsesCorrectly() throws IOException {
+        InputFile inputFile = new LocalInputFile(testDataFile);
+
+        parquetInputCodec.parse(inputFile, mockConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(mockConsumer, times(10)).accept(recordArgumentCaptor.capture());
+
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
+        assertRecordsCorrect(actualRecords);
+
+    }
+
+    private static void generateTestData(final File file) throws IOException {
+        Schema schema = new Schema.Parser().parse(SCHEMA_JSON);
+
+        ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(new LocalOutputFile(file))
+                .withSchema(schema)
+                .build();
+
+        for (int i = 0; i < 10; i++) {
+            GenericData.Record record = new GenericData.Record(schema);
+            record.put("id", "id" + i);
+            record.put("value", i);
+            record.put("alternateIds", Arrays.asList("altid1", "altid2"));
+            record.put("metadata", Collections.singletonMap("key", "value"));
+            record.put("lastUpdated", 1684509331977L);
+
+            writer.write(record);
         }
-
-        fileInputStream.close();
-        FileSystem fs = FileSystem.get(new Configuration());
-        String filepath = path.toUri().getPath();
-        fs.delete(new Path(filepath));
-        fs.close();
+        writer.close();
     }
 
-    private static InputStream createRandomParquetStream(int numberOfRecords) throws IOException {
+    private void assertRecordsCorrect(final List<Record<Event>> records) {
+        for (int i = 0; i < 10; i++) {
+            final Record<Event> record = records.get(i);
+            final String id = record.getData().get("id", String.class);
+            final int value = record.getData().get("value", Integer.class);
+            final List<String> alternateIds = (List<String>) record.getData().get("alternateIds", List.class);
+            final Map<String, String> metadata = (Map<String, String>) record.getData().get("metadata", Map.class);
+            final long lastUpdated = record.getData().get("lastUpdated", Long.class);
 
-        Files.deleteIfExists(java.nio.file.Path.of(FILE_NAME));
-        Schema schema = parseSchema();
-        Path path=new Path(Paths.get("").toAbsolutePath().toString()+RELATIVE_PATH);
-        fileInputStream = new FileInputStream(path.toString());
-        return fileInputStream;
-    }
+            assertThat(id, equalTo("id" + i));
+            assertThat(value, equalTo(i));
+            assertThat(alternateIds, containsInAnyOrder("altid1", "altid2"));
+            assertThat(metadata.get("key"), equalTo("value"));
+            assertThat(lastUpdated, equalTo(1684509331977L));
 
-    private static Schema parseSchema() {
-        return SchemaBuilder.record("Person")
-                .fields()
-                .name("name").type().stringType().noDefault()
-                .name("age").type().intType().noDefault()
-                .endRecord();
-    }
-
-    private static Event getExpectedOutput(int index) {
-        List<GenericRecord> recordList=generateRecords(parseSchema(),numberOfRecords);
-        GenericRecord record=recordList.get(index);
-        Schema schema=parseSchema();
-        final Map<String, Object> eventData = new HashMap<>();
-        for(Schema.Field field : schema.getFields()) {
-
-            eventData.put(field.name(), record.get(field.name()));
-
+            assertThat(record.getData().getMetadata(), notNullValue());
+            assertThat(record.getData().getMetadata().getEventType(), equalTo("event"));
         }
-        final Event event = JacksonLog.builder().withData(eventData).build();
-        return event;
-    }
-
-    private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
-
-        List<GenericRecord> recordList = new ArrayList<>();
-        Path path=new Path(Paths.get("").toAbsolutePath().toString()+RELATIVE_PATH);
-        try (ParquetFileReader parquetFileReader = new ParquetFileReader(HadoopInputFile.fromPath(path, new Configuration()), ParquetReadOptions.builder().build())) {
-            final ParquetMetadata footer = parquetFileReader.getFooter();
-            final MessageType fileSchema = createdParquetSchema(footer);
-            PageReadStore pages;
-            while ((pages = parquetFileReader.readNextRowGroup()) != null) {
-                final long rows = pages.getRowCount();
-                final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(fileSchema);
-                final RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(fileSchema));
-
-                for (int row = 0; row < rows; row++) {
-                    int fieldIndex = 0;
-                    final SimpleGroup simpleGroup = (SimpleGroup) recordReader.read();
-                    GenericRecord record = new GenericData.Record(schema);
-                    for (Type field : fileSchema.getFields()) {
-
-                        Object dataTypeValue = DataTypeChecker.checkDataType(field,simpleGroup,fieldIndex);
-                        record.put(field.getName(),dataTypeValue);
-
-                        fieldIndex++;
-
-                    }
-                    recordList.add(record);
-                }
-            }
-        } catch (Exception parquetException) {
-            //
-        }
-        return recordList;
-    }
-
-    private static InputStream createInvalidParquetStream() {
-        return  new ByteArrayInputStream(INVALID_PARQUET_INPUT_STREAM.getBytes());
-    }
-
-    private static MessageType createdParquetSchema(ParquetMetadata parquetMetadata) {
-        return parquetMetadata.getFileMetaData().getSchema();
     }
 }
+
