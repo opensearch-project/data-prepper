@@ -57,12 +57,11 @@ public class CidrExpressionFunction implements ExpressionFunction {
                 .map(blockStr -> new IPAddressString(blockStr).getAddress())
                 .collect(Collectors.toList());
 
-        boolean result = false;
         for (IPAddress cidrBlock : cidrBlocks) {
             if (cidrBlock.contains(address)) {
-                result = true;
+                return true;
             }
         }
-        return result;
+        return false;
     }
 }
