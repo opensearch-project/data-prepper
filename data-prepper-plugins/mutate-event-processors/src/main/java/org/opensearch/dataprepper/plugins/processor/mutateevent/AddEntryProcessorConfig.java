@@ -62,17 +62,7 @@ public class AddEntryProcessorConfig {
 
         @AssertTrue(message = "Either value or format or expression must be specified, and only one of them can be specified")
         public boolean hasValueOrFormatOrExpression() {
-            int numValuesConfigured = 0;
-            if (Objects.nonNull(value)) {
-                numValuesConfigured++;
-            }
-            if (Objects.nonNull(format)) {
-                numValuesConfigured++;
-            }
-            if (Objects.nonNull(valueExpression)) {
-                numValuesConfigured++;
-            }
-            return numValuesConfigured == 1;
+            return Objects.nonNull(value) ^ Objects.nonNull(format) ^ Objects.nonNull(valueExpression);
         }
 
         public Entry(final String key,
