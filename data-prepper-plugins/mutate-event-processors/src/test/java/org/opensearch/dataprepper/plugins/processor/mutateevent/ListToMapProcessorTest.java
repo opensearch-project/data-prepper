@@ -35,7 +35,7 @@ class ListToMapProcessorTest {
     private ListToMapProcessorConfig mockConfig;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     @Test
     public void testValueExtractionWithFlattenAndWriteToRoot() {
@@ -216,7 +216,7 @@ class ListToMapProcessorTest {
         final ListToMapProcessor processor = createObjectUnderTest();
         final Record<Event> testRecord = createTestRecord();
 
-        when(expressionEvaluator.evaluate(whenCondition, testRecord.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(whenCondition, testRecord.getData())).thenReturn(false);
         final List<Record<Event>> resultRecord = (List<Record<Event>>) processor.doExecute(Collections.singletonList(testRecord));
 
         assertThat(resultRecord.size(), is(1));

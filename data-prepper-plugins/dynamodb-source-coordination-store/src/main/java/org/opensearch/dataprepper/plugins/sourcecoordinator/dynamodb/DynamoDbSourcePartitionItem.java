@@ -9,12 +9,16 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbBean;
 import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondaryPartitionKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecondarySortKey;
+import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSortKey;
 
 import java.time.Instant;
 
 @DynamoDbBean
 public class DynamoDbSourcePartitionItem implements SourcePartitionStoreItem {
 
+    private String sourceIdentifier;
     private String sourcePartitionKey;
     private String partitionOwner;
     private Long version;
@@ -23,11 +27,29 @@ public class DynamoDbSourcePartitionItem implements SourcePartitionStoreItem {
     private Instant partitionOwnershipTimeout;
     private Instant reOpenAt;
     private Long closedCount;
+    private String sourceStatusCombinationKey;
+    private String partitionPriority;
 
     @Override
     @DynamoDbPartitionKey
+    public String getSourceIdentifier() {
+        return sourceIdentifier;
+    }
+
+    @Override
+    @DynamoDbSortKey
     public String getSourcePartitionKey() {
         return sourcePartitionKey;
+    }
+
+    @DynamoDbSecondaryPartitionKey(indexNames = "source-status")
+    public String getSourceStatusCombinationKey() {
+        return sourceStatusCombinationKey;
+    }
+
+    @DynamoDbSecondarySortKey(indexNames = "source-status")
+    public String getPartitionPriority() {
+        return partitionPriority;
     }
 
     @Override
@@ -80,7 +102,6 @@ public class DynamoDbSourcePartitionItem implements SourcePartitionStoreItem {
         this.partitionProgressState = partitionProgressState;
     }
 
-    // TODO: Make this a global secondary index to improve performance to scan for available partitions only on unassigned or closed partitions (can be optional setting on the store)
     public void setSourcePartitionStatus(final SourcePartitionStatus sourcePartitionStatus) {
         this.sourcePartitionStatus = sourcePartitionStatus;
     }
@@ -97,5 +118,15 @@ public class DynamoDbSourcePartitionItem implements SourcePartitionStoreItem {
         this.closedCount = closedCount;
     }
 
+    public void setSourceIdentifier(final String sourceIdentifier) {
+        this.sourceIdentifier = sourceIdentifier;
+    }
 
+    public void setSourceStatusCombinationKey(final String sourceStatusCombinationKey) {
+        this.sourceStatusCombinationKey = sourceStatusCombinationKey;
+    }
+
+    public void setPartitionPriority(final String partitionPriority) {
+        this.partitionPriority = partitionPriority;
+    }
 }

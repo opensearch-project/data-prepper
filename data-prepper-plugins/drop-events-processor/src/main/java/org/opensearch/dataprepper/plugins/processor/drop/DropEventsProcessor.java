@@ -29,7 +29,7 @@ public class DropEventsProcessor extends AbstractProcessor<Record<Event>, Record
     public DropEventsProcessor(
             final PluginMetrics pluginMetrics,
             final DropEventProcessorConfig dropEventProcessorConfig,
-            final ExpressionEvaluator<Boolean> expressionEvaluator
+            final ExpressionEvaluator expressionEvaluator
     ) {
         super(pluginMetrics);
 

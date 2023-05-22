@@ -34,10 +34,10 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
     private static final Logger LOG = LoggerFactory.getLogger(ListToMapProcessor.class);
     private final ListToMapProcessorConfig config;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public ListToMapProcessor(final PluginMetrics pluginMetrics, final ListToMapProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public ListToMapProcessor(final PluginMetrics pluginMetrics, final ListToMapProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.config = config;
         this.expressionEvaluator = expressionEvaluator;
@@ -48,7 +48,7 @@ public class ListToMapProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (Objects.nonNull(config.getListToMapWhen()) && !expressionEvaluator.evaluate(config.getListToMapWhen(), recordEvent)) {
+            if (Objects.nonNull(config.getListToMapWhen()) && !expressionEvaluator.evaluateConditional(config.getListToMapWhen(), recordEvent)) {
                 continue;
             }
 

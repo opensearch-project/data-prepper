@@ -21,7 +21,7 @@ import static org.mockito.Mockito.doReturn;
 @ExtendWith(MockitoExtension.class)
 class DropEventsWhenConditionBuilderTest {
     @Mock
-    private ExpressionEvaluator<Boolean> evaluator;
+    private ExpressionEvaluator evaluator;
     @Mock
     private DropEventProcessorConfig dropEventProcessorConfig;
 

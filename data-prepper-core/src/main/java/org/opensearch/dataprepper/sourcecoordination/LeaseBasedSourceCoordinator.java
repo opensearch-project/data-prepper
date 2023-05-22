@@ -36,6 +36,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
 
     private static final String hostName;
+    static final String PARTITION_TYPE = "PARTITION";
 
     private final SourceCoordinationConfig sourceCoordinationConfig;
     private final SourceCoordinationStore sourceCoordinationStore;
@@ -43,6 +44,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     private final Class<T> partitionProgressStateClass;
     private final String ownerId;
+    private final String sourceIdentifier;
     private boolean initialized = false;
 
     static {
@@ -57,12 +59,15 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                                        final SourceCoordinationStore sourceCoordinationStore,
                                        final SourceCoordinationConfig sourceCoordinationConfig,
                                        final PartitionManager<T> partitionManager,
-                                       final String ownerPrefix) {
+                                       final String sourceIdentifier) {
         this.sourceCoordinationConfig = sourceCoordinationConfig;
         this.sourceCoordinationStore = sourceCoordinationStore;
         this.partitionProgressStateClass = partitionProgressStateClass;
         this.partitionManager = partitionManager;
-        this.ownerId = ownerPrefix + ":" + hostName;
+        this.sourceIdentifier = Objects.nonNull(sourceCoordinationConfig.getPartitionPrefix()) ?
+                sourceCoordinationConfig.getPartitionPrefix() + "|" + sourceIdentifier + "|" + PARTITION_TYPE :
+                sourceIdentifier + "|" + PARTITION_TYPE;
+        this.ownerId = sourceIdentifier + ":" + hostName;
     }
 
     @Override
@@ -79,14 +84,14 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             return partitionManager.getActivePartition();
         }
 
-        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(ownerId, DEFAULT_LEASE_TIMEOUT);
+        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifier, ownerId, DEFAULT_LEASE_TIMEOUT);
 
         if (ownedPartitions.isEmpty()) {
             LOG.info("Partition owner {} did not acquire any partitions. Running partition creation supplier to create more partitions", ownerId);
 
             createPartitions(partitionsCreatorSupplier.get());
 
-            ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(ownerId, DEFAULT_LEASE_TIMEOUT);
+            ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifier, ownerId, DEFAULT_LEASE_TIMEOUT);
         }
 
         if (ownedPartitions.isEmpty()) {
@@ -108,13 +113,14 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     private void createPartitions(final List<PartitionIdentifier> partitionIdentifiers) {
         for (final PartitionIdentifier partitionIdentifier : partitionIdentifiers) {
-            final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey());
+            final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifier, partitionIdentifier.getPartitionKey());
 
             if (optionalPartitionItem.isPresent()) {
                 return;
             }
 
             final boolean partitionCreated = sourceCoordinationStore.tryCreatePartitionItem(
+                    sourceIdentifier,
                     partitionIdentifier.getPartitionKey(),
                     SourcePartitionStatus.UNASSIGNED,
                     0L,
@@ -196,7 +202,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
         final Optional<SourcePartition<T>> activePartition = partitionManager.getActivePartition();
         if (activePartition.isPresent()) {
-            final Optional<SourcePartitionStoreItem> optionalItem = sourceCoordinationStore.getSourcePartitionItem(activePartition.get().getPartitionKey());
+            final Optional<SourcePartitionStoreItem> optionalItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifier, activePartition.get().getPartitionKey());
             if (optionalItem.isPresent()) {
                 final SourcePartitionStoreItem updateItem = optionalItem.get();
                 validatePartitionOwnership(updateItem);
@@ -242,7 +248,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             );
         }
 
-        final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionKey);
+        final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifier, partitionKey);
 
         if (optionalPartitionItem.isEmpty()) {
             throw new PartitionNotFoundException(String.format("Unable to %s for the partition because partition key %s was not found by owner %s", action, partitionKey, ownerId));
