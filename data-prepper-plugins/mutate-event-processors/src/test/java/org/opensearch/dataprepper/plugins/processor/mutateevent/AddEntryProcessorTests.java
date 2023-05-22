@@ -460,6 +460,16 @@ public class AddEntryProcessorTests {
     }
 
     @Test
+    public void testOnlyOneTypeOfValueIsSupportedWithValueAndExpressionAndFormat() {
+        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", "value", "/newFormat", "length(/message)", false, null));
+    }
+
+    @Test
+    public void testWithAllValuesNull() {
+        assertThrows(RuntimeException.class, () -> createEntry("newKey", "newMetadataKey", null, null, null, false, null));
+    }
+
+    @Test
     public void testValueExpressionWithArithmeticExpression() {
         String valueExpression = "/number-key";
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, null)));

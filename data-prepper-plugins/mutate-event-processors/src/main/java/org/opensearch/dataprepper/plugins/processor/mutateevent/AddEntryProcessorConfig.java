@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 public class AddEntryProcessorConfig {
     public static class Entry {
@@ -62,7 +63,7 @@ public class AddEntryProcessorConfig {
 
         @AssertTrue(message = "Either value or format or expression must be specified, and only one of them can be specified")
         public boolean hasValueOrFormatOrExpression() {
-            return Objects.nonNull(value) ^ Objects.nonNull(format) ^ Objects.nonNull(valueExpression);
+            return Stream.of(value, format, valueExpression).filter(n -> n!=null).count() == 1;
         }
 
         public Entry(final String key,
