@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import org.apache.commons.compress.utils.CountingInputStream;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
@@ -15,11 +14,8 @@ import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.HttpStatusCode;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
@@ -33,7 +29,6 @@ import java.util.function.BiConsumer;
  */
 class S3ObjectWorker implements S3ObjectHandler {
     private static final Logger LOG = LoggerFactory.getLogger(S3ObjectWorker.class);
-
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
     private final CompressionEngine compressionEngine;
@@ -57,17 +52,10 @@ class S3ObjectWorker implements S3ObjectHandler {
     }
 
     public void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
-        final GetObjectRequest.Builder getObjectBuilder = GetObjectRequest.builder()
-                .bucket(s3ObjectReference.getBucketName())
-                .key(s3ObjectReference.getKey());
-        bucketOwnerProvider.getBucketOwner(s3ObjectReference.getBucketName()).ifPresent(getObjectBuilder::expectedBucketOwner);
-        final GetObjectRequest getObjectRequest = getObjectBuilder
-                .build();
-
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
         try {
             s3ObjectPluginMetrics.getS3ObjectReadTimer().recordCallable((Callable<Void>) () -> {
-                doParseObject(acknowledgementSet, s3ObjectReference, getObjectRequest, bufferAccumulator);
+                doParseObject(acknowledgementSet, s3ObjectReference, bufferAccumulator);
                 return null;
             });
         } catch (final IOException | RuntimeException e) {
@@ -80,16 +68,18 @@ class S3ObjectWorker implements S3ObjectHandler {
         s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
     }
 
-    private void doParseObject(final AcknowledgementSet acknowledgementSet, final S3ObjectReference s3ObjectReference, final GetObjectRequest getObjectRequest, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
+    private void doParseObject(final AcknowledgementSet acknowledgementSet, final S3ObjectReference s3ObjectReference, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
         final long s3ObjectSize;
         final long totalBytesRead;
 
         LOG.info("Read S3 object: {}", s3ObjectReference);
 
-        try (final ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
-             final CountingInputStream inputStream = new CountingInputStream(compressionEngine.createInputStream(getObjectRequest.key(), responseInputStream))) {
-            s3ObjectSize = responseInputStream.response().contentLength();
-            codec.parse(inputStream, record -> {
+        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference);
+
+        try {
+            s3ObjectSize = inputFile.getLength();
+
+            codec.parse(inputFile, record -> {
                 try {
                     eventConsumer.accept(record.getData(), s3ObjectReference);
                     bufferAccumulator.add(record);
@@ -100,7 +90,7 @@ class S3ObjectWorker implements S3ObjectHandler {
                     LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
             });
-            totalBytesRead = inputStream.getBytesRead();
+            totalBytesRead = inputFile.getBytesCount();
         } catch (final Exception ex) {
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
             if (ex instanceof S3Exception) {

@@ -42,7 +42,7 @@ public class S3ObjectRequest {
 
     private S3ObjectRequest(Builder builder) {
         this.buffer = builder.buffer;
-        this.numberOfRecordsToAccumulate =builder.numberOfRecordsToAccumulate;
+        this.numberOfRecordsToAccumulate = builder.numberOfRecordsToAccumulate;
 
         this.bufferTimeout = builder.bufferTimeout;
         this.s3ObjectPluginMetrics = builder.s3ObjectPluginMetrics;

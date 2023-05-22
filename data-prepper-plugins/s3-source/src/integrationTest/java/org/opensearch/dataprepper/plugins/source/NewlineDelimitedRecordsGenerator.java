@@ -5,11 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import com.fasterxml.jackson.core.JsonEncoding;
+import com.fasterxml.jackson.core.JsonGenerator;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputCodec;
 import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputConfig;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
@@ -29,11 +34,13 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MMM/yyyy:hh:mm:ss");
 
     @Override
-    public void write(final int numberOfRecords, final OutputStream outputStream) {
-        try (final PrintWriter printWriter = new PrintWriter(outputStream)) {
+    public void write(final File file, int numberOfRecords) {
+        try (final PrintWriter printWriter = new PrintWriter(file)) {
             for (int i = 0; i < numberOfRecords; i++) {
                 writeLine(printWriter);
             }
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
         }
     }
 

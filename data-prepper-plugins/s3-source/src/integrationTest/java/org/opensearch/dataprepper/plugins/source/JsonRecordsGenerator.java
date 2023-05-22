@@ -12,8 +12,11 @@ import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -31,9 +34,8 @@ class JsonRecordsGenerator implements RecordsGenerator {
     private final JsonFactory jsonFactory = new JsonFactory();
 
     @Override
-    public void write(final int numberOfRecords, final OutputStream outputStream) throws IOException {
-        try (final JsonGenerator jsonGenerator = jsonFactory
-                .createGenerator(outputStream, JsonEncoding.UTF8)) {
+    public void write(final File file, int numberOfRecords) {
+        try (final JsonGenerator jsonGenerator = jsonFactory.createGenerator(file, JsonEncoding.UTF8)) {
 
             jsonGenerator.writeStartObject();
             jsonGenerator.writeArrayFieldStart("Records");
@@ -44,6 +46,8 @@ class JsonRecordsGenerator implements RecordsGenerator {
 
             jsonGenerator.writeEndArray();
             jsonGenerator.writeEndObject();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
