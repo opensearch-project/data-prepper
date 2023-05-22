@@ -18,11 +18,15 @@ public class AddEntryProcessorConfig {
     public static class Entry {
         private String key;
 
+        @JsonProperty("metadata_key")
         private String metadataKey;
 
         private Object value;
 
         private String format;
+
+        @JsonProperty("value_expression")
+        private String valueExpression;
 
         @JsonProperty("add_when")
         private String addWhen;
@@ -46,21 +50,36 @@ public class AddEntryProcessorConfig {
             return format;
         }
 
+        public String getValueExpression() {
+            return valueExpression;
+        }
+
         public boolean getOverwriteIfKeyExists() {
             return overwriteIfKeyExists;
         }
 
         public String getAddWhen() { return addWhen; }
 
-        @AssertTrue(message = "Either value or format must be specified")
-        public boolean hasValueOrFormat() {
-            return Objects.nonNull(value) || Objects.nonNull(format);
+        @AssertTrue(message = "Either value or format or expression must be specified, and only one of them can be specified")
+        public boolean hasValueOrFormatOrExpression() {
+            int numValuesConfigured = 0;
+            if (Objects.nonNull(value)) {
+                numValuesConfigured++;
+            }
+            if (Objects.nonNull(format)) {
+                numValuesConfigured++;
+            }
+            if (Objects.nonNull(valueExpression)) {
+                numValuesConfigured++;
+            }
+            return numValuesConfigured == 1;
         }
 
         public Entry(final String key,
                      final String metadataKey,
                      final Object value,
                      final String format,
+                     final String valueExpression,
                      final boolean overwriteIfKeyExists,
                      final String addWhen)
         {
@@ -74,6 +93,7 @@ public class AddEntryProcessorConfig {
             this.metadataKey = metadataKey;
             this.value = value;
             this.format = format;
+            this.valueExpression = valueExpression;
             this.overwriteIfKeyExists = overwriteIfKeyExists;
             this.addWhen = addWhen;
         }

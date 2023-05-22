@@ -52,7 +52,9 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                     final String key = entry.getKey();
                     final String metadataKey = entry.getMetadataKey();
                     Object value;
-                    if (!Objects.isNull(entry.getFormat())) {
+                    if (!Objects.isNull(entry.getValueExpression())) {
+                        value = expressionEvaluator.evaluate(entry.getValueExpression(), recordEvent);
+                    } else if (!Objects.isNull(entry.getFormat())) {
                         value = recordEvent.formatString(entry.getFormat());
                     } else {
                         value = entry.getValue();
@@ -69,8 +71,8 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                         }
                     }
                 } catch (Exception e) {
-                    LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], metadataKey [{}], format [{}], value [{}]",
-                            recordEvent, entry.getKey(), entry.getMetadataKey(), entry.getFormat(), entry.getValue(), e);
+                    LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]",
+                            recordEvent, entry.getKey(), entry.getMetadataKey(), entry.getValueExpression(), entry.getFormat(), entry.getValue(), e);
                 }
             }
         }
