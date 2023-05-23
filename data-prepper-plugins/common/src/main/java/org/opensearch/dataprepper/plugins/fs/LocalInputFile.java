@@ -1,14 +1,16 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.fs;
+
+import org.apache.parquet.io.SeekableInputStream;
+import org.opensearch.dataprepper.model.io.InputFile;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.nio.file.Path;
-import java.util.Random;
-
-import org.apache.parquet.io.InputFile;
-import org.apache.parquet.io.SeekableInputStream;
 
 public class LocalInputFile implements InputFile {
     /**
@@ -19,15 +21,15 @@ public class LocalInputFile implements InputFile {
     /**
      * Constructor.
      *
-     * @param path the input file path.
+     * @param file the input file
      * @throws FileNotFoundException when file cannot be found.
      */
-    public LocalInputFile(final File file) throws FileNotFoundException {
+    public LocalInputFile(final File file)  {
         this.file = file;
     }
 
     @Override
-    public long getLength() throws IOException {
+    public long getLength()  {
         return file.length();
     }
 

@@ -1,7 +1,11 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.fs;
 
-import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
+import org.opensearch.dataprepper.model.io.OutputFile;
 
 import java.io.File;
 import java.io.FileNotFoundException;

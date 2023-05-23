@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.codec.newline;
 
-import org.apache.parquet.io.InputFile;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 

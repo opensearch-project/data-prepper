@@ -12,9 +12,9 @@ import org.apache.avro.generic.GenericRecord;
 
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.util.Utf8;
-import org.apache.parquet.io.InputFile;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;

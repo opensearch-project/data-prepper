@@ -5,10 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.codec.newline;
 
-import org.apache.parquet.io.InputFile;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;

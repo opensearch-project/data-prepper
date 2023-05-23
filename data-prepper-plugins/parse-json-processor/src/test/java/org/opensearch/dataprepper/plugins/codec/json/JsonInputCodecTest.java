@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.parquet.io.InputFile;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -19,6 +18,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 

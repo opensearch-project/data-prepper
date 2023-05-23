@@ -6,8 +6,8 @@
 package org.opensearch.dataprepper.model.codec;
 
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
-import org.apache.parquet.io.InputFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.function.Consumer;

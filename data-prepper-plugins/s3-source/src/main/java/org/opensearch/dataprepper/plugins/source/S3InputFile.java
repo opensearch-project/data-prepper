@@ -1,7 +1,7 @@
 package org.opensearch.dataprepper.plugins.source;
 
-import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
+import org.opensearch.dataprepper.model.io.InputFile;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
