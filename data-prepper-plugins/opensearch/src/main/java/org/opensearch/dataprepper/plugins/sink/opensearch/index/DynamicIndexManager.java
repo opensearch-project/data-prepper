@@ -27,14 +27,17 @@ public class DynamicIndexManager extends AbstractIndexManager {
     protected ClusterSettingsParser clusterSettingsParser;
     final IndexType indexType;
     private final IndexManagerFactory indexManagerFactory;
+    private final TemplateStrategy templateStrategy;
 
     public DynamicIndexManager(final IndexType indexType,
                                final OpenSearchClient openSearchClient,
                                final RestHighLevelClient restHighLevelClient,
                                final OpenSearchSinkConfiguration openSearchSinkConfiguration,
                                final ClusterSettingsParser clusterSettingsParser,
+                               final TemplateStrategy templateStrategy,
                                final IndexManagerFactory indexManagerFactory){
-        super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, "");
+        super(restHighLevelClient, openSearchClient, openSearchSinkConfiguration, clusterSettingsParser, templateStrategy, "");
+        this.templateStrategy = templateStrategy;
         checkNotNull(restHighLevelClient);
         checkNotNull(openSearchSinkConfiguration);
         checkNotNull(clusterSettingsParser);
@@ -67,7 +70,7 @@ public class DynamicIndexManager extends AbstractIndexManager {
         IndexManager indexManager = indexManagerCache.getIfPresent(fullIndexAlias);
         if (indexManager == null) {
             indexManager = indexManagerFactory.getIndexManager(
-                    indexType, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, fullIndexAlias);
+                    indexType, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, fullIndexAlias);
             indexManagerCache.put(fullIndexAlias, indexManager);
             indexManager.setupIndex();
         }

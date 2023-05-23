@@ -45,6 +45,8 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,8 +163,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
     openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient);
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
+    final TemplateStrategy templateStrategy = TemplateType.V1.createTemplateStrategy(openSearchClient);
     indexManager = indexManagerFactory.getIndexManager(indexType, openSearchClient, restHighLevelClient,
-            openSearchSinkConfig, configuredIndexAlias);
+            openSearchSinkConfig, templateStrategy, configuredIndexAlias);
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
     if (dlqFile != null) {
       dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
