@@ -18,15 +18,16 @@ import java.util.stream.Collectors;
 @Named
 public class CidrExpressionFunction implements ExpressionFunction {
 
+    private static final String FUNCTION_NAME = "cidrContains";
     @Override
     public String getFunctionName() {
-        return "isIPinCIDR";
+        return FUNCTION_NAME;
     }
 
     @Override
     public Object evaluate(final List<Object> args, Event event, Function<Object, Object> convertLiteralType) {
         if (args.size() <= 1) {
-            throw new IllegalArgumentException("isIpInCidr() takes at least two arguments");
+            throw new IllegalArgumentException(FUNCTION_NAME + "() takes at least two arguments");
         }
 
         final List<String> argStrings;
@@ -35,7 +36,8 @@ public class CidrExpressionFunction implements ExpressionFunction {
                     .map(arg -> ((String)arg).trim())
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            throw new IllegalArgumentException("Arguments in isIpInCidr() function should be of Json Pointer type or String type");
+            throw new IllegalArgumentException(
+                    "Arguments in " + FUNCTION_NAME + "() function should be of Json Pointer type or String type");
         }
 
         final String ipAddressInEvent = event.get(argStrings.get(0), String.class);
