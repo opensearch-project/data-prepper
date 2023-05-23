@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.io.InputFile;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 
 public class LocalInputFile implements InputFile {
     /**
@@ -35,6 +34,6 @@ public class LocalInputFile implements InputFile {
 
     @Override
     public SeekableInputStream newStream() throws IOException {
-        return new LocalInputStream(new RandomAccessFile(file, "r"));
+        return LocalInputStream.create(file);
     }
 }

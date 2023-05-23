@@ -2,28 +2,31 @@ package org.opensearch.dataprepper.plugins.fs;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.fs.LocalInputStream;
 
 import java.io.EOFException;
-import java.io.RandomAccessFile;
+import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class LocalInputStreamTest {
 
-    private RandomAccessFile mockInput;
+    private File testDataFile;
     private LocalInputStream localInputStream;
 
     @BeforeEach
     public void setup() throws Exception {
-        mockInput = mock(RandomAccessFile.class);
-        localInputStream = new LocalInputStream(mockInput);
+        testDataFile = File.createTempFile( "LocalFilePositionOutputStreamTest-", "txt");
+        testDataFile.deleteOnExit();
+
+        final String inputString = "a".repeat(100);
+        final byte[] inputBytes = inputString.getBytes(StandardCharsets.UTF_8);
+        Files.write(testDataFile.toPath(), inputBytes);
+
+        localInputStream = LocalInputStream.create(testDataFile);
     }
 
     @Test
@@ -33,132 +36,100 @@ public class LocalInputStreamTest {
         int length = 5;
         localInputStream.read(buffer, offset, length);
 
-        verify(mockInput, times(1)).read(buffer, offset, length);
+        final String actualContent = new String(buffer, StandardCharsets.UTF_8);
+
+        assertEquals("aaaaa", actualContent);
     }
 
     @Test
     public void skip_skipsTheGivenAmountAndReturnsTheDifferenceInPosition() throws Exception {
-        when(mockInput.getFilePointer()).thenReturn(5L).thenReturn(10L);
-        when(mockInput.length()).thenReturn(20L);
-
         assertEquals(5, localInputStream.skip(5));
-
-        verify(mockInput, times(2)).getFilePointer();
-        verify(mockInput, times(1)).length();
-        verify(mockInput, times(1)).seek(10L);
     }
 
     @Test
     public void mark_setsMarkPos() throws Exception {
-        when(mockInput.getFilePointer()).thenReturn(10L);
+        assertEquals(10, localInputStream.skip(10));
         localInputStream.mark(0);
         assertEquals(10L, localInputStream.getMarkedPos());
     }
 
     @Test
     public void reset_resetsToMarkPos() throws Exception {
-        when(mockInput.getFilePointer()).thenReturn(10L);
-        localInputStream.mark(100);
+        assertEquals(10, localInputStream.skip(10));
+        localInputStream.mark(0);
+
         localInputStream.reset();
-        verify(mockInput, times(1)).seek(10L);
+        assertEquals(10, localInputStream.getPos());
     }
 
     @Test
     public void getPos_returnsCurrentPos() throws Exception {
-        when(mockInput.getFilePointer()).thenReturn(10L);
-        assertEquals(10L, localInputStream.getPos());
+        assertEquals(10, localInputStream.skip(10));
+        assertEquals(10, localInputStream.getPos());
     }
 
     @Test
     public void seek_changesPosition() throws Exception {
         localInputStream.seek(10L);
-        verify(mockInput, times(1)).seek(10L);
+        assertEquals(10, localInputStream.getPos());
     }
 
     @Test
     public void readFully_bytes_callsInputReadFully() throws Exception {
         byte[] buffer = new byte[5];
         localInputStream.readFully(buffer);
-        verify(mockInput, times(1)).readFully(buffer);
+
+        assertEquals("aaaaa", new String(buffer, StandardCharsets.UTF_8));
     }
 
     @Test
     public void read_singleByte_callsInputRead() throws Exception {
-        localInputStream.read();
-        verify(mockInput, times(1)).read();
+        int byteRead = localInputStream.read();
+        byte b = (byte) (byteRead & 0xFF);
+
+        assertEquals("a", new String(new byte[]{ b }, StandardCharsets.UTF_8));
+
     }
 
     @Test
     public void read_byteArray_callsInputRead() throws Exception {
         byte[] buffer = new byte[5];
         localInputStream.read(buffer);
-        verify(mockInput, times(1)).read(buffer);
+
+        assertEquals("aaaaa", new String(buffer, StandardCharsets.UTF_8));
     }
 
     @Test
     public void readFully_bytes_offset_length_callsInputReadFully() throws Exception {
         byte[] buffer = new byte[5];
         localInputStream.readFully(buffer, 0, 5);
-        verify(mockInput, times(1)).readFully(buffer, 0, 5);
+
+        assertEquals("aaaaa", new String(buffer, StandardCharsets.UTF_8));
     }
 
     @Test
     public void readDirectBuffer_readsIntoByteBuffer() throws Exception {
-        ByteBuffer buffer = ByteBuffer.allocate(8192);
-        byte[] page = new byte[10];
-        byte[] data = "Some Data".getBytes();
-        System.arraycopy(data, 0, page, 0, data.length);
-
-        when(mockInput.read(page, 0, Math.min(buffer.remaining(), page.length)))
-                .thenAnswer(invocation -> {
-                    byte[] output = invocation.getArgument(0);
-                    int len = Math.min(output.length, data.length);
-                    System.arraycopy(data, 0, output, 0, len);
-                    return len;
-                });
-
+        ByteBuffer buffer = ByteBuffer.allocate(100);
         localInputStream.read(buffer);
-
         buffer.flip();
-        assertEquals("Some Data", new String(buffer.array(), 0, buffer.limit()));
+
+        final String expectedContent = "a".repeat(100);
+        assertEquals(expectedContent, new String(buffer.array(), StandardCharsets.UTF_8));
     }
 
     @Test
     public void readFullyDirectBuffer_readsFullyIntoByteBuffer() throws Exception {
-        ByteBuffer buffer = ByteBuffer.allocate(8192);
-        byte[] page = new byte[10];
-        byte[] data = "Some Data".getBytes();
-        System.arraycopy(data, 0, page, 0, data.length);
-
-        when(mockInput.read(page, 0, Math.min(buffer.remaining(), page.length)))
-                .thenAnswer(invocation -> {
-                    byte[] output = invocation.getArgument(0);
-                    int len = Math.min(output.length, data.length);
-                    System.arraycopy(data, 0, output, 0, len);
-                    return len;
-                });
-
+        ByteBuffer buffer = ByteBuffer.allocate(100);
         localInputStream.readFully(buffer);
-
         buffer.flip();
-        assertEquals("Some Data", new String(buffer.array(), 0, buffer.limit()));
+
+        final String expectedContent = "a".repeat(100);
+        assertEquals(expectedContent, new String(buffer.array(), StandardCharsets.UTF_8));
     }
 
     @Test
     public void readFullyDirectBuffer_eofBeforeFullRead_throwsEOFException() throws Exception {
         ByteBuffer buffer = ByteBuffer.allocate(8192);
-        byte[] page = new byte[10];
-        byte[] data = "Short".getBytes();
-        System.arraycopy(data, 0, page, 0, data.length);
-
-        when(mockInput.read(page, 0, Math.min(buffer.remaining(), page.length)))
-                .thenAnswer(invocation -> {
-                    byte[] output = invocation.getArgument(0);
-                    int len = Math.min(output.length, data.length);
-                    System.arraycopy(data, 0, output, 0, len);
-                    return len;
-                })
-                .thenReturn(-1);
 
         assertThrows(EOFException.class, () -> localInputStream.readFully(buffer));
     }

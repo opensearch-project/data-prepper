@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.fs;
 import org.apache.parquet.io.SeekableInputStream;
 
 import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -20,8 +21,12 @@ public class LocalInputStream extends SeekableInputStream {
     private long markPos = 0;
 
 
-    public LocalInputStream(final RandomAccessFile input) {
+    LocalInputStream(final RandomAccessFile input) {
         this.input = input;
+    }
+
+    public static LocalInputStream create(final File file) throws IOException {
+        return new LocalInputStream(new RandomAccessFile(file, "r"));
     }
 
     @Override

@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.model.io.OutputFile;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 
 public class LocalOutputFile implements OutputFile {
 
@@ -30,7 +29,7 @@ public class LocalOutputFile implements OutputFile {
         }
 
         try {
-            return new LocalFilePositionOutputStream(new RandomAccessFile(file, "rw"));
+            return LocalFilePositionOutputStream.create(file);
         } catch (FileNotFoundException e) {
             throw new IOException("Failed to create file: " + file.toString(), e);
         }

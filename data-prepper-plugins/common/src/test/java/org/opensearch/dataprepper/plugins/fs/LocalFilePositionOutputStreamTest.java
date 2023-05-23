@@ -1,74 +1,98 @@
 package org.opensearch.dataprepper.plugins.fs;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.fs.LocalFilePositionOutputStream;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 public class LocalFilePositionOutputStreamTest {
 
-    private RandomAccessFile mockStream;
+    private File testDataFile;
     private LocalFilePositionOutputStream outputStream;
 
     @BeforeEach
     public void setup() throws IOException {
-        mockStream = mock(RandomAccessFile.class);
-        outputStream = new LocalFilePositionOutputStream(mockStream);
+        testDataFile = File.createTempFile( "LocalFilePositionOutputStreamTest-", "txt");
+        testDataFile.deleteOnExit();
+        outputStream = LocalFilePositionOutputStream.create(testDataFile);
+    }
+
+    @AfterEach
+    public void tearDown() throws IOException {
+        outputStream.close();
     }
 
     @Test
     public void getPos_notClosed_returnsFilePointer() throws IOException {
-        long mockPos = 100L;
-        when(mockStream.getFilePointer()).thenReturn(mockPos);
+        final String inputString = "a".repeat(100);
+        final byte[] inputBytes = inputString.getBytes(StandardCharsets.UTF_8);
 
-        assertEquals(mockPos, outputStream.getPos());
-        verify(mockStream, times(1)).getFilePointer();
+        outputStream.write(inputBytes);
+
+        assertEquals(100, outputStream.getPos());
     }
 
     @Test
     public void getPos_closed_returnsFileLength() throws IOException {
-        long mockPos = 200L;
-        when(mockStream.length()).thenReturn(mockPos);
+        final String inputString = "a".repeat(100);
+        final byte[] inputBytes = inputString.getBytes(StandardCharsets.UTF_8);
+
+        outputStream.write(inputBytes);
         outputStream.close();
 
-        assertEquals(mockPos, outputStream.getPos());
-        verify(mockStream, times(1)).length();
-        verify(mockStream, times(1)).close();
+        assertEquals(100, outputStream.getPos());
     }
 
     @Test
     public void write_bytes_passesThroughToStream() throws IOException {
-        byte[] data = new byte[] { 0, 1, 2, 3 };
-        outputStream.write(data);
+        final String inputString = "a".repeat(100);
+        final byte[] inputBytes = inputString.getBytes(StandardCharsets.UTF_8);
 
-        verify(mockStream, times(1)).write(data);
+        outputStream.write(inputBytes);
+        outputStream.close();
+
+        String actualContent = Files.readString(testDataFile.toPath());
+
+        assertEquals(inputString, actualContent);
     }
 
     @Test
     public void write_bytesOffsetLength_passesThroughToStream() throws IOException {
-        byte[] data = new byte[] { 0, 1, 2, 3 };
-        int offset = 1;
-        int length = 2;
-        outputStream.write(data, offset, length);
+        final String inputString = "a".repeat(100);
+        final byte[] inputBytes = inputString.getBytes(StandardCharsets.UTF_8);
+        final int offset = 1;
+        final int length = 2;
 
-        verify(mockStream, times(1)).write(data, offset, length);
+        outputStream.write(inputBytes, offset, length);
+
+        outputStream.close();
+
+        final String actualContent = Files.readString(testDataFile.toPath());
+
+        assertEquals("aa", actualContent);
     }
 
     @Test
     public void write_int_passesThroughToStream() throws IOException {
         int data = 123;
+
         outputStream.write(data);
 
-        verify(mockStream, times(1)).write(data);
+        outputStream.close();
+
+        final String stringContent = Files.readString(testDataFile.toPath());
+        final byte[] bytesContent = stringContent.getBytes(StandardCharsets.UTF_8);
+        int actualContent = bytesContent[0] & 0xFF;
+
+
+        assertEquals(data, actualContent);
     }
 
     @Test
@@ -76,6 +100,5 @@ public class LocalFilePositionOutputStreamTest {
         outputStream.close();
 
         assertTrue(outputStream.isClosed());
-        verify(mockStream, times(1)).close();
     }
 }

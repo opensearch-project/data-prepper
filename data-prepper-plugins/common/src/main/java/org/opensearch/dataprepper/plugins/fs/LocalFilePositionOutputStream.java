@@ -6,49 +6,58 @@ package org.opensearch.dataprepper.plugins.fs;
 
 import org.apache.parquet.io.PositionOutputStream;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
 public class LocalFilePositionOutputStream extends PositionOutputStream {
 
-    private final RandomAccessFile stream;
-    private boolean isClosed = false;
+    private final File file;
+    private final RandomAccessFile fileStream;
+    private boolean closed = false;
 
-    public LocalFilePositionOutputStream(RandomAccessFile stream) {
-        this.stream = stream;
+    LocalFilePositionOutputStream(final File file, final RandomAccessFile fileStream) {
+        this.file = file;
+        this.fileStream = fileStream;
+    }
+
+    public static LocalFilePositionOutputStream create(final File file) throws IOException {
+        return new LocalFilePositionOutputStream(file, new RandomAccessFile(file, "rw"));
     }
 
     @Override
     public long getPos() throws IOException {
-        if (isClosed) {
-            return stream.length();
+        if (this.closed) {
+            return file.length();
         }
-        return stream.getFilePointer();
+        return fileStream.getFilePointer();
     }
 
     @Override
     public void write(byte[] b) throws IOException {
-        stream.write(b);
+        fileStream.write(b);
     }
 
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        stream.write(b, off, len);
+        fileStream.write(b, off, len);
     }
 
     @Override
     public void write(int b) throws IOException {
-        stream.write(b);
+        fileStream.write(b);
     }
 
     @Override
     public void close() throws IOException {
-        stream.close();
-        this.isClosed = true;
+        if (!this.closed) {
+            fileStream.close();
+            this.closed = true;
+        }
     }
 
     public boolean isClosed() {
-        return this.isClosed;
+        return this.closed;
     }
 
 }
