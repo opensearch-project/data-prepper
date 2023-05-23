@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.opensearch.s3;
+package org.opensearch.dataprepper.plugins.file;
 
 import org.hamcrest.core.IsInstanceOf;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.file.s3.S3ClientProvider;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.UUID;

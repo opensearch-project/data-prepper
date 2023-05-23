@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.opensearch.s3;
+package org.opensearch.dataprepper.plugins.file;
 
 public enum FileType {
-    JSON
+    JSON,
+    TXT
 }

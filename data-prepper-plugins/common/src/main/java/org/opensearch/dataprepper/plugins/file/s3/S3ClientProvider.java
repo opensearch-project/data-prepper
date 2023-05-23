@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.opensearch.s3;
+package org.opensearch.dataprepper.plugins.file.s3;
 
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -20,6 +20,7 @@ import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.UUID;
 
 public class S3ClientProvider {
@@ -32,8 +33,9 @@ public class S3ClientProvider {
     private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
 
     public S3ClientProvider(final String awsRegion,
-                          final String awsStsRoleArn) {
-        this.awsRegion = awsRegion;
+                            final String awsStsRoleArn) {
+
+        this.awsRegion = Objects.requireNonNull(awsRegion);
         this.awsStsRoleArn = awsStsRoleArn;
     }
 
@@ -62,7 +64,7 @@ public class S3ClientProvider {
 
     private AssumeRoleRequest getAssumeRoleRequest(final String awsStsRoleArn) {
         return AssumeRoleRequest.builder()
-                .roleSessionName("OpenSearch-Sink-S3" + UUID.randomUUID())
+                .roleSessionName("S3-File-Reader" + UUID.randomUUID())
                 .roleArn(awsStsRoleArn)
                 .build();
     }

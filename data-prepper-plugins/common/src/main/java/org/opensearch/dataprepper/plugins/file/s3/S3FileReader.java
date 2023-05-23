@@ -3,9 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.opensearch.s3;
+package org.opensearch.dataprepper.plugins.file.s3;
 
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.dataprepper.plugins.file.FileReader;
+import org.opensearch.dataprepper.plugins.file.FileType;
+import org.opensearch.dataprepper.plugins.file.exceptions.InvalidS3URIException;
+import org.opensearch.dataprepper.plugins.file.exceptions.S3ObjectTooLargeException;
+import org.opensearch.dataprepper.plugins.file.exceptions.UnsupportedFileTypeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.ResponseInputStream;

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.opensearch.s3;
+package org.opensearch.dataprepper.plugins.file;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Test;
@@ -11,6 +11,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.file.exceptions.InvalidS3URIException;
+import org.opensearch.dataprepper.plugins.file.exceptions.S3ObjectTooLargeException;
+import org.opensearch.dataprepper.plugins.file.exceptions.UnsupportedFileTypeException;
+import org.opensearch.dataprepper.plugins.file.s3.S3FileReader;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -21,6 +25,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+import static org.apache.commons.io.FileUtils.ONE_MB;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,8 +34,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class S3FileReaderTest {
-    private static final Long CONTENT_LENGTH_EXCEEDING_THRESHOLD = 8 * S3FileReader.ONE_MB;
-    private static final Long CONTENT_LENGTH_SMALLER_THAN_THRESHOLD = 3 * S3FileReader.ONE_MB;
+    private static final Long CONTENT_LENGTH_EXCEEDING_THRESHOLD = 8 * ONE_MB;
+    private static final Long CONTENT_LENGTH_SMALLER_THAN_THRESHOLD = 3 * ONE_MB;
 
     @Mock
     private S3Client s3Client;

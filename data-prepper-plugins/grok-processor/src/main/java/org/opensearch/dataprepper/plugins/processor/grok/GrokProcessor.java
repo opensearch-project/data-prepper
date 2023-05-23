@@ -20,8 +20,13 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.file.s3.S3ClientProvider;
+import org.opensearch.dataprepper.plugins.file.s3.S3FileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -179,6 +184,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         registerBuiltInDataPrepperGrokPatterns();
         grokCompiler.register(grokProcessorConfig.getPatternDefinitions());
         registerPatternsDirectories();
+        registerPatternsFilesFromS3();
     }
 
     private void registerBuiltInDataPrepperGrokPatterns() {
@@ -207,6 +213,30 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 LOG.error("Error getting directory {}", directory, e);
             }
         }
+    }
+
+    private void registerPatternsFilesFromS3() {
+        S3FileReader s3FileReader = null;
+        if (grokProcessorConfig.getS3PatternsFiles() != null && !grokProcessorConfig.getS3PatternsFiles().isEmpty()) {
+            final S3ClientProvider s3ClientProvider = new S3ClientProvider(
+                    grokProcessorConfig.getS3AwsRegion(),
+                    grokProcessorConfig.getS3AwsStsRoleArn()
+            );
+            final S3Client s3Client = s3ClientProvider.buildS3Client();
+            s3FileReader = new S3FileReader(s3Client);
+        }
+
+        if (s3FileReader != null) {
+            for (final String filePath : grokProcessorConfig.getS3PatternsFiles()) {
+                final ResponseInputStream<GetObjectResponse> responseInputStream = s3FileReader.readFile(filePath);
+                try {
+                    grokCompiler.register(responseInputStream);
+                } catch (final IOException e) {
+                    LOG.error("Error reading from pattern file {}", filePath, e);
+                }
+            }
+        }
+
     }
 
     private void registerPatternsForFile(final File file) {

@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.dataprepper.plugins.file.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
