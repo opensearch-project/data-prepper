@@ -32,7 +32,7 @@ public class SourceCoordinationConfig {
         this.sourceCoordinationStoreConfig = new PluginSetting(sourceCoordinationStoreConfig.getPluginName(), sourceCoordinationStoreConfig.getPluginSettings());
         this.sourceCoordinationStoreConfig.setPipelineName(SOURCE_COORDINATOR_METRIC_PREFIX);
 
-        this.partitionPrefix = Objects.nonNull(partitionPrefix) ? partitionPrefix : null;
+        this.partitionPrefix = partitionPrefix;
     }
 
     public PluginSetting getSourceCoordinationStoreConfig() {
