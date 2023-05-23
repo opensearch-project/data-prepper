@@ -22,6 +22,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Random;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -475,10 +476,12 @@ public class AddEntryProcessorTests {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
-        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(record.getData().get(valueExpression, Integer.class));
+        Random random = new Random();
+        int randomInt = random.nextInt();
+        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(randomInt);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
         Event event = editedRecords.get(0).getData();
-        assertThat(event.get("num_key", Integer.class), equalTo(1));
+        assertThat(event.get("num_key", Integer.class), equalTo(randomInt));
     }
 
     @Test
@@ -487,10 +490,11 @@ public class AddEntryProcessorTests {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
-        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(record.getData().get(valueExpression, String.class));
+        String randomString = UUID.randomUUID().toString();
+        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(randomString);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
         Event event = editedRecords.get(0).getData();
-        assertThat(event.get("num_key", String.class), equalTo("string-value"));
+        assertThat(event.get("num_key", String.class), equalTo(randomString));
     }
 
     @Test
@@ -499,7 +503,7 @@ public class AddEntryProcessorTests {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("num_key", null, null, null, valueExpression, false, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
-        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(record.getData().get("number-key", Integer.class) > 5);
+        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(false);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
         Event event = editedRecords.get(0).getData();
         assertThat(event.get("num_key", Boolean.class), equalTo(false));
@@ -511,10 +515,11 @@ public class AddEntryProcessorTests {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry("length_key", null, null, null, valueExpression, false, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getTestEventWithMultipleDataTypes();
-        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(record.getData().get("string-key", String.class).length());
+        String randomString = UUID.randomUUID().toString();
+        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(randomString.length());
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
         Event event = editedRecords.get(0).getData();
-        assertThat(event.get("length_key", Integer.class), equalTo("string-value".length()));
+        assertThat(event.get("length_key", Integer.class), equalTo(randomString.length()));
     }
 
     @Test
@@ -523,10 +528,11 @@ public class AddEntryProcessorTests {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "length_key", null, null, valueExpression, false, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("key", "value"));
-        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(record.getData().get("date", String.class).length());
+        String randomString = UUID.randomUUID().toString();
+        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(randomString.length());
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
         Map<String, Object> attributes = editedRecords.get(0).getData().getMetadata().getAttributes();
-        assertThat(attributes.get("length_key"), equalTo("date-value".length()));
+        assertThat(attributes.get("length_key"), equalTo(randomString.length()));
     }
 
     @Test
@@ -535,10 +541,11 @@ public class AddEntryProcessorTests {
         when(mockConfig.getEntries()).thenReturn(createListOfEntries(createEntry(null, "newkey", null, null, valueExpression, false, null)));
         final AddEntryProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEventWithMetadata("message", Map.of("key", "value"));
-        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(record.getData().get(valueExpression, String.class));
+        String randomString = UUID.randomUUID().toString();
+        when(expressionEvaluator.evaluate(valueExpression, record.getData())).thenReturn(randomString);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
         Map<String, Object> attributes = editedRecords.get(0).getData().getMetadata().getAttributes();
-        assertThat(attributes.get("newkey"), equalTo("date-value"));
+        assertThat(attributes.get("newkey"), equalTo(randomString));
     }
 
     private AddEntryProcessor createObjectUnderTest() {
