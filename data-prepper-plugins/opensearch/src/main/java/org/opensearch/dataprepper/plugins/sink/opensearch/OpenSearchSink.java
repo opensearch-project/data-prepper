@@ -137,7 +137,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
     openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient);
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
-    final TemplateStrategy templateStrategy = TemplateType.LEGACY.createTemplateStrategy(openSearchClient);
+    final TemplateStrategy templateStrategy = TemplateType.V1.createTemplateStrategy(openSearchClient);
     indexManager = indexManagerFactory.getIndexManager(indexType, openSearchClient, restHighLevelClient,
             openSearchSinkConfig, templateStrategy, configuredIndexAlias);
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();

@@ -38,7 +38,7 @@ class TemplateTypeTest {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
             return Stream.of(
-                    Arguments.arguments(TemplateType.LEGACY, LegacyTemplateStrategy.class)
+                    Arguments.arguments(TemplateType.V1, V1TemplateStrategy.class)
             );
         }
     }

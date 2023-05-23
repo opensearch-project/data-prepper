@@ -24,11 +24,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-class LegacyTemplateStrategy implements TemplateStrategy {
+class V1TemplateStrategy implements TemplateStrategy {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final OpenSearchClient openSearchClient;
 
-    public LegacyTemplateStrategy(final OpenSearchClient openSearchClient) {
+    public V1TemplateStrategy(final OpenSearchClient openSearchClient) {
         this.openSearchClient = openSearchClient;
     }
 

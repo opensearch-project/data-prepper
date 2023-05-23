@@ -14,9 +14,9 @@ import java.util.function.Function;
  */
 public enum TemplateType {
     /**
-     * The legacy template type.
+     * The v1 template type.
      */
-    LEGACY("legacy", LegacyTemplateStrategy::new);
+    V1("v1", V1TemplateStrategy::new);
 
     private final String name;
     private final Function<OpenSearchClient, TemplateStrategy> factoryFunction;

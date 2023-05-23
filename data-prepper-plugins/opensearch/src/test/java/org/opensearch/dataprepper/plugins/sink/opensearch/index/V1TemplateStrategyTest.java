@@ -50,7 +50,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class LegacyTemplateStrategyTest {
+class V1TemplateStrategyTest {
     @Mock
     private OpenSearchClient openSearchClient;
 
@@ -66,8 +66,8 @@ class LegacyTemplateStrategyTest {
         templateName = UUID.randomUUID().toString();
     }
 
-    private LegacyTemplateStrategy createObjectUnderTest() {
-        return new LegacyTemplateStrategy(openSearchClient);
+    private V1TemplateStrategy createObjectUnderTest() {
+        return new V1TemplateStrategy(openSearchClient);
     }
 
     @Test
@@ -155,7 +155,7 @@ class LegacyTemplateStrategyTest {
             when(openSearchIndicesClient.getTemplate(any(GetTemplateRequest.class)))
                     .thenReturn(getTemplateResponse);
 
-            final LegacyTemplateStrategy objectUnderTest = createObjectUnderTest();
+            final V1TemplateStrategy objectUnderTest = createObjectUnderTest();
             assertThrows(RuntimeException.class, () -> objectUnderTest.getExistingTemplateVersion(templateName));
 
             verify(openSearchIndicesClient).getTemplate(any(GetTemplateRequest.class));
@@ -165,7 +165,7 @@ class LegacyTemplateStrategyTest {
     @Test
     void createTemplate_throws_if_template_is_not_LegacyIndexTemplate() {
         final IndexTemplate indexTemplate = mock(IndexTemplate.class);
-        final LegacyTemplateStrategy objectUnderTest = createObjectUnderTest();
+        final V1TemplateStrategy objectUnderTest = createObjectUnderTest();
 
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createTemplate(indexTemplate));
     }
@@ -175,7 +175,7 @@ class LegacyTemplateStrategyTest {
         final OpenSearchTransport openSearchTransport = mock(OpenSearchTransport.class);
         when(openSearchClient._transport()).thenReturn(openSearchTransport);
         when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
-        final LegacyTemplateStrategy objectUnderTest = createObjectUnderTest();
+        final V1TemplateStrategy objectUnderTest = createObjectUnderTest();
 
         final List<String> indexPatterns = Collections.singletonList(UUID.randomUUID().toString());
         final IndexTemplate indexTemplate = objectUnderTest.createIndexTemplate(new HashMap<>());
@@ -205,11 +205,11 @@ class LegacyTemplateStrategyTest {
         void createIndexTemplate_setTemplateName_sets_the_name() {
             final IndexTemplate indexTemplate = createObjectUnderTest().createIndexTemplate(providedTemplateMap);
 
-            assertThat(indexTemplate, instanceOf(LegacyTemplateStrategy.LegacyIndexTemplate.class));
+            assertThat(indexTemplate, instanceOf(V1TemplateStrategy.LegacyIndexTemplate.class));
 
             indexTemplate.setTemplateName(templateName);
 
-            final Map<String, Object> returnedTemplateMap = ((LegacyTemplateStrategy.LegacyIndexTemplate) indexTemplate).getTemplateMap();
+            final Map<String, Object> returnedTemplateMap = ((V1TemplateStrategy.LegacyIndexTemplate) indexTemplate).getTemplateMap();
             assertThat(returnedTemplateMap, hasKey("name"));
             assertThat(returnedTemplateMap.get("name"), equalTo(templateName));
 
@@ -220,12 +220,12 @@ class LegacyTemplateStrategyTest {
         void createIndexTemplate_setIndexPatterns_sets_the_indexPatterns() {
             final IndexTemplate indexTemplate = createObjectUnderTest().createIndexTemplate(providedTemplateMap);
 
-            assertThat(indexTemplate, instanceOf(LegacyTemplateStrategy.LegacyIndexTemplate.class));
+            assertThat(indexTemplate, instanceOf(V1TemplateStrategy.LegacyIndexTemplate.class));
 
             final List<String> indexPatterns = Collections.singletonList(UUID.randomUUID().toString());
             indexTemplate.setIndexPatterns(indexPatterns);
 
-            final Map<String, Object> returnedTemplateMap = ((LegacyTemplateStrategy.LegacyIndexTemplate) indexTemplate).getTemplateMap();
+            final Map<String, Object> returnedTemplateMap = ((V1TemplateStrategy.LegacyIndexTemplate) indexTemplate).getTemplateMap();
             assertThat(returnedTemplateMap, hasKey("index_patterns"));
             assertThat(returnedTemplateMap.get("index_patterns"), equalTo(indexPatterns));
 
@@ -240,14 +240,14 @@ class LegacyTemplateStrategyTest {
             providedTemplateMap.put("settings", providedSettings);
             final IndexTemplate indexTemplate = createObjectUnderTest().createIndexTemplate(providedTemplateMap);
 
-            assertThat(indexTemplate, instanceOf(LegacyTemplateStrategy.LegacyIndexTemplate.class));
+            assertThat(indexTemplate, instanceOf(V1TemplateStrategy.LegacyIndexTemplate.class));
 
             final String customKey = UUID.randomUUID().toString();
             final String customValue = UUID.randomUUID().toString();
 
             indexTemplate.putCustomSetting(customKey, customValue);
 
-            final Map<String, Object> returnedTemplateMap = ((LegacyTemplateStrategy.LegacyIndexTemplate) indexTemplate).getTemplateMap();
+            final Map<String, Object> returnedTemplateMap = ((V1TemplateStrategy.LegacyIndexTemplate) indexTemplate).getTemplateMap();
             assertThat(returnedTemplateMap, hasKey("settings"));
             assertThat(returnedTemplateMap.get("settings"), instanceOf(Map.class));
             final Map<String, Object> settings = (Map<String, Object>) returnedTemplateMap.get("settings");
@@ -263,13 +263,13 @@ class LegacyTemplateStrategyTest {
         void putCustomSetting_setIndexPatterns_sets_new_settings() {
             final IndexTemplate indexTemplate = createObjectUnderTest().createIndexTemplate(providedTemplateMap);
 
-            assertThat(indexTemplate, instanceOf(LegacyTemplateStrategy.LegacyIndexTemplate.class));
+            assertThat(indexTemplate, instanceOf(V1TemplateStrategy.LegacyIndexTemplate.class));
 
             final String customKey = UUID.randomUUID().toString();
             final String customValue = UUID.randomUUID().toString();
             indexTemplate.putCustomSetting(customKey, customValue);
 
-            final Map<String, Object> returnedTemplateMap = ((LegacyTemplateStrategy.LegacyIndexTemplate) indexTemplate).getTemplateMap();
+            final Map<String, Object> returnedTemplateMap = ((V1TemplateStrategy.LegacyIndexTemplate) indexTemplate).getTemplateMap();
             assertThat(returnedTemplateMap, hasKey("settings"));
             assertThat(returnedTemplateMap.get("settings"), instanceOf(Map.class));
             final Map<String, Object> settings = (Map<String, Object>) returnedTemplateMap.get("settings");
