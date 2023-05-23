@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -96,6 +97,18 @@ class ArithmeticBinaryOperatorTest {
     }
 
     @Test
+    void testInvalid() {
+        objectUnderTest = createAddOperatorUnderTest();
+        assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
+        objectUnderTest = createSubtractOperatorUnderTest();
+        assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
+        objectUnderTest = createMultiplyOperatorUnderTest();
+        assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
+        objectUnderTest = createDivideOperatorUnderTest();
+        assertThrows(RuntimeException.class, () -> objectUnderTest.evaluate(2, 1, 2));
+    }
+
+    @Test
     void testEvalValidArgsForAdd() {
         objectUnderTest = createAddOperatorUnderTest();
         assertThat(objectUnderTest.evaluate(2, 1), is(3));
@@ -170,20 +183,20 @@ class ArithmeticBinaryOperatorTest {
     @Test
     void testEvalValidArgsForDivide() {
         objectUnderTest = createDivideOperatorUnderTest();
-        assertThat(objectUnderTest.evaluate(5.0, 2), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2f), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2L), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2.0), is(2.5));
+        assertThat(objectUnderTest.evaluate(5, 2), is(2.5));
+        assertThat(objectUnderTest.evaluate(5, 2f), is(2.5f));
+        assertThat(objectUnderTest.evaluate(5, 2L), is(2.5));
+        assertThat(objectUnderTest.evaluate(5, 2.0), is(2.5));
 
-        assertThat(objectUnderTest.evaluate(5.0, 2), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2f), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2L), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2.0), is(2.5));
+        assertThat(objectUnderTest.evaluate(5f, 2), is(2.5f));
+        assertThat(objectUnderTest.evaluate(5f, 2f), is(2.5f));
+        assertThat(objectUnderTest.evaluate(5f, 2L), is(2.5f));
+        assertThat(objectUnderTest.evaluate(5f, 2.0), is(2.5));
 
-        assertThat(objectUnderTest.evaluate(5.0, 2), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2f), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2L), is(2.5));
-        assertThat(objectUnderTest.evaluate(5.0, 2.0), is(2.5));
+        assertThat(objectUnderTest.evaluate(5L, 2), is(2.5));
+        assertThat(objectUnderTest.evaluate(5L, 2f), is(2.5f));
+        assertThat(objectUnderTest.evaluate(5L, 2L), is(2.5));
+        assertThat(objectUnderTest.evaluate(5L, 2.0), is(2.5));
 
         assertThat(objectUnderTest.evaluate(5.0, 2), is(2.5));
         assertThat(objectUnderTest.evaluate(5.0, 2f), is(2.5));

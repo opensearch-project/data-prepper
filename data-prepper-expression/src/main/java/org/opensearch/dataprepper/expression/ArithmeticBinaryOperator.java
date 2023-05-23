@@ -27,10 +27,7 @@ class ArithmeticBinaryOperator implements Operator<Number> {
 
     @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
-        if (symbol == DataPrepperExpressionParser.DIVIDE || symbol == DataPrepperExpressionParser.MULTIPLY) {
-            return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticTerm;
-        }
-        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticExpression;
+        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticTerm;
     }
 
     @Override

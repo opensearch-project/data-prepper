@@ -413,14 +413,14 @@ class OperatorConfiguration {
                         Integer.class, (lhs, rhs) -> ((double)(int)lhs) /((double)(int)rhs),
                         Float.class, (lhs, rhs) -> (float)(int)lhs / (Float) rhs,
                         Long.class, (lhs, rhs) -> (double)(int)lhs / (Long) rhs,
-                        Double.class, (lhs, rhs) -> (double)lhs / (Double) rhs
+                        Double.class, (lhs, rhs) -> (double)(int)lhs / (Double) rhs
                 );
         final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> floatOperations =
                 Map.of(
                     Integer.class, (lhs, rhs) -> (float)lhs / (float)(int)rhs,
                     Float.class, (lhs, rhs) ->  (float)lhs / (float)rhs,
                     Long.class, (lhs, rhs) -> (float)lhs / (float)(long)rhs,
-                    Double.class, (lhs, rhs) -> (double)lhs / (double)rhs
+                    Double.class, (lhs, rhs) -> (double)(float)lhs / (double)rhs
                 );
         final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> longOperations =
                 Map.of(

@@ -216,7 +216,16 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("/status", event("{\"status\": 5.55}"), Integer.class),
                 Arguments.of("/status", event("{\"status\": 200}"), Float.class),
                 // Can't mix Numbers and Strings when using operators
-                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}"), null)
+                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of("/status / /message", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of("/message * /status", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of("/message + /status", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of("/status - /message", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of("/status - ", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of("/status / ", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of(" * /status ", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of("/message - /status", event("{\"status\": 200, \"message\":\"msg\"}"), null),
+                Arguments.of("-/message ", event("{\"status\": 200, \"message\":\"msg\"}"), null)
         );
     }
 
