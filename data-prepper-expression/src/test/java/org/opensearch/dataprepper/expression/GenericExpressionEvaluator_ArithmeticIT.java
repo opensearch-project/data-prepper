@@ -146,6 +146,7 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomInt+", \"key2\": "+randomInt2+"}"), randomInt-randomInt2, Integer.class),
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomInt+", \"key2\": "+randomFloat+"}"), randomInt-randomFloat, Float.class),
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomInt+", \"key2\": "+randomLong+"}"), randomInt-randomLong, Long.class),
+                Arguments.of("-/key1 - /key2", event("{\"key1\": "+randomInt+", \"key2\": "+randomLong+"}"), -randomInt-randomLong, Long.class),
 
                 Arguments.of("/key1 * /key2", event("{\"key1\": "+randomInt+", \"key2\": "+randomInt2+"}"), randomInt*randomInt2, Integer.class),
                 Arguments.of("/key1 * /key2", event("{\"key1\": "+randomInt+", \"key2\": "+randomFloat+"}"), randomInt*randomFloat, Float.class),
@@ -162,6 +163,7 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomFloat+", \"key2\": "+randomInt2+"}"), randomFloat-randomInt2, Float.class),
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomFloat+", \"key2\": "+randomFloat2+"}"), randomFloat-randomFloat2, Float.class),
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomFloat+", \"key2\": "+randomLong+"}"), randomFloat-randomLong, Float.class),
+                Arguments.of("-/key1 - /key2", event("{\"key1\": "+randomFloat+", \"key2\": "+randomLong+"}"), -randomFloat-randomLong, Float.class),
 
                 Arguments.of("/key1 * /key2", event("{\"key1\": "+randomFloat+", \"key2\": "+randomInt2+"}"), randomFloat*randomInt2, Float.class),
                 Arguments.of("/key1 * /key2", event("{\"key1\": "+randomFloat+", \"key2\": "+randomFloat2+"}"), randomFloat*randomFloat2, Float.class),
@@ -178,6 +180,7 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomLong+", \"key2\": "+randomInt2+"}"), randomLong-randomInt2, Long.class),
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomLong+", \"key2\": "+randomFloat+"}"), randomLong-randomFloat, Float.class),
                 Arguments.of("/key1 - /key2", event("{\"key1\": "+randomLong+", \"key2\": "+randomLong2+"}"), randomLong-randomLong2, Long.class),
+                Arguments.of("-/key1 - /key2", event("{\"key1\": "+randomLong+", \"key2\": "+randomLong2+"}"), -randomLong-randomLong2, Long.class),
 
                 Arguments.of("/key1 * /key2", event("{\"key1\": "+randomLong+", \"key2\": "+randomInt2+"}"), randomLong*randomInt2, Long.class),
                 Arguments.of("/key1 * /key2", event("{\"key1\": "+randomLong+", \"key2\": "+randomFloat+"}"), randomLong*randomFloat, Float.class),
@@ -192,8 +195,10 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("(/key1 + /key2) - /key3", event("{\"key1\": "+randomLong+", \"key2\": "+randomLong2+", \"key3\": "+randomInt+"}"), randomLong+randomLong2-randomInt, Long.class),
                 Arguments.of("/key1 - /key2 * /key3", event("{\"key1\": "+randomLong+", \"key2\": "+randomLong2+", \"key3\": "+randomInt+"}"), randomLong-randomLong2*randomInt, Long.class),
                 Arguments.of("(/key1 - /key2) * /key3", event("{\"key1\": "+randomLong+", \"key2\": "+randomLong2+", \"key3\": "+randomInt+"}"), (randomLong-randomLong2)*randomInt, Long.class),
+                Arguments.of("-(/key1 - /key2) * /key3", event("{\"key1\": "+randomLong+", \"key2\": "+randomLong2+", \"key3\": "+randomInt+"}"), -(randomLong-randomLong2)*randomInt, Long.class),
                 Arguments.of("/key1 * /key2 / /key3", event("{\"key1\": 10, \"key2\": 20, \"key3\": 5}"), (double)10*20/5, Double.class),
                 Arguments.of("length(/key) + getMetadata(\"intAttr\")", testEvent, "value".length() + testIntAttrValue, Integer.class),
+                Arguments.of("-length(/key) * -getMetadata(\"intAttr\")", testEvent, "value".length() * testIntAttrValue, Integer.class),
 
                 Arguments.of("/status_code", event("{\"status_code\": "+randomFloat+"}"), randomFloat, Float.class),
                 Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), testString.length(), Integer.class)

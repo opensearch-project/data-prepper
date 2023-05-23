@@ -20,11 +20,6 @@ class StringBinaryOperator implements Operator<String> {
     }
 
     @Override
-    public int getNumberOfOperands() {
-        return 2;
-    }
-
-    @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
         if (symbol == DataPrepperExpressionParser.DOT) {
             return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_stringExpression;

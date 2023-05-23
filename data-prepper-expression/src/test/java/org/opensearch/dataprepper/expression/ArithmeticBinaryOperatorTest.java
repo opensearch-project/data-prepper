@@ -18,21 +18,21 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ArithmeticBinaryOperatorTest {
-    ArithmeticBinaryOperator objectUnderTest;
+    Operator<Object> objectUnderTest;
 
-    private ArithmeticBinaryOperator createAddOperatorUnderTest() {
+    private Operator createAddOperatorUnderTest() {
         return new OperatorConfiguration().addOperator();
     }
 
-    private ArithmeticBinaryOperator createSubtractOperatorUnderTest() {
+    private Operator createSubtractOperatorUnderTest() {
         return new OperatorConfiguration().subtractOperator();
     }
 
-    private ArithmeticBinaryOperator createMultiplyOperatorUnderTest() {
+    private Operator createMultiplyOperatorUnderTest() {
         return new OperatorConfiguration().multiplyOperator();
     }
 
-    private ArithmeticBinaryOperator createDivideOperatorUnderTest() {
+    private Operator createDivideOperatorUnderTest() {
         return new OperatorConfiguration().divideOperator();
     }
 
@@ -42,13 +42,18 @@ class ArithmeticBinaryOperatorTest {
     @Test
     void testGetNumberOfOperands() {
         objectUnderTest = createAddOperatorUnderTest();
-        assertThat(objectUnderTest.getNumberOfOperands(), is(2));
-        objectUnderTest = createSubtractOperatorUnderTest();
-        assertThat(objectUnderTest.getNumberOfOperands(), is(2));
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
         objectUnderTest = createMultiplyOperatorUnderTest();
-        assertThat(objectUnderTest.getNumberOfOperands(), is(2));
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
         objectUnderTest = createDivideOperatorUnderTest();
-        assertThat(objectUnderTest.getNumberOfOperands(), is(2));
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
+
+        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_arithmeticExpression);
+        objectUnderTest = createSubtractOperatorUnderTest();
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
+        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_stringExpression);
+        objectUnderTest = createSubtractOperatorUnderTest();
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(1));
     }
 
     @Test
@@ -83,7 +88,7 @@ class ArithmeticBinaryOperatorTest {
         objectUnderTest = createAddOperatorUnderTest();
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.PLUS));
         objectUnderTest = createSubtractOperatorUnderTest();
-        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.MINUS));
+        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.SUBTRACT));
         objectUnderTest = createMultiplyOperatorUnderTest();
         assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.MULTIPLY));
         objectUnderTest = createDivideOperatorUnderTest();

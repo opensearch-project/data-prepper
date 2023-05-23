@@ -19,11 +19,6 @@ abstract class BinaryOperator<T> implements Operator<T> {
     }
 
     @Override
-    public int getNumberOfOperands() {
-        return NUMBER_OF_OPERANDS;
-    }
-
-    @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
         return ctx.getRuleIndex() == shouldEvaluateRuleIndex;
     }

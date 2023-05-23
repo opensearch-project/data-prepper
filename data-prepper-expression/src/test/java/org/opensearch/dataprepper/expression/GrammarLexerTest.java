@@ -192,7 +192,7 @@ class GrammarLexerTest {
 
     @Test
     void testTokenFORWARDSLASH() {
-        assertToken("/", DataPrepperExpressionLexer.FORWARDSLASH);
+        assertToken("/", DataPrepperExpressionLexer.DIVIDE);
     }
 
     @Test

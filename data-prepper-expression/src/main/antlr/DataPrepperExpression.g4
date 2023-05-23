@@ -17,14 +17,14 @@ expression
     ;
 
 stringExpression
-    : stringExpression DOT stringExpression
+    : stringExpression PLUS stringExpression
     | function
     | jsonPointer
     | String
     ;
 
 arithmeticExpression
-    : arithmeticExpression (PLUS | MINUS) arithmeticTerm
+    : arithmeticExpression (PLUS | SUBTRACT) arithmeticTerm
     | arithmeticTerm
     ;
 
@@ -39,6 +39,11 @@ arithmeticFactor
     | Integer
     | Float
     | LPAREN arithmeticExpression RPAREN
+    | arithmeticUnaryExpression
+    ;
+
+arithmeticUnaryExpression
+    : arithmeticUnaryOperator arithmeticFactor
     ;
 
 conditionalExpression
@@ -86,6 +91,7 @@ relationalOperator
 setOperatorExpression
     : setOperatorExpression setOperator setInitializer
     | unaryOperatorExpression
+    | arithmeticUnaryExpression
     ;
 
 setOperator
@@ -115,7 +121,10 @@ setInitializer
 
 unaryOperator
     : NOT
-    | SUBTRACT
+    ;
+
+arithmeticUnaryOperator
+    : SUBTRACT
     ;
 
 primary
@@ -274,12 +283,11 @@ EscapeSequence
 SET_DELIMITER
     : COMMA
     ;
+
 DIVIDE
     : FORWARDSLASH
     ;
-MINUS
-    : SUBTRACT
-    ;
+
 COMMA : ',';
 EQUAL : '==';
 NOT_EQUAL : '!=';

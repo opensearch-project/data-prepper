@@ -131,9 +131,9 @@ class GenericExpressionEvaluator_StringIT {
         return Stream.of(
                 Arguments.of("\""+testString+"\"", event("{}"), testString, String.class),
                 Arguments.of("/status_message", event("{\"status_message\": \""+testString+"\"}"), testString, String.class),
-                Arguments.of("\""+testString+"\".\""+testString2+"\"", event("{}"), testString+testString2, String.class),
-                Arguments.of("/status_message./message", event("{\"status_message\": \""+testString+"\", \"message\":\""+testString2+"\"}"), testString+testString2, String.class),
-                Arguments.of("getMetadata(\"strAttr\").\""+testString2+"\"./key", testEvent, testString+testString2+"value", String.class)
+                Arguments.of("\""+testString+"\"+\""+testString2+"\"", event("{}"), testString+testString2, String.class),
+                Arguments.of("/status_message+/message", event("{\"status_message\": \""+testString+"\", \"message\":\""+testString2+"\"}"), testString+testString2, String.class),
+                Arguments.of("getMetadata(\"strAttr\")+\""+testString2+"\"+/key", testEvent, testString+testString2+"value", String.class)
         );
     }
 

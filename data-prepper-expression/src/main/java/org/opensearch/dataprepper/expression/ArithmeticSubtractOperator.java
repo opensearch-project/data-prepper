@@ -10,27 +10,36 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-class ArithmeticBinaryOperator implements Operator<Number> {
+class ArithmeticSubtractOperator implements Operator<Number> {
     private final int symbol;
     private final String displayName;
     private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap;
+    private final Map<Class<? extends Number>, Function<Number, ? extends Number>> strategy;
 
-    public ArithmeticBinaryOperator(final int symbol,
-            final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap) {
+    public ArithmeticSubtractOperator(final int symbol,
+            final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap,
+            final Map<Class<? extends Number>, Function<Number, ? extends Number>> strategy) {
         this.symbol = symbol;
         displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
         this.operandsToOperationMap = operandsToOperationMap;
+        this.strategy = strategy;
+    }
+
+    @Override
+    public int getNumberOfOperands(final RuleContext ctx) {
+        if (ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticExpression)
+            return 2;
+        return 1;
     }
 
     @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
-        if (symbol == DataPrepperExpressionParser.DIVIDE || symbol == DataPrepperExpressionParser.MULTIPLY) {
-            return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticTerm;
-        }
-        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticExpression;
+        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticExpression || 
+               ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticUnaryExpression;
     }
 
     @Override
@@ -40,6 +49,13 @@ class ArithmeticBinaryOperator implements Operator<Number> {
 
     @Override
     public Number evaluate(final Object ... args) {
+        if (args.length == 1) {
+            if (args[0] instanceof Number) {
+                return strategy.get(args[0].getClass()).apply((Number) args[0]);
+            } else {
+                throw new IllegalArgumentException(displayName + " requires operand to be either Float or Integer.");
+            }
+        }
         checkArgument(args.length == 2, displayName + " requires operands length needs to be 2.");
         final Object leftValue = args[0];
         final Object rightValue = args[1];
@@ -57,4 +73,5 @@ class ArithmeticBinaryOperator implements Operator<Number> {
         return operation.apply(leftValue, rightValue);
     }
 }
+
 

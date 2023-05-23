@@ -26,7 +26,7 @@ class NotOperatorTest {
 
     @Test
     void testGetNumberOfOperands() {
-        assertThat(objectUnderTest.getNumberOfOperands(), is(1));
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(1));
     }
 
     @Test

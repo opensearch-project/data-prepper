@@ -19,10 +19,10 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StringBinaryOperatorTest {
-    StringBinaryOperator objectUnderTest;
+    Operator<Object> objectUnderTest;
 
-    private StringBinaryOperator createDotOperatorUnderTest() {
-        return new OperatorConfiguration().concatOperator();
+    private Operator<Object> createConcatOperatorUnderTest() {
+        return new OperatorConfiguration().addOperator();
     }
 
     @Mock
@@ -30,13 +30,13 @@ class StringBinaryOperatorTest {
 
     @Test
     void testGetNumberOfOperands() {
-        objectUnderTest = createDotOperatorUnderTest();
-        assertThat(objectUnderTest.getNumberOfOperands(), is(2));
+        objectUnderTest = createConcatOperatorUnderTest();
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
     }
 
     @Test
     void testShouldEvaluate() {
-        objectUnderTest = createDotOperatorUnderTest();
+        objectUnderTest = createConcatOperatorUnderTest();
         when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_stringExpression);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
         when(ctx.getRuleIndex()).thenReturn(-1);
@@ -45,13 +45,13 @@ class StringBinaryOperatorTest {
 
     @Test
     void testGetSymbol() {
-        objectUnderTest = createDotOperatorUnderTest();
-        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.DOT));
+        objectUnderTest = createConcatOperatorUnderTest();
+        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.PLUS));
     }
 
     @Test
     void testEvalValidArgsForConcat() {
-        objectUnderTest = createDotOperatorUnderTest();
+        objectUnderTest = createConcatOperatorUnderTest();
         String testString = "testString";
         assertThat(objectUnderTest.evaluate("string1", "string2"), equalTo("string1string2"));
         assertThat(objectUnderTest.evaluate(testString, "string2"), equalTo(testString+"string2"));

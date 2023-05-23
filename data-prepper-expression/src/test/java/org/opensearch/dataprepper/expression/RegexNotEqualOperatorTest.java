@@ -26,7 +26,7 @@ class RegexNotEqualOperatorTest {
 
     @Test
     void testGetNumberOfOperands() {
-        assertThat(objectUnderTest.getNumberOfOperands(), is(2));
+        assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
     }
 
     @Test

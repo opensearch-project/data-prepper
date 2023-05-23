@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 
 @Named
 class OperatorConfiguration {
@@ -271,12 +272,12 @@ class OperatorConfiguration {
     }
 
     @Bean
-    public StringBinaryOperator concatOperator() {
-        return new StringBinaryOperator(DataPrepperExpressionParser.DOT); 
+    public AddBinaryOperator concatOperator() {
+        return new AddBinaryOperator(DataPrepperExpressionParser.PLUS, null); 
     }
 
     @Bean
-    public ArithmeticBinaryOperator addOperator() {
+    public AddBinaryOperator addOperator() {
         final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>>
                 operandsToOperationMap = new HashMap<>();
         final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> intOperations =
@@ -313,11 +314,11 @@ class OperatorConfiguration {
         operandsToOperationMap.put(Long.class, longOperations);
         operandsToOperationMap.put(Double.class, doubleOperations);
 
-        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.PLUS, operandsToOperationMap);
+        return new AddBinaryOperator(DataPrepperExpressionParser.PLUS, operandsToOperationMap);
     }
 
     @Bean
-    public ArithmeticBinaryOperator subtractOperator() {
+    public ArithmeticSubtractOperator subtractOperator() {
         final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>>
                 operandsToOperationMap = new HashMap<>();
         final Map<Class<? extends Number>, BiFunction<Object, Object, Number>> intOperations =
@@ -354,7 +355,12 @@ class OperatorConfiguration {
         operandsToOperationMap.put(Long.class, longOperations);
         operandsToOperationMap.put(Double.class, doubleOperations);
 
-        return new ArithmeticBinaryOperator(DataPrepperExpressionParser.MINUS, operandsToOperationMap);
+        final Map<Class<? extends Number>, Function<Number, ? extends Number>> strategy = new HashMap<>();
+        strategy.put(Integer.class, arg -> -arg.intValue());
+        strategy.put(Long.class, arg -> -arg.longValue());
+        strategy.put(Float.class, arg -> -arg.floatValue());
+
+        return new ArithmeticSubtractOperator(DataPrepperExpressionParser.SUBTRACT, operandsToOperationMap, strategy);
     }
 
     @Bean
