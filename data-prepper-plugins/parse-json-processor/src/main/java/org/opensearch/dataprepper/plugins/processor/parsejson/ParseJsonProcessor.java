@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -38,6 +39,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
     private final String destination;
     private final String pointer;
     private final String parseWhen;
+    private final List<String> tagsOnFailure;
 
     private final ExpressionEvaluator expressionEvaluator;
 
@@ -51,6 +53,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
         destination = parseJsonProcessorConfig.getDestination();
         pointer = parseJsonProcessorConfig.getPointer();
         parseWhen = parseJsonProcessorConfig.getParseWhen();
+        tagsOnFailure = parseJsonProcessorConfig.getTagsOnFailure();
         this.expressionEvaluator = expressionEvaluator;
     }
 
@@ -86,6 +89,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
                     event.put(destination, parsedJson);
                 }
             } catch (final JsonProcessingException jsonException) {
+                event.getMetadata().addTags(tagsOnFailure);
                 LOG.error(EVENT, "An exception occurred due to invalid JSON while reading event [{}]", event, jsonException);
             }
         }
