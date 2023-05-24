@@ -21,7 +21,7 @@ public class ParquetRecordsGenerator implements RecordsGenerator{
 
     private static final String QUERY_STATEMENT ="select count(*) as total from  S3Object s";
 
-    private static final String PARQUET_FILE_RELATIVE_PATH = "\\src\\main\\resources\\IntegrationTest.parquet";
+    private static final String PARQUET_FILE_RELATIVE_PATH = "/src/main/resources/IntegrationTest.parquet";
 
     @Override
     public void write(final int numberOfRecords, final OutputStream outputStream) throws IOException {
