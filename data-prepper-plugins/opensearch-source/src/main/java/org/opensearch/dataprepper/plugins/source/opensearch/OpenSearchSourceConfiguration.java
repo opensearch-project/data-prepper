@@ -5,22 +5,26 @@
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
-import org.opensearch.dataprepper.plugins.source.opensearch.configuration.QueryParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
 
 import java.util.List;
+import java.util.Objects;
 
 public class OpenSearchSourceConfiguration {
 
     @JsonProperty("max_retries")
-    private Integer maxRetries;
+    private Integer maxRetries = Integer.MAX_VALUE;
 
     @NotNull
+    @Size(min = 1, max = 1)
     @JsonProperty("hosts")
     private List<String> hosts;
 
@@ -31,21 +35,23 @@ public class OpenSearchSourceConfiguration {
     private String password;
 
     @JsonProperty("connection")
+    @Valid
     private ConnectionConfiguration connectionConfiguration;
 
     @JsonProperty("indices")
+    @Valid
     private IndexParametersConfiguration indexParametersConfiguration;
 
     @JsonProperty("aws")
+    @Valid
     private AwsAuthenticationConfiguration awsAuthenticationOptions;
 
     @JsonProperty("scheduling")
+    @Valid
     private SchedulingParameterConfiguration schedulingParameterConfiguration;
 
-    @JsonProperty("query")
-    private QueryParameterConfiguration queryParameterConfiguration;
-
     @JsonProperty("search_options")
+    @Valid
     private SearchConfiguration searchConfiguration;
 
     public Integer getMaxRetries() {
@@ -80,12 +86,15 @@ public class OpenSearchSourceConfiguration {
         return schedulingParameterConfiguration;
     }
 
-    public QueryParameterConfiguration getQueryParameterConfiguration() {
-        return queryParameterConfiguration;
-    }
-
     public SearchConfiguration getSearchConfiguration() {
         return searchConfiguration;
+    }
+
+    @AssertTrue(message = "Either username and password, or aws options must be specified. Both cannot be set at once.")
+    boolean validateAwsConfigWithUsernameAndPassword() {
+
+        return !((Objects.nonNull(awsAuthenticationOptions) && (Objects.nonNull(username) || Objects.nonNull(password))) ||
+                (Objects.isNull(awsAuthenticationOptions) && Objects.isNull(username) && Objects.isNull(password)));
     }
 
 }
