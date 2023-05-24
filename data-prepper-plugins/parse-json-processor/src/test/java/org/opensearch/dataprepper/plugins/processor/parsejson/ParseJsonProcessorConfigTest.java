@@ -13,6 +13,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.opensearch.dataprepper.plugins.processor.parsejson.ParseJsonProcessorConfig.DEFAULT_SOURCE;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
+import java.util.List;
+
 public class ParseJsonProcessorConfigTest {
 
     private ParseJsonProcessorConfig createObjectUnderTest() {
@@ -26,6 +28,7 @@ public class ParseJsonProcessorConfigTest {
         assertThat(objectUnderTest.getSource(), equalTo(DEFAULT_SOURCE));
         assertThat(objectUnderTest.getDestination(), equalTo(null));
         assertThat(objectUnderTest.getPointer(), equalTo(null));
+        assertThat(objectUnderTest.getTagsOnFailure(), equalTo(null));
     }
 
     @Nested
@@ -50,6 +53,10 @@ public class ParseJsonProcessorConfigTest {
             setField(ParseJsonProcessorConfig.class, config, "destination", "   /   ");
 
             assertThat(config.isValidDestination(), equalTo(false));
+            List<String> tagsList = List.of("tag1", "tag2");
+            setField(ParseJsonProcessorConfig.class, config, "tagsOnFailure", tagsList);
+
+            assertThat(config.getTagsOnFailure(), equalTo(tagsList));
         }
     }
 }

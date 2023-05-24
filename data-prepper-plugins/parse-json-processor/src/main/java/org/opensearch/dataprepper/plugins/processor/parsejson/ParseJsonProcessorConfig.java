@@ -10,6 +10,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 
 import java.util.Objects;
+import java.util.List;
 
 public class ParseJsonProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
@@ -26,6 +27,9 @@ public class ParseJsonProcessorConfig {
 
     @JsonProperty("parse_when")
     private String parseWhen;
+
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
 
     /**
      * The field of the Event that contains the JSON data.
@@ -56,6 +60,10 @@ public class ParseJsonProcessorConfig {
      */
     public String getPointer() {
         return pointer;
+    }
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
     }
 
     public String getParseWhen() { return parseWhen; }
