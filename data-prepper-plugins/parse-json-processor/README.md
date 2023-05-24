@@ -58,6 +58,8 @@ The processor will parse the message into the following:
     * If the JSON Pointer is invalid then the entire `source` data is parsed into the outgoing `Event`.
     * If the pointed-to key already exists in the `Event` and the `destination` is the root, then the entire path of the key will be used.
 
+* `tags_on_failure` (Optional): A `List` of `String`s that specifies the tags to be set in the event the processor fails to parse or an unknown exception occurs while parsing. This tag may be used in conditional expressions in other parts of the configuration
+
 ## Developer Guide
 This plugin is compatible with Java 8 and up. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
