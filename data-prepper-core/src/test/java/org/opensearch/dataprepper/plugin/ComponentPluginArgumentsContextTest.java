@@ -32,7 +32,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 
 @ExtendWith(MockitoExtension.class)
-class PluginArgumentsContextTest {
+class ComponentPluginArgumentsContextTest {
 
     @Mock
     private PluginSetting pluginSetting;
@@ -53,7 +53,7 @@ class PluginArgumentsContextTest {
 
     @Test
     void createArguments_with_unavailable_argument_should_throw() {
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .build();
 
@@ -63,7 +63,7 @@ class PluginArgumentsContextTest {
 
     @Test
     void createArguments_with_single_class() {
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginConfiguration(testPluginConfiguration)
                 .withPluginSetting(pluginSetting)
                 .build();
@@ -75,7 +75,7 @@ class PluginArgumentsContextTest {
     @Test
     void createArguments_with_single_class_when_PluginSetting_is_inherited() {
         pluginSetting = mock(SubPluginSetting.class);
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginConfiguration(testPluginConfiguration)
                 .withPluginSetting(pluginSetting)
                 .build();
@@ -89,7 +89,7 @@ class PluginArgumentsContextTest {
         final Object mock = mock(Object.class);
         doReturn(mock).when(beanFactory).getBean(eq(Object.class));
 
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .withBeanFactory(beanFactory)
                 .build();
@@ -102,7 +102,7 @@ class PluginArgumentsContextTest {
     void createArguments_given_bean_not_available_with_single_class_using_bean_factory() {
         doThrow(mock(BeansException.class)).when(beanFactory).getBean((Class<Object>) any());
 
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .withBeanFactory(beanFactory)
                 .build();
@@ -119,7 +119,7 @@ class PluginArgumentsContextTest {
         final Object mock = mock(Object.class);
         doReturn(mock).when(beanFactory).getBean(eq(Object.class));
 
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .withPluginConfiguration(testPluginConfiguration)
                 .withBeanFactory(beanFactory)
@@ -131,7 +131,7 @@ class PluginArgumentsContextTest {
 
     @Test
     void createArguments_with_two_classes() {
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginConfiguration(testPluginConfiguration)
                 .withPluginSetting(pluginSetting)
                 .build();
@@ -142,7 +142,7 @@ class PluginArgumentsContextTest {
 
     @Test
     void createArguments_with_two_classes_inverted_order() {
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginConfiguration(testPluginConfiguration)
                 .withPluginSetting(pluginSetting)
                 .build();
@@ -153,7 +153,7 @@ class PluginArgumentsContextTest {
 
     @Test
     void createArguments_with_three_classes() {
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginConfiguration(testPluginConfiguration)
                 .withPluginSetting(pluginSetting)
                 .withPipelineDescription(pluginSetting)
@@ -166,7 +166,7 @@ class PluginArgumentsContextTest {
     @Test
     void createArguments_with_pluginFactory_should_return_the_instance_from_the_builder() {
         final PluginFactory pluginFactory = mock(PluginFactory.class);
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .withPluginFactory(pluginFactory)
                 .build();
@@ -177,7 +177,7 @@ class PluginArgumentsContextTest {
 
     @Test
     void createArguments_with_PluginMetrics() {
-        final PluginArgumentsContext objectUnderTest = new PluginArgumentsContext.Builder()
+        final ComponentPluginArgumentsContext objectUnderTest = new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .build();
 
