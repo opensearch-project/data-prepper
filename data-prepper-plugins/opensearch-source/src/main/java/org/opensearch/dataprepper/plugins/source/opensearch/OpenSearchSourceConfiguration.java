@@ -7,8 +7,8 @@ package org.opensearch.dataprepper.plugins.source.opensearch;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.ConnectionConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
@@ -20,11 +20,14 @@ import java.util.Objects;
 
 public class OpenSearchSourceConfiguration {
 
+    /**
+     * 0 indicates infinite retries
+     */
     @JsonProperty("max_retries")
-    private Integer maxRetries = Integer.MAX_VALUE;
+    @Min(0)
+    private Integer maxRetries = 0;
 
     @NotNull
-    @Size(min = 1, max = 1)
     @JsonProperty("hosts")
     private List<String> hosts;
 

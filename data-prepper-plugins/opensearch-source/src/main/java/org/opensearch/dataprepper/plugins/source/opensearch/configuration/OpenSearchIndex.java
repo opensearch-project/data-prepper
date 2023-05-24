@@ -15,9 +15,9 @@ import org.slf4j.LoggerFactory;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-public class IncludedIndex {
+public class OpenSearchIndex {
 
-    private static final Logger LOG = LoggerFactory.getLogger(IncludedIndex.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OpenSearchIndex.class);
 
     @JsonProperty("index_name_regex")
     @NotBlank
@@ -36,7 +36,7 @@ public class IncludedIndex {
             indexNamePattern = Pattern.compile(indexNameRegex);
             return true;
         } catch (final PatternSyntaxException e){
-            LOG.error("Invalid index_name_regex: ", e);
+            LOG.error("Invalid index_name_regex pattern '{}': {}", indexNameRegex, e.getMessage());
         }
         return false;
     }

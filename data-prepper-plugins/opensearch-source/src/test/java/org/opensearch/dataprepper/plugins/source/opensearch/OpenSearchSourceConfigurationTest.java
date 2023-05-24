@@ -83,7 +83,6 @@ public class OpenSearchSourceConfigurationTest {
     @Test
     void using_both_aws_config_and_username_password_is_invalid() throws JsonProcessingException {
         final String sourceConfigurationYaml =
-                "max_retries: 5\n" +
                 "hosts: [\"http://localhost:9200\"]\n" +
                 "username: test\n" +
                 "password: test\n" +
@@ -106,6 +105,7 @@ public class OpenSearchSourceConfigurationTest {
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
         assertThat(sourceConfiguration.validateAwsConfigWithUsernameAndPassword(), equalTo(false));
+        assertThat(sourceConfiguration.getMaxRetries(), equalTo(0));
     }
 
     @Test

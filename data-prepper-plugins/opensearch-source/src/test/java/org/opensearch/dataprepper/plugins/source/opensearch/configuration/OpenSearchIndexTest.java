@@ -15,25 +15,25 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
-public class IncludedIndexTest {
+public class OpenSearchIndexTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
     @Test
     void valid_index_name_regex() throws JsonProcessingException {
         final String includeIndexConfiguration = "index_name_regex: \"test_regex\"";
-        final IncludedIndex includedIndex = objectMapper.readValue(includeIndexConfiguration, IncludedIndex.class);
+        final OpenSearchIndex openSearchIndex = objectMapper.readValue(includeIndexConfiguration, OpenSearchIndex.class);
 
-        assertThat(includedIndex.isRegexValid(), equalTo(true));
-        assertThat(includedIndex.getIndexNamePattern(), notNullValue());
-        assertThat(includedIndex.getIndexNamePattern().pattern(), equalTo("test_regex"));
+        assertThat(openSearchIndex.isRegexValid(), equalTo(true));
+        assertThat(openSearchIndex.getIndexNamePattern(), notNullValue());
+        assertThat(openSearchIndex.getIndexNamePattern().pattern(), equalTo("test_regex"));
     }
 
     @Test
     void invalid_index_name_regex() throws JsonProcessingException {
         final String includeIndexConfiguration = "index_name_regex: \"[\"";
-        final IncludedIndex includedIndex = objectMapper.readValue(includeIndexConfiguration, IncludedIndex.class);
+        final OpenSearchIndex openSearchIndex = objectMapper.readValue(includeIndexConfiguration, OpenSearchIndex.class);
 
-        assertThat(includedIndex.isRegexValid(), equalTo(false));
+        assertThat(openSearchIndex.isRegexValid(), equalTo(false));
     }
 }

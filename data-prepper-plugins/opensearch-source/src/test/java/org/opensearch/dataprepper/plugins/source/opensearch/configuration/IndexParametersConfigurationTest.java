@@ -23,11 +23,9 @@ public class IndexParametersConfigurationTest {
     void default_index_parameters_configuration() {
         final IndexParametersConfiguration indexParametersConfiguration = new IndexParametersConfiguration();
 
-        assertThat(indexParametersConfiguration.getExcludePatterns(), equalTo(Collections.emptyList()));
+        assertThat(indexParametersConfiguration.getExcludedIndices(), equalTo(Collections.emptyList()));
         assertThat(indexParametersConfiguration.getIncludedIndices(), equalTo(Collections.emptyList()));
-
-        assertThat(indexParametersConfiguration.isExcludeRegexValid(), equalTo(true));
-        assertThat(indexParametersConfiguration.getExcludePatterns(), equalTo(Collections.emptyList()));
+        assertThat(indexParametersConfiguration.getExcludedIndices(), equalTo(Collections.emptyList()));
     }
 
     @Test
@@ -38,27 +36,12 @@ public class IndexParametersConfigurationTest {
                 "    - index_name_regex: \"includeTest\"\n" +
                 "    - index_name_regex: \"includeTest1\"\n" +
                 "  exclude:\n" +
-                "    - \"excludeTest\"";
+                "    - index_name_regex: \"excludeTest\"";
         final IndexParametersConfiguration indexParametersConfiguration = objectMapper.readValue(indexParameterConfigYaml, IndexParametersConfiguration.class);
 
         assertThat(indexParametersConfiguration.getIncludedIndices(), notNullValue());
         assertThat(indexParametersConfiguration.getIncludedIndices().size(), equalTo(2));
-        assertThat(indexParametersConfiguration.isExcludeRegexValid(), equalTo(true));
-        assertThat(indexParametersConfiguration.getExcludePatterns(), notNullValue());
-        assertThat(indexParametersConfiguration.getExcludePatterns().size(), equalTo(1));
-        assertThat(indexParametersConfiguration.getExcludePatterns().get(0).pattern(), equalTo("excludeTest"));
-    }
-
-    @Test
-    void invalid_exclude_regex_returns_false() throws JsonProcessingException {
-        final String indexParameterConfigYaml =
-                "  include:\n" +
-                        "    - index_name_regex: \"includeTest\"\n" +
-                        "    - index_name_regex: \"includeTest1\"\n" +
-                        "  exclude:\n" +
-                        "    - \"[\"";
-        final IndexParametersConfiguration indexParametersConfiguration = objectMapper.readValue(indexParameterConfigYaml, IndexParametersConfiguration.class);
-
-        assertThat(indexParametersConfiguration.isExcludeRegexValid(), equalTo(false));
+        assertThat(indexParametersConfiguration.getExcludedIndices(), notNullValue());
+        assertThat(indexParametersConfiguration.getExcludedIndices().size(), equalTo(1));
     }
 }
