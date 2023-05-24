@@ -109,16 +109,18 @@ class GenericExpressionEvaluator_ArithmeticIT {
     }
 
     @ParameterizedTest
+    @MethodSource("exceptionExpressionArguments")
+    void testArithmeticExpressionEvaluatorInvalidInput(final String expression, final Event event) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+        assertThrows(ExpressionEvaluationException.class, () -> evaluator.evaluate(expression, event));
+    }
+
+    @ParameterizedTest
     @MethodSource("invalidExpressionArguments")
     void testArithmeticExpressionEvaluatorInvalidInput(final String expression, final Event event, final Class expectedClass) {
-
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
-        if (expectedClass == null) {
-            assertThrows(ExpressionEvaluationException.class, () -> evaluator.evaluate(expression, event));
-        } else {
-            Object result = evaluator.evaluate(expression, event);
-            assertThat(result, not(instanceOf(expectedClass)));
-        }
+        Object result = evaluator.evaluate(expression, event);
+        assertThat(result, not(instanceOf(expectedClass)));
     }
 
     private static Stream<Arguments> validExpressionArguments() {
@@ -214,18 +216,26 @@ class GenericExpressionEvaluator_ArithmeticIT {
                 Arguments.of("/message", event("{\"message\": \""+testString+"\"}"), Integer.class),
                 Arguments.of("/status", event("{\"status\": true}"), Integer.class),
                 Arguments.of("/status", event("{\"status\": 5.55}"), Integer.class),
-                Arguments.of("/status", event("{\"status\": 200}"), Float.class),
+                Arguments.of("/status", event("{\"status\": 200}"), Float.class)
+        );
+    }
+
+    private static Stream<Arguments> exceptionExpressionArguments() {
+        Random random = new Random();
+        int testStringLength = random.nextInt(10);
+        String testString = RandomStringUtils.randomAlphabetic(testStringLength);
+        return Stream.of(
                 // Can't mix Numbers and Strings when using operators
-                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of("/status / /message", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of("/message * /status", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of("/message + /status", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of("/status - /message", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of("/status - ", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of("/status / ", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of(" * /status ", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of("/message - /status", event("{\"status\": 200, \"message\":\"msg\"}"), null),
-                Arguments.of("-/message ", event("{\"status\": 200, \"message\":\"msg\"}"), null)
+                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("/status / /message", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("/message * /status", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("/message + /status", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("/status - /message", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("/status - ", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("/status / ", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of(" * /status ", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("/message - /status", event("{\"status\": 200, \"message\":\"msg\"}")),
+                Arguments.of("-/message ", event("{\"status\": 200, \"message\":\"msg\"}"))
         );
     }
 

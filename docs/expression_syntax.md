@@ -9,6 +9,7 @@ In order of evaluation priority. _(top to bottom, left to right)_
 | 3     | `*`, `/`             | Multiple and Divison Operators                        | left-to-right |
 | 2     | `==`, `!=`           | Equality Operators                                    | left-to-right |
 | 2     | `+`, `-`             | Addition and Subtraction Operators                    | left-to-right |
+| 2     | `+`                  | String Concatenation operator                         | left-to-right |
 | 1     | `and`, `or`          | Conditional Expression                                | left-to-right |
 
 ## Reserved for possible future functionality

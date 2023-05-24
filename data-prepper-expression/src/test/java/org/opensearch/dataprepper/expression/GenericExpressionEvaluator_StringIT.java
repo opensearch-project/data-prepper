@@ -108,16 +108,19 @@ class GenericExpressionEvaluator_StringIT {
     }
 
     @ParameterizedTest
+    @MethodSource("exceptionExpressionArguments")
+    void testArithmeticExpressionEvaluatorInvalidInput(final String expression, final Event event) {
+        final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
+        assertThrows(ExpressionEvaluationException.class, () -> evaluator.evaluate(expression, event));
+    }
+
+    @ParameterizedTest
     @MethodSource("invalidExpressionArguments")
     void testStringExpressionEvaluatorInvalidInput(final String expression, final Event event, final Class expectedClass) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        if (expectedClass == null) {
-            assertThrows(ExpressionEvaluationException.class, () -> evaluator.evaluate(expression, event));
-        } else {
-            final Object result = evaluator.evaluate(expression, event);
-            assertThat(result, not(instanceOf(expectedClass)));
-        }
+        final Object result = evaluator.evaluate(expression, event);
+        assertThat(result, not(instanceOf(expectedClass)));
     }
 
     private static Stream<Arguments> validExpressionArguments() {
@@ -145,9 +148,14 @@ class GenericExpressionEvaluator_StringIT {
         return Stream.of(
                 Arguments.of("/missing", event("{}"), String.class),
                 Arguments.of("/value", event("{\"value\": "+randomInt+"}"), String.class),
-                Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), String.class),
+                Arguments.of("length(/message)", event("{\"message\": \""+testString+"\"}"), String.class)
+        );
+    }
+
+    private static Stream<Arguments> exceptionExpressionArguments() {
+        return Stream.of(
                 // Can't mix Numbers and Strings when using operators
-                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}"), null)
+                Arguments.of("/status + /message", event("{\"status\": 200, \"message\":\"msg\"}"))
         );
     }
 
