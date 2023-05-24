@@ -30,7 +30,8 @@ public class OpenSearchSource implements Source<Record<Event>> {
     }
 
     private void startProcess(final OpenSearchSourceConfiguration openSearchSourceConfiguration)  {
-      //Yet to implement
+        // todo: implement
+        // Should leverage OpenSearchService to run the actual plugin core logic.
     }
 
     @Override
