@@ -25,6 +25,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 
 /**
@@ -119,9 +120,15 @@ class S3ObjectWorker implements S3ObjectHandler {
             LOG.error("Failed writing S3 objects to buffer.", e);
         }
 
+        final int recordsWritten = bufferAccumulator.getTotalWritten();
+
+        if (recordsWritten == 0) {
+            LOG.warn("Failed to find any records in S3 object: s3ObjectReference={}.", s3ObjectReference);
+            s3ObjectPluginMetrics.getS3ObjectNoRecordsFound().increment();
+        }
         s3ObjectPluginMetrics.getS3ObjectSizeSummary().record(s3ObjectSize);
         s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary().record(totalBytesRead);
-        s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(bufferAccumulator.getTotalWritten());
+        s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(recordsWritten);
     }
 
     private void recordS3Exception(final S3Exception ex) {
