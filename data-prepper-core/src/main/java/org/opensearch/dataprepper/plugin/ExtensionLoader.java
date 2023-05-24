@@ -32,11 +32,11 @@ public class ExtensionLoader {
 
         return extensionClassProvider.loadExtensionPluginClasses()
                 .stream()
-                .map(extensionClass -> pluginCreator.newPluginInstance(extensionClass, pluginArgumentsContext, covertClassToName(extensionClass)))
+                .map(extensionClass -> pluginCreator.newPluginInstance(extensionClass, pluginArgumentsContext, convertClassToName(extensionClass)))
                 .collect(Collectors.toList());
     }
 
-    private String covertClassToName(final Class<? extends ExtensionPlugin> extensionClass) {
+    private String convertClassToName(final Class<? extends ExtensionPlugin> extensionClass) {
         final String className = extensionClass.getSimpleName();
         return classNameToPluginName(className);
     }

@@ -174,7 +174,7 @@ class ExtensionLoaderTest {
             "MyCustomPlugin,my_custom_plugin",
             "MyCustomPlugin$InnerClass,my_custom_plugin_inner_class"
     })
-    void covertClassToName_returns_name_split_by_uppercase(final String input, final String expected) {
+    void classNameToPluginName_returns_name_split_by_uppercase(final String input, final String expected) {
         assertThat(ExtensionLoader.classNameToPluginName(input), equalTo(expected));
     }
 
