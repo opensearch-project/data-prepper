@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -41,9 +42,11 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -321,19 +324,124 @@ class S3SinkServiceTest {
         assertFalse(isUploadedToS3);
     }
 
-    private Collection<Record<Event>> generateRandomStringEventRecord() {
-        Collection<Record<Event>> records = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
-            final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-            records.add(new Record<>(event));
+
+    @Test
+    void output_will_release_all_handles_since_a_flush() throws IOException {
+        bufferFactory = mock(BufferFactory.class);
+        final Buffer buffer = mock(Buffer.class);
+        when(bufferFactory.getBuffer()).thenReturn(buffer);
+
+        final long objectSize = random.nextInt(1_000_000) + 10_000;
+        when(buffer.getSize()).thenReturn(objectSize);
+
+        when(codec.parse(any())).thenReturn(UUID.randomUUID().toString());
+        final S3SinkService s3SinkService = createObjectUnderTest();
+        final Collection<Record<Event>> records = generateRandomStringEventRecord();
+        s3SinkService.output(records);
+
+        final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        for (EventHandle eventHandle : eventHandles) {
+            verify(eventHandle).release(true);
         }
-        return records;
+    }
+
+    @Test
+    void output_will_release_all_handles_since_a_flush_when_S3_fails() throws IOException {
+        bufferFactory = mock(BufferFactory.class);
+        final Buffer buffer = mock(Buffer.class);
+        when(bufferFactory.getBuffer()).thenReturn(buffer);
+
+        doThrow(AwsServiceException.class).when(buffer).flushToS3(any(), anyString(), anyString());
+
+        final long objectSize = random.nextInt(1_000_000) + 10_000;
+        when(buffer.getSize()).thenReturn(objectSize);
+
+        when(codec.parse(any())).thenReturn(UUID.randomUUID().toString());
+        final S3SinkService s3SinkService = createObjectUnderTest();
+        final List<Record<Event>> records = generateEventRecords(1);
+        s3SinkService.output(records);
+
+        final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        for (EventHandle eventHandle : eventHandles) {
+            verify(eventHandle).release(false);
+        }
+    }
+
+    @Test
+    void output_will_release_only_new_handles_since_a_flush() throws IOException {
+        bufferFactory = mock(BufferFactory.class);
+        final Buffer buffer = mock(Buffer.class);
+        when(bufferFactory.getBuffer()).thenReturn(buffer);
+
+        final long objectSize = random.nextInt(1_000_000) + 10_000;
+        when(buffer.getSize()).thenReturn(objectSize);
+
+        when(codec.parse(any())).thenReturn(UUID.randomUUID().toString());
+        final S3SinkService s3SinkService = createObjectUnderTest();
+        final Collection<Record<Event>> records = generateRandomStringEventRecord();
+        s3SinkService.output(records);
+        final Collection<Record<Event>> records2 = generateRandomStringEventRecord();
+        s3SinkService.output(records2);
+
+        final List<EventHandle> eventHandles1 = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        for (EventHandle eventHandle : eventHandles1) {
+            verify(eventHandle).release(true);
+        }
+
+        final List<EventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        for (EventHandle eventHandle : eventHandles2) {
+            verify(eventHandle).release(true);
+        }
+    }
+
+    @Test
+    void output_will_release_only_new_handles_since_a_flush_when_S3_fails() throws IOException {
+        bufferFactory = mock(BufferFactory.class);
+        final Buffer buffer = mock(Buffer.class);
+        when(bufferFactory.getBuffer()).thenReturn(buffer);
+
+        doThrow(AwsServiceException.class).when(buffer).flushToS3(any(), anyString(), anyString());
+
+        final long objectSize = random.nextInt(1_000_000) + 10_000;
+        when(buffer.getSize()).thenReturn(objectSize);
+
+        when(codec.parse(any())).thenReturn(UUID.randomUUID().toString());
+        final S3SinkService s3SinkService = createObjectUnderTest();
+        final List<Record<Event>> records = generateEventRecords(1);
+        s3SinkService.output(records);
+        final List<Record<Event>> records2 = generateEventRecords(1);
+        s3SinkService.output(records2);
+
+        final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        for (EventHandle eventHandle : eventHandles) {
+            verify(eventHandle).release(false);
+        }
+        final List<EventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        for (EventHandle eventHandle : eventHandles2) {
+            verify(eventHandle).release(false);
+        }
+    }
+
+    private Collection<Record<Event>> generateRandomStringEventRecord() {
+        return generateEventRecords(50);
     }
 
     private Collection<Record<Event>> generateLessRandomStringEventRecord() {
-        Collection<Record<Event>> records = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
-            final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        return generateEventRecords(5);
+    }
+
+    private List<Record<Event>> generateEventRecords(final int numberOfRecords) {
+        List<Record<Event>> records = new ArrayList<>();
+        for (int i = 0; i < numberOfRecords; i++) {
+            final JacksonEvent event = (JacksonEvent) JacksonEvent.fromMessage(UUID.randomUUID().toString());
+            final EventHandle eventHandle = mock(EventHandle.class);
+            event.setEventHandle(eventHandle);
             records.add(new Record<>(event));
         }
         return records;
