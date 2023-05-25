@@ -3,14 +3,17 @@ In order of evaluation priority. _(top to bottom, left to right)_
 
 | Level | Operator             | Description                                           | Associativity |
 |-------|----------------------|-------------------------------------------------------|---------------|
-| 5     | `()`                 | Priority Expression                                   | left-to-right |
-| 4     | `not`, `+`, `-`      | Unary Logical NOT<br>Unary Positive<br>Unary negative | right-to-left |
+| 7     | `()`                 | Priority Expression                                   | left-to-right |
+| 6     | `not`, `+`, `-`      | Unary Logical NOT<br>Unary Positive<br>Unary negative | right-to-left |
+| 5     | `*`, `/`             | Multiple and Divison Operators                        | left-to-right |
+| 4     | `+`, `-`             | Addition and Subtraction Operators                    | left-to-right |
+| 4     | `+`                  | String Concatenation operator                         | left-to-right |
 | 3     | `<`, `<=`, `>`, `>=` | Relational Operators                                  | left-to-right |
 | 2     | `==`, `!=`           | Equality Operators                                    | left-to-right |
 | 1     | `and`, `or`          | Conditional Expression                                | left-to-right |
 
 ## Reserved for possible future functionality
-Reserved symbol set: `^`, `*`, `/`, `%`, `+`, `-`, `xor`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `++`, `--`, `${<text>}`
+Reserved symbol set: `^`, `%`, `xor`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `++`, `--`, `${<text>}`
 
 ## Set Initializer
 Defines a set or term and/or expressions.
@@ -197,14 +200,16 @@ White space is **required** surrounding Set Initializers, Priority Expressions, 
 
 | Operator             | Description              | White Space Required | ✅ Valid Examples                                               | ❌ Invalid Examples                    |
 |----------------------|--------------------------|----------------------|----------------------------------------------------------------|---------------------------------------|
-| `{}`                 | Set Initializer          | Yes                  | `/status in {200}`                                             | `/status in{200}`                     |
-| `()`                 | Priority Expression      | Yes                  | `/a==(/b==200)`<br>`/a in ({200})`                             | `/status in({200})`                   |
-| `in`, `not in`       | Set Operators            | Yes                  | `/a in {200}`<br>`/a not in {400}`                             | `/a in{200, 202}`<br>`/a not in{400}` |
-| `<`, `<=`, `>`, `>=` | Relational Operators     | No                   | `/status < 300`<br>`/status>=300`                              |                                       |
-| `=~`, `!~`           | Regex Equality Operators | No                   | `/msg =~ "^\w*$"`<br>`/msg=~"^\w*$"`                           |                                       |
-| `==`, `!=`           | Equality Operators       | No                   | `/status == 200`<br>`/status_code==200`                        |                                       |
-| `and`, `or`, `not`   | Conditional Operators    | Yes                  | `/a<300 and /b>200`                                            | `/b<300and/b>200`                     |
-| `,`                  | Set Value Delimiter      | No                   | `/a in {200, 202}`<br>`/a in {200,202}`<br>`/a in {200 , 202}` | `/a in {200,}`                        |
+| `{}`                 | Set Initializer               | Yes                  | `/status in {200}`                                             | `/status in{200}`                     |
+| `()`                 | Priority Expression           | Yes                  | `/a==(/b==200)`<br>`/a in ({200})`                             | `/status in({200})`                   |
+| `in`, `not in`       | Set Operators                 | Yes                  | `/a in {200}`<br>`/a not in {400}`                             | `/a in{200, 202}`<br>`/a not in{400}` |
+| `<`, `<=`, `>`, `>=` | Relational Operators          | No                   | `/status < 300`<br>`/status>=300`                              |                                       |
+| `=~`, `!~`           | Regex Equality Operators      | No                   | `/msg =~ "^\w*$"`<br>`/msg=~"^\w*$"`                           |                                       |
+| `==`, `!=`           | Equality Operators            | No                   | `/status == 200`<br>`/status_code==200`                        |                                       |
+| `and`, `or`, `not`   | Conditional Operators         | Yes                  | `/a<300 and /b>200`                                            | `/b<300and/b>200`                     |
+| `,`                  | Set Value Delimiter           | No                   | `/a in {200, 202}`<br>`/a in {200,202}`<br>`/a in {200 , 202}` | `/a in {200,}`                        |
+| `+`, `-`             | Add and Subtract Operators    | No                   | `/status_code + length(/message) - 2`                          |                                       |
+| `*`, `/`             | Multiply and Divide Operators | No                   | `/status_code * length(/message) / 3`                          |                                       |
 
 ## JsonPointers
 

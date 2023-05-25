@@ -13,13 +13,13 @@ import java.util.function.BiFunction;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-class NumericCompareOperator implements Operator<Boolean> {
+class AddBinaryOperator implements Operator<Object> {
     private final int symbol;
     private final String displayName;
-    private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>> operandsToOperationMap;
+    private final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap;
 
-    public NumericCompareOperator(final int symbol,
-            final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>>> operandsToOperationMap) {
+    public AddBinaryOperator(final int symbol,
+            final Map<Class<? extends Number>, Map<Class<? extends Number>, BiFunction<Object, Object, Number>>> operandsToOperationMap) {
         this.symbol = symbol;
         displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
         this.operandsToOperationMap = operandsToOperationMap;
@@ -27,7 +27,8 @@ class NumericCompareOperator implements Operator<Boolean> {
 
     @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
-        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_relationalOperatorExpression;
+        return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_arithmeticExpression || 
+               ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_stringExpression;
     }
 
     @Override
@@ -36,21 +37,28 @@ class NumericCompareOperator implements Operator<Boolean> {
     }
 
     @Override
-    public Boolean evaluate(final Object ... args) {
+    public Object evaluate(final Object ... args) {
         checkArgument(args.length == 2, displayName + " requires operands length needs to be 2.");
         final Object leftValue = args[0];
         final Object rightValue = args[1];
         final Class<?> leftValueClass = leftValue.getClass();
         final Class<?> rightValueClass = rightValue.getClass();
+        if (leftValue instanceof String && rightValue instanceof String) {
+            return (String)((String)leftValue + (String)rightValue);
+        }
+
         if (!operandsToOperationMap.containsKey(leftValueClass)) {
             throw new IllegalArgumentException(displayName + " requires left operand to be either Float or Integer.");
         }
-        Map<Class<? extends Number>, BiFunction<Object, Object, Boolean>> rightOperandToOperation =
+        Map<Class<? extends Number>, BiFunction<Object, Object, Number>> rightOperandToOperation =
                 operandsToOperationMap.get(leftValueClass);
         if (!rightOperandToOperation.containsKey(rightValueClass)) {
             throw new IllegalArgumentException(displayName + " requires right operand to be either Float or Integer.");
         }
-        final BiFunction<Object, Object, Boolean> operation = rightOperandToOperation.get(rightValueClass);
+        final BiFunction<Object, Object, Number> operation = rightOperandToOperation.get(rightValueClass);
         return operation.apply(leftValue, rightValue);
     }
 }
+
+
+

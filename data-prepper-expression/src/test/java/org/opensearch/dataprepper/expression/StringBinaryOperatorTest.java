@@ -12,29 +12,32 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 
-import java.util.Collections;
-import java.util.Set;
-
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class NotInSetOperatorTest {
-    final GenericInSetOperator objectUnderTest = new OperatorConfiguration().notInSetOperator();
+class StringBinaryOperatorTest {
+    Operator<Object> objectUnderTest;
+
+    private Operator<Object> createConcatOperatorUnderTest() {
+        return new OperatorConfiguration().addOperator();
+    }
 
     @Mock
     private ParserRuleContext ctx;
 
     @Test
     void testGetNumberOfOperands() {
+        objectUnderTest = createConcatOperatorUnderTest();
         assertThat(objectUnderTest.getNumberOfOperands(ctx), is(2));
     }
 
     @Test
     void testShouldEvaluate() {
-        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_setOperatorExpression);
+        objectUnderTest = createConcatOperatorUnderTest();
+        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_stringExpression);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
         when(ctx.getRuleIndex()).thenReturn(-1);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));
@@ -42,22 +45,17 @@ class NotInSetOperatorTest {
 
     @Test
     void testGetSymbol() {
-        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.NOT_IN_SET));
+        objectUnderTest = createConcatOperatorUnderTest();
+        assertThat(objectUnderTest.getSymbol(), is(DataPrepperExpressionParser.PLUS));
     }
 
     @Test
-    void testEvalValidArgs() {
-        assertThat(objectUnderTest.evaluate(1, Set.of(1)), is(false));
-        assertThat(objectUnderTest.evaluate(1, Collections.emptySet()), is(true));
+    void testEvalValidArgsForConcat() {
+        objectUnderTest = createConcatOperatorUnderTest();
+        String testString = "testString";
+        assertThat(objectUnderTest.evaluate("string1", "string2"), equalTo("string1string2"));
+        assertThat(objectUnderTest.evaluate(testString, "string2"), equalTo(testString+"string2"));
+        assertThat(objectUnderTest.evaluate(testString, testString), equalTo(testString+testString));
     }
 
-    @Test
-    void testEvalInValidArgLength() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 2, Set.of(1, 2)));
-    }
-
-    @Test
-    void testEvalInValidArgType() {
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.evaluate(1, 1));
-    }
 }
