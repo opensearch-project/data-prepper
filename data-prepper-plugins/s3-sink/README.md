@@ -72,4 +72,3 @@ The following command runs the integration tests:
 ```
 ./gradlew :data-prepper-plugins:s3-sink:integrationTest -Dtests.s3sink.region=<your-aws-region> -Dtests.s3sink.bucket=<your-bucket>
 ```
-

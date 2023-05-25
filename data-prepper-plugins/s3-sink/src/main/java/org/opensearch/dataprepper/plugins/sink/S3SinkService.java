@@ -9,6 +9,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.accumulator.Buffer;
@@ -25,6 +26,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -43,6 +45,7 @@ public class S3SinkService {
     private final S3SinkConfig s3SinkConfig;
     private final Lock reentrantLock;
     private final BufferFactory bufferFactory;
+    private final Collection<EventHandle> bufferedEventHandles;
     private final Codec codec;
     private Buffer currentBuffer;
     private final int maxEvents;
@@ -68,6 +71,8 @@ public class S3SinkService {
         this.bufferFactory = bufferFactory;
         this.codec = codec;
         reentrantLock = new ReentrantLock();
+
+        bufferedEventHandles = new LinkedList<>();
 
         maxEvents = s3SinkConfig.getThresholdOptions().getEventCount();
         maxBytes = s3SinkConfig.getThresholdOptions().getMaximumSize();
@@ -100,6 +105,7 @@ public class S3SinkService {
                 final byte[] encodedBytes = encodedEvent.getBytes();
 
                 currentBuffer.writeEvent(encodedBytes);
+                bufferedEventHandles.add(event.getEventHandle());
                 if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                     final String s3Key = generateKey();
                     LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
@@ -110,10 +116,12 @@ public class S3SinkService {
                         numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
                         objectsSucceededCounter.increment();
                         s3ObjectSizeSummary.record(currentBuffer.getSize());
+                        releaseEventHandles(true);
                     } else {
                         LOG.error("Failed to save {} to S3.", s3Key);
                         numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
                         objectsFailedCounter.increment();
+                        releaseEventHandles(false);
                     }
                     currentBuffer = bufferFactory.getBuffer();
                 }
@@ -123,6 +131,14 @@ public class S3SinkService {
             Thread.currentThread().interrupt();
         }
         reentrantLock.unlock();
+    }
+
+    private void releaseEventHandles(boolean result) {
+        for (EventHandle eventHandle : bufferedEventHandles) {
+            eventHandle.release(result);
+        }
+
+        bufferedEventHandles.clear();
     }
 
     /**
