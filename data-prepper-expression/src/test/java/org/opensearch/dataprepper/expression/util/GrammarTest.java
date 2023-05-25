@@ -39,8 +39,8 @@ public abstract class GrammarTest {
             DataPrepperExpressionParser.ArithmeticUnaryOperatorContext.class;
     protected static final Class<? extends ParseTree> PARENTHESES_EXPRESSION =
             DataPrepperExpressionParser.ParenthesesExpressionContext.class;
-    protected static final Class<? extends ParseTree> ARITHMETIC_FACTOR =
-            DataPrepperExpressionParser.ArithmeticFactorContext.class;
+    protected static final Class<? extends ParseTree> ARITHMETIC_TERM =
+            DataPrepperExpressionParser.ArithmeticTermContext.class;
     protected static final Class<? extends ParseTree> LITERAL =
             DataPrepperExpressionParser.LiteralContext.class;
     //endregion

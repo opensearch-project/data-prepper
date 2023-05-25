@@ -24,16 +24,16 @@ stringExpression
     ;
 
 arithmeticExpression
-    : arithmeticExpression (PLUS | SUBTRACT) arithmeticTerm
+    : arithmeticExpression (PLUS | SUBTRACT) multiplicativeExpression
+    | multiplicativeExpression
+    ;
+
+multiplicativeExpression
+    : multiplicativeExpression (MULTIPLY | DIVIDE) arithmeticTerm
     | arithmeticTerm
     ;
 
 arithmeticTerm
-    : arithmeticTerm (MULTIPLY | DIVIDE) arithmeticFactor
-    | arithmeticFactor
-    ;
-
-arithmeticFactor
     : function
     | jsonPointer
     | Integer
@@ -43,7 +43,7 @@ arithmeticFactor
     ;
 
 arithmeticUnaryExpression
-    : arithmeticUnaryOperator arithmeticFactor
+    : arithmeticUnaryOperator arithmeticTerm
     ;
 
 conditionalExpression

@@ -72,13 +72,13 @@ class ArithmeticBinaryOperatorTest {
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));
 
         objectUnderTest = createMultiplyOperatorUnderTest();
-        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_arithmeticTerm);
+        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_multiplicativeExpression);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
         when(ctx.getRuleIndex()).thenReturn(-1);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));
 
         objectUnderTest = createDivideOperatorUnderTest();
-        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_arithmeticTerm);
+        when(ctx.getRuleIndex()).thenReturn(DataPrepperExpressionParser.RULE_multiplicativeExpression);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(true));
         when(ctx.getRuleIndex()).thenReturn(-1);
         assertThat(objectUnderTest.shouldEvaluate(ctx), is(false));

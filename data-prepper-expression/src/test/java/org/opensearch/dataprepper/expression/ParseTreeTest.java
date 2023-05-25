@@ -227,7 +227,7 @@ class ParseTreeTest extends GrammarTest {
 
         final DiagnosingMatcher<ParseTree> lhs = isJsonPointerUnaryTree();
         final DiagnosingMatcher<ParseTree> arithFact = isParseTree(
-                ARITHMETIC_FACTOR
+                ARITHMETIC_TERM
         ).withChildrenMatching(
             isTerminalNode()
         );
