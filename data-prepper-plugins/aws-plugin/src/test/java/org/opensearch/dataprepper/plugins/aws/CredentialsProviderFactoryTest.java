@@ -86,6 +86,8 @@ class CredentialsProviderFactoryTest {
     void providerFromOptions_with_StsRoleArn() {
         when(awsCredentialsOptions.getStsRoleArn())
                 .thenReturn(createStsRole());
+        when(awsCredentialsOptions.getRegion())
+                .thenReturn(Region.US_EAST_1);
         final AwsCredentialsProvider awsCredentialsProvider = createObjectUnderTest().providerFromOptions(awsCredentialsOptions);
         assertThat(awsCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
     }
