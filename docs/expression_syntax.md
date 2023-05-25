@@ -3,13 +3,13 @@ In order of evaluation priority. _(top to bottom, left to right)_
 
 | Level | Operator             | Description                                           | Associativity |
 |-------|----------------------|-------------------------------------------------------|---------------|
-| 5     | `()`                 | Priority Expression                                   | left-to-right |
-| 4     | `not`, `+`, `-`      | Unary Logical NOT<br>Unary Positive<br>Unary negative | right-to-left |
+| 7     | `()`                 | Priority Expression                                   | left-to-right |
+| 6     | `not`, `+`, `-`      | Unary Logical NOT<br>Unary Positive<br>Unary negative | right-to-left |
+| 5     | `*`, `/`             | Multiple and Divison Operators                        | left-to-right |
+| 4     | `+`, `-`             | Addition and Subtraction Operators                    | left-to-right |
+| 4     | `+`                  | String Concatenation operator                         | left-to-right |
 | 3     | `<`, `<=`, `>`, `>=` | Relational Operators                                  | left-to-right |
-| 3     | `*`, `/`             | Multiple and Divison Operators                        | left-to-right |
 | 2     | `==`, `!=`           | Equality Operators                                    | left-to-right |
-| 2     | `+`, `-`             | Addition and Subtraction Operators                    | left-to-right |
-| 2     | `+`                  | String Concatenation operator                         | left-to-right |
 | 1     | `and`, `or`          | Conditional Expression                                | left-to-right |
 
 ## Reserved for possible future functionality
