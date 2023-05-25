@@ -12,17 +12,21 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
-import java.util.Objects;
+import java.util.stream.Stream;
 
 public class AddEntryProcessorConfig {
     public static class Entry {
         private String key;
 
+        @JsonProperty("metadata_key")
         private String metadataKey;
 
         private Object value;
 
         private String format;
+
+        @JsonProperty("value_expression")
+        private String valueExpression;
 
         @JsonProperty("add_when")
         private String addWhen;
@@ -46,21 +50,26 @@ public class AddEntryProcessorConfig {
             return format;
         }
 
+        public String getValueExpression() {
+            return valueExpression;
+        }
+
         public boolean getOverwriteIfKeyExists() {
             return overwriteIfKeyExists;
         }
 
         public String getAddWhen() { return addWhen; }
 
-        @AssertTrue(message = "Either value or format must be specified")
-        public boolean hasValueOrFormat() {
-            return Objects.nonNull(value) || Objects.nonNull(format);
+        @AssertTrue(message = "Either value or format or expression must be specified, and only one of them can be specified")
+        public boolean hasValueOrFormatOrExpression() {
+            return Stream.of(value, format, valueExpression).filter(n -> n!=null).count() == 1;
         }
 
         public Entry(final String key,
                      final String metadataKey,
                      final Object value,
                      final String format,
+                     final String valueExpression,
                      final boolean overwriteIfKeyExists,
                      final String addWhen)
         {
@@ -74,6 +83,7 @@ public class AddEntryProcessorConfig {
             this.metadataKey = metadataKey;
             this.value = value;
             this.format = format;
+            this.valueExpression = valueExpression;
             this.overwriteIfKeyExists = overwriteIfKeyExists;
             this.addWhen = addWhen;
         }

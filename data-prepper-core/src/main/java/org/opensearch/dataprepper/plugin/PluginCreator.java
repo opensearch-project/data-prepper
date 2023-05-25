@@ -73,7 +73,7 @@ class PluginCreator {
         final String error =
                 String.format("Data Prepper plugin %s with name %s does not have a valid plugin constructor. " +
                         "Please ensure the plugin has a constructor that either: " +
-                        "1. Is annotated with @DataPrepperPlugin; " +
+                        "1. Is annotated with @DataPrepperPluginConstructor; " +
                         "2. Contains a single argument of type PluginSetting; or " +
                         "3. Is the default constructor.",
         pluginClass.getSimpleName(), pluginName);

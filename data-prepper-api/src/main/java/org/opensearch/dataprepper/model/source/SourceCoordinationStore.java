@@ -33,6 +33,10 @@ public interface SourceCoordinationStore {
      * 1. The partition status is UNASSIGNED
      * 2. The partition status is CLOSED and the reOpenAt timestamp has passed
      * 3. The partition status is ASSIGNED and the partitionOwnershipTimeout has passed
+     * @param sourceIdentifier - The identifier for the source
+     * @param ownerId - The unique owner id for a sub-pipeline
+     * @param ownershipTimeout The amount of time before the ownership of the acquired partition expires
+     * @return The partition that was acquired successfully. Empty if no partition could be acquired.
      */
     Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String sourceIdentifier, final String ownerId, final Duration ownershipTimeout);
 

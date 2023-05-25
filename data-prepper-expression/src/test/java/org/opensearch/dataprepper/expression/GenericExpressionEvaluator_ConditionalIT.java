@@ -196,7 +196,13 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("getMetadata(\"/key2\") == "+value4, longEvent, true),
                 Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
                 Arguments.of("getMetadata(\"/key6\") == \""+value5+"\"", longEvent, false),
-                Arguments.of("getMetadata(\"key6\") == "+value5, longEvent, false)
+                Arguments.of("getMetadata(\"key6\") == "+value5, longEvent, false),
+                Arguments.of("cidrContains(/sourceIp,\"192.0.2.0/24\")", event("{\"sourceIp\": \"192.0.2.3\"}"), true),
+                Arguments.of("cidrContains(/sourceIp,\"192.0.2.0/24\",\"192.1.1.0/24\")", event("{\"sourceIp\": \"192.0.2.3\"}"), true),
+                Arguments.of("cidrContains(/sourceIp,\"192.0.2.0/24\",\"192.1.1.0/24\")", event("{\"sourceIp\": \"192.2.2.3\"}"), false),
+                Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
+                Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:0db8:aaaa:bbbb::\"}"), true),
+                Arguments.of("cidrContains(/sourceIp,\"2001:0db8::/32\",\"2001:aaaa::/32\")", event("{\"sourceIp\": \"2001:abcd:aaaa:bbbb::\"}"), false)
         );
     }
 
@@ -246,7 +252,9 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("hasTags(\""+testTag2+"\",)", tagEvent),
                 Arguments.of("getMetadata(10)", tagEvent),
                 Arguments.of("getMetadata("+ testMetadataKey+ ")", tagEvent),
-                Arguments.of("getMetadata(\""+ testMetadataKey+")", tagEvent)
+                Arguments.of("getMetadata(\""+ testMetadataKey+")", tagEvent),
+                Arguments.of("cidrContains(/sourceIp)", event("{\"sourceIp\": \"192.0.2.3\"}")),
+                Arguments.of("cidrContains(/sourceIp,123)", event("{\"sourceIp\": \"192.0.2.3\"}"))
         );
     }
 
