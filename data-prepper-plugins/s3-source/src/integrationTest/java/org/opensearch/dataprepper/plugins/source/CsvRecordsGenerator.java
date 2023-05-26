@@ -100,4 +100,9 @@ class CsvRecordsGenerator implements RecordsGenerator {
     public String getS3SelectExpression() {
         return "SELECT * FROM S3OBJECT";
     }
+
+    @Override
+    public boolean canCompress() {
+        return true;
+    }
 }

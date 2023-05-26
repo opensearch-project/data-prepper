@@ -76,4 +76,9 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
     public String toString() {
         return this.getClass().getSimpleName();
     }
+
+    @Override
+    public boolean canCompress() {
+        return true;
+    }
 }

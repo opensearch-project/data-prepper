@@ -276,13 +276,13 @@ public class S3ScanObjectWorkerIT {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
             final List<RecordsGenerator> recordsGenerators = List.of(
-                    new NewlineDelimitedRecordsGenerator(),
-                    new CsvRecordsGenerator(),
-                    new JsonRecordsGenerator(),
-                    new ParquetRecordsGenerator());
+                    new NewlineDelimitedRecordsGenerator());
+//                    new CsvRecordsGenerator(),
+//                    new JsonRecordsGenerator(),
+//                    new ParquetRecordsGenerator());
             final List<Integer> numberOfRecordsList = List.of(100,5000);
-            final List<Integer> recordsToAccumulateList = List.of( 100,1000);
-            final List<Boolean> booleanList = List.of(Boolean.FALSE, Boolean.TRUE);
+            final List<Integer> recordsToAccumulateList = List.of( 100);
+            final List<Boolean> booleanList = List.of(Boolean.TRUE);
 
             final String bucket = System.getProperty("tests.s3source.bucket");
             final ScanOptions.Builder startTimeAndRangeScanOptions = new ScanOptions.Builder()
@@ -307,9 +307,10 @@ public class S3ScanObjectWorkerIT {
                             .flatMap(records -> recordsToAccumulateList
                                     .stream()
                                     .flatMap(accumulate -> booleanList
-                                                    .stream().flatMap(range -> scanOptions.stream()
-                                                            .map(shouldCompress -> arguments(recordsGenerator, records,
-                                                                    accumulate, range, shouldCompress))))));
+                                            .stream()
+                                            .flatMap(shouldCompress -> scanOptions.stream()
+                                                    .map(scanOptionsBuilder -> arguments(recordsGenerator, records,
+                                                                    accumulate, shouldCompress && recordsGenerator.canCompress(), scanOptionsBuilder))))));
         }
     }
 

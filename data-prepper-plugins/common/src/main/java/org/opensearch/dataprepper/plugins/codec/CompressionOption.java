@@ -15,7 +15,8 @@ import java.util.stream.Collectors;
 public enum CompressionOption {
     NONE("none"),
     GZIP("gzip"),
-    SNAPPY("snappy");
+    SNAPPY("snappy"),
+    AUTOMATIC("automatic");
 
     private static final Map<String, CompressionOption> OPTIONS_MAP = Arrays.stream(CompressionOption.values())
             .collect(Collectors.toMap(

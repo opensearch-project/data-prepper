@@ -38,18 +38,18 @@ public class S3ObjectGenerator {
     }
 
     private void writeToFile(final int numberOfRecords,
-                             final RecordsGenerator objectGenerator,
+                             final RecordsGenerator recordsGenerator,
                              final boolean isCompressionEnabled,
                              final File file) throws IOException {
         if (isCompressionEnabled) {
             final File tempFile = File.createTempFile("s3-uncompressed-" + numberOfRecords + "-", null);
             tempFile.deleteOnExit();
-            objectGenerator.write(tempFile, numberOfRecords);
+            recordsGenerator.write(tempFile, numberOfRecords);
 
             compressGzip(tempFile, file);
         }
         else {
-            objectGenerator.write(file, numberOfRecords);
+            recordsGenerator.write(file, numberOfRecords);
         }
     }
 

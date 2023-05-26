@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.codec.CompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.codec.GZipDecompressionEngine;
 import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
@@ -109,11 +109,11 @@ class S3ObjectWorkerIT {
                 .when(buffer).writeAll(anyCollection(), anyInt());
     }
 
-    private S3ObjectWorker createObjectUnderTest(final InputCodec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
+    private S3ObjectWorker createObjectUnderTest(final InputCodec codec, final int numberOfRecordsToAccumulate, final CompressionOption compressionOption) {
         final S3ObjectRequest request = new S3ObjectRequest.Builder(buffer, numberOfRecordsToAccumulate,
                 Duration.ofMillis(TIMEOUT_IN_MILLIS), s3ObjectPluginMetrics).bucketOwnerProvider(bucketOwnerProvider)
                 .eventConsumer(eventMetadataModifier).codec(codec).s3Client(s3Client)
-                .compressionEngine(compressionEngine).build();
+                .compressionOption(compressionOption).build();
         return new S3ObjectWorker(request);
     }
 
@@ -127,8 +127,8 @@ class S3ObjectWorkerIT {
 
         final String key = getKeyString(recordsGenerator, numberOfRecords, shouldCompress);
 
-        final CompressionEngine compressionEngine = shouldCompress ? new GZipDecompressionEngine() : new NoneDecompressionEngine();
-        final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, compressionEngine);
+        final CompressionOption compressionOption = shouldCompress ? CompressionOption.GZIP : CompressionOption.NONE;
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, compressionOption);
 
         s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);
         stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
@@ -173,7 +173,7 @@ class S3ObjectWorkerIT {
                                     .stream()
                                     .flatMap(accumulate -> booleanList
                                             .stream()
-                                            .map(shouldCompress -> arguments(recordsGenerator, records, accumulate, shouldCompress))
+                                            .map(shouldCompress -> arguments(recordsGenerator, records, accumulate, shouldCompress && recordsGenerator.canCompress()))
                                     )));
         }
     }

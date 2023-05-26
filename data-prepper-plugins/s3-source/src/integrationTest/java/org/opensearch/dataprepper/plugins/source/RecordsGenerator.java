@@ -21,4 +21,6 @@ interface RecordsGenerator {
 
     void assertEventIsCorrect(Event event);
     String getS3SelectExpression();
+
+    boolean canCompress();
 }

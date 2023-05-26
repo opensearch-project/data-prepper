@@ -196,7 +196,7 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        int bytesRead = stream.readNBytes(b, off, len);
+        final int bytesRead = stream.readNBytes(b, off, len);
 
         pos += bytesRead;
         next += bytesRead;
@@ -244,9 +244,15 @@ class S3InputStream extends SeekableInputStream {
      */
     @Override
     public long skip(long n) {
-        next += n;
+        if (next >= metadata.contentLength()) {
+            return 0;
+        }
 
-        return Math.min(n, metadata.contentLength() - next);
+        long toSkip = Math.min(n, metadata.contentLength() - next);
+
+        next += toSkip;
+
+        return toSkip;
     }
 
     // Override all SeekableInputStream methods
@@ -417,11 +423,16 @@ class S3InputStream extends SeekableInputStream {
      * @throws IOException if the stream cannot be opened.
      */
     private void openStream() throws IOException {
+        closeStream();
+
+        if (pos >= metadata.contentLength()) {
+            stream = InputStream.nullInputStream();
+            return;
+        }
+
         final GetObjectRequest request = this.getObjectRequestBuilder
                 .range(String.format("bytes=%s-", pos))
                 .build();
-
-        closeStream();
 
         try {
             stream = s3Client.getObject(request, ResponseTransformer.toInputStream());

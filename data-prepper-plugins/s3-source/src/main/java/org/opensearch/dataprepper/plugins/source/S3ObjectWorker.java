@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -77,10 +78,13 @@ class S3ObjectWorker implements S3ObjectHandler {
 
         final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference);
 
+        final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
+                compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
+
         try {
             s3ObjectSize = inputFile.getLength();
 
-            codec.parse(inputFile, compressionOption.getDecompressionEngine(), record -> {
+            codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
                 try {
                     eventConsumer.accept(record.getData(), s3ObjectReference);
                     bufferAccumulator.add(record);
