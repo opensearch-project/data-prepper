@@ -148,11 +148,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         this.shutdown();
         throw new RuntimeException(e.getMessage(), e);
     } catch (Exception e) {
-        if (!BulkRetryStrategy.canRetry(e)) {
-            LOG.error("Failed to initialize OpenSearch sink with a non-retryable exception.", e);
-            this.shutdown();
-            throw e;
-        }
         LOG.warn("Failed to initialize OpenSearch sink with a retryable exception. ", e);
         closeFiles();
     }
