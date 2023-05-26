@@ -44,7 +44,7 @@ import static org.mockito.Mockito.when;
 class RouteEventEvaluatorTest {
 
     @Mock
-    private ExpressionEvaluator<Boolean> evaluator;
+    private ExpressionEvaluator evaluator;
     private List<ConditionalRoute> routes;
 
     private RouteEventEvaluator createObjectUnderTest() {
@@ -162,7 +162,7 @@ class RouteEventEvaluatorTest {
             final Record recordMatchingAllRoutes = records.get(1);
             final Event eventMatchingAllRoutes = (Event) records.get(1).getData();
             for (ConditionalRoute route : routes) {
-                when(evaluator.evaluate(route.getCondition(), eventMatchingAllRoutes))
+                when(evaluator.evaluateConditional(route.getCondition(), eventMatchingAllRoutes))
                         .thenReturn(true);
 
                 for (Record record : records) {
@@ -202,14 +202,14 @@ class RouteEventEvaluatorTest {
             final Record recordMatchingAllRoutes = records.get(1);
             final Event eventMatchingAllRoutes = (Event) records.get(1).getData();
             for (ConditionalRoute route : routes) {
-                when(evaluator.evaluate(route.getCondition(), eventMatchingAllRoutes))
+                when(evaluator.evaluateConditional(route.getCondition(), eventMatchingAllRoutes))
                         .thenReturn(true);
 
                 for (Record record : records) {
                     if(recordMatchingAllRoutes == record)
                         continue;
 
-                    when(evaluator.evaluate(route.getCondition(), (Event) record.getData()))
+                    when(evaluator.evaluateConditional(route.getCondition(), (Event) record.getData()))
                             .thenThrow(RuntimeException.class);
                 }
             }

@@ -23,10 +23,10 @@ class RouteEventEvaluator {
 
     private static final Logger LOG = LoggerFactory.getLogger(RouteEventEvaluator.class);
 
-    private final ExpressionEvaluator<Boolean> evaluator;
+    private final ExpressionEvaluator evaluator;
     private final Collection<ConditionalRoute> routes;
 
-    RouteEventEvaluator(final ExpressionEvaluator<Boolean> evaluator, final Collection<ConditionalRoute> routes) {
+    RouteEventEvaluator(final ExpressionEvaluator evaluator, final Collection<ConditionalRoute> routes) {
         this.evaluator = evaluator;
         this.routes = routes;
     }
@@ -61,7 +61,7 @@ class RouteEventEvaluator {
         final Set<String> matchRoutes = new HashSet<>();
         for (ConditionalRoute route : routes) {
             try {
-                if (evaluator.evaluate(route.getCondition(), event)) {
+                if (evaluator.evaluateConditional(route.getCondition(), event)) {
                     matchRoutes.add(route.getName());
                 }
             } catch (final Exception ex) {

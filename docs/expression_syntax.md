@@ -3,14 +3,17 @@ In order of evaluation priority. _(top to bottom, left to right)_
 
 | Level | Operator             | Description                                           | Associativity |
 |-------|----------------------|-------------------------------------------------------|---------------|
-| 5     | `()`                 | Priority Expression                                   | left-to-right |
-| 4     | `not`, `+`, `-`      | Unary Logical NOT<br>Unary Positive<br>Unary negative | right-to-left |
+| 7     | `()`                 | Priority Expression                                   | left-to-right |
+| 6     | `not`, `+`, `-`      | Unary Logical NOT<br>Unary Positive<br>Unary negative | right-to-left |
+| 5     | `*`, `/`             | Multiple and Divison Operators                        | left-to-right |
+| 4     | `+`, `-`             | Addition and Subtraction Operators                    | left-to-right |
+| 4     | `+`                  | String Concatenation operator                         | left-to-right |
 | 3     | `<`, `<=`, `>`, `>=` | Relational Operators                                  | left-to-right |
 | 2     | `==`, `!=`           | Equality Operators                                    | left-to-right |
 | 1     | `and`, `or`          | Conditional Expression                                | left-to-right |
 
 ## Reserved for possible future functionality
-Reserved symbol set: `^`, `*`, `/`, `%`, `+`, `-`, `xor`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `++`, `--`, `${<text>}`
+Reserved symbol set: `^`, `%`, `xor`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `++`, `--`, `${<text>}`
 
 ## Set Initializer
 Defines a set or term and/or expressions.
@@ -167,11 +170,11 @@ Escaped Example
 DataPrepper has some in-built functions that can be used as operand in an expression. For example
 `length(/message) > 20`
 will extract `message` field from the event and compares it's length with 20. The value of `message` field is expected to be of String type. If the field is not present in the event, null is returned and the function is not applied on it. If the field's value is not String then error is thrown.
-Currently the following functions are supported
+Currently, the following functions are supported
  * `length()`
    - takes one argument of JsonPointer type
    - returns the length of the value of the argument passed if it's type is string.
-   For example, `length("/message")` returns 10 if the key `message` exists in the event and has the value of `"1234567890"`.
+   For example, `length(/message)` returns 10 if the key `message` exists in the event and has the value of `"1234567890"`.
  * `hasTags()`
    - takes at least one argument
    - all arguments must be of String type
@@ -181,6 +184,11 @@ Currently the following functions are supported
    - takes one String literal as argument. This is the key to lookup in the event's metadata. If the key contains "/", then recursive lookup into the metadata attributes is done.
    - returns the value corresponding to the argument (key) passed. Value can be of any type.
    For example, if metadata contains {"key1": "value2", "key2": 10}, then `getMetadata("key1")` returns "value2", and `getMetadata("key2")` return 10.
+* `cidrContains()`
+   - The function takes two or more arguments. The first argument is of Json Pointer type representing the key to the IP address to check; the argument(s) that follows is of String type representing CIDR block(s) to check against.
+   - If the IP address is in the range of any given CIDR blocks, the function evaluates to true; otherwise, the function evaluates to false.
+   - The function supports both IPv4 and IPv6 addresses.
+   For example, `cidrContains(/sourceIp,"192.0.2.0/24","10.0.1.0/16")` evaluates to true if the event has `sourceIp` field with value "192.0.2.5".
 
 
 ## White Space
@@ -192,14 +200,16 @@ White space is **required** surrounding Set Initializers, Priority Expressions, 
 
 | Operator             | Description              | White Space Required | ✅ Valid Examples                                               | ❌ Invalid Examples                    |
 |----------------------|--------------------------|----------------------|----------------------------------------------------------------|---------------------------------------|
-| `{}`                 | Set Initializer          | Yes                  | `/status in {200}`                                             | `/status in{200}`                     |
-| `()`                 | Priority Expression      | Yes                  | `/a==(/b==200)`<br>`/a in ({200})`                             | `/status in({200})`                   |
-| `in`, `not in`       | Set Operators            | Yes                  | `/a in {200}`<br>`/a not in {400}`                             | `/a in{200, 202}`<br>`/a not in{400}` |
-| `<`, `<=`, `>`, `>=` | Relational Operators     | No                   | `/status < 300`<br>`/status>=300`                              |                                       |
-| `=~`, `!~`           | Regex Equality Operators | No                   | `/msg =~ "^\w*$"`<br>`/msg=~"^\w*$"`                           |                                       |
-| `==`, `!=`           | Equality Operators       | No                   | `/status == 200`<br>`/status_code==200`                        |                                       |
-| `and`, `or`, `not`   | Conditional Operators    | Yes                  | `/a<300 and /b>200`                                            | `/b<300and/b>200`                     |
-| `,`                  | Set Value Delimiter      | No                   | `/a in {200, 202}`<br>`/a in {200,202}`<br>`/a in {200 , 202}` | `/a in {200,}`                        |
+| `{}`                 | Set Initializer               | Yes                  | `/status in {200}`                                             | `/status in{200}`                     |
+| `()`                 | Priority Expression           | Yes                  | `/a==(/b==200)`<br>`/a in ({200})`                             | `/status in({200})`                   |
+| `in`, `not in`       | Set Operators                 | Yes                  | `/a in {200}`<br>`/a not in {400}`                             | `/a in{200, 202}`<br>`/a not in{400}` |
+| `<`, `<=`, `>`, `>=` | Relational Operators          | No                   | `/status < 300`<br>`/status>=300`                              |                                       |
+| `=~`, `!~`           | Regex Equality Operators      | No                   | `/msg =~ "^\w*$"`<br>`/msg=~"^\w*$"`                           |                                       |
+| `==`, `!=`           | Equality Operators            | No                   | `/status == 200`<br>`/status_code==200`                        |                                       |
+| `and`, `or`, `not`   | Conditional Operators         | Yes                  | `/a<300 and /b>200`                                            | `/b<300and/b>200`                     |
+| `,`                  | Set Value Delimiter           | No                   | `/a in {200, 202}`<br>`/a in {200,202}`<br>`/a in {200 , 202}` | `/a in {200,}`                        |
+| `+`, `-`             | Add and Subtract Operators    | No                   | `/status_code + length(/message) - 2`                          |                                       |
+| `*`, `/`             | Multiply and Divide Operators | No                   | `/status_code * length(/message) / 3`                          |                                       |
 
 ## JsonPointers
 

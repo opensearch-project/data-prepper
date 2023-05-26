@@ -25,7 +25,7 @@ import static org.mockito.Mockito.mock;
 class RouterFactoryTest {
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
     private Set<ConditionalRoute> routes;
 
     @BeforeEach

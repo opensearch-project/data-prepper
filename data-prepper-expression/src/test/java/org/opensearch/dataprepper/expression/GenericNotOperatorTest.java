@@ -7,6 +7,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.RuleContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,9 @@ class GenericNotOperatorTest {
     private int expectedShouldEvaluateRuleIndex;
     private GenericNotOperator genericNotOperator;
 
+    @Mock
+    private ParserRuleContext ctx;
+
     @BeforeEach
     void beforeEach() {
         expectedSymbol = random.nextInt();
@@ -49,11 +53,11 @@ class GenericNotOperatorTest {
         final int expected = random.nextInt();
         doReturn(expected)
                 .when(mockOperator)
-                .getNumberOfOperands();
+                .getNumberOfOperands(ctx);
 
-        final int actual = genericNotOperator.getNumberOfOperands();
+        final int actual = genericNotOperator.getNumberOfOperands(ctx);
         assertThat(actual, is(expected));
-        verify(mockOperator).getNumberOfOperands();
+        verify(mockOperator).getNumberOfOperands(ctx);
     }
 
     @Test

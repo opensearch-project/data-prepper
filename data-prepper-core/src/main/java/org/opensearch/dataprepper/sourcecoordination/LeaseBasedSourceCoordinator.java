@@ -6,6 +6,8 @@
 package org.opensearch.dataprepper.sourcecoordination;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -14,6 +16,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
+import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.UninitializedSourceCoordinatorException;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 import org.slf4j.Logger;
@@ -33,9 +36,23 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private static final Logger LOG = LoggerFactory.getLogger(LeaseBasedSourceCoordinator.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    static final String PARTITION_CREATION_SUPPLIER_INVOCATION_COUNT = "partitionCreationSupplierInvocations";
+    static final String NO_PARTITIONS_ACQUIRED_COUNT = "noPartitionsAcquired";
+    static final String PARTITION_CREATED_COUNT = "partitionsCreatedCount";
+    static final String PARTITIONS_ACQUIRED_COUNT = "partitionsAcquired";
+    static final String PARTITIONS_COMPLETED_COUNT = "partitionsCompleted";
+    static final String PARTITIONS_CLOSED_COUNT = "partitionsClosed";
+    static final String SAVE_PROGRESS_STATE_INVOCATION_SUCCESS_COUNT = "savePartitionProgressStateInvocationsSuccess";
+    static final String PARTITION_OWNERSHIP_GIVEN_UP_COUNT = "partitionsGivenUp";
+
+    static final String PARTITION_NOT_FOUND_ERROR_COUNT = "partitionNotFoundErrors";
+    static final String PARTITION_NOT_OWNED_ERROR_COUNT = "partitionNotOwnedErrors";
+    static final String PARTITION_UPDATE_ERROR_COUNT = "PartitionUpdateErrors";
+
     static final Duration DEFAULT_LEASE_TIMEOUT = Duration.ofMinutes(10);
 
     private static final String hostName;
+    static final String PARTITION_TYPE = "PARTITION";
 
     private final SourceCoordinationConfig sourceCoordinationConfig;
     private final SourceCoordinationStore sourceCoordinationStore;
@@ -43,7 +60,23 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     private final Class<T> partitionProgressStateClass;
     private final String ownerId;
+    private final String sourceIdentifier;
     private boolean initialized = false;
+
+    private final PluginMetrics pluginMetrics;
+    private final Counter partitionCreationSupplierInvocationsCounter;
+    private final Counter partitionsCreatedCounter;
+    private final Counter noPartitionsAcquiredCounter;
+    private final Counter partitionsAcquiredCounter;
+    private final Counter partitionsCompletedCounter;
+    private final Counter partitionsClosedCounter;
+    private final Counter saveProgressStateInvocationSuccessCounter;
+    private final Counter partitionsGivenUpCounter;
+    private final Counter partitionNotFoundErrorCounter;
+    private final Counter partitionNotOwnedErrorCounter;
+    private final Counter saveStatePartitionUpdateErrorCounter;
+    private final Counter closePartitionUpdateErrorCounter;
+    private final Counter completePartitionUpdateErrorCounter;
 
     static {
         try {
@@ -57,12 +90,30 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                                        final SourceCoordinationStore sourceCoordinationStore,
                                        final SourceCoordinationConfig sourceCoordinationConfig,
                                        final PartitionManager<T> partitionManager,
-                                       final String ownerPrefix) {
+                                       final String sourceIdentifier,
+                                       final PluginMetrics pluginMetrics) {
         this.sourceCoordinationConfig = sourceCoordinationConfig;
         this.sourceCoordinationStore = sourceCoordinationStore;
         this.partitionProgressStateClass = partitionProgressStateClass;
         this.partitionManager = partitionManager;
-        this.ownerId = ownerPrefix + ":" + hostName;
+        this.sourceIdentifier = Objects.nonNull(sourceCoordinationConfig.getPartitionPrefix()) ?
+                sourceCoordinationConfig.getPartitionPrefix() + "|" + sourceIdentifier + "|" + PARTITION_TYPE :
+                sourceIdentifier + "|" + PARTITION_TYPE;
+        this.ownerId = sourceIdentifier + ":" + hostName;
+        this.pluginMetrics = pluginMetrics;
+        this.partitionCreationSupplierInvocationsCounter = pluginMetrics.counter(PARTITION_CREATION_SUPPLIER_INVOCATION_COUNT);
+        this.partitionsCreatedCounter = pluginMetrics.counter(PARTITION_CREATED_COUNT);
+        this.noPartitionsAcquiredCounter = pluginMetrics.counter(NO_PARTITIONS_ACQUIRED_COUNT);
+        this.partitionsAcquiredCounter = pluginMetrics.counter(PARTITIONS_ACQUIRED_COUNT);
+        this.partitionsCompletedCounter = pluginMetrics.counter(PARTITIONS_COMPLETED_COUNT);
+        this.partitionsClosedCounter = pluginMetrics.counter(PARTITIONS_CLOSED_COUNT);
+        this.saveProgressStateInvocationSuccessCounter = pluginMetrics.counter(SAVE_PROGRESS_STATE_INVOCATION_SUCCESS_COUNT);
+        this.partitionsGivenUpCounter = pluginMetrics.counter(PARTITION_OWNERSHIP_GIVEN_UP_COUNT);
+        this.partitionNotFoundErrorCounter = pluginMetrics.counter(PARTITION_NOT_FOUND_ERROR_COUNT);
+        this.partitionNotOwnedErrorCounter = pluginMetrics.counter(PARTITION_NOT_OWNED_ERROR_COUNT);
+        this.saveStatePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "saveState");
+        this.closePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "close");
+        this.completePartitionUpdateErrorCounter = pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "complete");
     }
 
     @Override
@@ -79,18 +130,20 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             return partitionManager.getActivePartition();
         }
 
-        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(ownerId, DEFAULT_LEASE_TIMEOUT);
+        Optional<SourcePartitionStoreItem> ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifier, ownerId, DEFAULT_LEASE_TIMEOUT);
 
         if (ownedPartitions.isEmpty()) {
             LOG.info("Partition owner {} did not acquire any partitions. Running partition creation supplier to create more partitions", ownerId);
 
             createPartitions(partitionsCreatorSupplier.get());
+            partitionCreationSupplierInvocationsCounter.increment();
 
-            ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(ownerId, DEFAULT_LEASE_TIMEOUT);
+            ownedPartitions = sourceCoordinationStore.tryAcquireAvailablePartition(sourceIdentifier, ownerId, DEFAULT_LEASE_TIMEOUT);
         }
 
         if (ownedPartitions.isEmpty()) {
             LOG.info("Partition owner {} did not acquire any partitions even after running the partition creation supplier", ownerId);
+            noPartitionsAcquiredCounter.increment();
             return Optional.empty();
         }
 
@@ -102,19 +155,20 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         partitionManager.setActivePartition(sourcePartition);
 
         LOG.debug("Partition key {} was acquired by owner {}", sourcePartition.getPartitionKey(), ownerId);
-
+        partitionsAcquiredCounter.increment();
         return Optional.of(sourcePartition);
     }
 
     private void createPartitions(final List<PartitionIdentifier> partitionIdentifiers) {
         for (final PartitionIdentifier partitionIdentifier : partitionIdentifiers) {
-            final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey());
+            final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifier, partitionIdentifier.getPartitionKey());
 
             if (optionalPartitionItem.isPresent()) {
                 return;
             }
 
             final boolean partitionCreated = sourceCoordinationStore.tryCreatePartitionItem(
+                    sourceIdentifier,
                     partitionIdentifier.getPartitionKey(),
                     SourcePartitionStatus.UNASSIGNED,
                     0L,
@@ -123,6 +177,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
             if (partitionCreated) {
                 LOG.info("Partition successfully created by owner {} for source partition key {}", ownerId, partitionIdentifier.getPartitionKey());
+                partitionsCreatedCounter.increment();
             }
         }
     }
@@ -139,10 +194,17 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         itemToUpdate.setPartitionOwnershipTimeout(null);
         itemToUpdate.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
 
-        sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
+        try {
+            sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
+        } catch (final PartitionUpdateException e) {
+            completePartitionUpdateErrorCounter.increment();
+            throw e;
+        }
+
         partitionManager.removeActivePartition();
 
         LOG.info("Partition key {} was completed by owner {}.", partitionKey, ownerId);
+        partitionsCompletedCounter.increment();
     }
 
     @Override
@@ -164,8 +226,23 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             itemToUpdate.setReOpenAt(Instant.now().plus(reopenAfter));
         }
 
+        try {
+            sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
+        } catch (final PartitionUpdateException e) {
+            if (SourcePartitionStatus.COMPLETED.equals(itemToUpdate.getSourcePartitionStatus())) {
+                completePartitionUpdateErrorCounter.increment();
+            } else {
+                closePartitionUpdateErrorCounter.increment();
+            }
+            throw e;
+        }
 
-        sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
+        if (SourcePartitionStatus.COMPLETED.equals(itemToUpdate.getSourcePartitionStatus())) {
+            partitionsCompletedCounter.increment();
+        } else {
+            partitionsClosedCounter.increment();
+        }
+
         partitionManager.removeActivePartition();
 
         LOG.info("Partition key {} was closed by owner {}. The resulting status of the partition is now {}", partitionKey, ownerId, itemToUpdate.getSourcePartitionStatus());
@@ -181,10 +258,17 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(DEFAULT_LEASE_TIMEOUT));
         itemToUpdate.setPartitionProgressState(convertPartitionProgressStateClasstoString(partitionProgressState));
 
-        sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
+        try {
+            sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
+        } catch (final PartitionUpdateException e) {
+            saveStatePartitionUpdateErrorCounter.increment();
+            throw e;
+        }
 
         LOG.debug("State was saved for partition key {} by owner {}. The saved state is: {}",
                 partitionKey, ownerId, itemToUpdate.getPartitionProgressState());
+
+        saveProgressStateInvocationSuccessCounter.increment();
     }
 
     @Override
@@ -196,7 +280,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
         final Optional<SourcePartition<T>> activePartition = partitionManager.getActivePartition();
         if (activePartition.isPresent()) {
-            final Optional<SourcePartitionStoreItem> optionalItem = sourceCoordinationStore.getSourcePartitionItem(activePartition.get().getPartitionKey());
+            final Optional<SourcePartitionStoreItem> optionalItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifier, activePartition.get().getPartitionKey());
             if (optionalItem.isPresent()) {
                 final SourcePartitionStoreItem updateItem = optionalItem.get();
                 validatePartitionOwnership(updateItem);
@@ -205,11 +289,17 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                 updateItem.setPartitionOwner(null);
                 updateItem.setPartitionOwnershipTimeout(null);
 
-                sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
+                try {
+                    sourceCoordinationStore.tryUpdateSourcePartitionItem(updateItem);
+                } catch (final PartitionUpdateException e) {
+                    LOG.info("Unable to explicitly give up partition {}. Partition can be considered given up.", updateItem.getSourcePartitionKey());
+                }
+
 
                 LOG.info("Partition key {} was given up by owner {}", updateItem.getSourcePartitionKey(), ownerId);
             }
             partitionManager.removeActivePartition();
+            partitionsGivenUpCounter.increment();
         }
     }
 
@@ -229,6 +319,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     private void validatePartitionOwnership(final SourcePartitionStoreItem item) {
         if (Objects.isNull(item.getPartitionOwner()) || !item.getPartitionOwner().equals(ownerId)) {
             partitionManager.removeActivePartition();
+            partitionNotOwnedErrorCounter.increment();
             throw new PartitionNotOwnedException(String.format("The partition is no longer owned by this instance of Data Prepper. " +
                     "The partition ownership timeout most likely expired and was grabbed by another instance of Data Prepper for partition owner %s and partition key %s.",
                     ownerId, item.getSourcePartitionKey()));
@@ -237,14 +328,16 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
 
     private SourcePartitionStoreItem validateAndGetSourcePartitionStoreItem(final String partitionKey, final String action) {
         if (!isActivelyOwnedPartition(partitionKey)) {
+            partitionNotOwnedErrorCounter.increment();
             throw new PartitionNotOwnedException(
                     String.format("Unable to %s for the partition because partition key %s is not owned by this instance of Data Prepper for owner %s", action, partitionKey, ownerId)
             );
         }
 
-        final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(partitionKey);
+        final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifier, partitionKey);
 
         if (optionalPartitionItem.isEmpty()) {
+            partitionNotFoundErrorCounter.increment();
             throw new PartitionNotFoundException(String.format("Unable to %s for the partition because partition key %s was not found by owner %s", action, partitionKey, ownerId));
         }
 

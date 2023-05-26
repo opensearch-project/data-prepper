@@ -57,7 +57,7 @@ docker run --name data-prepper -v ${PWD}/log_pipeline.yaml:/usr/share/data-prepp
 If Data Prepper is running correctly, you should see something similar to the following line as the latest output in your terminal.
 
 ```
-INFO  org.opensearch.dataprepper.pipeline.ProcessWorker - log-pipeline Worker: No records received from buffer
+INFO  org.opensearch.dataprepper.pipeline.server.DataPrepperServer - Data Prepper server running at :4900
 ```
 
 ### Apache Log Generator
@@ -115,14 +115,5 @@ The following FluentBit ouptut means that FluentBit was able to forward logs to 
 fluent-bit  | [2021/10/30 17:16:39] [ info] [output:http:http.0] host.docker.internal:2021, HTTP status=200
 ```
 
-The following Data Prepper output indicates that Data Prepper is successfully processing logs from FluentBit
-
-```
-2021-10-30T12:17:17,474 [log-pipeline-prepper-worker-1-thread-1] INFO  org.opensearch.dataprepper.pipeline.ProcessWorker -  log-pipeline Worker: Processing 2 records from buffer
-```
-
 Finally, head into OpenSearch Dashboards ([http://localhost:5601](http://localhost:5601)) to view your processed logs.
-You will need to create an index pattern for the index provided in your `pipeline.yaml` in order to see them. You can do this by going to
-`Stack Management -> Index Pattterns`. Now start typing in the name of the index you sent logs to (in this guide it was `apache_logs`),
-and you should see that the index pattern matches 1 source. Click `Create Index Pattern`, and you should then be able to go back to 
-the `Discover` tab to see your processed logs. 
+You will need to create an index pattern for the index provided in your `pipeline.yaml` in order to see them. You can do this by selecting the `Manage` menu with the gear icon at the top of the home page and then the `Index Patterns` menu on the left side of the page. Select the `Create index pattern` button and then start typing in the name of the index you sent logs to in the `Index pattern name` field (in this guide it was `apache_logs`). You should see that the index pattern matches 1 source. Click `Next Step` and then `Create index pattern`. After, you should be able to go to the `Discover` page with a link on the menu to the left, and see your processed logs.

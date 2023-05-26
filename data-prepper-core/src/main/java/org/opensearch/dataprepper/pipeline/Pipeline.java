@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -48,7 +49,7 @@ import static java.lang.String.format;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Pipeline {
     private static final Logger LOG = LoggerFactory.getLogger(Pipeline.class);
-    private volatile boolean stopRequested;
+    private volatile AtomicBoolean stopRequested;
 
     private final String name;
     private final Source source;
@@ -130,7 +131,7 @@ public class Pipeline {
         this.sinkExecutorService = PipelineThreadPoolExecutor.newFixedThreadPool(processorThreads,
                 new PipelineThreadFactory(format("%s-sink-worker", name)), this);
 
-        stopRequested = false;
+        stopRequested = new AtomicBoolean(false);
     }
 
     AcknowledgementSetManager getAcknowledgementSetManager() {
@@ -169,7 +170,7 @@ public class Pipeline {
     }
 
     public boolean isStopRequested() {
-        return stopRequested;
+        return stopRequested.get();
     }
 
     public Duration getPeerForwarderDrainTimeout() {
@@ -199,6 +200,31 @@ public class Pipeline {
         }
         return true;
     }
+
+    // This method needs to be synchronzied with shutdown
+    private synchronized void startSourceAndProcessors() {
+        if (isStopRequested()) {
+            return;
+        }
+        LOG.info("Pipeline [{}] Sink is ready, starting source...", name);
+        source.start(buffer);
+
+        LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
+        for (int i = 0; i < processorThreads; i++) {
+            final int finalI = i;
+            final List<Processor> processors = processorSets.stream().map(
+                    processorSet -> {
+                        if (processorSet.size() == 1) {
+                            return processorSet.get(0);
+                        } else {
+                            return processorSet.get(finalI);
+                        }
+                    }
+            ).collect(Collectors.toList());
+            processorExecutorService.submit(new ProcessWorker(buffer, processors, this));
+        }
+    }
+
     /**
      * Executes the current pipeline i.e. reads the data from {@link Source}, executes optional {@link Processor} on the
      * read data and outputs to {@link Sink}.
@@ -211,21 +237,19 @@ public class Pipeline {
                 final SourceCoordinator sourceCoordinator = sourceCoordinatorFactory.provideSourceCoordinator(partionProgressModelClass, name);
                 ((UsesSourceCoordination) source).setSourceCoordinator(sourceCoordinator);
             }
-            source.start(buffer);
-            LOG.info("Pipeline [{}] - Submitting request to initiate the pipeline processing", name);
-            for (int i = 0; i < processorThreads; i++) {
-                final int finalI = i;
-                final List<Processor> processors = processorSets.stream().map(
-                        processorSet -> {
-                            if (processorSet.size() == 1) {
-                                return processorSet.get(0);
-                            } else {
-                                return processorSet.get(finalI);
-                            }
-                        }
-                ).collect(Collectors.toList());
-                processorExecutorService.submit(new ProcessWorker(buffer, processors, this));
-            }
+
+            sinkExecutorService.submit(() -> {
+                long retryCount = 0;
+                while (!isReady() && !isStopRequested()) {
+                    if (retryCount++ % 60 == 0) {
+                        LOG.info("Pipeline [{}] Waiting for Sink to be ready", name);
+                    }
+                    try {
+                        Thread.sleep(1000);
+                    } catch (Exception e){}
+                }
+                startSourceAndProcessors();
+            }, null);
         } catch (Exception ex) {
             //source failed to start - Cannot proceed further with the current pipeline, skipping further execution
             LOG.error("Pipeline [{}] encountered exception while starting the source, skipping execution", name, ex);
@@ -241,13 +265,13 @@ public class Pipeline {
      * 5. Shutting down processors and sinks
      * 6. Stopping the sink ExecutorService
      */
-    public void shutdown() {
+    public synchronized void shutdown() {
         LOG.info("Pipeline [{}] - Received shutdown signal with processor shutdown timeout {} and sink shutdown timeout {}." +
                         " Initiating the shutdown process",
                 name, processorShutdownTimeout, sinkShutdownTimeout);
         try {
             source.stop();
-            stopRequested = true;
+            stopRequested.set(true);
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +
                     "proceeding with termination of process workers", name);

@@ -22,16 +22,24 @@ public class SourceCoordinationConfig {
 
     private static final String SOURCE_COORDINATOR_METRIC_PREFIX = "source-coordinator";
     private final PluginSetting sourceCoordinationStoreConfig;
+    private final String partitionPrefix;
 
     @JsonCreator
-    public SourceCoordinationConfig(@JsonProperty("store") final PluginModel sourceCoordinationStoreConfig) {
+    public SourceCoordinationConfig(@JsonProperty("store") final PluginModel sourceCoordinationStoreConfig,
+                                    @JsonProperty("partition_prefix") final String partitionPrefix) {
         Objects.requireNonNull(sourceCoordinationStoreConfig, "source_coordination store must not be null");
 
         this.sourceCoordinationStoreConfig = new PluginSetting(sourceCoordinationStoreConfig.getPluginName(), sourceCoordinationStoreConfig.getPluginSettings());
         this.sourceCoordinationStoreConfig.setPipelineName(SOURCE_COORDINATOR_METRIC_PREFIX);
+
+        this.partitionPrefix = partitionPrefix;
     }
 
     public PluginSetting getSourceCoordinationStoreConfig() {
         return sourceCoordinationStoreConfig;
+    }
+
+    public String getPartitionPrefix() {
+        return partitionPrefix;
     }
 }

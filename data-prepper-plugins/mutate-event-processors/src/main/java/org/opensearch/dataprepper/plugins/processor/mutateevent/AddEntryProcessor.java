@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
@@ -27,10 +28,10 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
     private static final Logger LOG = LoggerFactory.getLogger(AddEntryProcessor.class);
     private final List<AddEntryProcessorConfig.Entry> entries;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public AddEntryProcessor(final PluginMetrics pluginMetrics, final AddEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
@@ -43,21 +44,35 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             for(AddEntryProcessorConfig.Entry entry : entries) {
 
-                if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluate(entry.getAddWhen(), recordEvent)) {
+                if (Objects.nonNull(entry.getAddWhen()) && !expressionEvaluator.evaluateConditional(entry.getAddWhen(), recordEvent)) {
                     continue;
                 }
 
                 try {
-                    if (!recordEvent.containsKey(entry.getKey()) || entry.getOverwriteIfKeyExists()) {
-                        if (!Objects.isNull(entry.getFormat())) {
-                            recordEvent.put(entry.getKey(), recordEvent.formatString(entry.getFormat()));
-                        } else {
-                            recordEvent.put(entry.getKey(), entry.getValue());
+                    final String key = entry.getKey();
+                    final String metadataKey = entry.getMetadataKey();
+                    Object value;
+                    if (!Objects.isNull(entry.getValueExpression())) {
+                        value = expressionEvaluator.evaluate(entry.getValueExpression(), recordEvent);
+                    } else if (!Objects.isNull(entry.getFormat())) {
+                        value = recordEvent.formatString(entry.getFormat());
+                    } else {
+                        value = entry.getValue();
+                    }
+                    if (!Objects.isNull(key)) {
+                        if (!recordEvent.containsKey(key) || entry.getOverwriteIfKeyExists()) {
+                            recordEvent.put(key, value);
+                        }
+                    } else {
+                        Map<String, Object> attributes = recordEvent.getMetadata().getAttributes();
+                        if (!attributes.containsKey(metadataKey) || entry.getOverwriteIfKeyExists()) {
+                            recordEvent.getMetadata().setAttribute(metadataKey, value);
+    
                         }
                     }
                 } catch (Exception e) {
-                    LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], format [{}], value [{}]",
-                            entry.getKey(), entry.getValue(), entry.getFormat(), recordEvent, e);
+                    LOG.error(EVENT, "Error adding entry to record [{}] with key [{}], metadataKey [{}], value_expression [{}] format [{}], value [{}]",
+                            recordEvent, entry.getKey(), entry.getMetadataKey(), entry.getValueExpression(), entry.getFormat(), entry.getValue(), e);
                 }
             }
         }

@@ -19,12 +19,15 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Class to hold configuration for DataPrepper, including server port and Log4j settings
  */
 public class DataPrepperConfiguration {
     static final Duration DEFAULT_SHUTDOWN_DURATION = Duration.ofSeconds(30L);
+
+    private static final String DEFAULT_SOURCE_COORDINATION_STORE = "in_memory";
 
     static final int MAX_TAGS_NUMBER = 3;
     private static final List<MetricRegistryType> DEFAULT_METRIC_REGISTRY_TYPE = Collections.singletonList(MetricRegistryType.Prometheus);
@@ -85,7 +88,9 @@ public class DataPrepperConfiguration {
             @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown) {
         this.authentication = authentication;
         this.circuitBreakerConfig = circuitBreakerConfig;
-        this.sourceCoordinationConfig = sourceCoordinationConfig;
+        this.sourceCoordinationConfig = Objects.isNull(sourceCoordinationConfig)
+                ? new SourceCoordinationConfig(new PluginModel(DEFAULT_SOURCE_COORDINATION_STORE, Collections.emptyMap()), null)
+                : sourceCoordinationConfig;
         this.pipelineShutdown = pipelineShutdown != null ? pipelineShutdown : DEFAULT_PIPELINE_SHUTDOWN;
         setSsl(ssl);
         this.keyStoreFilePath = keyStoreFilePath != null ? keyStoreFilePath : "";

@@ -22,10 +22,10 @@ import java.util.Objects;
 public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final List<RenameKeyProcessorConfig.Entry> entries;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public RenameKeyProcessor(final PluginMetrics pluginMetrics, final RenameKeyProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public RenameKeyProcessor(final PluginMetrics pluginMetrics, final RenameKeyProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
@@ -37,7 +37,7 @@ public class RenameKeyProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event recordEvent = record.getData();
 
             for(RenameKeyProcessorConfig.Entry entry : entries) {
-                if (Objects.nonNull(entry.getRenameWhen()) && !expressionEvaluator.evaluate(entry.getRenameWhen(), recordEvent)) {
+                if (Objects.nonNull(entry.getRenameWhen()) && !expressionEvaluator.evaluateConditional(entry.getRenameWhen(), recordEvent)) {
                     continue;
                 }
 

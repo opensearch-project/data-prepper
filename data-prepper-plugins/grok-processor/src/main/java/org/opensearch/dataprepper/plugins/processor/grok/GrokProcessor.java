@@ -83,14 +83,14 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final ExecutorService executorService;
     private final List<String> tagsOnMatchFailure;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public GrokProcessor(final PluginSetting pluginSetting, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public GrokProcessor(final PluginSetting pluginSetting, final ExpressionEvaluator expressionEvaluator) {
         this(pluginSetting, GrokCompiler.newInstance(), Executors.newSingleThreadExecutor(), expressionEvaluator);
     }
 
-    GrokProcessor(final PluginSetting pluginSetting, final GrokCompiler grokCompiler, final ExecutorService executorService, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    GrokProcessor(final PluginSetting pluginSetting, final GrokCompiler grokCompiler, final ExecutorService executorService, final ExpressionEvaluator expressionEvaluator) {
         super(pluginSetting);
         this.grokProcessorConfig = GrokProcessorConfig.buildConfig(pluginSetting);
         this.keysToOverwrite = new HashSet<>(grokProcessorConfig.getkeysToOverwrite());
@@ -121,7 +121,7 @@ public class GrokProcessor extends AbstractProcessor<Record<Event>, Record<Event
         for (final Record<Event> record : records) {
             final Event event = record.getData();
             try {
-                if (Objects.nonNull(grokProcessorConfig.getGrokWhen()) && !expressionEvaluator.evaluate(grokProcessorConfig.getGrokWhen(), event)) {
+                if (Objects.nonNull(grokProcessorConfig.getGrokWhen()) && !expressionEvaluator.evaluateConditional(grokProcessorConfig.getGrokWhen(), event)) {
                     continue;
                 }
 

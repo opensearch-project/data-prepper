@@ -45,6 +45,8 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +73,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
+  private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
 
   private DlqWriter dlqWriter;
   private BufferedWriter dlqFileWriter;
@@ -105,7 +108,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
                         final PluginFactory pluginFactory) {
-    super(pluginSetting);
+    super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
@@ -160,8 +163,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
     openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient);
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
+    final TemplateStrategy templateStrategy = TemplateType.V1.createTemplateStrategy(openSearchClient);
     indexManager = indexManagerFactory.getIndexManager(indexType, openSearchClient, restHighLevelClient,
-            openSearchSinkConfig, configuredIndexAlias);
+            openSearchSinkConfig, templateStrategy, configuredIndexAlias);
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
     if (dlqFile != null) {
       dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);

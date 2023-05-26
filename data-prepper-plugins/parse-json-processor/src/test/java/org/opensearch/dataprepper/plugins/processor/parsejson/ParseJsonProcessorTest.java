@@ -27,6 +27,7 @@ import java.util.UUID;
 import static java.util.Map.entry;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,7 +41,7 @@ class ParseJsonProcessorTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     private ParseJsonProcessor parseJsonProcessor;
 
@@ -278,13 +279,31 @@ class ParseJsonProcessorTest {
         final Map<String, Object> data = Collections.singletonMap("key", "value");
         final String serializedMessage = convertMapToJSONString(data);
         final Record<Event> testEvent = createMessageEvent(serializedMessage);
-        when(expressionEvaluator.evaluate(whenCondition, testEvent.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(whenCondition, testEvent.getData())).thenReturn(false);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
         final Event parsedEvent = createAndParseMessageEvent(testEvent);
 
         assertThat(parsedEvent.toMap(), equalTo(testEvent.getData().toMap()));
 
+    }
+
+    @Test
+    void test_tags_when_json_parse_fails() {
+        final String source = "different_source";
+        final String destination = "destination_key";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(destination);
+        final String whenCondition = UUID.randomUUID().toString();
+        when(processorConfig.getParseWhen()).thenReturn(whenCondition);
+        List<String> testTags = List.of("tag1", "tag2");
+        when(processorConfig.getTagsOnFailure()).thenReturn(testTags);
+        final Record<Event> testEvent = createMessageEvent("{key:}");
+        when(expressionEvaluator.evaluateConditional(whenCondition, testEvent.getData())).thenReturn(true);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final Event parsedEvent = createAndParseMessageEvent(testEvent);
+        assertTrue(parsedEvent.getMetadata().hasTags(testTags));
     }
 
     private String constructDeeplyNestedJsonPointer(final int numberOfLayers) {

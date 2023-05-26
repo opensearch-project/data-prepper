@@ -31,6 +31,7 @@ dependencies {
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl'
     implementation 'javax.inject:javax.inject:1'
+    implementation 'javax.annotation:javax.annotation-api:1.3.2'
     implementation(libs.spring.core) {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
@@ -76,6 +77,8 @@ task integrationTest(type: Test) {
     useJUnitPlatform()
 
     classpath = sourceSets.integrationTest.runtimeClasspath
+
+    systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
 
     filter {
         includeTestsMatching '*IT'

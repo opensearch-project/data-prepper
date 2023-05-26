@@ -22,10 +22,10 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
     private final String[] entries;
     private final String deleteWhen;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public DeleteEntryProcessor(final PluginMetrics pluginMetrics, final DeleteEntryProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public DeleteEntryProcessor(final PluginMetrics pluginMetrics, final DeleteEntryProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.entries = config.getWithKeys();
         this.deleteWhen = config.getDeleteWhen();
@@ -37,7 +37,7 @@ public class DeleteEntryProcessor extends AbstractProcessor<Record<Event>, Recor
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
 
-            if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluate(deleteWhen, recordEvent)) {
+            if (Objects.nonNull(deleteWhen) && !expressionEvaluator.evaluateConditional(deleteWhen, recordEvent)) {
                 continue;
             }
 
