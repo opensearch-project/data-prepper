@@ -260,7 +260,7 @@ class S3SinkServiceTest {
 
     @Test
     void test_output_with_uploadedToS3_failed() throws IOException {
-        when(s3SinkConfig.getBucketName()).thenReturn(null);
+        when(s3SinkConfig.getBucketName()).thenReturn(UUID.randomUUID().toString());
         when(s3SinkConfig.getMaxUploadRetries()).thenReturn(3);
         when(codec.parse(any())).thenReturn("{\"message\":\"31824252-adba-4c47-a2ac-05d16c5b8140\"}");
         S3SinkService s3SinkService = createObjectUnderTest();

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
@@ -29,6 +30,7 @@ public class S3SinkConfig {
 
     @JsonProperty("bucket")
     @NotNull
+    @NotEmpty
     private String bucketName;
 
     @JsonProperty("object_key")
