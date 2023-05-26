@@ -18,7 +18,7 @@ public class TailSamplerAggregateActionConfig {
     
     @JsonProperty("percent")
     @NotNull
-    private double percent;
+    private Integer percent;
     
     @JsonProperty("error_condition")
     private String errorCondition;
@@ -28,7 +28,7 @@ public class TailSamplerAggregateActionConfig {
         return percent > 0.0 && percent < 100.0;
     }
 
-    public double getPercent() {
+    public Integer getPercent() {
         return percent;
     }
     

@@ -512,8 +512,8 @@ public class AggregateProcessorIT {
     }
 
     @ParameterizedTest
-    @ValueSource(doubles = {20.0, 40.0, 60.0})
-    void aggregateWithTailSamplerAction(final double testPercent) throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+    @ValueSource(ints = {20, 40, 60})
+    void aggregateWithTailSamplerAction(final int testPercent) throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         final Duration testWaitPeriod = Duration.ofSeconds(3);
         final String testErrorCondition = "/status == "+ERROR_STATUS;
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
@@ -535,13 +535,17 @@ public class AggregateProcessorIT {
         eventBatch = getBatchOfEventsForTailSampling(numberOfErrorTraces, numberOfSpans);
         objectUnderTest.doExecute(eventBatch);
         Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
 
         for (int i = 0; i < NUM_THREADS; i++) {
             executorService.execute(() -> {
                 final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
-                assertThat(recordsOut.size(), equalTo(0));
+                countDownLatch.countDown();
             });
         }
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        assertThat(allThreadsFinished, equalTo(true));
         List<Event> errorEventList = eventBatch.stream().map(Record::getData).filter(event -> {
             Event ev = ((Event)event);
             return ev.get("status", Integer.class) == ERROR_STATUS;

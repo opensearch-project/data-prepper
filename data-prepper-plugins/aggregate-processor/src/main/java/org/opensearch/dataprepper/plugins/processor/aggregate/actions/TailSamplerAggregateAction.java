@@ -32,17 +32,19 @@ public class TailSamplerAggregateAction implements AggregateAction {
     static final String SHOULD_CONCLUDE_CHECK_SET_KEY = "should_conclude_check_set";
     static final String EVENTS_KEY = "events";
     static final String ERROR_STATUS_KEY = "error_status";
-    private final double percent;
+    private final int percent;
     private final Duration waitPeriod;
     private final ExpressionEvaluator expressionEvaluator;
     private final String errorCondition;
     private boolean shouldCarryGroupState;
+    private Random random;
 
     @DataPrepperPluginConstructor
     public TailSamplerAggregateAction(final TailSamplerAggregateActionConfig tailSamplerAggregateActionConfig, final ExpressionEvaluator expressionEvaluator) {
         percent = tailSamplerAggregateActionConfig.getPercent();
         waitPeriod = tailSamplerAggregateActionConfig.getWaitPeriod();
         errorCondition = tailSamplerAggregateActionConfig.getErrorCondition();
+        this.random = new Random();
         this.expressionEvaluator = expressionEvaluator;
         shouldCarryGroupState = true;
     }
@@ -71,8 +73,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
-        Random randomNum = new Random();
-        int randomInt = randomNum.nextInt(100);
+        int randomInt = random.nextInt(100);
         if (((groupState.containsKey(ERROR_STATUS_KEY) && (Boolean)groupState.get(ERROR_STATUS_KEY) == true)) || (randomInt < percent)) {
             return new AggregateActionOutput((List)groupState.getOrDefault(EVENTS_KEY, List.of()));
         }

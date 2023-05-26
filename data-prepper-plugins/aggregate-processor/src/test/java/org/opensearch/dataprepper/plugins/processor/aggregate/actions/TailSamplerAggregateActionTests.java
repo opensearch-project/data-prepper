@@ -52,7 +52,7 @@ public class TailSamplerAggregateActionTests {
     @Test
     void testTailSamplerAggregateBasic() throws InterruptedException {
         final Duration testWaitPeriod = Duration.ofSeconds(3);
-        final double testPercent = 100;
+        final int testPercent = 100;
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
         when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
         when(tailSamplerAggregateActionConfig.getErrorCondition()).thenReturn("");
@@ -89,7 +89,7 @@ public class TailSamplerAggregateActionTests {
     @Test
     void testTailSamplerAggregateWithErrorCondition() throws InterruptedException {
         final Duration testWaitPeriod = Duration.ofSeconds(3);
-        final double testPercent = 0;
+        final int testPercent = 0;
         final String statusKey = "status";
         final int errorStatusValue = 1;
         final String errorCondition = "/"+statusKey+" == "+errorStatusValue;
