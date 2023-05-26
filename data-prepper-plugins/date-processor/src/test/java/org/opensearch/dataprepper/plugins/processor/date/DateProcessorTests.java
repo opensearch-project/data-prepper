@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.date;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -35,6 +36,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -52,6 +55,9 @@ class DateProcessorTests {
 
     @Mock
     private DateProcessorConfig.DateMatch mockDateMatch;
+
+    @Mock
+    private ExpressionEvaluator expressionEvaluator;
 
     @Mock
     private Counter dateProcessingMatchSuccessCounter;
@@ -76,7 +82,7 @@ class DateProcessorTests {
         lenient().when(mockDateProcessorConfig.getDestination()).thenReturn(dateProcessorConfig.getDestination());
         lenient().when(pluginMetrics.counter(DateProcessor.DATE_PROCESSING_MATCH_SUCCESS)).thenReturn(dateProcessingMatchSuccessCounter);
         lenient().when(pluginMetrics.counter(DateProcessor.DATE_PROCESSING_MATCH_FAILURE)).thenReturn(dateProcessingMatchFailureCounter);
-
+        when(mockDateProcessorConfig.getDateWhen()).thenReturn(null);
         expectedDateTime = LocalDateTime.now();
     }
 
@@ -86,7 +92,7 @@ class DateProcessorTests {
     }
 
     private DateProcessor createObjectUnderTest() {
-        return new DateProcessor(pluginMetrics, mockDateProcessorConfig);
+        return new DateProcessor(pluginMetrics, mockDateProcessorConfig, expressionEvaluator);
     }
 
     @Test
@@ -110,6 +116,26 @@ class DateProcessorTests {
         ZonedDateTime actualZonedDateTime = processedRecords.get(0).getData().get(TIMESTAMP_KEY, ZonedDateTime.class);
 
         Assertions.assertEquals(0, actualZonedDateTime.toInstant().compareTo(expectedInstant.truncatedTo(ChronoUnit.MILLIS)));
+    }
+
+    @Test
+    void date_when_does_not_run_date_processor_for_event_with_date_when_as_false() {
+        when(mockDateProcessorConfig.getDateWhen()).thenReturn(UUID.randomUUID().toString());
+        dateProcessor = createObjectUnderTest();
+
+        Map<String, Object> testData = getTestData();
+
+        final Record<Event> record = new Record<>(JacksonEvent.builder()
+                .withData(testData)
+                .withEventType("event")
+                .withTimeReceived(expectedInstant)
+                .build());
+
+        when(expressionEvaluator.evaluateConditional(mockDateProcessorConfig.getDateWhen(), record.getData())).thenReturn(false);
+
+        final List<Record<Event>> processedRecords = (List<Record<Event>>) dateProcessor.doExecute(Collections.singletonList(record));
+        assertThat(processedRecords.size(), equalTo(1));
+        assertThat(processedRecords.get(0), equalTo(record));
     }
 
     @Test
