@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Random;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -70,7 +71,12 @@ public class TailSamplerAggregateAction implements AggregateAction {
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
-        return new AggregateActionOutput((List)groupState.getOrDefault(EVENTS_KEY, List.of()));
+        Random randomNum = new Random();
+        int randomInt = randomNum.nextInt(100);
+        if (((groupState.containsKey(ERROR_STATUS_KEY) && (Boolean)groupState.get(ERROR_STATUS_KEY) == true)) || (randomInt < percent)) {
+            return new AggregateActionOutput((List)groupState.getOrDefault(EVENTS_KEY, List.of()));
+        }
+        return new AggregateActionOutput(List.of());
     }
 
 }
