@@ -22,7 +22,7 @@ public class AwsCredentialsOptions {
     private AwsCredentialsOptions(final Builder builder) {
         this.stsRoleArn = builder.stsRoleArn;
         this.region = builder.region;
-        this.stsHeaderOverrides = new HashMap<>(builder.stsHeaderOverrides);
+        this.stsHeaderOverrides = builder.stsHeaderOverrides != null ? new HashMap<>(builder.stsHeaderOverrides) : Collections.emptyMap();
     }
 
     /**
