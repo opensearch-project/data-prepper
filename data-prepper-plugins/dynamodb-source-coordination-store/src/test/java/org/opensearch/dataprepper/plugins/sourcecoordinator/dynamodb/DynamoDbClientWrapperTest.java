@@ -30,12 +30,19 @@ import software.amazon.awssdk.enhanced.dynamodb.model.GetItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveResponse;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.TableDescription;
+import software.amazon.awssdk.services.dynamodb.model.TimeToLiveDescription;
+import software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus;
+import software.amazon.awssdk.services.dynamodb.model.UpdateTimeToLiveRequest;
+import software.amazon.awssdk.services.dynamodb.model.UpdateTimeToLiveResponse;
 import software.amazon.awssdk.services.dynamodb.waiters.DynamoDbWaiter;
 
 import java.lang.reflect.Field;
@@ -60,12 +67,15 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbClientWrapper.ITEM_DOES_NOT_EXIST_EXPRESSION;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbClientWrapper.ITEM_EXISTS_AND_HAS_LATEST_VERSION;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbClientWrapper.SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX;
+import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbClientWrapper.TTL_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbSourceCoordinationStore.SOURCE_STATUS_COMBINATION_KEY_FORMAT;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,6 +83,12 @@ public class DynamoDbClientWrapperTest {
 
     @Mock
     private DynamoDbEnhancedClient dynamoDbEnhancedClient;
+
+    @Mock
+    private DynamoDbClient dynamoDbClient;
+
+    @Mock
+    private DynamoStoreSettings dynamoStoreSettings;
 
     private String region;
     private String stsRoleArn;
@@ -86,19 +102,29 @@ public class DynamoDbClientWrapperTest {
     }
 
     private DynamoDbClientWrapper createObjectUnderTest() {
-        try (final MockedStatic<DynamoDbClientFactory> dynamoDbClientFactoryMockedStatic = mockStatic(DynamoDbClientFactory.class)) {
-              dynamoDbClientFactoryMockedStatic.when(() -> DynamoDbClientFactory.provideDynamoDbEnhancedClient(region, stsRoleArn)).thenReturn(dynamoDbEnhancedClient);
+        try (final MockedStatic<DynamoDbClientFactory> dynamoDbClientFactoryMockedStatic = mockStatic(DynamoDbClientFactory.class);
+             final MockedStatic<DynamoDbEnhancedClient> dynamoDbEnhancedClientMockedStatic = mockStatic(DynamoDbEnhancedClient.class)) {
+              dynamoDbClientFactoryMockedStatic.when(() -> DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn)).thenReturn(dynamoDbClient);
+            final DynamoDbEnhancedClient.Builder builder = mock(DynamoDbEnhancedClient.Builder.class);
+
+            dynamoDbEnhancedClientMockedStatic.when(DynamoDbEnhancedClient::builder).thenReturn(builder);
+            when(builder.dynamoDbClient(dynamoDbClient)).thenReturn(builder);
+            when(builder.build()).thenReturn(dynamoDbEnhancedClient);
             return DynamoDbClientWrapper.create(region, stsRoleArn);
         }
     }
 
     @Test
-    void tryCreateTableWithNonExistingTable_creates_table() {
+    void initializeTableWithNonExistingTable_creates_table() {
 
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
 
         final String tableName = UUID.randomUUID().toString();
         final ProvisionedThroughput provisionedThroughput = mock(ProvisionedThroughput.class);
+
+        given(dynamoStoreSettings.getTableName()).willReturn(tableName);
+        given(dynamoStoreSettings.skipTableCreation()).willReturn(false);
+        given(dynamoStoreSettings.getTtl()).willReturn(Duration.ofSeconds(30));
 
         final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
         given(dynamoDbEnhancedClient.table(eq(tableName), any(BeanTableSchema.class))).willReturn(table);
@@ -119,16 +145,28 @@ public class DynamoDbClientWrapperTest {
             given(describeTableResponse.table()).willReturn(tableDescription);
             given(tableDescription.tableName()).willReturn(tableName);
 
-            objectUnderTest.tryCreateTable(tableName, provisionedThroughput);
+            given(dynamoDbClient.updateTimeToLive(any(UpdateTimeToLiveRequest.class))).willReturn(mock(UpdateTimeToLiveResponse.class));
+            final DescribeTimeToLiveResponse describeTimeToLiveResponse = mock(DescribeTimeToLiveResponse.class);
+            final TimeToLiveDescription timeToLiveDescription = mock(TimeToLiveDescription.class);
+            given(timeToLiveDescription.attributeName()).willReturn(TTL_ATTRIBUTE_NAME);
+            given(timeToLiveDescription.timeToLiveStatus()).willReturn(TimeToLiveStatus.ENABLED);
+            given(describeTimeToLiveResponse.timeToLiveDescription()).willReturn(timeToLiveDescription);
+            given(dynamoDbClient.describeTimeToLive(any(DescribeTimeToLiveRequest.class))).willReturn(describeTimeToLiveResponse);
+
+            objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput);
         }
     }
 
     @Test
-    void tryCreateTable_does_not_create_table_when_createTable_throws_ResourceInUseException() {
+    void initializeTable_with_null_ttl_and_create_table_when_createTable_throws_ResourceInUseException() {
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
 
         final String tableName = UUID.randomUUID().toString();
         final ProvisionedThroughput provisionedThroughput = mock(ProvisionedThroughput.class);
+
+        given(dynamoStoreSettings.getTableName()).willReturn(tableName);
+        given(dynamoStoreSettings.skipTableCreation()).willReturn(false);
+        given(dynamoStoreSettings.getTtl()).willReturn(null);
 
         final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
         given(dynamoDbEnhancedClient.table(eq(tableName), any(BeanTableSchema.class))).willReturn(table);
@@ -149,21 +187,24 @@ public class DynamoDbClientWrapperTest {
             given(describeTableResponse.table()).willReturn(tableDescription);
             given(tableDescription.tableName()).willReturn(tableName);
 
-            objectUnderTest.tryCreateTable(tableName, provisionedThroughput);
+            objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput);
+
+            verifyNoInteractions(dynamoDbClient);
         }
     }
 
     @Test
-    void tryCreateTableThrows_runtime_exception_when_waiter_returns_empty_describe_response() {
+    void initializeTable_Throws_runtime_exception_when_waiter_returns_empty_describe_response_and_skips_table_creation() {
         final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
 
         final String tableName = UUID.randomUUID().toString();
         final ProvisionedThroughput provisionedThroughput = mock(ProvisionedThroughput.class);
 
+        given(dynamoStoreSettings.getTableName()).willReturn(tableName);
+        given(dynamoStoreSettings.skipTableCreation()).willReturn(true);
+
         final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
         given(dynamoDbEnhancedClient.table(eq(tableName), any(BeanTableSchema.class))).willReturn(table);
-
-        doThrow(ResourceInUseException.class).when(table).createTable(any(CreateTableEnhancedRequest.class));
 
         try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
             final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
@@ -175,7 +216,51 @@ public class DynamoDbClientWrapperTest {
 
             given(waiterResponse.matched()).willReturn(response);
 
-            assertThrows(RuntimeException.class, () -> objectUnderTest.tryCreateTable(tableName, provisionedThroughput));
+            assertThrows(RuntimeException.class, () -> objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput));
+        }
+
+        verify(table, never()).createTable(any(CreateTableEnhancedRequest.class));
+    }
+
+    @Test
+    void skip_table_creation_true_does_not_attempt_to_create_the_table_or_enable_ttl() {
+        final DynamoDbClientWrapper objectUnderTest = createObjectUnderTest();
+
+        final String tableName = UUID.randomUUID().toString();
+        final ProvisionedThroughput provisionedThroughput = mock(ProvisionedThroughput.class);
+
+        given(dynamoStoreSettings.getTableName()).willReturn(tableName);
+        given(dynamoStoreSettings.skipTableCreation()).willReturn(true);
+        given(dynamoStoreSettings.getTtl()).willReturn(Duration.ofSeconds(30));
+
+        final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
+        given(dynamoDbEnhancedClient.table(eq(tableName), any(BeanTableSchema.class))).willReturn(table);
+
+        try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
+            final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
+            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
+            final WaiterResponse waiterResponse = mock(WaiterResponse.class);
+            final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
+            final DescribeTableResponse describeTableResponse = mock(DescribeTableResponse.class);
+            given(response.response()).willReturn(Optional.of(describeTableResponse));
+            given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
+
+            given(waiterResponse.matched()).willReturn(response);
+            final TableDescription tableDescription = mock(TableDescription.class);
+            given(describeTableResponse.table()).willReturn(tableDescription);
+            given(tableDescription.tableName()).willReturn(tableName);
+
+            final DescribeTimeToLiveResponse describeTimeToLiveResponse = mock(DescribeTimeToLiveResponse.class);
+            final TimeToLiveDescription timeToLiveDescription = mock(TimeToLiveDescription.class);
+            given(timeToLiveDescription.attributeName()).willReturn(TTL_ATTRIBUTE_NAME);
+            given(timeToLiveDescription.timeToLiveStatus()).willReturn(TimeToLiveStatus.DISABLED);
+            given(describeTimeToLiveResponse.timeToLiveDescription()).willReturn(timeToLiveDescription);
+            given(dynamoDbClient.describeTimeToLive(any(DescribeTimeToLiveRequest.class))).willReturn(describeTimeToLiveResponse);
+
+            assertThrows(RuntimeException.class, () -> objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput));
+
+            verify(dynamoDbClient, never()).updateTimeToLive(any(UpdateTimeToLiveRequest.class));
+            verify(table, never()).createTable(any(CreateTableEnhancedRequest.class));
         }
     }
 

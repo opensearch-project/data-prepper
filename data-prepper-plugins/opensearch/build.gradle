@@ -73,7 +73,7 @@ task integrationTest(type: Test) {
 jacocoTestReport {
     dependsOn test
     reports {
-        xml.enabled true
+        xml.required
     }
     afterEvaluate {
         classDirectories.from = files(classDirectories.files.collect {
