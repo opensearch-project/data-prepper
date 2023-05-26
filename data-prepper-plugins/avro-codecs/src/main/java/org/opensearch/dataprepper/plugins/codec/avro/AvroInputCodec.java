@@ -9,7 +9,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericFixed;
 
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.util.Utf8;
