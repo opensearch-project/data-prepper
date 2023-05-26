@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
@@ -47,7 +48,7 @@ public class S3DlqWriter implements DlqWriter {
     static final String S3_DLQ_REQUEST_SIZE_BYTES = "dlqS3RequestSizeBytes";
     static final String DLQ_OBJECTS = "dlqObjects";
     private static final String KEY_NAME_FORMAT = "dlq-v%s-%s-%s-%s-%s.json";
-    private static final String FULL_KEY_FORMAT = "%s/%s";
+    private static final String FULL_KEY_FORMAT = "%s%s";
 
     private static final Logger LOG = LoggerFactory.getLogger(S3DlqWriter.class);
 
@@ -75,7 +76,8 @@ public class S3DlqWriter implements DlqWriter {
         this.s3Client = s3DlqWriterConfig.getS3Client();
         Objects.requireNonNull(s3DlqWriterConfig.getBucket());
         this.bucket = s3DlqWriterConfig.getBucket();
-        this.keyPathPrefix = s3DlqWriterConfig.getKeyPathPrefix();
+        this.keyPathPrefix = StringUtils.isEmpty(s3DlqWriterConfig.getKeyPathPrefix()) ? s3DlqWriterConfig.getKeyPathPrefix() :
+            enforceDefaultDelimiterOnKeyPathPrefix(s3DlqWriterConfig.getKeyPathPrefix());
         this.objectMapper = objectMapper;
         this.keyPathGenerator = new KeyPathGenerator(keyPathPrefix);
     }
@@ -153,6 +155,10 @@ public class S3DlqWriter implements DlqWriter {
         final String key = String.format(KEY_NAME_FORMAT, DataPrepperVersion.getCurrentVersion().getMajorVersion(),
             pipelineName, pluginId, Instant.now(), UUID.randomUUID());
         return keyPathPrefix == null ? key : String.format(FULL_KEY_FORMAT, keyPathGenerator.generate(), key);
+    }
+
+    private String enforceDefaultDelimiterOnKeyPathPrefix(final String keyPathPrefix) {
+        return (keyPathPrefix.charAt(keyPathPrefix.length() - 1) == '/') ? keyPathPrefix : keyPathPrefix.concat("/");
     }
 
     @Override

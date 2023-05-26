@@ -1,0 +1,21 @@
+
+dependencies {
+    implementation 'software.amazon.awssdk:auth'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                minimum = 1.0
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification

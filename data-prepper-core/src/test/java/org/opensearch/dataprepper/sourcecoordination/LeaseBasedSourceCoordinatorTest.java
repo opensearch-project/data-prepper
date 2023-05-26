@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.sourcecoordination;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -51,6 +53,18 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.DEFAULT_LEASE_TIMEOUT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.NO_PARTITIONS_ACQUIRED_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITIONS_ACQUIRED_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITIONS_CLOSED_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITIONS_COMPLETED_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_CREATED_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_CREATION_SUPPLIER_INVOCATION_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_NOT_FOUND_ERROR_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_NOT_OWNED_ERROR_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_OWNERSHIP_GIVEN_UP_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_TYPE;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.PARTITION_UPDATE_ERROR_COUNT;
+import static org.opensearch.dataprepper.sourcecoordination.LeaseBasedSourceCoordinator.SAVE_PROGRESS_STATE_INVOCATION_SUCCESS_COUNT;
 
 @ExtendWith(MockitoExtension.class)
 public class LeaseBasedSourceCoordinatorTest {
@@ -67,15 +81,75 @@ public class LeaseBasedSourceCoordinatorTest {
     @Mock
     private SourcePartitionStoreItem sourcePartitionStoreItem;
 
-    private String ownerPrefix;
+    @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private Counter partitionCreationSupplierInvocationsCounter;
+
+    @Mock
+    private Counter partitionsCreatedCounter;
+
+    @Mock
+    private Counter noPartitionsAcquiredCounter;
+
+    @Mock
+    private Counter partitionsAcquiredCounter;
+
+    @Mock
+    private Counter partitionsCompletedCounter;
+
+    @Mock
+    private Counter partitionsClosedCounter;
+
+    @Mock
+    private Counter saveProgressStateInvocationSuccessCounter;
+
+    @Mock
+    private Counter partitionsGivenUpCounter;
+
+    @Mock
+    private Counter partitionNotFoundErrorCounter;
+
+    @Mock
+    private Counter partitionNotOwnedErrorCounter;
+
+    @Mock
+    private Counter saveStatePartitionUpdateErrorCounter;
+
+    @Mock
+    private Counter closePartitionUpdateErrorCounter;
+
+    @Mock
+    private Counter completePartitionUpdateErrorCounter;
+
+    private String sourceIdentifier;
+    private String partitionPrefix;
+    private String fullSourceIdentifier;
 
     @BeforeEach
     void setup() {
-        ownerPrefix = UUID.randomUUID().toString();
+        sourceIdentifier = UUID.randomUUID().toString();
+        partitionPrefix = UUID.randomUUID().toString();
+        fullSourceIdentifier = partitionPrefix + "|" + sourceIdentifier + "|" + PARTITION_TYPE;
+        given(sourceCoordinationConfig.getPartitionPrefix()).willReturn(partitionPrefix);
+        given(pluginMetrics.counter(PARTITION_CREATION_SUPPLIER_INVOCATION_COUNT)).willReturn(partitionCreationSupplierInvocationsCounter);
+        given(pluginMetrics.counter(NO_PARTITIONS_ACQUIRED_COUNT)).willReturn(noPartitionsAcquiredCounter);
+        given(pluginMetrics.counter(PARTITIONS_ACQUIRED_COUNT)).willReturn(partitionsAcquiredCounter);
+        given(pluginMetrics.counter(PARTITION_CREATED_COUNT)).willReturn(partitionsCreatedCounter);
+        given(pluginMetrics.counter(PARTITIONS_COMPLETED_COUNT)).willReturn(partitionsCompletedCounter);
+        given(pluginMetrics.counter(PARTITIONS_CLOSED_COUNT)).willReturn(partitionsClosedCounter);
+        given(pluginMetrics.counter(SAVE_PROGRESS_STATE_INVOCATION_SUCCESS_COUNT)).willReturn(saveProgressStateInvocationSuccessCounter);
+        given(pluginMetrics.counter(PARTITION_OWNERSHIP_GIVEN_UP_COUNT)).willReturn(partitionsGivenUpCounter);
+        given(pluginMetrics.counter(PARTITION_NOT_FOUND_ERROR_COUNT)).willReturn(partitionNotFoundErrorCounter);
+        given(pluginMetrics.counter(PARTITION_NOT_OWNED_ERROR_COUNT)).willReturn(partitionNotOwnedErrorCounter);
+        given(pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "saveState")).willReturn(saveStatePartitionUpdateErrorCounter);
+        given(pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "close")).willReturn(closePartitionUpdateErrorCounter);
+        given(pluginMetrics.counter(PARTITION_UPDATE_ERROR_COUNT, "complete")).willReturn(completePartitionUpdateErrorCounter);
     }
 
     private SourceCoordinator<String> createObjectUnderTest() {
-        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, sourceIdentifier, pluginMetrics);
         doNothing().when(sourceCoordinationStore).initializeStore();
         objectUnderTest.initialize();
         return objectUnderTest;
@@ -83,7 +157,7 @@ public class LeaseBasedSourceCoordinatorTest {
 
     @Test
     void initialize_calls_initializeStore() {
-        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, sourceIdentifier, pluginMetrics);
         objectUnderTest.initialize();
 
         verify(sourceCoordinationStore).initializeStore();
@@ -94,7 +168,7 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, sourceIdentifier, pluginMetrics);
         assertThrows(UninitializedSourceCoordinatorException.class, () -> objectUnderTest.getNextPartition(partitionCreationSupplier));
     }
 
@@ -103,13 +177,29 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
-        given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
-        given(sourceCoordinationStore.tryCreatePartitionItem(partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(true);
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
+        given(sourceCoordinationStore.tryCreatePartitionItem(fullSourceIdentifier, partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(true);
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(partitionCreationSupplier);
 
         assertThat(result.isEmpty(), equalTo(true));
+
+        verify(partitionCreationSupplierInvocationsCounter).increment();
+        verify(noPartitionsAcquiredCounter).increment();
+        verify(partitionsCreatedCounter).increment();
+
+        verifyNoInteractions(
+                partitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -117,28 +207,62 @@ public class LeaseBasedSourceCoordinatorTest {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
-        given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, partitionIdentifier.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(partitionCreationSupplier);
 
         assertThat(result.isEmpty(), equalTo(true));
 
-        verify(sourceCoordinationStore, never()).tryCreatePartitionItem(anyString(), any(), anyLong(), anyString());
+        verify(sourceCoordinationStore, never()).tryCreatePartitionItem(anyString(), anyString(), any(), anyLong(), anyString());
+
+        verify(partitionCreationSupplierInvocationsCounter).increment();
+        verify(noPartitionsAcquiredCounter).increment();
+
+        verifyNoInteractions(
+                partitionsCreatedCounter,
+                partitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
-    void getNextPartition_where_with_non_existing_item_and_create_attempt_fails_will_do_nothing() {
+    void getNextPartition_with_non_existing_item_and_create_attempt_fails_will_do_nothing() {
         final PartitionIdentifier partitionIdentifier = PartitionIdentifier.builder().withPartitionKey(UUID.randomUUID().toString()).build();
         final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = () -> List.of(partitionIdentifier);
 
-        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
-        given(sourceCoordinationStore.getSourcePartitionItem(partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
-        given(sourceCoordinationStore.tryCreatePartitionItem(partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(false);
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.empty()).willReturn( Optional.empty());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, partitionIdentifier.getPartitionKey())).willReturn(Optional.empty());
+        given(sourceCoordinationStore.tryCreatePartitionItem(fullSourceIdentifier, partitionIdentifier.getPartitionKey(), SourcePartitionStatus.UNASSIGNED, 0L, null)).willReturn(false);
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(partitionCreationSupplier);
 
         assertThat(result.isEmpty(), equalTo(true));
+
+        verify(partitionCreationSupplierInvocationsCounter).increment();
+        verify(noPartitionsAcquiredCounter).increment();
+
+        verifyNoInteractions(
+                partitionsCreatedCounter,
+                partitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
+
+
     }
 
     @Test
@@ -157,17 +281,48 @@ public class LeaseBasedSourceCoordinatorTest {
         assertThat(result.get().getPartitionState(), equalTo(null));
 
         verifyNoMoreInteractions(sourceCoordinationStore);
+
+        verifyNoInteractions(
+                partitionsAcquiredCounter,
+                partitionCreationSupplierInvocationsCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
     void getNextPartition_with_no_active_partition_and_unsuccessful_tryAcquireAvailablePartition_returns_empty_Optional() {
         given(partitionManager.getActivePartition()).willReturn(Optional.empty());
-        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.empty()).willReturn(Optional.empty());
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.empty()).willReturn(Optional.empty());
 
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(Collections::emptyList);
 
         assertThat(result.isEmpty(), equalTo(true));
+
+        verify(partitionCreationSupplierInvocationsCounter).increment();
+        verify(noPartitionsAcquiredCounter).increment();
+
+        verifyNoInteractions(
+                partitionsCreatedCounter,
+                partitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -175,7 +330,7 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.empty());
         given(sourcePartitionStoreItem.getSourcePartitionKey()).willReturn(UUID.randomUUID().toString());
         given(sourcePartitionStoreItem.getPartitionProgressState()).willReturn(UUID.randomUUID().toString());
-        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourceCoordinationStore.tryAcquireAvailablePartition(anyString(), anyString(), any())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         final Optional<SourcePartition<String>> result = createObjectUnderTest().getNextPartition(Collections::emptyList);
 
@@ -185,8 +340,24 @@ public class LeaseBasedSourceCoordinatorTest {
         assertThat(result.get().getPartitionState(), equalTo(sourcePartitionStoreItem.getPartitionProgressState()));
 
         verify(partitionManager).setActivePartition(result.get());
-        verify(sourceCoordinationStore, never()).getSourcePartitionItem(anyString());
-        verify(sourceCoordinationStore, never()).tryCreatePartitionItem(anyString(), any(), anyLong(), anyString());
+        verify(sourceCoordinationStore, never()).getSourcePartitionItem(anyString(), anyString());
+        verify(sourceCoordinationStore, never()).tryCreatePartitionItem(anyString(), anyString(), any(), anyLong(), anyString());
+
+        verify(partitionsAcquiredCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -199,6 +370,22 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
 
         assertThrows(PartitionNotOwnedException.class, () -> createObjectUnderTest().completePartition(UUID.randomUUID().toString()));
+
+        verify(partitionNotOwnedErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -209,9 +396,25 @@ public class LeaseBasedSourceCoordinatorTest {
                 .build();
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.empty());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.empty());
 
         assertThrows(PartitionNotFoundException.class, () -> createObjectUnderTest().completePartition(sourcePartition.getPartitionKey()));
+
+        verify(partitionNotFoundErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -224,11 +427,27 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
         given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(UUID.randomUUID().toString());
         given(sourcePartitionStoreItem.getSourcePartitionKey()).willReturn(sourcePartition.getPartitionKey());
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         assertThrows(PartitionNotOwnedException.class, () -> createObjectUnderTest().completePartition(sourcePartition.getPartitionKey()));
 
         verify(partitionManager).removeActivePartition();
+
+        verify(partitionNotOwnedErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @ParameterizedTest
@@ -240,9 +459,9 @@ public class LeaseBasedSourceCoordinatorTest {
                 .build();
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(ownerPrefix + ":" + InetAddress.getLocalHost().getHostName());
+        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(sourceIdentifier + ":" + InetAddress.getLocalHost().getHostName());
 
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         if (updatedItemSuccessfully) {
             doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
@@ -254,10 +473,29 @@ public class LeaseBasedSourceCoordinatorTest {
             verify(sourcePartitionStoreItem).setPartitionOwner(null);
 
             verify(partitionManager).removeActivePartition();
+
+            verify(partitionsCompletedCounter).increment();
+            verifyNoInteractions(completePartitionUpdateErrorCounter);
         } else {
             doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
             assertThrows(PartitionUpdateException.class, () -> createObjectUnderTest().completePartition(sourcePartition.getPartitionKey()));
+
+            verify(completePartitionUpdateErrorCounter).increment();
+            verifyNoInteractions(partitionsCompletedCounter);
         }
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -270,6 +508,22 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
 
         assertThrows(PartitionNotOwnedException.class, () -> createObjectUnderTest().closePartition(UUID.randomUUID().toString(), Duration.ofMinutes(2), 1));
+
+        verify(partitionNotOwnedErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -280,9 +534,25 @@ public class LeaseBasedSourceCoordinatorTest {
                 .build();
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.empty());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.empty());
 
         assertThrows(PartitionNotFoundException.class, () -> createObjectUnderTest().closePartition(sourcePartition.getPartitionKey(), Duration.ofMinutes(2), 1));
+
+        verify(partitionNotFoundErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -295,11 +565,27 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
         given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(UUID.randomUUID().toString());
         given(sourcePartitionStoreItem.getSourcePartitionKey()).willReturn(sourcePartition.getPartitionKey());
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         assertThrows(PartitionNotOwnedException.class, () -> createObjectUnderTest().closePartition(sourcePartition.getPartitionKey(), Duration.ofMinutes(2), 1));
 
         verify(partitionManager).removeActivePartition();
+
+        verify(partitionNotOwnedErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @ParameterizedTest
@@ -311,11 +597,19 @@ public class LeaseBasedSourceCoordinatorTest {
                 .build();
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(ownerPrefix + ":" + InetAddress.getLocalHost().getHostName());
+        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(sourceIdentifier + ":" + InetAddress.getLocalHost().getHostName());
         given(sourcePartitionStoreItem.getClosedCount()).willReturn(closedCount);
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         final int maxClosedCount = 2;
+
+        if (closedCount >= maxClosedCount) {
+            given(sourcePartitionStoreItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.COMPLETED);
+        } else {
+            given(sourcePartitionStoreItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.CLOSED);
+        }
+
         if (updatedItemSuccessfully) {
             doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
             createObjectUnderTest().closePartition(sourcePartition.getPartitionKey(), Duration.ofMinutes(2), maxClosedCount);
@@ -325,17 +619,39 @@ public class LeaseBasedSourceCoordinatorTest {
 
             if (closedCount >= maxClosedCount) {
                 verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
+                verify(partitionsCompletedCounter).increment();
+                verifyNoInteractions(partitionsClosedCounter);
             } else {
                 verify(sourcePartitionStoreItem).setSourcePartitionStatus(SourcePartitionStatus.CLOSED);
                 verify(sourcePartitionStoreItem).setReOpenAt(any(Instant.class));
                 verify(sourcePartitionStoreItem).setClosedCount(closedCount + 1L);
+                verify(partitionsClosedCounter).increment();
+                verifyNoInteractions(partitionsCompletedCounter);
             }
 
             verify(partitionManager).removeActivePartition();
         } else {
             doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
             assertThrows(PartitionUpdateException.class, () -> createObjectUnderTest().closePartition(sourcePartition.getPartitionKey(), Duration.ofMinutes(2), maxClosedCount));
+            if (closedCount >= maxClosedCount) {
+                verify(completePartitionUpdateErrorCounter).increment();
+                verifyNoInteractions(closePartitionUpdateErrorCounter);
+            } else {
+                verify(closePartitionUpdateErrorCounter).increment();
+                verifyNoInteractions(completePartitionUpdateErrorCounter);
+            }
         }
+
+        verifyNoInteractions(
+                partitionNotOwnedErrorCounter,
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -348,6 +664,22 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
 
         assertThrows(PartitionNotOwnedException.class, () -> createObjectUnderTest().saveProgressStateForPartition(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
+
+        verify(partitionNotOwnedErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -358,9 +690,25 @@ public class LeaseBasedSourceCoordinatorTest {
                 .build();
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.empty());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.empty());
 
         assertThrows(PartitionNotFoundException.class, () -> createObjectUnderTest().saveProgressStateForPartition(sourcePartition.getPartitionKey(), UUID.randomUUID().toString()));
+
+        verify(partitionNotFoundErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotOwnedErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -373,11 +721,27 @@ public class LeaseBasedSourceCoordinatorTest {
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
         given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(UUID.randomUUID().toString());
         given(sourcePartitionStoreItem.getSourcePartitionKey()).willReturn(sourcePartition.getPartitionKey());
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         assertThrows(PartitionNotOwnedException.class, () -> createObjectUnderTest().saveProgressStateForPartition(sourcePartition.getPartitionKey(), UUID.randomUUID().toString()));
 
         verify(partitionManager).removeActivePartition();
+
+        verify(partitionNotOwnedErrorCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @ParameterizedTest
@@ -392,8 +756,8 @@ public class LeaseBasedSourceCoordinatorTest {
         final String newProgressState = UUID.randomUUID().toString();
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(ownerPrefix + ":" + InetAddress.getLocalHost().getHostName());
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(sourceIdentifier + ":" + InetAddress.getLocalHost().getHostName());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         if (updatedItemSuccessfully) {
             doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
@@ -405,19 +769,52 @@ public class LeaseBasedSourceCoordinatorTest {
             assertThat(newPartitionOwnershipTimeout.isAfter(beforeSave.plus(DEFAULT_LEASE_TIMEOUT)), equalTo(true));
 
             verify(sourcePartitionStoreItem).setPartitionProgressState(newProgressState);
+
+            verify(saveProgressStateInvocationSuccessCounter).increment();
+            verifyNoInteractions(saveStatePartitionUpdateErrorCounter);
         } else {
             doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
             assertThrows(PartitionUpdateException.class, () -> createObjectUnderTest().saveProgressStateForPartition(sourcePartition.getPartitionKey(), newProgressState));
+            verify(saveStatePartitionUpdateErrorCounter).increment();
+            verifyNoInteractions(saveProgressStateInvocationSuccessCounter);
         }
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                closePartitionUpdateErrorCounter,
+                partitionNotOwnedErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
     void giveUpPartitions_with_nonInitialized_store_does_nothing_and_returns() {
-        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, ownerPrefix);
+        final SourceCoordinator<String> objectUnderTest = new LeaseBasedSourceCoordinator<>(String.class, sourceCoordinationStore, sourceCoordinationConfig, partitionManager, sourceIdentifier, pluginMetrics);
 
         objectUnderTest.giveUpPartitions();
 
         verifyNoInteractions(sourceCoordinationStore, partitionManager);
+
+        verifyNoInteractions(
+                partitionNotOwnedErrorCounter,
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionsGivenUpCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @Test
@@ -428,13 +825,29 @@ public class LeaseBasedSourceCoordinatorTest {
                 .build();
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.empty());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.empty());
 
         createObjectUnderTest().giveUpPartitions();
 
         verify(partitionManager).removeActivePartition();
         verifyNoInteractions(sourcePartitionStoreItem);
         verifyNoMoreInteractions(sourceCoordinationStore);
+
+        verify(partitionsGivenUpCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionNotOwnedErrorCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
     }
 
     @ParameterizedTest
@@ -446,8 +859,8 @@ public class LeaseBasedSourceCoordinatorTest {
                 .build();
 
         given(partitionManager.getActivePartition()).willReturn(Optional.of(sourcePartition));
-        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(ownerPrefix + ":" + InetAddress.getLocalHost().getHostName());
-        given(sourceCoordinationStore.getSourcePartitionItem(sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
+        given(sourcePartitionStoreItem.getPartitionOwner()).willReturn(sourceIdentifier + ":" + InetAddress.getLocalHost().getHostName());
+        given(sourceCoordinationStore.getSourcePartitionItem(fullSourceIdentifier, sourcePartition.getPartitionKey())).willReturn(Optional.of(sourcePartitionStoreItem));
 
         if (updatedItemSuccessfully) {
             doNothing().when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
@@ -458,10 +871,28 @@ public class LeaseBasedSourceCoordinatorTest {
             verify(sourcePartitionStoreItem).setPartitionOwnershipTimeout(null);
 
             verify(partitionManager).removeActivePartition();
+
         } else {
             doThrow(PartitionUpdateException.class).when(sourceCoordinationStore).tryUpdateSourcePartitionItem(sourcePartitionStoreItem);
-            assertThrows(PartitionUpdateException.class, () -> createObjectUnderTest().giveUpPartitions());
+            createObjectUnderTest().giveUpPartitions();
         }
+
+        verify(partitionsGivenUpCounter).increment();
+
+        verifyNoInteractions(
+                partitionCreationSupplierInvocationsCounter,
+                partitionsAcquiredCounter,
+                partitionsCreatedCounter,
+                noPartitionsAcquiredCounter,
+                partitionsCompletedCounter,
+                partitionsClosedCounter,
+                saveProgressStateInvocationSuccessCounter,
+                partitionNotOwnedErrorCounter,
+                partitionNotFoundErrorCounter,
+                saveStatePartitionUpdateErrorCounter,
+                closePartitionUpdateErrorCounter,
+                completePartitionUpdateErrorCounter);
+
     }
 
     static Stream<Object[]> getClosedCountArgs() {

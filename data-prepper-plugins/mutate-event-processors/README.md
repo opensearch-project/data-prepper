@@ -56,9 +56,11 @@ then when we run with the same input, the processor will parse the message into 
 
 ### Configuration
 * `entries` - (required) - A list of entries to add to an event
-  * `key` - (required) - The key of the new entry to be added
+  * `key` - (required) - The key of the new entry to be added. One of `key` or `metadata_key` is required.
+  * `metadata_key` - (required) - The key of the new metadata attribute to be added. Argument must be a literal string key and not JsonPointer. One of `key` or `metadata_key` is required.
   * `value` - (optional) - The value of the new entry to be added. Strings, booleans, numbers, null, nested objects, and arrays containing the aforementioned data types are valid to use. Required if `format` is not specified.
   * `format` - (optional) - A format string to use as value of the new entry to be added. For example, `${key1}-${ke2}` where `key1` and `key2` are existing keys in the event. Required if `value` is not specified.
+  * `value_expression` - (optional) - An expression string to use as value of the new entry to be added. For example, `/key` where `key` is an existing key in the event of type Number/String/Boolean. Expressions can also contain functions returning Number/String/Integer. For example `length(/key)` would return the length of the `key` in the event and key must of String type. Please see [expressions syntax document](https://github.com/opensearch-project/data-prepper/blob/2.3/docs/expression_syntax.md) for complete list of supported functions. Required if `value` and `format are not specified.
   * `overwrite_if_key_exists` - (optional) - When set to `true`, if `key` already exists in the event, then the existing value will be overwritten. The default is `false`. 
 
 ___

@@ -31,10 +31,18 @@ public abstract class GrammarTest {
             DataPrepperExpressionParser.SetOperatorExpressionContext.class;
     protected static final Class<? extends ParseTree> UNARY_OPERATOR_EXPRESSION =
             DataPrepperExpressionParser.UnaryOperatorExpressionContext.class;
+    protected static final Class<? extends ParseTree> ARITHMETIC_UNARY_EXPRESSION =
+            DataPrepperExpressionParser.ArithmeticUnaryExpressionContext.class;
     protected static final Class<? extends ParseTree> UNARY_OPERATOR =
             DataPrepperExpressionParser.UnaryOperatorContext.class;
+    protected static final Class<? extends ParseTree> ARITHMETIC_UNARY_OPERATOR =
+            DataPrepperExpressionParser.ArithmeticUnaryOperatorContext.class;
     protected static final Class<? extends ParseTree> PARENTHESES_EXPRESSION =
             DataPrepperExpressionParser.ParenthesesExpressionContext.class;
+    protected static final Class<? extends ParseTree> ARITHMETIC_TERM =
+            DataPrepperExpressionParser.ArithmeticTermContext.class;
+    protected static final Class<? extends ParseTree> LITERAL =
+            DataPrepperExpressionParser.LiteralContext.class;
     //endregion
 
     protected ErrorListener errorListener;

@@ -25,12 +25,6 @@ class NumericCompareOperator implements Operator<Boolean> {
         this.operandsToOperationMap = operandsToOperationMap;
     }
 
-
-    @Override
-    public int getNumberOfOperands() {
-        return 2;
-    }
-
     @Override
     public boolean shouldEvaluate(final RuleContext ctx) {
         return ctx.getRuleIndex() == DataPrepperExpressionParser.RULE_relationalOperatorExpression;

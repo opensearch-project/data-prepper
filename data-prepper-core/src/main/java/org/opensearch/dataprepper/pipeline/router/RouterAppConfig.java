@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class RouterAppConfig {
     @Bean
-    public RouterFactory routeEvaluatorFactory(final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public RouterFactory routeEvaluatorFactory(final ExpressionEvaluator expressionEvaluator) {
         return new RouterFactory(expressionEvaluator);
     }
 }

@@ -32,6 +32,18 @@ class OperatorConfigurationTest {
         );
     }
 
+    @ParameterizedTest
+    @MethodSource("validSubtractTestArgProvider")
+    void unarySubtractOperator(final Number operand, final Number expected) {
+        final ArithmeticSubtractOperator arithmeticSubtractOperator = configuration.subtractOperator();
+        assertThat(arithmeticSubtractOperator, isA(Operator.class));
+        assertThat(
+                operand + " should equal to " + expected,
+                arithmeticSubtractOperator.evaluate(operand),
+                is(expected)
+        );
+    }
+
     private static Stream<Arguments> validTestArgProvider() {
         return Stream.of(
                 Arguments.of(10, 10, true),
@@ -80,6 +92,17 @@ class OperatorConfigurationTest {
                 Arguments.of(10, 'a', false),
                 Arguments.of(null, null, true)
         );
+    }
+
+    private static Stream<Arguments> validSubtractTestArgProvider() {
+        return Stream.of(
+                Arguments.of(10, -10),
+                Arguments.of(10f, -10f),
+                Arguments.of(10L, -10L),
+                Arguments.of(Integer.MAX_VALUE, -Integer.MAX_VALUE),
+                Arguments.of(Float.MIN_NORMAL, -Float.MIN_NORMAL),
+                Arguments.of(-42.95f, 42.95f)
+            );
     }
 
     void notEqualOperator() {

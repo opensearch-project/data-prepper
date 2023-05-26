@@ -9,7 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -17,35 +17,28 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStatus;
 import org.opensearch.dataprepper.model.source.coordinator.SourcePartitionStoreItem;
-import software.amazon.awssdk.enhanced.dynamodb.Expression;
-import software.amazon.awssdk.enhanced.dynamodb.model.PageIterable;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
-import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputExceededException;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.greaterThan;
-import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbSourceCoordinationStore.AVAILABLE_PARTITIONS_FILTER_EXPRESSION;
+import static org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb.DynamoDbSourceCoordinationStore.SOURCE_STATUS_COMBINATION_KEY_FORMAT;
 
 @ExtendWith(MockitoExtension.class)
 public class DynamoDbSourceCoordinationStoreTest {
@@ -90,11 +83,12 @@ public class DynamoDbSourceCoordinationStoreTest {
     void getSourcePartitionItem_calls_dynamoClientWrapper_correctly() {
         final SourcePartitionStoreItem sourcePartitionStoreItem = mock(DynamoDbSourcePartitionItem.class);
 
-        final String partitionKey = UUID.randomUUID().toString();
+        final String sourcePartitionKey = UUID.randomUUID().toString();
+        final String sourceIdentifier = UUID.randomUUID().toString();
 
-        given(dynamoDbClientWrapper.getSourcePartitionItem(partitionKey)).willReturn(Optional.ofNullable(sourcePartitionStoreItem));
+        given(dynamoDbClientWrapper.getSourcePartitionItem(sourceIdentifier, sourcePartitionKey)).willReturn(Optional.ofNullable(sourcePartitionStoreItem));
 
-        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().getSourcePartitionItem(partitionKey);
+        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().getSourcePartitionItem(sourceIdentifier, sourcePartitionKey);
 
         assertThat(result.isPresent(), equalTo(true));
         assertThat(result.get(), equalTo(sourcePartitionStoreItem));
@@ -102,7 +96,8 @@ public class DynamoDbSourceCoordinationStoreTest {
 
     @Test
     void tryCreatePartitionItem_calls_dynamoDbClientWrapper_correctly() {
-        final String partitionKey = UUID.randomUUID().toString();
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final String sourcePartitionKey = UUID.randomUUID().toString();
         final SourcePartitionStatus sourcePartitionStatus = SourcePartitionStatus.UNASSIGNED;
         final Long closedCount = 0L;
         final String partitionProgressState = UUID.randomUUID().toString();
@@ -110,119 +105,156 @@ public class DynamoDbSourceCoordinationStoreTest {
         final ArgumentCaptor<DynamoDbSourcePartitionItem> argumentCaptor = ArgumentCaptor.forClass(DynamoDbSourcePartitionItem.class);
         given(dynamoDbClientWrapper.tryCreatePartitionItem(argumentCaptor.capture())).willReturn(true);
 
-        final boolean result = createObjectUnderTest().tryCreatePartitionItem(partitionKey, sourcePartitionStatus, closedCount, partitionProgressState);
+        final boolean result = createObjectUnderTest().tryCreatePartitionItem(sourceIdentifier, sourcePartitionKey, sourcePartitionStatus, closedCount, partitionProgressState);
 
         assertThat(result, equalTo(true));
 
         final DynamoDbSourcePartitionItem createdItem = argumentCaptor.getValue();
         assertThat(createdItem, notNullValue());
-        assertThat(createdItem.getSourcePartitionKey(), equalTo(partitionKey));
+        assertThat(createdItem.getSourceIdentifier(), equalTo(sourceIdentifier));
+        assertThat(createdItem.getSourcePartitionKey(), equalTo(sourcePartitionKey));
         assertThat(createdItem.getSourcePartitionStatus(), equalTo(SourcePartitionStatus.UNASSIGNED));
         assertThat(createdItem.getClosedCount(), equalTo(closedCount));
         assertThat(createdItem.getPartitionProgressState(), equalTo(partitionProgressState));
-    }
-
-    @Test
-    void tryUpdateSourcePartitionItem_calls_dynamoClientWrapper_correctly() {
-        final SourcePartitionStoreItem updateItem = mock(DynamoDbSourcePartitionItem.class);
-
-        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
-
-        createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem);
-    }
-
-    @Test
-    void tryAcquireAvailablePartition_with_empty_page_iterable_returns_empty_optional() {
-        final String ownerId = UUID.randomUUID().toString();
-        final Duration ownershipTimeout = Duration.ofMinutes(2);
-
-        final ArgumentCaptor<Expression> expressionArgumentCaptor = ArgumentCaptor.forClass(Expression.class);
-
-        given(dynamoDbClientWrapper.getSourcePartitionItems(expressionArgumentCaptor.capture())).willReturn(Optional.empty());
-
-        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(ownerId, ownershipTimeout);
-
-        assertThat(result.isEmpty(), equalTo(true));
-
-        final Expression expression = expressionArgumentCaptor.getValue();
-        assertThat(expression.expression(), equalTo(AVAILABLE_PARTITIONS_FILTER_EXPRESSION));
-        assertThat(expression.expressionValues().size(), equalTo(6));
-        assertThat(expression.expressionValues().containsKey(":unassigned"), equalTo(true));
-        assertThat(expression.expressionValues().containsKey(":closed"), equalTo(true));
-        assertThat(expression.expressionValues().containsKey(":assigned"), equalTo(true));
-        assertThat(expression.expressionValues().containsKey(":t"), equalTo(true));
-        assertThat(expression.expressionValues().containsKey(":ro"), equalTo(true));
-        assertThat(expression.expressionValues().containsKey(":null"), equalTo(true));
-    }
-
-    @Test
-    void tryAcquireAvailablePartition_iterates_until_it_successfully_acquires_a_partition() {
-        final String ownerId = UUID.randomUUID().toString();
-        final Duration ownershipTimeout = Duration.ofMinutes(2);
-
-        final Instant now = Instant.now();
-
-        final PageIterable<DynamoDbSourcePartitionItem> pageIterable = mock(PageIterable.class);
-
-        final List<DynamoDbSourcePartitionItem> itemList = List.of(mock(DynamoDbSourcePartitionItem.class), mock(DynamoDbSourcePartitionItem.class), mock(DynamoDbSourcePartitionItem.class));
-        given(pageIterable.items()).willReturn(itemList::iterator);
-        given(dynamoDbClientWrapper.getSourcePartitionItems(any(Expression.class))).willReturn(Optional.of(pageIterable));
-
-        doReturn(false).when(dynamoDbClientWrapper).tryAcquirePartitionItem(itemList.get(0));
-        doReturn(true).when(dynamoDbClientWrapper).tryAcquirePartitionItem(itemList.get(1));
-
-        final ArgumentCaptor<Instant> argumentCaptor = ArgumentCaptor.forClass(Instant.class);
-        doNothing().when(itemList.get(0)).setPartitionOwnershipTimeout(argumentCaptor.capture());
-
-        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(ownerId, ownershipTimeout);
-
-        assertThat(result.isPresent(), equalTo(true));
-        assertThat(result.get(), is(itemList.get(1)));
-
-        verifyNoMoreInteractions(dynamoDbClientWrapper);
-
-        verify(itemList.get(0)).setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
-        verify(itemList.get(0)).setPartitionOwner(ownerId);
-
-        final Instant newOwnershipTimeout = argumentCaptor.getValue();
-
-        assertThat(newOwnershipTimeout, greaterThan(now.plus(ownershipTimeout)));
+        assertThat(createdItem.getSourceStatusCombinationKey(), equalTo(sourceIdentifier + "|" + sourcePartitionStatus));
+        assertThat(createdItem.getPartitionPriority(), notNullValue());
     }
 
     @ParameterizedTest
-    @MethodSource("exceptionProvider")
-    void tryAcquireAvailablePartition_returns_empty_optional_when_an_exception_is_thrown_while_iterating(final Class exception) {
-        final String ownerId = UUID.randomUUID().toString();
-        final Duration ownershipTimeout = Duration.ofMinutes(2);
+    @ValueSource(strings = {"UNASSIGNED", "ASSIGNED" ,"CLOSED", "COMPLETED" })
+    void tryUpdateSourcePartitionItem_calls_dynamoClientWrapper_correctly_for_different_statuses(final String sourcePartitionStatus) {
+        final String sourceIdentifier = UUID.randomUUID().toString();
 
-        final Instant now = Instant.now();
+        final SourcePartitionStoreItem updateItem = mock(DynamoDbSourcePartitionItem.class);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.valueOf(sourcePartitionStatus));
 
-        final PageIterable<DynamoDbSourcePartitionItem> pageIterable = mock(PageIterable.class);
+        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
 
-        final List<DynamoDbSourcePartitionItem> itemList = List.of(mock(DynamoDbSourcePartitionItem.class), mock(DynamoDbSourcePartitionItem.class), mock(DynamoDbSourcePartitionItem.class));
-        given(pageIterable.items()).willReturn(itemList::iterator);
-        given(dynamoDbClientWrapper.getSourcePartitionItems(any(Expression.class))).willReturn(Optional.of(pageIterable));
+        if (sourcePartitionStatus.equals(SourcePartitionStatus.ASSIGNED.toString())) {
+            final Instant partitionOwnershipTimeout = Instant.now();
+            given(updateItem.getPartitionOwnershipTimeout()).willReturn(partitionOwnershipTimeout);
+            doNothing().when((DynamoDbSourcePartitionItem)updateItem).setPartitionPriority(partitionOwnershipTimeout.toString());
+        } else if (sourcePartitionStatus.equals(SourcePartitionStatus.CLOSED.toString())) {
+            final Instant reOpenAtTime = Instant.now();
+            given(updateItem.getReOpenAt()).willReturn(reOpenAtTime);
+            doNothing().when((DynamoDbSourcePartitionItem) updateItem).setPartitionPriority(reOpenAtTime.toString());
+        }
 
-        doThrow(exception).when(dynamoDbClientWrapper).tryAcquirePartitionItem(itemList.get(0));
+        createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem);
 
-        final ArgumentCaptor<Instant> argumentCaptor = ArgumentCaptor.forClass(Instant.class);
-        doNothing().when(itemList.get(0)).setPartitionOwnershipTimeout(argumentCaptor.capture());
+        verify((DynamoDbSourcePartitionItem) updateItem).setSourceStatusCombinationKey(sourceIdentifier + "|" + sourcePartitionStatus);
 
-        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(ownerId, ownershipTimeout);
-
-        assertThat(result.isEmpty(), equalTo(true));
-
-        verifyNoMoreInteractions(dynamoDbClientWrapper);
-
-        verify(itemList.get(0)).setSourcePartitionStatus(SourcePartitionStatus.ASSIGNED);
-        verify(itemList.get(0)).setPartitionOwner(ownerId);
-
-        final Instant newOwnershipTimeout = argumentCaptor.getValue();
-
-        assertThat(newOwnershipTimeout, greaterThan(now.plus(ownershipTimeout)));
+        if (sourcePartitionStatus.equals(SourcePartitionStatus.UNASSIGNED) || sourcePartitionStatus.equals(SourcePartitionStatus.COMPLETED)) {
+            verify((DynamoDbSourcePartitionItem) updateItem, never()).setPartitionPriority(anyString());
+        }
     }
 
-    static Stream<Class> exceptionProvider() {
-        return Stream.of(ProvisionedThroughputExceededException.class, RuntimeException.class);
+    @Test
+    void getAvailablePartition_with_no_item_acquired_returns_empty_optional() {
+        final String ownerId = UUID.randomUUID().toString();
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final Duration ownershipTimeout = Duration.ofMinutes(2);
+
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.ASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED),
+                1))
+                .willReturn(Optional.empty());
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.CLOSED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED),
+                1))
+                .willReturn(Optional.empty());
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.UNASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.UNASSIGNED),
+                5))
+                .willReturn(Optional.empty());
+
+        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(sourceIdentifier, ownerId, ownershipTimeout);
+
+        assertThat(result.isEmpty(), equalTo(true));
+    }
+
+    @Test
+    void getAvailablePartition_with_acquired_ASSIGNED_partition_returns_the_partition() {
+        final String ownerId = UUID.randomUUID().toString();
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final Duration ownershipTimeout = Duration.ofMinutes(2);
+
+        final DynamoDbSourcePartitionItem acquiredItem = mock(DynamoDbSourcePartitionItem.class);
+
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.ASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED),
+                1))
+                .willReturn(Optional.of(acquiredItem));
+
+        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(sourceIdentifier, ownerId, ownershipTimeout);
+
+        assertThat(result.isPresent(), equalTo(true));
+        assertThat(result.get(), equalTo(acquiredItem));
+
+        verifyNoMoreInteractions(dynamoDbClientWrapper);
+    }
+
+    @Test
+    void getAvailablePartition_with_acquired_CLOSED_partition_returns_the_partition() {
+        final String ownerId = UUID.randomUUID().toString();
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final Duration ownershipTimeout = Duration.ofMinutes(2);
+
+        final DynamoDbSourcePartitionItem acquiredItem = mock(DynamoDbSourcePartitionItem.class);
+
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.ASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED),
+                1))
+                .willReturn(Optional.empty());
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.CLOSED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED),
+                1))
+                .willReturn(Optional.of(acquiredItem));
+
+        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(sourceIdentifier, ownerId, ownershipTimeout);
+
+        assertThat(result.isPresent(), equalTo(true));
+        assertThat(result.get(), equalTo(acquiredItem));
+
+        verifyNoMoreInteractions(dynamoDbClientWrapper);
+    }
+
+    @Test
+    void getAvailablePartition_with_acquired_UNASSIGNED_partition_returns_the_partition() {
+        final String ownerId = UUID.randomUUID().toString();
+        final String sourceIdentifier = UUID.randomUUID().toString();
+        final Duration ownershipTimeout = Duration.ofMinutes(2);
+
+        final DynamoDbSourcePartitionItem acquiredItem = mock(DynamoDbSourcePartitionItem.class);
+
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.ASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED),
+                1))
+                .willReturn(Optional.empty());
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.CLOSED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED),
+                1))
+                .willReturn(Optional.empty());
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.UNASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.UNASSIGNED),
+                5))
+                .willReturn(Optional.of(acquiredItem));
+
+        final Optional<SourcePartitionStoreItem> result = createObjectUnderTest().tryAcquireAvailablePartition(sourceIdentifier, ownerId, ownershipTimeout);
+
+        assertThat(result.isPresent(), equalTo(true));
+        assertThat(result.get(), equalTo(acquiredItem));
+
+        verifyNoMoreInteractions(dynamoDbClientWrapper);
     }
 }

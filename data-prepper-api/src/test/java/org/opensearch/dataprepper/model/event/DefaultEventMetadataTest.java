@@ -111,22 +111,16 @@ public class DefaultEventMetadataTest {
         assertThat(eventMetadata.getAttribute(key+"/key6"), equalTo(null));
     }
 
-    @Test
-    public void testAttributesMutation_throwsAnException() {
-        final Map<String, Object> attributes = eventMetadata.getAttributes();
-
-        assertThrows(UnsupportedOperationException.class, () -> attributes.put("foo", "bar"));
-    }
-
-    @Test
-    public void testAttributesMutation_without_attributes_throwsAnException() {
+    @ParameterizedTest
+    @MethodSource("getAttributeTestInputs")
+    public void testSetAttribute(String key, final Object value) {
         eventMetadata = DefaultEventMetadata.builder()
                 .withEventType(testEventType)
                 .withTimeReceived(testTimeReceived)
                 .build();
-        final Map<String, Object> attributes = eventMetadata.getAttributes();
-
-        assertThrows(UnsupportedOperationException.class, () -> attributes.put("foo", "bar"));
+        key = (key.charAt(0) == '/') ? key.substring(1) : key;
+        eventMetadata.setAttribute(key, value);
+        assertThat(eventMetadata.getAttribute(key), equalTo(value));
     }
 
     @Test
@@ -139,7 +133,6 @@ public class DefaultEventMetadataTest {
         assertThat(attributes, notNullValue());
         assertThat(attributes.size(), equalTo(0));
 
-        assertThrows(UnsupportedOperationException.class, () -> attributes.put("foo", "bar"));
     }
 
     @Test

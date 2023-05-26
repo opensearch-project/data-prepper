@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.util.Arrays;
@@ -27,6 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
@@ -102,8 +104,8 @@ class S3SinkServiceIT {
         when(s3SinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(s3region));
 
-        lenient().when(pluginMetrics.counter(S3SinkService.SNAPSHOT_SUCCESS)).thenReturn(snapshotSuccessCounter);
-        lenient().when(pluginMetrics.counter(S3SinkService.SNAPSHOT_FAILED)).thenReturn(snapshotFailedCounter);
+        lenient().when(pluginMetrics.counter(S3SinkService.OBJECTS_SUCCEEDED)).thenReturn(snapshotSuccessCounter);
+        lenient().when(pluginMetrics.counter(S3SinkService.OBJECTS_FAILED)).thenReturn(snapshotFailedCounter);
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS)).
                 thenReturn(numberOfRecordsSuccessCounter);
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
@@ -187,6 +189,7 @@ class S3SinkServiceIT {
     private static Record<Event> createRecord() {
         Map<String, Object> json = generateJson();
         final JacksonEvent event = JacksonLog.builder().withData(json).build();
+        event.setEventHandle(mock(EventHandle.class));
         return new Record<>(event);
     }
 

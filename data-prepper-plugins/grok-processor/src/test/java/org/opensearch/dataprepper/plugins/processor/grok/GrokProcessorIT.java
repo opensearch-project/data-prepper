@@ -45,7 +45,7 @@ public class GrokProcessorIT {
     private String messageInput;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     @BeforeEach
     public void setup() {
