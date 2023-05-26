@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.compression;
+package org.opensearch.dataprepper.plugins.codec;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
@@ -19,8 +20,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-class NoneCompressionEngineTest {
-    private CompressionEngine compressionEngine;
+class NoneDecompressionEngineTest {
+    private DecompressionEngine decompressionEngine;
     private ResponseInputStream<GetObjectResponse> responseInputStream;
     private String s3Key;
 
@@ -32,8 +33,8 @@ class NoneCompressionEngineTest {
 
     @Test
     void createInputStream_with_none_should_return_instance_of_ResponseInputStream() throws IOException {
-        compressionEngine = new NoneCompressionEngine();
-        final InputStream inputStream = compressionEngine.createInputStream(s3Key, responseInputStream);
+        decompressionEngine = new NoneDecompressionEngine();
+        final InputStream inputStream = decompressionEngine.createInputStream(responseInputStream);
 
         assertThat(inputStream, sameInstance(responseInputStream));
         verifyNoInteractions(responseInputStream);

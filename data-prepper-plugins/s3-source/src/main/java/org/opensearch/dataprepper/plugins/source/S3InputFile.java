@@ -34,7 +34,7 @@ public class S3InputFile implements InputFile {
     }
 
     /**
-     * Create ne input stream from the input file
+     * Create an input stream from the input file
      * @return an implementation of a SeekableInputStream into the S3 object.
      */
     @Override

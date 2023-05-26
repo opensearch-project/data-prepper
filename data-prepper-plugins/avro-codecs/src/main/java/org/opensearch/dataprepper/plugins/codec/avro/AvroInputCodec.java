@@ -13,6 +13,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.util.Utf8;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.event.Event;
@@ -47,11 +48,11 @@ public class AvroInputCodec implements InputCodec {
     }
 
     @Override
-    public void parse(final InputFile inputFile, final Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(final InputFile inputFile, final DecompressionEngine decompressionEngine, final Consumer<Record<Event>> eventConsumer) throws IOException {
         Objects.requireNonNull(inputFile);
         Objects.requireNonNull(eventConsumer);
 
-        parse(inputFile.newStream(), eventConsumer);
+        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
     }
 
     private void parseAvroStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) {

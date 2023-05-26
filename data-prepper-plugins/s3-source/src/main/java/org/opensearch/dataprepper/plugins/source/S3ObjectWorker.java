@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,8 @@ class S3ObjectWorker implements S3ObjectHandler {
     private static final Logger LOG = LoggerFactory.getLogger(S3ObjectWorker.class);
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
-    private final CompressionEngine compressionEngine;
+
+    private final CompressionOption compressionOption;
     private final InputCodec codec;
     private final BucketOwnerProvider bucketOwnerProvider;
     private final Duration bufferTimeout;
@@ -41,7 +42,7 @@ class S3ObjectWorker implements S3ObjectHandler {
 
     public S3ObjectWorker(final S3ObjectRequest s3ObjectRequest) {
         this.buffer = s3ObjectRequest.getBuffer();
-        this.compressionEngine = s3ObjectRequest.getCompressionEngine();
+        this.compressionOption = s3ObjectRequest.getCompressionOption();
         this.codec = s3ObjectRequest.getCodec();
         this.bucketOwnerProvider = s3ObjectRequest.getBucketOwnerProvider();
         this.bufferTimeout = s3ObjectRequest.getBufferTimeout();
@@ -79,7 +80,7 @@ class S3ObjectWorker implements S3ObjectHandler {
         try {
             s3ObjectSize = inputFile.getLength();
 
-            codec.parse(inputFile, record -> {
+            codec.parse(inputFile, compressionOption.getDecompressionEngine(), record -> {
                 try {
                     eventConsumer.accept(record.getData(), s3ObjectReference);
                     bufferAccumulator.add(record);
@@ -96,9 +97,6 @@ class S3ObjectWorker implements S3ObjectHandler {
             if (ex instanceof S3Exception) {
                 LOG.error("Error reading from S3 object: s3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
                 recordS3Exception((S3Exception) ex);
-            }
-            if (ex instanceof IOException) {
-                LOG.error("Error while parsing S3 object: S3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
             }
             throw ex;
         }

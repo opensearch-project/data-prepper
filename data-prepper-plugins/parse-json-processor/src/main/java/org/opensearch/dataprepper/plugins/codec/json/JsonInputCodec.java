@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -48,11 +49,14 @@ public class JsonInputCodec implements InputCodec {
     }
 
     @Override
-    public void parse(final InputFile inputFile, final Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(
+            final InputFile inputFile,
+            final DecompressionEngine decompressionEngine,
+            final Consumer<Record<Event>> eventConsumer) throws IOException {
         Objects.requireNonNull(inputFile);
         Objects.requireNonNull(eventConsumer);
 
-        parse(inputFile.newStream(), eventConsumer);
+        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
     }
 
 

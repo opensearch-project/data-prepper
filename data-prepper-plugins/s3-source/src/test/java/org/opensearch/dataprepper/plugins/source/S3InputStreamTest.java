@@ -22,11 +22,11 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class S3InputStreamTest {
-    @Mock
+    @Mock(lenient = true)
     private S3Client s3Client;
-    @Mock
+    @Mock(lenient = true)
     private S3ObjectReference s3ObjectReference;
-    @Mock
+    @Mock(lenient = true)
     private HeadObjectResponse metadata;
 
     private LongAdder bytesCounter;
@@ -47,7 +47,7 @@ class S3InputStreamTest {
     void testAvailable() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
-        s3InputStream.seek(0); // Force opening the stream
+        s3InputStream.seek(0);
 
         int availableBytes = s3InputStream.available();
         assertEquals(9, availableBytes);
@@ -64,13 +64,13 @@ class S3InputStreamTest {
     void testMarkAndReset() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
-        s3InputStream.seek(0); // Force opening the stream
+        s3InputStream.seek(5);
 
         s3InputStream.mark(5);
         s3InputStream.read();
         s3InputStream.reset();
 
-        assertEquals(0, s3InputStream.getPos());
+        assertEquals(5, s3InputStream.getPos());
     }
 
     @Test
@@ -113,12 +113,14 @@ class S3InputStreamTest {
     void testSeek() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        s3InputStream.read();
 
         s3InputStream.seek(5);
-        int firstByte = s3InputStream.read();
+        assertEquals(5L, s3InputStream.getPos());
+        char firstByte = (char) (s3InputStream.read() & 0xff);
 
         assertEquals('d', firstByte);
-        assertEquals(6, s3InputStream.getPos());
+        assertEquals(6L, s3InputStream.getPos());
     }
 
     @Test

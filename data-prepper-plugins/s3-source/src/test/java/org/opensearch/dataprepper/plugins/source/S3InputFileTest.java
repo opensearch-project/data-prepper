@@ -12,9 +12,7 @@ import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.LongAdder;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -34,6 +32,7 @@ public class S3InputFileTest {
     public void setUp() {
         s3Client = mock(S3Client.class);
         s3ObjectReference = mock(S3ObjectReference.class);
+
         s3InputFile = new S3InputFile(s3Client, s3ObjectReference);
     }
 
@@ -56,14 +55,14 @@ public class S3InputFileTest {
 
         SeekableInputStream seekableInputStream = s3InputFile.newStream();
 
-        assertThat(seekableInputStream.getClass(), equalTo(S3InputStreamTest.class));
+        assertThat(seekableInputStream.getClass(), equalTo(S3InputStream.class));
     }
 
     @Test
     public void testGetBytesCount_beforeNewStream() {
         long bytesCount = s3InputFile.getBytesCount();
 
-        assertThat(bytesCount, equalTo(0));
+        assertThat(bytesCount, equalTo(0L));
     }
 
     @Test

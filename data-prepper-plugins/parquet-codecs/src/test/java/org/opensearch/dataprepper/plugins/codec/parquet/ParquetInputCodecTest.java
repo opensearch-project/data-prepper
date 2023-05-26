@@ -14,6 +14,7 @@ import org.mockito.Mockito;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 import org.opensearch.dataprepper.plugins.fs.LocalOutputFile;
 
@@ -98,7 +99,7 @@ public class ParquetInputCodecTest {
         parquetInputCodec = new ParquetInputCodec();
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         assertThrows(NullPointerException.class,()->
-                parquetInputCodec.parse((InputFile) null, eventConsumer));
+                parquetInputCodec.parse((InputFile) null, new NoneDecompressionEngine(), eventConsumer));
 
         verifyNoInteractions(eventConsumer);
     }
@@ -108,7 +109,7 @@ public class ParquetInputCodecTest {
         parquetInputCodec = new ParquetInputCodec();
         InputFile inputFile = mock(InputFile.class);
         assertThrows(NullPointerException.class,()->
-                parquetInputCodec.parse(inputFile, null));
+                parquetInputCodec.parse(inputFile, new NoneDecompressionEngine(),null));
 
         verifyNoInteractions(inputFile);
     }
@@ -131,7 +132,7 @@ public class ParquetInputCodecTest {
     public void parseInputFile_parsesCorrectly() throws IOException {
         InputFile inputFile = new LocalInputFile(testDataFile);
 
-        parquetInputCodec.parse(inputFile, mockConsumer);
+        parquetInputCodec.parse(inputFile, new NoneDecompressionEngine(), mockConsumer);
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         verify(mockConsumer, times(10)).accept(recordArgumentCaptor.capture());

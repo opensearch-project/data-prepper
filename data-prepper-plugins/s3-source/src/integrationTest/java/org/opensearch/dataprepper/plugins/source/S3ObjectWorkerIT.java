@@ -10,9 +10,9 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
-import org.opensearch.dataprepper.plugins.source.compression.GZipCompressionEngine;
-import org.opensearch.dataprepper.plugins.source.compression.NoneCompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.CompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.GZipDecompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
@@ -127,7 +127,7 @@ class S3ObjectWorkerIT {
 
         final String key = getKeyString(recordsGenerator, numberOfRecords, shouldCompress);
 
-        final CompressionEngine compressionEngine = shouldCompress ? new GZipCompressionEngine() : new NoneCompressionEngine();
+        final CompressionEngine compressionEngine = shouldCompress ? new GZipDecompressionEngine() : new NoneDecompressionEngine();
         final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, compressionEngine);
 
         s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);

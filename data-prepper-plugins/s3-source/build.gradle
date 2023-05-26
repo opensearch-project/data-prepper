@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:common')
     implementation libs.armeria.core
     implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.awssdk:s3'
@@ -42,7 +43,6 @@ dependencies {
     testImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
     testImplementation project(':data-prepper-core')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
-    testImplementation project(':data-prepper-plugins:common')
     testImplementation 'org.apache.avro:avro:1.11.0'
     testImplementation 'org.apache.hadoop:hadoop-common:3.3.5'
     testImplementation 'org.apache.hadoop:hadoop-hdfs-client:3.3.5'

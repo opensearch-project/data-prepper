@@ -26,7 +26,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
-import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
@@ -159,7 +159,7 @@ public class S3ScanObjectWorkerIT {
                 .s3SelectCSVOption(S3SelectCSVOption)
                 .s3Client(s3Client)
                 .s3SelectJsonOption(new S3SelectJsonOption())
-                .compressionEngine(shouldCompress ? CompressionOption.GZIP.getEngine() : CompressionOption.NONE.getEngine())
+                .compressionOption(shouldCompress ? CompressionOption.GZIP : CompressionOption.NONE)
                 .s3AsyncClient(s3AsyncClient)
                 .eventConsumer(eventMetadataModifier)
                 .expressionType("SQL")

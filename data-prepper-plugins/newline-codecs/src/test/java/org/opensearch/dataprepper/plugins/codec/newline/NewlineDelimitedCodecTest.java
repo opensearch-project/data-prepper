@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 
 import java.io.ByteArrayInputStream;
@@ -95,7 +96,7 @@ class NewlineDelimitedCodecTest {
         final InputFile inputFile = new LocalInputFile(testDataFile);
 
         final List<Record<Event>> actualEvents = new ArrayList<>();
-        createObjectUnderTest().parse(inputFile, actualEvents::add);
+        createObjectUnderTest().parse(inputFile, new NoneDecompressionEngine(), actualEvents::add);
 
         assertThat(actualEvents.size(), equalTo(100));
         for (int i = 0; i < actualEvents.size(); i++) {

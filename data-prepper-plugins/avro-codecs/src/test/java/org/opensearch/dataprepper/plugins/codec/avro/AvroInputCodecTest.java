@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 
 import java.io.File;
@@ -96,7 +97,7 @@ public class AvroInputCodecTest {
         avroInputCodec=new AvroInputCodec();
         Consumer<Record<Event>> eventConsumer = mock(Consumer.class);
         assertThrows(NullPointerException.class,()->
-                avroInputCodec.parse((InputFile) null, eventConsumer));
+                avroInputCodec.parse((InputFile) null, new NoneDecompressionEngine(), eventConsumer));
 
         verifyNoInteractions(eventConsumer);
 
@@ -122,7 +123,7 @@ public class AvroInputCodecTest {
 
         final InputFile inputFile = mock(InputFile.class);
         assertThrows(NullPointerException.class,()->
-                avroInputCodec.parse(inputFile,null));
+                avroInputCodec.parse(inputFile, new NoneDecompressionEngine(), null));
 
         verifyNoInteractions(inputFile);
     }
@@ -160,7 +161,7 @@ public class AvroInputCodecTest {
 
         avroInputCodec = createObjectUnderTest();
 
-        avroInputCodec.parse(inputFile ,eventConsumer);
+        avroInputCodec.parse(inputFile, new NoneDecompressionEngine(), eventConsumer);
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         verify(eventConsumer, times(NUM_RECORDS)).accept(recordArgumentCaptor.capture());

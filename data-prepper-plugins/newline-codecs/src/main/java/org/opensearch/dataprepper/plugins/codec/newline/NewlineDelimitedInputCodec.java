@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.codec.newline;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.event.Event;
@@ -48,8 +49,8 @@ public class NewlineDelimitedInputCodec implements InputCodec {
     }
 
     @Override
-    public void parse(final InputFile inputFile, final Consumer<Record<Event>> eventConsumer) throws IOException {
-        parse(inputFile.newStream(), eventConsumer);
+    public void parse(final InputFile inputFile, final DecompressionEngine decompressionEngine, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
     }
 
     private void parseBufferedReader(final BufferedReader reader, final Consumer<Record<Event>> eventConsumer) throws IOException {

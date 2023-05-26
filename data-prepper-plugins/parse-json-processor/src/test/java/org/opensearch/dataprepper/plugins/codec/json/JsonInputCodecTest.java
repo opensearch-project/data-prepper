@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 
 import java.io.ByteArrayInputStream;
@@ -95,7 +96,7 @@ class JsonInputCodecTest {
         final JsonInputCodec objectUnderTest = createObjectUnderTest();
 
         assertThrows(NullPointerException.class, () ->
-                objectUnderTest.parse((InputFile) null, eventConsumer));
+                objectUnderTest.parse((InputFile) null, new NoneDecompressionEngine(), eventConsumer));
 
         verifyNoInteractions(eventConsumer);
     }
@@ -106,7 +107,7 @@ class JsonInputCodecTest {
 
         final InputFile inputFile = mock(InputFile.class);
         assertThrows(NullPointerException.class, () ->
-                objectUnderTest.parse(inputFile, null));
+                objectUnderTest.parse(inputFile, new NoneDecompressionEngine(), null));
 
         verifyNoInteractions(inputFile);
     }
@@ -167,7 +168,7 @@ class JsonInputCodecTest {
 
         final InputFile inputFile = new LocalInputFile(testDataFile);
 
-        createObjectUnderTest().parse(inputFile, eventConsumer);
+        createObjectUnderTest().parse(inputFile, new NoneDecompressionEngine(), eventConsumer);
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         verify(eventConsumer, times(numberOfObjects)).accept(recordArgumentCaptor.capture());

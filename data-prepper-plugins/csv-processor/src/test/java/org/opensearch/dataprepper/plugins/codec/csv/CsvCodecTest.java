@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 
 import java.io.ByteArrayInputStream;
@@ -92,7 +93,7 @@ public class CsvCodecTest {
     @Test
     void test_when_nullInputFile_then_throwsException() {
         assertThrows(NullPointerException.class, () ->
-                csvCodec.parse((InputFile) null, eventConsumer));
+                csvCodec.parse((InputFile) null, new NoneDecompressionEngine(), eventConsumer));
 
         verifyNoInteractions(eventConsumer);
     }
@@ -154,7 +155,7 @@ public class CsvCodecTest {
 
         final InputFile inputFile = new LocalInputFile(testDataFile);
 
-        csvCodec.parse(inputFile, eventConsumer);
+        csvCodec.parse(inputFile, new NoneDecompressionEngine(), eventConsumer);
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         verify(eventConsumer, times(numberOfRows)).accept(recordArgumentCaptor.capture());

@@ -112,7 +112,7 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
                     .codec(codec)
                     .eventConsumer(eventMetadataModifier)
                     .s3Client(s3ClientBuilderFactory.getS3Client())
-                    .compressionEngine(s3SourceConfig.getCompression().getEngine())
+                    .compressionOption(s3SourceConfig.getCompression())
                     .build();
             s3Handler = new S3ObjectWorker(s3ObjectRequest);
         }

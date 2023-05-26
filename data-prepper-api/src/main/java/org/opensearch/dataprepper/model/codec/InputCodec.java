@@ -27,8 +27,12 @@ public interface InputCodec {
      * Parses an {@link InputFile}. Implementors should call the {@link Consumer} for each
      * {@link Record} loaded from the {@link InputFile}
      * @param inputFile The input file for the codec to process
+     * @param decompressionEngine The engine to use to decompress the input file
      * @param eventConsumer The consumer which handles each event from the stream
      * @throws IOException throws IOException when invalid input is received or incorrect codec name is provided
      */
-    void parse(InputFile inputFile, Consumer<Record<Event>> eventConsumer) throws IOException;
+    void parse(
+            InputFile inputFile,
+            DecompressionEngine decompressionEngine,
+            Consumer<Record<Event>> eventConsumer) throws IOException;
 }

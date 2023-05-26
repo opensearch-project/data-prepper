@@ -15,6 +15,7 @@ import org.apache.avro.io.DecoderFactory;
 import org.apache.parquet.avro.AvroParquetReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -63,7 +64,7 @@ public class ParquetInputCodec implements InputCodec {
     }
 
     @Override
-    public void parse(final InputFile inputFile, final Consumer<Record<Event>> eventConsumer) throws IOException {
+    public void parse(final InputFile inputFile, final DecompressionEngine decompressionEngine, final Consumer<Record<Event>> eventConsumer) throws IOException {
         Objects.requireNonNull(inputFile);
         Objects.requireNonNull(eventConsumer);
         parseParquetFile(inputFile, eventConsumer);

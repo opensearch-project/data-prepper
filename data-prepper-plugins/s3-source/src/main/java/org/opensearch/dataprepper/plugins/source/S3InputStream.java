@@ -4,7 +4,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.Optional;
 import java.util.concurrent.atomic.LongAdder;
 
 import com.google.common.base.Preconditions;
@@ -19,7 +18,6 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
-import javax.swing.text.html.Option;
 
 class S3InputStream extends SeekableInputStream {
 
@@ -41,12 +39,14 @@ class S3InputStream extends SeekableInputStream {
 
     private InputStream stream;
 
-    private Optional<InputStream> markedInputStream;
-
     private final byte[] temp = new byte[COPY_BUFFER_SIZE];
 
     private long pos = 0;
     private long next = 0;
+
+    private long mark = 0;
+
+    private long markLimit = 0;
 
     private boolean closed = false;
 
@@ -100,8 +100,8 @@ class S3InputStream extends SeekableInputStream {
      */
     @Override
     public synchronized void mark(int readlimit) {
-        stream.mark(readlimit);
-        markedInputStream = Optional.of(stream);
+        mark = next;
+        markLimit = mark + readlimit;
     }
 
     /**
@@ -110,7 +110,7 @@ class S3InputStream extends SeekableInputStream {
      */
     @Override
     public synchronized boolean markSupported() {
-        return stream != null;
+        return true;
     }
 
 
@@ -165,16 +165,76 @@ class S3InputStream extends SeekableInputStream {
     }
 
     /**
+     * Read all bytes from this input stream.
+     * @return Array of bytes read
+     * @throws IOException
+     */
+    @Override
+    public byte[] readAllBytes() throws IOException {
+        Preconditions.checkState(!closed, "Cannot read: already closed");
+        positionStream();
+
+        final byte[] bytesRead = stream.readAllBytes();
+
+        pos += bytesRead.length;
+        next += bytesRead.length;
+        bytesCounter.add(bytesRead.length);
+
+        return bytesRead;
+    }
+
+    /**
+     *
+     * @param b the byte array into which the data is read
+     * @param off the start offset in {@code b} at which the data is written
+     * @param len the maximum number of bytes to read
+     * @return number of bytes read
+     * @throws IOException if underlying stream cannot be read from
+     */
+    @Override
+    public int readNBytes(byte[] b, int off, int len) throws IOException {
+        Preconditions.checkState(!closed, "Cannot read: already closed");
+        positionStream();
+
+        int bytesRead = stream.readNBytes(b, off, len);
+
+        pos += bytesRead;
+        next += bytesRead;
+        bytesCounter.add(bytesRead);
+
+        return bytesRead;
+    }
+
+    /**
+     * @param len the number of bytes to read
+     * @return array of bytes read
+     * @throws IOException if stream cannot be read from
+     */
+    @Override
+    public byte[] readNBytes(int len) throws IOException {
+        Preconditions.checkState(!closed, "Cannot read: already closed");
+        positionStream();
+
+        final byte[] bytesRead = stream.readNBytes(len);
+
+        pos += bytesRead.length;
+        next += bytesRead.length;
+        bytesCounter.add(bytesRead.length);
+
+        return bytesRead;
+    }
+
+    /**
      * Reset the stream to the marked position
      * @throws IOException if the stream that was marked is no longer valid
      */
     @Override
     public synchronized void reset() throws IOException {
-        if (markedInputStream.isPresent() && markedInputStream.get() == stream) {
-            stream.reset();
+        if (next > markLimit) {
+            throw new IOException("Cannot reset stream because mark limit exceeded");
         }
 
-        throw new IOException("Input stream cannot be reset");
+        next = mark;
     }
 
     /**
@@ -253,6 +313,9 @@ class S3InputStream extends SeekableInputStream {
         positionStream();
 
         int bytesRead = readFully(stream, bytes, start, len);
+
+        this.pos += bytesRead;
+        this.next += bytesRead;
         this.bytesCounter.add(bytesRead);
     }
 
@@ -280,7 +343,10 @@ class S3InputStream extends SeekableInputStream {
             bytesRead = readDirectBuffer(stream, buf, temp);
         }
 
+        this.pos += bytesRead;
+        this.next += bytesRead;
         this.bytesCounter.add(bytesRead);
+
         return bytesRead;
     }
 
@@ -308,6 +374,8 @@ class S3InputStream extends SeekableInputStream {
             bytesRead = readFullyDirectBuffer(stream, buf, temp);
         }
 
+        this.pos += bytesRead;
+        this.next += bytesRead;
         this.bytesCounter.add(bytesRead);
     }
 
@@ -316,6 +384,7 @@ class S3InputStream extends SeekableInputStream {
      * @throws IOException if stream cannot be set correctly
      */
     private void positionStream() throws IOException {
+
         if ((stream != null) && (next == pos)) {
             // already at specified position
             return;
@@ -380,7 +449,6 @@ class S3InputStream extends SeekableInputStream {
                 }
             }
             stream = null;
-            markedInputStream = Optional.empty();
         }
     }
 
