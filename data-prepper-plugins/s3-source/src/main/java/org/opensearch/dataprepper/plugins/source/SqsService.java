@@ -9,6 +9,7 @@ import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -34,12 +35,13 @@ public class SqsService {
     public SqsService(final AcknowledgementSetManager acknowledgementSetManager,
                       final S3SourceConfig s3SourceConfig,
                       final S3Service s3Accessor,
-                      final PluginMetrics pluginMetrics) {
+                      final PluginMetrics pluginMetrics,
+                      final AwsCredentialsProvider credentialsProvider) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3Accessor = s3Accessor;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
-        this.sqsClient = createSqsClient();
+        this.sqsClient = createSqsClient(credentialsProvider);
         s3EventMessageParser = new S3EventMessageParser();
     }
 
@@ -50,11 +52,11 @@ public class SqsService {
         sqsWorkerThread.start();
     }
 
-    SqsClient createSqsClient() {
+    SqsClient createSqsClient(final AwsCredentialsProvider credentialsProvider) {
         LOG.info("Creating SQS client");
         return SqsClient.builder()
                 .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
-                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
+                .credentialsProvider(credentialsProvider)
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(RetryPolicy.builder().numRetries(5).build())
                         .build())
