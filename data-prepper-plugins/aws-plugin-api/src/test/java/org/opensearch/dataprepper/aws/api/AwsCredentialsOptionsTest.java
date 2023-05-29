@@ -86,6 +86,17 @@ class AwsCredentialsOptionsTest {
     }
 
     @Test
+    void with_explicit_null_StsHeaderOverrides() {
+        final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
+                .withStsHeaderOverrides(null)
+                .build();
+
+        assertThat(awsCredentialsOptions, notNullValue());
+        assertThat(awsCredentialsOptions.getStsHeaderOverrides(), notNullValue());
+        assertThat(awsCredentialsOptions.getStsHeaderOverrides().size(), equalTo(0));
+    }
+
+    @Test
     void with_StsHeaderOverrides() {
         final Map<String, String> stsHeaderOverrides = Map.of(
                 UUID.randomUUID().toString(), UUID.randomUUID().toString(),

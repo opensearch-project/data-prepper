@@ -1,8 +1,8 @@
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.FileReader;
 import java.io.IOException;

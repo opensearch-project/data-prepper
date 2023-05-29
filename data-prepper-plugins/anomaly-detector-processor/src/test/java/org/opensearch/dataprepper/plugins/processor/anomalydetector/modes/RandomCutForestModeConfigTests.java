@@ -9,10 +9,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
 import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.DEFAULT_SHINGLE_SIZE;
 import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.DEFAULT_SAMPLE_SIZE;
 import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.DEFAULT_TIME_DECAY;

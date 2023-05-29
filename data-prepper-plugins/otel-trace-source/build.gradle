@@ -27,6 +27,7 @@ dependencies {
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation "org.bouncycastle:bcprov-jdk15on:1.70"
     implementation "org.bouncycastle:bcpkix-jdk15on:1.70"
+    testImplementation testLibs.junit.vintage
     testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation testLibs.mockito.inline
     testImplementation testLibs.slf4j.simple

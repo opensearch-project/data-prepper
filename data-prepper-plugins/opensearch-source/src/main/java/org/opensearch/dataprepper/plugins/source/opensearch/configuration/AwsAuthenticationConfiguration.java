@@ -50,7 +50,7 @@ public class AwsAuthenticationConfiguration {
         try {
             return Arn.fromString(awsStsRoleArn);
         } catch (final Exception e) {
-            throw new IllegalArgumentException(String.format("Invalid ARN format for awsStsRoleArn. Check the format of %s", awsStsRoleArn));
+            throw new IllegalArgumentException(String.format("Invalid ARN format for aws.sts_role_arn. Check the format of %s", awsStsRoleArn));
         }
     }
 

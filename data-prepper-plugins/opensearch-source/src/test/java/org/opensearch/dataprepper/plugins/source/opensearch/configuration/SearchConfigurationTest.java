@@ -4,37 +4,53 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class SearchConfigurationTest {
 
 
-    private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+    private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
     @Test
-    public void search_config_values_test() throws JsonProcessingException {
+    void default_search_configuration() {
+        final SearchConfiguration searchConfiguration = new SearchConfiguration();
 
-        final String searchConfigurationYaml =
-                "  batch_size: 1000\n" +
-                "  expand_wildcards: \"open\"\n" +
-                "  sorting:\n" +
-                "  - sort_key: \"test\"\n" +
-                "    order: asc\n" +
-                "  - sort_key: \"name\"\n" +
-                "    order: desc";
-        final SearchConfiguration searchConfiguration = objectMapper.readValue(searchConfigurationYaml, SearchConfiguration.class);
-        assertThat(searchConfiguration.getExpandWildcards(),equalTo(WildCardOptions.OPEN));
+        assertThat(searchConfiguration.getQuery(), equalTo(null));
+        assertThat(searchConfiguration.getBatchSize(), equalTo(null));
+    }
+
+    @Test
+    void non_default_search_configuration() {
+        final Map<String, Object> pluginSettings = new HashMap<>();
+        pluginSettings.put("batch_size", 1000);
+        pluginSettings.put("query", "{\"query\": {\"match_all\": {} }}");
+
+        final SearchConfiguration searchConfiguration = objectMapper.convertValue(pluginSettings, SearchConfiguration.class);
         assertThat(searchConfiguration.getBatchSize(),equalTo(1000));
-        assertThat(searchConfiguration.getSorting().get(0).getSortKey(),equalTo("test"));
-        assertThat(searchConfiguration.getSorting().get(0).getOrder(),equalTo("asc"));
-        assertThat(searchConfiguration.getSorting().get(1).getSortKey(),equalTo("name"));
-        assertThat(searchConfiguration.getSorting().get(1).getOrder(),equalTo("desc"));
+        assertThat(searchConfiguration.isQueryValid(), equalTo(true));
+        assertThat(searchConfiguration.getQuery(), notNullValue());
+        assertThat(searchConfiguration.getQuery().containsKey("query"), equalTo(true));
+    }
+
+    @Test
+    void query_is_not_valid_json_string() {
+
+        final Map<String, Object> pluginSettings = new HashMap<>();
+        pluginSettings.put("batch_size", 1000);
+        pluginSettings.put("query", "\\{query: \"my_query\"}");
+
+        final SearchConfiguration searchConfiguration = objectMapper.convertValue(pluginSettings, SearchConfiguration.class);
+        assertThat(searchConfiguration.getBatchSize(),equalTo(1000));
+        assertThat(searchConfiguration.isQueryValid(), equalTo(false));
     }
 }
