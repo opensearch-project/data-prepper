@@ -22,6 +22,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -29,6 +32,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.equalTo;
@@ -139,7 +143,47 @@ public class ParquetInputCodecTest {
 
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         assertRecordsCorrect(actualRecords);
+    }
 
+    @Test
+    public void parseInputFile_snappyInputFile() throws IOException, URISyntaxException {
+        URL resource = getClass().getClassLoader().getResource("sample.snappy.parquet");
+        InputFile inputFile = new LocalInputFile(Paths.get(resource.toURI()).toFile());
+
+        parquetInputCodec.parse(inputFile, new NoneDecompressionEngine(), mockConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(mockConsumer, times(100)).accept(recordArgumentCaptor.capture());
+
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
+        for (final Record<Event> record: actualRecords) {
+            String s = record.getData().toString();
+            System.out.println(s);
+            final String arch = record.getData().get("architecture", String.class);
+            assertThat(arch, startsWith("x86"));
+        }
+    }
+
+    @Test
+    public void parseInputFile_testParquetFile() throws IOException, URISyntaxException {
+        URL resource = getClass().getClassLoader().getResource("test-parquet.parquet");
+        InputFile inputFile = new LocalInputFile(Paths.get(resource.toURI()).toFile());
+
+        parquetInputCodec.parse(inputFile, new NoneDecompressionEngine(), mockConsumer);
+
+        final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
+        verify(mockConsumer, times(100)).accept(recordArgumentCaptor.capture());
+
+        final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
+        for (int i = 1; i <= actualRecords.size(); i++) {
+            final Record<Event> record = actualRecords.get(i - 1);
+            System.out.println(record.toString());
+            final String name = record.getData().get("name", String.class);
+            final int age = record.getData().get("age", Integer.class);
+
+            assertThat(name, equalTo(String.valueOf(i) + "testString"));
+            assertThat(age, equalTo(i));
+        }
     }
 
     private static void generateTestData(final File file) throws IOException {
@@ -163,6 +207,7 @@ public class ParquetInputCodecTest {
     }
 
     private void assertRecordsCorrect(final List<Record<Event>> records) {
+        assertThat(records.size(), equalTo(10));
         for (int i = 0; i < 10; i++) {
             final Record<Event> record = records.get(i);
             final String id = record.getData().get("id", String.class);
