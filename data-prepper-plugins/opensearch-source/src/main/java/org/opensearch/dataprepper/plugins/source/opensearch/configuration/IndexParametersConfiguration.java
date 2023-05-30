@@ -6,29 +6,27 @@
 package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
+
+import java.util.Collections;
 import java.util.List;
 
 public class IndexParametersConfiguration {
 
     @JsonProperty("include")
-    private List<String> include;
+    @Valid
+    private List<OpenSearchIndex> include = Collections.emptyList();
 
     @JsonProperty("exclude")
-    private List<String> exclude;
+    @Valid
+    private List<OpenSearchIndex> exclude = Collections.emptyList();
 
-    public void setInclude(List<String> include) {
-        this.include = include;
-    }
-
-    public void setExclude(List<String> exclude) {
-        this.exclude = exclude;
-    }
-
-    public List<String> getInclude() {
+    public List<OpenSearchIndex> getIncludedIndices() {
         return include;
     }
 
-    public List<String> getExclude() {
+    public List<OpenSearchIndex> getExcludedIndices() {
         return exclude;
     }
+
 }

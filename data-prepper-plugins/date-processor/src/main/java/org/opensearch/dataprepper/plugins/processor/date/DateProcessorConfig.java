@@ -60,6 +60,9 @@ public class DateProcessorConfig {
     @JsonProperty("locale")
     private String locale;
 
+    @JsonProperty("date_when")
+    private String dateWhen;
+
     @JsonIgnore
     private ZoneId sourceZoneId;
 
@@ -92,6 +95,8 @@ public class DateProcessorConfig {
     public Locale getSourceLocale() {
         return sourceLocale;
     }
+
+    public String getDateWhen() { return dateWhen; }
 
     private ZoneId buildZoneId(final String timezone) {
         try {

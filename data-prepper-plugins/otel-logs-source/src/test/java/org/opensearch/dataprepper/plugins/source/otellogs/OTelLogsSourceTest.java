@@ -42,7 +42,6 @@ import io.opentelemetry.proto.logs.v1.ScopeLogs;
 import io.opentelemetry.proto.resource.v1.Resource;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -89,6 +88,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
@@ -99,7 +99,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -553,7 +552,7 @@ class OTelLogsSourceTest {
         // starting server
         SOURCE.start(buffer);
         // double start server
-        Assertions.assertThrows(IllegalStateException.class, () -> SOURCE.start(buffer));
+        assertThrows(IllegalStateException.class, () -> SOURCE.start(buffer));
     }
 
     @Test
@@ -566,7 +565,7 @@ class OTelLogsSourceTest {
         oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelLogsSourceConfig.class);
         final OTelLogsSource source = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
         //Expect RuntimeException because when port is already in use, BindException is thrown which is not RuntimeException
-        Assertions.assertThrows(RuntimeException.class, () -> source.start(buffer));
+        assertThrows(RuntimeException.class, () -> source.start(buffer));
     }
 
     @Test
@@ -575,7 +574,7 @@ class OTelLogsSourceTest {
         testPluginSetting.setPipelineName("pipeline");
         oTelLogsSourceConfig = OBJECT_MAPPER.convertValue(testPluginSetting.getSettings(), OTelLogsSourceConfig.class);
         final OTelLogsSource source = new OTelLogsSource(oTelLogsSourceConfig, pluginMetrics, pluginFactory, pipelineDescription);
-        Assertions.assertThrows(IllegalStateException.class, () -> source.start(null));
+        assertThrows(IllegalStateException.class, () -> source.start(null));
     }
 
     @Test

@@ -7,7 +7,8 @@ package org.opensearch.dataprepper.plugins.sink;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
 

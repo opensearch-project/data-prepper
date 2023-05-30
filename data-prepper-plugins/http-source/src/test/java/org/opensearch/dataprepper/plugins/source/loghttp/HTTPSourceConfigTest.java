@@ -22,7 +22,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.opensearch.dataprepper.plugins.source.loghttp.HTTPSourceConfig.S3_PREFIX;
 
 public class HTTPSourceConfigTest {

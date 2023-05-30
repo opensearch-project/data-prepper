@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.date;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -24,6 +25,7 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name = "date", pluginType = Processor.class, pluginConfigurationType = DateProcessorConfig.class)
@@ -37,14 +39,16 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private String keyToParse;
     private List<DateTimeFormatter> dateTimeFormatters;
     private final DateProcessorConfig dateProcessorConfig;
+    private final ExpressionEvaluator expressionEvaluator;
 
     private final Counter dateProcessingMatchSuccessCounter;
     private final Counter dateProcessingMatchFailureCounter;
 
     @DataPrepperPluginConstructor
-    public DateProcessor(PluginMetrics pluginMetrics, final DateProcessorConfig dateProcessorConfig) {
+    public DateProcessor(PluginMetrics pluginMetrics, final DateProcessorConfig dateProcessorConfig, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.dateProcessorConfig = dateProcessorConfig;
+        this.expressionEvaluator = expressionEvaluator;
 
         dateProcessingMatchSuccessCounter = pluginMetrics.counter(DATE_PROCESSING_MATCH_SUCCESS);
         dateProcessingMatchFailureCounter = pluginMetrics.counter(DATE_PROCESSING_MATCH_FAILURE);
@@ -56,6 +60,11 @@ public class DateProcessor extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
+
+            if (Objects.nonNull(dateProcessorConfig.getDateWhen()) && !expressionEvaluator.evaluateConditional(dateProcessorConfig.getDateWhen(), record.getData())) {
+                continue;
+            }
+
             String zonedDateTime = null;
 
             if (Boolean.TRUE.equals(dateProcessorConfig.getFromTimeReceived()))

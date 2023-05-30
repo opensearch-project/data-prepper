@@ -48,7 +48,7 @@ dependencyResolutionManagement {
             library('junit-params', 'org.junit.jupiter', 'junit-jupiter-params').versionRef('junit')
             library('junit-engine', 'org.junit.jupiter', 'junit-jupiter-engine').versionRef('junit')
             library('junit-vintage', 'org.junit.vintage', 'junit-vintage-engine').versionRef('junit')
-            bundle('junit', ['junit-core', 'junit-params', 'junit-vintage'])
+            bundle('junit', ['junit-core', 'junit-params'])
             library('mockito-core', 'org.mockito', 'mockito-core').versionRef('mockito')
             library('mockito-junit', 'org.mockito', 'mockito-junit-jupiter').versionRef('mockito')
             library('mockito-inline', 'org.mockito', 'mockito-inline').versionRef('mockito')
@@ -119,4 +119,4 @@ include 'data-prepper-plugins:user-agent-processor'
 include 'data-prepper-plugins:in-memory-source-coordination-store'
 include 'data-prepper-plugins:aws-plugin-api'
 include 'data-prepper-plugins:aws-plugin'
-
+include 'data-prepper-plugins:obfuscate-processor'

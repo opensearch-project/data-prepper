@@ -8,27 +8,35 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class ConnectionConfigurationTest {
-    private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+    private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
     @Test
-    public void connection_configuration_values_test() throws JsonProcessingException {
+    void default_connection_config() {
+        final ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration();
+
+        assertThat(connectionConfiguration.getConnectTimeout(), equalTo(null));
+        assertThat(connectionConfiguration.getSocketTimeout(), equalTo(null));
+        assertThat(connectionConfiguration.getCertPath(), equalTo(null));
+        assertThat(connectionConfiguration.isInsecure(), equalTo(false));
+    }
+    @Test
+    void connection_configuration_values_test() throws JsonProcessingException {
 
         final String connectionYaml =
                 "  cert: \"cert\"\n" +
-                "  insecure: true\n" +
-                "  socket_timeout: 500\n" +
-                "  connection_timeout: 500";
+                "  insecure: true\n";
         final ConnectionConfiguration connectionConfig = objectMapper.readValue(connectionYaml, ConnectionConfiguration.class);
         assertThat(connectionConfig.getCertPath(),equalTo(Path.of("cert")));
-        assertThat(connectionConfig.getSocketTimeout(),equalTo(500));
-        assertThat(connectionConfig.getConnectTimeout(),equalTo(500));
+        assertThat(connectionConfig.getSocketTimeout(),equalTo(null));
+        assertThat(connectionConfig.getConnectTimeout(),equalTo(null));
         assertThat(connectionConfig.isInsecure(),equalTo(true));
     }
 }
