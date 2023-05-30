@@ -101,11 +101,39 @@ public class RandomCutForestModeTests {
         final List<Record<Event>> anomalyRecords = randomCutForestMode.handleEvents(recordsWithAnomaly).stream().collect(toList());;
         assertThat(anomalyRecords.size(), equalTo(1));
         Event event = anomalyRecords.get(0).getData();
+        System.out.println("......."+event.toJsonString());
         List<Double> deviation = event.get(DEVIATION_KEY, List.class);
         for (int i = 0; i < keyList.size(); i++) {
+            System.out.println("====i=="+i+"====deviation==="+deviation.get(i));
             assertThat((double)deviation.get(i), greaterThan(9.0));
         }
         double grade = (double)event.get(GRADE_KEY, Double.class);
         assertThat(grade, equalTo(1.0));
     }
+
+/*
+    @Test
+    void testRandomCutForestModeWithOutputAfter() {
+        double dailyLoads[] = {5.0, 4.0, 3.0, 2.0, 1.0, 3.0, 5.0, 7.0, 9.0, 11.0, 9.5, 8.5, 7.5, 6.5, 6.0, 6.5, 7.0, 7.5, 9.5, 11.0, 12.5, 10.5, 8.5, 7.0};
+        List<String> keyList = new ArrayList<String>();
+        keyList.add("load");
+        keyList.add("week_hour"); // Hour number from the beginning of the week. range 0 through 167
+        randomCutForestMode.initialize(keyList);
+        double load;
+        final int numSamples = 2*365*24; // two years, hourly loads
+        for (int i = 0; i < numSamples; i++) {
+            // 168 = 24 * 7 = number of hours in a week
+            if ((i == (365+200)*24) && (i % 24) == 4) {
+                load = 12.5;
+            } else {
+                load = dailyLoads[i % 24];
+            }
+
+            records.add(getHourlyLoadMessage(UUID.randomUUID().toString(), load, i % 168);
+        final List<Record<Event>> anomalyRecords = randomCutForestMode.handleEvents(recordsWithAnomaly).stream().collect(toList());;
+        assertThat(anomalyRecords.size(), greaterThanOrEqual(1));
+        }
+        randomCutForestMode.handleEvents(records);
+    }
+*/
 }

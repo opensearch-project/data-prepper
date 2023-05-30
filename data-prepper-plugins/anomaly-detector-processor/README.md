@@ -54,6 +54,8 @@ When run, the processor will parse the messages and extracts the values for the 
 * `sample_size` - sample size size to be used in the ML algorithm
   * Default: `256`
   * Range: 100 - 2500
+* `output_after` - number of events used to train the ML algorithm. Anomaliesare detected after seeing the configured number number of events and used fortraining. Value of this should be less than or equal to `sample_size`
+  * Default: `256`
 * `time_decay` - time decay value to be used in the ML algorithm. Used as (timeDecay/SampleSize) in the ML algorithm
   * Default: `0.1`
   * Range: 0 - 1.0
