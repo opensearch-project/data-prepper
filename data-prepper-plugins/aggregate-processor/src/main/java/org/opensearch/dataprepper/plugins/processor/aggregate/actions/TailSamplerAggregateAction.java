@@ -17,13 +17,14 @@ import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Random;
 import java.time.Duration;
 import java.time.Instant;
 
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action 
  * 
- * @since 2.1
+ * @since 2.3
  */
 @DataPrepperPlugin(name = "tail_sampler", pluginType = AggregateAction.class, pluginConfigurationType = TailSamplerAggregateActionConfig.class)
 public class TailSamplerAggregateAction implements AggregateAction {
@@ -31,17 +32,19 @@ public class TailSamplerAggregateAction implements AggregateAction {
     static final String SHOULD_CONCLUDE_CHECK_SET_KEY = "should_conclude_check_set";
     static final String EVENTS_KEY = "events";
     static final String ERROR_STATUS_KEY = "error_status";
-    private final double percent;
+    private final int percent;
     private final Duration waitPeriod;
     private final ExpressionEvaluator expressionEvaluator;
-    private final String errorCondition;
+    private final String condition;
     private boolean shouldCarryGroupState;
+    private Random random;
 
     @DataPrepperPluginConstructor
     public TailSamplerAggregateAction(final TailSamplerAggregateActionConfig tailSamplerAggregateActionConfig, final ExpressionEvaluator expressionEvaluator) {
         percent = tailSamplerAggregateActionConfig.getPercent();
         waitPeriod = tailSamplerAggregateActionConfig.getWaitPeriod();
-        errorCondition = tailSamplerAggregateActionConfig.getErrorCondition();
+        condition = tailSamplerAggregateActionConfig.getCondition();
+        this.random = new Random();
         this.expressionEvaluator = expressionEvaluator;
         shouldCarryGroupState = true;
     }
@@ -60,7 +63,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
         List<Event> events = (List)groupState.getOrDefault(EVENTS_KEY, new ArrayList<>());
         events.add(event);
         groupState.put(EVENTS_KEY, events);
-        if (errorCondition != null && !errorCondition.isEmpty() && expressionEvaluator.evaluateConditional(errorCondition, event)) {
+        if (condition != null && !condition.isEmpty() && expressionEvaluator.evaluateConditional(condition, event)) {
             groupState.put(ERROR_STATUS_KEY, true);
         }
         groupState.put(LAST_RECEIVED_TIME_KEY, Instant.now());
@@ -70,7 +73,11 @@ public class TailSamplerAggregateAction implements AggregateAction {
     @Override
     public AggregateActionOutput concludeGroup(final AggregateActionInput aggregateActionInput) {
         GroupState groupState = aggregateActionInput.getGroupState();
-        return new AggregateActionOutput((List)groupState.getOrDefault(EVENTS_KEY, List.of()));
+        int randomInt = random.nextInt(100);
+        if (((groupState.containsKey(ERROR_STATUS_KEY) && (Boolean)groupState.get(ERROR_STATUS_KEY) == true)) || (randomInt < percent)) {
+            return new AggregateActionOutput((List)groupState.getOrDefault(EVENTS_KEY, List.of()));
+        }
+        return new AggregateActionOutput(List.of());
     }
 
 }
