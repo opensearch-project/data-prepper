@@ -17,8 +17,9 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 /**
  * Class responsible for processing the s3 scan objects with the help of <code>S3ObjectWorker</code>
@@ -40,7 +41,7 @@ public class ScanObjectWorker implements Runnable{
 
     private final SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
-    private final Supplier<List<PartitionIdentifier>> partitionCreationSupplier;
+    private final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier;
 
     // Should there be a duration or time that is configured in the source to stop processing? Otherwise will only stop when data prepper is stopped
     private final boolean shouldStopProcessing = false;
