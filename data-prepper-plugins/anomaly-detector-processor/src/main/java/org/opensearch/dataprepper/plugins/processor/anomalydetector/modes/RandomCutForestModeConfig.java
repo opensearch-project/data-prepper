@@ -21,7 +21,6 @@ public class RandomCutForestModeConfig {
     public static final double DEFAULT_TIME_DECAY = 0.1;
     private static final double MIN_TIME_DECAY = 0.0;
     public static final double MAX_TIME_DECAY = 1.0;
-    //public static final int DEFAULT_OUTPUT_AFTER = DEFAULT_SAMPLE_SIZE;
     public static final int DEFAULT_OUTPUT_AFTER = 32;
 
     public static final String VERSION_1_0 = "1.0";

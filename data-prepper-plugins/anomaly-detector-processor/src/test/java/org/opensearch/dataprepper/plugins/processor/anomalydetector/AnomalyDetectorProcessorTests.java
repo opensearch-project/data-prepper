@@ -166,7 +166,7 @@ public class AnomalyDetectorProcessorTests {
             records.add(getLatencyBytesMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6), ThreadLocalRandom.current().nextLong(100, 110)));
         }
         anomalyDetectorProcessor.doExecute(records);
-        final List<Record<Event>> recordsWithAnomaly = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(10.4, 10.8), ThreadLocalRandom.current().nextLong(1000, 1110))));
+        final List<Record<Event>> recordsWithAnomaly = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(15.4, 15.8), ThreadLocalRandom.current().nextLong(1000, 1110))));
         assertThat(recordsWithAnomaly.size(), equalTo(1));
         Event event = recordsWithAnomaly.get(0).getData();
         List<Double> deviation = event.get(AnomalyDetectorProcessor.DEVIATION_KEY, List.class);
