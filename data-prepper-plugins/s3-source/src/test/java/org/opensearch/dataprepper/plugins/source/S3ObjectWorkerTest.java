@@ -199,20 +199,7 @@ class S3ObjectWorkerTest {
         }).when(codec).parse(any(InputFile.class), any(DecompressionEngine.class), any(Consumer.class));
         createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet);
         assertThat(numEventsAdded, equalTo(1));
-<<<<<<< HEAD
-
-        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
-        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture());
-
-        final GetObjectRequest actualGetObjectRequest = getObjectRequestArgumentCaptor.getValue();
-
-        assertThat(actualGetObjectRequest, notNullValue());
-        assertThat(actualGetObjectRequest.bucket(), equalTo(bucketName));
-        assertThat(actualGetObjectRequest.key(), equalTo(key));
-        assertThat(actualGetObjectRequest.expectedBucketOwner(), nullValue());
         verifyNoInteractions(s3ObjectNoRecordsFound);
-=======
->>>>>>> 4c5d3d37 (Add decompomression engine to API and implementations to common.)
     }
 
     @Test
@@ -224,11 +211,7 @@ class S3ObjectWorkerTest {
         when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(s3ObjectSizeProcessedSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
         when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
-<<<<<<< HEAD
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
-=======
-
->>>>>>> 4c5d3d37 (Add decompomression engine to API and implementations to common.)
         createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet);
     }
 
@@ -239,11 +222,7 @@ class S3ObjectWorkerTest {
         when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(s3ObjectSizeProcessedSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
         when(s3ObjectPluginMetrics.getS3ObjectSizeSummary()).thenReturn(s3ObjectSizeSummary);
-<<<<<<< HEAD
-        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
         when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(s3ObjectNoRecordsFound);
-=======
->>>>>>> 4c5d3d37 (Add decompomression engine to API and implementations to common.)
 
         createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet);
 
@@ -455,11 +434,8 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-<<<<<<< HEAD
     void parseS3Object_records_S3_Object_No_Records_Found() throws IOException {
-        when(s3Client.getObject(any(GetObjectRequest.class)))
-            .thenReturn(objectInputStream);
-        when(compressionEngine.createInputStream(key, objectInputStream)).thenReturn(objectInputStream);
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
         when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(s3ObjectSizeProcessedSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsSucceededCounter()).thenReturn(s3ObjectsSucceededCounter);
@@ -472,12 +448,7 @@ class S3ObjectWorkerTest {
     }
 
     @Test
-    void parseS3Object_records_input_stream_bytes_read() throws IOException {
-        when(s3Client.getObject(any(GetObjectRequest.class)))
-                .thenReturn(objectInputStream);
-=======
     void parseS3Object_records_input_file_bytes_read() throws IOException {
->>>>>>> 4c5d3d37 (Add decompomression engine to API and implementations to common.)
         final int inputStringLength = random.nextInt(1000) + 10;
         final byte[] inputStreamBytes = new byte[inputStringLength];
         random.nextBytes(inputStreamBytes);
