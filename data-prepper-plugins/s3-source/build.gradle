@@ -37,6 +37,8 @@ dependencies {
     testImplementation project(':data-prepper-plugins:parse-json-processor')
     testImplementation project(':data-prepper-plugins:newline-codecs')
     testImplementation project(':data-prepper-plugins:avro-codecs')
+    testImplementation project(':data-prepper-plugins:in-memory-source-coordination-store')
+    testImplementation project(':data-prepper-core')
     constraints {
         testImplementation('org.eclipse.jetty:jetty-bom') {
             version {
