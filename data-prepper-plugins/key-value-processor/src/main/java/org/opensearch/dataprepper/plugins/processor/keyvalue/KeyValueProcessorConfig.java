@@ -9,11 +9,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class KeyValueProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
     static final String DEFAULT_DESTINATION = "parsed_message";
     public static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
-    static final String[] DEFAULT_INCLUDE_KEYS = new String[]{};
+    static final List<String> DEFAULT_INCLUDE_KEYS = new ArrayList<>();
     public static final String DEFAULT_VALUE_SPLIT_CHARACTERS = "=";
     static final Object DEFAULT_NON_MATCH_VALUE = null;
     static final String DEFAULT_PREFIX = "";
@@ -35,7 +38,7 @@ public class KeyValueProcessorConfig {
 
     @JsonProperty("include_keys")
     @NotNull
-    private String[] includeKeys = DEFAULT_INCLUDE_KEYS;
+    private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
 
     @JsonProperty("key_value_delimiter_regex")
     private String keyValueDelimiterRegex;
@@ -73,7 +76,7 @@ public class KeyValueProcessorConfig {
         return fieldSplitCharacters;
     }
 
-    public String[] getIncludeKeys() {
+    public List<String> getIncludeKeys() {
         return includeKeys;
     }
 

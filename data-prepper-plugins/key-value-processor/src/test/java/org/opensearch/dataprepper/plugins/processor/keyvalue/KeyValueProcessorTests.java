@@ -232,21 +232,22 @@ public class KeyValueProcessorTests {
 
     @Test
     void testIncludeKeysKeyValueProcessor() {
-        final String[] includeKeys = new String[]{"key2"};
+        final List<String> includeKeys = List.of("key2", "key3");
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
-        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final Record<Event> record = getMessage("key1=value1&key2=value2&key3=value3");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
-        assertThat(parsed_message.size(), equalTo(1));
+        assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key2", "value2");
+        assertThatKeyEquals(parsed_message, "key3", "value3");
     }
 
     @Test
     void testIncludeKeysNoMatchKeyValueProcessor() {
-        final String[] includeKeys = new String[]{"noMatch"};
+        final List<String> includeKeys = Collections.singletonList("noMatch");
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 

@@ -93,7 +93,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         if(keyValueProcessorConfig.getIncludeKeys() != null) {
-            Collections.addAll(includeKeysSet, keyValueProcessorConfig.getIncludeKeys());
+            includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         }
     }
 
