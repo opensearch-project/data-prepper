@@ -59,15 +59,15 @@ public class TailSamplerAggregateActionConfigTests {
 
     @Test
     void testErrorConditionEmptyOrNull() throws NoSuchFieldException, IllegalAccessException {
-        assertThat(tailSamplerAggregateActionConfig.getErrorCondition(), equalTo(null));
-        setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "errorCondition", "");
-        assertTrue(tailSamplerAggregateActionConfig.getErrorCondition().isEmpty());
+        assertThat(tailSamplerAggregateActionConfig.getCondition(), equalTo(null));
+        setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "condition", "");
+        assertTrue(tailSamplerAggregateActionConfig.getCondition().isEmpty());
     }
 
     @Test
     void testValidErrorCondition() throws NoSuchFieldException, IllegalAccessException {
         final String testErrorCondition = RandomStringUtils.randomAlphabetic(20);
-        setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "errorCondition", testErrorCondition);
-        assertThat(tailSamplerAggregateActionConfig.getErrorCondition(), equalTo(testErrorCondition));
+        setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "condition", testErrorCondition);
+        assertThat(tailSamplerAggregateActionConfig.getCondition(), equalTo(testErrorCondition));
     }
 }

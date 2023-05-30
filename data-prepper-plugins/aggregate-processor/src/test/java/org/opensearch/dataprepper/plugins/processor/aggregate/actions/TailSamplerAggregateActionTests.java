@@ -55,7 +55,7 @@ public class TailSamplerAggregateActionTests {
         final int testPercent = 100;
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
         when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
-        when(tailSamplerAggregateActionConfig.getErrorCondition()).thenReturn("");
+        when(tailSamplerAggregateActionConfig.getCondition()).thenReturn("");
         tailSamplerAggregateAction = createObjectUnderTest(tailSamplerAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
@@ -95,7 +95,7 @@ public class TailSamplerAggregateActionTests {
         final String errorCondition = "/"+statusKey+" == "+errorStatusValue;
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
         when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
-        when(tailSamplerAggregateActionConfig.getErrorCondition()).thenReturn(errorCondition);
+        when(tailSamplerAggregateActionConfig.getCondition()).thenReturn(errorCondition);
         when(expressionEvaluator.evaluateConditional(any(String.class), any(Event.class))).thenReturn(true);
         tailSamplerAggregateAction = createObjectUnderTest(tailSamplerAggregateActionConfig);
         final String key = UUID.randomUUID().toString();

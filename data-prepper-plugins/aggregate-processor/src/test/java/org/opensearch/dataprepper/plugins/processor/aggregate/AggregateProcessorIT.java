@@ -515,14 +515,14 @@ public class AggregateProcessorIT {
     @ValueSource(ints = {20, 40, 60})
     void aggregateWithTailSamplerAction(final int testPercent) throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         final Duration testWaitPeriod = Duration.ofSeconds(3);
-        final String testErrorCondition = "/status == "+ERROR_STATUS;
+        final String testCondition = "/status == "+ERROR_STATUS;
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
         when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
-        when(tailSamplerAggregateActionConfig.getErrorCondition()).thenReturn(testErrorCondition);
+        when(tailSamplerAggregateActionConfig.getCondition()).thenReturn(testCondition);
         doAnswer(a -> {
             Event event = (Event)a.getArgument(1);
             return event.get("status", Integer.class) == ERROR_STATUS;
-        }).when(expressionEvaluator).evaluateConditional(eq(testErrorCondition), any(Event.class));
+        }).when(expressionEvaluator).evaluateConditional(eq(testCondition), any(Event.class));
         aggregateAction = new TailSamplerAggregateAction(tailSamplerAggregateActionConfig, expressionEvaluator);
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class))).thenReturn(aggregateAction);
         when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));

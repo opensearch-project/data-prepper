@@ -24,7 +24,7 @@ import java.time.Instant;
 /**
  * An AggregateAction that combines multiple Events into a single Event. This action 
  * 
- * @since 2.1
+ * @since 2.3
  */
 @DataPrepperPlugin(name = "tail_sampler", pluginType = AggregateAction.class, pluginConfigurationType = TailSamplerAggregateActionConfig.class)
 public class TailSamplerAggregateAction implements AggregateAction {
@@ -35,7 +35,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
     private final int percent;
     private final Duration waitPeriod;
     private final ExpressionEvaluator expressionEvaluator;
-    private final String errorCondition;
+    private final String condition;
     private boolean shouldCarryGroupState;
     private Random random;
 
@@ -43,7 +43,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
     public TailSamplerAggregateAction(final TailSamplerAggregateActionConfig tailSamplerAggregateActionConfig, final ExpressionEvaluator expressionEvaluator) {
         percent = tailSamplerAggregateActionConfig.getPercent();
         waitPeriod = tailSamplerAggregateActionConfig.getWaitPeriod();
-        errorCondition = tailSamplerAggregateActionConfig.getErrorCondition();
+        condition = tailSamplerAggregateActionConfig.getCondition();
         this.random = new Random();
         this.expressionEvaluator = expressionEvaluator;
         shouldCarryGroupState = true;
@@ -63,7 +63,7 @@ public class TailSamplerAggregateAction implements AggregateAction {
         List<Event> events = (List)groupState.getOrDefault(EVENTS_KEY, new ArrayList<>());
         events.add(event);
         groupState.put(EVENTS_KEY, events);
-        if (errorCondition != null && !errorCondition.isEmpty() && expressionEvaluator.evaluateConditional(errorCondition, event)) {
+        if (condition != null && !condition.isEmpty() && expressionEvaluator.evaluateConditional(condition, event)) {
             groupState.put(ERROR_STATUS_KEY, true);
         }
         groupState.put(LAST_RECEIVED_TIME_KEY, Instant.now());
