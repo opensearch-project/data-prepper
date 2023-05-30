@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.mockito.Mock;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -101,8 +102,11 @@ public class OpenSearchSinkIT {
   @Mock
   private PluginFactory pluginFactory;
 
+  @Mock
+  private AwsCredentialsSupplier awsCredentialsSupplier;
+
   public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory);
+    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, awsCredentialsSupplier);
     if (doInitialize) {
         sink.doInitialize();
     }

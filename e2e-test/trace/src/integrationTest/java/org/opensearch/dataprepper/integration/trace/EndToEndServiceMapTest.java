@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.integration.trace;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import com.google.protobuf.ByteString;
 import com.linecorp.armeria.client.Clients;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.mock;
 
 public class EndToEndServiceMapTest {
     private static final String TEST_TRACEID_1 = "ABC";
@@ -79,7 +81,8 @@ public class EndToEndServiceMapTest {
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
-        final RestHighLevelClient restHighLevelClient = builder.build().createClient();
+        final AwsCredentialsSupplier awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        final RestHighLevelClient restHighLevelClient = builder.build().createClient(awsCredentialsSupplier);
 
         // Wait for service map processor by 2 * window_duration
         await().atMost(45, TimeUnit.SECONDS).untilAsserted(
