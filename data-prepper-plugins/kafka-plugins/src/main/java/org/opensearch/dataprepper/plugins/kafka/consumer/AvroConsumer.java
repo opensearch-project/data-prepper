@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
 import org.apache.avro.generic.GenericRecord;
-
 import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -18,7 +17,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.source.KafkaSourceBufferAccumulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,18 +38,38 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 
 @SuppressWarnings("deprecation")
-public class AvroConsumer implements KafkaSourceSchemaConsumer<String, GenericRecord>, ConsumerRebalanceListener {
+public class AvroConsumer implements KafkaSourceConsumer<String, GenericRecord>, ConsumerRebalanceListener {
     private static final Logger LOG = LoggerFactory.getLogger(AvroConsumer.class);
     private Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
     private long lastReadOffset = 0L;
     private KafkaConsumer<String, GenericRecord> kafkaAvroConsumer;
     private volatile long lastCommitTime = System.currentTimeMillis();
+    final KafkaConsumer<String, GenericRecord> consumer;
+    final AtomicBoolean status;
+    final Buffer<Record<Object>> buffer;
+    final TopicConfig topicConfig;
+    final KafkaSourceConfig kafkaSourceConfig;
+    PluginMetrics pluginMetrics;
+    final String schemaType;
+
+    public AvroConsumer(KafkaConsumer<String, GenericRecord> consumer,
+                        AtomicBoolean status,
+                        Buffer<Record<Object>> buffer,
+                        TopicConfig topicConfig,
+                        KafkaSourceConfig kafkaSourceConfig,
+                        String schemaType,
+                        PluginMetrics pluginMetrics) {
+        this.consumer = consumer;
+        this.status = status;
+        this.buffer = buffer;
+        this.topicConfig = topicConfig;
+        this.kafkaSourceConfig = kafkaSourceConfig;
+        this.schemaType = schemaType;
+        this.pluginMetrics = pluginMetrics;
+    }
 
     @Override
-    public void consumeRecords(final KafkaConsumer<String, GenericRecord> consumer, final AtomicBoolean status,
-                               final Buffer<Record<Object>> buffer, final TopicsConfig topicConfig,
-                               final KafkaSourceConfig kafkaSourceConfig, PluginMetrics pluginMetrics,
-                               final String schemaType) {
+    public void consumeRecords() {
         KafkaSourceBufferAccumulator kafkaSourceBufferAccumulator = new KafkaSourceBufferAccumulator(topicConfig,kafkaSourceConfig,
                 schemaType,pluginMetrics);
         kafkaAvroConsumer = consumer;
@@ -58,21 +77,9 @@ public class AvroConsumer implements KafkaSourceSchemaConsumer<String, GenericRe
             consumer.subscribe(Arrays.asList(topicConfig.getName()));
             while (!status.get()) {
                 offsetsToCommit.clear();
-                ConsumerRecords<String, GenericRecord> records = consumer.poll(Duration.ofMillis(100));
+                ConsumerRecords<String, GenericRecord> records = poll(consumer);
                 if (!records.isEmpty() && records.count() > 0) {
-                    for (TopicPartition partition : records.partitions()) {
-                        List<Record<Object>> kafkaRecords = new ArrayList<>();
-                        List<ConsumerRecord<String, GenericRecord>> partitionRecords = records.records(partition);
-                        for (ConsumerRecord<String, GenericRecord> consumerRecord : partitionRecords) {
-                            offsetsToCommit.put(new TopicPartition(consumerRecord.topic(), consumerRecord.partition()),
-                                    new OffsetAndMetadata(consumerRecord.offset() + 1, null));
-                            kafkaRecords.add(kafkaSourceBufferAccumulator.getEventRecord(consumerRecord.value().toString()));
-                            lastReadOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
-                        }
-                        if (!kafkaRecords.isEmpty()) {
-                            kafkaSourceBufferAccumulator.writeAllRecordToBuffer(kafkaRecords, buffer, topicConfig);
-                        }
-                    }
+                    iterateRecordPartitions(kafkaSourceBufferAccumulator, records);
                     if (!offsetsToCommit.isEmpty() && topicConfig.getAutoCommit().equalsIgnoreCase("false")) {
                         lastCommitTime = kafkaSourceBufferAccumulator.commitOffsets(consumer, lastCommitTime, offsetsToCommit);
                     }
@@ -81,6 +88,30 @@ public class AvroConsumer implements KafkaSourceSchemaConsumer<String, GenericRe
         } catch (Exception exp) {
             LOG.error("Error while reading avro records from the topic...", exp);
         }
+    }
+
+    private void iterateRecordPartitions(KafkaSourceBufferAccumulator kafkaSourceBufferAccumulator,
+                                         ConsumerRecords<String, GenericRecord> records) throws Exception {
+        for (TopicPartition partition : records.partitions()) {
+            List<Record<Object>> kafkaRecords = new ArrayList<>();
+            List<ConsumerRecord<String, GenericRecord>> partitionRecords = records.records(partition);
+            iterateConsumerRecords(kafkaSourceBufferAccumulator, kafkaRecords, partitionRecords);
+            if (!kafkaRecords.isEmpty()) {
+                kafkaSourceBufferAccumulator.writeAllRecordToBuffer(kafkaRecords, buffer, topicConfig);
+            }
+        }
+    }
+
+    private void iterateConsumerRecords(KafkaSourceBufferAccumulator kafkaSourceBufferAccumulator,
+                                        List<Record<Object>> kafkaRecords,
+                                        List<ConsumerRecord<String, GenericRecord>> partitionRecords) {
+        for (ConsumerRecord<String, GenericRecord> consumerRecord : partitionRecords) {
+            lastReadOffset = kafkaSourceBufferAccumulator.processConsumerRecords(offsetsToCommit, kafkaRecords, lastReadOffset, consumerRecord, partitionRecords);
+        }
+    }
+
+    private ConsumerRecords<String, GenericRecord> poll(final KafkaConsumer<String, GenericRecord> consumer){
+        return consumer.poll(Duration.ofMillis(100));
     }
 
     @Override

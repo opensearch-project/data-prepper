@@ -9,20 +9,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-
-
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -32,11 +19,23 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicsConfig;
-
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
 
 /**
  * * A helper utility class which helps to write different formats of records
@@ -47,7 +46,7 @@ public class KafkaSourceBufferAccumulator<K, V> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceBufferAccumulator.class);
     private static final String MESSAGE_KEY = "message";
-    private final TopicsConfig topicConfig;
+    private final TopicConfig topicConfig;
     private final KafkaSourceConfig kafkaSourceConfig;
     private final String schemaType;
     private PluginMetrics pluginMetrics;
@@ -55,11 +54,11 @@ public class KafkaSourceBufferAccumulator<K, V> {
     private static final String KAFKA_CONSUMER_BUFFER_WRITE_ERROR = "kafkaConsumerBufferWriteError";
     private static final int MAX_FLUSH_RETRIES_ON_IO_EXCEPTION = Integer.MAX_VALUE;
     private static final Duration INITIAL_FLUSH_RETRY_DELAY_ON_IO_EXCEPTION = Duration.ofSeconds(5);
-    private static final Long COMMIT_OFFSET_INTERVAL_MILLI_SEC = 300000L;
     private final JsonFactory jsonFactory = new JsonFactory();
     private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Long COMMIT_OFFSET_INTERVAL_MILLI_SEC = 300000L;
 
-    public KafkaSourceBufferAccumulator(final TopicsConfig topicConfigs,
+    public KafkaSourceBufferAccumulator(final TopicConfig topicConfigs,
                                         final KafkaSourceConfig kafkaSourceConfig,
                                         final String schemaType, PluginMetrics pluginMetric) {
         this.kafkaSourceConfig = kafkaSourceConfig;
@@ -71,19 +70,17 @@ public class KafkaSourceBufferAccumulator<K, V> {
 
     public Record<Object> getEventRecord(final String line) {
         Map<String, Object> message = new HashMap<>();
-        if (MessageFormat.getByMessageFormatByName(schemaType)
-                .equals(MessageFormat.PLAINTEXT)) {
-            message.put(MESSAGE_KEY, line);
-        } else if (MessageFormat.getByMessageFormatByName(schemaType)
-                .equals(MessageFormat.JSON)) {
+        MessageFormat format = MessageFormat.getByMessageFormatByName(schemaType);
+       if (format.equals(MessageFormat.JSON) || format.equals(MessageFormat.AVRO)) {
             try {
                 final JsonParser jsonParser = jsonFactory.createParser(line);
                 message = objectMapper.readValue(jsonParser, Map.class);
             } catch (Exception e) {
-                LOG.error("Unable to parse json data [{}], assuming plain text", line, e);
+                LOG.error("Unable to parse json data [{}]", line, e);
                 message.put(MESSAGE_KEY, line);
             }
-
+        } else{
+            message.put(MESSAGE_KEY, line);
         }
         Event event = JacksonLog.builder().withData(message).build();
         return new Record<>(event);
@@ -93,7 +90,6 @@ public class KafkaSourceBufferAccumulator<K, V> {
         try {
             writeAllRecordToBuffer(kafkaRecords,
                     buffer, topicConfig);
-            LOG.info("Total number of records publish in buffer {} for Topic : {}", kafkaRecords.size(), topicConfig.getName());
         } catch (Exception e) {
             if (canRetry(e)) {
                 writeWithBackoff(kafkaRecords, buffer, topicConfig);
@@ -103,10 +99,10 @@ public class KafkaSourceBufferAccumulator<K, V> {
         }
     }
 
-    public synchronized void writeAllRecordToBuffer(List<Record<Object>> kafkaRecords, final Buffer<Record<Object>> buffer, final TopicsConfig topicConfig) throws Exception {
+    public synchronized void writeAllRecordToBuffer(List<Record<Object>> kafkaRecords, final Buffer<Record<Object>> buffer,
+                                                    final TopicConfig topicConfig) throws Exception {
         buffer.writeAll(kafkaRecords,
                 topicConfig.getBufferDefaultTimeout().toSecondsPart());
-        LOG.info("Total number of records publish in buffer {} for Topic : {}", kafkaRecords.size(), topicConfig.getName());
     }
 
     public boolean canRetry(final Exception e) {
@@ -114,7 +110,8 @@ public class KafkaSourceBufferAccumulator<K, V> {
                 || e instanceof InterruptedException);
     }
 
-    public boolean writeWithBackoff(List<Record<Object>> kafkaRecords, final Buffer<Record<Object>> buffer, final TopicsConfig topicConfig) throws Exception {
+    public boolean writeWithBackoff(List<Record<Object>> kafkaRecords, final Buffer<Record<Object>> buffer,
+                                    final TopicConfig topicConfig) throws Exception {
         final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
         long nextDelay = INITIAL_FLUSH_RETRY_DELAY_ON_IO_EXCEPTION.toMillis();
         boolean flushedSuccessfully;
@@ -136,14 +133,14 @@ public class KafkaSourceBufferAccumulator<K, V> {
                     scheduledExecutorService.shutdownNow();
                     return true;
                 }
-            } catch (final ExecutionException e) {
-                LOG.warn("Retrying of flushing the buffer accumulator hit an exception: {}", e.getMessage());
+            } catch (final ExecutionException exp) {
+                LOG.warn("Retrying of flushing the buffer accumulator hit an exception: {}", exp);
                 scheduledExecutorService.shutdownNow();
-                throw e;
-            } catch (final InterruptedException e) {
-                LOG.warn("Retrying of flushing the buffer accumulator was interrupted: {}", e.getMessage());
+                throw exp;
+            } catch (final InterruptedException exp) {
+                LOG.warn("Retrying of flushing the buffer accumulator was interrupted: {}", exp);
                 scheduledExecutorService.shutdownNow();
-                throw e;
+                throw exp;
             }
         }
         LOG.warn("Flushing the bufferAccumulator failed after {} attempts", MAX_FLUSH_RETRIES_ON_IO_EXCEPTION);
@@ -166,5 +163,15 @@ public class KafkaSourceBufferAccumulator<K, V> {
             LOG.error("Failed to commit the offsets...", e);
         }
         return lastCommitTime;
+    }
+
+    public long processConsumerRecords(Map<TopicPartition, OffsetAndMetadata> offsetsToCommit,
+                                       List<Record<Object>> kafkaRecords,
+                                       long lastReadOffset, ConsumerRecord<String, String> consumerRecord, List<ConsumerRecord<String, String>> partitionRecords) {
+        offsetsToCommit.put(new TopicPartition(consumerRecord.topic(), consumerRecord.partition()),
+                    new OffsetAndMetadata(consumerRecord.offset() + 1, null));
+        kafkaRecords.add(getEventRecord(consumerRecord.value()));
+        lastReadOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
+        return lastReadOffset;
     }
 }
