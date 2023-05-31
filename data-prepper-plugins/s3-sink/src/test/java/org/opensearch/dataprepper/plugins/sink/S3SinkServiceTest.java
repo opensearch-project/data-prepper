@@ -26,7 +26,6 @@ import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory
 import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.opensearch.dataprepper.plugins.sink.codec.JsonCodec;
 import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.BucketOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -89,7 +88,6 @@ class S3SinkServiceTest {
         random = new Random();
         s3SinkConfig = mock(S3SinkConfig.class);
         ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
-        BucketOptions bucketOptions = mock(BucketOptions.class);
         ObjectKeyOptions objectKeyOptions = mock(ObjectKeyOptions.class);
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         PluginSetting pluginSetting = mock(PluginSetting.class);
@@ -112,10 +110,9 @@ class S3SinkServiceTest {
         when(s3SinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse(MAXIMUM_SIZE));
         when(s3SinkConfig.getThresholdOptions().getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(5));
         when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
-        when(s3SinkConfig.getBucketOptions()).thenReturn(bucketOptions);
-        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions()).thenReturn(objectKeyOptions);
-        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn(BUCKET_NAME);
-        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions().getPathPrefix()).thenReturn(PATH_PREFIX);
+        when(s3SinkConfig.getObjectKeyOptions()).thenReturn(objectKeyOptions);
+        when(s3SinkConfig.getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3SinkConfig.getObjectKeyOptions().getPathPrefix()).thenReturn(PATH_PREFIX);
         when(s3SinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(S3_REGION));
         when(s3SinkConfig.getCodec()).thenReturn(pluginModel);
@@ -153,7 +150,7 @@ class S3SinkServiceTest {
     @Test
     void test_generateKey_with_general_prefix() {
         String pathPrefix = "events/";
-        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions().getPathPrefix()).thenReturn(pathPrefix);
+        when(s3SinkConfig.getObjectKeyOptions().getPathPrefix()).thenReturn(pathPrefix);
         S3SinkService s3SinkService = createObjectUnderTest();
         String key = s3SinkService.generateKey();
         assertNotNull(key);
@@ -171,7 +168,7 @@ class S3SinkServiceTest {
                 .withZoneSameInstant(ZoneId.of(TimeZone.getTimeZone("UTC").getID()));
         String dateString = fomatter.format(zdt);
 
-        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions()
+        when(s3SinkConfig.getObjectKeyOptions()
                 .getPathPrefix()).thenReturn(pathPrefix + datePattern);
         S3SinkService s3SinkService = createObjectUnderTest();
         String key = s3SinkService.generateKey();
@@ -263,7 +260,7 @@ class S3SinkServiceTest {
 
     @Test
     void test_output_with_uploadedToS3_failed() throws IOException {
-        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn(null);
+        when(s3SinkConfig.getBucketName()).thenReturn(UUID.randomUUID().toString());
         when(s3SinkConfig.getMaxUploadRetries()).thenReturn(3);
         when(codec.parse(any())).thenReturn("{\"message\":\"31824252-adba-4c47-a2ac-05d16c5b8140\"}");
         S3SinkService s3SinkService = createObjectUnderTest();
@@ -313,7 +310,7 @@ class S3SinkServiceTest {
 
     @Test
     void test_retryFlushToS3_negative() throws InterruptedException, IOException {
-        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn("");
+        when(s3SinkConfig.getBucketName()).thenReturn("");
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         Buffer buffer = bufferFactory.getBuffer();
