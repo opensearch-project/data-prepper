@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -22,6 +23,8 @@ import org.opensearch.dataprepper.plugins.sink.accumulator.LocalFileBufferFactor
 import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.S3Client;
+
 import java.util.Collection;
 
 /**
@@ -35,7 +38,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
     private final S3SinkConfig s3SinkConfig;
     private final Codec codec;
     private volatile boolean sinkInitialized;
-    private S3SinkService s3SinkService;
+    private final S3SinkService s3SinkService;
     private final BufferFactory bufferFactory;
 
     /**
@@ -44,8 +47,10 @@ public class S3Sink extends AbstractSink<Record<Event>> {
      * @param pluginFactory dp plugin factory.
      */
     @DataPrepperPluginConstructor
-    public S3Sink(final PluginSetting pluginSetting, final S3SinkConfig s3SinkConfig,
-                  final PluginFactory pluginFactory) {
+    public S3Sink(final PluginSetting pluginSetting,
+                  final S3SinkConfig s3SinkConfig,
+                  final PluginFactory pluginFactory,
+                  final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         this.s3SinkConfig = s3SinkConfig;
         final PluginModel codecConfiguration = s3SinkConfig.getCodec();
@@ -59,6 +64,8 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         } else {
             bufferFactory = new InMemoryBufferFactory();
         }
+        final S3Client s3Client = ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
+        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, pluginMetrics);
     }
 
     @Override
@@ -85,7 +92,6 @@ public class S3Sink extends AbstractSink<Record<Event>> {
      * Initialize {@link S3SinkService}
      */
     private void doInitializeInternal() {
-        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, pluginMetrics);
         sinkInitialized = Boolean.TRUE;
     }
 
