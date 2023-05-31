@@ -53,7 +53,6 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
         this.sampleSize = randomCutForestModeConfig.getSampleSize();
         this.shingleSize = randomCutForestModeConfig.getShingleSize();
         this.outputAfter = randomCutForestModeConfig.getOutputAfter();
-        System.out.println("..."+this.sampleSize+"..."+this.shingleSize+"..."+this.outputAfter);
         this.timeDecay = randomCutForestModeConfig.getTimeDecay();
         this.processLock = new ReentrantLock();
     }
