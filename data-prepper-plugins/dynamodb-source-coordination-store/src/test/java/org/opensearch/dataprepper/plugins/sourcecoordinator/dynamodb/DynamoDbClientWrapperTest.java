@@ -144,17 +144,13 @@ public class DynamoDbClientWrapperTest {
         given(tableDescription.tableName()).willReturn(tableName);
 
         given(dynamoDbClient.updateTimeToLive(any(UpdateTimeToLiveRequest.class))).willReturn(mock(UpdateTimeToLiveResponse.class));
-        final DescribeTimeToLiveResponse describeTimeToLiveResponse = mock(DescribeTimeToLiveResponse.class);
-        final TimeToLiveDescription timeToLiveDescription = mock(TimeToLiveDescription.class);
-        given(timeToLiveDescription.attributeName()).willReturn(TTL_ATTRIBUTE_NAME);
-        given(timeToLiveDescription.timeToLiveStatus()).willReturn(TimeToLiveStatus.ENABLED);
-        given(describeTimeToLiveResponse.timeToLiveDescription()).willReturn(timeToLiveDescription);
-        given(dynamoDbClient.describeTimeToLive(any(DescribeTimeToLiveRequest.class))).willReturn(describeTimeToLiveResponse);
 
         try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
             dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
             objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput);
         }
+
+        verify(dynamoDbClient, never()).describeTimeToLive(any(DescribeTimeToLiveRequest.class));
     }
 
     @Test

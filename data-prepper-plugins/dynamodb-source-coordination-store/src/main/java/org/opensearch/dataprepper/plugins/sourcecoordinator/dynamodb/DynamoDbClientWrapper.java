@@ -111,18 +111,18 @@ public class DynamoDbClientWrapper {
                                     .enabled(Objects.nonNull(dynamoStoreSettings.getTtl()))
                                     .build())
                             .build());
-                }
+                } else {
+                    final DescribeTimeToLiveResponse describeTimeToLiveResponse = dynamoDbClient.describeTimeToLive(DescribeTimeToLiveRequest.builder()
+                            .tableName(table.tableName())
+                            .build());
 
-                final DescribeTimeToLiveResponse describeTimeToLiveResponse = dynamoDbClient.describeTimeToLive(DescribeTimeToLiveRequest.builder()
-                        .tableName(table.tableName())
-                        .build());
-
-                if (Objects.isNull(describeTimeToLiveResponse.timeToLiveDescription()) ||
-                    !TTL_ATTRIBUTE_NAME.equals(describeTimeToLiveResponse.timeToLiveDescription().attributeName()) ||
-                    !TimeToLiveStatus.ENABLED.equals(describeTimeToLiveResponse.timeToLiveDescription().timeToLiveStatus())) {
-                    throw new RuntimeException(String.format("TTL is set for the DynamoDb source coordination store, " +
-                            "but the necessary TTL is not enabled on the table. To use TTL with source coordination to clean up COMPLETED partitions, " +
-                            "the table must have TTL enabled on the %s attribute.", TTL_ATTRIBUTE_NAME));
+                    if (Objects.isNull(describeTimeToLiveResponse.timeToLiveDescription()) ||
+                            !TTL_ATTRIBUTE_NAME.equals(describeTimeToLiveResponse.timeToLiveDescription().attributeName()) ||
+                            !TimeToLiveStatus.ENABLED.equals(describeTimeToLiveResponse.timeToLiveDescription().timeToLiveStatus())) {
+                        throw new RuntimeException(String.format("TTL is set for the DynamoDb source coordination store, " +
+                                "but the necessary TTL is not enabled on the table. To use TTL with source coordination to clean up COMPLETED partitions, " +
+                                "the table must have TTL enabled on the %s attribute.", TTL_ATTRIBUTE_NAME));
+                    }
                 }
             }
         }
