@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.parser.model;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -48,9 +49,14 @@ public class DataPrepperConfiguration {
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
 
+    @JsonAnySetter
+    private final Map<String, Object> extensionProperties;
+
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
-    public DataPrepperConfiguration() {}
+    public DataPrepperConfiguration() {
+        extensionProperties = new HashMap<>();
+    }
 
     @JsonCreator
     public DataPrepperConfiguration(
@@ -111,6 +117,8 @@ public class DataPrepperConfiguration {
         if (this.sinkShutdownTimeout.isNegative()) {
             throw new IllegalArgumentException("sinkShutdownTimeout must be non-negative.");
         }
+
+        this.extensionProperties = new HashMap<>();
     }
 
     public int getServerPort() {
@@ -213,5 +221,9 @@ public class DataPrepperConfiguration {
 
     public PipelineShutdownOption getPipelineShutdown() {
         return pipelineShutdown;
+    }
+
+    public Map<String, Object> getExtensionProperties() {
+        return Collections.unmodifiableMap(extensionProperties);
     }
 }

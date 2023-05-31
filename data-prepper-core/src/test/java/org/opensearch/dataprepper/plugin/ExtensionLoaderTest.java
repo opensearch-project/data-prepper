@@ -37,12 +37,14 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ExtensionLoaderTest {
     @Mock
+    private ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
+    @Mock
     private ExtensionClassProvider extensionClassProvider;
     @Mock
     private PluginCreator pluginCreator;
 
     private ExtensionLoader createObjectUnderTest() {
-        return new ExtensionLoader(extensionClassProvider, pluginCreator);
+        return new ExtensionLoader(extensionPluginConfigurationConverter, extensionClassProvider, pluginCreator);
     }
 
     @Test
