@@ -131,28 +131,28 @@ public class DynamoDbClientWrapperTest {
 
         doNothing().when(table).createTable(any(CreateTableEnhancedRequest.class));
 
+        final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
+        final WaiterResponse waiterResponse = mock(WaiterResponse.class);
+        final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
+        final DescribeTableResponse describeTableResponse = mock(DescribeTableResponse.class);
+        given(response.response()).willReturn(Optional.of(describeTableResponse));
+        given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
+
+        given(waiterResponse.matched()).willReturn(response);
+        final TableDescription tableDescription = mock(TableDescription.class);
+        given(describeTableResponse.table()).willReturn(tableDescription);
+        given(tableDescription.tableName()).willReturn(tableName);
+
+        given(dynamoDbClient.updateTimeToLive(any(UpdateTimeToLiveRequest.class))).willReturn(mock(UpdateTimeToLiveResponse.class));
+        final DescribeTimeToLiveResponse describeTimeToLiveResponse = mock(DescribeTimeToLiveResponse.class);
+        final TimeToLiveDescription timeToLiveDescription = mock(TimeToLiveDescription.class);
+        given(timeToLiveDescription.attributeName()).willReturn(TTL_ATTRIBUTE_NAME);
+        given(timeToLiveDescription.timeToLiveStatus()).willReturn(TimeToLiveStatus.ENABLED);
+        given(describeTimeToLiveResponse.timeToLiveDescription()).willReturn(timeToLiveDescription);
+        given(dynamoDbClient.describeTimeToLive(any(DescribeTimeToLiveRequest.class))).willReturn(describeTimeToLiveResponse);
+
         try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
-            final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
             dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
-            final WaiterResponse waiterResponse = mock(WaiterResponse.class);
-            final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
-            final DescribeTableResponse describeTableResponse = mock(DescribeTableResponse.class);
-            given(response.response()).willReturn(Optional.of(describeTableResponse));
-            given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
-
-            given(waiterResponse.matched()).willReturn(response);
-            final TableDescription tableDescription = mock(TableDescription.class);
-            given(describeTableResponse.table()).willReturn(tableDescription);
-            given(tableDescription.tableName()).willReturn(tableName);
-
-            given(dynamoDbClient.updateTimeToLive(any(UpdateTimeToLiveRequest.class))).willReturn(mock(UpdateTimeToLiveResponse.class));
-            final DescribeTimeToLiveResponse describeTimeToLiveResponse = mock(DescribeTimeToLiveResponse.class);
-            final TimeToLiveDescription timeToLiveDescription = mock(TimeToLiveDescription.class);
-            given(timeToLiveDescription.attributeName()).willReturn(TTL_ATTRIBUTE_NAME);
-            given(timeToLiveDescription.timeToLiveStatus()).willReturn(TimeToLiveStatus.ENABLED);
-            given(describeTimeToLiveResponse.timeToLiveDescription()).willReturn(timeToLiveDescription);
-            given(dynamoDbClient.describeTimeToLive(any(DescribeTimeToLiveRequest.class))).willReturn(describeTimeToLiveResponse);
-
             objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput);
         }
     }
@@ -173,22 +173,20 @@ public class DynamoDbClientWrapperTest {
 
         doThrow(ResourceInUseException.class).when(table).createTable(any(CreateTableEnhancedRequest.class));
 
+        final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
+        final WaiterResponse waiterResponse = mock(WaiterResponse.class);
+        final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
+        final DescribeTableResponse describeTableResponse = mock(DescribeTableResponse.class);
+        given(response.response()).willReturn(Optional.of(describeTableResponse));
+        given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
+        given(waiterResponse.matched()).willReturn(response);
+        final TableDescription tableDescription = mock(TableDescription.class);
+        given(describeTableResponse.table()).willReturn(tableDescription);
+        given(tableDescription.tableName()).willReturn(tableName);
+
         try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
-            final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
             dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
-            final WaiterResponse waiterResponse = mock(WaiterResponse.class);
-            final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
-            final DescribeTableResponse describeTableResponse = mock(DescribeTableResponse.class);
-            given(response.response()).willReturn(Optional.of(describeTableResponse));
-            given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
-
-            given(waiterResponse.matched()).willReturn(response);
-            final TableDescription tableDescription = mock(TableDescription.class);
-            given(describeTableResponse.table()).willReturn(tableDescription);
-            given(tableDescription.tableName()).willReturn(tableName);
-
             objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput);
-
             verifyNoInteractions(dynamoDbClient);
         }
     }
@@ -206,15 +204,15 @@ public class DynamoDbClientWrapperTest {
         final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
         given(dynamoDbEnhancedClient.table(eq(tableName), any(BeanTableSchema.class))).willReturn(table);
 
-        try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
-            final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
-            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
-            final WaiterResponse waiterResponse = mock(WaiterResponse.class);
-            final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
-            given(response.response()).willReturn(Optional.empty());
-            given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
+        final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
+        final WaiterResponse waiterResponse = mock(WaiterResponse.class);
+        final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
+        given(response.response()).willReturn(Optional.empty());
+        given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
+        given(waiterResponse.matched()).willReturn(response);
 
-            given(waiterResponse.matched()).willReturn(response);
+        try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
+            dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
 
             assertThrows(RuntimeException.class, () -> objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput));
         }
@@ -236,26 +234,28 @@ public class DynamoDbClientWrapperTest {
         final DynamoDbTable<DynamoDbSourcePartitionItem> table = mock(DynamoDbTable.class);
         given(dynamoDbEnhancedClient.table(eq(tableName), any(BeanTableSchema.class))).willReturn(table);
 
+        final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
+
+        final WaiterResponse waiterResponse = mock(WaiterResponse.class);
+        final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
+        final DescribeTableResponse describeTableResponse = mock(DescribeTableResponse.class);
+        given(response.response()).willReturn(Optional.of(describeTableResponse));
+        given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
+
+        given(waiterResponse.matched()).willReturn(response);
+        final TableDescription tableDescription = mock(TableDescription.class);
+        given(describeTableResponse.table()).willReturn(tableDescription);
+        given(tableDescription.tableName()).willReturn(tableName);
+
+        final DescribeTimeToLiveResponse describeTimeToLiveResponse = mock(DescribeTimeToLiveResponse.class);
+        final TimeToLiveDescription timeToLiveDescription = mock(TimeToLiveDescription.class);
+        given(timeToLiveDescription.attributeName()).willReturn(TTL_ATTRIBUTE_NAME);
+        given(timeToLiveDescription.timeToLiveStatus()).willReturn(TimeToLiveStatus.DISABLED);
+        given(describeTimeToLiveResponse.timeToLiveDescription()).willReturn(timeToLiveDescription);
+        given(dynamoDbClient.describeTimeToLive(any(DescribeTimeToLiveRequest.class))).willReturn(describeTimeToLiveResponse);
+
         try (MockedStatic<DynamoDbWaiter> dynamoDbWaiterMockedStatic = mockStatic(DynamoDbWaiter.class)) {
-            final DynamoDbWaiter dynamoDbWaiter = mock(DynamoDbWaiter.class);
             dynamoDbWaiterMockedStatic.when(DynamoDbWaiter::create).thenReturn(dynamoDbWaiter);
-            final WaiterResponse waiterResponse = mock(WaiterResponse.class);
-            final ResponseOrException<DescribeTableResponse> response = mock(ResponseOrException.class);
-            final DescribeTableResponse describeTableResponse = mock(DescribeTableResponse.class);
-            given(response.response()).willReturn(Optional.of(describeTableResponse));
-            given(dynamoDbWaiter.waitUntilTableExists(any(DescribeTableRequest.class))).willReturn(waiterResponse);
-
-            given(waiterResponse.matched()).willReturn(response);
-            final TableDescription tableDescription = mock(TableDescription.class);
-            given(describeTableResponse.table()).willReturn(tableDescription);
-            given(tableDescription.tableName()).willReturn(tableName);
-
-            final DescribeTimeToLiveResponse describeTimeToLiveResponse = mock(DescribeTimeToLiveResponse.class);
-            final TimeToLiveDescription timeToLiveDescription = mock(TimeToLiveDescription.class);
-            given(timeToLiveDescription.attributeName()).willReturn(TTL_ATTRIBUTE_NAME);
-            given(timeToLiveDescription.timeToLiveStatus()).willReturn(TimeToLiveStatus.DISABLED);
-            given(describeTimeToLiveResponse.timeToLiveDescription()).willReturn(timeToLiveDescription);
-            given(dynamoDbClient.describeTimeToLive(any(DescribeTimeToLiveRequest.class))).willReturn(describeTimeToLiveResponse);
 
             assertThrows(RuntimeException.class, () -> objectUnderTest.initializeTable(dynamoStoreSettings, provisionedThroughput));
 
