@@ -1,0 +1,12 @@
+plugins {
+    id 'java-library'
+    id "org.sonarqube" version "3.5.0.2730"
+}
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation libs.armeria.core
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:sqs'
+    implementation 'software.amazon.awssdk:arns:'
+
+}
