@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.BucketOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
+import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 
 /**
  * s3 sink configuration class contains properties, used to read yaml configuration.
@@ -29,8 +29,10 @@ public class S3SinkConfig {
 
     @JsonProperty("bucket")
     @NotNull
-    @Valid
-    private BucketOptions bucketOptions;
+    private String bucketName;
+
+    @JsonProperty("object_key")
+    private ObjectKeyOptions objectKeyOptions;
 
     @JsonProperty("threshold")
     @NotNull
@@ -65,11 +67,22 @@ public class S3SinkConfig {
     }
 
     /**
-     * S3 bucket configuration Options.
-     * @return  bucket option object.
+     * Read s3 bucket name configuration.
+     * @return bucket name.
      */
-    public BucketOptions getBucketOptions() {
-        return bucketOptions;
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    /**
+     * S3 {@link ObjectKeyOptions} configuration Options.
+     * @return object key options.
+     */
+    public ObjectKeyOptions getObjectKeyOptions() {
+        if (objectKeyOptions == null) {
+            objectKeyOptions = new ObjectKeyOptions();
+        }
+        return objectKeyOptions;
     }
 
     /**

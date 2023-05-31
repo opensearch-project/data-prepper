@@ -78,7 +78,7 @@ public class S3SinkService {
         maxBytes = s3SinkConfig.getThresholdOptions().getMaximumSize();
         maxCollectionDuration = s3SinkConfig.getThresholdOptions().getEventCollectTimeOut().getSeconds();
 
-        bucket = s3SinkConfig.getBucketOptions().getBucketName();
+        bucket = s3SinkConfig.getBucketName();
         maxRetries = s3SinkConfig.getMaxUploadRetries();
 
         objectsSucceededCounter = pluginMetrics.counter(OBJECTS_SUCCEEDED);

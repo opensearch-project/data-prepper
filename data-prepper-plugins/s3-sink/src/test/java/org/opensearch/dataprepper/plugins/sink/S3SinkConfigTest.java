@@ -5,12 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
+import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
-
-import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
 
 class S3SinkConfigTest {
 
@@ -33,9 +34,16 @@ class S3SinkConfigTest {
     }
 
     @Test
-    void get_bucket_option_test() {
-        assertThat(new S3SinkConfig().getBucketOptions(), equalTo(null));
+    void get_bucket_name_test() {
+        assertThat(new S3SinkConfig().getBucketName(), equalTo(null));
     }
+
+    @Test
+    void get_object_key_test() {
+        assertThat("Object key is not an instance of ObjectKeyOptions",
+                new S3SinkConfig().getObjectKeyOptions() instanceof ObjectKeyOptions);
+    }
+
 
     @Test
     void get_threshold_option_test() {
