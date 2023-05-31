@@ -10,12 +10,18 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePitRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
 public class ElasticsearchAccessor implements SearchAccessor {
+    @Override
+    public SearchContextType getSearchContextType() {
+        // todo: implement
+        return null;
+    }
 
     @Override
     public CreatePitResponse createPit(CreatePitRequest createPitRequest) {

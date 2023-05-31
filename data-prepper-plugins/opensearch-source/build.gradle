@@ -4,11 +4,17 @@
   */
 dependencies {
     implementation project(path: ':data-prepper-api')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation 'software.amazon.awssdk:apache-client'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'org.opensearch.client:opensearch-java:2.4.0'
+    implementation 'org.opensearch.client:opensearch-rest-client:2.7.0'
+    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation 'org.apache.maven:maven-artifact:3.0.3'
     testImplementation testLibs.mockito.inline
 }
 
