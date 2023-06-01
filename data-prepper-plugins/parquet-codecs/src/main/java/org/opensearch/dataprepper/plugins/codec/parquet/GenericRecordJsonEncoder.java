@@ -19,6 +19,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
+import org.apache.commons.text.StringEscapeUtils;
 
 /**
  * Credit to https://stackoverflow.com/questions/63655421/writing-parquet-avro-genericrecord-to-json-while-maintaining-logicaltypes
@@ -119,7 +120,7 @@ public class GenericRecordJsonEncoder {
         } else if (isBytes(datum)) {
             buffer.append("{\"bytes\": \"");
             ByteBuffer bytes = ((ByteBuffer) datum).duplicate();
-            writeEscapedString(StandardCharsets.ISO_8859_1.decode(bytes), buffer);
+            writeEscapedString(new String(bytes.array(), StandardCharsets.ISO_8859_1), buffer);
             buffer.append("\"}");
         } else if (((datum instanceof Float) &&       // quote Nan & Infinity
                 (((Float)datum).isInfinite() || ((Float)datum).isNaN()))
@@ -181,43 +182,7 @@ public class GenericRecordJsonEncoder {
         return datum instanceof ByteBuffer;
     }
 
-    private void writeEscapedString(CharSequence string, StringBuilder builder) {
-        for(int i = 0; i < string.length(); i++){
-            char ch = string.charAt(i);
-            switch(ch){
-                case '"':
-                    builder.append("\\\"");
-                    break;
-                case '\\':
-                    builder.append("\\\\");
-                    break;
-                case '\b':
-                    builder.append("\\b");
-                    break;
-                case '\f':
-                    builder.append("\\f");
-                    break;
-                case '\n':
-                    builder.append("\\n");
-                    break;
-                case '\r':
-                    builder.append("\\r");
-                    break;
-                case '\t':
-                    builder.append("\\t");
-                    break;
-                default:
-                    // Reference: http://www.unicode.org/versions/Unicode5.1.0/
-                    if((ch>='\u0000' && ch<='\u001F') || (ch>='\u007F' && ch<='\u009F') || (ch>='\u2000' && ch<='\u20FF')){
-                        String hex = Integer.toHexString(ch);
-                        builder.append("\\u");
-                        for(int j = 0; j < 4 - hex.length(); j++)
-                            builder.append('0');
-                        builder.append(hex.toUpperCase());
-                    } else {
-                        builder.append(ch);
-                    }
-            }
-        }
+    private void writeEscapedString(String string, StringBuilder builder) {
+        builder.append(StringEscapeUtils.escapeJava(string));
     }
 }
