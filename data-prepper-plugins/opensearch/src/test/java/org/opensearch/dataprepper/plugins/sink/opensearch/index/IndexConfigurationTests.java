@@ -68,15 +68,18 @@ public class IndexConfigurationTests {
                 getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
 
         final String testIndexAlias = "foo";
+        final String testTagsKeyName = "tags";
         IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
                 .withIndexAlias(testIndexAlias)
                 .withTemplateFile(defaultTemplateFilePath)
                 .withIsmPolicyFile(TEST_CUSTOM_INDEX_POLICY_FILE)
                 .withBulkSize(10)
+                .withTagsKeyName(testTagsKeyName)
                 .build();
 
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+        assertEquals(testTagsKeyName, indexConfiguration.getTagsKeyName());
         assertEquals(10, indexConfiguration.getBulkSize());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
 
@@ -115,6 +118,7 @@ public class IndexConfigurationTests {
 
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+        assertEquals(null, indexConfiguration.getTagsKeyName());
         assertEquals(testS3AwsRegion, indexConfiguration.getS3AwsRegion());
         assertEquals(testS3StsRoleArn, indexConfiguration.getS3AwsStsRoleArn());
     }

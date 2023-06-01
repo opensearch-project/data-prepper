@@ -37,6 +37,7 @@ public class IndexConfiguration {
     public static final String BULK_SIZE = "bulk_size";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String ROUTING_FIELD = "routing_field";
+    public static final String TAGS_KEY_NAME = "tags_key_name";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
     public static final String ACTION = "action";
@@ -51,6 +52,7 @@ public class IndexConfiguration {
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
     private final String routingField;
+    private final String tagsKeyName;
     private final long bulkSize;
     private final Optional<String> ismPolicyFile;
     private final String action;
@@ -106,6 +108,7 @@ public class IndexConfiguration {
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
         this.documentRootKey = builder.documentRootKey;
+        this.tagsKeyName = builder.tagsKeyName;
     }
 
     private void determineIndexType(Builder builder) {
@@ -146,6 +149,11 @@ public class IndexConfiguration {
         final String routingField = pluginSetting.getStringOrDefault(ROUTING_FIELD, null);
         if (routingField != null) {
             builder = builder.withRoutingField(routingField);
+        }
+
+        final String tagsKeyName = pluginSetting.getStringOrDefault(TAGS_KEY_NAME, null);
+        if (tagsKeyName != null) {
+            builder = builder.withTagsKeyName(tagsKeyName);
         }
 
         final String ismPolicyFile = pluginSetting.getStringOrDefault(ISM_POLICY_FILE, null);
@@ -193,6 +201,10 @@ public class IndexConfiguration {
 
     public String getRoutingField() {
         return routingField;
+    }
+
+    public String getTagsKeyName() {
+        return tagsKeyName;
     }
 
     public long getBulkSize() {
@@ -272,6 +284,7 @@ public class IndexConfiguration {
         private int numReplicas;
         private String routingField;
         private String documentIdField;
+        private String tagsKeyName;
         private long bulkSize = DEFAULT_BULK_SIZE;
         private Optional<String> ismPolicyFile;
         private String action;
@@ -309,6 +322,11 @@ public class IndexConfiguration {
 
         public Builder withRoutingField(final String routingField) {
             this.routingField = routingField;
+            return this;
+        }
+
+        public Builder withTagsKeyName(final String tagsKeyName) {
+            this.tagsKeyName = tagsKeyName;
             return this;
         }
 

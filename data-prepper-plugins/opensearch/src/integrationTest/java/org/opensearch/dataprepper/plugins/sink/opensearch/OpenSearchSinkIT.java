@@ -553,6 +553,7 @@ public class OpenSearchSinkIT {
     final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
 
     final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
+    pluginSetting.getSettings().put(IndexConfiguration.TAGS_KEY_NAME, "tags");
     final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
     sink.output(testRecords);
 
@@ -560,6 +561,37 @@ public class OpenSearchSinkIT {
     final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
     final Map<String, Object> expectedContent = new HashMap<>();
     expectedContent.put("log", "foobar");
+    expectedContent.put("tags", List.of());
+
+    MatcherAssert.assertThat(retSources.size(), equalTo(1));
+    MatcherAssert.assertThat(retSources.containsAll(Arrays.asList(expectedContent)), equalTo(true));
+    MatcherAssert.assertThat(getDocumentCount(expIndexAlias, "log", "foobar"), equalTo(Integer.valueOf(1)));
+    sink.shutdown();
+  }
+
+  @Test
+  public void testEventOutputWithTags() throws IOException, InterruptedException {
+
+    final Event testEvent = JacksonEvent.builder()
+            .withData("{\"log\": \"foobar\"}")
+            .withEventType("event")
+            .build();
+    ((JacksonEvent)testEvent).setEventHandle(eventHandle);
+    List<String> tagsList = List.of("tag1", "tag2");
+    testEvent.getMetadata().addTags(tagsList);
+
+    final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+    final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
+    pluginSetting.getSettings().put(IndexConfiguration.TAGS_KEY_NAME, "tags");
+    final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
+    sink.output(testRecords);
+
+    final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
+    final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
+    final Map<String, Object> expectedContent = new HashMap<>();
+    expectedContent.put("log", "foobar");
+    expectedContent.put("tags", tagsList);
 
     MatcherAssert.assertThat(retSources.size(), equalTo(1));
     MatcherAssert.assertThat(retSources.containsAll(Arrays.asList(expectedContent)), equalTo(true));

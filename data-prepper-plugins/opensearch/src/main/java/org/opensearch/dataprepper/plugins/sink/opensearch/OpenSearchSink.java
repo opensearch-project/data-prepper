@@ -87,6 +87,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final IndexType indexType;
   private final String documentIdField;
   private final String routingField;
+  private final String tagsKeyName;
   private final String action;
   private final String documentRootKey;
   private String configuredIndexAlias;
@@ -119,6 +120,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
+    this.tagsKeyName = openSearchSinkConfig.getIndexConfiguration().getTagsKeyName();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
     this.indexManagerFactory = new IndexManagerFactory(new ClusterSettingsParser());
@@ -268,6 +270,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private SerializedJson getDocument(final Event event) {
     String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
     String routing = (routingField != null) ? event.get(routingField, String.class) : null;
+
+    if (tagsKeyName != null) {
+        event.put(tagsKeyName, event.getMetadata().getTags());
+    }
 
     final String document = DocumentBuilder.build(event, documentRootKey);
 
