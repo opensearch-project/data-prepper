@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.model.source.coordinator;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * The class that will be provided to {@link org.opensearch.dataprepper.model.source.Source} plugins
@@ -29,8 +30,8 @@ public class SourcePartition<T> {
         return partitionKey;
     }
 
-    public T getPartitionState() {
-        return partitionState;
+    public Optional<T> getPartitionState() {
+        return Optional.ofNullable(partitionState);
     }
 
     public static <T> Builder<T> builder(Class<T> clazz) {
