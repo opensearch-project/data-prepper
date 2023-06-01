@@ -165,6 +165,8 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 
 - `document_root_key`: The key in the event that will be used as the root in the document. The default is the root of the event. If the key does not exist the entire event is written as the document. If the value at the `document_root_key` is a basic type (ie String, int, etc), the document will have a structure of `{"data": <value of the document_root_key>}`. For example, If we have the following sample event: 
 
+- `tags_key_name` (optional): The key name to be used to include event tags in the document. By default this is not set. When this option is not used, tags are not included in the document. If the option is used but the event does not have any tags, it stored as empty list in the document.
+
 ```
 {
     status: 200,
