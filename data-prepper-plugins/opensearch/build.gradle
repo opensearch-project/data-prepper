@@ -64,6 +64,7 @@ task integrationTest(type: Test) {
     systemProperty 'tests.opensearch.bundle', System.getProperty('tests.opensearch.bundle')
     systemProperty 'tests.opensearch.user', System.getProperty('tests.opensearch.user')
     systemProperty 'tests.opensearch.password', System.getProperty('tests.opensearch.password')
+    systemProperty 'tests.opensearch.version', System.getProperty('tests.opensearch.version')
 
     filter {
         includeTestsMatching '*IT'
