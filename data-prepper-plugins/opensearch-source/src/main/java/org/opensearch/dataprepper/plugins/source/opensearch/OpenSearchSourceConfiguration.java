@@ -51,7 +51,7 @@ public class OpenSearchSourceConfiguration {
 
     @JsonProperty("scheduling")
     @Valid
-    private SchedulingParameterConfiguration schedulingParameterConfiguration;
+    private SchedulingParameterConfiguration schedulingParameterConfiguration = new SchedulingParameterConfiguration();
 
     @JsonProperty("search_options")
     @Valid
