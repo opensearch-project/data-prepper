@@ -15,7 +15,7 @@ import java.time.Duration;
  * * A helper class that helps to read consumer configuration values from
  * pipelines.yaml
  */
-public class TopicsConfig {
+public class TopicConfig {
 
     private static final String AUTO_COMMIT = "false";
     private static final Duration AUTOCOMMIT_INTERVAL = Duration.ofSeconds(5);
