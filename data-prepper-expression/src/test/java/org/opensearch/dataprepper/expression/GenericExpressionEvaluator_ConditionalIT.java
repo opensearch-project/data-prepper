@@ -123,11 +123,11 @@ class GenericExpressionEvaluator_ConditionalIT {
     private static Stream<Arguments> validExpressionArguments() {
         final String key = "status_code";
         final Long value = 200L;
-        final String value3 = RandomStringUtils.randomAlphabetic(5);
+        final String strValue = RandomStringUtils.randomAlphabetic(5);
         final int value4 = 2000;
         final Boolean value5 = false;
         Map<Object, Object> eventMap = Collections.singletonMap(key, value);
-        final Map<String, Object> attributesMap = Map.of("key1", value3, "key2", value4, "key3", value5);
+        final Map<String, Object> attributesMap = Map.of("key1", strValue, "key2", value4, "key3", value5);
         Event longEvent = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(eventMap)
@@ -189,10 +189,16 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("hasTags(\""+ testTag1+"\", \""+testTag2+"\", \""+testTag3+"\")", longEvent, true),
                 Arguments.of("hasTags(\""+ testTag4+"\")", longEvent, false),
                 Arguments.of("hasTags(\""+ testTag3+"\",\""+testTag4+"\")", longEvent, false),
-                Arguments.of("getMetadata(\"key1\") == \""+value3+"\"", longEvent, true),
+                Arguments.of("containsSubstring(\""+ strValue+"\",\""+strValue.substring(1,5)+"\")", longEvent, true),
+                Arguments.of("containsSubstring(/status,\""+strValue.substring(0,2)+"\")", event("{\"status\":\""+strValue+"\"}"), true),
+                Arguments.of("containsSubstring(\""+strValue+strValue+"\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
+                Arguments.of("containsSubstring(/message,/status)", event("{\"status\":\""+strValue+"\", \"message\":\""+strValue+strValue+"\"}"), true),
+                Arguments.of("containsSubstring(/unknown,/status)", event("{\"status\":\""+strValue+"\", \"message\":\""+strValue+strValue+"\"}"), false),
+                Arguments.of("containsSubstring(/status,/unknown)", event("{\"status\":\""+strValue+"\", \"message\":\""+strValue+strValue+"\"}"), false),
+                Arguments.of("getMetadata(\"key1\") == \""+strValue+"\"", longEvent, true),
                 Arguments.of("getMetadata(\"key2\") == "+value4, longEvent, true),
                 Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
-                Arguments.of("getMetadata(\"/key1\") == \""+value3+"\"", longEvent, true),
+                Arguments.of("getMetadata(\"/key1\") == \""+strValue+"\"", longEvent, true),
                 Arguments.of("getMetadata(\"/key2\") == "+value4, longEvent, true),
                 Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
                 Arguments.of("getMetadata(\"/key6\") == \""+value5+"\"", longEvent, false),
@@ -250,6 +256,12 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("hasTags(\""+ testTag1+"\","+testTag2+"\")", tagEvent),
                 Arguments.of("hasTags(,\""+testTag2+"\")", tagEvent),
                 Arguments.of("hasTags(\""+testTag2+"\",)", tagEvent),
+                Arguments.of("containsSubstring(\""+testTag2+"\",)", tagEvent),
+                Arguments.of("containsSubstring(\""+testTag2+"\")", tagEvent),
+                Arguments.of("containsSubstring(/intField, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                Arguments.of("containsSubstring(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                Arguments.of("containsSubstring(str, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                Arguments.of("containsSubstring(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 Arguments.of("getMetadata(10)", tagEvent),
                 Arguments.of("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 Arguments.of("getMetadata(\""+ testMetadataKey+")", tagEvent),
