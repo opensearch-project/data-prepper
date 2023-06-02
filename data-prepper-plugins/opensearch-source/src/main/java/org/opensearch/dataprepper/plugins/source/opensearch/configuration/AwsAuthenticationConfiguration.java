@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
-import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
@@ -27,14 +26,6 @@ public class AwsAuthenticationConfiguration {
     @JsonProperty("sts_header_overrides")
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
-
-    private Arn getArn() {
-        try {
-            return Arn.fromString(awsStsRoleArn);
-        } catch (final Exception e) {
-            throw new IllegalArgumentException(String.format("Invalid ARN format for aws.sts_role_arn. Check the format of %s", awsStsRoleArn));
-        }
-    }
 
     public String getAwsStsRoleArn() {
         return awsStsRoleArn;

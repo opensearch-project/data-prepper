@@ -47,6 +47,10 @@ public class OpenSearchService {
             case SCROLL:
                 searchWorkerThread = new Thread(new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, buffer));
                 break;
+            default:
+                throw new IllegalArgumentException(
+                        String.format("Search context type must be POINT_IN_TIME or SCROLL, type %s was given instead",
+                                searchAccessor.getSearchContextType()));
         }
 
         searchWorkerThread.start();
