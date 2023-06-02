@@ -52,8 +52,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.mock;
 
-
-
 class JsonInputCodecTest {
 
     private ObjectMapper objectMapper;
@@ -148,6 +146,8 @@ class JsonInputCodecTest {
         verifyNoInteractions(eventConsumer);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
     void parse_with_InputFile_calls_Consumer_with_Event(final int numberOfObjects) throws IOException {
         final List<Map<String, Object>> jsonObjects = generateJsonObjectsAsList(numberOfObjects);
         final InputStream inputStream = createInputStream(jsonObjects);
@@ -156,7 +156,7 @@ class JsonInputCodecTest {
         byte[] buffer = new byte[1024];
         int bytesRead;
 
-        File testDataFile = File.createTempFile("CsvCodecTest", ".csv");
+        File testDataFile = File.createTempFile("JsonCodecTest-" + numberOfObjects, ".json");
         testDataFile.deleteOnExit();
 
         OutputStream outStream = new FileOutputStream(testDataFile);
