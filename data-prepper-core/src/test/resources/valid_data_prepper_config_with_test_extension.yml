@@ -1,0 +1,3 @@
+ssl: false
+test_extension:
+  test_attribute: test_string
