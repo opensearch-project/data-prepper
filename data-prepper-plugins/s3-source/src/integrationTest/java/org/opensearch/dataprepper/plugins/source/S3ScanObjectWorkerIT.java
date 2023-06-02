@@ -276,10 +276,10 @@ public class S3ScanObjectWorkerIT {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
             final List<RecordsGenerator> recordsGenerators = List.of(
-                    new NewlineDelimitedRecordsGenerator());
-//                    new CsvRecordsGenerator(),
-//                    new JsonRecordsGenerator(),
-//                    new ParquetRecordsGenerator());
+                    new NewlineDelimitedRecordsGenerator(),
+                    new CsvRecordsGenerator(),
+                    new JsonRecordsGenerator(),
+                    new ParquetRecordsGenerator());
             final List<Integer> numberOfRecordsList = List.of(100,5000);
             final List<Integer> recordsToAccumulateList = List.of( 100);
             final List<Boolean> booleanList = List.of(Boolean.TRUE);

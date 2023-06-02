@@ -47,6 +47,11 @@ public class LocalInputStreamTest {
     }
 
     @Test
+    public void skip_skipsNegativeDoesNothing() throws Exception {
+        assertEquals(0, localInputStream.skip(-5));
+    }
+
+    @Test
     public void mark_setsMarkPos() throws Exception {
         assertEquals(10, localInputStream.skip(10));
         localInputStream.mark(0);

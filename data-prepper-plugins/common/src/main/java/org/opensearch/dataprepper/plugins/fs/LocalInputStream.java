@@ -14,7 +14,9 @@ import java.nio.ByteBuffer;
 
 public class LocalInputStream extends SeekableInputStream {
 
-    private final byte[] page = new byte[8192];
+    private static final int DEFAULT_BLOCK_SIZE = 8192;
+
+    private final byte[] page = new byte[DEFAULT_BLOCK_SIZE];
 
     private final RandomAccessFile input;
 
@@ -46,6 +48,10 @@ public class LocalInputStream extends SeekableInputStream {
 
     @Override
     public long skip(long n) throws IOException {
+        if (n <= 0) {
+            return 0;
+        }
+
         final long savPos = input.getFilePointer();
         final long amtLeft = input.length() - savPos;
         n = Math.min(n, amtLeft);

@@ -12,10 +12,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.zip.GZIPOutputStream;
 
 public class S3ObjectGenerator {
+
+    private static final int DEFAULT_BLOCK_SIZE = 8192;
+
     private final S3Client s3Client;
     private final String bucketName;
 
@@ -59,7 +61,7 @@ public class S3ObjectGenerator {
              final FileInputStream fis = new FileInputStream(source)) {
 
             // copy file
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[DEFAULT_BLOCK_SIZE];
             int len;
             while ((len = fis.read(buffer)) > 0) {
                 gos.write(buffer, 0, len);

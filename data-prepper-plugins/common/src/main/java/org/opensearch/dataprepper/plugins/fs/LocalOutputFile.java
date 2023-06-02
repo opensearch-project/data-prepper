@@ -11,9 +11,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
+/**
+ * Note that block size is irrelevant for local files as the block size
+ * for the volume is determined at runtime.
+ */
 public class LocalOutputFile implements OutputFile {
 
-    private static final long DEFAULT_BLOCK_SIZE = 8L * 1024L;
+    private static final int DEFAULT_BLOCK_SIZE = 8192;
 
     private final File file;
 

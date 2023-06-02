@@ -11,8 +11,6 @@ import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.codec.GZipDecompressionEngine;
-import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
@@ -86,7 +84,7 @@ class S3ObjectWorkerIT {
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(distributionSummary);
         when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(distributionSummary);
         when(s3ObjectPluginMetrics.getS3ObjectReadTimer()).thenReturn(timer);
-
+        when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(counter);
 
         bucketOwnerProvider = b -> Optional.empty();
     }
