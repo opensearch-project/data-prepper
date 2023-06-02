@@ -5,13 +5,20 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.event.DefaultEventFactory;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.parser.config.DataPrepperAppConfiguration;
+import org.opensearch.dataprepper.parser.config.FileStructurePathProvider;
 import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.plugins.TestPluginUsingExtension;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -30,8 +37,12 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 public class ExtensionsIT {
+    @Mock
+    private FileStructurePathProvider fileStructurePathProvider;
     private AnnotationConfigApplicationContext publicContext;
     private AnnotationConfigApplicationContext coreContext;
     private PluginFactory pluginFactory;
@@ -52,6 +63,13 @@ public class ExtensionsIT {
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
 
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
+
+        when(fileStructurePathProvider.getDataPrepperConfigFileLocation()).thenReturn(
+                "src/test/resources/valid_data_prepper_config_with_test_extension.yml"
+        );
+        coreContext.registerBean(FileStructurePathProvider.class, () -> fileStructurePathProvider);
+        coreContext.registerBean(ObjectMapper.class, () -> new ObjectMapper(new YAMLFactory()));
+        coreContext.register(DataPrepperAppConfiguration.class);
         coreContext.refresh();
 
         pluginFactory = coreContext.getBean(DefaultPluginFactory.class);
