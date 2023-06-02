@@ -22,6 +22,7 @@ import org.opensearch.action.search.SearchRequest;
 import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
@@ -39,6 +40,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.Mockito.mock;
 
 public class ParallelGrokStringSubstituteLogTest {
     private static final int HTTP_SOURCE_PORT = 2021;
@@ -98,7 +100,8 @@ public class ParallelGrokStringSubstituteLogTest {
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
-        return builder.build().createClient();
+        final AwsCredentialsSupplier awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        return builder.build().createClient(awsCredentialsSupplier);
     }
 
     private void sendHttpRequestToSource(final int port, final HttpData httpData) {
