@@ -92,6 +92,10 @@ class OpenSearchIntegrationHelper {
                 .map(ip -> String.format("https://%s", ip)).collect(Collectors.toList());
     }
 
+    static DeclaredOpenSearchVersion getVersion() {
+        return DeclaredOpenSearchVersion.parse(System.getProperty("tests.opensearch.version"));
+    }
+
     /**
      * Copied from OpenSearch test framework
      * TODO: Consolidate in OpenSearch

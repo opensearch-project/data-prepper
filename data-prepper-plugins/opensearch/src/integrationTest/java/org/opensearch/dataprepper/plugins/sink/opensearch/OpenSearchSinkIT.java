@@ -57,6 +57,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -510,19 +511,26 @@ public class OpenSearchSinkIT {
 
     static class CreateWithTemplatesArgumentsProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws Exception {
-            return Stream.of(
+        public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
+            final List<Arguments> arguments = new ArrayList<>();
+            arguments.add(
                     arguments("v1", "_template",
                             TEST_TEMPLATE_V1_FILE, TEST_TEMPLATE_V2_FILE,
                             (BiFunction<Map<String, Object>, String, Integer>) (map, templateName) ->
                                     (Integer) ((Map<String, Object>) map.get(templateName)).get("version")
-                    ),
-                    arguments("index-template", "_index_template",
-                            TEST_INDEX_TEMPLATE_V1_FILE, TEST_INDEX_TEMPLATE_V2_FILE,
-                            (BiFunction<Map<String, Object>, String, Integer>) (map, unused) ->
-                                    (Integer) ((List<Map<String, Map<String, Object>>>) map.get("index_templates")).get(0).get("index_template").get("version")
                     )
             );
+
+            if(OpenSearchIntegrationHelper.getVersion().compareTo(DeclaredOpenSearchVersion.OPENDISTRO_1_9) >= 0) {
+                arguments.add(
+                        arguments("index-template", "_index_template",
+                                TEST_INDEX_TEMPLATE_V1_FILE, TEST_INDEX_TEMPLATE_V2_FILE,
+                                (BiFunction<Map<String, Object>, String, Integer>) (map, unused) ->
+                                        (Integer) ((List<Map<String, Map<String, Object>>>) map.get("index_templates")).get(0).get("index_template").get("version")
+                        )
+                );
+            }
+            return arguments.stream();
         }
     }
 

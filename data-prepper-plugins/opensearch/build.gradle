@@ -67,6 +67,7 @@ task integrationTest(type: Test) {
 
     filter {
         includeTestsMatching '*IT'
+        includeTestsMatching '*Test'
     }
 }
 
