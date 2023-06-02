@@ -36,7 +36,7 @@ class DeclaredOpenSearchVersionTest {
         final DeclaredOpenSearchVersion version = DeclaredOpenSearchVersion.parse(null);
 
         assertThat(version, notNullValue());
-        assertThat(version.getDistribution(), equalTo(DeclaredOpenSearchVersion.Distribution.OPENDISTRO));
+        assertThat(version.getDistribution(), equalTo(DeclaredOpenSearchVersion.Distribution.OPENSEARCH));
         assertThat(version.getVersion(), equalTo("1.0.0"));
     }
 

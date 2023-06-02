@@ -12,7 +12,7 @@ import org.opensearch.Version;
  * tested against.
  */
 class DeclaredOpenSearchVersion implements Comparable<DeclaredOpenSearchVersion> {
-    private static final DeclaredOpenSearchVersion DEFAULT = new DeclaredOpenSearchVersion(Distribution.OPENSEARCH, "1.0.1");
+    private static final DeclaredOpenSearchVersion DEFAULT = new DeclaredOpenSearchVersion(Distribution.OPENSEARCH, "1.0.0");
     public static final DeclaredOpenSearchVersion OPENDISTRO_1_9 = new DeclaredOpenSearchVersion(Distribution.OPENDISTRO, "1.9.0");
 
     enum Distribution {
