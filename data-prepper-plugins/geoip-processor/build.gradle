@@ -17,13 +17,6 @@ dependencies {
     testImplementation project(':data-prepper-test-common')
 }
 
-
-tasks.register("copyDefaultGeoIp2DatabaseFiles", Copy) {
-    from { zipTree(configurations.testCompileClasspath.files.find { it.name.contains('geolite2-databases') }) }
-    into "${project.buildDir}/ingest-geoip"
-    include "*.mmdb"
-}
-
 test {
     useJUnitPlatform()
 }
