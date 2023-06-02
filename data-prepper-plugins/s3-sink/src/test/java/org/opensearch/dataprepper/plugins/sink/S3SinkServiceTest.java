@@ -55,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
@@ -75,6 +76,7 @@ class S3SinkServiceTest {
     public static final String CODEC_PLUGIN_NAME = "json";
     public static final String PATH_PREFIX = "logdata/";
     private S3SinkConfig s3SinkConfig;
+    private S3Client s3Client;
     private JsonCodec codec;
     private PluginMetrics pluginMetrics;
     private BufferFactory bufferFactory;
@@ -83,10 +85,11 @@ class S3SinkServiceTest {
     private Random random;
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
 
         random = new Random();
         s3SinkConfig = mock(S3SinkConfig.class);
+        s3Client = mock(S3Client.class);
         ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
         ObjectKeyOptions objectKeyOptions = mock(ObjectKeyOptions.class);
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
@@ -129,7 +132,7 @@ class S3SinkServiceTest {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, pluginMetrics);
     }
 
     @Test
@@ -137,14 +140,6 @@ class S3SinkServiceTest {
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         assertThat(s3SinkService, instanceOf(S3SinkService.class));
-    }
-
-    @Test
-    void test_s3Client_notNull() {
-        S3SinkService s3SinkService = createObjectUnderTest();
-        S3Client s3Client = s3SinkService.createS3Client();
-        assertNotNull(s3Client);
-        assertThat(s3Client, instanceOf(S3Client.class));
     }
 
     @Test
@@ -310,13 +305,15 @@ class S3SinkServiceTest {
 
     @Test
     void test_retryFlushToS3_negative() throws InterruptedException, IOException {
+        bufferFactory = mock(BufferFactory.class);
+        InMemoryBuffer buffer = mock(InMemoryBuffer.class);
+        when(bufferFactory.getBuffer()).thenReturn(buffer);
         when(s3SinkConfig.getBucketName()).thenReturn("");
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
-        Buffer buffer = bufferFactory.getBuffer();
-        assertNotNull(buffer);
         buffer.writeEvent(generateByteArray());
         final String s3Key = UUID.randomUUID().toString();
+        doThrow(AwsServiceException.class).when(buffer).flushToS3(eq(s3Client), anyString(), anyString());
         boolean isUploadedToS3 = s3SinkService.retryFlushToS3(buffer, s3Key);
         assertFalse(isUploadedToS3);
     }
