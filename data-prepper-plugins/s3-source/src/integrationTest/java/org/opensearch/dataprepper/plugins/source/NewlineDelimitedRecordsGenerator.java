@@ -5,17 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
-import com.fasterxml.jackson.core.JsonEncoding;
-import com.fasterxml.jackson.core.JsonGenerator;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputCodec;
 import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputConfig;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
