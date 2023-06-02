@@ -6,8 +6,10 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
 import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.junit.Test;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -19,21 +21,29 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
 import static org.apache.commons.io.FileUtils.ONE_MB;
-import static org.mockito.ArgumentMatchers.any;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.anEmptyMap;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasKey;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_OPTION;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.TEMPLATE_TYPE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.TYPE_TO_DEFAULT_ALIAS;
@@ -47,19 +57,75 @@ public class IndexConfigurationTests {
     public void testRawAPMSpan() {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
                 IndexType.TRACE_ANALYTICS_RAW.getValue()).build();
-        final URL expTemplateURL = indexConfiguration.getClass().getClassLoader().getResource(RAW_DEFAULT_TEMPLATE_FILE);
-        assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW), indexConfiguration.getIndexAlias());
-        assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
+        assertThat(indexConfiguration.getIndexAlias(), equalTo(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW)));
+        assertThat(indexConfiguration.getIndexTemplate(), not(anEmptyMap()));
+        assertThat(indexConfiguration.getIndexTemplate(), hasKey("mappings"));
+        assertThat(indexConfiguration.getIndexTemplate().get("mappings"), instanceOf(Map.class));
+        final Object dynamicTemplatesObj = ((Map<String, Object>) indexConfiguration.getIndexTemplate().get("mappings")).get("dynamic_templates");
+        assertThat(dynamicTemplatesObj, instanceOf(List.class));
+        final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) dynamicTemplatesObj;
+
+        assertThat(dynamicTemplates.size(), equalTo(2));
+        assertThat(dynamicTemplates.get(0), hasKey("resource_attributes_map"));
+        assertThat(dynamicTemplates.get(1), hasKey("span_attributes_map"));
+
     }
 
     @Test
     public void testServiceMap() {
         final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder().withIndexType(
                 IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue()).build();
-        final URL expTemplateURL = indexConfiguration
-                .getClass().getClassLoader().getResource(SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
-        assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP), indexConfiguration.getIndexAlias());
-        assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
+        assertThat(indexConfiguration.getIndexAlias(), equalTo(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP)));
+        assertThat(indexConfiguration.getIndexTemplate(), not(anEmptyMap()));
+        assertThat(indexConfiguration.getIndexTemplate(), hasKey("mappings"));
+        assertThat(indexConfiguration.getIndexTemplate().get("mappings"), instanceOf(Map.class));
+        final Object dynamicTemplatesObj = ((Map<String, Object>) indexConfiguration.getIndexTemplate().get("mappings")).get("dynamic_templates");
+        assertThat(dynamicTemplatesObj, instanceOf(List.class));
+        final List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) dynamicTemplatesObj;
+
+        assertThat(dynamicTemplates.size(), equalTo(1));
+        assertThat(dynamicTemplates.get(0), hasKey("strings_as_keyword"));
+    }
+
+    @Test
+    public void testRawAPMSpanWithIndexTemplates() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.TRACE_ANALYTICS_RAW.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .build();
+        assertThat(indexConfiguration.getIndexAlias(), equalTo(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW)));
+        assertThat(indexConfiguration.getIndexTemplate(), not(anEmptyMap()));
+        assertThat(indexConfiguration.getIndexTemplate(), hasKey("template"));
+        assertThat(indexConfiguration.getIndexTemplate().get("template"), instanceOf(Map.class));
+        final Object mappings = ((Map<String, Object>) indexConfiguration.getIndexTemplate().get("template")).get("mappings");
+        assertThat(mappings, instanceOf(Map.class));
+        final Object dynamicTemplatesObj = ((Map<String, Object>) mappings).get("dynamic_templates");
+        assertThat(dynamicTemplatesObj, instanceOf(List.class));
+        List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) dynamicTemplatesObj;
+
+        assertThat(dynamicTemplates.size(), equalTo(2));
+        assertThat(dynamicTemplates.get(0), hasKey("resource_attributes_map"));
+        assertThat(dynamicTemplates.get(1), hasKey("span_attributes_map"));
+    }
+
+    @Test
+    public void testServiceMapWithIndexTemplates() {
+        final IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
+                .withIndexType(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue())
+                .withTemplateType(TemplateType.INDEX_TEMPLATE.getTypeName())
+                .build();
+        assertThat(indexConfiguration.getIndexAlias(), equalTo(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP)));
+        assertThat(indexConfiguration.getIndexTemplate(), not(anEmptyMap()));
+        assertThat(indexConfiguration.getIndexTemplate(), hasKey("template"));
+        assertThat(indexConfiguration.getIndexTemplate().get("template"), instanceOf(Map.class));
+        final Object mappings = ((Map<String, Object>) indexConfiguration.getIndexTemplate().get("template")).get("mappings");
+        assertThat(mappings, instanceOf(Map.class));
+        final Object dynamicTemplatesObj = ((Map<String, Object>) mappings).get("dynamic_templates");
+        assertThat(dynamicTemplatesObj, instanceOf(List.class));
+        List<Map<String, Object>> dynamicTemplates = (List<Map<String, Object>>) dynamicTemplatesObj;
+
+        assertThat(dynamicTemplates.size(), equalTo(1));
+        assertThat(dynamicTemplates.get(0), hasKey("strings_as_keyword"));
     }
 
     @Test
@@ -315,6 +381,26 @@ public class IndexConfigurationTests {
         metadata.put(DOCUMENT_ROOT_KEY, "");
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
+    }
+
+    @Test
+    void getTemplateType_defaults_to_V1() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.V1));
+    }
+
+    @ParameterizedTest
+    @EnumSource(TemplateType.class)
+    void getTemplateType_with_configured_templateType(final TemplateType templateType) {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                IndexType.CUSTOM.getValue(), "foo", null, null, null);
+        metadata.put(TEMPLATE_TYPE, templateType.getTypeName());
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertThat(indexConfiguration.getTemplateType(), equalTo(templateType));
     }
 
 
