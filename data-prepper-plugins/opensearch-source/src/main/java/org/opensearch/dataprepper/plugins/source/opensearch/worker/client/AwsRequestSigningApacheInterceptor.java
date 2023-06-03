@@ -10,7 +10,7 @@
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
  * and limitations under the License.
  */
-package org.opensearch.dataprepper.plugins.sink.opensearch;
+package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntityEnclosingRequest;
@@ -46,7 +46,7 @@ import static org.apache.http.protocol.HttpCoreContext.HTTP_TARGET_HOST;
 
 /**
  * An {@link HttpRequestInterceptor} that signs requests using any AWS {@link Signer}
- * and {@link AwsCredentialsProvider}.
+ * and {@link AwsCredentialsProvider}. This is a copy from the opensearch sink
  */
 final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor {
 
@@ -98,20 +98,6 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
         this.signer =  Objects.requireNonNull(signer);
         this.awsCredentialsProvider =  Objects.requireNonNull(awsCredentialsProvider);
         this.region = Objects.requireNonNull(region);
-    }
-
-    /**
-     *
-     * @param service service that we're connecting to
-     * @param signer particular signer implementation
-     * @param awsCredentialsProvider source of AWS credentials for signing
-     * @param region signing region
-     */
-    public AwsRequestSigningApacheInterceptor(final String service,
-                                              final Signer signer,
-                                              final AwsCredentialsProvider awsCredentialsProvider,
-                                              final String region) {
-        this(service, signer, awsCredentialsProvider, Region.of(region));
     }
 
     /**
