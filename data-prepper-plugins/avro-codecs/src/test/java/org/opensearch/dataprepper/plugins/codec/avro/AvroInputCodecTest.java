@@ -22,16 +22,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
-import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.ByteArrayInputStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -139,45 +136,28 @@ public class AvroInputCodecTest {
             assertThat(actualRecord.getData().getMetadata(),notNullValue());
             assertThat(actualRecord.getData().getMetadata().getEventType(), equalTo(EventType.LOG.toString()));
 
-            Map expectedMap=getEvent(index).toMap();
-            assertThat(actualRecord.getData().toMap(), equalTo(expectedMap));
+            Map<String,Object> expectedMap=new HashMap<>();
+            GenericRecord record=generateRecords(parseSchema(),numberOfRecords).get(index);
+            for(Schema.Field field:record.getSchema().getFields()){
+                expectedMap.put(field.name(),record.get(field.name()));
+            }
 
-            for(Object key: actualRecord.getData().toMap().keySet()){
-                Object decodedOutput = decodeOutputIfEncoded(actualRecord.getData().toMap() , key);
-                Object expectedOutput = getEvent(index).toMap().get(key.toString());
-                assertThat(decodedOutput, equalTo(expectedOutput));
+            for(String key: expectedMap.keySet()){
+                Object actualRecordValue=actualRecord.getData().toMap().get(key);
+                if(!(actualRecordValue instanceof Map))
+                assertThat(actualRecord.getData().toMap().get(key), equalTo(expectedMap.get(key)));
+                else{
+                    GenericRecord expectedInnerRecord= (GenericRecord) expectedMap.get(key);
+                    Schema innerSchema=expectedInnerRecord.getSchema();
+                     for(Schema.Field innerField : innerSchema.getFields()){
+                    assertThat(((Map)actualRecordValue).get(innerField.name()),equalTo(expectedInnerRecord.get(innerField.name())));
+                        }
+                    }
             }
             index++;
         }
         fileInputStream.close();
         Files.delete(path);
-
-    }
-
-    private static Object decodeOutputIfEncoded(Map encodedOutput, Object key){
-        try{
-            JSONObject outputJson = new JSONObject(encodedOutput);
-            Map innerJson= (Map) outputJson.get(key.toString());
-            byte[] encodedString=(byte[]) innerJson.get("bytes");
-            return new String(encodedString, StandardCharsets.UTF_8);
-
-        }catch (Exception e){
-            return encodedOutput.get(key);
-        }
-    }
-
-    private static Event getEvent(int index){
-        List<GenericRecord> recordList=generateRecords(parseSchema(),numberOfRecords);
-        GenericRecord record=recordList.get(index);
-        Schema schema=parseSchema();
-        final Map<String, Object> eventData = new HashMap<>();
-        for(Schema.Field field : schema.getFields()) {
-
-            eventData.put(field.name(), record.get(field.name()));
-
-        }
-        final Event event = JacksonLog.builder().withData(eventData).build();
-        return event;
     }
 
 
@@ -211,9 +191,13 @@ public class AvroInputCodecTest {
         for(int rows = 0; rows < numberOfRecords; rows++){
 
             GenericRecord record = new GenericData.Record(schema);
+            GenericRecord innerRecord = new GenericData.Record(parseInnerSchemaForNestedRecord());
+            innerRecord.put("firstFieldInNestedRecord", "testString"+rows);
+            innerRecord.put("secondFieldInNestedRecord", rows);
 
             record.put("name", "Person"+rows);
             record.put("age", rows);
+            record.put("nestedRecord", innerRecord);
             recordList.add((record));
 
         }
@@ -224,12 +208,27 @@ public class AvroInputCodecTest {
 
     private static Schema  parseSchema() {
 
+        Schema innerSchema=parseInnerSchemaForNestedRecord();
         return SchemaBuilder.record("Person")
                 .fields()
                 .name("name").type().stringType().noDefault()
                 .name("age").type().intType().noDefault()
+                .name("nestedRecord").type(innerSchema).noDefault()
                 .endRecord();
 
+    }
+
+    private static Schema parseInnerSchemaForNestedRecord(){
+        return SchemaBuilder
+                .record("InnerRecord")
+                .fields()
+                .name("firstFieldInNestedRecord")
+                .type(Schema.create(Schema.Type.STRING))
+                .noDefault()
+                .name("secondFieldInNestedRecord")
+                .type(Schema.create(Schema.Type.INT))
+                .noDefault()
+                .endRecord();
     }
 
     private static InputStream createInvalidAvroStream() {
