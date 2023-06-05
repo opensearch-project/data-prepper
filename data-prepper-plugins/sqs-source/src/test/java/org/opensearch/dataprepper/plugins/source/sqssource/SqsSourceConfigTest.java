@@ -35,7 +35,7 @@ public class SqsSourceConfigTest {
         final AwsAuthenticationOptions aws = sqsSourceConfig.getAws();
 
         assertThat(queues.getBatchSize(),equalTo(10));
-        assertThat(queues.getNumberOfThreads(),equalTo(3));
+        assertThat(queues.getNumberOfThreads(),equalTo(5));
         assertThat(queues.getUrls().get(0),equalTo("https://sqs.us-east-1.amazonaws.com/123099425585/dp"));
 
         assertThat(aws.getAwsRegion(),equalTo(Region.US_EAST_1));
