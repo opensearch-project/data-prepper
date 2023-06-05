@@ -31,11 +31,13 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchIndexPartitionCreationSupplier.class);
 
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
+    private final IndexParametersConfiguration indexParametersConfiguration;
     private final OpenSearchClient openSearchClient;
 
     public OpenSearchIndexPartitionCreationSupplier(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                                                     final ClusterClientFactory clusterClientFactory) {
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
+        this.indexParametersConfiguration = openSearchSourceConfiguration.getIndexParametersConfiguration();
 
         final Object client = clusterClientFactory.getClient();
 
@@ -68,49 +70,38 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         }
 
         return indicesResponse.valueBody().stream()
-                .filter(this::isIndexIncludedInOneOfTheIncludePatternsAndNotExcludedInAnExcludePattern)
+                .filter(this::shouldIndexBeProcessed)
                 .map(indexRecord -> PartitionIdentifier.builder().withPartitionKey(indexRecord.index()).build())
                 .collect(Collectors.toList());
     }
 
-    private boolean isIndexIncludedInOneOfTheIncludePatternsAndNotExcludedInAnExcludePattern(final IndicesRecord indicesRecord) {
+    private boolean shouldIndexBeProcessed(final IndicesRecord indicesRecord) {
         if (Objects.isNull(indicesRecord.index())) {
             return false;
         }
 
-        final IndexParametersConfiguration indexParametersConfiguration = openSearchSourceConfiguration.getIndexParametersConfiguration();
-
-        if (Objects.isNull(openSearchSourceConfiguration.getIndexParametersConfiguration())) {
+        if (Objects.isNull(indexParametersConfiguration)) {
             return true;
         }
 
         final List<OpenSearchIndex> includedIndices = indexParametersConfiguration.getIncludedIndices();
         final List<OpenSearchIndex> excludedIndices = indexParametersConfiguration.getExcludedIndices();
 
-        boolean matchesIncludedPattern = includedIndices.isEmpty();
-
-
-        for (final OpenSearchIndex index : includedIndices) {
-            final Matcher matcher = index.getIndexNamePattern().matcher(indicesRecord.index());
-
-            if (matcher.matches()) {
-                matchesIncludedPattern = true;
-                break;
-            }
-        }
-
-        boolean matchesExcludePattern = false;
-
-        for (final OpenSearchIndex index : excludedIndices) {
-            final Matcher matcher = index.getIndexNamePattern().matcher(indicesRecord.index());
-
-            if (matcher.matches()) {
-                matchesExcludePattern = true;
-                break;
-            }
-        }
+        final boolean matchesIncludedPattern = includedIndices.isEmpty() || doesIndexMatchPattern(includedIndices, indicesRecord);
+        final boolean matchesExcludePattern = doesIndexMatchPattern(excludedIndices, indicesRecord);
 
 
         return matchesIncludedPattern && !matchesExcludePattern;
+    }
+
+    private boolean doesIndexMatchPattern(final List<OpenSearchIndex> indices, final IndicesRecord indicesRecord) {
+        for (final OpenSearchIndex index : indices) {
+            final Matcher matcher = index.getIndexNamePattern().matcher(indicesRecord.index());
+
+            if (matcher.matches()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

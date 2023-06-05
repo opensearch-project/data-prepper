@@ -79,7 +79,7 @@ public class OpenSearchService {
         final long waitTimeBeforeStartMillis = startTime.toEpochMilli() - Instant.now().toEpochMilli() < 0 ? 0L :
                 startTime.toEpochMilli() - Instant.now().toEpochMilli();
 
-        LOG.info("The opensearch source will start processing data at {}. It is currently {}", startTime, Instant.now().toString());
+        LOG.info("The opensearch source will start processing data at {}. It is currently {}", startTime, Instant.now());
 
         searchWorkerFuture = scheduledExecutorService.schedule(() -> searchWorker.run(), waitTimeBeforeStartMillis, TimeUnit.MILLISECONDS);
     }
