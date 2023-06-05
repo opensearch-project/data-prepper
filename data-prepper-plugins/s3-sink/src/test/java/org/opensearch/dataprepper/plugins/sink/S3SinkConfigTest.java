@@ -5,12 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertNull;
-
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
+import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
+
+import java.util.UUID;
+
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class S3SinkConfigTest {
 
@@ -23,19 +28,29 @@ class S3SinkConfigTest {
     }
 
     @Test
-    void default_max_connection_retries_test() throws NoSuchFieldException, IllegalAccessException {
+    void default_max_connection_retries_test() {
         assertThat(new S3SinkConfig().getMaxConnectionRetries(), equalTo(MAX_CONNECTION_RETRIES));
     }
 
     @Test
-    void default_max_upload_retries_test() throws NoSuchFieldException, IllegalAccessException {
+    void default_max_upload_retries_test() {
         assertThat(new S3SinkConfig().getMaxUploadRetries(), equalTo(MAX_UPLOAD_RETRIES));
     }
 
     @Test
-    void get_bucket_option_test() {
-        assertThat(new S3SinkConfig().getBucketOptions(), equalTo(null));
+    void get_bucket_name_test() throws NoSuchFieldException, IllegalAccessException {
+        final String bucketName = UUID.randomUUID().toString();
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "bucketName", bucketName);
+        assertThat(objectUnderTest.getBucketName(), equalTo(bucketName));
     }
+
+    @Test
+    void get_object_key_test() {
+        assertThat("Object key is not an instance of ObjectKeyOptions",
+                new S3SinkConfig().getObjectKeyOptions(), instanceOf(ObjectKeyOptions.class));
+    }
+
 
     @Test
     void get_threshold_option_test() {

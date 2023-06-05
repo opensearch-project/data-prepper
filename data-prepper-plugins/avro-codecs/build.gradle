@@ -2,13 +2,6 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-plugins {
-    id 'java'
-}
-
-repositories {
-    mavenCentral()
-}
 
 dependencies {
     implementation project(path: ':data-prepper-api')

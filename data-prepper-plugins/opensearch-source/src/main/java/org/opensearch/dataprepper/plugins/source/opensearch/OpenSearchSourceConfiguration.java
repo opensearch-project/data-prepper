@@ -39,7 +39,7 @@ public class OpenSearchSourceConfiguration {
 
     @JsonProperty("connection")
     @Valid
-    private ConnectionConfiguration connectionConfiguration;
+    private ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration();
 
     @JsonProperty("indices")
     @Valid
@@ -97,7 +97,7 @@ public class OpenSearchSourceConfiguration {
     boolean validateAwsConfigWithUsernameAndPassword() {
 
         return !((Objects.nonNull(awsAuthenticationOptions) && (Objects.nonNull(username) || Objects.nonNull(password))) ||
-                (Objects.isNull(awsAuthenticationOptions) && Objects.isNull(username) && Objects.isNull(password)));
+                (Objects.isNull(awsAuthenticationOptions) && (Objects.isNull(username) || Objects.isNull(password))));
     }
 
 }

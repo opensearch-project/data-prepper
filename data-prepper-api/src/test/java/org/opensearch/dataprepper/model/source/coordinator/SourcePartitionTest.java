@@ -39,6 +39,7 @@ public class SourcePartitionTest {
 
         assertThat(sourcePartition, notNullValue());
         assertThat(sourcePartition.getPartitionKey(), equalTo(partitionKey));
-        assertThat(sourcePartition.getPartitionState(), equalTo(partitionState));
+        assertThat(sourcePartition.getPartitionState().isPresent(), equalTo(true));
+        assertThat(sourcePartition.getPartitionState().get(), equalTo(partitionState));
     }
 }

@@ -29,7 +29,7 @@ public class KafkaSourceConfig {
     @JsonProperty("topics")
     @NotNull
     @Size(min = 1, max = 10, message = "The number of Topics should be between 1 and 10")
-    private List<TopicsConfig> topics;
+    private List<TopicConfig> topics;
 
   @JsonProperty("auth_type")
   @NotNull
@@ -41,11 +41,11 @@ public class KafkaSourceConfig {
   @Valid
   private SchemaConfig schemaConfig;
 
-    public List<TopicsConfig> getTopics() {
+    public List<TopicConfig> getTopics() {
         return topics;
     }
 
-    public void setTopics(List<TopicsConfig> topics) {
+    public void setTopics(List<TopicConfig> topics) {
         this.topics = topics;
     }
 

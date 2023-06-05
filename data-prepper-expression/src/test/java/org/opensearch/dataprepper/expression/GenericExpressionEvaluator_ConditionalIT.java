@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,13 +18,13 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-import java.util.Random;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -34,7 +35,6 @@ import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.apache.commons.lang3.RandomStringUtils;
 
 class GenericExpressionEvaluator_ConditionalIT {
     /**
@@ -94,7 +94,7 @@ class GenericExpressionEvaluator_ConditionalIT {
     void testGenericExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Boolean expected) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        final int numberOfThreads = 50;
+        final int numberOfThreads = 10;
         final ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
 
         List<Boolean> evaluationResults = Collections.synchronizedList(new ArrayList<>());

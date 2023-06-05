@@ -15,6 +15,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.DEFAULT_SHINGLE_SIZE;
 import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.DEFAULT_SAMPLE_SIZE;
+import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.DEFAULT_OUTPUT_AFTER;
 import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.DEFAULT_TIME_DECAY;
 import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.MAX_SHINGLE_SIZE;
 import static org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.RandomCutForestModeConfig.MAX_SAMPLE_SIZE;
@@ -27,6 +28,7 @@ public class RandomCutForestModeConfigTests {
         final RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
         assertThat(randomCutForestModeConfig.getShingleSize(), equalTo(DEFAULT_SHINGLE_SIZE));
         assertThat(randomCutForestModeConfig.getSampleSize(), equalTo(DEFAULT_SAMPLE_SIZE));
+        assertThat(randomCutForestModeConfig.getOutputAfter(), equalTo(DEFAULT_OUTPUT_AFTER));
         assertThat(randomCutForestModeConfig.getTimeDecay(), equalTo(DEFAULT_TIME_DECAY));
         assertThat(randomCutForestModeConfig.getType(), equalTo(RandomCutForestType.METRICS.toString()));
         assertThat(randomCutForestModeConfig.getVersion(), equalTo(VERSION_1_0));
@@ -37,11 +39,14 @@ public class RandomCutForestModeConfigTests {
         RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
         final int testShingleSize = 10;
         final int testSampleSize = 500;
+        final int testOutputAfter = 300;
         final double testTimeDecay = 0.44;
         setField(RandomCutForestModeConfig.class, randomCutForestModeConfig, "shingleSize", testShingleSize);
         assertThat(randomCutForestModeConfig.getShingleSize(), equalTo(testShingleSize));
         setField(RandomCutForestModeConfig.class, randomCutForestModeConfig, "sampleSize", testSampleSize);
         assertThat(randomCutForestModeConfig.getSampleSize(), equalTo(testSampleSize));
+        setField(RandomCutForestModeConfig.class, randomCutForestModeConfig, "outputAfter", testOutputAfter);
+        assertThat(randomCutForestModeConfig.getOutputAfter(), equalTo(testOutputAfter));
         setField(RandomCutForestModeConfig.class, randomCutForestModeConfig, "timeDecay", testTimeDecay);
         assertThat(randomCutForestModeConfig.getTimeDecay(), equalTo(testTimeDecay));
         assertThat(randomCutForestModeConfig.getType(), equalTo(RandomCutForestType.METRICS.toString()));
@@ -60,6 +65,13 @@ public class RandomCutForestModeConfigTests {
         RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
         setField(RandomCutForestModeConfig.class, randomCutForestModeConfig, "sampleSize", MAX_SAMPLE_SIZE+1);
         assertThrows(IllegalArgumentException.class, () -> randomCutForestModeConfig.getSampleSize());
+    }
+
+    @Test
+    public void testInvalidOutputAfter() throws NoSuchFieldException, IllegalAccessException {
+        RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
+        setField(RandomCutForestModeConfig.class, randomCutForestModeConfig, "outputAfter", MAX_SAMPLE_SIZE+1);
+        assertThrows(IllegalArgumentException.class, () -> randomCutForestModeConfig.getOutputAfter());
     }
 
     @Test

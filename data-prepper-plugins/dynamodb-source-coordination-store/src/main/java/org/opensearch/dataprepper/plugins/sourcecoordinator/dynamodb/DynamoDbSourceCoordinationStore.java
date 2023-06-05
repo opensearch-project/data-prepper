@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -45,7 +46,7 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
 
     @Override
     public void initializeStore() {
-        dynamoDbClientWrapper.tryCreateTable(dynamoStoreSettings.getTableName(), constructProvisionedThroughput(
+        dynamoDbClientWrapper.initializeTable(dynamoStoreSettings, constructProvisionedThroughput(
                 dynamoStoreSettings.getProvisionedReadCapacityUnits(), dynamoStoreSettings.getProvisionedWriteCapacityUnits()));
     }
 
@@ -108,6 +109,10 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
 
         if (SourcePartitionStatus.ASSIGNED.equals(updateItem.getSourcePartitionStatus())) {
             dynamoDbSourcePartitionItem.setPartitionPriority(updateItem.getPartitionOwnershipTimeout().toString());
+        }
+
+        if (SourcePartitionStatus.COMPLETED.equals(updateItem.getSourcePartitionStatus()) && Objects.nonNull(dynamoStoreSettings.getTtl())) {
+            dynamoDbSourcePartitionItem.setExpirationTime(Instant.now().plus(dynamoStoreSettings.getTtl()).getEpochSecond());
         }
 
         dynamoDbClientWrapper.tryUpdatePartitionItem(dynamoDbSourcePartitionItem);
