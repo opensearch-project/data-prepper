@@ -8,7 +8,6 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.opensearch.dataprepper.model.io.InputFile;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class LocalInputFile implements InputFile {
