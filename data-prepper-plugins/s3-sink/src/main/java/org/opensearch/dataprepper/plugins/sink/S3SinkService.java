@@ -129,9 +129,8 @@ public class S3SinkService {
                     currentBuffer = bufferFactory.getBuffer();
                 }
             }
-        } catch (NullPointerException | IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             LOG.error("Exception while write event into buffer :", e);
-            Thread.currentThread().interrupt();
         }
         reentrantLock.unlock();
     }

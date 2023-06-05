@@ -210,16 +210,6 @@ class S3SinkServiceTest {
     }
 
     @Test
-    void test_catch_output_exception_cover() {
-        codec = null;
-        S3SinkService s3SinkService = createObjectUnderTest();
-        assertNotNull(s3SinkService);
-        assertThat(s3SinkService, instanceOf(S3SinkService.class));
-        s3SinkService.output(generateRandomStringEventRecord());
-        verify(snapshotSuccessCounter, times(0)).increment();
-    }
-
-    @Test
     void test_output_with_uploadedToS3_success() throws IOException {
 
         bufferFactory = mock(BufferFactory.class);
@@ -336,6 +326,35 @@ class S3SinkServiceTest {
         final List<EventHandle> eventHandles = records.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
 
         for (EventHandle eventHandle : eventHandles) {
+            verify(eventHandle).release(true);
+        }
+    }
+
+    @Test
+    void output_will_skip_releasing_events_without_EventHandle_objects() throws IOException {
+        bufferFactory = mock(BufferFactory.class);
+        final Buffer buffer = mock(Buffer.class);
+        when(bufferFactory.getBuffer()).thenReturn(buffer);
+
+        final long objectSize = random.nextInt(1_000_000) + 10_000;
+        when(buffer.getSize()).thenReturn(objectSize);
+
+        when(codec.parse(any())).thenReturn(UUID.randomUUID().toString());
+        final S3SinkService s3SinkService = createObjectUnderTest();
+        final Collection<Record<Event>> records = generateRandomStringEventRecord();
+        records.stream()
+                .map(Record::getData)
+                .map(event -> (JacksonEvent) event)
+                .forEach(event -> event.setEventHandle(null));
+
+        s3SinkService.output(records);
+
+        final Collection<Record<Event>> records2 = generateRandomStringEventRecord();
+        s3SinkService.output(records2);
+
+        final List<EventHandle> eventHandles2 = records2.stream().map(Record::getData).map(Event::getEventHandle).collect(Collectors.toList());
+
+        for (EventHandle eventHandle : eventHandles2) {
             verify(eventHandle).release(true);
         }
     }
