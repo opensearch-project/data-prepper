@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.compression;
+package org.opensearch.dataprepper.plugins.codec;
 
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
+import org.xerial.snappy.SnappyInputStream;
+import org.xerial.snappy.SnappyOutputStream;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
@@ -17,15 +19,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-import java.util.zip.GZIPOutputStream;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.mockito.Mockito.mock;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.Mockito.mock;
 
-class GZipCompressionEngineTest {
-    private CompressionEngine compressionEngine;
+class SnappyDecompressionEngineTest {
+    private DecompressionEngine decompressionEngine;
     private ResponseInputStream<GetObjectResponse> responseInputStream;
     private String s3Key;
 
@@ -36,22 +37,24 @@ class GZipCompressionEngineTest {
     }
 
     @Test
-    void createInputStream_with_gzip_should_return_instance_of_GZIPInputStream() throws IOException {
-        compressionEngine = new GZipCompressionEngine();
+    void createInputStream_with_snappy_should_return_instance_of_SnappyInputStream() throws IOException {
 
+        s3Key.concat(".snappy.parquet");
+        decompressionEngine = new SnappyDecompressionEngine();
         final String testString = UUID.randomUUID().toString();
         final byte[] testStringBytes = testString.getBytes(StandardCharsets.UTF_8);
-
         final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
-        final GZIPOutputStream gzipOut = new GZIPOutputStream(byteOut);
-        gzipOut.write(testStringBytes, 0, testStringBytes.length);
-        gzipOut.close();
+        final SnappyOutputStream snappyOut = new SnappyOutputStream(byteOut);
+
+        snappyOut.write(testStringBytes);
+        snappyOut.close();
+
         final byte[] bites = byteOut.toByteArray();
         final ByteArrayInputStream byteInStream = new ByteArrayInputStream(bites);
+        final InputStream inputStream = decompressionEngine.createInputStream(byteInStream);
 
-        final InputStream inputStream = compressionEngine.createInputStream(s3Key, byteInStream);
+        assertThat(inputStream, instanceOf(SnappyInputStream.class));
+        assertThat(inputStream.readAllBytes(),equalTo(testStringBytes));
 
-        assertThat(inputStream, instanceOf(GzipCompressorInputStream.class));
-        assertThat(inputStream.readAllBytes(), equalTo(testStringBytes));
     }
 }

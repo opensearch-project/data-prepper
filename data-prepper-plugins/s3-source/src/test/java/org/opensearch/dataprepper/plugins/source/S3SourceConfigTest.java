@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
