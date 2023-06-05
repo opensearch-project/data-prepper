@@ -100,6 +100,41 @@ class S3InputStreamTest {
     }
 
     @Test
+    void testReadAllBytes() throws IOException {
+        InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        s3InputStream.seek(0); // Force opening the stream
+
+        final byte[] buffer = s3InputStream.readAllBytes();
+
+        assertArrayEquals("Test data".getBytes(), buffer);
+    }
+
+    @Test
+    void testReadNBytes_intoArray() throws Exception {
+        InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        s3InputStream.seek(0); // Force opening the stream
+
+        byte[] buffer = new byte[9];
+        int bytesRead = s3InputStream.readNBytes(buffer, 0, 4);
+
+        assertEquals(4, bytesRead);
+        assertArrayEquals("Test\u0000\u0000\u0000\u0000\u0000".getBytes(), buffer);
+    }
+
+    @Test
+    void testReadNBytes_getArray() throws Exception {
+        InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        s3InputStream.seek(0); // Force opening the stream
+
+        final byte[] buffer = s3InputStream.readNBytes(4);
+
+        assertArrayEquals("Test".getBytes(), buffer);
+    }
+
+    @Test
     void testSkip() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);

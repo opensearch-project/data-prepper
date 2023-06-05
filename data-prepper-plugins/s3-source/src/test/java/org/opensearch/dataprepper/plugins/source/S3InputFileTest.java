@@ -69,6 +69,7 @@ public class S3InputFileTest {
     public void testGetBytesCount_afterNewStream() throws IOException {
         HeadObjectResponse headObjectResponse = mock(HeadObjectResponse.class);
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
+        when(headObjectResponse.contentLength()).thenReturn(9L);
         SeekableInputStream seekableInputStream = s3InputFile.newStream();
 
         // Perform read operations with the seekableInputStream to update the bytesCounter
@@ -76,12 +77,10 @@ public class S3InputFileTest {
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
         final byte[] buffer = new byte[9];
         int read = seekableInputStream.read(buffer);
+
         assertThat(read, equalTo(9));
 
-        // For this test, we can use reflection to set the bytesCounter value
-
         long bytesCount = s3InputFile.getBytesCount();
-
         assertThat(bytesCount, equalTo(9L));
     }
 }

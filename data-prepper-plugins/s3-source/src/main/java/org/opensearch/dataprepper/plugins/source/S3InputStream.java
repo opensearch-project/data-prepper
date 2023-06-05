@@ -460,6 +460,7 @@ class S3InputStream extends SeekableInputStream {
                 }
             }
             stream = null;
+            closed = true;
         }
     }
 
