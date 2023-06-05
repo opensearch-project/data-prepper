@@ -1,0 +1,25 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.opensearch.dataprepper.plugins.processor'
+version = '2.3.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:common')
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'org.jruby:jruby-complete:9.4.2.0'
+//    implementation project('com.fasterxml.jackson.annotation')
+//    implementation platform('com.fasterxml.jackson:jackson-bom:2.15.0')
+//    implementation platform('io.micrometer:micrometer-bom:1.10.5')
+
+}
+
+test {
+    useJUnitPlatform()
+}
