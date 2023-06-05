@@ -1,6 +1,5 @@
 plugins {
     id 'java-library'
-    id "org.sonarqube" version "3.5.0.2730"
 }
 dependencies {
     implementation project(':data-prepper-api')

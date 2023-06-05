@@ -5,30 +5,22 @@
 package org.opensearch.dataprepper.plugins.aws.sqs.common;
 
 import com.linecorp.armeria.client.retry.Backoff;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.aws.sqs.common.codec.Codec;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.exception.SqsRetriesExhaustedException;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.metrics.SqsMetrics;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.model.SqsOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
-import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
+import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 import software.amazon.awssdk.services.sts.model.StsException;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
@@ -43,32 +35,12 @@ public class SqsService {
 
     private int failedAttemptCount;
 
-    private BufferAccumulator<Record<Event>> bufferAccumulator;
-
-    private final Codec codec;
-
     public SqsService(final SqsMetrics sqsMetrics,
-                      final Region region,
-                      final AwsCredentialsProvider awsCredentialsProvider,
-                      final BufferAccumulator<Record<Event>> bufferAccumulator,
-                      final Codec codec) {
+                      final SqsClient sqsClient) {
         this.sqsMetrics = sqsMetrics;
-        this.sqsClient = createSqsClient(region,awsCredentialsProvider);
+        this.sqsClient = sqsClient;
         this.backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-        this.bufferAccumulator = bufferAccumulator;
-        this.codec = codec;
-    }
-
-    SqsClient createSqsClient(final Region region, final AwsCredentialsProvider awsCredentialsProvider) {
-        LOG.info("Creating SQS client");
-        return SqsClient.builder()
-                .region(region)
-                .credentialsProvider(awsCredentialsProvider)
-                .overrideConfiguration(ClientOverrideConfiguration.builder()
-                        .retryPolicy(builder -> builder.numRetries(5).build())
-                        .build())
-                .build();
     }
 
     public ReceiveMessageRequest createReceiveMessageRequest(final SqsOptions sqsOptions) {
@@ -82,9 +54,6 @@ public class SqsService {
         try {
             final ReceiveMessageRequest receiveMessageRequest = createReceiveMessageRequest(sqsOptions);
             final List<Message> messages = sqsClient.receiveMessage(receiveMessageRequest).messages();
-            if(!messages.isEmpty())
-                sqsMetrics.getSqsMessagesReceivedCounter().increment(messages.size());
-            failedAttemptCount = 0;
             return messages;
         } catch (final SqsException | StsException e) {
             LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
@@ -106,36 +75,19 @@ public class SqsService {
             Thread.sleep(delayMillis);
         } catch (final InterruptedException e){
             LOG.error("Thread is interrupted while polling SQS with retry.", e);
+            Thread.currentThread().interrupt();
         }
     }
 
-    public Optional<String> parseMessage(final Message message,final AcknowledgementSet acknowledgementSet) throws IOException {
-        pushToBuffer(codec.parse(message.body()),acknowledgementSet);
-        return Optional.of(message.receiptHandle());
-    }
-
-    public boolean pushToBuffer(final Record<Event> eventRecord, final AcknowledgementSet acknowledgementSet) {
-            try {
-                bufferAccumulator.add(eventRecord);
-                bufferAccumulator.flush();
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-            if (acknowledgementSet != null) {
-                acknowledgementSet.add(eventRecord.getData());
-            }
-            return true;
-    }
-
-    public void deleteMessageFromQueue(final String receiptHandle,
-                                       final SqsOptions sqsOptions) {
+    public void deleteMessagesFromQueue(final List<DeleteMessageBatchRequestEntry> deleteMsgBatchReqList,
+                                        final String queueUrl) {
         try{
-            sqsClient.deleteMessage(DeleteMessageRequest.builder()
-                    .queueUrl(sqsOptions.getSqsUrl())
-                    .receiptHandle(receiptHandle)
+            sqsClient.deleteMessageBatch(DeleteMessageBatchRequest.builder()
+                    .queueUrl(queueUrl)
+                    .entries(deleteMsgBatchReqList)
                     .build());
             sqsMetrics.getSqsMessagesDeletedCounter().increment();
-            LOG.info("message deleted successfully : {}",receiptHandle);
+            LOG.info("message deleted successfully : {}",deleteMsgBatchReqList);
         }catch(Exception e){
             sqsMetrics.getSqsMessagesDeleteFailedCounter().increment();
         }

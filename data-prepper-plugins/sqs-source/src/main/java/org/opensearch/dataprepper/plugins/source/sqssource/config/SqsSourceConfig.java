@@ -2,13 +2,11 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.source.sqssource;
+package org.opensearch.dataprepper.plugins.source.sqssource.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.aws.sqs.common.config.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.source.sqssource.config.QueuesOptions;
 
 import java.time.Duration;
 
