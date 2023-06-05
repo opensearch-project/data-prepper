@@ -15,7 +15,7 @@ dependencies {
     implementation project(':data-prepper-plugins:armeria-common')
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation libs.opentelemetry.proto
-    implementation "commons-io:commons-io:2.11.0"
+    implementation "commons-io:commons-io:2.12.0"
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:auth'
     implementation 'software.amazon.awssdk:regions'
@@ -31,7 +31,7 @@ dependencies {
     testImplementation testLibs.junit.vintage
     testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation testLibs.mockito.inline
-    testImplementation("commons-io:commons-io:2.11.0")
+    testImplementation("commons-io:commons-io:2.12.0")
 }
 
 jacocoTestCoverageVerification {
