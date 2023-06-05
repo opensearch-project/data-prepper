@@ -21,17 +21,27 @@ public class LocalInputFile implements InputFile {
      * Constructor.
      *
      * @param file the input file
-     * @throws FileNotFoundException when file cannot be found.
      */
     public LocalInputFile(final File file)  {
         this.file = file;
     }
 
+    /**
+     * Get the length of the file.
+     *
+     * @return length of file
+     */
     @Override
     public long getLength()  {
         return file.length();
     }
 
+    /**
+     * Create a new SeekableInputStream on the file.
+     *
+     * @return a SeekableInputStream on the file
+     * @throws IOException if the input stream cannot be created.
+     */
     @Override
     public SeekableInputStream newStream() throws IOException {
         return LocalInputStream.create(file);
