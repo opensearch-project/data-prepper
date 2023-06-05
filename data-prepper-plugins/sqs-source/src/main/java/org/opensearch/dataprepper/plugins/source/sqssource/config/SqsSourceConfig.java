@@ -5,12 +5,14 @@
 package org.opensearch.dataprepper.plugins.source.sqssource.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 
 public class SqsSourceConfig {
 
     @JsonProperty("queues")
     private QueuesOptions queues;
 
+    @Valid
     @JsonProperty("aws")
     private AwsAuthenticationOptions aws;
 
