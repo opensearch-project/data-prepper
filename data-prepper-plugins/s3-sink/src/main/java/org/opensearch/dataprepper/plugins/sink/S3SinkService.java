@@ -106,7 +106,9 @@ public class S3SinkService {
                 final byte[] encodedBytes = encodedEvent.getBytes();
 
                 currentBuffer.writeEvent(encodedBytes);
-                bufferedEventHandles.add(event.getEventHandle());
+                if(event.getEventHandle() != null) {
+                    bufferedEventHandles.add(event.getEventHandle());
+                }
                 if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                     final String s3Key = generateKey();
                     LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
@@ -127,14 +129,13 @@ public class S3SinkService {
                     currentBuffer = bufferFactory.getBuffer();
                 }
             }
-        } catch (NullPointerException | IOException | InterruptedException e) {
+        } catch (IOException | InterruptedException e) {
             LOG.error("Exception while write event into buffer :", e);
-            Thread.currentThread().interrupt();
         }
         reentrantLock.unlock();
     }
 
-    private void releaseEventHandles(boolean result) {
+    private void releaseEventHandles(final boolean result) {
         for (EventHandle eventHandle : bufferedEventHandles) {
             eventHandle.release(result);
         }
