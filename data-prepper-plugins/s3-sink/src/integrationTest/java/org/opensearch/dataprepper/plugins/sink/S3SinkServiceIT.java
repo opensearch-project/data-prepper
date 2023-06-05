@@ -99,8 +99,6 @@ class S3SinkServiceIT {
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("2mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.parse("PT3M"));
         when(s3SinkConfig.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(s3SinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(s3region));
 
         lenient().when(pluginMetrics.counter(S3SinkService.OBJECTS_SUCCEEDED)).thenReturn(snapshotSuccessCounter);
         lenient().when(pluginMetrics.counter(S3SinkService.OBJECTS_FAILED)).thenReturn(snapshotFailedCounter);
@@ -136,7 +134,7 @@ class S3SinkServiceIT {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, pluginMetrics);
     }
 
     private int gets3ObjectCount() {

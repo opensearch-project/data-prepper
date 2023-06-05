@@ -20,25 +20,35 @@ import java.util.Set;
 
 public class InMemoryPartitionAccessor {
 
+    static final String GLOBAL_STATE_ITEM_SUFFIX = "GLOBAL_STATE";
+    private static final String SOURCE_IDENTIFIER_PARTITION_KEY_COMBINATION = "%s|%s";
+
     private final Queue<QueuedPartitionsItem> unassignedPartitions;
     private final Queue<QueuedPartitionsItem> closedPartitions;
     private final Set<String> completedPartitions;
     private final Map<String, Map<String, InMemorySourcePartitionStoreItem>> partitionLookup;
+    private final Map<String, InMemorySourcePartitionStoreItem> globalStateItems;
 
     public InMemoryPartitionAccessor() {
         this.unassignedPartitions = new PriorityQueue<>();
         this.closedPartitions = new PriorityQueue<>();
         this.completedPartitions = new HashSet<>();
         this.partitionLookup = new HashMap<>();
+        this.globalStateItems = new HashMap<>();
     }
 
     public Optional<SourcePartitionStoreItem> getItem(final String sourceIdentifier, final String partitionKey) {
+        final String sourceIdentifierPartitionKey = String.format(SOURCE_IDENTIFIER_PARTITION_KEY_COMBINATION, sourceIdentifier, partitionKey);
+
+        if (isGlobalStateItem(sourceIdentifier)) {
+            return Optional.ofNullable(globalStateItems.get(sourceIdentifierPartitionKey));
+        }
 
         if (!partitionLookup.containsKey(sourceIdentifier)) {
             return Optional.empty();
         }
 
-        if (completedPartitions.contains(sourceIdentifier + ":" + partitionKey)) {
+        if (completedPartitions.contains(sourceIdentifierPartitionKey)) {
             final InMemorySourcePartitionStoreItem placeHolderItem = new InMemorySourcePartitionStoreItem();
             placeHolderItem.setSourcePartitionStatus(SourcePartitionStatus.COMPLETED);
             placeHolderItem.setSourceIdentifier(sourceIdentifier);
@@ -53,6 +63,12 @@ public class InMemoryPartitionAccessor {
     }
 
     public void queuePartition(final InMemorySourcePartitionStoreItem inMemorySourcePartitionStoreItem) {
+        if (isGlobalStateItem(inMemorySourcePartitionStoreItem.getSourceIdentifier())) {
+            globalStateItems.put(String.format(SOURCE_IDENTIFIER_PARTITION_KEY_COMBINATION,
+                            inMemorySourcePartitionStoreItem.getSourceIdentifier(), inMemorySourcePartitionStoreItem.getSourcePartitionKey()),
+                    inMemorySourcePartitionStoreItem);
+            return;
+        }
 
         final Map<String, InMemorySourcePartitionStoreItem> partitionMap = partitionLookup.get(inMemorySourcePartitionStoreItem.getSourceIdentifier());
 
@@ -91,14 +107,19 @@ public class InMemoryPartitionAccessor {
     }
 
     public void updateItem(final InMemorySourcePartitionStoreItem item) {
+        final String sourceIdentifierPartitionKey = String.format(SOURCE_IDENTIFIER_PARTITION_KEY_COMBINATION, item.getSourceIdentifier(), item.getSourcePartitionKey());
 
-        if (!partitionLookup.containsKey(item.getSourceIdentifier()) || completedPartitions.contains(
-                item.getSourceIdentifier() + ":" + item.getSourcePartitionKey())) {
+        if (isGlobalStateItem(item.getSourceIdentifier())) {
+            globalStateItems.put(sourceIdentifierPartitionKey, item);
+            return;
+        }
+
+        if (!partitionLookup.containsKey(item.getSourceIdentifier()) || completedPartitions.contains(sourceIdentifierPartitionKey)) {
             return;
         }
 
         if (SourcePartitionStatus.COMPLETED.equals(item.getSourcePartitionStatus())) {
-            completedPartitions.add(item.getSourceIdentifier() + ":" + item.getSourcePartitionKey());
+            completedPartitions.add(sourceIdentifierPartitionKey);
             partitionLookup.get(item.getSourceIdentifier()).remove(item.getSourcePartitionKey());
             return;
         }
@@ -117,6 +138,10 @@ public class InMemoryPartitionAccessor {
             closedPartitions.add(new QueuedPartitionsItem(inMemorySourcePartitionStoreItem.getSourceIdentifier(),
                     inMemorySourcePartitionStoreItem.getSourcePartitionKey(), inMemorySourcePartitionStoreItem.getReOpenAt()));
         }
+    }
+
+    private boolean isGlobalStateItem(final String sourceIdentifier) {
+        return sourceIdentifier.endsWith(GLOBAL_STATE_ITEM_SUFFIX);
     }
 
     protected static class QueuedPartitionsItem implements Comparable<QueuedPartitionsItem> {

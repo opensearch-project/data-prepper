@@ -19,11 +19,12 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class S3ScanPartitionCreationSupplier implements Supplier<List<PartitionIdentifier>> {
+public class S3ScanPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>> {
 
     private static final String BUCKET_OBJECT_PARTITION_KEY_FORMAT = "%s|%s";
 
@@ -40,7 +41,8 @@ public class S3ScanPartitionCreationSupplier implements Supplier<List<PartitionI
     }
 
     @Override
-    public List<PartitionIdentifier> get() {
+    public List<PartitionIdentifier> apply(final Map<String, Object> globalStateMap) {
+
         final List<PartitionIdentifier> objectsToProcess = new ArrayList<>();
 
         for (final ScanOptions scanOptions : scanOptionsList) {

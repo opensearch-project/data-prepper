@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
@@ -74,6 +75,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
+  private final AwsCredentialsSupplier awsCredentialsSupplier;
 
   private DlqWriter dlqWriter;
   private BufferedWriter dlqFileWriter;
@@ -107,8 +109,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
-                        final PluginFactory pluginFactory) {
+                        final PluginFactory pluginFactory,
+                        final AwsCredentialsSupplier awsCredentialsSupplier) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
+    this.awsCredentialsSupplier = awsCredentialsSupplier;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
@@ -159,8 +163,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private void doInitializeInternal() throws IOException {
     LOG.info("Initializing OpenSearch sink");
-    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
-    openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient);
+    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient(awsCredentialsSupplier);
+    openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
     final TemplateStrategy templateStrategy = TemplateType.V1.createTemplateStrategy(openSearchClient);
     indexManager = indexManagerFactory.getIndexManager(indexType, openSearchClient, restHighLevelClient,
