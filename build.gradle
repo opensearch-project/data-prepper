@@ -145,7 +145,7 @@ subprojects {
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
         reports {
-            xml.enabled true
+            xml.required
         }
     }
 
@@ -204,8 +204,8 @@ configure(coreProjects) {
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
         reports {
-            xml.enabled true
-            csv.enabled false
+            xml.required
+            csv.required
             html.destination file("${buildDir}/reports/jacocoHtml")
         }
     }

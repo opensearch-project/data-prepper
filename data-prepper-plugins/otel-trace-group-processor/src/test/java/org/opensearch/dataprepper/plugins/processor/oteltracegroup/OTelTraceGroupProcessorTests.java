@@ -22,6 +22,7 @@ import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.RequestOptions;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.common.document.DocumentField;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -112,13 +113,16 @@ public class OTelTraceGroupProcessorTests {
     @Mock(lenient = true)
     private SearchHit testSearchHit2;
 
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
+
     @BeforeEach
     public void setUp() throws Exception{
         MetricsTestUtil.initMetrics();
         connectionConfigurationMockedStatic = Mockito.mockStatic(ConnectionConfiguration.class);
         connectionConfigurationMockedStatic.when(() -> ConnectionConfiguration.readConnectionConfiguration(any(PluginSetting.class)))
                 .thenReturn(connectionConfigurationMock);
-        when(connectionConfigurationMock.createClient()).thenReturn(restHighLevelClient);
+        when(connectionConfigurationMock.createClient(awsCredentialsSupplier)).thenReturn(restHighLevelClient);
         when(restHighLevelClient.search(any(SearchRequest.class), any(RequestOptions.class))).thenReturn(testSearchResponse);
         doNothing().when(restHighLevelClient).close();
         when(testSearchResponse.getHits()).thenReturn(testSearchHits);
@@ -151,7 +155,7 @@ public class OTelTraceGroupProcessorTests {
         final PluginSetting testPluginSetting = mock(PluginSetting.class);
         when(testPluginSetting.getName()).thenReturn(PLUGIN_NAME);
         when(testPluginSetting.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-        otelTraceGroupProcessor = new OTelTraceGroupProcessor(testPluginSetting);
+        otelTraceGroupProcessor = new OTelTraceGroupProcessor(testPluginSetting, awsCredentialsSupplier);
         executorService = Executors.newFixedThreadPool(TEST_NUM_WORKERS);
     }
 

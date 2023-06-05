@@ -29,6 +29,7 @@ public class DynamoDbSourcePartitionItem implements SourcePartitionStoreItem {
     private Long closedCount;
     private String sourceStatusCombinationKey;
     private String partitionPriority;
+    private Long expirationTime;
 
     @Override
     @DynamoDbPartitionKey
@@ -51,6 +52,8 @@ public class DynamoDbSourcePartitionItem implements SourcePartitionStoreItem {
     public String getPartitionPriority() {
         return partitionPriority;
     }
+
+    public Long getExpirationTime() { return expirationTime; }
 
     @Override
     public String getPartitionOwner() {
@@ -128,5 +131,9 @@ public class DynamoDbSourcePartitionItem implements SourcePartitionStoreItem {
 
     public void setPartitionPriority(final String partitionPriority) {
         this.partitionPriority = partitionPriority;
+    }
+
+    public void setExpirationTime(final Long expirationTime) {
+        this.expirationTime = expirationTime;
     }
 }

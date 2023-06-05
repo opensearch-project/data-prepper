@@ -5,9 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.accumulator;
 
-import static org.hamcrest.CoreMatchers.startsWith;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,8 +16,11 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.plugins.sink.S3SinkConfig;
 import org.opensearch.dataprepper.plugins.sink.codec.JsonCodec;
-import org.opensearch.dataprepper.plugins.sink.configuration.BucketOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
+
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ObjectKeyTest {
@@ -38,14 +38,11 @@ class ObjectKeyTest {
     @Mock
     private JsonCodec codec;
     @Mock
-    private BucketOptions bucketOptions;
-    @Mock
     private ObjectKeyOptions objectKeyOptions;
 
     @BeforeEach
     void setUp() throws Exception {
-        when(s3SinkConfig.getBucketOptions()).thenReturn(bucketOptions);
-        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions()).thenReturn(objectKeyOptions);
+        when(s3SinkConfig.getObjectKeyOptions()).thenReturn(objectKeyOptions);
     }
 
     @Test
@@ -69,7 +66,7 @@ class ObjectKeyTest {
     @Test
     void test_objectFileName_with_fileExtension() {
 
-        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions().getNamePattern())
+        when(s3SinkConfig.getObjectKeyOptions().getNamePattern())
                 .thenReturn("events-%{yyyy-MM-dd'T'hh-mm-ss}.pdf");
         String objectFileName = ObjectKey.objectFileName(s3SinkConfig);
         Assertions.assertNotNull(objectFileName);
@@ -79,7 +76,7 @@ class ObjectKeyTest {
     @Test
     void test_objectFileName_default_fileExtension() {
 
-        when(s3SinkConfig.getBucketOptions().getObjectKeyOptions().getNamePattern())
+        when(s3SinkConfig.getObjectKeyOptions().getNamePattern())
                 .thenReturn("events-%{yyyy-MM-dd'T'hh-mm-ss}");
         String objectFileName = ObjectKey.objectFileName(s3SinkConfig);
         Assertions.assertNotNull(objectFileName);

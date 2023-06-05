@@ -18,6 +18,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:sqs'
+    implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'software.amazon.awssdk:netty-nio-client'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
