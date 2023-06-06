@@ -26,28 +26,28 @@ public class KafkaSourceConfig {
   @Size(min = 1, message = "Bootstrap servers can't be empty")
   private List<String> bootStrapServers;
 
-    @JsonProperty("topics")
-    @NotNull
-    @Size(min = 1, max = 10, message = "The number of Topics should be between 1 and 10")
-    private List<TopicConfig> topics;
+  @JsonProperty("topics")
+  @NotNull
+  @Size(min = 1, max = 10, message = "The number of Topics should be between 1 and 10")
+  private List<TopicConfig> topics;
 
   @JsonProperty("auth_type")
-  @NotNull
-  @Valid
   private String authType;
 
   @JsonProperty("schema")
-  @NotNull
   @Valid
   private SchemaConfig schemaConfig;
 
-    public List<TopicConfig> getTopics() {
-        return topics;
-    }
+  @JsonProperty("authentication")
+  private AuthConfig authConfig;
 
-    public void setTopics(List<TopicConfig> topics) {
-        this.topics = topics;
-    }
+  public List<TopicConfig> getTopics() {
+    return topics;
+  }
+
+  public void setTopics(List<TopicConfig> topics) {
+    this.topics = topics;
+  }
 
   public List<String> getBootStrapServers() {
     return bootStrapServers;
@@ -73,4 +73,11 @@ public class KafkaSourceConfig {
     this.schemaConfig = schemaConfig;
   }
 
+  public AuthConfig getAuthConfig() {
+    return authConfig;
+  }
+
+  public void setAuthConfig(AuthConfig authConfig) {
+    this.authConfig = authConfig;
+  }
 }

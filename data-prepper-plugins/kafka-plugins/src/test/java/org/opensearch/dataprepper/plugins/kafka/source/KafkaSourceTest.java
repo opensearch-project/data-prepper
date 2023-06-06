@@ -61,7 +61,6 @@ class KafkaSourceTest {
 
     @Mock
     private TopicConfig topicConfig;
-
     @Mock
     private PipelineDescription pipelineDescription;
 
@@ -85,7 +84,7 @@ class KafkaSourceTest {
 
     @Test
     void test_kafkaSource_start_execution_catch_block() {
-        source = new KafkaSource(null, pluginMetrics,pipelineDescription);
+        source = new KafkaSource(null, pluginMetrics, pipelineDescription);
         KafkaSource spySource = spy(source);
         Assertions.assertThrows(Exception.class, () -> spySource.start(any()));
     }
@@ -110,7 +109,7 @@ class KafkaSourceTest {
         MultithreadedConsumer kafkaSourceConsumer = new MultithreadedConsumer(
                 topicConfig.getGroupId(),
                 topicConfig.getGroupId(),
-                prop, topicConfig,sourceConfig, null, pluginMetrics,null);
+                prop, null,sourceConfig, null, pluginMetrics,null);
         consumers.add(kafkaSourceConsumer);
         return consumers;
     }
@@ -136,7 +135,7 @@ class KafkaSourceTest {
         sourceConfig.setTopics(topicConfigList);
         sourceConfig.setBootStrapServers(Arrays.asList(BOOTSTRAP_SERVERS));
 
-        source = new KafkaSource(sourceConfig, pluginMetrics,pipelineDescription);
+        source = new KafkaSource(sourceConfig, pluginMetrics, pipelineDescription);
         KafkaSource spySource = spy(source);
         doCallRealMethod().when(spySource).start(any());
         spySource.start(any());
@@ -164,7 +163,7 @@ class KafkaSourceTest {
         sourceConfig.setTopics(topicConfigList);
 
         sourceConfig.setBootStrapServers(Arrays.asList(BOOTSTRAP_SERVERS));
-        source = new KafkaSource(sourceConfig, pluginMetrics,pipelineDescription);
+        source = new KafkaSource(sourceConfig, pluginMetrics, pipelineDescription);
         KafkaSource spySource = spy(source);
         ReflectionTestUtils.setField(spySource, "sourceConfig", sourceConfig);
         doCallRealMethod().when(spySource).start(any());
