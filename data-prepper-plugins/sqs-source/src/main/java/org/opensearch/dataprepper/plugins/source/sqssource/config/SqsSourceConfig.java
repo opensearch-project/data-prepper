@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 
 public class SqsSourceConfig {
 
+    @Valid
     @JsonProperty("queues")
     private QueuesOptions queues;
 
