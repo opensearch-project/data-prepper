@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
-public class ElasticsearchAccessor implements SearchAccessor {
+public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFactory {
     @Override
     public SearchContextType getSearchContextType() {
         // todo: implement
@@ -55,5 +55,10 @@ public class ElasticsearchAccessor implements SearchAccessor {
     @Override
     public void deleteScroll(DeleteScrollRequest deleteScrollRequest) {
         //todo: implement
+    }
+
+    @Override
+    public Object getClient() {
+        return null;
     }
 }
