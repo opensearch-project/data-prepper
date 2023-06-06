@@ -188,6 +188,7 @@ The following policy shows the necessary permissions for S3 source. `kms:Decrypt
 * `s3ObjectsFailed` - The number of S3 objects that the S3 Source failed to read.
 * `s3ObjectsNotFound` - The number of S3 objects that the S3 Source failed to read due to a Not Found error from S3. These are also counted toward `s3ObjectsFailed`.
 * `s3ObjectsAccessDenied` - The number of S3 objects that the S3 Source failed to read due to an Access Denied or Forbidden error. These are also counted toward `s3ObjectsFailed`. 
+* `s3ObjectNoRecordsFound` - The number of S3 objects that resulted in 0 records added to the buffer.
 * `s3ObjectsSucceeded` - The number of S3 objects that the S3 Source successfully read.
 * `sqsMessagesReceived` - The number of SQS messages received from the queue by the S3 Source.
 * `sqsMessagesDeleted` - The number of SQS messages deleted from the queue by the S3 Source.
