@@ -224,4 +224,36 @@ class S3InputStreamTest {
         buffer.get(byteArray);
         assertEquals("Test", new String(byteArray));
     }
+
+    @Test
+    void testReadFromClosedFails() throws IOException {
+        InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        s3InputStream.seek(0); // Force opening the stream
+
+        byte[] buffer = new byte[4];
+        s3InputStream.readFully(buffer);
+
+        s3InputStream.close();
+
+        assertThrows(IllegalStateException.class, () -> s3InputStream.readAllBytes());
+    }
+
+    @Test
+    void testReadAfterSeekBackwardsWorks() throws IOException {
+        InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        s3InputStream.seek(5); // Force opening the stream
+
+        byte[] buffer = new byte[4];
+        s3InputStream.readFully(buffer);
+
+        assertEquals("Test", new String(buffer));
+
+        s3InputStream.seek(0);
+        buffer = new byte[4];
+        s3InputStream.readFully(buffer);
+
+        assertEquals(" dat", new String(buffer));
+    }
 }
