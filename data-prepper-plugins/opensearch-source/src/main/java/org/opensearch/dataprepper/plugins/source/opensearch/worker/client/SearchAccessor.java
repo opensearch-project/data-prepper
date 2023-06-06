@@ -4,11 +4,11 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePitRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePitResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePitRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitRequest;
@@ -30,11 +30,11 @@ public interface SearchAccessor {
 
     /**
      * Creates a Point-In-Time (PIT) context for searching
-     * @param createPitRequest the request for creating the PIT context
-     * @return
+     * @param createPointInTimeRequest - The {@link CreatePointInTimeRequest} details
+     * @return {@link CreatePointInTimeResponse} the result of the PIT creation
      * @since 2.4
      */
-    CreatePitResponse createPit(CreatePitRequest createPitRequest);
+    CreatePointInTimeResponse createPit(CreatePointInTimeRequest createPointInTimeRequest);
 
     /**
      * Searches using a PIT context
@@ -46,10 +46,10 @@ public interface SearchAccessor {
 
     /**
      * Deletes PITs
-     * @param deletePitRequest contains the payload for deleting PIT contexts
+     * @param deletePointInTimeRequest The information on which point in time to delete
      * @since 2.4
      */
-    void deletePit(DeletePitRequest deletePitRequest);
+    void deletePit(DeletePointInTimeRequest deletePointInTimeRequest);
 
     /**
      * Creates scroll context
