@@ -126,6 +126,36 @@ subprojects {
                 }
                 because 'Fixes CVE-2022-1471'
             }
+            implementation('org.codehaus.jettison:jettison') {
+                version {
+                    require '1.5.4'
+                }
+                because 'CVE from transitive dependecies'
+            }
+            implementation('net.minidev:json-smart') {
+                version {
+                    require '2.4.11'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('org.eclipse.jetty:jetty-http') {
+                version {
+                    require '11.0.15'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('org.eclipse.jetty:jetty-server') {
+                version {
+                    require '11.0.15'
+                }
+                because 'CVE from transitive dependencies'
+            }
+            implementation('org.jetbrains.kotlin:kotlin-stdlib') {
+                version {
+                    require '1.8.21'
+                }
+                because 'CVE from transitive dependencies'
+            }
         }
     }
     test {
@@ -134,9 +164,16 @@ subprojects {
 
     configurations.all {
         resolutionStrategy.eachDependency { def details ->
-            if (details.requested.group == 'io.netty' && !details.requested.name.startsWith('netty-tcnative')) {
-                details.useVersion '4.1.86.Final'
-                details.because 'Fixes CVE-2022-41881, CVE-2021-21290 and CVE-2022-41915.'
+            if (details.requested.group == 'io.netty') {
+                if (details.requested.name == 'netty') {
+                    details.useTarget group: 'io.netty', name: 'netty-all', version: '4.1.86.Final'
+                    // replace with your desired version
+                } else if (!details.requested.name.startsWith('netty-tcnative')) {
+                    details.useVersion '4.1.86.Final'
+                    details.because 'Fixes CVE-2022-41881, CVE-2021-21290 and CVE-2022-41915.'
+                }
+            } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
+                details.useTarget group: 'org.apache.logging.log4j', name: 'log4j-1.2-api', version: '2.17.1'
             }
         }
     }
@@ -145,7 +182,7 @@ subprojects {
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
         reports {
-            xml.enabled true
+            xml.required
         }
     }
 
@@ -204,8 +241,8 @@ configure(coreProjects) {
     jacocoTestReport {
         dependsOn test // tests are required to run before generating the report
         reports {
-            xml.enabled true
-            csv.enabled false
+            xml.required
+            csv.required
             html.destination file("${buildDir}/reports/jacocoHtml")
         }
     }

@@ -176,7 +176,7 @@ class DefaultPluginFactoryTest {
             final Object convertedConfiguration = mock(Object.class);
             given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
                     .willReturn(convertedConfiguration);
-            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(PluginArgumentsContext.class), eq(pluginName)))
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance);
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting),
@@ -225,16 +225,16 @@ class DefaultPluginFactoryTest {
             final Object convertedConfiguration = mock(Object.class);
             given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
                     .willReturn(convertedConfiguration);
-            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(PluginArgumentsContext.class), eq(pluginName)))
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance);
 
             final List<?> plugins = createObjectUnderTest().loadPlugins(
                     baseClass, pluginSetting, c -> 1);
 
             verify(beanFactoryProvider).get();
-            final ArgumentCaptor<PluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(PluginArgumentsContext.class);
+            final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
-            final PluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
+            final ComponentPluginArgumentsContext actualPluginArgumentsContext = pluginArgumentsContextArgCapture.getValue();
             final List<Class> classes = List.of(PipelineDescription.class);
             final Object[] pipelineDescriptionObj = actualPluginArgumentsContext.createArguments(classes.toArray(new Class[1]));
             assertThat(pipelineDescriptionObj.length, equalTo(1));
@@ -254,7 +254,7 @@ class DefaultPluginFactoryTest {
             final Object convertedConfiguration = mock(Object.class);
             given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
                     .willReturn(convertedConfiguration);
-            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(PluginArgumentsContext.class), eq(pluginName)))
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(pluginName)))
                     .willReturn(expectedInstance1)
                     .willReturn(expectedInstance2)
                     .willReturn(expectedInstance3);
@@ -266,9 +266,9 @@ class DefaultPluginFactoryTest {
                     baseClass, pluginSetting, c -> 3);
 
             verify(beanFactoryProvider).get();
-            final ArgumentCaptor<PluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(PluginArgumentsContext.class);
+            final ArgumentCaptor<ComponentPluginArgumentsContext> pluginArgumentsContextArgCapture = ArgumentCaptor.forClass(ComponentPluginArgumentsContext.class);
             verify(pluginCreator, times(3)).newPluginInstance(eq(expectedPluginClass), pluginArgumentsContextArgCapture.capture(), eq(pluginName));
-            final List<PluginArgumentsContext> actualPluginArgumentsContextList = pluginArgumentsContextArgCapture.getAllValues();
+            final List<ComponentPluginArgumentsContext> actualPluginArgumentsContextList = pluginArgumentsContextArgCapture.getAllValues();
             assertThat(actualPluginArgumentsContextList.size(), equalTo(3));
             actualPluginArgumentsContextList.forEach(pluginArgumentsContext -> {
                 final List<Class> classes = List.of(PipelineDescription.class);
@@ -306,7 +306,7 @@ class DefaultPluginFactoryTest {
             final Object convertedConfiguration = mock(Object.class);
             given(pluginConfigurationConverter.convert(PluginSetting.class, pluginSetting))
                     .willReturn(convertedConfiguration);
-            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(PluginArgumentsContext.class), eq(TEST_SINK_DEPRECATED_NAME)))
+            given(pluginCreator.newPluginInstance(eq(expectedPluginClass), any(ComponentPluginArgumentsContext.class), eq(TEST_SINK_DEPRECATED_NAME)))
                     .willReturn(expectedInstance);
 
             assertThat(createObjectUnderTest().loadPlugin(baseClass, pluginSetting), equalTo(expectedInstance));

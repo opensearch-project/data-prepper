@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.source;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 import software.amazon.awssdk.services.s3.S3AsyncClient;
@@ -19,10 +20,12 @@ import java.time.Duration;
 public class S3ClientBuilderFactory {
     private static final Logger LOG = LoggerFactory.getLogger(S3ClientBuilderFactory.class);
     private final S3SourceConfig s3SourceConfig;
+    private final AwsCredentialsProvider credentialsProvider;
     private final S3Client s3Client;
     private final S3AsyncClient s3AsyncClient;
-    public S3ClientBuilderFactory(final S3SourceConfig s3SourceConfig){
+    public S3ClientBuilderFactory(final S3SourceConfig s3SourceConfig, AwsCredentialsProvider credentialsProvider){
         this.s3SourceConfig = s3SourceConfig;
+        this.credentialsProvider = credentialsProvider;
         this.s3Client = createS3Client();
         this.s3AsyncClient = createS3AsyncClient();
     }
@@ -34,7 +37,7 @@ public class S3ClientBuilderFactory {
         LOG.info("Creating S3 client");
             return S3Client.builder()
                 .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
-                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
+                .credentialsProvider(credentialsProvider)
                     .overrideConfiguration(ClientOverrideConfiguration.builder()
                             .retryPolicy(retryPolicy -> retryPolicy.numRetries(5).build())
                             .build())
@@ -52,7 +55,7 @@ public class S3ClientBuilderFactory {
                 .httpClient(NettyNioAsyncHttpClient.builder()
                         .maxConcurrency(200)
                         .connectionTimeout(Duration.ofMinutes(1)).build())
-                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
+                .credentialsProvider(credentialsProvider)
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(retryPolicy -> retryPolicy.numRetries(5).build())
                         .build())

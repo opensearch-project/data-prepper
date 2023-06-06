@@ -64,3 +64,11 @@ This plugin is compatible with Java 11. See below
 
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
+
+The integration tests for this plugin do not run as part of the Data Prepper build.
+
+The following command runs the integration tests:
+
+```
+./gradlew :data-prepper-plugins:s3-sink:integrationTest -Dtests.s3sink.region=<your-aws-region> -Dtests.s3sink.bucket=<your-bucket>
+```

@@ -8,7 +8,9 @@ package org.opensearch.dataprepper.expression;
 import org.antlr.v4.runtime.RuleContext;
 
 interface Operator<T> {
-    int getNumberOfOperands();
+    default int getNumberOfOperands(final RuleContext ctx) {
+        return 2;
+    }
 
     boolean shouldEvaluate(final RuleContext ctx);
 

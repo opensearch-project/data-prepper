@@ -5,18 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.when;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.hamcrest.CoreMatchers;
@@ -27,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
@@ -36,7 +25,6 @@ import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory
 import org.opensearch.dataprepper.plugins.sink.accumulator.ObjectKey;
 import org.opensearch.dataprepper.plugins.sink.codec.JsonCodec;
 import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.BucketOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 import software.amazon.awssdk.core.ResponseBytes;
@@ -47,6 +35,21 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
 import software.amazon.awssdk.services.s3.model.S3Object;
+
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class S3SinkServiceIT {
@@ -64,8 +67,6 @@ class S3SinkServiceIT {
     private AwsAuthenticationOptions awsAuthenticationOptions;
     @Mock
     private ObjectKeyOptions objectKeyOptions;
-    @Mock
-    private BucketOptions bucketOptions;
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
@@ -92,18 +93,15 @@ class S3SinkServiceIT {
 
         when(objectKeyOptions.getNamePattern()).thenReturn("elb-log-%{yyyy-MM-dd'T'hh-mm-ss}");
         when(objectKeyOptions.getPathPrefix()).thenReturn(PATH_PREFIX);
-        when(bucketOptions.getBucketName()).thenReturn(bucketName);
-        when(bucketOptions.getObjectKeyOptions()).thenReturn(objectKeyOptions);
+        when(s3SinkConfig.getBucketName()).thenReturn(bucketName);
+        when(s3SinkConfig.getObjectKeyOptions()).thenReturn(objectKeyOptions);
         when(thresholdOptions.getEventCount()).thenReturn(2);
         when(thresholdOptions.getMaximumSize()).thenReturn(ByteCount.parse("2mb"));
         when(thresholdOptions.getEventCollectTimeOut()).thenReturn(Duration.parse("PT3M"));
         when(s3SinkConfig.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(s3SinkConfig.getBucketOptions()).thenReturn(bucketOptions);
-        when(s3SinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
-        when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(s3region));
 
-        lenient().when(pluginMetrics.counter(S3SinkService.SNAPSHOT_SUCCESS)).thenReturn(snapshotSuccessCounter);
-        lenient().when(pluginMetrics.counter(S3SinkService.SNAPSHOT_FAILED)).thenReturn(snapshotFailedCounter);
+        lenient().when(pluginMetrics.counter(S3SinkService.OBJECTS_SUCCEEDED)).thenReturn(snapshotSuccessCounter);
+        lenient().when(pluginMetrics.counter(S3SinkService.OBJECTS_FAILED)).thenReturn(snapshotFailedCounter);
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS)).
                 thenReturn(numberOfRecordsSuccessCounter);
         lenient().when(pluginMetrics.counter(S3SinkService.NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED)).
@@ -136,7 +134,7 @@ class S3SinkServiceIT {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, pluginMetrics);
     }
 
     private int gets3ObjectCount() {
@@ -187,6 +185,7 @@ class S3SinkServiceIT {
     private static Record<Event> createRecord() {
         Map<String, Object> json = generateJson();
         final JacksonEvent event = JacksonLog.builder().withData(json).build();
+        event.setEventHandle(mock(EventHandle.class));
         return new Record<>(event);
     }
 

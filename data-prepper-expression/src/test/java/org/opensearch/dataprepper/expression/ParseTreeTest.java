@@ -22,6 +22,8 @@ import static org.opensearch.dataprepper.expression.util.ContextMatcherFactory.i
 import static org.opensearch.dataprepper.expression.util.JsonPointerMatcher.isJsonPointerUnaryTree;
 import static org.opensearch.dataprepper.expression.util.FunctionMatcher.isFunctionUnaryTree;
 import static org.opensearch.dataprepper.expression.util.LiteralMatcher.isUnaryTree;
+import static org.opensearch.dataprepper.expression.util.TerminalNodeMatcher.isTerminalNode;
+
 
 class ParseTreeTest extends GrammarTest {
 
@@ -224,9 +226,14 @@ class ParseTreeTest extends GrammarTest {
         final ParserRuleContext expression = parseExpression("/status_code == -200");
 
         final DiagnosingMatcher<ParseTree> lhs = isJsonPointerUnaryTree();
+        final DiagnosingMatcher<ParseTree> arithFact = isParseTree(
+                ARITHMETIC_TERM
+        ).withChildrenMatching(
+            isTerminalNode()
+        );
         final Function<DiagnosingMatcher<ParseTree>, DiagnosingMatcher<ParseTree>> isNegative =
-                rhs -> hasContext(UNARY_OPERATOR_EXPRESSION, isOperator(UNARY_OPERATOR), rhs);
-        final DiagnosingMatcher<ParseTree> doubleNegative200 = isNegative.apply(isUnaryTree());
+                rhs -> hasContext(ARITHMETIC_UNARY_EXPRESSION, isOperator(ARITHMETIC_UNARY_OPERATOR), rhs);
+        final DiagnosingMatcher<ParseTree> doubleNegative200 = isNegative.apply(arithFact);
 
         final DiagnosingMatcher<ParseTree> rhs = isParseTree(
                 REGEX_OPERATOR_EXPRESSION,
@@ -244,7 +251,6 @@ class ParseTreeTest extends GrammarTest {
                 isOperator(EQUALITY_OPERATOR),
                 rhs
         );
-
 
         assertThat(expression, isExpression(equalsExpression));
         assertThat(errorListener.isErrorFound(), is(false));

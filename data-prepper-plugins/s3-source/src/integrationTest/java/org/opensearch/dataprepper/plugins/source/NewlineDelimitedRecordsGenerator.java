@@ -10,7 +10,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputCodec;
 import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedInputConfig;
 
-import java.io.OutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -29,11 +30,13 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
     private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MMM/yyyy:hh:mm:ss");
 
     @Override
-    public void write(final int numberOfRecords, final OutputStream outputStream) {
-        try (final PrintWriter printWriter = new PrintWriter(outputStream)) {
+    public void write(final File file, int numberOfRecords) {
+        try (final PrintWriter printWriter = new PrintWriter(file)) {
             for (int i = 0; i < numberOfRecords; i++) {
                 writeLine(printWriter);
             }
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -68,5 +71,10 @@ class NewlineDelimitedRecordsGenerator implements RecordsGenerator {
     @Override
     public String toString() {
         return this.getClass().getSimpleName();
+    }
+
+    @Override
+    public boolean canCompress() {
+        return true;
     }
 }

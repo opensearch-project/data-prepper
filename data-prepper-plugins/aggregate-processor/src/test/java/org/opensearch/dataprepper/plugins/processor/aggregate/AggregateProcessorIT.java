@@ -28,6 +28,8 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggre
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.CountAggregateActionConfig;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PercentSamplerAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.PercentSamplerAggregateActionConfig;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.TailSamplerAggregateActionConfig;
+import org.opensearch.dataprepper.plugins.processor.aggregate.actions.TailSamplerAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterMode;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.actions.RateLimiterAggregateActionConfig;
@@ -54,6 +56,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.closeTo;
@@ -61,6 +64,8 @@ import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.collection.IsIn.in;
@@ -68,6 +73,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doAnswer;
 
 /**
  * These integration tests are executing concurrent code that is inherently difficult to test, and even more difficult to recreate a failed test.
@@ -81,11 +87,14 @@ public class AggregateProcessorIT {
     private static final int NUM_UNIQUE_EVENTS_PER_BATCH = 8;
     private static final int NUM_THREADS = 100;
     private static final int GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE = 2;
+    private static final int ERROR_STATUS = 2;
     @Mock
     private AggregateProcessorConfig aggregateProcessorConfig;
 
     @Mock
     RateLimiterAggregateActionConfig rateLimiterAggregateActionConfig;
+    @Mock
+    TailSamplerAggregateActionConfig tailSamplerAggregateActionConfig;
 
     private AggregateAction aggregateAction;
     private PluginMetrics pluginMetrics;
@@ -502,6 +511,55 @@ public class AggregateProcessorIT {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {20, 40, 60})
+    void aggregateWithTailSamplerAction(final int testPercent) throws InterruptedException, NoSuchFieldException, IllegalAccessException {
+        final Duration testWaitPeriod = Duration.ofSeconds(3);
+        final String testCondition = "/status == "+ERROR_STATUS;
+        when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
+        when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
+        when(tailSamplerAggregateActionConfig.getCondition()).thenReturn(testCondition);
+        doAnswer(a -> {
+            Event event = (Event)a.getArgument(1);
+            return event.get("status", Integer.class) == ERROR_STATUS;
+        }).when(expressionEvaluator).evaluateConditional(eq(testCondition), any(Event.class));
+        aggregateAction = new TailSamplerAggregateAction(tailSamplerAggregateActionConfig, expressionEvaluator);
+        when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class))).thenReturn(aggregateAction);
+        when(aggregateProcessorConfig.getGroupDuration()).thenReturn(Duration.ofSeconds(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE));
+        when(aggregateProcessorConfig.getIdentificationKeys()).thenReturn(List.of("traceId"));
+        final AggregateProcessor objectUnderTest = createObjectUnderTest();
+        final ExecutorService executorService = Executors.newFixedThreadPool(NUM_THREADS);
+
+        final int numberOfErrorTraces = 2;
+        final int numberOfSpans = 5;
+        eventBatch = getBatchOfEventsForTailSampling(numberOfErrorTraces, numberOfSpans);
+        objectUnderTest.doExecute(eventBatch);
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        final CountDownLatch countDownLatch = new CountDownLatch(NUM_THREADS);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            executorService.execute(() -> {
+                final List<Record<Event>> recordsOut = (List<Record<Event>>) objectUnderTest.doExecute(eventBatch);
+                countDownLatch.countDown();
+            });
+        }
+        Thread.sleep(GROUP_DURATION_FOR_ONLY_SINGLE_CONCLUDE * 1000);
+        boolean allThreadsFinished = countDownLatch.await(5L, TimeUnit.SECONDS);
+        assertThat(allThreadsFinished, equalTo(true));
+        List<Event> errorEventList = eventBatch.stream().map(Record::getData).filter(event -> {
+            Event ev = ((Event)event);
+            return ev.get("status", Integer.class) == ERROR_STATUS;
+        }).collect(Collectors.toList());
+        Thread.sleep(testWaitPeriod.toMillis()*2);
+        Collection<Record<Event>> results = objectUnderTest.doExecute(new ArrayList<Record<Event>>());
+        Set<Event> resultsSet =  results.stream().map(Record::getData).collect(Collectors.toSet());
+        assertThat(results.size(), greaterThanOrEqualTo(numberOfErrorTraces*numberOfSpans));
+        assertThat(results.size(), lessThan(eventBatch.size()*(NUM_THREADS+1)));
+        for (final Event event : errorEventList) {
+            assertTrue(resultsSet.contains(event));
+        }
+    }
+
     private List<Record<Event>> getBatchOfEvents(boolean withSameValue) {
         final List<Record<Event>> events = new ArrayList<>();
 
@@ -527,6 +585,27 @@ public class AggregateProcessorIT {
         eventMap.put("secondRandomNumber", i);
         eventMap.put("thirdRandomNumber", i);
         return eventMap;
+    }
+
+    private List<Record<Event>> getBatchOfEventsForTailSampling(final int numberOfErrorTraces, final int numberOfSpans) {
+        final List<Record<Event>> events = new ArrayList<>();
+        final int numberOfTraces = numberOfErrorTraces + 10;
+
+        for (int i = 0; i < numberOfTraces; i++) {
+            final int status = (i < numberOfErrorTraces) ? ERROR_STATUS : 0;
+            for (int j = 0; j < numberOfSpans; j++) {
+                final Map<String, Object> eventMap = new HashMap<>();
+                eventMap.put("traceId", 10000+i);
+                eventMap.put("spanId", j);
+                eventMap.put("status", status);
+                final Event event = JacksonEvent.builder()
+                        .withEventType("event")
+                        .withData(eventMap)
+                        .build();
+                events.add(new Record<>(event));
+            }
+        }
+        return events;
     }
 
 }

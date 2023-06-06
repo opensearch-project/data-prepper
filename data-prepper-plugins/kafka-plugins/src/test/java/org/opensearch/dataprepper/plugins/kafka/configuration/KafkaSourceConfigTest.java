@@ -4,7 +4,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 
 import java.io.FileReader;
@@ -78,10 +78,10 @@ class KafkaSourceConfigTest {
 	void test_setters(){
 		kafkaSourceConfig = new KafkaSourceConfig();
 		kafkaSourceConfig.setBootStrapServers(new ArrayList<>(Arrays.asList("127.0.0.1:9092")));
-		TopicsConfig topicsConfig = mock(TopicsConfig.class);
-		kafkaSourceConfig.setTopics(Collections.singletonList(topicsConfig));
+		TopicConfig topicConfig = mock(TopicConfig.class);
+		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
 
 		assertEquals(Arrays.asList("127.0.0.1:9092"), kafkaSourceConfig.getBootStrapServers());
-		assertEquals(Collections.singletonList(topicsConfig), kafkaSourceConfig.getTopics());
+		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
 	}
 }

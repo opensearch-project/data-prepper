@@ -5,30 +5,46 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.configuration;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.List;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.constraints.AssertTrue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.Map;
 
 public class SearchConfiguration {
+
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Logger LOG = LoggerFactory.getLogger(SearchConfiguration.class);
 
     @JsonProperty("batch_size")
     private Integer batchSize;
 
-    @JsonProperty("expand_wildcards")
-    private WildCardOptions expandWildcards = WildCardOptions.ALL;
+    @JsonProperty("query")
+    private String queryString;
 
-    @JsonProperty("sorting")
-    private List<SortingConfiguration> sorting;
+    @JsonIgnore
+    private Map<String, Object> queryMap;
+
 
     public Integer getBatchSize() {
         return batchSize;
     }
 
-    public WildCardOptions getExpandWildcards() {
-        return expandWildcards;
+    public Map<String, Object> getQuery() {
+        return queryMap;
     }
 
-    public List<SortingConfiguration> getSorting() {
-        return sorting;
+    @AssertTrue(message = "query is not a valid json string")
+    boolean isQueryValid() {
+        try {
+            queryMap = objectMapper.readValue(queryString, new TypeReference<>() {});
+            return true;
+        } catch (final Exception e) {
+            LOG.error("Invalid query json string: ", e);
+            return false;
+        }
     }
 }

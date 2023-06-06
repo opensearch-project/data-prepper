@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.event.DefaultEventFactory;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -29,6 +30,7 @@ import java.util.function.Function;
  * @since 1.2
  */
 @Named
+@DependsOn({"extensionsApplier"})
 public class DefaultPluginFactory implements PluginFactory {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultPluginFactory.class);
 
@@ -68,7 +70,7 @@ public class DefaultPluginFactory implements PluginFactory {
         final String pluginName = pluginSetting.getName();
         final Class<? extends T> pluginClass = getPluginClass(baseClass, pluginName);
 
-        final PluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass);
+        final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass);
 
         return pluginCreator.newPluginInstance(pluginClass, constructionContext, pluginName);
     }
@@ -86,7 +88,7 @@ public class DefaultPluginFactory implements PluginFactory {
         if(numberOfInstances == null || numberOfInstances < 0)
             throw new IllegalArgumentException("The numberOfInstances must be provided as a non-negative integer.");
 
-        final PluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass);
+        final ComponentPluginArgumentsContext constructionContext = getConstructionContext(pluginSetting, pluginClass);
 
         final List<T> plugins = new ArrayList<>(numberOfInstances);
         for (int i = 0; i < numberOfInstances; i++) {
@@ -95,13 +97,13 @@ public class DefaultPluginFactory implements PluginFactory {
         return plugins;
     }
 
-    private <T> PluginArgumentsContext getConstructionContext(final PluginSetting pluginSetting, final Class<? extends T> pluginClass) {
+    private <T> ComponentPluginArgumentsContext getConstructionContext(final PluginSetting pluginSetting, final Class<? extends T> pluginClass) {
         final DataPrepperPlugin pluginAnnotation = pluginClass.getAnnotation(DataPrepperPlugin.class);
 
         final Class<?> pluginConfigurationType = pluginAnnotation.pluginConfigurationType();
         final Object configuration = pluginConfigurationConverter.convert(pluginConfigurationType, pluginSetting);
 
-        return new PluginArgumentsContext.Builder()
+        return new ComponentPluginArgumentsContext.Builder()
                 .withPluginSetting(pluginSetting)
                 .withPipelineDescription(pluginSetting)
                 .withPluginConfiguration(configuration)

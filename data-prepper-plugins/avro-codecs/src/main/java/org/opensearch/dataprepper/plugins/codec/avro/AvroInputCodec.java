@@ -9,12 +9,13 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericFixed;
 
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.util.Utf8;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.codec.DecompressionEngine;
 import org.opensearch.dataprepper.model.codec.InputCodec;
+import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
@@ -41,12 +42,17 @@ public class AvroInputCodec implements InputCodec {
 
     @Override
     public void parse(InputStream inputStream, Consumer<Record<Event>> eventConsumer) throws IOException {
-
-
         Objects.requireNonNull(inputStream);
         Objects.requireNonNull(eventConsumer);
         parseAvroStream(inputStream, eventConsumer);
+    }
 
+    @Override
+    public void parse(final InputFile inputFile, final DecompressionEngine decompressionEngine, final Consumer<Record<Event>> eventConsumer) throws IOException {
+        Objects.requireNonNull(inputFile);
+        Objects.requireNonNull(eventConsumer);
+
+        parse(decompressionEngine.createInputStream(inputFile.newStream()), eventConsumer);
     }
 
     private void parseAvroStream(final InputStream inputStream, final Consumer<Record<Event>> eventConsumer) {
@@ -60,14 +66,10 @@ public class AvroInputCodec implements InputCodec {
 
             while (stream.hasNext()) {
 
-                final Map<String, Object> eventData = new HashMap<>();
                 GenericRecord avroRecord= stream.next();
 
-                for(Schema.Field field : schema.getFields()) {
-                    Object value=decodeValueIfEncoded(avroRecord.get(field.name()));
-                    eventData.put(field.name(), value);
+                final Map<String, Object> eventData = convertRecordToMap(avroRecord, schema);
 
-                }
                 final Event event = JacksonLog.builder().withData(eventData).build();
                 eventConsumer.accept(new Record<>(event));
             }
@@ -78,20 +80,31 @@ public class AvroInputCodec implements InputCodec {
         }
     }
 
-    private static Object decodeValueIfEncoded(Object rawValue){
-        try{
-            if(rawValue instanceof Utf8){
-                byte[] utf8Bytes = rawValue.toString().getBytes("UTF-8");
-                return new String(utf8Bytes, "UTF-8");
+    private static Map<String, Object> convertRecordToMap(GenericRecord record, Schema schema) throws Exception {
+
+        final Map<String, Object> eventData = new HashMap<>();
+
+        for(Schema.Field field : schema.getFields()){
+
+            Object value = record.get(field.name());
+
+            if(value instanceof GenericRecord){
+                Schema schemaOfNestedRecord = ((GenericRecord) value).getSchema();
+                value = convertRecordToMap((GenericRecord) value, schemaOfNestedRecord);
             }
-            else if(rawValue instanceof GenericEnumSymbol || rawValue instanceof GenericData.EnumSymbol || rawValue instanceof GenericFixed || rawValue instanceof GenericRecord){
-                throw new Exception("The Avro codec does not support this data type presently");
+
+            else if(value instanceof GenericEnumSymbol || value instanceof GenericData.EnumSymbol){
+                value = value.toString();
             }
-            return rawValue;
+
+            else if(value instanceof Utf8){
+                byte[] utf8Bytes = value.toString().getBytes("UTF-8");
+                value = new String(utf8Bytes, "UTF-8");
+            }
+
+            eventData.put(field.name(), value);
         }
-        catch (Exception e){
-            return rawValue;
-        }
+        return eventData;
     }
 
 }

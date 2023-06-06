@@ -6,8 +6,6 @@ import org.opensearch.dataprepper.expression.antlr.DataPrepperExpressionParser;
 import static com.google.common.base.Preconditions.checkArgument;
 
 abstract class BinaryOperator<T> implements Operator<T> {
-    private static final int NUMBER_OF_OPERANDS = 2;
-
     private final int symbol;
     private final int shouldEvaluateRuleIndex;
     protected final String displayName;
@@ -16,11 +14,6 @@ abstract class BinaryOperator<T> implements Operator<T> {
         this.symbol = symbol;
         this.shouldEvaluateRuleIndex = shouldEvaluateRuleIndex;
         displayName = DataPrepperExpressionParser.VOCABULARY.getDisplayName(symbol);
-    }
-
-    @Override
-    public int getNumberOfOperands() {
-        return NUMBER_OF_OPERANDS;
     }
 
     @Override
@@ -36,7 +29,7 @@ abstract class BinaryOperator<T> implements Operator<T> {
 
     @Override
     public T evaluate(final Object ... args) {
-        checkArgument(args.length == 2, displayName + " requires operands length to be 2.");
+        checkArgument(args.length == getNumberOfOperands(null), displayName + " requires operands length to be "+ getNumberOfOperands(null)+".");
         return checkedEvaluate(args[0], args[1]);
     }
 

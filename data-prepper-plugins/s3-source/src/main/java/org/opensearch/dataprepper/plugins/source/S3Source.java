@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -16,15 +18,15 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanScanOptions;
-import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
-import org.opensearch.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
-import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
+import org.opensearch.dataprepper.plugins.source.ownership.ConfigBucketOwnerProviderFactory;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.services.s3.model.CompressionType;
 
 import java.util.Objects;
@@ -41,18 +43,25 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
     private final PluginFactory pluginFactory;
     private final Optional<S3ScanScanOptions> s3ScanScanOptional;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final boolean acknowledgementsEnabled;
     private SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
 
     @DataPrepperPluginConstructor
-    public S3Source(PluginMetrics pluginMetrics, final S3SourceConfig s3SourceConfig, final PluginFactory pluginFactory, final AcknowledgementSetManager acknowledgementSetManager) {
+    public S3Source(
+            final PluginMetrics pluginMetrics,
+            final S3SourceConfig s3SourceConfig,
+            final PluginFactory pluginFactory,
+            final AcknowledgementSetManager acknowledgementSetManager,
+            final AwsCredentialsSupplier awsCredentialsSupplier) {
         this.pluginMetrics = pluginMetrics;
         this.s3SourceConfig = s3SourceConfig;
         this.pluginFactory = pluginFactory;
         this.s3ScanScanOptional = Optional.ofNullable(s3SourceConfig.getS3ScanScanOptions());
         this.acknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
-        this.acknowledgementSetManager = acknowledgementSetManager;   
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.awsCredentialsSupplier = awsCredentialsSupplier;
     }
 
     @Override
@@ -65,12 +74,14 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
         if (buffer == null) {
             throw new IllegalStateException("Buffer provided is null");
         }
+        final AwsAuthenticationAdapter awsAuthenticationAdapter = new AwsAuthenticationAdapter(awsCredentialsSupplier, s3SourceConfig);
+        final AwsCredentialsProvider credentialsProvider = awsAuthenticationAdapter.getCredentialsProvider();
         final ConfigBucketOwnerProviderFactory configBucketOwnerProviderFactory = new ConfigBucketOwnerProviderFactory();
         final BucketOwnerProvider bucketOwnerProvider = configBucketOwnerProviderFactory.createBucketOwnerProvider(s3SourceConfig);
         Optional<S3SelectOptions> s3SelectOptional = Optional.ofNullable(s3SourceConfig.getS3SelectOptions());
         S3ObjectPluginMetrics s3ObjectPluginMetrics = new S3ObjectPluginMetrics(pluginMetrics);
 
-        S3ClientBuilderFactory s3ClientBuilderFactory = new S3ClientBuilderFactory(s3SourceConfig);
+        S3ClientBuilderFactory s3ClientBuilderFactory = new S3ClientBuilderFactory(s3SourceConfig, credentialsProvider);
         final S3ObjectHandler s3Handler;
         final S3ObjectRequest.Builder s3ObjectRequestBuilder = new S3ObjectRequest.Builder(buffer, s3SourceConfig.getNumberOfRecordsToAccumulate(),
                 s3SourceConfig.getBufferTimeout(), s3ObjectPluginMetrics);
@@ -101,13 +112,13 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
                     .codec(codec)
                     .eventConsumer(eventMetadataModifier)
                     .s3Client(s3ClientBuilderFactory.getS3Client())
-                    .compressionEngine(s3SourceConfig.getCompression().getEngine())
+                    .compressionOption(s3SourceConfig.getCompression())
                     .build();
             s3Handler = new S3ObjectWorker(s3ObjectRequest);
         }
         if(Objects.nonNull(s3SourceConfig.getSqsOptions())) {
             final S3Service s3Service = new S3Service(s3Handler);
-            sqsService = new SqsService(acknowledgementSetManager, s3SourceConfig, s3Service, pluginMetrics);
+            sqsService = new SqsService(acknowledgementSetManager, s3SourceConfig, s3Service, pluginMetrics, credentialsProvider);
             sqsService.start();
         }
         if(s3ScanScanOptional.isPresent()) {

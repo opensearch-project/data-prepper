@@ -18,30 +18,30 @@ public class TailSamplerAggregateActionConfig {
     
     @JsonProperty("percent")
     @NotNull
-    private double percent;
+    private Integer percent;
     
-    @JsonProperty("error_condition")
-    private String errorCondition;
+    @JsonProperty("condition")
+    private String condition;
 
     @AssertTrue(message = "Percent value must be greater than 0.0 and less than 100.0")
     boolean isPercentValid() {
         return percent > 0.0 && percent < 100.0;
     }
 
-    public double getPercent() {
+    public Integer getPercent() {
         return percent;
     }
     
-    @AssertTrue(message = "Wait period value must be greater than 0 and less than 600")
+    @AssertTrue(message = "Wait period value must be greater than 0 and less than 60")
     boolean isWaitPeriodValid() {
-        return waitPeriod.getSeconds() > 0 && waitPeriod.getSeconds() <= 600;
+        return waitPeriod.getSeconds() > 0 && waitPeriod.getSeconds() <= 60;
     }
 
     public Duration getWaitPeriod() {
         return waitPeriod;
     }
 
-    public String getErrorCondition() {
-        return errorCondition;
+    public String getCondition() {
+        return condition;
     }
 }

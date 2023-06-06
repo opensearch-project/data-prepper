@@ -7,8 +7,9 @@ package org.opensearch.dataprepper.model.source.coordinator;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 /**
  * Interface to be passed to {@link org.opensearch.dataprepper.model.source.Source} to enable distribution and coordination of work
@@ -30,15 +31,17 @@ public interface SourceCoordinator<T> {
      * This method will attempt to acquire a partition for this instance of the source to work on, and if no partition is acquired, the partitionCreatorSupplier will be called to potentially create
      * new partitions. This method will then attempt to acquire a partition again after creating new partitions from the supplier, and will return the result of that attempt whether a partition was
      * acquired successfully or not. It is recommended to backoff and retry at the source level when this method returns an empty Optional.
-     * @param partitionCreatorSupplier - The Supplier that will provide partitions. This supplier will be called by the SourceCoordinator when no partitions are acquired
-     *     for this instance of Data Prepper.
+     * @param partitionCreationSupplier - The Function that will provide partitions. This supplier will be called by the SourceCoordinator when no partitions are acquired
+     *     for this instance of Data Prepper. This function will be passed a global state map, which will be empty until it is used and modified in the supplier function passed.
+     *     If the global state map is not needed, then it can be ignored. Updating the global state map will save it, so the next time the supplier function is run,
+     *     it will contain the most recent state from the previous supplier function run.
      * @return {@link SourcePartition} with the details about how to process this partition. Will repeatedly return the partition until
      * {@link SourceCoordinator#completePartition(String)}
      * or {@link SourceCoordinator#closePartition(String, Duration, int)} are called by the source,
      * or until the partition ownership times out.
      * @since 2.2
      */
-    Optional<SourcePartition<T>> getNextPartition(final Supplier<List<PartitionIdentifier>> partitionCreatorSupplier);
+    Optional<SourcePartition<T>> getNextPartition(final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier);
 
     /**
      * Should be called by the source when it has fully processed a given partition
@@ -75,9 +78,9 @@ public interface SourceCoordinator<T> {
      * @param partitionKey           partition key that uniquely represents the partition
      * @param partitionProgressState The object to represent the latest partition progress state
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException if the partition key could not be found in the distributed store.
-             Grab a new partition to process with {@link #getNextPartition(Supplier)} ()}
+             Grab a new partition to process with {@link #getNextPartition(Function)} ()}
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException if the partition is not owned by this instance of SourceCoordinator.
-     *      Grab a new partition to process with {@link #getNextPartition(Supplier)} ()}
+     *      Grab a new partition to process with {@link #getNextPartition(Function)} ()}
      *
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition state can not be saved
      * @since 2.2
@@ -86,7 +89,7 @@ public interface SourceCoordinator<T> {
 
     /**
      * Should be called by the source when it is shutting down to indicate that it will no longer be able to perform work on partitions,
-     * or can be called to give up ownership of its partitions in order to pick up new ones with {@link #getNextPartition(Supplier)} ()}.
+     * or can be called to give up ownership of its partitions in order to pick up new ones with {@link #getNextPartition(Function)} ()}.
      * @throws org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException if the partition could not be given up due to some failure
      * @since 2.2
      */
