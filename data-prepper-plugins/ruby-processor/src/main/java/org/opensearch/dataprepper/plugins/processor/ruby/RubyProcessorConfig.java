@@ -11,8 +11,8 @@ import java.util.Map;
 import java.util.Objects;
 
 public class RubyProcessorConfig {
-    private static final Boolean DEFAULT_SEND_MULTIPLE_EVENTS = false;
-    private static final Boolean DEFAULT_IGNORE_EXCEPTION = false;
+    static final Boolean DEFAULT_SEND_MULTIPLE_EVENTS = false;
+    static final Boolean DEFAULT_IGNORE_EXCEPTION = false;
 
     private static final String INIT_METHOD_SIGNATURE = "def init(";
     private Boolean initDefined; // todo: make this an optional?
@@ -33,23 +33,6 @@ public class RubyProcessorConfig {
 
     @JsonProperty("ignore_exception")
     private Boolean ignoreException = DEFAULT_IGNORE_EXCEPTION;
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
-    public void setInitCode(String initCode) {
-        this.initCode = initCode;
-    }
-
-    public void setParams(Map<String, String> params) {
-        this.params = params;
-    }
-
     public Boolean isSendMultipleEvents() {
         return sendMultipleEvents;
     }
@@ -62,7 +45,7 @@ public class RubyProcessorConfig {
         this.sendMultipleEvents = sendMultipleEvents;
     }
 
-    public Boolean getIgnoreException() {
+    public Boolean isIgnoreException() {
         return ignoreException;
     }
 
@@ -88,15 +71,21 @@ public class RubyProcessorConfig {
 
     @AssertTrue(message = "exactly one of {code, path} must be specified.")
     boolean isExactlyOneOfCodeAndPathSpecified() {
-        return true;
+        return Objects.nonNull(code) ^ Objects.nonNull(path);
     }
 
     @AssertTrue(message = "init must be used with code.")
-    boolean isInitSpecifiedWithCode() {
+    boolean isInitSpecifiedWithCode() { // todo: rename to "OnlyWithCode"?
         return Objects.isNull(initCode) || !Objects.isNull(code); // case where init, path specified should be covered by isExactlyOneOfCodeAndPathSpecified()
     }
 
+    @AssertTrue
     boolean isSendMultipleEventsOnlySpecifiedWithPath() {
         return sendMultipleEvents.equals(Boolean.FALSE) || !Objects.isNull(path);
+    }
+
+    @AssertTrue(message = "file path must be specified when using params")
+    boolean areParamsSpecifiedWithFilePath() { // todo: rename for clarity?
+        return Objects.isNull(params) || Objects.nonNull(path); // equiv to assert(params implies path)
     }
 }
