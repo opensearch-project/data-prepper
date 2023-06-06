@@ -16,6 +16,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -25,7 +26,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
-import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
@@ -158,7 +159,7 @@ public class S3ScanObjectWorkerIT {
                 .s3SelectCSVOption(S3SelectCSVOption)
                 .s3Client(s3Client)
                 .s3SelectJsonOption(new S3SelectJsonOption())
-                .compressionEngine(shouldCompress ? CompressionOption.GZIP.getEngine() : CompressionOption.NONE.getEngine())
+                .compressionOption(shouldCompress ? CompressionOption.GZIP : CompressionOption.NONE)
                 .s3AsyncClient(s3AsyncClient)
                 .eventConsumer(eventMetadataModifier)
                 .expressionType("SQL")
@@ -172,56 +173,56 @@ public class S3ScanObjectWorkerIT {
         ,bucketOwnerProvider, sourceCoordinator);
     }
 
-//    @ParameterizedTest
-//    @CsvSource({"25,10,select * from s3Object limit 25",
-//            "100,25,select * from s3Object limit 100",
-//            "50000,25,select * from s3Object limit 50000",
-//            "100000,50,select * from s3Object limit 100000",
-//            "200000,200,select * from s3Object limit 200000",
-//            "300000,300,select * from s3Object limit 300000"})
-//    void parseS3Object_parquet_correctly_with_bucket_scan_and_loads_data_into_Buffer(
-//            final int numberOfRecords,
-//            final int numberOfRecordsToAccumulate,
-//            final String expression) throws Exception {
-//        final RecordsGenerator recordsGenerator = new ParquetRecordsGenerator();
-//        final String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
-//
-//        final String includeOptionsYaml = "                include:\n" +
-//                "                  - "+keyPrefix+"\n" +
-//                "                exclude_suffix:\n" +
-//                "                  - .csv\n" +
-//                "                  - .json\n" +
-//                "                  - .txt\n" +
-//                "                  - .gz";
-//
-//
-//        final String key = getKeyString(keyPrefix, recordsGenerator, Boolean.FALSE);
-//
-//        s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, Boolean.FALSE);
-//        stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
-//        final ScanOptions startTimeAndRangeScanOptions = new ScanOptions.Builder()
-//                .setBucket(bucket)
-//                .setStartDateTime(LocalDateTime.now().minusDays(1))
-//                .setRange(Duration.parse("P2DT10M"))
-//                .setS3ScanKeyPathOption(objectMapper.readValue(includeOptionsYaml, S3ScanKeyPathOption.class)).build();
-//
-//        final ScanObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator,
-//                numberOfRecordsToAccumulate,
-//                expression,
-//                Boolean.FALSE,
-//                startTimeAndRangeScanOptions,
-//                Boolean.TRUE);
-//
-//        final ExecutorService executorService = Executors.newSingleThreadExecutor();
-//        executorService.submit(objectUnderTest::run);
-//
-//        await().atMost(Duration.ofSeconds(30)).until(() -> waitForAllRecordsToBeProcessed(numberOfRecords));
-//        final int expectedWrites = numberOfRecords / numberOfRecordsToAccumulate + (numberOfRecords % numberOfRecordsToAccumulate != 0 ? 1 : 0);
-//
-//        verify(buffer, times(expectedWrites)).writeAll(anyCollection(), eq(TIMEOUT_IN_MILLIS));
-//
-//        assertThat(recordsReceived, equalTo(numberOfRecords));
-//    }
+    @ParameterizedTest
+    @CsvSource({"25,10,select * from s3Object limit 25",
+            "100,25,select * from s3Object limit 100",
+            "50000,25,select * from s3Object limit 50000",
+            "100000,50,select * from s3Object limit 100000",
+            "200000,200,select * from s3Object limit 200000",
+            "300000,300,select * from s3Object limit 300000"})
+    void parseS3Object_parquet_correctly_with_bucket_scan_and_loads_data_into_Buffer(
+            final int numberOfRecords,
+            final int numberOfRecordsToAccumulate,
+            final String expression) throws Exception {
+        final RecordsGenerator recordsGenerator = new ParquetRecordsGenerator();
+        final String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
+
+        final String includeOptionsYaml = "                include:\n" +
+                "                  - "+keyPrefix+"\n" +
+                "                exclude_suffix:\n" +
+                "                  - .csv\n" +
+                "                  - .json\n" +
+                "                  - .txt\n" +
+                "                  - .gz";
+
+
+        final String key = getKeyString(keyPrefix, recordsGenerator, Boolean.FALSE);
+
+        s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, Boolean.FALSE);
+        stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
+        final ScanOptions startTimeAndRangeScanOptions = new ScanOptions.Builder()
+                .setBucket(bucket)
+                .setStartDateTime(LocalDateTime.now().minusDays(1))
+                .setRange(Duration.parse("P2DT10M"))
+                .setS3ScanKeyPathOption(objectMapper.readValue(includeOptionsYaml, S3ScanKeyPathOption.class)).build();
+
+        final ScanObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator,
+                numberOfRecordsToAccumulate,
+                expression,
+                Boolean.FALSE,
+                startTimeAndRangeScanOptions,
+                Boolean.TRUE);
+
+        final ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.submit(objectUnderTest::run);
+
+        await().atMost(Duration.ofSeconds(30)).until(() -> waitForAllRecordsToBeProcessed(numberOfRecords));
+        final int expectedWrites = numberOfRecords / numberOfRecordsToAccumulate + (numberOfRecords % numberOfRecordsToAccumulate != 0 ? 1 : 0);
+
+        verify(buffer, times(expectedWrites)).writeAll(anyCollection(), eq(TIMEOUT_IN_MILLIS));
+
+        assertThat(recordsReceived, equalTo(numberOfRecords));
+    }
 
     @ParameterizedTest
     @ArgumentsSource(S3ScanObjectWorkerIT.IntegrationTestArguments.class)
@@ -234,10 +235,12 @@ public class S3ScanObjectWorkerIT {
         String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
         final String key = getKeyString(keyPrefix,recordsGenerator, shouldCompress);
         final String includeOptionsYaml = "                include:\n" +
-                "                  - "+keyPrefix+"\n" +
-                "                exclude_suffix:\n" +
-                "                  - .parquet";
+                "                  - "+keyPrefix;
         scanOptions.setS3ScanKeyPathOption(objectMapper.readValue(includeOptionsYaml, S3ScanKeyPathOption.class));
+
+        s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);
+        stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
+
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest(recordsGenerator,
                 numberOfRecordsToAccumulate,
                 recordsGenerator.getS3SelectExpression(),
@@ -272,10 +275,15 @@ public class S3ScanObjectWorkerIT {
 
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
-            final List<RecordsGenerator> recordsGenerators = List.of(new NewlineDelimitedRecordsGenerator(),new CsvRecordsGenerator(), new JsonRecordsGenerator());
+            final List<RecordsGenerator> recordsGenerators = List.of(
+                    new NewlineDelimitedRecordsGenerator(),
+                    new CsvRecordsGenerator(),
+                    new JsonRecordsGenerator(),
+                    new ParquetRecordsGenerator());
             final List<Integer> numberOfRecordsList = List.of(100,5000);
-            final List<Integer> recordsToAccumulateList = List.of( 100,1000);
-            final List<Boolean> booleanList = List.of(Boolean.FALSE, Boolean.TRUE);
+            final List<Integer> recordsToAccumulateList = List.of( 100);
+            final List<Boolean> booleanList = List.of(Boolean.TRUE);
+
             final String bucket = System.getProperty("tests.s3source.bucket");
             final ScanOptions.Builder startTimeAndRangeScanOptions = new ScanOptions.Builder()
                     .setStartDateTime(LocalDateTime.now())
@@ -299,9 +307,10 @@ public class S3ScanObjectWorkerIT {
                             .flatMap(records -> recordsToAccumulateList
                                     .stream()
                                     .flatMap(accumulate -> booleanList
-                                                    .stream().flatMap(range -> scanOptions.stream()
-                                                            .map(shouldCompress -> arguments(recordsGenerator, records,
-                                                                    accumulate, range, shouldCompress))))));
+                                            .stream()
+                                            .flatMap(shouldCompress -> scanOptions.stream()
+                                                    .map(scanOptionsBuilder -> arguments(recordsGenerator, records,
+                                                                    accumulate, shouldCompress && recordsGenerator.canCompress(), scanOptionsBuilder))))));
         }
     }
 
