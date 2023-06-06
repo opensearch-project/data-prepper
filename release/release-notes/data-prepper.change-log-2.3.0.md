@@ -1,26 +1,40 @@
 
-* __Updates main to Data Prepper 2.4. (#2832)__
+* __Adds release notes for Data Prepper 2.3.0. (#2833) (#2835)__
 
-    [David Venable](mailto:dlv@amazon.com) - Tue, 6 Jun 2023 10:44:47 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Tue, 6 Jun 2023 11:05:19 -0500
     
-    EAD -&gt; refs/heads/2.3-change-log, refs/remotes/upstream/main, refs/remotes/origin/main, refs/remotes/origin/HEAD, refs/heads/main
+    EAD -&gt; refs/heads/2.3, refs/remotes/upstream/2.3
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit c02f01d4dd9494c4e88eb29774b40b7987b13f52)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Updates the build to Data Prepper 2.3.0. (#2831)__
+
+    [David Venable](mailto:dlv@amazon.com) - Tue, 6 Jun 2023 10:58:25 -0500
+    
+    
     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
 
-* __Fix bug where s3 stream was closing too early. (#2830)__
+* __Fix bug where s3 stream was closing too early. (#2830) (#2834)__
 
-    [Adi Suresh](mailto:adsuresh@amazon.com) - Mon, 5 Jun 2023 20:21:40 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Tue, 6 Jun 2023 07:41:06 -0500
     
     
     Signed-off-by: Adi Suresh &lt;adsuresh@amazon.com&gt;
+    (cherry picked from commit 122f447a296713b9c1aaad10748f3a4235e4e7e1)
+     Co-authored-by: Adi Suresh &lt;adsuresh@amazon.com&gt;
 
-* __Generated THIRD-PARTY file for 3a70e73 (#2828)__
+* __Generated THIRD-PARTY file for 3a70e73 (#2828) (#2829)__
 
-    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Mon, 5 Jun 2023 17:06:11 -0500
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Mon, 5 Jun 2023 17:09:32 -0500
     
     
     Signed-off-by: GitHub &lt;noreply@github.com&gt;
     Co-authored-by: dlvenable
     &lt;dlvenable@users.noreply.github.com&gt;
+    (cherry picked from commit cecb3f58ebb89740ff9650a7545c8e2cc5f234e1)
+     Co-authored-by: opensearch-trigger-bot[bot]
+    &lt;98922864+opensearch-trigger-bot[bot]@users.noreply.github.com&gt;
 
 * __Fixes a bug in the S3 sink where events without handles throw NPE (#2814)__
 
