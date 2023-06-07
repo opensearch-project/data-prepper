@@ -15,7 +15,6 @@ import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
 import io.netty.util.AsciiString;
-import org.junit.Assert;
 import org.junit.Test;
 import org.opensearch.action.admin.indices.refresh.RefreshRequest;
 import org.opensearch.action.search.SearchRequest;
@@ -42,6 +41,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class EndToEndBasicLogTest {
     private static final int HTTP_SOURCE_PORT = 2021;
@@ -69,7 +69,7 @@ public class EndToEndBasicLogTest {
                     );
                     final SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
                     final List<Map<String, Object>> foundSources = getSourcesFromSearchHits(searchResponse.getHits());
-                    Assert.assertEquals(5, foundSources.size());
+                    assertEquals(5, foundSources.size());
                     retrievedDocs.addAll(foundSources);
                 }
         );
@@ -88,7 +88,7 @@ public class EndToEndBasicLogTest {
                 Collections.singletonList("https://127.0.0.1:9200"));
         builder.withUsername("admin");
         builder.withPassword("admin");
-        return builder.build().createClient();
+        return builder.build().createClient(null);
     }
 
     private void sendHttpRequestToSource(final int port, final HttpData httpData) {

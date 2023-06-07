@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.linecorp.armeria.server.encoding.DecodingService;
-import org.opensearch.dataprepper.compression.CompressionOption;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import com.linecorp.armeria.server.Server;

@@ -4,18 +4,33 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
+import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePitRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePitResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePitRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
-public class OpenSearchAccessor implements SearchAccessor {
+public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory {
+
+    private final OpenSearchClient openSearchClient;
+    private final SearchContextType searchContextType;
+
+    public OpenSearchAccessor(final OpenSearchClient openSearchClient, final SearchContextType searchContextType) {
+        this.openSearchClient = openSearchClient;
+        this.searchContextType = searchContextType;
+    }
+
+    @Override
+    public SearchContextType getSearchContextType() {
+        return searchContextType;
+    }
 
     @Override
     public CreatePitResponse createPit(CreatePitRequest createPitRequest) {
@@ -49,5 +64,10 @@ public class OpenSearchAccessor implements SearchAccessor {
     @Override
     public void deleteScroll(DeleteScrollRequest deleteScrollRequest) {
         //todo: implement
+    }
+
+    @Override
+    public Object getClient() {
+        return openSearchClient;
     }
 }

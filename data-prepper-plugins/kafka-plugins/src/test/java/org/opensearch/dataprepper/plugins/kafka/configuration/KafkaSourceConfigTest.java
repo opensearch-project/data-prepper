@@ -78,10 +78,10 @@ class KafkaSourceConfigTest {
 	void test_setters(){
 		kafkaSourceConfig = new KafkaSourceConfig();
 		kafkaSourceConfig.setBootStrapServers(new ArrayList<>(Arrays.asList("127.0.0.1:9092")));
-		TopicsConfig topicsConfig = mock(TopicsConfig.class);
-		kafkaSourceConfig.setTopics(Collections.singletonList(topicsConfig));
+		TopicConfig topicConfig = mock(TopicConfig.class);
+		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
 
 		assertEquals(Arrays.asList("127.0.0.1:9092"), kafkaSourceConfig.getBootStrapServers());
-		assertEquals(Collections.singletonList(topicsConfig), kafkaSourceConfig.getTopics());
+		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
 	}
 }

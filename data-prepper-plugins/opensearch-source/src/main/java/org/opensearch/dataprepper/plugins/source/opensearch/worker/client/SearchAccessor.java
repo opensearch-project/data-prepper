@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePitRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
@@ -21,6 +22,11 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
  * @since 2.4
  */
 public interface SearchAccessor {
+    /**
+     * Information on whether how this SearchAccessor should be used by {@link org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchService}
+     * @return the {@link SearchContextType} that has information on which search strategy should be used
+     */
+    SearchContextType getSearchContextType();
 
     /**
      * Creates a Point-In-Time (PIT) context for searching

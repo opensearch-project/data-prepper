@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import com.linecorp.armeria.server.encoding.DecodingService;
-import org.opensearch.dataprepper.compression.CompressionOption;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
