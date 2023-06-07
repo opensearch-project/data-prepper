@@ -17,7 +17,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
-public class OpenSearchAccessor implements SearchAccessor {
+public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory {
 
     private final OpenSearchClient openSearchClient;
     private final SearchContextType searchContextType;
@@ -26,7 +26,6 @@ public class OpenSearchAccessor implements SearchAccessor {
         this.openSearchClient = openSearchClient;
         this.searchContextType = searchContextType;
     }
-
 
     @Override
     public SearchContextType getSearchContextType() {
@@ -65,5 +64,10 @@ public class OpenSearchAccessor implements SearchAccessor {
     @Override
     public void deleteScroll(DeleteScrollRequest deleteScrollRequest) {
         //todo: implement
+    }
+
+    @Override
+    public Object getClient() {
+        return openSearchClient;
     }
 }

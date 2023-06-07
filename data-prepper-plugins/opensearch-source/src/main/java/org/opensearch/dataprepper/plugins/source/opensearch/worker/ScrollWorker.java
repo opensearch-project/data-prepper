@@ -21,15 +21,18 @@ public class ScrollWorker implements SearchWorker {
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
     private final Buffer<Record<Event>> buffer;
+    private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
 
     public ScrollWorker(final SearchAccessor searchAccessor,
                         final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                         final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
-                        final Buffer<Record<Event>> buffer) {
+                        final Buffer<Record<Event>> buffer,
+                        final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier) {
         this.searchAccessor = searchAccessor;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.sourceCoordinator = sourceCoordinator;
         this.buffer = buffer;
+        this.openSearchIndexPartitionCreationSupplier = openSearchIndexPartitionCreationSupplier;
     }
 
     @Override
