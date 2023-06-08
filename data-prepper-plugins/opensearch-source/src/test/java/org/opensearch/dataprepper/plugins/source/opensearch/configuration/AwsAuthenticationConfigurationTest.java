@@ -39,6 +39,7 @@ class AwsAuthenticationConfigurationTest {
             actualRegion = awsAuthenticationOptions.getAwsRegion();
         }
         assertThat(actualRegion, equalTo(expectedRegionObject));
+        assertThat(awsAuthenticationOptions.isSigv4Enabled(), equalTo(false));
     }
 
     @Test

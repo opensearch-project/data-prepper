@@ -228,7 +228,7 @@ public class SearchAccessorStrategy {
 
     private OpenSearchTransport createOpenSearchTransport(final RestClient restClient) {
 
-        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions())) {
+        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) && openSearchSourceConfiguration.getAwsAuthenticationOptions().isSigv4Enabled()) {
             final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
                     .withRegion(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion())
                     .withStsRoleArn(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn())
