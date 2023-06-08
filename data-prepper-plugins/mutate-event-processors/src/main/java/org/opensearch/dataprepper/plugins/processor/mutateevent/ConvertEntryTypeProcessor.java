@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.typeconverter.TypeConverter;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 @DataPrepperPlugin(name = "convert_entry_type", pluginType = Processor.class, pluginConfigurationType = ConvertEntryTypeProcessorConfig.class)
@@ -23,6 +24,7 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
     private final String key;
     private final TypeConverter converter;
     private final String convertWhen;
+    private final List<String> nullValues;
 
     private final ExpressionEvaluator expressionEvaluator;
 
@@ -34,6 +36,8 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
         this.key = convertEntryTypeProcessorConfig.getKey();
         this.converter = convertEntryTypeProcessorConfig.getType().getTargetConverter();
         this.convertWhen = convertEntryTypeProcessorConfig.getConvertWhen();
+        this.nullValues = convertEntryTypeProcessorConfig.getNullValues()
+                .orElse(List.of());
         this.expressionEvaluator = expressionEvaluator;
     }
 
@@ -49,7 +53,9 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
             Object keyVal = recordEvent.get(key, Object.class);
             if (keyVal != null) {
                 recordEvent.delete(key);
-                recordEvent.put(key, this.converter.convert(keyVal));
+                if (!nullValues.contains(keyVal.toString())){
+                    recordEvent.put(key, this.converter.convert(keyVal));
+                }
             }
         }
         return records;

@@ -8,6 +8,9 @@ package org.opensearch.dataprepper.plugins.processor.mutateevent;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 
+import java.util.List;
+import java.util.Optional;
+
 public class ConvertEntryTypeProcessorConfig  {
     @JsonProperty("key")
     @NotEmpty
@@ -19,6 +22,9 @@ public class ConvertEntryTypeProcessorConfig  {
     @JsonProperty("convert_when")
     private String convertWhen;
 
+    @JsonProperty("null_values")
+    private List<String> nullValues;
+
     public String getKey() {
         return key;
     }
@@ -28,4 +34,8 @@ public class ConvertEntryTypeProcessorConfig  {
     }
 
     public String getConvertWhen() { return convertWhen; }
+
+    public Optional<List<String>> getNullValues(){
+        return Optional.ofNullable(nullValues);
+    }
 }
