@@ -130,6 +130,22 @@ public class KafkaSource implements Source<Record<Object>> {
     properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
     properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,StringDeserializer.class);
+    setPropertiesForOAuth(properties);
     return properties;
+  }
+
+  private void setPropertiesForOAuth(Properties properties) {
+    String oauthLoginServer= sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginServer();
+    String oauthLoginEndpoint= sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginEndpoint();
+    String oauthLoginGrantType= sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginGrantType();
+    String oauthLoginScope= sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginScope();
+    String oauthAuthorizationToken= sourceConfig.getAuthConfig().getoAuthConfig().getOauthAuthorizationToken();
+    String oauthIntrospectEndpoint= sourceConfig.getAuthConfig().getoAuthConfig().getOauthIntrospectEndpoint();
+
+    properties.put("sasl.mechanism", "OAUTHBEARER");
+    properties.put("security.protocol", "SASL_PLAINTEXT");
+    properties.put("sasl.login.callback.handler.class","org.opensearch.dataprepper.plugins.kafka.oauth.OAuthAuthenticateLoginCallbackHandler");
+    properties.put("sasl.jaas.config", "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required OAUTH_LOGIN_SERVER="+oauthLoginServer+" OAUTH_LOGIN_ENDPOINT='"+oauthLoginEndpoint+"' OAUTH_LOGIN_GRANT_TYPE="+oauthLoginGrantType+" OAUTH_LOGIN_SCOPE="+oauthLoginScope+" OAUTH_AUTHORIZATION='Basic "+oauthAuthorizationToken+"' OAUTH_INTROSPECT_SERVER=dev-75552796.okta.com OAUTH_INTROSPECT_ENDPOINT='"+oauthIntrospectEndpoint+"' OAUTH_INTROSPECT_AUTHORIZATION='Basic "+oauthAuthorizationToken+"';");
+
   }
 }
