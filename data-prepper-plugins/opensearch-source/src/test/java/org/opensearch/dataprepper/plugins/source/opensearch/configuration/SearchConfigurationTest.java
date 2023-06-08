@@ -26,17 +26,17 @@ public class SearchConfigurationTest {
         final SearchConfiguration searchConfiguration = new SearchConfiguration();
 
         assertThat(searchConfiguration.getQuery(), equalTo(null));
-        assertThat(searchConfiguration.getBatchSize(), equalTo(null));
+        assertThat(searchConfiguration.getBatchSize(), equalTo(1000));
     }
 
     @Test
     void non_default_search_configuration() {
         final Map<String, Object> pluginSettings = new HashMap<>();
-        pluginSettings.put("batch_size", 1000);
+        pluginSettings.put("batch_size", 2000);
         pluginSettings.put("query", "{\"query\": {\"match_all\": {} }}");
 
         final SearchConfiguration searchConfiguration = objectMapper.convertValue(pluginSettings, SearchConfiguration.class);
-        assertThat(searchConfiguration.getBatchSize(),equalTo(1000));
+        assertThat(searchConfiguration.getBatchSize(),equalTo(2000));
         assertThat(searchConfiguration.isQueryValid(), equalTo(true));
         assertThat(searchConfiguration.getQuery(), notNullValue());
         assertThat(searchConfiguration.getQuery().containsKey("query"), equalTo(true));

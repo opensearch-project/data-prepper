@@ -20,10 +20,10 @@ public class SearchConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(SearchConfiguration.class);
 
     @JsonProperty("batch_size")
-    private Integer batchSize;
+    private Integer batchSize = 1000;
 
     @JsonProperty("query")
-    private String queryString;
+    private String queryString = "{ \"query\": { \"match_all\": {} }}";
 
     @JsonIgnore
     private Map<String, Object> queryMap;
