@@ -139,12 +139,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
             } else {
                 LOG.warn("Point in time id {} was not deleted successfully. It will expire from keep-alive", deletePointInTimeRequest.getPitId());
             }
-        } catch (final OpenSearchException e) {
-            LOG.error("There was an error deleting the point in time with id {} for OpenSearch: ", deletePointInTimeRequest.getPitId(), e);
-            throw e;
-        } catch (IOException e) {
-            LOG.error("There was an error deleting the point in time with id {} for OpenSearch: {}", deletePointInTimeRequest.getPitId(), e.getMessage());
-            throw new RuntimeException(e);
+        } catch (final IOException | RuntimeException e) {
+            LOG.error("There was an error deleting the point in time with id {} for OpenSearch. It will expire from keep-alive: ", deletePointInTimeRequest.getPitId(), e);
         }
     }
 
