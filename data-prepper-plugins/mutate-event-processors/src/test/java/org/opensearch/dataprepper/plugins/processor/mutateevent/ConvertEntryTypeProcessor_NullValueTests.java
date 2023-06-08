@@ -25,7 +25,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class NullValuesTests {
+public class ConvertEntryTypeProcessor_NullValueTests {
 
     static final String TEST_KEY = UUID.randomUUID().toString();
 
