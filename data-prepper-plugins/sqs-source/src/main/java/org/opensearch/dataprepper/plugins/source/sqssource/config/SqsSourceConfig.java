@@ -5,31 +5,20 @@
 package org.opensearch.dataprepper.plugins.source.sqssource.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
+import jakarta.validation.Valid;
 
-import java.time.Duration;
-
+/**
+ *  read the sqs configuration from pipeline
+ */
 public class SqsSourceConfig {
 
-    static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
-
-    static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 100;
-
-    @JsonProperty("codec")
-    @NotNull
-    private PluginModel codec;
-
+    @Valid
     @JsonProperty("queues")
     private QueuesOptions queues;
+
+    @Valid
     @JsonProperty("aws")
     private AwsAuthenticationOptions aws;
-
-    @JsonProperty("buffer_timeout")
-    private Duration bufferTimeout = DEFAULT_BUFFER_TIMEOUT;
-
-    @JsonProperty("records_to_accumulate")
-    private int numberOfRecordsToAccumulate = DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE;
 
     @JsonProperty("acknowledgments")
     private boolean acknowledgments = false;
@@ -44,17 +33,5 @@ public class SqsSourceConfig {
 
     public boolean getAcknowledgements() {
         return acknowledgments;
-    }
-
-    public Duration getBufferTimeout() {
-        return bufferTimeout;
-    }
-
-    public int getNumberOfRecordsToAccumulate() {
-        return numberOfRecordsToAccumulate;
-    }
-
-    public PluginModel getCodec() {
-        return codec;
     }
 }

@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.sqssource.handler;
 
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -16,11 +17,16 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+/**
+ *  implements the SqsMessageHandler to read and parse the sqs message and push to buffer.
+ *
+ */
 public class RawSqsMessageHandler implements SqsMessageHandler {
 
     private final SqsService sqsService;
-    
+
     private Buffer<Record<Event>> buffer;
 
     public RawSqsMessageHandler(final Buffer<Record<Event>> buffer,
@@ -29,22 +35,29 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
         this.sqsService = sqsService;
     }
 
+    /**
+     *  helps to send end to end acknowledgements after successful processing.
+     *
+     * @param messages  - list of sqs messages for processing
+     * @return AcknowledgementSet - will generate the AcknowledgementSet if endToEndAcknowledgementsEnabled is true else null
+     */
     @Override
-    public void handleMessage(final List<Message> messages,
-                              final String queueUrl) {
+    public List<DeleteMessageBatchRequestEntry> handleMessage(final List<Message> messages,
+                                                              final AcknowledgementSet acknowledgementSet) {
         List<Record<Event>> events = new ArrayList<>(messages.size());
-        List<DeleteMessageBatchRequestEntry> deleteMsgBatchReqList = new ArrayList<>(messages.size());
         messages.forEach(message -> {
-            events.add(new Record<>(JacksonEvent.fromMessage(message.body())));
-            deleteMsgBatchReqList.add(DeleteMessageBatchRequestEntry.builder()
-                    .id(message.messageId()).receiptHandle(message.receiptHandle()).build());
+            final Record<Event> eventRecord = new Record<Event>(JacksonEvent.fromMessage(message.body()));
+            events.add(eventRecord);
+            if(Objects.nonNull(acknowledgementSet)){
+                acknowledgementSet.add(eventRecord.getData());
+            }
         });
         try {
             if(!events.isEmpty())
-                buffer.writeAll(events,(int)Duration.ofSeconds(10).toMillis());
+                buffer.writeAll(events, (int) Duration.ofSeconds(10).toMillis());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-        sqsService.deleteMessagesFromQueue(deleteMsgBatchReqList,queueUrl);
+        return sqsService.getDeleteMessageBatchRequestEntryList(messages);
     }
 }

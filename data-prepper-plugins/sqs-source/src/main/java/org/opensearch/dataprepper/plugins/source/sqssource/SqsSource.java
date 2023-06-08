@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.sqssource;
 
+import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -13,6 +14,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.plugins.aws.sqs.common.ClientFactory;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.SqsService;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.handler.SqsMessageHandler;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.metrics.SqsMetrics;
@@ -21,11 +23,18 @@ import org.opensearch.dataprepper.plugins.source.sqssource.config.SqsSourceConfi
 import org.opensearch.dataprepper.plugins.source.sqssource.handler.RawSqsMessageHandler;
 import software.amazon.awssdk.services.sqs.SqsClient;
 
+import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @DataPrepperPlugin(name = "sqs", pluginType = Source.class,pluginConfigurationType = SqsSourceConfig.class)
 public class SqsSource implements Source<Record<Event>> {
+
+    static final long INITIAL_DELAY = Duration.ofSeconds(20).toMillis();
+
+    static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
+
+    static final double JITTER_RATE = 0.20;
 
     private final SqsSourceConfig sqsSourceConfig;
 
@@ -35,7 +44,7 @@ public class SqsSource implements Source<Record<Event>> {
 
     private final boolean acknowledgementsEnabled;
 
-    private final AwsCredentialsSupplier awsCredentialsSupplier;
+    private final org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier awsCredentialsSupplier;
 
     private final ExecutorService executor;
 
@@ -59,10 +68,14 @@ public class SqsSource implements Source<Record<Event>> {
         }
         final SqsMetrics sqsMetrics = new SqsMetrics(pluginMetrics);
 
-        final SqsClient sqsClient = ClientFactory.createSqsClient(sqsSourceConfig.getAws(),
+        SqsClient sqsClient = ClientFactory.createSqsClient(sqsSourceConfig.getAws().getAwsRegion(),
+                sqsSourceConfig.getAws().getAwsStsRoleArn(),
+                sqsSourceConfig.getAws().getAwsStsHeaderOverrides(),
                 awsCredentialsSupplier);
 
-        SqsService sqsService = new SqsService(sqsMetrics,sqsClient);
+        final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
+                .withMaxAttempts(Integer.MAX_VALUE);
+        SqsService sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
 
         SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService);
 

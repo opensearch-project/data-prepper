@@ -1,3 +1,4 @@
+acknowledgments: false
 queues:
   urls:
     - https://sqs.us-east-1.amazonaws.com/123099425585/dp
@@ -7,3 +8,4 @@ queues:
 aws:
   region: us-east-1
   role_arn: arn:aws:iam::278936200144:role/aos-role
+  sts_header_overrides: {"test":"test"}

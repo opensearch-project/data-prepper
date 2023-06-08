@@ -10,6 +10,9 @@ import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
 
+/**
+ *  read the aws configuration from pipeline
+ */
 public class AwsAuthenticationOptions {
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
