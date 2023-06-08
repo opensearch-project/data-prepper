@@ -1,6 +1,6 @@
 package org.opensearch.dataprepper.plugins.processor.ruby;
 
-
+import org.jruby.RubyInstanceConfig;
 import org.jruby.embed.ScriptingContainer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -26,12 +26,20 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     
     @DataPrepperPluginConstructor
     public RubyProcessor(final PluginMetrics pluginMetrics, final RubyProcessorConfig config) {
+        // todo: look into init hooks?
+        // validate that if file, contains def process(
         super(pluginMetrics);
         this.config = config;
+
+        container = new ScriptingContainer();
+        container.setCompileMode(RubyInstanceConfig.CompileMode.JIT);
+
+        container.put("LOG", LOG); // inject logger, perform cold start
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
+        container.runScriptlet("puts 'hello world'");
         return records;
     }
 
@@ -47,6 +55,6 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     @Override
     public void shutdown() {
-
+        container.terminate();
     }
 }

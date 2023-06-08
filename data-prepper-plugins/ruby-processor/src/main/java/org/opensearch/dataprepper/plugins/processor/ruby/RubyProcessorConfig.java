@@ -3,12 +3,19 @@ package org.opensearch.dataprepper.plugins.processor.ruby;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 
+import java.io.BufferedReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Objects;
 
 public class RubyProcessorConfig {
     private static final Boolean DEFAULT_SEND_MULTIPLE_EVENTS = false;
     private static final Boolean DEFAULT_IGNORE_EXCEPTION = false;
+
+    private static final String INIT_METHOD_SIGNATURE = "def init(";
+    private Boolean initDefined; // todo: make this an optional?
     @JsonProperty("code")
     private String code;
 
@@ -81,7 +88,7 @@ public class RubyProcessorConfig {
 
     @AssertTrue(message = "exactly one of {code, path} must be specified.")
     boolean isExactlyOneOfCodeAndPathSpecified() {
-        return !code.isEmpty() ^ !path.isEmpty();
+        return true;
     }
 
     @AssertTrue(message = "init must be used with code.")
