@@ -58,7 +58,7 @@ public class OAuthBearerTokenJwt implements OAuthBearerToken {
         }
 
         Object iat = jwtToken.get(IAT);
-        if (exp instanceof Integer) {
+        if (iat instanceof Integer) {
             this.startTimeMs = Integer.toUnsignedLong((Integer) jwtToken.get(IAT));
         } else {
             this.startTimeMs = (Long) jwtToken.get(IAT);

@@ -192,7 +192,7 @@ public class OAuthHttpCalls {
         return null;
     }
 
-    private static Map<String, Object> doHttpsCall(String urlStr, String postParameters, String oauthToken) {
+    private static Map<String, Object> doHttpsCall(String urlStr, String postParameters, String oauthToken) throws Exception {
         try {
             acceptUnsecureServer();
 
@@ -218,10 +218,10 @@ public class OAuthHttpCalls {
             if (responseCode == 200) {
                 return handleJsonResponse(con.getInputStream());
             } else {
-                throw new Exception("Return code " + responseCode);
+                throw new Exception("An error occurred while invoking the http calls and the response code is: "+ responseCode);
             }
         } catch (Exception e) {
-            LOG.error("at doHttpCall", e);
+            LOG.error("An error occurred at doHttpCall", e);
         }
         return null;
     }
