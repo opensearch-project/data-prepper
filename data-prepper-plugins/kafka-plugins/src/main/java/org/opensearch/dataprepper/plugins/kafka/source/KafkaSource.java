@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URI;
@@ -146,7 +147,7 @@ public class KafkaSource implements Source<Record<Object>> {
         if (sourceConfig.getAuthType()!=null && sourceConfig.getAuthType().equalsIgnoreCase(AuthenticationType.PLAINTEXT.toString())) {
              setPropertiesForAuth(properties);
         }
-
+        LOG.info("Starting consumer with the properties : {}",properties);
         return properties;
     }
 
@@ -198,8 +199,9 @@ public class KafkaSource implements Source<Record<Object>> {
 
     private static String getSchemaType(final String registryUrl, final String topicName, final int schemaVersion) {
         StringBuilder response = new StringBuilder();
+        String schemaType = "";
         try {
-            String urlPath = registryUrl + "subjects" + "/" + topicName + "-value/versions/" + schemaVersion;
+            String urlPath = registryUrl + "subjects/" + topicName + "-value/versions/" + schemaVersion;
             URL url = new URL(urlPath);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
@@ -221,11 +223,29 @@ public class KafkaSource implements Source<Record<Object>> {
                     schemaType = MessageFormat.AVRO.toString();
                 }
             } else {
-                LOG.error("GET request failed while fetching the schema registry details : {}", responseCode);
+                InputStream errorStream = connection.getErrorStream();
+                String errorMessage = readErrorMessage(errorStream);
+                LOG.error("GET request failed while fetching the schema registry details : {}", errorMessage);
             }
         } catch (IOException e) {
             LOG.error("An error while fetching the schema registry details : ", e);
+            throw new RuntimeException();
         }
         return schemaType;
+    }
+
+    private static String readErrorMessage(InputStream errorStream) throws IOException {
+        if (errorStream == null) {
+            return null;
+        }
+        BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream));
+        StringBuilder errorMessage = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) {
+            errorMessage.append(line);
+        }
+        reader.close();
+        errorStream.close();
+        return errorMessage.toString();
     }
 }
