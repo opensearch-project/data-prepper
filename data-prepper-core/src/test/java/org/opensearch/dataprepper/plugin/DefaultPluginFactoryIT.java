@@ -5,6 +5,10 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.TestPlugin;
@@ -28,8 +32,10 @@ import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetMana
  * Integration test of the plugin framework. These tests should not mock any portion
  * of the plugin framework. But, they may mock inputs when appropriate.
  */
+@ExtendWith(MockitoExtension.class)
 class DefaultPluginFactoryIT {
-
+    @Mock
+    private PipelinesDataFlowModel pipelinesDataFlowModel;
     private String pluginName;
     private String pipelineName;
 
@@ -54,6 +60,7 @@ class DefaultPluginFactoryIT {
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.register(PluginBeanFactoryProvider.class);
+        coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();
 
         return coreContext.getBean(DefaultPluginFactory.class);

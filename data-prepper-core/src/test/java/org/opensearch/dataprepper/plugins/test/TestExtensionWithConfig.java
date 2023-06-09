@@ -29,6 +29,7 @@ public class TestExtensionWithConfig implements ExtensionPlugin {
         LOG.info("Constructing test extension plugin.");
         CONSTRUCTED_COUNT.incrementAndGet();
         extensionId = UUID.randomUUID().toString();
+        this.testExtensionConfig = testExtensionConfig;
     }
 
     @Override
