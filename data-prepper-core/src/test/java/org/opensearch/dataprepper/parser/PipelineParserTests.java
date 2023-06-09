@@ -19,7 +19,7 @@ import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.breaker.CircuitBreaker;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
@@ -62,6 +62,8 @@ class PipelineParserTests {
     private PeerForwarderProvider peerForwarderProvider;
 
     @Mock
+    private PipelinesDataFlowModel pipelinesDataFlowModel;
+    @Mock
     private RouterFactory routerFactory;
 
     @Mock
@@ -98,6 +100,7 @@ class PipelineParserTests {
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
 
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
+        coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();
         pluginFactory = coreContext.getBean(DefaultPluginFactory.class);
     }
@@ -108,7 +111,9 @@ class PipelineParserTests {
     }
 
     private PipelineParser createObjectUnderTest(final String pipelineConfigurationFileLocation) {
-        return new PipelineParser(pipelineConfigurationFileLocation, pluginFactory, peerForwarderProvider, 
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataflowModelParser(
+                pipelineConfigurationFileLocation).parseConfiguration();
+        return new PipelineParser(pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
                                   routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,
                                   acknowledgementSetManager, sourceCoordinatorFactory);
     }
@@ -173,16 +178,6 @@ class PipelineParserTests {
     }
 
     @Test
-    void parseConfiguration_with_incompatible_version_should_throw() {
-        final PipelineParser pipelineParser =
-            createObjectUnderTest(TestDataProvider.INCOMPATIBLE_VERSION_CONFIG_FILE);
-
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
-        assertThat(actualException.getMessage(),
-            equalTo(String.format("The version: 3005.0 is not compatible with the current version: %s", DataPrepperVersion.getCurrentVersion())));
-    }
-
-    @Test
     void parseConfiguration_with_compatible_version() {
         final PipelineParser pipelineParser =
             createObjectUnderTest(TestDataProvider.COMPATIBLE_VERSION_CONFIG_FILE);
@@ -233,31 +228,6 @@ class PipelineParserTests {
     }
 
     @Test
-    void parseConfiguration_with_a_configuration_file_which_does_not_exist_should_throw() {
-        final PipelineParser pipelineParser = createObjectUnderTest("file_does_no_exist.yml");
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
-        assertThat(actualException.getMessage(), equalTo("Pipelines configuration file not found at file_does_no_exist.yml"));
-    }
-
-    @Test
-    void parseConfiguration_from_directory_with_multiple_files_creates_the_correct_pipelineMap() {
-        mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.MULTI_FILE_PIPELINE_DIRECTOTRY);
-        final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
-        assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
-        verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
-    }
-
-    @Test
-    void parseConfiguration_from_directory_with_single_file_creates_the_correct_pipelineMap() {
-        mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY);
-        final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
-        assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
-        verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
-    }
-
-    @Test
     void parseConfiguration_with_routes_creates_correct_pipeline() {
         mockDataPrepperConfigurationAccesses();
         final PipelineParser pipelineParser =
@@ -270,14 +240,6 @@ class PipelineParserTests {
         assertThat(entryPipeline, notNullValue());
         assertThat(entryPipeline.getSinks(), notNullValue());
         assertThat(entryPipeline.getSinks().size(), equalTo(2));
-    }
-
-    @Test
-    void parseConfiguration_from_directory_with_no_yaml_files_should_throw() {
-        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY);
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
-        assertThat(actualException.getMessage(), equalTo(
-                String.format("Pipelines configuration file not found at %s", TestDataProvider.EMPTY_PIPELINE_DIRECTOTRY)));
     }
 
     @Test

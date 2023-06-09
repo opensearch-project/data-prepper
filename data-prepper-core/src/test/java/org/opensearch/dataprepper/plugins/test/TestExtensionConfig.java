@@ -4,5 +4,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class TestExtensionConfig {
     @JsonProperty("test_attribute")
-    public String testAttribute;
+    private String testAttribute;
+
+    public String getTestAttribute() {
+        return testAttribute;
+    }
 }

@@ -11,7 +11,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,6 +29,11 @@ public class PipelinesDataFlowModel {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private DataPrepperVersion version;
+
+    @JsonProperty("pipeline_extensions")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonSetter(nulls = Nulls.SKIP)
+    private PipelineExtensions pipelineExtensions;
 
     @JsonAnySetter
     private Map<String, PipelineModel> pipelines = new HashMap<>();
@@ -60,6 +67,10 @@ public class PipelinesDataFlowModel {
     @JsonIgnore
     public DataPrepperVersion getDataPrepperVersion() {
         return version;
+    }
+
+    public PipelineExtensions getPipelineExtensions() {
+        return pipelineExtensions;
     }
 
     @JsonSetter

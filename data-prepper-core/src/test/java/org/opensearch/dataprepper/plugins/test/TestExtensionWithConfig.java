@@ -48,12 +48,19 @@ public class TestExtensionWithConfig implements ExtensionPlugin {
     public static class TestModel {
         private final String extensionId;
 
-        private TestModel(final String extensionId) {
+        private final String testAttribute;
+
+        private TestModel(final String extensionId, final String testAttribute) {
 
             this.extensionId = extensionId;
+            this.testAttribute = testAttribute;
         }
         public String getExtensionId() {
             return this.extensionId;
+        }
+
+        public String getTestAttribute() {
+            return testAttribute;
         }
     }
 
@@ -61,7 +68,7 @@ public class TestExtensionWithConfig implements ExtensionPlugin {
 
         @Override
         public Optional<TestModel> provideInstance(final Context context) {
-            return Optional.of(new TestModel(extensionId));
+            return Optional.of(new TestModel(extensionId, testExtensionConfig.getTestAttribute()));
         }
 
         @Override
