@@ -20,6 +20,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+//import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.MultithreadedConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.AuthenticationType;
@@ -32,6 +33,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Comparator;
 import java.util.List;
@@ -135,36 +138,56 @@ public class KafkaSource implements Source<Record<Object>> {
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
                 topicConfig.getAutoCommit());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
-        schemaType = getSchemaType(sourceConfig.getSchemaConfig().getRegistryURL(), topicConfig.getName(), sourceConfig.getSchemaConfig().getVersion());
-        if (schemaType.isEmpty()) {
-            schemaType = MessageFormat.PLAINTEXT.toString();
+         schemaType = getSchemaType(sourceConfig.getSchemaConfig().getRegistryURL(), topicConfig.getName(), sourceConfig.getSchemaConfig().getVersion());
+         if (schemaType.isEmpty()) {
+        schemaType = MessageFormat.PLAINTEXT.toString();
         }
         setPropertiesForSchemaType(properties, schemaType);
         if (sourceConfig.getAuthType()!=null && sourceConfig.getAuthType().equalsIgnoreCase(AuthenticationType.PLAINTEXT.toString())) {
-            setPropertiesForAuth(properties);
+             setPropertiesForAuth(properties);
         }
+
         return properties;
     }
 
     private void setPropertiesForSchemaType(Properties properties,final String schemaType) {
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class);
         if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
-        } else if (schemaType.equalsIgnoreCase(MessageFormat.PLAINTEXT.toString())) {
-            properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
-        } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
+        }
+        else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                     KafkaAvroDeserializer.class);
-            properties.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, sourceConfig.getSchemaConfig().getRegistryURL());
+            if(validateURL(getSchemaRegUrl())){
+                properties.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegUrl());
+            }
+            else{
+                throw new RuntimeException("Invalid Schema Registry URI");
+            }
+        }
+        else {
+            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                    StringDeserializer.class);
         }
     }
 
+    private static boolean validateURL(String url) {
+        try {
+            URI uri = new URI(url);
+            if (uri.getScheme() == null || uri.getHost() == null) {
+                return false;
+            }
+            return true;
+        } catch (URISyntaxException ex) {
+            LOG.error("Invalid Schema Registry URI: ",ex);
+            return false;
+        }
+    }
+
+    private String getSchemaRegUrl(){
+        return sourceConfig.getSchemaConfig().getRegistryURL();
+    }
     private void setPropertiesForAuth(Properties properties) {
         String username = sourceConfig.getAuthConfig().getPlainTextAuthConfig().getUsername();
         String password = sourceConfig.getAuthConfig().getPlainTextAuthConfig().getPassword();

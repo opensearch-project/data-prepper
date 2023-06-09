@@ -33,7 +33,6 @@ import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
