@@ -58,7 +58,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class PipelineParserTests {
+class PipelineTransformerTests {
     private PeerForwarderProvider peerForwarderProvider;
 
     @Mock
@@ -110,10 +110,10 @@ class PipelineParserTests {
         verifyNoMoreInteractions(dataPrepperConfiguration);
     }
 
-    private PipelineParser createObjectUnderTest(final String pipelineConfigurationFileLocation) {
+    private PipelineTransformer createObjectUnderTest(final String pipelineConfigurationFileLocation) {
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataflowModelParser(
                 pipelineConfigurationFileLocation).parseConfiguration();
-        return new PipelineParser(pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
+        return new PipelineTransformer(pipelinesDataFlowModel, pluginFactory, peerForwarderProvider,
                                   routerFactory, dataPrepperConfiguration, circuitBreakerManager, eventFactory,
                                   acknowledgementSetManager, sourceCoordinatorFactory);
     }
@@ -121,27 +121,27 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_with_multiple_valid_pipelines_creates_the_correct_pipelineMap() {
         mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
-        final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(actualPipelineMap.keySet(), equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         verifyDataPrepperConfigurationAccesses(actualPipelineMap.keySet().size());
     }
 
     @Test
     void parseConfiguration_with_invalid_root_pipeline_creates_empty_pipelinesMap() {
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.CONNECTED_PIPELINE_ROOT_SOURCE_INCORRECT);
-        final Map<String, Pipeline> connectedPipelines = pipelineParser.parseConfiguration();
+        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
     }
 
     @Test
     void parseConfiguration_with_incorrect_child_pipeline_returns_empty_pipelinesMap() {
         mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.CONNECTED_PIPELINE_CHILD_PIPELINE_INCORRECT);
-        final Map<String, Pipeline> connectedPipelines = pipelineParser.parseConfiguration();
+        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
         assertThat(connectedPipelines.size(), equalTo(0));
         verifyDataPrepperConfigurationAccesses();
     }
@@ -149,19 +149,19 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_with_a_single_pipeline_with_empty_source_settings_returns_that_pipeline() {
         mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
-        final Map<String, Pipeline> actualPipelineMap = pipelineParser.parseConfiguration();
+        final Map<String, Pipeline> actualPipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(actualPipelineMap.keySet().size(), equalTo(1));
         verifyDataPrepperConfigurationAccesses();
     }
 
     @Test
     void parseConfiguration_with_cycles_in_multiple_pipelines_should_throw() {
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.CYCLE_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
+        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineTransformer::transformConfiguration);
         assertThat(actualException.getMessage(),
                 equalTo("Provided configuration results in a loop, check pipeline: test-pipeline-1"));
 
@@ -169,19 +169,19 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_with_incorrect_source_mapping_in_multiple_pipelines_should_throw() {
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.INCORRECT_SOURCE_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
+        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineTransformer::transformConfiguration);
         assertThat(actualException.getMessage(),
                 equalTo("Invalid configuration, expected source test-pipeline-1 for pipeline test-pipeline-2 is missing"));
     }
 
     @Test
     void parseConfiguration_with_compatible_version() {
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
             createObjectUnderTest(TestDataProvider.COMPATIBLE_VERSION_CONFIG_FILE);
-        final Map<String, Pipeline> connectedPipelines = pipelineParser.parseConfiguration();
+        final Map<String, Pipeline> connectedPipelines = pipelineTransformer.transformConfiguration();
         assertThat(connectedPipelines.size(), equalTo(1));
         verify(dataPrepperConfiguration).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration).getSinkShutdownTimeout();
@@ -190,10 +190,10 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_with_missing_pipeline_name_should_throw() {
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
+        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineTransformer::transformConfiguration);
         assertThat(actualException.getMessage(),
                 equalTo("name is a required attribute for sink pipeline plugin, " +
                     "check pipeline: test-pipeline-1"));
@@ -201,18 +201,18 @@ class PipelineParserTests {
 
     @Test
     void parseConfiguration_with_missing_pipeline_name_in_multiple_pipelines_should_throw() {
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE);
-        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineParser::parseConfiguration);
+        final RuntimeException actualException = assertThrows(RuntimeException.class, pipelineTransformer::transformConfiguration);
         assertThat(actualException.getMessage(), equalTo("Invalid configuration, no pipeline is defined with name test-pipeline-4"));
     }
 
     @Test
     void testMultipleSinks() {
         mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_SINKS_CONFIG_FILE);
-        final Map<String, Pipeline> pipelineMap = pipelineParser.parseConfiguration();
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(pipelineMap.keySet().size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
     }
@@ -220,9 +220,9 @@ class PipelineParserTests {
     @Test
     void testMultipleProcessors() {
         mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PROCESSERS_CONFIG_FILE);
-        final Map<String, Pipeline> pipelineMap = pipelineParser.parseConfiguration();
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(pipelineMap.keySet().size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
     }
@@ -230,9 +230,9 @@ class PipelineParserTests {
     @Test
     void parseConfiguration_with_routes_creates_correct_pipeline() {
         mockDataPrepperConfigurationAccesses();
-        final PipelineParser pipelineParser =
+        final PipelineTransformer pipelineTransformer =
                 createObjectUnderTest("src/test/resources/valid_multiple_sinks_with_routes.yml");
-        final Map<String, Pipeline> pipelineMap = pipelineParser.parseConfiguration();
+        final Map<String, Pipeline> pipelineMap = pipelineTransformer.transformConfiguration();
         assertThat(pipelineMap.keySet().size(), equalTo(3));
         verifyDataPrepperConfigurationAccesses(pipelineMap.keySet().size());
 
@@ -246,8 +246,8 @@ class PipelineParserTests {
     void getPeerForwarderDrainDuration_peerForwarderConfigurationNotSet() {
         when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(null);
 
-        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
-        final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
+        final PipelineTransformer pipelineTransformer = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
+        final Duration result = pipelineTransformer.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
         assertThat(result, is(Duration.ofSeconds(0)));
 
         verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
@@ -259,8 +259,8 @@ class PipelineParserTests {
         when(dataPrepperConfiguration.getPeerForwarderConfiguration()).thenReturn(peerForwarderConfiguration);
         when(peerForwarderConfiguration.getDrainTimeout()).thenReturn(expectedResult);
 
-        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
-        final Duration result = pipelineParser.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
+        final PipelineTransformer pipelineTransformer = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
+        final Duration result = pipelineTransformer.getPeerForwarderDrainTimeout(dataPrepperConfiguration);
         assertThat(result, is(expectedResult));
 
         verify(dataPrepperConfiguration).getPeerForwarderConfiguration();
@@ -272,10 +272,10 @@ class PipelineParserTests {
         final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
         when(circuitBreakerManager.getGlobalCircuitBreaker())
                 .thenReturn(Optional.of(circuitBreaker));
-        final PipelineParser objectUnderTest =
+        final PipelineTransformer objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
 
-        final Map<String, Pipeline> pipelineMap = objectUnderTest.parseConfiguration();
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration();
 
         assertThat(pipelineMap.size(), equalTo(1));
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
@@ -292,10 +292,10 @@ class PipelineParserTests {
     void parseConfiguration_uses_unwrapped_buffer_when_no_circuit_breakers_are_applied() {
         when(circuitBreakerManager.getGlobalCircuitBreaker())
                 .thenReturn(Optional.empty());
-        final PipelineParser objectUnderTest =
+        final PipelineTransformer objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_SINGLE_PIPELINE_EMPTY_SOURCE_PLUGIN_FILE);
 
-        final Map<String, Pipeline> pipelineMap = objectUnderTest.parseConfiguration();
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration();
 
         assertThat(pipelineMap.size(), equalTo(1));
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
@@ -314,10 +314,10 @@ class PipelineParserTests {
         final CircuitBreaker circuitBreaker = mock(CircuitBreaker.class);
         when(circuitBreakerManager.getGlobalCircuitBreaker())
                 .thenReturn(Optional.of(circuitBreaker));
-        final PipelineParser objectUnderTest =
+        final PipelineTransformer objectUnderTest =
                 createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
 
-        final Map<String, Pipeline> pipelineMap = objectUnderTest.parseConfiguration();
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.transformConfiguration();
 
         assertThat(pipelineMap, hasKey("test-pipeline-1"));
         final Pipeline entryPipeline = pipelineMap.get("test-pipeline-1");
@@ -359,8 +359,8 @@ class PipelineParserTests {
         final Map<String, Map<String, PeerForwarderReceiveBuffer<Record<Event>>>> bufferMap = generateBufferMap(outerMapEntryCount, innerMapEntryCount);
         when(peerForwarderProvider.getPipelinePeerForwarderReceiveBufferMap()).thenReturn(bufferMap);
 
-        final PipelineParser pipelineParser = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
-        final List<Buffer> secondaryBuffers = pipelineParser.getSecondaryBuffers();
+        final PipelineTransformer pipelineTransformer = createObjectUnderTest(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
+        final List<Buffer> secondaryBuffers = pipelineTransformer.getSecondaryBuffers();
         assertThat(secondaryBuffers.size(), is(outerMapEntryCount * innerMapEntryCount));
         secondaryBuffers.forEach(retrievedBuffer -> assertThat(retrievedBuffer, is(buffer)));
 

@@ -44,8 +44,8 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 
 @SuppressWarnings("rawtypes")
-public class PipelineParser {
-    private static final Logger LOG = LoggerFactory.getLogger(PipelineParser.class);
+public class PipelineTransformer {
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
     private final PipelinesDataFlowModel pipelinesDataFlowModel;
@@ -59,15 +59,15 @@ public class PipelineParser {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
 
-    public PipelineParser(final PipelinesDataFlowModel pipelinesDataFlowModel,
-                          final PluginFactory pluginFactory,
-                          final PeerForwarderProvider peerForwarderProvider,
-                          final RouterFactory routerFactory,
-                          final DataPrepperConfiguration dataPrepperConfiguration,
-                          final CircuitBreakerManager circuitBreakerManager,
-                          final EventFactory eventFactory,
-                          final AcknowledgementSetManager acknowledgementSetManager,
-                          final SourceCoordinatorFactory sourceCoordinatorFactory) {
+    public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
+                               final PluginFactory pluginFactory,
+                               final PeerForwarderProvider peerForwarderProvider,
+                               final RouterFactory routerFactory,
+                               final DataPrepperConfiguration dataPrepperConfiguration,
+                               final CircuitBreakerManager circuitBreakerManager,
+                               final EventFactory eventFactory,
+                               final AcknowledgementSetManager acknowledgementSetManager,
+                               final SourceCoordinatorFactory sourceCoordinatorFactory) {
         this.pipelinesDataFlowModel = pipelinesDataFlowModel;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
@@ -79,10 +79,7 @@ public class PipelineParser {
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
     }
 
-    /**
-     * Parses the configuration file into Pipeline
-     */
-    public Map<String, Pipeline> parseConfiguration() {
+    public Map<String, Pipeline> transformConfiguration() {
         final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
                 .stream()
                 .collect(Collectors.toMap(

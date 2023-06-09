@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.parser.config;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.parser.PipelineTransformer;
 import org.opensearch.dataprepper.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
@@ -23,7 +23,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 public class PipelineParserConfiguration {
 
     @Bean
-    public PipelineParser pipelineParser(
+    public PipelineTransformer pipelineParser(
             final PipelinesDataFlowModel pipelinesDataFlowModel,
             final PluginFactory pluginFactory,
             final PeerForwarderProvider peerForwarderProvider,
@@ -34,7 +34,7 @@ public class PipelineParserConfiguration {
             final AcknowledgementSetManager acknowledgementSetManager,
             final SourceCoordinatorFactory sourceCoordinatorFactory
             ) {
-        return new PipelineParser(pipelinesDataFlowModel,
+        return new PipelineTransformer(pipelinesDataFlowModel,
                 pluginFactory,
                 peerForwarderProvider,
                 routerFactory,

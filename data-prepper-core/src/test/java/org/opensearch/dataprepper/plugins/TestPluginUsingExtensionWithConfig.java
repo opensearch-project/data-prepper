@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.plugin.TestPluggableInterface;
 import org.opensearch.dataprepper.plugin.TestPluginConfiguration;
-import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.plugins.test.TestExtensionWithConfig;
 
 /**

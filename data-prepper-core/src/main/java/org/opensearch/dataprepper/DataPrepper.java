@@ -7,7 +7,7 @@ package org.opensearch.dataprepper;
 
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.parser.PipelineTransformer;
 import org.opensearch.dataprepper.peerforwarder.server.PeerForwarderServer;
 import org.opensearch.dataprepper.pipeline.Pipeline;
 import org.opensearch.dataprepper.pipeline.PipelineObserver;
@@ -58,13 +58,13 @@ public class DataPrepper implements PipelinesProvider {
 
     @Inject
     public DataPrepper(
-            final PipelineParser pipelineParser,
+            final PipelineTransformer pipelineTransformer,
             final PluginFactory pluginFactory,
             final PeerForwarderServer peerForwarderServer,
             final Predicate<Map<String, Pipeline>> shouldShutdownOnPipelineFailurePredicate) {
         this.pluginFactory = pluginFactory;
 
-        transformationPipelines = pipelineParser.parseConfiguration();
+        transformationPipelines = pipelineTransformer.transformConfiguration();
         this.shouldShutdownOnPipelineFailurePredicate = shouldShutdownOnPipelineFailurePredicate;
         if (transformationPipelines.size() == 0) {
             throw new RuntimeException("No valid pipeline is available for execution, exiting");

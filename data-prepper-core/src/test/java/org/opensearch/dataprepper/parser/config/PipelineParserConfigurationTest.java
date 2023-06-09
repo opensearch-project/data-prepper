@@ -8,12 +8,12 @@ package org.opensearch.dataprepper.parser.config;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.parser.PipelineTransformer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.parser.PipelineParser;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.model.event.EventFactory;
@@ -57,10 +57,10 @@ class PipelineParserConfigurationTest {
 
     @Test
     void pipelineParser() {
-        final PipelineParser pipelineParser = pipelineParserConfiguration.pipelineParser(
+        final PipelineTransformer pipelineTransformer = pipelineParserConfiguration.pipelineParser(
                 pipelinesDataFlowModel, pluginFactory, peerForwarderProvider, routerFactory,
                 dataPrepperConfiguration, circuitBreakerManager, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory);
 
-        assertThat(pipelineParser, is(notNullValue()));
+        assertThat(pipelineTransformer, is(notNullValue()));
     }
 }
