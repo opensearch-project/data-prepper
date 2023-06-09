@@ -9,6 +9,7 @@ dependencies {
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:failures-common')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation libs.opensearch.client
     implementation libs.opensearch.rhlc
     implementation libs.opensearch.java
@@ -30,9 +31,9 @@ dependencies {
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation testLibs.junit.vintage
-    testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation 'commons-io:commons-io:2.12.0'
     testImplementation 'net.bytebuddy:byte-buddy:1.14.4'
-    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.3'
+    testImplementation 'net.bytebuddy:byte-buddy-agent:1.14.4'
     testImplementation testLibs.slf4j.simple
 }
 
@@ -63,9 +64,11 @@ task integrationTest(type: Test) {
     systemProperty 'tests.opensearch.bundle', System.getProperty('tests.opensearch.bundle')
     systemProperty 'tests.opensearch.user', System.getProperty('tests.opensearch.user')
     systemProperty 'tests.opensearch.password', System.getProperty('tests.opensearch.password')
+    systemProperty 'tests.opensearch.version', System.getProperty('tests.opensearch.version')
 
     filter {
         includeTestsMatching '*IT'
+        includeTestsMatching '*Test'
     }
 }
 
@@ -73,7 +76,7 @@ task integrationTest(type: Test) {
 jacocoTestReport {
     dependsOn test
     reports {
-        xml.enabled true
+        xml.required
     }
     afterEvaluate {
         classDirectories.from = files(classDirectories.files.collect {

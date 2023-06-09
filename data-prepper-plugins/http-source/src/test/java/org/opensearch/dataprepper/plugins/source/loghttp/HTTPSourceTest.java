@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import com.linecorp.armeria.common.HttpHeaderNames;
-import org.opensearch.dataprepper.compression.CompressionOption;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -17,6 +16,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;

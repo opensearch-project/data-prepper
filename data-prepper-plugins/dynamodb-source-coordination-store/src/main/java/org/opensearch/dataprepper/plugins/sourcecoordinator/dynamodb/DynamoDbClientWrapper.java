@@ -24,14 +24,20 @@ import software.amazon.awssdk.enhanced.dynamodb.model.Page;
 import software.amazon.awssdk.enhanced.dynamodb.model.PutItemEnhancedRequest;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryConditional;
 import software.amazon.awssdk.enhanced.dynamodb.model.QueryEnhancedRequest;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableResponse;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveRequest;
+import software.amazon.awssdk.services.dynamodb.model.DescribeTimeToLiveResponse;
 import software.amazon.awssdk.services.dynamodb.model.Projection;
 import software.amazon.awssdk.services.dynamodb.model.ProjectionType;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughput;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
+import software.amazon.awssdk.services.dynamodb.model.TimeToLiveSpecification;
+import software.amazon.awssdk.services.dynamodb.model.TimeToLiveStatus;
+import software.amazon.awssdk.services.dynamodb.model.UpdateTimeToLiveRequest;
 import software.amazon.awssdk.services.dynamodb.waiters.DynamoDbWaiter;
 
 import java.time.Duration;
@@ -46,52 +52,79 @@ public class DynamoDbClientWrapper {
 
     private static final Logger LOG = LoggerFactory.getLogger(DynamoDbClientWrapper.class);
     static final String SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX = "source-status";
+    static final String TTL_ATTRIBUTE_NAME = "expirationTime";
 
     static final String ITEM_DOES_NOT_EXIST_EXPRESSION = "attribute_not_exists(sourceIdentifier) or attribute_not_exists(sourcePartitionKey)";
     static final String ITEM_EXISTS_AND_HAS_LATEST_VERSION = "attribute_exists(sourceIdentifier) and attribute_exists(sourcePartitionKey) and version = :v";
 
     private final DynamoDbEnhancedClient dynamoDbEnhancedClient;
+    private final DynamoDbClient dynamoDbClient;
     private DynamoDbTable<DynamoDbSourcePartitionItem> table;
 
 
     private DynamoDbClientWrapper(final String region, final String stsRoleArn) {
-        this.dynamoDbEnhancedClient = DynamoDbClientFactory.provideDynamoDbEnhancedClient(region, stsRoleArn);
+        this.dynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn);
+        this.dynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(dynamoDbClient).build();
     }
 
     public static DynamoDbClientWrapper create(final String region, final String stsRoleArn) {
         return new DynamoDbClientWrapper(region, stsRoleArn);
     }
 
-    public void tryCreateTable(final String tableName,
-                               final ProvisionedThroughput provisionedThroughput) {
-
-        this.table = dynamoDbEnhancedClient.table(tableName, TableSchema.fromBean(DynamoDbSourcePartitionItem.class));
-
-        try {
-            final CreateTableEnhancedRequest createTableEnhancedRequest = CreateTableEnhancedRequest.builder()
-                            .provisionedThroughput(provisionedThroughput)
-                            .globalSecondaryIndices(EnhancedGlobalSecondaryIndex.builder()
-                                    .indexName(SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX)
-                                    .provisionedThroughput(provisionedThroughput)
-                                    .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
-                                    .build())
-                            .build();
-            table.createTable(createTableEnhancedRequest);
-        } catch (final ResourceInUseException e) {
-            LOG.info("The table creation for {} was already triggered by another instance of data prepper", tableName);
+    public void initializeTable(final DynamoStoreSettings dynamoStoreSettings,
+                                final ProvisionedThroughput provisionedThroughput) {
+        this.table = dynamoDbEnhancedClient.table(dynamoStoreSettings.getTableName(), TableSchema.fromBean(DynamoDbSourcePartitionItem.class));
+        if (!dynamoStoreSettings.skipTableCreation()) {
+            try {
+                final CreateTableEnhancedRequest createTableEnhancedRequest = CreateTableEnhancedRequest.builder()
+                        .provisionedThroughput(provisionedThroughput)
+                        .globalSecondaryIndices(EnhancedGlobalSecondaryIndex.builder()
+                                .indexName(SOURCE_STATUS_COMBINATION_KEY_GLOBAL_SECONDARY_INDEX)
+                                .provisionedThroughput(provisionedThroughput)
+                                .projection(Projection.builder().projectionType(ProjectionType.ALL).build())
+                                .build())
+                        .build();
+                table.createTable(createTableEnhancedRequest);
+            } catch (final ResourceInUseException e) {
+                LOG.info("The table creation for {} was already triggered by another instance of data prepper", dynamoStoreSettings.getTableName());
+            }
         }
 
         try(final DynamoDbWaiter dynamoDbWaiter = DynamoDbWaiter.create()) {
-            final DescribeTableRequest describeTableRequest = DescribeTableRequest.builder().tableName(tableName).build();
+            final DescribeTableRequest describeTableRequest = DescribeTableRequest.builder().tableName(dynamoStoreSettings.getTableName()).build();
             final ResponseOrException<DescribeTableResponse> response = dynamoDbWaiter
                     .waitUntilTableExists(describeTableRequest)
                     .matched();
 
             final DescribeTableResponse describeTableResponse = response.response().orElseThrow(
-                    () -> new RuntimeException(String.format("Table %s was not created successfully", tableName))
+                    () -> new RuntimeException(String.format("DynamoDb Table %s could not be found.", dynamoStoreSettings.getTableName()))
             );
 
-            LOG.info("DynamoDB table {} was created successfully for source coordination", describeTableResponse.table().tableName());
+            LOG.debug("DynamoDB table {} was created successfully for source coordination", describeTableResponse.table().tableName());
+
+            if (Objects.nonNull(dynamoStoreSettings.getTtl())) {
+                if (!dynamoStoreSettings.skipTableCreation()) {
+                    dynamoDbClient.updateTimeToLive(UpdateTimeToLiveRequest.builder()
+                            .tableName(table.tableName())
+                            .timeToLiveSpecification(TimeToLiveSpecification.builder()
+                                    .attributeName(TTL_ATTRIBUTE_NAME)
+                                    .enabled(Objects.nonNull(dynamoStoreSettings.getTtl()))
+                                    .build())
+                            .build());
+                } else {
+                    final DescribeTimeToLiveResponse describeTimeToLiveResponse = dynamoDbClient.describeTimeToLive(DescribeTimeToLiveRequest.builder()
+                            .tableName(table.tableName())
+                            .build());
+
+                    if (Objects.isNull(describeTimeToLiveResponse.timeToLiveDescription()) ||
+                            !TTL_ATTRIBUTE_NAME.equals(describeTimeToLiveResponse.timeToLiveDescription().attributeName()) ||
+                            !TimeToLiveStatus.ENABLED.equals(describeTimeToLiveResponse.timeToLiveDescription().timeToLiveStatus())) {
+                        throw new RuntimeException(String.format("TTL is set for the DynamoDb source coordination store, " +
+                                "but the necessary TTL is not enabled on the table. To use TTL with source coordination to clean up COMPLETED partitions, " +
+                                "the table must have TTL enabled on the %s attribute.", TTL_ATTRIBUTE_NAME));
+                    }
+                }
+            }
         }
     }
 

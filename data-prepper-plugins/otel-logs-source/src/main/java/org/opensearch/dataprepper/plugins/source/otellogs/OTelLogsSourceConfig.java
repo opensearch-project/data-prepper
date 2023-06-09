@@ -10,7 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.StringUtils;
-import org.opensearch.dataprepper.compression.CompressionOption;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 
 public class OTelLogsSourceConfig {

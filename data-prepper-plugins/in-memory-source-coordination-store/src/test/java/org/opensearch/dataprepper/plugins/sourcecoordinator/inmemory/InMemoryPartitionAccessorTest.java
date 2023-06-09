@@ -20,6 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.opensearch.dataprepper.plugins.sourcecoordinator.inmemory.InMemoryPartitionAccessor.GLOBAL_STATE_ITEM_SUFFIX;
 
 public class InMemoryPartitionAccessorTest {
 
@@ -30,6 +31,15 @@ public class InMemoryPartitionAccessorTest {
         objectUnderTest = new InMemoryPartitionAccessor();
     }
 
+    @Test
+    void getItem_with_global_store_item_that_does_not_exist_returns_empty_optional() {
+        final String sourceIdentifier = UUID.randomUUID() + GLOBAL_STATE_ITEM_SUFFIX;
+        final String partitionKey = UUID.randomUUID().toString();
+
+        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
+
+        assertThat(resultItem.isEmpty(), equalTo(true));
+    }
     @Test
     void getItem_with_no_sourceIdentifier_returns_empty_optional() {
         final String sourceIdentifier = UUID.randomUUID().toString();
@@ -44,6 +54,25 @@ public class InMemoryPartitionAccessorTest {
         final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getNextItem();
 
         assertThat(resultItem.isEmpty(), equalTo(true));
+    }
+
+    @Test
+    void queue_global_state_partition_followed_by_get_returns_global_state_item_and_does_not_queue_for_getNextItem() {
+        final String sourceIdentifier = UUID.randomUUID() + GLOBAL_STATE_ITEM_SUFFIX;
+        final String partitionKey = UUID.randomUUID().toString();
+        final InMemorySourcePartitionStoreItem item = mock(InMemorySourcePartitionStoreItem.class);
+        given(item.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(item.getSourcePartitionKey()).willReturn(partitionKey);
+
+        objectUnderTest.queuePartition(item);
+
+        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
+
+        assertThat(resultItem.isPresent(), equalTo(true));
+        assertThat(resultItem.get(), equalTo(item));
+
+        final Optional<SourcePartitionStoreItem> emptyItem = objectUnderTest.getNextItem();
+        assertThat(emptyItem.isEmpty(), equalTo(true));
     }
 
     @Test
@@ -160,6 +189,35 @@ public class InMemoryPartitionAccessorTest {
         given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.UNASSIGNED);
 
         objectUnderTest.updateItem(updateItem);
+
+        final Optional<SourcePartitionStoreItem> emptyItem = objectUnderTest.getNextItem();
+        assertThat(emptyItem.isEmpty(), equalTo(true));
+    }
+
+    @Test
+    void update_for_global_state_item_updates_that_item_and_does_not_queue() {
+        final String sourceIdentifier = UUID.randomUUID() + GLOBAL_STATE_ITEM_SUFFIX;
+        final String partitionKey = UUID.randomUUID().toString();
+        final InMemorySourcePartitionStoreItem item = mock(InMemorySourcePartitionStoreItem.class);
+        given(item.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(item.getSourcePartitionKey()).willReturn(partitionKey);
+
+        objectUnderTest.queuePartition(item);
+
+        final Optional<SourcePartitionStoreItem> resultItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
+
+        assertThat(resultItem.isPresent(), equalTo(true));
+        assertThat(resultItem.get(), equalTo(item));
+
+        final InMemorySourcePartitionStoreItem updateItem = mock(InMemorySourcePartitionStoreItem.class);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(updateItem.getSourcePartitionKey()).willReturn(partitionKey);
+
+        objectUnderTest.updateItem(updateItem);
+
+        final Optional<SourcePartitionStoreItem> updatedItem = objectUnderTest.getItem(sourceIdentifier, partitionKey);
+        assertThat(updatedItem.isPresent(), equalTo(true));
+        assertThat(updatedItem.get(), equalTo(updateItem));
 
         final Optional<SourcePartitionStoreItem> emptyItem = objectUnderTest.getNextItem();
         assertThat(emptyItem.isEmpty(), equalTo(true));

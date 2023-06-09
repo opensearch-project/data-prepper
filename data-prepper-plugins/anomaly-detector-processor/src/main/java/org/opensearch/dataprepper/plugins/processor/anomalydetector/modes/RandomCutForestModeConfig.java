@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.anomalydetector.modes;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
 
 import java.util.Set;
 import java.util.HashSet;
@@ -20,6 +21,7 @@ public class RandomCutForestModeConfig {
     public static final double DEFAULT_TIME_DECAY = 0.1;
     private static final double MIN_TIME_DECAY = 0.0;
     public static final double MAX_TIME_DECAY = 1.0;
+    public static final int DEFAULT_OUTPUT_AFTER = 32;
 
     public static final String VERSION_1_0 = "1.0";
 
@@ -41,6 +43,21 @@ public class RandomCutForestModeConfig {
 
     @JsonProperty("time_decay")
     private double timeDecay = DEFAULT_TIME_DECAY;
+
+    @JsonProperty("output_after")
+    private int outputAfter = DEFAULT_OUTPUT_AFTER;
+
+    @AssertTrue(message = "Value of output_after must be less than or equal to the value of sample_size")
+    public boolean outputAfterCheck() {
+        return outputAfter <= sampleSize;
+    }
+
+    public int getOutputAfter() {
+        if (!outputAfterCheck()) {
+            throw new IllegalArgumentException(String.format("outputAfter value of %d is not valid, It should be smaller than sample size, which is set to %d", outputAfter, sampleSize));
+        }
+        return outputAfter;
+    }
 
     public int getShingleSize() {
         if (shingleSize < MIN_SHINGLE_SIZE || shingleSize > MAX_SHINGLE_SIZE) {

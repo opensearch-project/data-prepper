@@ -13,7 +13,6 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
@@ -39,9 +38,6 @@ public class DynamoDbClientFactoryTest {
     @Mock
     private DynamoDbClient dynamoDbClient;
 
-    @Mock
-    private DynamoDbEnhancedClient dynamoDbEnhancedClient;
-
     @BeforeEach
     void setup() {
         region = "us-east-1";
@@ -49,12 +45,11 @@ public class DynamoDbClientFactoryTest {
     }
 
     @Test
-    void provideDynamoDbEnhancedClient_with_null_stsRole_creates_client_with_default_credentials() {
+    void provideDynamoDbClient_with_null_stsRole_creates_client_with_default_credentials() {
 
         try (final MockedStatic<Region> regionMockedStatic = mockStatic(Region.class);
              final MockedStatic<DynamoDbClient> dynamoDbClientMockedStatic = mockStatic(DynamoDbClient.class);
-             final MockedStatic<DefaultCredentialsProvider> defaultCredentialsProviderMockedStatic = mockStatic(DefaultCredentialsProvider.class);
-             final MockedStatic<DynamoDbEnhancedClient> dynamoDbEnhancedClientMockedStatic = mockStatic(DynamoDbEnhancedClient.class)) {
+             final MockedStatic<DefaultCredentialsProvider> defaultCredentialsProviderMockedStatic = mockStatic(DefaultCredentialsProvider.class)) {
             regionMockedStatic.when(() -> Region.of(region)).thenReturn(Region.US_EAST_1);
             final DynamoDbClientBuilder dynamoDbClientBuilder = mock(DynamoDbClientBuilder.class);
             dynamoDbClientMockedStatic.when(DynamoDbClient::builder).thenReturn(dynamoDbClientBuilder);
@@ -66,15 +61,9 @@ public class DynamoDbClientFactoryTest {
             when(dynamoDbClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(dynamoDbClientBuilder);
             when(dynamoDbClientBuilder.build()).thenReturn(dynamoDbClient);
 
-            final DynamoDbEnhancedClient.Builder builder = mock(DynamoDbEnhancedClient.Builder.class);
+            final DynamoDbClient provideDynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, null);
 
-            dynamoDbEnhancedClientMockedStatic.when(DynamoDbEnhancedClient::builder).thenReturn(builder);
-            when(builder.dynamoDbClient(dynamoDbClient)).thenReturn(builder);
-            when(builder.build()).thenReturn(dynamoDbEnhancedClient);
-
-            final DynamoDbEnhancedClient enhancedClient = DynamoDbClientFactory.provideDynamoDbEnhancedClient(region, null);
-
-            assertThat(enhancedClient, equalTo(dynamoDbEnhancedClient));
+            assertThat(provideDynamoDbClient, equalTo(dynamoDbClient));
         }
     }
 
@@ -85,8 +74,7 @@ public class DynamoDbClientFactoryTest {
              final MockedStatic<DynamoDbClient> dynamoDbClientMockedStatic = mockStatic(DynamoDbClient.class);
              final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
              final MockedStatic<AssumeRoleRequest> assumeRoleRequestMockedStatic = mockStatic(AssumeRoleRequest.class);
-             final MockedStatic<StsAssumeRoleCredentialsProvider> stsAssumeRoleCredentialsProviderMockedStatic = mockStatic(StsAssumeRoleCredentialsProvider.class);
-             final MockedStatic<DynamoDbEnhancedClient> dynamoDbEnhancedClientMockedStatic = mockStatic(DynamoDbEnhancedClient.class)) {
+             final MockedStatic<StsAssumeRoleCredentialsProvider> stsAssumeRoleCredentialsProviderMockedStatic = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
             regionMockedStatic.when(() -> Region.of(region)).thenReturn(Region.US_EAST_1);
             final DynamoDbClientBuilder dynamoDbClientBuilder = mock(DynamoDbClientBuilder.class);
             dynamoDbClientMockedStatic.when(DynamoDbClient::builder).thenReturn(dynamoDbClientBuilder);
@@ -119,15 +107,9 @@ public class DynamoDbClientFactoryTest {
             when(dynamoDbClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(dynamoDbClientBuilder);
             when(dynamoDbClientBuilder.build()).thenReturn(dynamoDbClient);
 
-            final DynamoDbEnhancedClient.Builder builder = mock(DynamoDbEnhancedClient.Builder.class);
+            final DynamoDbClient providedDynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn);
 
-            dynamoDbEnhancedClientMockedStatic.when(DynamoDbEnhancedClient::builder).thenReturn(builder);
-            when(builder.dynamoDbClient(dynamoDbClient)).thenReturn(builder);
-            when(builder.build()).thenReturn(dynamoDbEnhancedClient);
-
-            final DynamoDbEnhancedClient enhancedClient = DynamoDbClientFactory.provideDynamoDbEnhancedClient(region, stsRoleArn);
-
-            assertThat(enhancedClient, equalTo(dynamoDbEnhancedClient));
+            assertThat(providedDynamoDbClient, equalTo(dynamoDbClient));
         }
     }
 }

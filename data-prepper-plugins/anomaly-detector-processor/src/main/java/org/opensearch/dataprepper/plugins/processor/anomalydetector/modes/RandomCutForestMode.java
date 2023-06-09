@@ -32,7 +32,6 @@ import java.util.concurrent.locks.ReentrantLock;
 @DataPrepperPlugin(name = "random_cut_forest", pluginType = AnomalyDetectorMode.class, pluginConfigurationType = RandomCutForestModeConfig.class)
 public class RandomCutForestMode implements AnomalyDetectorMode {
     private static final int NUMBER_OF_TREES = 50;
-    private static final int TRANSFORM_OUTPUT_AFTER = 32;
     private static final double ANOMALY_RATE = 0.01;
     private static final double INITIAL_ACCEPT_FRACTION = 0.125;
     private static final double LOWER_THRESHOLD = 1.1;
@@ -41,6 +40,7 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
     private ThresholdedRandomCutForest forest;
     private int baseDimensions;
     private int sampleSize;
+    private int outputAfter;
     private int shingleSize;
     private double timeDecay;
     private List<String> keys;
@@ -52,6 +52,7 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
     public RandomCutForestMode(final RandomCutForestModeConfig randomCutForestModeConfig) {
         this.sampleSize = randomCutForestModeConfig.getSampleSize();
         this.shingleSize = randomCutForestModeConfig.getShingleSize();
+        this.outputAfter = randomCutForestModeConfig.getOutputAfter();
         this.timeDecay = randomCutForestModeConfig.getTimeDecay();
         this.processLock = new ReentrantLock();
     }
@@ -75,7 +76,8 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
                     .precision(precision)
                     .anomalyRate(ANOMALY_RATE)
                     .forestMode(ForestMode.STANDARD)
-			        .transformMethod(transformMethod).outputAfter(TRANSFORM_OUTPUT_AFTER)
+			        .transformMethod(transformMethod)
+                    .outputAfter(outputAfter)
                     .timeDecay(timeDecay / sampleSize)
 			        .initialAcceptFraction(INITIAL_ACCEPT_FRACTION).build();
 	    forest.setLowerThreshold(LOWER_THRESHOLD);

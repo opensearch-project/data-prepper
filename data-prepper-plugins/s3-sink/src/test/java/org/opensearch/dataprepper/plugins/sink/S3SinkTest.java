@@ -5,18 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.sink;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -27,10 +19,19 @@ import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.opensearch.dataprepper.plugins.sink.codec.JsonCodec;
 import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.BucketOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 import software.amazon.awssdk.regions.Region;
+
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collection;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class S3SinkTest {
 
@@ -47,7 +48,7 @@ class S3SinkTest {
     private S3Sink s3Sink;
     private PluginSetting pluginSetting;
     private PluginFactory pluginFactory;
-    private BucketOptions bucketOptions;
+    private AwsCredentialsSupplier awsCredentialsSupplier;
 
     @BeforeEach
     void setUp() {
@@ -57,10 +58,10 @@ class S3SinkTest {
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         Codec codec = mock(JsonCodec.class);
         ObjectKeyOptions objectKeyOptions = mock(ObjectKeyOptions.class);
-        bucketOptions = mock(BucketOptions.class);
         pluginSetting = mock(PluginSetting.class);
         PluginModel pluginModel = mock(PluginModel.class);
         pluginFactory = mock(PluginFactory.class);
+        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
 
         when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
         when(s3SinkConfig.getThresholdOptions()).thenReturn(thresholdOptions);
@@ -75,13 +76,16 @@ class S3SinkTest {
         when(pluginFactory.loadPlugin(any(), any())).thenReturn(codec);
         when(pluginSetting.getName()).thenReturn(SINK_PLUGIN_NAME);
         when(pluginSetting.getPipelineName()).thenReturn(SINK_PIPELINE_NAME);
-        when(s3SinkConfig.getBucketOptions()).thenReturn(bucketOptions);
-        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn(BUCKET_NAME);
+        when(s3SinkConfig.getBucketName()).thenReturn(BUCKET_NAME);
+    }
+
+    private S3Sink createObjectUnderTest() {
+        return new S3Sink(pluginSetting, s3SinkConfig, pluginFactory, awsCredentialsSupplier);
     }
 
     @Test
     void test_s3_sink_plugin_isReady_positive() {
-        s3Sink = new S3Sink(pluginSetting, s3SinkConfig, pluginFactory);
+        s3Sink = createObjectUnderTest();
         Assertions.assertNotNull(s3Sink);
         s3Sink.doInitialize();
         assertTrue(s3Sink.isReady(), "s3 sink is not initialized and not ready to work");
@@ -89,25 +93,15 @@ class S3SinkTest {
 
     @Test
     void test_s3_Sink_plugin_isReady_negative() {
-        s3Sink = new S3Sink(pluginSetting, s3SinkConfig, pluginFactory);
+        s3Sink = createObjectUnderTest();
         Assertions.assertNotNull(s3Sink);
         assertFalse(s3Sink.isReady(), "s3 sink is initialized and ready to work");
     }
 
     @Test
-    void test_doInitialize_with_exception() {
-        when(s3SinkConfig.getBufferType()).thenReturn(BufferTypeOptions.INMEMORY);
-        s3Sink = new S3Sink(pluginSetting, s3SinkConfig, pluginFactory);
-        Assertions.assertNotNull(s3Sink);
-        when(s3SinkConfig.getThresholdOptions()).thenReturn(null);
-        assertThrows(NullPointerException.class, s3Sink::doInitialize);
-    }
-
-    @Test
     void test_doOutput_with_empty_records() {
-        when(s3SinkConfig.getBucketOptions()).thenReturn(bucketOptions);
-        when(s3SinkConfig.getBucketOptions().getBucketName()).thenReturn(BUCKET_NAME);
-        s3Sink = new S3Sink(pluginSetting, s3SinkConfig, pluginFactory);
+        when(s3SinkConfig.getBucketName()).thenReturn(BUCKET_NAME);
+        s3Sink = createObjectUnderTest();
         Assertions.assertNotNull(s3Sink);
         s3Sink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();

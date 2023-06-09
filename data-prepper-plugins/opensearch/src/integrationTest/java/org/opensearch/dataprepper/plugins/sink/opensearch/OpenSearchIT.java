@@ -9,6 +9,7 @@ import org.junit.Test;
 import org.opensearch.client.Request;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.rest.RestStatus;
 
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.util.Collections;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
 
 public class OpenSearchIT {
     @Test
@@ -30,7 +32,8 @@ public class OpenSearchIT {
             builder.withUsername(user);
             builder.withPassword(password);
         }
-        final RestHighLevelClient client = builder.build().createClient();
+        final AwsCredentialsSupplier awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        final RestHighLevelClient client = builder.build().createClient(awsCredentialsSupplier);
 
         // TODO: Even with the REST High Level client in OpenSearch 1.1, the standard API
         // does not work with ODFE

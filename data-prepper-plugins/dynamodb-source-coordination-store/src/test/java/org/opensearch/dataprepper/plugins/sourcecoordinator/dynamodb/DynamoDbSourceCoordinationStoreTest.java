@@ -8,8 +8,6 @@ package org.opensearch.dataprepper.plugins.sourcecoordinator.dynamodb;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -27,6 +25,7 @@ import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -68,7 +67,6 @@ public class DynamoDbSourceCoordinationStoreTest {
 
     @Test
     void initializeStore_calls_tryCreateTable() {
-        given(dynamoStoreSettings.getTableName()).willReturn(UUID.randomUUID().toString());
         given(dynamoStoreSettings.getProvisionedReadCapacityUnits()).willReturn((long) new Random().nextInt(10));
         given(dynamoStoreSettings.getProvisionedWriteCapacityUnits()).willReturn((long) new Random().nextInt(10));
 
@@ -76,7 +74,7 @@ public class DynamoDbSourceCoordinationStoreTest {
 
         objectUnderTest.initializeStore();
 
-        verify(dynamoDbClientWrapper).tryCreateTable(eq(dynamoStoreSettings.getTableName()), any(ProvisionedThroughput.class));
+        verify(dynamoDbClientWrapper).initializeTable(eq(dynamoStoreSettings), any(ProvisionedThroughput.class));
     }
 
     @Test
@@ -120,34 +118,63 @@ public class DynamoDbSourceCoordinationStoreTest {
         assertThat(createdItem.getPartitionPriority(), notNullValue());
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"UNASSIGNED", "ASSIGNED" ,"CLOSED", "COMPLETED" })
-    void tryUpdateSourcePartitionItem_calls_dynamoClientWrapper_correctly_for_different_statuses(final String sourcePartitionStatus) {
+    @Test
+    void tryUpdateSourcePartitionItem_calls_dynamoClientWrapper_correctly_for_assigned_status() {
         final String sourceIdentifier = UUID.randomUUID().toString();
 
         final SourcePartitionStoreItem updateItem = mock(DynamoDbSourcePartitionItem.class);
         given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
-        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.valueOf(sourcePartitionStatus));
+        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.ASSIGNED);
 
         doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
 
-        if (sourcePartitionStatus.equals(SourcePartitionStatus.ASSIGNED.toString())) {
-            final Instant partitionOwnershipTimeout = Instant.now();
-            given(updateItem.getPartitionOwnershipTimeout()).willReturn(partitionOwnershipTimeout);
-            doNothing().when((DynamoDbSourcePartitionItem)updateItem).setPartitionPriority(partitionOwnershipTimeout.toString());
-        } else if (sourcePartitionStatus.equals(SourcePartitionStatus.CLOSED.toString())) {
-            final Instant reOpenAtTime = Instant.now();
-            given(updateItem.getReOpenAt()).willReturn(reOpenAtTime);
-            doNothing().when((DynamoDbSourcePartitionItem) updateItem).setPartitionPriority(reOpenAtTime.toString());
-        }
-
+        final Instant partitionOwnershipTimeout = Instant.now();
+        given(updateItem.getPartitionOwnershipTimeout()).willReturn(partitionOwnershipTimeout);
+        doNothing().when((DynamoDbSourcePartitionItem)updateItem).setPartitionPriority(partitionOwnershipTimeout.toString());
         createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem);
 
-        verify((DynamoDbSourcePartitionItem) updateItem).setSourceStatusCombinationKey(sourceIdentifier + "|" + sourcePartitionStatus);
+        verify((DynamoDbSourcePartitionItem) updateItem).setSourceStatusCombinationKey(sourceIdentifier + "|" + SourcePartitionStatus.ASSIGNED);
+    }
 
-        if (sourcePartitionStatus.equals(SourcePartitionStatus.UNASSIGNED) || sourcePartitionStatus.equals(SourcePartitionStatus.COMPLETED)) {
-            verify((DynamoDbSourcePartitionItem) updateItem, never()).setPartitionPriority(anyString());
-        }
+    @Test
+    void tryUpdateSourcePartitionItem_calls_dynamoClientWrapper_correctly_for_closed_status() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+
+        final SourcePartitionStoreItem updateItem = mock(DynamoDbSourcePartitionItem.class);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.CLOSED);
+
+        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
+        final Instant reOpenAtTime = Instant.now();
+        given(updateItem.getReOpenAt()).willReturn(reOpenAtTime);
+        doNothing().when((DynamoDbSourcePartitionItem) updateItem).setPartitionPriority(reOpenAtTime.toString());
+        createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem);
+
+        verify((DynamoDbSourcePartitionItem) updateItem).setSourceStatusCombinationKey(sourceIdentifier + "|" + SourcePartitionStatus.CLOSED);
+    }
+
+    @Test
+    void tryUpdateSourcePartitionItem_calls_dynamoClientWrapper_correctly_for_completed_status() {
+        final String sourceIdentifier = UUID.randomUUID().toString();
+
+        final SourcePartitionStoreItem updateItem = mock(DynamoDbSourcePartitionItem.class);
+        given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
+        given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.COMPLETED);
+
+        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
+
+        final ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
+        final Duration ttl = Duration.ofSeconds(30);
+        final Long nowPlusTtl = Instant.now().plus(ttl).getEpochSecond();
+        given(dynamoStoreSettings.getTtl()).willReturn(ttl);
+        doNothing().when((DynamoDbSourcePartitionItem) updateItem).setExpirationTime(argumentCaptor.capture());
+        createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem);
+
+        final Long expirationTimeResult = argumentCaptor.getValue();
+        assertThat(expirationTimeResult, greaterThanOrEqualTo(nowPlusTtl));
+
+        verify((DynamoDbSourcePartitionItem) updateItem).setSourceStatusCombinationKey(sourceIdentifier + "|" + SourcePartitionStatus.COMPLETED);
+        verify((DynamoDbSourcePartitionItem) updateItem, never()).setPartitionPriority(anyString());
     }
 
     @Test
