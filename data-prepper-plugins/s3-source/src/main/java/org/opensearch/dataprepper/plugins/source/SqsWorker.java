@@ -6,9 +6,13 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
+import org.joda.time.DateTime;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
@@ -180,21 +184,39 @@ public class SqsWorker implements Runnable {
     }
 
     private ParsedMessage convertS3EventMessages(final Message message) {
-        try {
-            final S3EventNotification s3EventNotification = s3EventMessageParser.parseMessage(message.body());
-            if (s3EventNotification.getRecords() != null)
-                return new ParsedMessage(message, s3EventNotification.getRecords());
-            else {
-                LOG.debug("SQS message with ID:{} does not have any S3 event notification records.", message.messageId());
-                return new ParsedMessage(message, true);
-            }
+        final ObjectMapper objectMapper = new ObjectMapper();
+        if (message.body().contains("\"source\"")) {
+            try {
+                final JsonNode parsedNode = objectMapper.readTree(message.body());
 
-        } catch (SdkClientException | JsonProcessingException e) {
-            if (message.body().contains("s3:TestEvent") && message.body().contains("Amazon S3")) {
-                LOG.info("Received s3:TestEvent message. Deleting from SQS queue.");
-                return new ParsedMessage(message, false);
-            } else {
-                LOG.error("SQS message with message ID:{} has invalid body which cannot be parsed into S3EventNotification. {}.", message.messageId(), e.getMessage());
+                final EventBridgeNotification eventBridgeNotification = objectMapper
+                        .treeToValue(parsedNode, EventBridgeNotification.class);
+
+                return new ParsedMessage(message, eventBridgeNotification);
+
+            } catch (JsonMappingException e) {
+                throw new RuntimeException(e);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else {
+            try {
+                final S3EventNotification s3EventNotification = s3EventMessageParser.parseMessage(message.body());
+                if (s3EventNotification.getRecords() != null)
+                    return new ParsedMessage(message, s3EventNotification.getRecords());
+                else {
+                    LOG.debug("SQS message with ID:{} does not have any S3 event notification records.", message.messageId());
+                    return new ParsedMessage(message, true);
+                }
+
+            } catch (SdkClientException | JsonProcessingException e) {
+                if (message.body().contains("s3:TestEvent") && message.body().contains("Amazon S3")) {
+                    LOG.info("Received s3:TestEvent message. Deleting from SQS queue.");
+                    return new ParsedMessage(message, false);
+                } else {
+                    LOG.error("SQS message with message ID:{} has invalid body which cannot be parsed into S3EventNotification. {}.", message.messageId(), e.getMessage());
+                }
             }
         }
         return new ParsedMessage(message, true);
@@ -211,10 +233,17 @@ public class SqsWorker implements Runnable {
                     deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
                 }
             } else {
-                final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;
-                if (!notificationRecords.isEmpty() && isEventNameCreated(notificationRecords.get(0))) {
+//                final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;
+                // for generic SQS messages
+                if (parsedMessage.recordSize > 0 && parsedMessage.eventName != null && isEventNameCreated(parsedMessage.eventName)) {
                     parsedMessagesToRead.add(parsedMessage);
-                } else {
+                }
+                else if (parsedMessage.recordSize > 0 &&
+                        (parsedMessage.source != null && parsedMessage.source.equals("aws.s3")) ||
+                        (parsedMessage.detailType != null && parsedMessage.detailType.equals("Object Created"))) {
+                    parsedMessagesToRead.add(parsedMessage);
+                }
+                else {
                     // TODO: Delete these only if on_error is configured to delete_messages.
                     LOG.debug("Received SQS message other than s3:ObjectCreated:*. Deleting message from SQS queue.");
                     deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
@@ -238,8 +267,8 @@ public class SqsWorker implements Runnable {
                     }
                 }, Duration.ofSeconds(timeout));
             }
-            final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;
-            final S3ObjectReference s3ObjectReference = populateS3Reference(notificationRecords.get(0));
+//            final List<S3EventNotification.S3EventNotificationRecord> notificationRecords = parsedMessage.notificationRecords;
+            final S3ObjectReference s3ObjectReference = populateS3Reference(parsedMessage.bucketName, parsedMessage.objectKey);
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
             if (endToEndAcknowledgementsEnabled) {
                 deleteMessageBatchRequestEntry.ifPresent(waitingForAcknowledgements::add);
@@ -259,7 +288,7 @@ public class SqsWorker implements Runnable {
         try {
             s3Service.addS3Object(s3ObjectReference, acknowledgementSet);
             sqsMessageDelayTimer.record(Duration.between(
-                    Instant.ofEpochMilli(parsedMessage.notificationRecords.get(0).getEventTime().toInstant().getMillis()),
+                    Instant.ofEpochMilli(parsedMessage.eventTime.toInstant().getMillis()),
                     Instant.now()
             ));
             return Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.message));
@@ -322,35 +351,61 @@ public class SqsWorker implements Runnable {
                 .build();
     }
 
-    private boolean isEventNameCreated(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
-        return objectCreatedFilter.filter(s3EventNotificationRecord)
-                .isPresent();
+    private boolean isEventNameCreated(final String eventName) {
+        return objectCreatedFilter.isObjectCreated(eventName);
     }
 
-    private S3ObjectReference populateS3Reference(final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord) {
-        final S3EventNotification.S3Entity s3Entity = s3EventNotificationRecord.getS3();
-        return S3ObjectReference.bucketAndKey(s3Entity.getBucket().getName(),
-                        s3Entity.getObject().getUrlDecodedKey())
+    private S3ObjectReference populateS3Reference(final String bucketName, final String objectKey) {
+        return S3ObjectReference
+                .bucketAndKey(bucketName, objectKey)
                 .build();
     }
 
     private static class ParsedMessage {
         private final Message message;
-        private final List<S3EventNotification.S3EventNotificationRecord> notificationRecords;
         private final boolean failedParsing;
+        private String bucketName;
+        private String objectKey;
+        private String eventName; // objectCreated or Object Created
+        private DateTime eventTime;
+        private final int recordSize;
+        private String detailType;
+        private String source;
+
+//        private ParsedMessage(final Message message, final List<S3EventNotification.S3EventNotificationRecord> notificationRecords) {
+//            this(message, notificationRecords, false);
+//        }
+
+//        private ParsedMessage(final Message message, final EventBridgeNotification eventBridgeNotification) {
+//            this(message, eventBridgeNotification, false);
+//        }
+//
+        private ParsedMessage(final Message message, final boolean failedParsing) {
+//            this(message, Collections.emptyList());
+            this.message = message;
+            this.failedParsing = failedParsing;
+            this.recordSize = 0;
+        }
 
         private ParsedMessage(final Message message, final List<S3EventNotification.S3EventNotificationRecord> notificationRecords) {
-            this(message, notificationRecords, false);
-        }
-
-        private ParsedMessage(final Message message, final boolean failedParsing) {
-            this(message, Collections.emptyList(), failedParsing);
-        }
-
-        private ParsedMessage(final Message message, final List<S3EventNotification.S3EventNotificationRecord> notificationRecords, final boolean failedParsing) {
             this.message = message;
-            this.notificationRecords = notificationRecords;
-            this.failedParsing = failedParsing;
+            this.bucketName = notificationRecords.get(0).getS3().getBucket().getName();
+            this.objectKey = notificationRecords.get(0).getS3().getObject().getUrlDecodedKey();
+            this.eventName = notificationRecords.get(0).getEventName();
+            this.eventTime = notificationRecords.get(0).getEventTime();
+            this.failedParsing = false;
+            this.recordSize = notificationRecords.size();
+        }
+
+        private ParsedMessage(final Message message, final EventBridgeNotification eventBridgeNotification) {
+            this.message = message;
+            this.bucketName = eventBridgeNotification.getDetail().getBucket().getName();
+            this.objectKey = eventBridgeNotification.getDetail().getObject().getUrlDecodedKey();
+            this.detailType = eventBridgeNotification.getDetailType();
+            this.eventTime = eventBridgeNotification.getTime();
+            this.failedParsing = false;
+            this.source = eventBridgeNotification.getSource();
+            this.recordSize = 1;
         }
     }
 }

@@ -17,4 +17,9 @@ public class ObjectCreatedFilter implements S3EventFilter {
         else
             return Optional.empty();
     }
+
+    @Override
+    public Boolean isObjectCreated(final String eventName) {
+        return eventName.startsWith("ObjectCreated");
+    }
 }

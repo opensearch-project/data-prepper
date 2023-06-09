@@ -11,4 +11,6 @@ import java.util.Optional;
 
 public interface S3EventFilter {
     Optional<S3EventNotification.S3EventNotificationRecord> filter(S3EventNotification.S3EventNotificationRecord notification);
+
+    Boolean isObjectCreated(String eventName);
 }

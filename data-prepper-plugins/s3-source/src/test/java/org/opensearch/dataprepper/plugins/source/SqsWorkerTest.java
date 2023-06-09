@@ -185,6 +185,42 @@ class SqsWorkerTest {
             assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
         }
 
+        @Test
+        void processSqsMessages_should_return_number_of_messages_processed_() throws IOException {
+            Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+            final Message message = mock(Message.class);
+            when(message.body()).thenReturn(createEventBridgeNotification(startTime));
+            final String testReceiptHandle = UUID.randomUUID().toString();
+            when(message.messageId()).thenReturn(testReceiptHandle);
+            when(message.receiptHandle()).thenReturn(testReceiptHandle);
+
+            final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+            when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+            when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+
+            final int messagesProcessed = sqsWorker.processSqsMessages();
+            final ArgumentCaptor<DeleteMessageBatchRequest> deleteMessageBatchRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteMessageBatchRequest.class);
+            verify(sqsClient).deleteMessageBatch(deleteMessageBatchRequestArgumentCaptor.capture());
+            final DeleteMessageBatchRequest actualDeleteMessageBatchRequest = deleteMessageBatchRequestArgumentCaptor.getValue();
+
+            final ArgumentCaptor<Duration> durationArgumentCaptor = ArgumentCaptor.forClass(Duration.class);
+            verify(sqsMessageDelayTimer).record(durationArgumentCaptor.capture());
+            Duration actualDelay = durationArgumentCaptor.getValue();
+
+            assertThat(actualDeleteMessageBatchRequest, notNullValue());
+            assertThat(actualDeleteMessageBatchRequest.entries().size(), equalTo(1));
+            assertThat(actualDeleteMessageBatchRequest.queueUrl(), equalTo(s3SourceConfig.getSqsOptions().getSqsUrl()));
+            assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(message.messageId()));
+            assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(message.receiptHandle()));
+            assertThat(messagesProcessed, equalTo(1));
+            verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+            verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+            verify(sqsMessagesReceivedCounter).increment(1);
+            verify(sqsMessagesDeletedCounter).increment(1);
+            assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
+            assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
+        }
+
 
         @ParameterizedTest
         @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
@@ -458,7 +494,10 @@ class SqsWorkerTest {
     @Test
     void populateS3Reference_should_interact_with_getUrlDecodedKey() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         // Using reflection to unit test a private method as part of bug fix.
-        final Method method = SqsWorker.class.getDeclaredMethod("populateS3Reference", S3EventNotification.S3EventNotificationRecord.class);
+        Class<?> params[] = new Class[2];
+        params[0] = String.class;
+        params[1] = String.class;
+        final Method method = SqsWorker.class.getDeclaredMethod("populateS3Reference", params);
         method.setAccessible(true);
 
         final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord = mock(S3EventNotification.S3EventNotificationRecord.class);
@@ -472,12 +511,12 @@ class SqsWorkerTest {
         when(s3BucketEntity.getName()).thenReturn("test-bucket-name");
         when(s3ObjectEntity.getUrlDecodedKey()).thenReturn("test-key");
 
-        final S3ObjectReference s3ObjectReference = (S3ObjectReference) method.invoke(sqsWorker, s3EventNotificationRecord);
+        final S3ObjectReference s3ObjectReference = (S3ObjectReference) method.invoke(sqsWorker, "test-bucket-name", "test-key");
 
         assertThat(s3ObjectReference, notNullValue());
         assertThat(s3ObjectReference.getBucketName(), equalTo("test-bucket-name"));
         assertThat(s3ObjectReference.getKey(), equalTo("test-key"));
-        verify(s3ObjectEntity).getUrlDecodedKey();
+//        verify(s3ObjectEntity).getUrlDecodedKey();
         verifyNoMoreInteractions(s3ObjectEntity);
     }
 
@@ -492,6 +531,22 @@ class SqsWorkerTest {
                 "\"x-amz-id-2\":\"abcd\"},\"s3\":{\"s3SchemaVersion\":\"1.0\",\"configurationId\":\"s3SourceEventNotification\"," +
                 "\"bucket\":{\"name\":\"bucketName\",\"ownerIdentity\":{\"principalId\":\"ID\"},\"arn\":\"arn:aws:s3:::bucketName\"}," +
                 "\"object\":{\"key\":\"File.gz\",\"size\":72,\"eTag\":\"abcd\",\"sequencer\":\"ABCD\"}}}]}";
+    }
+
+    private static String createEventBridgeNotification(final Instant startTime) {
+//        return "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"ObjectCreated\"," +
+//                "\"source\":\"aws.s3\",\"account\":\"111122223333\",\"time\":\"" + startTime + "\"," +
+//                "\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::DOC-EXAMPLE-BUCKET1\"]," +
+//                "\"detail\":{\"version\":\"0\",\"bucket\":{\"name\":\"DOC-EXAMPLE-BUCKET1\"}," +
+//                "\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\"," +
+//                "\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"617f08299329d189\"}," +
+//                "\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\"," +
+//                "\"reason\":\"PutObject\"}}";
+        return "{\"source\":\"aws.s3\",\"time\":\"" + startTime + "\",\"account\":\"123456789012\",\"region\":\"ca-central-1\"," +
+                "\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"bucket\":{\"name\":\"example-bucket\"}," +
+                "\"object\":{\"key\":\"example-key\",\"size\":5," +
+                "\"etag\":\"b57f9512698f4b09e608f4f2a65852e5\"},\"request-id\":\"N4N7GDK58NMKJ12R\"," +
+                "\"requester\":\"securitylake.amazonaws.com\"}}";
     }
 
     static class DeleteExceptionToBackoffCalls implements ArgumentsProvider {
