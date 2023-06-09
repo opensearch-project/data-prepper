@@ -5,7 +5,6 @@
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import org.apache.http.HttpHost;
-import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
@@ -35,7 +34,6 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 
@@ -85,8 +83,14 @@ public class SearchAccessorStrategy {
      * @since 2.4
      */
     public SearchAccessor getSearchAccessor() {
-        final RestClient restClient = createOpenSearchRestClient();
-        final OpenSearchTransport transport = createOpenSearchTransport(restClient);
+
+        OpenSearchTransport transport;
+        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions())) {
+            transport = createOpenSearchTransportForAws();
+        } else {
+            final RestClient restClient = createOpenSearchRestClient();
+            transport = createOpenSearchTransport(restClient);
+        }
         final OpenSearchClient openSearchClient = new OpenSearchClient(transport);
 
         InfoResponse infoResponse;
@@ -129,13 +133,8 @@ public class SearchAccessorStrategy {
 
         final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
-        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions())) {
-            LOG.info("Using aws credentials and sigv4 for auth for the OpenSearch source");
-            attachSigv4Auth(restClientBuilder);
-        } else {
-            LOG.info("Using username and password for auth for the OpenSearch source");
-            attachUsernamePassword(restClientBuilder);
-        }
+        LOG.info("Using username and password for auth for the OpenSearch source");
+        attachUsernamePassword(restClientBuilder);
 
         setConnectAndSocketTimeout(restClientBuilder);
 
@@ -179,27 +178,6 @@ public class SearchAccessorStrategy {
         }
     }
 
-    private void attachSigv4Auth(final RestClientBuilder restClientBuilder) {
-        final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
-                .withRegion(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion())
-                .withStsRoleArn(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn())
-                .withStsHeaderOverrides(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsHeaderOverrides())
-                .build());
-
-        final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(
-                AOS_SERVICE_NAME,
-                Aws4Signer.create(),
-                awsCredentialsProvider,
-                openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion()
-        );
-
-        restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
-            httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
-            attachSSLContext(httpClientBuilder);
-            return httpClientBuilder;
-        });
-    }
-
     private void attachUsernamePassword(final RestClientBuilder restClientBuilder) {
         final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         credentialsProvider.setCredentials(AuthScope.ANY,
@@ -227,24 +205,23 @@ public class SearchAccessorStrategy {
     }
 
     private OpenSearchTransport createOpenSearchTransport(final RestClient restClient) {
-
-        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) && openSearchSourceConfiguration.getAwsAuthenticationOptions().isSigv4Enabled()) {
-            final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
-                    .withRegion(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion())
-                    .withStsRoleArn(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn())
-                    .withStsHeaderOverrides(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsHeaderOverrides())
-                    .build());
-
-            return new AwsSdk2Transport(createSdkHttpClient(),
-                    HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
-                    AOS_SERVICE_NAME, openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
-                    AwsSdk2TransportOptions.builder()
-                            .setCredentials(awsCredentialsProvider)
-                            .setMapper(new JacksonJsonpMapper())
-                            .build());
-        }
-
         return new RestClientTransport(restClient, new JacksonJsonpMapper());
+    }
+
+    private OpenSearchTransport createOpenSearchTransportForAws() {
+        final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
+                .withRegion(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion())
+                .withStsRoleArn(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn())
+                .withStsHeaderOverrides(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsHeaderOverrides())
+                .build());
+
+        return new AwsSdk2Transport(createSdkHttpClient(),
+                HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
+                AOS_SERVICE_NAME, openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
+                AwsSdk2TransportOptions.builder()
+                        .setCredentials(awsCredentialsProvider)
+                        .setMapper(new JacksonJsonpMapper())
+                        .build());
     }
 
     private SdkHttpClient createSdkHttpClient() {

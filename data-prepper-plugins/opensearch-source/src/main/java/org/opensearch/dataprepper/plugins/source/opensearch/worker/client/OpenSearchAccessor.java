@@ -4,13 +4,25 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
+import org.opensearch.client.opensearch._types.ScoreSort;
+import org.opensearch.client.opensearch._types.SortOptions;
+import org.opensearch.client.opensearch._types.SortOrder;
 import org.opensearch.client.opensearch._types.Time;
+import org.opensearch.client.opensearch._types.query_dsl.MatchAllQuery;
+import org.opensearch.client.opensearch._types.query_dsl.Query;
+import org.opensearch.client.opensearch.core.SearchRequest;
+import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.opensearch.core.pit.CreatePitRequest;
 import org.opensearch.client.opensearch.core.pit.CreatePitResponse;
 import org.opensearch.client.opensearch.core.pit.DeletePitRequest;
 import org.opensearch.client.opensearch.core.pit.DeletePitResponse;
+import org.opensearch.client.opensearch.core.search.Pit;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
@@ -19,8 +31,8 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 import org.slf4j.Logger;
@@ -28,11 +40,17 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAccessor.class);
+
+    static final String DOCUMENT_ID_METADATA_ATTRIBUTE_NAME = "document_id";
+    static final String INDEX_METADATA_ATTRIBUTE_NAME = "index";
 
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
 
@@ -75,9 +93,41 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     }
 
     @Override
-    public SearchPitResponse searchWithPit(final SearchPitRequest searchPitRequest) {
-        // todo: implement
-        return null;
+    public SearchPointInTimeResults searchWithPit(final SearchPointInTimeRequest searchPointInTimeRequest) {
+        try {
+            final SearchResponse<ObjectNode> searchResponse = openSearchClient.search(
+                    SearchRequest.of(builder -> {
+                        builder
+                            .pit(Pit.of(pitBuilder -> pitBuilder.id(searchPointInTimeRequest.getPitId()).keepAlive(searchPointInTimeRequest.getKeepAlive())))
+                            .size(searchPointInTimeRequest.getPaginationSize())
+                            .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
+                            .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery.queryName("*")))));
+
+                        if (Objects.nonNull(searchPointInTimeRequest.getSearchAfter())) {
+                            builder.searchAfter(searchPointInTimeRequest.getSearchAfter());
+                        }
+
+                        return builder;
+        }), ObjectNode.class);
+
+            final List<Event> documents = searchResponse.hits().hits().stream()
+                    .map(hit -> JacksonEvent.builder()
+                            .withData(hit.source())
+                            .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
+                            .withEventType(EventType.DOCUMENT.toString()).build())
+                    .collect(Collectors.toList());
+
+            final List<String> nextSearchAfter = Objects.nonNull(searchResponse.hits().hits()) && !searchResponse.hits().hits().isEmpty() ?
+                searchResponse.hits().hits().get(searchResponse.hits().hits().size() - 1).sort() :
+                null;
+
+            return SearchPointInTimeResults.builder()
+                    .withDocuments(documents)
+                    .withNextSearchAfter(nextSearchAfter)
+                    .build();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
