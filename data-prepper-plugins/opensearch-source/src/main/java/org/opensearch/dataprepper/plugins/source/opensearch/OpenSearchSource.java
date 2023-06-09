@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessorStrategy;
 
-@DataPrepperPlugin(name="opensearch", pluginType = Source.class , pluginConfigurationType = OpenSearchSourceConfiguration.class )
+@DataPrepperPlugin(name="opensearch", pluginType = Source.class, pluginConfigurationType = OpenSearchSourceConfiguration.class)
 public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordination {
 
     private final AwsCredentialsSupplier awsCredentialsSupplier;

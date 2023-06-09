@@ -4,11 +4,11 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePitRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePitResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePitRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitRequest;
@@ -16,7 +16,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
-public class ElasticsearchAccessor implements SearchAccessor {
+public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFactory {
     @Override
     public SearchContextType getSearchContextType() {
         // todo: implement
@@ -24,7 +24,7 @@ public class ElasticsearchAccessor implements SearchAccessor {
     }
 
     @Override
-    public CreatePitResponse createPit(CreatePitRequest createPitRequest) {
+    public CreatePointInTimeResponse createPit(final CreatePointInTimeRequest createPointInTimeRequest) {
         //todo: implement
         return null;
     }
@@ -36,7 +36,7 @@ public class ElasticsearchAccessor implements SearchAccessor {
     }
 
     @Override
-    public void deletePit(DeletePitRequest deletePitRequest) {
+    public void deletePit(final DeletePointInTimeRequest deletePointInTimeRequest) {
         //todo: implement
     }
 
@@ -55,5 +55,10 @@ public class ElasticsearchAccessor implements SearchAccessor {
     @Override
     public void deleteScroll(DeleteScrollRequest deleteScrollRequest) {
         //todo: implement
+    }
+
+    @Override
+    public Object getClient() {
+        return null;
     }
 }
