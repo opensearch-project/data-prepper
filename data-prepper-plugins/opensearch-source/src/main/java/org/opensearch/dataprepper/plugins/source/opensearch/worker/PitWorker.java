@@ -21,7 +21,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,18 +127,18 @@ public class PitWorker implements SearchWorker, Runnable {
         }
 
         final SearchConfiguration searchConfiguration = openSearchSourceConfiguration.getSearchConfiguration();
-        SearchPointInTimeResponse searchPointInTimeResponse = null;
+        SearchPointInTimeResults searchPointInTimeResults = null;
 
         // todo: Pass query and sort options from SearchConfiguration to the search request
         do {
             try {
-                searchPointInTimeResponse = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
+                searchPointInTimeResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
                         .withPitId(openSearchIndexProgressState.getPitId())
                         .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
                         .withPaginationSize(searchConfiguration.getBatchSize())
-                        .withSearchAfter(Objects.nonNull(searchPointInTimeResponse) ? searchPointInTimeResponse.getNextSearchAfter() : null)
+                        .withSearchAfter(Objects.nonNull(searchPointInTimeResults) ? searchPointInTimeResults.getNextSearchAfter() : null)
                         .build());
-                buffer.writeAll(searchPointInTimeResponse.getDocuments().stream().map(Record::new).collect(Collectors.toList()), BUFFER_TIMEOUT_MILLIS);
+                buffer.writeAll(searchPointInTimeResults.getDocuments().stream().map(Record::new).collect(Collectors.toList()), BUFFER_TIMEOUT_MILLIS);
             } catch (final TimeoutException e) {
                 // todo: implement backoff and retry, can reuse buffer accumulator code from the s3 source
             } catch (final Exception e) {
@@ -148,7 +148,7 @@ public class PitWorker implements SearchWorker, Runnable {
 
             // todo: Don't save state on every iteration of paginating, save search_after to state to pick up where left off in case of crash
             sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
-        } while (searchPointInTimeResponse.getDocuments().size() == searchConfiguration.getBatchSize());
+        } while (searchPointInTimeResults.getDocuments().size() == searchConfiguration.getBatchSize());
 
 
         // todo: This API call is failing with sigv4 enabled due to a mismatch in the signature. Tracking issue (https://github.com/opensearch-project/opensearch-java/issues/521)

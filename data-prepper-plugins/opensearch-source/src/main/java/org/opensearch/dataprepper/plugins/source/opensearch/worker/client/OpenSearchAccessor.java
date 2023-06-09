@@ -32,7 +32,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 import org.slf4j.Logger;
@@ -93,7 +93,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     }
 
     @Override
-    public SearchPointInTimeResponse searchWithPit(final SearchPointInTimeRequest searchPointInTimeRequest) {
+    public SearchPointInTimeResults searchWithPit(final SearchPointInTimeRequest searchPointInTimeRequest) {
         try {
             final SearchResponse<ObjectNode> searchResponse = openSearchClient.search(
                     SearchRequest.of(builder -> {
@@ -117,9 +117,13 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
                             .withEventType(EventType.DOCUMENT.toString()).build())
                     .collect(Collectors.toList());
 
-            return SearchPointInTimeResponse.builder()
+            final List<String> nextSearchAfter = Objects.nonNull(searchResponse.hits().hits()) && !searchResponse.hits().hits().isEmpty() ?
+                searchResponse.hits().hits().get(searchResponse.hits().hits().size() - 1).sort() :
+                null;
+
+            return SearchPointInTimeResults.builder()
                     .withDocuments(documents)
-                    .withNextSearchAfter(searchResponse.hits().hits().get(searchResponse.hits().hits().size() - 1).sort())
+                    .withNextSearchAfter(nextSearchAfter)
                     .build();
         } catch (final IOException e) {
             throw new RuntimeException(e);

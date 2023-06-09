@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
@@ -42,7 +42,7 @@ public interface SearchAccessor {
      * @return
      * @since 2.4
      */
-    SearchPointInTimeResponse searchWithPit(SearchPointInTimeRequest searchPointInTimeRequest);
+    SearchPointInTimeResults searchWithPit(SearchPointInTimeRequest searchPointInTimeRequest);
 
     /**
      * Deletes PITs

@@ -8,7 +8,7 @@ import org.opensearch.dataprepper.model.event.Event;
 
 import java.util.List;
 
-public class SearchPointInTimeResponse {
+public class SearchPointInTimeResults {
 
     private final List<Event> documents;
     private final List<String> nextSearchAfter;
@@ -21,13 +21,13 @@ public class SearchPointInTimeResponse {
         return nextSearchAfter;
     }
 
-    private SearchPointInTimeResponse(final SearchPointInTimeResponse.Builder builder) {
+    private SearchPointInTimeResults(final SearchPointInTimeResults.Builder builder) {
         this.documents = builder.documents;
         this.nextSearchAfter = builder.nextSearchAfter;
     }
 
-    public static SearchPointInTimeResponse.Builder builder() {
-        return new SearchPointInTimeResponse.Builder();
+    public static SearchPointInTimeResults.Builder builder() {
+        return new SearchPointInTimeResults.Builder();
     }
 
     public static class Builder {
@@ -39,19 +39,19 @@ public class SearchPointInTimeResponse {
 
         }
 
-        public SearchPointInTimeResponse.Builder withDocuments(final List<Event> documents) {
+        public SearchPointInTimeResults.Builder withDocuments(final List<Event> documents) {
             this.documents = documents;
             return this;
         }
 
-        public SearchPointInTimeResponse.Builder withNextSearchAfter(final List<String> nextSearchAfter) {
+        public SearchPointInTimeResults.Builder withNextSearchAfter(final List<String> nextSearchAfter) {
             this.nextSearchAfter = nextSearchAfter;
             return this;
         }
 
 
-        public SearchPointInTimeResponse build() {
-            return new SearchPointInTimeResponse(this);
+        public SearchPointInTimeResults build() {
+            return new SearchPointInTimeResults(this);
         }
     }
 }

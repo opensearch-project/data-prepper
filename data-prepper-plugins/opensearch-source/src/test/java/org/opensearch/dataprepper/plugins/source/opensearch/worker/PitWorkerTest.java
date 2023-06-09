@@ -26,7 +26,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -116,13 +116,13 @@ public class PitWorkerTest {
         when(searchConfiguration.getBatchSize()).thenReturn(2);
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
-        final SearchPointInTimeResponse searchPointInTimeResponse = mock(SearchPointInTimeResponse.class);
-        when(searchPointInTimeResponse.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
-        when(searchPointInTimeResponse.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
+        final SearchPointInTimeResults searchPointInTimeResults = mock(SearchPointInTimeResults.class);
+        when(searchPointInTimeResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
+        when(searchPointInTimeResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
                 .thenReturn(List.of(mock(Event.class))).thenReturn(List.of(mock(Event.class)));
 
         final ArgumentCaptor<SearchPointInTimeRequest> searchPointInTimeRequestArgumentCaptor = ArgumentCaptor.forClass(SearchPointInTimeRequest.class);
-        when(searchAccessor.searchWithPit(searchPointInTimeRequestArgumentCaptor.capture())).thenReturn(searchPointInTimeResponse);
+        when(searchAccessor.searchWithPit(searchPointInTimeRequestArgumentCaptor.capture())).thenReturn(searchPointInTimeResults);
 
         doNothing().when(buffer).writeAll(anyCollection(), eq(BUFFER_TIMEOUT_MILLIS));
 
@@ -168,7 +168,7 @@ public class PitWorkerTest {
         assertThat(searchPointInTimeRequestList.get(1).getPitId(), equalTo(pitId));
         assertThat(searchPointInTimeRequestList.get(1).getKeepAlive(), equalTo(EXTEND_KEEP_ALIVE_TIME));
         assertThat(searchPointInTimeRequestList.get(1).getPaginationSize(), equalTo(2));
-        assertThat(searchPointInTimeRequestList.get(1).getSearchAfter(), equalTo(searchPointInTimeResponse.getNextSearchAfter()));
+        assertThat(searchPointInTimeRequestList.get(1).getSearchAfter(), equalTo(searchPointInTimeResults.getNextSearchAfter()));
 
 
         final DeletePointInTimeRequest deletePointInTimeRequest = deleteRequestArgumentCaptor.getValue();
@@ -192,12 +192,12 @@ public class PitWorkerTest {
         when(searchConfiguration.getBatchSize()).thenReturn(2);
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
-        final SearchPointInTimeResponse searchPointInTimeResponse = mock(SearchPointInTimeResponse.class);
-        when(searchPointInTimeResponse.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
-        when(searchPointInTimeResponse.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
+        final SearchPointInTimeResults searchPointInTimeResults = mock(SearchPointInTimeResults.class);
+        when(searchPointInTimeResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
+        when(searchPointInTimeResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
                 .thenReturn(List.of(mock(Event.class))).thenReturn(List.of(mock(Event.class)));
 
-        when(searchAccessor.searchWithPit(any(SearchPointInTimeRequest.class))).thenReturn(searchPointInTimeResponse);
+        when(searchAccessor.searchWithPit(any(SearchPointInTimeRequest.class))).thenReturn(searchPointInTimeResults);
 
         doNothing().when(buffer).writeAll(anyCollection(), eq(BUFFER_TIMEOUT_MILLIS));
 

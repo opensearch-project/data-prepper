@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
@@ -30,7 +30,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     }
 
     @Override
-    public SearchPointInTimeResponse searchWithPit(SearchPointInTimeRequest searchPointInTimeRequest) {
+    public SearchPointInTimeResults searchWithPit(SearchPointInTimeRequest searchPointInTimeRequest) {
         //todo: implement
         return null;
     }
