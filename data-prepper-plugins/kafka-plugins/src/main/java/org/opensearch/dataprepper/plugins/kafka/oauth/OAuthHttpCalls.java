@@ -29,21 +29,18 @@ import java.util.Map;
 public class OAuthHttpCalls {
 
     private static final Logger LOG = LoggerFactory.getLogger(OAuthHttpCalls.class);
-
     private static String OAUTH_LOGIN_SERVER;
     private static String OAUTH_LOGIN_ENDPOINT;
     private static String OAUTH_LOGIN_GRANT_TYPE;
     private static String OAUTH_LOGIN_SCOPE;
-
     private static String OAUTH_INTROSPECT_SERVER;
     private static String OAUTH_INTROSPECT_ENDPOINT;
-
     private static String OAUTH_LOGIN_AUTHORIZATION;
     private static String OAUTH_INTROSPECT_AUTHORIZATION;
-
     private static boolean OAUTH_ACCEPT_UNSECURE_SERVER;
     private static boolean OAUTH_WITH_SSL;
     private static Time time = Time.SYSTEM;
+    private static final boolean sslConfigured = true;
 
     public static void acceptUnsecureServer() {
         if (OAUTH_ACCEPT_UNSECURE_SERVER) {
@@ -92,10 +89,7 @@ public class OAuthHttpCalls {
             Map<String, Object> resp = null;
             if (OAUTH_WITH_SSL) {
                 resp = doHttpsCall(OAUTH_LOGIN_SERVER + OAUTH_LOGIN_ENDPOINT, postDataStr, OAUTH_LOGIN_AUTHORIZATION);
-            } else {
-                resp = doHttpCall(OAUTH_LOGIN_SERVER + OAUTH_LOGIN_ENDPOINT, postDataStr, OAUTH_LOGIN_AUTHORIZATION);
             }
-
             if (resp != null) {
                 String accessToken = (String) resp.get("access_token");
                 long expiresIn = ((Integer) resp.get("expires_in")).longValue();
@@ -108,6 +102,10 @@ public class OAuthHttpCalls {
             e.printStackTrace();
         }
         return result;
+    }
+
+    public boolean sslConfigured() {
+        return sslConfigured;
     }
 
     private static void setPropertyValues(Map<String, String> options) {
@@ -123,7 +121,7 @@ public class OAuthHttpCalls {
         OAUTH_INTROSPECT_AUTHORIZATION = (String) getPropertyValue(options, "OAUTH_INTROSPECT_AUTHORIZATION", "");
 
         OAUTH_ACCEPT_UNSECURE_SERVER = (Boolean) getPropertyValue(options, "OAUTH_ACCEPT_UNSECURE_SERVER", false);
-        OAUTH_WITH_SSL = (Boolean) getPropertyValue(options, "OAUTH_WITH_SSL", true);
+        OAUTH_WITH_SSL = (Boolean) getPropertyValue(options, "OAUTH_WITH_SSL", sslConfigured);
     }
 
     public static OAuthBearerTokenJwt introspectBearer(Map<String, String> options, String accessToken) {
@@ -141,8 +139,6 @@ public class OAuthHttpCalls {
             Map<String, Object> resp = null;
             if (OAUTH_WITH_SSL) {
                 resp = doHttpsCall(OAUTH_INTROSPECT_SERVER + OAUTH_INTROSPECT_ENDPOINT, token, OAUTH_INTROSPECT_AUTHORIZATION);
-            } else {
-                resp = doHttpCall(OAUTH_INTROSPECT_SERVER + OAUTH_INTROSPECT_ENDPOINT, token, OAUTH_INTROSPECT_AUTHORIZATION);
             }
             if (resp != null) {
                 if ((boolean) resp.get("active")) {
@@ -155,41 +151,6 @@ public class OAuthHttpCalls {
             e.printStackTrace();
         }
         return result;
-    }
-
-    private static Map<String, Object> doHttpCall(String urlStr, String postParameters, String oauthToken) {
-        try {
-            LOG.info("doHttpCall ->");
-            acceptUnsecureServer();
-
-            byte[] postData = postParameters.getBytes(StandardCharsets.UTF_8);
-            int postDataLength = postData.length;
-
-            URL url = new URL("http://" + urlStr);
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setInstanceFollowRedirects(true);
-            con.setRequestMethod("POST");
-            con.setRequestProperty("Authorization", oauthToken);
-            con.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            con.setRequestProperty("charset", "utf-8");
-            con.setRequestProperty("Content-Length", Integer.toString(postDataLength));
-            con.setUseCaches(false);
-            con.setDoOutput(true);
-
-            try (DataOutputStream wr = new DataOutputStream(con.getOutputStream())) {
-                wr.write(postData);
-            }
-
-            int responseCode = con.getResponseCode();
-            if (responseCode == 200) {
-                return handleJsonResponse(con.getInputStream());
-            } else {
-                throw new Exception("Return code " + responseCode);
-            }
-        } catch (Exception e) {
-            LOG.error("at doHttpCall", e);
-        }
-        return null;
     }
 
     private static Map<String, Object> doHttpsCall(String urlStr, String postParameters, String oauthToken) throws Exception {
@@ -218,7 +179,7 @@ public class OAuthHttpCalls {
             if (responseCode == 200) {
                 return handleJsonResponse(con.getInputStream());
             } else {
-                throw new Exception("An error occurred while invoking the http calls and the response code is: "+ responseCode);
+                throw new Exception("An error occurred while invoking the http calls and the response code is: " + responseCode);
             }
         } catch (Exception e) {
             LOG.error("An error occurred at doHttpCall", e);

@@ -33,7 +33,7 @@ public class OAuthAuthenticateValidatorCallbackHandler implements AuthenticateCa
     @Override
     public void configure(Map<String, ?> map, String saslMechanism, List<AppConfigurationEntry> jaasConfigEntries) {
         if (!OAuthBearerLoginModule.OAUTHBEARER_MECHANISM.equals(saslMechanism))
-            throw new IllegalArgumentException(String.format("Unexpected SASL mechanism: %s", saslMechanism));
+            throw new IllegalArgumentException(String.format("Invalid SASL mechanism: %s", saslMechanism));
         if (Objects.requireNonNull(jaasConfigEntries).size() != 1 || jaasConfigEntries.get(0) == null)
             throw new IllegalArgumentException(
                     String.format("Must supply exactly one non-null JAAS mechanism configuration (size is : %d)",
