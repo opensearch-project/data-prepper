@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -41,8 +42,12 @@ public class PitWorker implements SearchWorker, Runnable {
     static final int BUFFER_TIMEOUT_MILLIS = 180_000;
     private static final int STANDARD_BACKOFF_MILLIS = 30_000;
     private static final Duration BACKOFF_ON_PIT_LIMIT_REACHED = Duration.ofSeconds(60);
+
     static final String STARTING_KEEP_ALIVE = "15m";
+    private static final Duration STARTING_KEEP_ALIVE_DURATION = Duration.ofMinutes(15);
+
     static final String EXTEND_KEEP_ALIVE_TIME = "1m";
+    private static final Duration EXTEND_KEEP_ALIVE_DURATION = Duration.ofMinutes(1);
 
     private final SearchAccessor searchAccessor;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
@@ -123,7 +128,8 @@ public class PitWorker implements SearchWorker, Runnable {
 
             openSearchIndexProgressState.setPitId(createPointInTimeResponse.getPitId());
             openSearchIndexProgressState.setPitCreationTime(createPointInTimeResponse.getPitCreationTime());
-            openSearchIndexProgressState.setKeepAlive(createPointInTimeResponse.getKeepAlive());
+            openSearchIndexProgressState.setKeepAlive(STARTING_KEEP_ALIVE_DURATION.toMillis());
+            openSearchIndexProgressState.setSearchAfter(null);
         }
 
         final SearchConfiguration searchConfiguration = openSearchSourceConfiguration.getSearchConfiguration();
@@ -136,7 +142,7 @@ public class PitWorker implements SearchWorker, Runnable {
                         .withPitId(openSearchIndexProgressState.getPitId())
                         .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
                         .withPaginationSize(searchConfiguration.getBatchSize())
-                        .withSearchAfter(Objects.nonNull(searchPointInTimeResults) ? searchPointInTimeResults.getNextSearchAfter() : null)
+                        .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchPointInTimeResults))
                         .build());
                 buffer.writeAll(searchPointInTimeResults.getDocuments().stream().map(Record::new).collect(Collectors.toList()), BUFFER_TIMEOUT_MILLIS);
             } catch (final TimeoutException e) {
@@ -146,7 +152,8 @@ public class PitWorker implements SearchWorker, Runnable {
                 throw new RuntimeException(e);
             }
 
-            // todo: Don't save state on every iteration of paginating, save search_after to state to pick up where left off in case of crash
+            openSearchIndexProgressState.setSearchAfter(searchPointInTimeResults.getNextSearchAfter());
+            openSearchIndexProgressState.setKeepAlive(Duration.ofMillis(openSearchIndexProgressState.getKeepAlive()).plus(EXTEND_KEEP_ALIVE_DURATION).toMillis());
             sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
         } while (searchPointInTimeResults.getDocuments().size() == searchConfiguration.getBatchSize());
 
@@ -157,5 +164,17 @@ public class PitWorker implements SearchWorker, Runnable {
 
     private OpenSearchIndexProgressState initializeProgressState() {
         return new OpenSearchIndexProgressState();
+    }
+
+    private List<String> getSearchAfter(final OpenSearchIndexProgressState openSearchIndexProgressState, final SearchPointInTimeResults searchPointInTimeResults) {
+        if (Objects.isNull(searchPointInTimeResults) && Objects.isNull(openSearchIndexProgressState.getSearchAfter())) {
+            return null;
+        }
+
+        if (Objects.isNull(searchPointInTimeResults) && Objects.nonNull(openSearchIndexProgressState.getSearchAfter())) {
+            return openSearchIndexProgressState.getSearchAfter();
+        }
+
+        return searchPointInTimeResults.getNextSearchAfter();
     }
 }
