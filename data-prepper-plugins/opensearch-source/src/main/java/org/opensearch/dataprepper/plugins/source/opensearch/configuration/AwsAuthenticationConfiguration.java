@@ -12,8 +12,6 @@ import software.amazon.awssdk.regions.Region;
 import java.util.Map;
 
 public class AwsAuthenticationConfiguration {
-    private static final String AWS_IAM_ROLE = "role";
-    private static final String AWS_IAM = "iam";
 
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
@@ -27,6 +25,9 @@ public class AwsAuthenticationConfiguration {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    @JsonProperty("enable_sigv4")
+    private Boolean sigv4Enabled = false;
+
     public String getAwsStsRoleArn() {
         return awsStsRoleArn;
     }
@@ -38,5 +39,7 @@ public class AwsAuthenticationConfiguration {
     public Map<String, String> getAwsStsHeaderOverrides() {
         return awsStsHeaderOverrides;
     }
+
+    public Boolean isSigv4Enabled() { return sigv4Enabled; }
 }
 
