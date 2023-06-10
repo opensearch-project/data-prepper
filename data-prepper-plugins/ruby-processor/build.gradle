@@ -16,10 +16,6 @@ dependencies {
     implementation 'org.jruby:jruby-complete:9.4.2.0'
     testImplementation project(path: ':data-prepper-test-common')
     testImplementation project(path: ':data-prepper-plugins:log-generator-source')
-//    implementation project('com.fasterxml.jackson.annotation')
-//    implementation platform('com.fasterxml.jackson:jackson-bom:2.15.0')
-//    implementation platform('io.micrometer:micrometer-bom:1.10.5')
-
 }
 
 test {
