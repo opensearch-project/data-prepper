@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,6 +29,8 @@ import java.util.concurrent.TimeoutException;
  *
  * @param <T> Type of record to accumulate
  */
+// todo: Move this class to its own @DataPrepperPlugin so it can be reused between the s3 and opensearch source, and other sources that may need it (https://github.com/opensearch-project/data-prepper/issues/2855)
+@NotThreadSafe
 public class BufferAccumulator<T extends Record<?>> {
     private static final Logger LOG = LoggerFactory.getLogger(BufferAccumulator.class);
 

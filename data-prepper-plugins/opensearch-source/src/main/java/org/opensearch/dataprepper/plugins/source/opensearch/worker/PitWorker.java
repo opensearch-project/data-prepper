@@ -28,6 +28,9 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
+
 /**
  * PitWorker polls the source cluster via Point-In-Time contexts.
  */
@@ -139,7 +142,9 @@ public class PitWorker implements SearchWorker, Runnable {
                     try {
                         bufferAccumulator.add(record);
                     } catch (Exception e) {
-                        LOG.error("Failed writing OpenSearch documents to buffer due to: {}", e.getMessage());
+                        LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
+                                record.getData().getMetadata().getAttribute(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME),
+                                record.getData().getMetadata().getAttribute(INDEX_METADATA_ATTRIBUTE_NAME), e.getMessage());
                     }
                 });
             } catch (final Exception e) {

@@ -45,12 +45,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
+
 public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAccessor.class);
-
-    static final String DOCUMENT_ID_METADATA_ATTRIBUTE_NAME = "document_id";
-    static final String INDEX_METADATA_ATTRIBUTE_NAME = "index";
 
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
 
