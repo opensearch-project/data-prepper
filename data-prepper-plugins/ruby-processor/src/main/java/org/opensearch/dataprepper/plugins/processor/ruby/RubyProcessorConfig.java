@@ -3,10 +3,6 @@ package org.opensearch.dataprepper.plugins.processor.ruby;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.AssertTrue;
 
-import java.io.BufferedReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Objects;
 

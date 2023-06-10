@@ -22,8 +22,9 @@ public class RubyProcessorIT {
     private static final int NUMBER_EVENTS_TO_TEST = 100;
     private static final String PLUGIN_NAME = "ruby";
     private static final String TEST_PIPELINE_NAME = "ruby_processor_test";
-    static String CODE_STRING = "require 'java'\n" +
-        "event.put('downcase', event.get('message'.to_java, java.lang.String.java_class).downcase)";
+
+    static String CODE_STRING = "require 'java'\n" + "puts event.class\n" +
+            "event.put('downcase', event.get('message', Object.class).downcase)";
 
     private RubyProcessor rubyProcessor;
 
@@ -50,7 +51,6 @@ public class RubyProcessorIT {
         final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
                 .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
                 .collect(Collectors.toList());
-        System.out.println("Number of records: " + records.size());
         final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
 
         for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
@@ -60,4 +60,75 @@ public class RubyProcessorIT {
         }
     }
 
+    @Test
+    void when_standardRubyLibraryIsImported_then_noErrorsAndEventsCanBeModified() {
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+        CODE_STRING = "require 'strscan'\n" + // todo: modify with this in the init section.
+                "s = StringScanner.new(event.get('message'.to_java, java.lang.String.java_class))\n" +
+                "event.put('emptyString', s.eos?)"; // True iff message is eos;
+        setup();
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            final String originalString = parsedEvent.get("message", String.class);
+            assertThat(parsedEvent.get("emptyString", Boolean.class), equalTo(false));
+            // True iff message is eos, which is impossible as Apache logs are not empty.
+        }
+    }
+
+    @Test
+    void when_needToCleanScriptAPICallsAndJavaAlreadyRequired_then_works() {
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        CODE_STRING = "require 'java'\n" + "puts event.class\n" +
+                "event.put('downcase', event.get('message', Object.class).downcase)";
+        setup();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            final String originalString = parsedEvent.get("message", String.class);
+            assertThat(parsedEvent.get("downcase", String.class), equalTo(originalString.toLowerCase()));
+        }
+    }
+
+    @Test
+    void when_needToCleanScriptAPICallsAndJavaNotRequired_then_injectsJavaAndWorks() {
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        CODE_STRING = "event.put('downcase', event.get('message', Object.class).downcase)";
+        setup();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            final String originalString = parsedEvent.get("message", String.class);
+            assertThat(parsedEvent.get("downcase", String.class), equalTo(originalString.toLowerCase()));
+        }
+    }
+
+    @Test
+    void when_dotClassMethodCalledAnywhereBesidesEventGetCall_then_remainsUnchanged() {
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        CODE_STRING = "puts event.class\n" +
+                "event.put('downcase', event.get('message', Object.class).downcase)";
+
+        setup();
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        assertThat(rubyProcessor.getCodeToExecute().contains("puts event.class"), equalTo(true));
+    // todo: will require a refactor to assert
+    }
 }
