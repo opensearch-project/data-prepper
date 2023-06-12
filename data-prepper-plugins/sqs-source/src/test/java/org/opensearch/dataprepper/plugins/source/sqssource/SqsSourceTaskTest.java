@@ -39,6 +39,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 
@@ -178,6 +179,8 @@ class SqsSourceTaskTest {
 
         assertThat(bufferMessage,equalTo(message));
         verify(sqsMetrics.getSqsMessagesReceivedCounter()).increment();
+        verify(acknowledgementSetManager).create(any(), any(Duration.class));
+        verifyNoInteractions(sqsMetrics.getSqsMessagesDeletedCounter());
     }
 
 }
