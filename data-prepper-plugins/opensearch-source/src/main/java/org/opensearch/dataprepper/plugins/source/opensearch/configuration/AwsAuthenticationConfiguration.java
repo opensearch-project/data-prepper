@@ -12,8 +12,6 @@ import software.amazon.awssdk.regions.Region;
 import java.util.Map;
 
 public class AwsAuthenticationConfiguration {
-    private static final String AWS_IAM_ROLE = "role";
-    private static final String AWS_IAM = "iam";
 
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
