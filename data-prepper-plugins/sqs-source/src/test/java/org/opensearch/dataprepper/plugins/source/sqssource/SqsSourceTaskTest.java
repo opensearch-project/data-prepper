@@ -178,8 +178,6 @@ class SqsSourceTaskTest {
 
         assertThat(bufferMessage,equalTo(message));
         verify(sqsMetrics.getSqsMessagesReceivedCounter()).increment();
-//        TODO: unable to verify due to end to end ack issue.
-//        verify(sqsMetrics.getSqsMessagesDeletedCounter()).increment(1);
     }
 
 }

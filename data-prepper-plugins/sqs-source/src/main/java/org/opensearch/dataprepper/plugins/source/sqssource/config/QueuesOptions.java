@@ -5,7 +5,9 @@
 package org.opensearch.dataprepper.plugins.source.sqssource.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.time.Duration;
 import java.util.List;
@@ -22,6 +24,7 @@ public class QueuesOptions {
     private Duration pollingFrequency = Duration.ZERO;
 
     @JsonProperty("batch_size")
+    @Max(10)
     private Integer batchSize;
 
     @JsonProperty("number_of_threads")
