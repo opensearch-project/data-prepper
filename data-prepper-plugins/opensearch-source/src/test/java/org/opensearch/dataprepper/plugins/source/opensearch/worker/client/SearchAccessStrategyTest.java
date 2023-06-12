@@ -104,7 +104,6 @@ public class SearchAccessStrategyTest {
         when(connectionConfiguration.getCertPath()).thenReturn(null);
         when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
         when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
-        when(connectionConfiguration.isInsecure()).thenReturn(true);
 
         final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
         when(awsAuthenticationConfiguration.getAwsRegion()).thenReturn(Region.US_EAST_1);
