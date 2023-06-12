@@ -195,6 +195,18 @@ public class JacksonEvent implements Event {
         return mapNodeToObject(key, node, clazz);
     }
 
+    @Override
+    public <T> T get(final String key) {
+        // todo: right cast?
+        return (T) get(key, Object.class);
+    }
+
+    @Override
+    public <T> List<T> getList(final String key) {
+        // todo: right cast?
+        return (List<T>) getList(key, Object.class);
+    }
+
     private JsonNode getNode(final String key) {
         final JsonPointer jsonPointer = toJsonPointer(key);
         return jsonNode.at(jsonPointer);

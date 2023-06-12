@@ -10,12 +10,16 @@ import org.opensearch.dataprepper.plugins.source.loggenerator.LogGeneratorSource
 import org.opensearch.dataprepper.plugins.source.loggenerator.logtypes.CommonApacheLogTypeGenerator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.array;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 public class RubyProcessorIT {
@@ -130,5 +134,164 @@ public class RubyProcessorIT {
 
         assertThat(rubyProcessor.getCodeToExecute().contains("puts event.class"), equalTo(true));
     // todo: will require a refactor to assert
+    }
+
+    @Test
+    void when_eventAPICallsOverriddenOnString_then_returnedObjectDoesNotHaveArrayFunctionality // or "need not be typecast" or some variation
+            () {
+        // create event with string field
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        // call get on the event field.
+        CODE_STRING = "out_str = event.get('message', Object.class)\n" +
+                        "event.put('message_is_array_and_includes_x', out_str.include?('x')";
+        setup();
+
+        assertThrows(Exception.class, () -> rubyProcessor.doExecute(records)); // todo: more descriptive exception
+
+        // make sure that a string-specific operation can be performed
+    }
+
+    @Test
+    void when_messageFieldIsAnArrayPrimitiveOfObjects_then_rubyArrayOperationsWork() { // todo: Test on actual primitives.
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        for (Record record : records) {
+            Event event = (Event) record.getData();
+            String[] arrayToPut = {"x", "y", "z"};
+            event.put("message", arrayToPut);
+        }
+        CODE_STRING = "out_arr = event.get('message', Object.class)\n" +
+                "event.put('message_is_array_and_includes_x', out_arr.include?('x'))\n";
+        setup();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.get("message_is_array_and_includes_x", Boolean.class), equalTo(true));
+        }
+
+    }
+
+    @Test
+    void when_messageFieldIsAnArrayPrimitiveOfPrimitives_then_rubyArrayOperationsWork() {
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+        final int intOne = 3;
+        final int intTwo = -5;
+        for (Record record : records) {
+            Event event = (Event) record.getData();
+            int[] arrayToPut = {intOne, intTwo};
+            event.put("message", arrayToPut);
+        }
+
+//        CODE_STRING = "out_arr = event.get('message', Object.class)\n" +
+//                "event.put('sum', out_arr.at(0) + out_arr.at(1))\n";
+
+//        CODE_STRING = "out_arr = event.get('message')\n" +
+//                "event.put('sum', out_arr.at(0) + out_arr.at(1))\n";
+
+//        CODE_STRING = "out_arr = event.getList('message')\n" +
+//                "event.put('sum', out_arr.at(0) + out_arr.at(1))\n";
+
+        CODE_STRING = "out_arr = event.getList('message')\n" + // also works with get()
+                "event.put('sum', out_arr.get(0) + out_arr.get(1))\n";
+        setup();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.get("sum", Integer.class), equalTo(intOne + intTwo));
+        }
+    }
+        @Test
+        void TestArrayListOnObjects( ) {
+            final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                    .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                    .collect(Collectors.toList());
+            for (Record record : records) {
+                Event event = (Event) record.getData();
+                ArrayList<String> arrayToPut = new ArrayList<>();
+                arrayToPut.add("x");
+                arrayToPut.add("y");
+                arrayToPut.add("z");
+                event.put("message", arrayToPut);
+            }
+            CODE_STRING = "out_arr = event.get('message', Object.class)\n" +
+                    "event.put('message_is_array_and_includes_x', out_arr.include?('x'))\n";
+            setup();
+
+            final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+            for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+
+            }
+
+
+        } // todo: test array list
+
+    @Test
+    void when_customObjectIsDefinedInRuby_then_itsMethodsCanBeCalledWithinRubyAndAddedToEvent() {
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        CODE_STRING = "class DummyClass\n" +
+        "  def initialize(value)\n" +
+                "    @value = value\n" +
+                "  end\n" +
+                "\n" +
+                "  def get(to_add)\n" +
+                "    to_add + @value\n" +
+                "  end\n" +
+                "end\n" +
+                "d = DummyClass.new(3)\n" +
+                "event.put('dummy_class_value', d.get(0) )\n";
+        setup();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < parsedRecords.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.get("dummy_class_value", Integer.class), equalTo(3));
+        }
+    }
+
+    @Test
+    void when_listCreatedInRuby_then_listRetrievableInJava() {
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+        final int intOne = 3;
+        final int intTwo = -5;
+        for (Record record : records) {
+            Event event = (Event) record.getData();
+            event.put("intOne", intOne);
+            event.put("intTwo", intTwo);
+        }
+
+        CODE_STRING = "event.put('out_list', [event.get('intOne'), event.get('intTwo')])\n";
+
+        setup();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+
+        for (int recordNumber = 0; recordNumber < parsedRecords.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.getList("out_list", Integer.class), equalTo(Arrays.asList(intOne, intTwo)));
+        }
+    }
+
+    @Test
+    void when_timeObjectUsedInRuby() {
+        // todo: dealing with Time in Ruby might be dicey.
     }
 }
