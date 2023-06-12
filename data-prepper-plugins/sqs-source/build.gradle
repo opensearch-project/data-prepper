@@ -1,0 +1,13 @@
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation 'software.amazon.awssdk:sqs'
+    implementation 'software.amazon.awssdk:arns'
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+}
+test {
+    useJUnitPlatform()
+}
