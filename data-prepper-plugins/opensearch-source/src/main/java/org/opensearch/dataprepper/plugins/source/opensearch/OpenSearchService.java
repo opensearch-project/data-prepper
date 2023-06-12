@@ -4,11 +4,11 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.BufferAccumulator;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.ScrollWorker;

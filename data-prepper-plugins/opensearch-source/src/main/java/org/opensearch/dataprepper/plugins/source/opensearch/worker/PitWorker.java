@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;

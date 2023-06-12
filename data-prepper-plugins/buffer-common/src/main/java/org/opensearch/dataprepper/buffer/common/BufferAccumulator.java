@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.opensearch.worker;
+package org.opensearch.dataprepper.buffer.common;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
@@ -29,7 +29,6 @@ import java.util.concurrent.TimeoutException;
  *
  * @param <T> Type of record to accumulate
  */
-// todo: Move this class to its own @DataPrepperPlugin so it can be reused between the s3 and opensearch source, and other sources that may need it (https://github.com/opensearch-project/data-prepper/issues/2855)
 @NotThreadSafe
 public class BufferAccumulator<T extends Record<?>> {
     private static final Logger LOG = LoggerFactory.getLogger(BufferAccumulator.class);
@@ -60,14 +59,14 @@ public class BufferAccumulator<T extends Record<?>> {
         return new BufferAccumulator<T>(buffer, recordsToAccumulate, bufferTimeout);
     }
 
-    void add(final T record) throws Exception {
+    public void add(final T record) throws Exception {
         recordsAccumulated.add(record);
         if (recordsAccumulated.size() >= numberOfRecordsToAccumulate) {
             flush();
         }
     }
 
-    void flush() throws Exception {
+    public void flush() throws Exception {
         try {
             flushAccumulatedToBuffer();
         } catch (final TimeoutException timeoutException) {
