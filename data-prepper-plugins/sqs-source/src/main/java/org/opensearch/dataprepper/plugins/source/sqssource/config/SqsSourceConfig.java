@@ -7,9 +7,6 @@ package org.opensearch.dataprepper.plugins.source.sqssource.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 
-/**
- *  read the sqs configuration from pipeline
- */
 public class SqsSourceConfig {
 
     @Valid

@@ -7,14 +7,10 @@ package org.opensearch.dataprepper.plugins.source.sqssource.config;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
 
 import java.time.Duration;
 import java.util.List;
 
-/**
- *  read the sqs queue configuration from pipeline
- */
 public class QueuesOptions {
 
     @JsonProperty("urls")
@@ -29,7 +25,7 @@ public class QueuesOptions {
 
     @JsonProperty("number_of_threads")
     @Positive(message = "number_of_threads should be unsigned value")
-    private int numberOfThreads = 1;
+    private Integer numberOfThreads = 1;
 
     public List<String> getUrls() {
         return urls;
@@ -43,8 +39,7 @@ public class QueuesOptions {
         return batchSize;
     }
 
-    public int getNumberOfThreads() {
+    public Integer getNumberOfThreads() {
         return numberOfThreads;
     }
-
 }

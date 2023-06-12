@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.BufferAccumulator;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.ScrollWorker;
@@ -29,6 +30,7 @@ public class OpenSearchService {
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchService.class);
 
     static final Duration EXECUTOR_SERVICE_SHUTDOWN_TIMEOUT = Duration.ofSeconds(30);
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(30);
 
     private final SearchAccessor searchAccessor;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
@@ -36,6 +38,7 @@ public class OpenSearchService {
     private final Buffer<Record<Event>> buffer;
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
     private final ScheduledExecutorService scheduledExecutorService;
+    private final BufferAccumulator<Record<Event>> bufferAccumulator;
 
     private SearchWorker searchWorker;
     private ScheduledFuture<?> searchWorkerFuture;
@@ -44,14 +47,17 @@ public class OpenSearchService {
                                                             final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
                                                             final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                                                             final Buffer<Record<Event>> buffer) {
-        return new OpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, Executors.newSingleThreadScheduledExecutor());
+        return new OpenSearchService(
+                searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, Executors.newSingleThreadScheduledExecutor(),
+                BufferAccumulator.create(buffer, openSearchSourceConfiguration.getSearchConfiguration().getBatchSize(), BUFFER_TIMEOUT));
     }
 
     private OpenSearchService(final SearchAccessor searchAccessor,
-                             final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
-                             final OpenSearchSourceConfiguration openSearchSourceConfiguration,
-                             final Buffer<Record<Event>> buffer,
-                              final ScheduledExecutorService scheduledExecutorService) {
+                              final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
+                              final OpenSearchSourceConfiguration openSearchSourceConfiguration,
+                              final Buffer<Record<Event>> buffer,
+                              final ScheduledExecutorService scheduledExecutorService,
+                              final BufferAccumulator<Record<Event>> bufferAccumulator) {
         this.searchAccessor = searchAccessor;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.buffer = buffer;
@@ -59,15 +65,16 @@ public class OpenSearchService {
         this.sourceCoordinator.initialize();
         this.openSearchIndexPartitionCreationSupplier = new OpenSearchIndexPartitionCreationSupplier(openSearchSourceConfiguration, (ClusterClientFactory) searchAccessor);
         this.scheduledExecutorService = scheduledExecutorService;
+        this.bufferAccumulator = bufferAccumulator;
     }
 
     public void start() {
         switch(searchAccessor.getSearchContextType()) {
             case POINT_IN_TIME:
-                searchWorker = new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, buffer, openSearchIndexPartitionCreationSupplier);
+                searchWorker = new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
                 break;
             case SCROLL:
-                searchWorker = new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, buffer, openSearchIndexPartitionCreationSupplier);
+                searchWorker = new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
                 break;
             default:
                 throw new IllegalArgumentException(

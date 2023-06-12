@@ -63,12 +63,12 @@ public class SqsSource implements Source<Record<Event>> {
         this.executorServices = new ArrayList<>(sqsSourceConfig.getQueues().getUrls().size());
     }
 
-
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         if (buffer == null) {
             throw new IllegalStateException("Buffer is null");
         }
+
         final SqsMetrics sqsMetrics = new SqsMetrics(pluginMetrics);
 
         SqsClient sqsClient = ClientFactory.createSqsClient(sqsSourceConfig.getAws().getAwsRegion(),

@@ -10,10 +10,9 @@ import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
 
-/**
- *  read the aws configuration from pipeline
- */
+
 public class AwsAuthenticationOptions {
+
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
     private String awsRegion;
@@ -26,12 +25,12 @@ public class AwsAuthenticationOptions {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
-    public Region getAwsRegion() {
-        return awsRegion != null ? Region.of(awsRegion) : null;
-    }
-
     public String getAwsStsRoleArn() {
         return awsStsRoleArn;
+    }
+
+    public Region getAwsRegion() {
+        return awsRegion != null ? Region.of(awsRegion) : null;
     }
 
     public Map<String, String> getAwsStsHeaderOverrides() {
