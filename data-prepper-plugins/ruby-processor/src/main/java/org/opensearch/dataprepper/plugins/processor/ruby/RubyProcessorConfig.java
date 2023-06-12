@@ -23,23 +23,12 @@ public class RubyProcessorConfig {
 
     @JsonProperty("params")
     private Map<String,String> params;
-
-    @JsonProperty("send_multiple_events")
-    private Boolean sendMultipleEvents = DEFAULT_SEND_MULTIPLE_EVENTS;
-
     @JsonProperty("ignore_exception")
     private Boolean ignoreException = DEFAULT_IGNORE_EXCEPTION;
-    public Boolean isSendMultipleEvents() {
-        return sendMultipleEvents;
-    }
-
     public Boolean isCodeFromFile() {
         return Objects.nonNull(path);
     }
 
-    public void setSendMultipleEvents(Boolean sendMultipleEvents) {
-        this.sendMultipleEvents = sendMultipleEvents;
-    }
 
     public Boolean isIgnoreException() {
         return ignoreException;
@@ -65,19 +54,18 @@ public class RubyProcessorConfig {
         return params;
     }
 
+    public Boolean isInitDefined() {
+        return Objects.nonNull(initCode);
+    }
+
     @AssertTrue(message = "exactly one of {code, path} must be specified.")
     boolean isExactlyOneOfCodeAndPathSpecified() {
         return Objects.nonNull(code) ^ Objects.nonNull(path);
     }
 
     @AssertTrue(message = "init must be used with code.")
-    boolean isInitSpecifiedWithCode() { // todo: rename to "OnlyWithCode"?
+    boolean isInitOnlySpecifiedWithCode() {
         return Objects.isNull(initCode) || !Objects.isNull(code); // case where init, path specified should be covered by isExactlyOneOfCodeAndPathSpecified()
-    }
-
-    @AssertTrue
-    boolean isSendMultipleEventsOnlySpecifiedWithPath() {
-        return sendMultipleEvents.equals(Boolean.FALSE) || !Objects.isNull(path);
     }
 
     @AssertTrue(message = "file path must be specified when using params")

@@ -38,7 +38,6 @@ public class RubyProcessorTest {
         RubyProcessorConfig defaultConfig = new RubyProcessorConfig();
 
         lenient().when(processorConfig.isIgnoreException()).thenReturn(defaultConfig.isIgnoreException());
-        lenient().when(processorConfig.isSendMultipleEvents()).thenReturn(defaultConfig.isSendMultipleEvents());
 
         rubyProcessor = createObjectUnderTest();
     }
@@ -49,7 +48,6 @@ public class RubyProcessorTest {
 
     @Test
     void test_when_noopCodeSpecifiedThenEventsAreUnmodified() {
-        // not sure how to test this, but maybe just if the events are same before + after
         when(processorConfig.getCode()).thenReturn(RUBY_NOOP_CODE);
         rubyProcessor = createObjectUnderTest(); // to get updated code.
 

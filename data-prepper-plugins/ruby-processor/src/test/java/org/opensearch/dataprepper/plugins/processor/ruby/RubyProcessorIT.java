@@ -10,9 +10,7 @@ import org.opensearch.dataprepper.plugins.source.loggenerator.LogGeneratorSource
 import org.opensearch.dataprepper.plugins.source.loggenerator.logtypes.CommonApacheLogTypeGenerator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -28,7 +26,7 @@ public class RubyProcessorIT {
     private static final String TEST_PIPELINE_NAME = "ruby_processor_test";
 
     static String CODE_STRING = "require 'java'\n" + "puts event.class\n" +
-            "event.put('downcase', event.get('message', Object.class).downcase)";
+            "event.put('downcase', event.get('message').downcase)";
 
     private RubyProcessor rubyProcessor;
 
@@ -65,32 +63,13 @@ public class RubyProcessorIT {
     }
 
     @Test
-    void when_standardRubyLibraryIsImported_then_noErrorsAndEventsCanBeModified() {
-        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
-                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
-                .collect(Collectors.toList());
-        CODE_STRING = "require 'strscan'\n" + // todo: modify with this in the init section.
-                "s = StringScanner.new(event.get('message'.to_java, java.lang.String.java_class))\n" +
-                "event.put('emptyString', s.eos?)"; // True iff message is eos;
-        setup();
-        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
-
-        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
-            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
-            final String originalString = parsedEvent.get("message", String.class);
-            assertThat(parsedEvent.get("emptyString", Boolean.class), equalTo(false));
-            // True iff message is eos, which is impossible as Apache logs are not empty.
-        }
-    }
-
-    @Test
     void when_needToCleanScriptAPICallsAndJavaAlreadyRequired_then_works() {
         final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
                 .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
                 .collect(Collectors.toList());
 
         CODE_STRING = "require 'java'\n" + "puts event.class\n" +
-                "event.put('downcase', event.get('message', Object.class).downcase)";
+                "event.put('downcase', event.get('message').downcase)";
         setup();
 
         final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
@@ -108,7 +87,7 @@ public class RubyProcessorIT {
                 .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
                 .collect(Collectors.toList());
 
-        CODE_STRING = "event.put('downcase', event.get('message', Object.class).downcase)";
+        CODE_STRING = "event.put('downcase', event.get('message').downcase)";
         setup();
 
         final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
@@ -127,7 +106,7 @@ public class RubyProcessorIT {
                 .collect(Collectors.toList());
 
         CODE_STRING = "puts event.class\n" +
-                "event.put('downcase', event.get('message', Object.class).downcase)";
+                "event.put('downcase', event.get('message').downcase)";
 
         setup();
         final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
@@ -145,7 +124,7 @@ public class RubyProcessorIT {
                 .collect(Collectors.toList());
 
         // call get on the event field.
-        CODE_STRING = "out_str = event.get('message', Object.class)\n" +
+        CODE_STRING = "out_str = event.get('message')\n" +
                         "event.put('message_is_array_and_includes_x', out_str.include?('x')";
         setup();
 
@@ -165,7 +144,7 @@ public class RubyProcessorIT {
             String[] arrayToPut = {"x", "y", "z"};
             event.put("message", arrayToPut);
         }
-        CODE_STRING = "out_arr = event.get('message', Object.class)\n" +
+        CODE_STRING = "out_arr = event.get('message')\n" +
                 "event.put('message_is_array_and_includes_x', out_arr.include?('x'))\n";
         setup();
 
@@ -191,17 +170,9 @@ public class RubyProcessorIT {
             event.put("message", arrayToPut);
         }
 
-//        CODE_STRING = "out_arr = event.get('message', Object.class)\n" +
-//                "event.put('sum', out_arr.at(0) + out_arr.at(1))\n";
-
-//        CODE_STRING = "out_arr = event.get('message')\n" +
-//                "event.put('sum', out_arr.at(0) + out_arr.at(1))\n";
-
-//        CODE_STRING = "out_arr = event.getList('message')\n" +
-//                "event.put('sum', out_arr.at(0) + out_arr.at(1))\n";
-
         CODE_STRING = "out_arr = event.getList('message')\n" + // also works with get()
                 "event.put('sum', out_arr.get(0) + out_arr.get(1))\n";
+        // todo: document that the java, not ruby, list is returned when calling Event.get().
         setup();
 
         final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
@@ -224,7 +195,7 @@ public class RubyProcessorIT {
                 arrayToPut.add("z");
                 event.put("message", arrayToPut);
             }
-            CODE_STRING = "out_arr = event.get('message', Object.class)\n" +
+            CODE_STRING = "out_arr = event.get('message')\n" +
                     "event.put('message_is_array_and_includes_x', out_arr.include?('x'))\n";
             setup();
 
@@ -243,8 +214,11 @@ public class RubyProcessorIT {
                 .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
                 .collect(Collectors.toList());
 
-        CODE_STRING = "class DummyClass\n" +
-        "  def initialize(value)\n" +
+        CODE_STRING = "event.put('dummy_class_value', $d.get(0) )\n";
+        setup();
+
+        String initString = "class DummyClass\n" +
+                "  def initialize(value)\n" +
                 "    @value = value\n" +
                 "  end\n" +
                 "\n" +
@@ -252,9 +226,16 @@ public class RubyProcessorIT {
                 "    to_add + @value\n" +
                 "  end\n" +
                 "end\n" +
-                "d = DummyClass.new(3)\n" +
-                "event.put('dummy_class_value', d.get(0) )\n";
-        setup();
+                "$d = DummyClass.new(3)\n";
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "initCode", initString);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+
+        rubyProcessor = new RubyProcessor( pluginMetrics, rubyProcessorConfig);
 
         final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
 
@@ -293,5 +274,43 @@ public class RubyProcessorIT {
     @Test
     void when_timeObjectUsedInRuby() {
         // todo: dealing with Time in Ruby might be dicey.
+    }
+
+    @Test
+    void when_customClassDefinedInInitCode_then_rubyClassUsableInEvents() {
+
+    }
+
+    @Test
+    void when_requireUsedInInit_then_packageUsableInEvents() {
+        CODE_STRING = "event.put('date', Date.new(2023, 6, 12))\n";
+        setup();
+        final String initString = "require 'date'";
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "initCode", initString);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+
+        rubyProcessor = new RubyProcessor( pluginMetrics, rubyProcessorConfig);
+
+
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < parsedRecords.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.get("date", Calendar.class).get(Calendar.YEAR),
+                    equalTo(2023));
+            assertThat(parsedEvent.get("date", Calendar.class).get(Calendar.DAY_OF_MONTH),
+                    equalTo(12));
+
+            // todo: make the dates generic.
+        }
     }
 }

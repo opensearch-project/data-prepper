@@ -9,22 +9,17 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 @DataPrepperPlugin(name= "ruby", pluginType = Processor.class, pluginConfigurationType = RubyProcessorConfig.class)
 public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(RubyProcessor.class);
-
     private final RubyProcessorConfig config;
     private final String codeToInject;
-
     private ScriptingContainer container;
     private String script;
 
@@ -39,7 +34,7 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
         container.put("LOG", LOG); // inject logger, perform cold start
 
-        if (Objects.nonNull(config.getInitCode())) {
+        if (config.isInitDefined()) {
             container.runScriptlet(config.getInitCode());
         }
     }

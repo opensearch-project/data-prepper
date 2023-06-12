@@ -25,7 +25,6 @@ public class RubyProcessorConfigTest {
     public void defaultRubyProcessorConfig_then_returns_default_values() { // todo: test naming guidance.
         final RubyProcessorConfig objectUnderTest = createObjectUnderTest();
         assertThat(objectUnderTest.isIgnoreException(), equalTo(DEFAULT_IGNORE_EXCEPTION));
-        assertThat(objectUnderTest.isSendMultipleEvents(), equalTo(DEFAULT_SEND_MULTIPLE_EVENTS));
     }
 
     @Nested
@@ -67,60 +66,31 @@ public class RubyProcessorConfigTest {
 
 
         @Test
-        void isInitSpecifiedWithCode_true_cases()
+        void isInitOnlySpecifiedWithCode_true_cases()
                 throws NoSuchFieldException, IllegalAccessException
         {
             // init is not specified and code is not specified
-            assertThat(rubyProcessorConfig.isInitSpecifiedWithCode(), equalTo(true));
+            assertThat(rubyProcessorConfig.isInitOnlySpecifiedWithCode(), equalTo(true));
 
             // init is not specified and code is specified
             reflectivelySetField(rubyProcessorConfig, "code", "sample code");
 
-            assertThat(rubyProcessorConfig.isInitSpecifiedWithCode(), equalTo(true));
+            assertThat(rubyProcessorConfig.isInitOnlySpecifiedWithCode(), equalTo(true));
 
             // init is specified and code is specified
             reflectivelySetField(rubyProcessorConfig, "initCode", "sample init");
 
-            assertThat(rubyProcessorConfig.isInitSpecifiedWithCode(), equalTo(true));
+            assertThat(rubyProcessorConfig.isInitOnlySpecifiedWithCode(), equalTo(true));
         }
 
         @Test
-        void isInitSpecifiedWithCode_false_cases()
+        void isInitOnlySpecifiedWithCode_false_cases()
                 throws NoSuchFieldException, IllegalAccessException
         {
             // init is specified and code is not specified
             reflectivelySetField(rubyProcessorConfig, "initCode", "sample init");
 
-            assertThat(rubyProcessorConfig.isInitSpecifiedWithCode(), equalTo(false));
-        }
-
-        @Test
-        void isSendMultipleEventsOnlySpecifiedWithPath_true_cases()
-                throws NoSuchFieldException, IllegalAccessException
-        {
-            // send multiple events is not specified (path is not specified)
-            assertThat(
-                    rubyProcessorConfig.isSendMultipleEventsOnlySpecifiedWithPath(), equalTo(true)
-            );
-
-            // send multiple events is not specified (path is specified)
-            reflectivelySetField(rubyProcessorConfig, "path", SAMPLE_PATH);
-            assertThat(
-                    rubyProcessorConfig.isSendMultipleEventsOnlySpecifiedWithPath(), equalTo(true)
-            );
-
-            // send multiple events is specified and path is specified
-            reflectivelySetField(rubyProcessorConfig, "sendMultipleEvents", true);
-            assertThat(rubyProcessorConfig.isSendMultipleEventsOnlySpecifiedWithPath(), equalTo(true));
-        }
-
-        @Test
-        void isSendMultipleEventsOnlySpecifiedWithPath_false_cases()
-                throws NoSuchFieldException, IllegalAccessException
-        {
-            // send multiple events is specified and path is not specified
-            reflectivelySetField(rubyProcessorConfig, "sendMultipleEvents", true);
-            assertThat(rubyProcessorConfig.isSendMultipleEventsOnlySpecifiedWithPath(), equalTo(false));
+            assertThat(rubyProcessorConfig.isInitOnlySpecifiedWithCode(), equalTo(false));
         }
 
         @Test
