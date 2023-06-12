@@ -51,11 +51,11 @@ public class OpenSearchSourceConfiguration {
 
     @JsonProperty("scheduling")
     @Valid
-    private SchedulingParameterConfiguration schedulingParameterConfiguration;
+    private SchedulingParameterConfiguration schedulingParameterConfiguration = new SchedulingParameterConfiguration();
 
     @JsonProperty("search_options")
     @Valid
-    private SearchConfiguration searchConfiguration;
+    private SearchConfiguration searchConfiguration = new SearchConfiguration();
 
     public Integer getMaxRetries() {
         return maxRetries;
@@ -95,7 +95,6 @@ public class OpenSearchSourceConfiguration {
 
     @AssertTrue(message = "Either username and password, or aws options must be specified. Both cannot be set at once.")
     boolean validateAwsConfigWithUsernameAndPassword() {
-
         return !((Objects.nonNull(awsAuthenticationOptions) && (Objects.nonNull(username) || Objects.nonNull(password))) ||
                 (Objects.isNull(awsAuthenticationOptions) && (Objects.isNull(username) || Objects.isNull(password))));
     }
