@@ -45,12 +45,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
+
 public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAccessor.class);
-
-    static final String DOCUMENT_ID_METADATA_ATTRIBUTE_NAME = "document_id";
-    static final String INDEX_METADATA_ATTRIBUTE_NAME = "index";
 
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
 
@@ -139,12 +139,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
             } else {
                 LOG.warn("Point in time id {} was not deleted successfully. It will expire from keep-alive", deletePointInTimeRequest.getPitId());
             }
-        } catch (final OpenSearchException e) {
-            LOG.error("There was an error deleting the point in time with id {} for OpenSearch: ", deletePointInTimeRequest.getPitId(), e);
-            throw e;
-        } catch (IOException e) {
-            LOG.error("There was an error deleting the point in time with id {} for OpenSearch: {}", deletePointInTimeRequest.getPitId(), e.getMessage());
-            throw new RuntimeException(e);
+        } catch (final IOException | RuntimeException e) {
+            LOG.error("There was an error deleting the point in time with id {} for OpenSearch. It will expire from keep-alive: ", deletePointInTimeRequest.getPitId(), e);
         }
     }
 

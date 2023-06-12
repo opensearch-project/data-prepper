@@ -157,7 +157,7 @@ public class OpenSearchAccessorTest {
     }
 
     @Test
-    void delete_pit_throws_opensearch_exception() throws IOException {
+    void delete_pit_does_not_throw_during_opensearch_exception() throws IOException {
         final String pitId = UUID.randomUUID().toString();
 
         final DeletePointInTimeRequest deletePointInTimeRequest = mock(DeletePointInTimeRequest.class);
@@ -165,11 +165,11 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.deletePit(any(DeletePitRequest.class))).thenThrow(OpenSearchException.class);
 
-        assertThrows(OpenSearchException.class, () -> createObjectUnderTest().deletePit(deletePointInTimeRequest));
+        createObjectUnderTest().deletePit(deletePointInTimeRequest);
     }
 
     @Test
-    void delete_pit_throws_runtime_exception_when_client_throws_IOException() throws IOException {
+    void delete_pit_does_not_throw_exception_when_client_throws_IOException() throws IOException {
         final String pitId = UUID.randomUUID().toString();
 
         final DeletePointInTimeRequest deletePointInTimeRequest = mock(DeletePointInTimeRequest.class);
@@ -177,7 +177,7 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.deletePit(any(DeletePitRequest.class))).thenThrow(IOException.class);
 
-        assertThrows(RuntimeException.class, () -> createObjectUnderTest().deletePit(deletePointInTimeRequest));
+        createObjectUnderTest().deletePit(deletePointInTimeRequest);
     }
 
     @ParameterizedTest
