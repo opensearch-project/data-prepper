@@ -14,10 +14,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.nullValue;
 
 class SqsSourceConfigTest {
 
@@ -33,7 +33,7 @@ class SqsSourceConfigTest {
         final AwsAuthenticationOptions aws = sqsSourceConfig.getAws();
 
         assertThat(sqsSourceConfig.getAcknowledgements(),equalTo(false));
-        assertThat(queues.getPollingFrequency(),nullValue());
+        assertThat(queues.getPollingFrequency(),equalTo(Duration.ZERO));
         assertThat(queues.getBatchSize(),equalTo(10));
         assertThat(queues.getNumberOfThreads(),equalTo(5));
         assertThat(queues.getUrls().get(0),equalTo("https://sqs.us-east-1.amazonaws.com/123099425585/dp"));

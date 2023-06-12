@@ -24,6 +24,8 @@ import org.opensearch.dataprepper.plugins.source.sqssource.handler.RawSqsMessage
 import software.amazon.awssdk.services.sqs.SqsClient;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -46,7 +48,7 @@ public class SqsSource implements Source<Record<Event>> {
 
     private final org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier awsCredentialsSupplier;
 
-    private final ExecutorService executor;
+    private final List<ExecutorService> executorServices;
 
     @DataPrepperPluginConstructor
     public SqsSource(final PluginMetrics pluginMetrics,
@@ -58,8 +60,9 @@ public class SqsSource implements Source<Record<Event>> {
         this.acknowledgementsEnabled = sqsSourceConfig.getAcknowledgements();
         this.pluginMetrics = pluginMetrics;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
-        this.executor = Executors.newFixedThreadPool(sqsSourceConfig.getQueues().getNumberOfThreads());
+        this.executorServices = new ArrayList<>(sqsSourceConfig.getQueues().getUrls().size());
     }
+
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
@@ -76,19 +79,19 @@ public class SqsSource implements Source<Record<Event>> {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
         SqsService sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
-
         SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService);
-
         SqsOptions.Builder sqsOptionsBuilder = new SqsOptions.Builder()
                 .setPollDelay(sqsSourceConfig.getQueues().getPollingFrequency())
                 .setMaximumMessages(sqsSourceConfig.getQueues().getBatchSize());
-
-        sqsSourceConfig.getQueues().getUrls().forEach(url ->
-                executor.execute(new SqsSourceTask(sqsService,
+        sqsSourceConfig.getQueues().getUrls().forEach(url -> {
+                final ExecutorService executorService = Executors.newFixedThreadPool(sqsSourceConfig.getQueues().getNumberOfThreads());
+                executorServices.add(executorService);
+                executorService.submit(new SqsSourceTask(sqsService,
                         sqsOptionsBuilder.setSqsUrl(url).build(),
                         sqsMetrics,
                         acknowledgementSetManager,
-                        sqsSourceConfig.getAcknowledgements(),sqsHandler)));
+                        sqsSourceConfig.getAcknowledgements(), sqsHandler));
+        });
     }
 
     @Override
@@ -98,6 +101,6 @@ public class SqsSource implements Source<Record<Event>> {
 
     @Override
     public void stop() {
-        executor.shutdown();
+        executorServices.forEach(executor -> executor.shutdown());
     }
 }

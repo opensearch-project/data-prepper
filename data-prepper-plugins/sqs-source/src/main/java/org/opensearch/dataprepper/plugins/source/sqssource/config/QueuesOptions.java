@@ -19,7 +19,7 @@ public class QueuesOptions {
     private List<String> urls;
 
     @JsonProperty("polling_frequency")
-    private Duration pollingFrequency;
+    private Duration pollingFrequency = Duration.ZERO;
 
     @JsonProperty("batch_size")
     private Integer batchSize;

@@ -58,6 +58,7 @@ public class SqsSourceTask implements Runnable{
      */
     @Override
     public void run() {
+        LOG.info("task called for - {} ", sqsOptions.getSqsUrl());
         while (!Thread.currentThread().isInterrupted()) {
             processSqsMessages();
         }
@@ -99,9 +100,6 @@ public class SqsSourceTask implements Runnable{
     private AcknowledgementSet doEndToEndAcknowledgements(List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements) {
         AcknowledgementSet acknowledgementSet = null;
         if (endToEndAcknowledgementsEnabled) {
-            // Acknowledgement Set timeout is slightly smaller than the visibility timeout;
-//                    TODO: clarification pending
-//                    int timeout = (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2;
             acknowledgementSet = acknowledgementSetManager.create(result -> {
                 sqsMetrics.getAcknowledgementSetCallbackCounter().increment();
                 if (result == true) {
