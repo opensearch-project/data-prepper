@@ -183,7 +183,9 @@ public class PitWorkerTest {
 
         final OpenSearchIndexProgressState openSearchIndexProgressState = mock(OpenSearchIndexProgressState.class);
         final String pitId = UUID.randomUUID().toString();
+        final List<String> searchAfter = List.of(UUID.randomUUID().toString());
         when(openSearchIndexProgressState.getPitId()).thenReturn(pitId);
+        when(openSearchIndexProgressState.getSearchAfter()).thenReturn(searchAfter);
         when(openSearchIndexProgressState.hasValidPointInTime()).thenReturn(true);
         when(sourcePartition.getPartitionState()).thenReturn(Optional.of(openSearchIndexProgressState));
 
