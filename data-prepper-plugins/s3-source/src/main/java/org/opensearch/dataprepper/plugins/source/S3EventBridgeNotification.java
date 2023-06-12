@@ -8,7 +8,7 @@ import software.amazon.awssdk.utils.http.SdkHttpUtils;
 
 import java.util.List;
 
-public class EventBridgeNotification {
+public class S3EventBridgeNotification {
     private String version;
     private String id;
     private String detailType;
@@ -20,7 +20,7 @@ public class EventBridgeNotification {
     private Detail detail;
 
     @JsonCreator
-    public EventBridgeNotification(
+    public S3EventBridgeNotification(
             @JsonProperty("version") String version,
             @JsonProperty("id") String id,
             @JsonProperty("detail-type") String detailType,

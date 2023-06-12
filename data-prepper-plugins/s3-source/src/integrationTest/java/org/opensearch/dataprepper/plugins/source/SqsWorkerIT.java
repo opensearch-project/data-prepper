@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source;
 import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.plugins.source.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -47,7 +48,7 @@ class SqsWorkerIT {
     private PluginMetrics pluginMetrics;
     private S3ObjectGenerator s3ObjectGenerator;
     private String bucket;
-    private S3EventMessageParser s3EventMessageParser;
+//    private S3EventMessageParser s3EventMessageParser;
     private Backoff backoff;
     private AcknowledgementSetManager acknowledgementSetManager;
 
@@ -59,7 +60,7 @@ class SqsWorkerIT {
                 .build();
         bucket = System.getProperty("tests.s3source.bucket");
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
-        s3EventMessageParser = new S3EventMessageParser();
+//        s3EventMessageParser = new S3EventMessageParser();
 
         sqsClient = SqsClient.builder()
                 .region(Region.of(System.getProperty("tests.s3source.region")))
@@ -87,10 +88,11 @@ class SqsWorkerIT {
         when(sqsOptions.getWaitTime()).thenReturn(Duration.ofSeconds(10));
         when(s3SourceConfig.getSqsOptions()).thenReturn(sqsOptions);
         when(s3SourceConfig.getOnErrorOption()).thenReturn(OnErrorOption.DELETE_MESSAGES);
+        when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.S3);
     }
 
     private SqsWorker createObjectUnderTest() {
-        return new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, s3EventMessageParser, backoff);
+        return new SqsWorker(acknowledgementSetManager, sqsClient, s3Service, s3SourceConfig, pluginMetrics, backoff);
     }
 
     @AfterEach
