@@ -132,4 +132,24 @@ public class KafkaSource implements Source<Record<Object>> {
     properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,StringDeserializer.class);
     return properties;
   }
+
+  private void setPropertiesForOAuth(Properties properties) {
+    String oauthLoginServer = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginServer();
+    String oauthLoginEndpoint = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginEndpoint();
+    String oauthLoginGrantType = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginGrantType();
+    String oauthLoginScope = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginScope();
+    String oauthAuthorizationToken = sourceConfig.getAuthConfig().getoAuthConfig().getOauthAuthorizationToken();
+    String oauthIntrospectEndpoint = sourceConfig.getAuthConfig().getoAuthConfig().getOauthIntrospectEndpoint();
+    String tokenEndPointURL = sourceConfig.getAuthConfig().getoAuthConfig().getOauthTokenEndpointURL();
+    String jwksEndpointURL = sourceConfig.getAuthConfig().getoAuthConfig().getOauthJwksEndpointURL();
+    String oauthClientId = sourceConfig.getAuthConfig().getoAuthConfig().getOauthClientId();
+    String oauthClientSecret = sourceConfig.getAuthConfig().getoAuthConfig().getOauthClientSecret();
+
+    properties.put("sasl.mechanism", "OAUTHBEARER");
+    properties.put("security.protocol", "SASL_PLAINTEXT");
+    properties.put("sasl.oauthbearer.token.endpoint.url", tokenEndPointURL);
+    properties.put("sasl.oauthbearer.jwks.endpoint.url", jwksEndpointURL);
+    properties.put("sasl.login.callback.handler.class", "org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler");
+    properties.put("sasl.jaas.config", "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId='" + oauthClientId + "' clientSecret='" + oauthClientSecret + "' scope='" + oauthLoginScope + "' OAUTH_LOGIN_SERVER='" + oauthLoginServer + "' OAUTH_LOGIN_ENDPOINT='" + oauthLoginEndpoint + "' OAUT_LOGIN_GRANT_TYPE=" + oauthLoginGrantType + " OAUTH_LOGIN_SCOPE=kafka OAUTH_AUTHORIZATION='Basic " + oauthAuthorizationToken + "' OAUTH_INTROSPECT_SERVER='" + oauthLoginServer + "' OAUTH_INTROSPECT_ENDPOINT='" + oauthIntrospectEndpoint + "' OAUTH_INTROSPECT_AUTHORIZATION='Basic " + oauthAuthorizationToken + "';");
+  }
 }
