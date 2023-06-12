@@ -64,10 +64,7 @@ public class FileSink implements Sink<Record<Object>> {
             for (final Record<Object> record : records) {
                 try {
                     checkTypeAndWriteObject(record.getData(), writer);
-                    EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
-                    if (eventHandle != null) {
-                        eventHandle.release(true);
-                    }
+                    
                 } catch (final IOException ex) {
                     throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);
                 }
@@ -89,6 +86,10 @@ public class FileSink implements Sink<Record<Object>> {
         if (object instanceof Event) {
             writer.write(((Event) object).toJsonString());
             writer.newLine();
+            EventHandle eventHandle = ((Event)object).getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(true);
+            }
         } else {
             writer.write(object.toString());
             writer.newLine();

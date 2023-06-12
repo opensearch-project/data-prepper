@@ -36,10 +36,6 @@ public class StdOutSink implements Sink<Record<Object>> {
     public void output(final Collection<Record<Object>> records) {
         for (final Record<Object> record : records) {
             checkTypeAndPrintObject(record.getData());
-            EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
-            if (eventHandle != null) {
-                eventHandle.release(true);
-            }
         }
     }
 
@@ -48,6 +44,10 @@ public class StdOutSink implements Sink<Record<Object>> {
     private void checkTypeAndPrintObject(final Object object) {
         if (object instanceof Event) {
             System.out.println(((Event) object).toJsonString());
+            EventHandle eventHandle = ((Event)object).getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(true);
+            }
         } else {
             System.out.println(object);
         }
