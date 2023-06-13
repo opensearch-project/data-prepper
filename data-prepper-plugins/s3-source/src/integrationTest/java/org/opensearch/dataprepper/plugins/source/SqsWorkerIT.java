@@ -51,7 +51,6 @@ class SqsWorkerIT {
     private String bucket;
     private Backoff backoff;
     private AcknowledgementSetManager acknowledgementSetManager;
-//    private String notificationSource;
 
     @BeforeEach
     void setUp() {
@@ -65,9 +64,6 @@ class SqsWorkerIT {
         sqsClient = SqsClient.builder()
                 .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
-
-//        notificationSource = System.getProperty("tests.s3source.notification.source");
-//        final NotificationSourceOption notificationSourceOption = NotificationSourceOption.valueOf(notificationSource);
 
         backoff = Backoff.exponential(SqsService.INITIAL_DELAY, SqsService.MAXIMUM_DELAY).withJitter(SqsService.JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
