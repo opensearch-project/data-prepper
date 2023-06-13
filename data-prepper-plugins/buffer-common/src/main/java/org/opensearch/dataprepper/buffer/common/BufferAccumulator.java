@@ -3,13 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source;
+package org.opensearch.dataprepper.buffer.common;
 
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -28,7 +29,8 @@ import java.util.concurrent.TimeoutException;
  *
  * @param <T> Type of record to accumulate
  */
-class BufferAccumulator<T extends Record<?>> {
+@NotThreadSafe
+public class BufferAccumulator<T extends Record<?>> {
     private static final Logger LOG = LoggerFactory.getLogger(BufferAccumulator.class);
 
     private static final int MAX_FLUSH_RETRIES_ON_IO_EXCEPTION = Integer.MAX_VALUE;
@@ -53,18 +55,18 @@ class BufferAccumulator<T extends Record<?>> {
         recordsAccumulated = new ArrayList<>(numberOfRecordsToAccumulate);
     }
 
-    static <T extends Record<?>> BufferAccumulator<T> create(final Buffer<T> buffer, final int recordsToAccumulate, final Duration bufferTimeout) {
+    public static <T extends Record<?>> BufferAccumulator<T> create(final Buffer<T> buffer, final int recordsToAccumulate, final Duration bufferTimeout) {
         return new BufferAccumulator<T>(buffer, recordsToAccumulate, bufferTimeout);
     }
 
-    void add(final T record) throws Exception {
+    public void add(final T record) throws Exception {
         recordsAccumulated.add(record);
         if (recordsAccumulated.size() >= numberOfRecordsToAccumulate) {
             flush();
         }
     }
 
-    void flush() throws Exception {
+    public void flush() throws Exception {
         try {
             flushAccumulatedToBuffer();
         } catch (final TimeoutException timeoutException) {

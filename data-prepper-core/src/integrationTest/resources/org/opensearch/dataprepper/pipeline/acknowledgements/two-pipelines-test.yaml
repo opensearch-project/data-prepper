@@ -15,3 +15,4 @@ pipeline2:
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true
