@@ -23,6 +23,8 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private ScriptingContainer container;
     private String script;
 
+    private Boolean runningCodeFromFile = false;
+
     @DataPrepperPluginConstructor
     public RubyProcessor(final PluginMetrics pluginMetrics, final RubyProcessorConfig config) {
         super(pluginMetrics);
@@ -37,15 +39,58 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         if (config.isInitDefined()) {
             container.runScriptlet(config.getInitCode());
         }
+
+        if (config.isCodeFromFile()) {
+            // will throw a RuntimeException if not, but todo: look at file source
+            verifyFileExists(config.getPath());
+            runningCodeFromFile = true;
+            runInitCodeFromFileAndDefineProcessMethod(config.getPath());
+//            verifyFileExistsAndContainsProcessMethod(config.getCodeFilePath());
+        }
+    }
+
+    private void verifyFileExists(final String codeFilePath) {
+        LocalInputFile inputFile = new LocalInputFile(codeFilePath);
+    }
+
+    private void runInitCodeFromFileAndDefineProcessMethod(final String codeFilePath) {
+        // check if init code exists
+
+        // open file read to read InputStream at codeFilePath
+
+        // check if file contains init method (scan until we hit def init)
+
+        // if so, then run the following:
+        // scan all into a single String (todo: max String size?)
+
+        // container.runScriplet(this string)
+
+        // then scan process(event) and runScriplet on it.
+
+        // would all need to be in one.
     }
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         final List<Event> events = records.stream().map(Record::getData).collect(Collectors.toList());
 
-        injectAndProcessEvents(events);
-
+        if (runningCodeFromFile) {
+            processEventsWithFileCode(events);
+        } else {
+            injectAndProcessEvents(events);
+        }
         return records;
+    }
+
+    private void processEventsWithFileCode(final List<Event> events) {
+        container.put("events", events);
+
+        script = "events.each { |event| \n"
+                + "process(event)\n" +
+                "}";
+        // todo: make it like LogStash where it returns an array of events?
+
+        container.runScriptlet(config.getCode());
     }
 
     private void injectAndProcessEvents(List<Event> events) {
