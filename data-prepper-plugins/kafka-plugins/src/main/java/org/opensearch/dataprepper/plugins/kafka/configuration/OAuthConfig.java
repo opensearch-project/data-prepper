@@ -1,15 +1,7 @@
-/*
- * Copyright OpenSearch Contributors
- * SPDX-License-Identifier: Apache-2.0
- */
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/**
- * * A helper class that helps to read oauth related configuration values from
- * pipelines.yaml
- */
 public class OAuthConfig {
     @JsonProperty("oauth_client_id")
     private String oauthClientId;
@@ -31,9 +23,32 @@ public class OAuthConfig {
     private String oauthIntrospectEndpoint;
     @JsonProperty("oauth_introspect_authorization_token")
     private String oauthIntrospectAuthorizationToken;
-
     @JsonProperty("oauth_token_endpoint_url")
     private String oauthTokenEndpointURL;
+    @JsonProperty("oauth_sasl_mechanism")
+    private String oauthSaslMechanism;
+    @JsonProperty("oauth_security_protocol")
+    private String oauthSecurityProtocol;
+    @JsonProperty("oauth_sasl_login_callback_handler_class")
+    private String oauthSaslLoginCallbackHandlerClass;
+
+    @JsonProperty("oauth_jwks_endpoint_url")
+    private String oauthJwksEndpointURL;
+
+    public String getOauthJwksEndpointURL() {
+        return oauthJwksEndpointURL;
+    }
+    public String getOauthSaslMechanism() {
+        return oauthSaslMechanism;
+    }
+
+    public String getOauthSecurityProtocol() {
+        return oauthSecurityProtocol;
+    }
+
+    public String getOauthSaslLoginCallbackHandlerClass() {
+        return oauthSaslLoginCallbackHandlerClass;
+    }
 
     public String getOauthClientId() {
         return oauthClientId;
@@ -42,14 +57,6 @@ public class OAuthConfig {
     public String getOauthClientSecret() {
         return oauthClientSecret;
     }
-
-    public String getOauthJwksEndpointURL() {
-        return oauthJwksEndpointURL;
-    }
-
-    @JsonProperty("oauth_jwks_endpoint_url")
-    private String oauthJwksEndpointURL;
-
 
     public String getOauthTokenEndpointURL() {
         return oauthTokenEndpointURL;

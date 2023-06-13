@@ -132,25 +132,32 @@ public class KafkaSource implements Source<Record<Object>> {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        setPropertiesForOAuth(properties);
+        if(sourceConfig.getAuthConfig() != null && sourceConfig.getAuthConfig().getoAuthConfig() != null) {
+            setPropertiesForOAuth(properties);
+        }
         return properties;
     }
 
     private void setPropertiesForOAuth(Properties properties) {
-        String oauthClientId = sourceConfig.getAuthConfig().getoAuthConfig().getOauthClientId();
+        String oauthClientId= sourceConfig.getAuthConfig().getoAuthConfig().getOauthClientId();
         String oauthClientSecret = sourceConfig.getAuthConfig().getoAuthConfig().getOauthClientSecret();
-        String oauthLoginServer = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginServer();
-        String oauthLoginEndpoint = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginEndpoint();
-        String oauthLoginGrantType = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginGrantType();
-        String oauthLoginScope = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginScope();
-        String oauthAuthorizationToken = Base64.getEncoder().encodeToString((oauthClientId + ":" + oauthClientSecret).getBytes());
-        String oauthIntrospectEndpoint = sourceConfig.getAuthConfig().getoAuthConfig().getOauthIntrospectEndpoint();
-        String tokenEndPointURL = sourceConfig.getAuthConfig().getoAuthConfig().getOauthTokenEndpointURL();
+        String oauthLoginServer= sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginServer();
+        String oauthLoginEndpoint= sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginEndpoint();
+        String oauthLoginGrantType= sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginGrantType();
+        String oauthLoginScope= sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginScope();
+        String oauthAuthorizationToken= Base64.getEncoder().encodeToString((oauthClientId +":" + oauthClientSecret).getBytes());
+        String oauthIntrospectEndpoint= sourceConfig.getAuthConfig().getoAuthConfig().getOauthIntrospectEndpoint();
+        String tokenEndPointURL= sourceConfig.getAuthConfig().getoAuthConfig().getOauthTokenEndpointURL();
+        String saslMechanism= sourceConfig.getAuthConfig().getoAuthConfig().getOauthSaslMechanism();
+        String securityProtocol = sourceConfig.getAuthConfig().getoAuthConfig().getOauthSecurityProtocol();
+        String loginCallBackHandler= sourceConfig.getAuthConfig().getoAuthConfig().getOauthSaslLoginCallbackHandlerClass();
+        String oauthJwksEndpointURL= sourceConfig.getAuthConfig().getoAuthConfig().getOauthJwksEndpointURL();
 
-        properties.put("sasl.mechanism", "OAUTHBEARER");
-        properties.put("security.protocol", "SASL_PLAINTEXT");
-        properties.put("sasl.oauthbearer.token.endpoint.url", tokenEndPointURL);
-        properties.put("sasl.login.callback.handler.class", "org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler");
-        properties.put("sasl.jaas.config", "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId='" + oauthClientId + "' clientSecret='" + oauthClientSecret + "' scope='" + oauthLoginScope + "' OAUTH_LOGIN_SERVER='" + oauthLoginServer + "' OAUTH_LOGIN_ENDPOINT='" + oauthLoginEndpoint + "' OAUT_LOGIN_GRANT_TYPE=" + oauthLoginGrantType + " OAUTH_LOGIN_SCOPE=kafka OAUTH_AUTHORIZATION='Basic " + oauthAuthorizationToken + "' OAUTH_INTROSPECT_SERVER='" + oauthLoginServer + "' OAUTH_INTROSPECT_ENDPOINT='" + oauthIntrospectEndpoint + "' OAUTH_INTROSPECT_AUTHORIZATION='Basic " + oauthAuthorizationToken + "';");
+        properties.put("sasl.mechanism", saslMechanism);
+        properties.put("security.protocol", securityProtocol);
+        properties.put("sasl.oauthbearer.token.endpoint.url",tokenEndPointURL);
+        properties.put("sasl.oauthbearer.jwks.endpoint.url",oauthJwksEndpointURL);
+        properties.put("sasl.login.callback.handler.class",loginCallBackHandler);
+        properties.put("sasl.jaas.config", "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId='"+oauthClientId+"' clientSecret='"+oauthClientSecret+"' scope='"+oauthLoginScope+"' OAUTH_LOGIN_SERVER='"+oauthLoginServer+"' OAUTH_LOGIN_ENDPOINT='"+oauthLoginEndpoint+"' OAUT_LOGIN_GRANT_TYPE="+oauthLoginGrantType+" OAUTH_LOGIN_SCOPE=kafka OAUTH_AUTHORIZATION='Basic "+oauthAuthorizationToken+"' OAUTH_INTROSPECT_SERVER='"+oauthLoginServer+"' OAUTH_INTROSPECT_ENDPOINT='"+oauthIntrospectEndpoint+"' OAUTH_INTROSPECT_AUTHORIZATION='Basic "+oauthAuthorizationToken+"';");
     }
 }
