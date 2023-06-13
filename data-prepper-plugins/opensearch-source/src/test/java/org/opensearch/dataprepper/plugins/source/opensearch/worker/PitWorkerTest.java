@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -182,7 +183,9 @@ public class PitWorkerTest {
 
         final OpenSearchIndexProgressState openSearchIndexProgressState = mock(OpenSearchIndexProgressState.class);
         final String pitId = UUID.randomUUID().toString();
+        final List<String> searchAfter = List.of(UUID.randomUUID().toString());
         when(openSearchIndexProgressState.getPitId()).thenReturn(pitId);
+        when(openSearchIndexProgressState.getSearchAfter()).thenReturn(searchAfter);
         when(openSearchIndexProgressState.hasValidPointInTime()).thenReturn(true);
         when(sourcePartition.getPartitionState()).thenReturn(Optional.of(openSearchIndexProgressState));
 

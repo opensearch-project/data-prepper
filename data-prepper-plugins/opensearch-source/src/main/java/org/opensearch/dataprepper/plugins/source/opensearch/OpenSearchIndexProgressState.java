@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 public class OpenSearchIndexProgressState {
@@ -16,6 +17,7 @@ public class OpenSearchIndexProgressState {
     private String pitId;
     private Long pitCreationTime;
     private Long keepAlive;
+    private List<String> searchAfter;
 
     public OpenSearchIndexProgressState() {
 
@@ -24,10 +26,20 @@ public class OpenSearchIndexProgressState {
     @JsonCreator
     public OpenSearchIndexProgressState(@JsonProperty("pit_id") final String pitId,
                                         @JsonProperty("pit_creation_time") final Long pitCreationTime,
-                                        @JsonProperty("pit_keep_alive") final Long pitKeepAlive) {
+                                        @JsonProperty("pit_keep_alive") final Long pitKeepAlive,
+                                        @JsonProperty("pit_search_after") final List<String> searchAfter) {
         this.pitId = pitId;
         this.pitCreationTime = pitCreationTime;
         this.keepAlive = pitKeepAlive;
+        this.searchAfter = searchAfter;
+    }
+
+    public List<String> getSearchAfter() {
+        return searchAfter;
+    }
+
+    public void setSearchAfter(List<String> searchAfter) {
+        this.searchAfter = searchAfter;
     }
 
     public String getPitId() {
