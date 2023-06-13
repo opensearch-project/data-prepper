@@ -8,18 +8,27 @@ dependencies {
     implementation project(path: ':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'joda-time:joda-time:2.11.1'
-    implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'software.amazon.awssdk:aws-sdk-java:2.20.67'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.7.10'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.7.10'
     testImplementation project(':data-prepper-test-common')
 }
 
 test {
     useJUnitPlatform()
 }
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                minimum = 1.0
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification
 
 sourceSets {
     integrationTest {

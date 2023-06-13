@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
+import org.opensearch.dataprepper.plugins.processor.loadtype.LoadTypeOptions;
 
 import java.time.Duration;
 import java.util.List;
@@ -19,7 +20,7 @@ public class MaxMindServiceConfig {
 
     @JsonProperty("load_type")
     @NotNull
-    private String loadType;
+    private LoadTypeOptions loadType;
 
     @JsonProperty("cache_size")
     private Integer cacheSize;
@@ -40,7 +41,7 @@ public class MaxMindServiceConfig {
      * Get the Configured load type either Cache or in memory
      * @return String
      */
-    public String getLoadType() {
+    public LoadTypeOptions getLoadType() {
         return loadType;
     }
 
