@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -70,7 +69,10 @@ public class SqsSourceTask implements Runnable{
      */
     void processSqsMessages() {
        List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
-       AcknowledgementSet acknowledgementSet = doEndToEndAcknowledgements(waitingForAcknowledgements);
+        AcknowledgementSet acknowledgementSet = sqsService.doEndToEndAcknowledgements(sqsOptions.getSqsUrl(),
+                acknowledgementSetManager,
+                endToEndAcknowledgementsEnabled,
+                waitingForAcknowledgements);
        final List<Message> messages = sqsService.getMessagesFromSqs(sqsOptions);
        List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = null;
        if(!messages.isEmpty()) {
@@ -89,24 +91,5 @@ public class SqsSourceTask implements Runnable{
            }
        }
 
-    }
-
-    /**
-     *  helps to send end to end acknowledgements after successful processing.
-     *
-     * @param waitingForAcknowledgements  - will pass the processed messages batch in Delete message batch request.
-     * @return AcknowledgementSet - will generate the AcknowledgementSet if endToEndAcknowledgementsEnabled is true.
-     */
-    private AcknowledgementSet doEndToEndAcknowledgements(List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements) {
-        AcknowledgementSet acknowledgementSet = null;
-        if (endToEndAcknowledgementsEnabled) {
-            acknowledgementSet = acknowledgementSetManager.create(result -> {
-                sqsMetrics.getAcknowledgementSetCallbackCounter().increment();
-                if (result == true) {
-                    sqsService.deleteMessagesFromQueue(waitingForAcknowledgements,sqsOptions.getSqsUrl());
-                }
-            }, Duration.ofSeconds(10));
-        }
-        return acknowledgementSet;
     }
 }
