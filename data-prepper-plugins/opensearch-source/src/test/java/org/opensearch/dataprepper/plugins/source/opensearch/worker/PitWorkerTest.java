@@ -11,7 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -42,7 +42,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -52,7 +51,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker.BUFFER_TIMEOUT_MILLIS;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker.EXTEND_KEEP_ALIVE_TIME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker.STARTING_KEEP_ALIVE;
 
@@ -72,7 +70,7 @@ public class PitWorkerTest {
     private SearchAccessor searchAccessor;
 
     @Mock
-    private Buffer<Record<Event>> buffer;
+    private BufferAccumulator<Record<Event>> bufferAccumulator;
 
     private ExecutorService executorService;
 
@@ -82,7 +80,7 @@ public class PitWorkerTest {
     }
 
     private PitWorker createObjectUnderTest() {
-        return new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, buffer, openSearchIndexPartitionCreationSupplier);
+        return new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
     }
 
     @Test
@@ -124,7 +122,8 @@ public class PitWorkerTest {
         final ArgumentCaptor<SearchPointInTimeRequest> searchPointInTimeRequestArgumentCaptor = ArgumentCaptor.forClass(SearchPointInTimeRequest.class);
         when(searchAccessor.searchWithPit(searchPointInTimeRequestArgumentCaptor.capture())).thenReturn(searchPointInTimeResults);
 
-        doNothing().when(buffer).writeAll(anyCollection(), eq(BUFFER_TIMEOUT_MILLIS));
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
 
         final ArgumentCaptor<DeletePointInTimeRequest> deleteRequestArgumentCaptor = ArgumentCaptor.forClass(DeletePointInTimeRequest.class);
         doNothing().when(searchAccessor).deletePit(deleteRequestArgumentCaptor.capture());
@@ -184,7 +183,9 @@ public class PitWorkerTest {
 
         final OpenSearchIndexProgressState openSearchIndexProgressState = mock(OpenSearchIndexProgressState.class);
         final String pitId = UUID.randomUUID().toString();
+        final List<String> searchAfter = List.of(UUID.randomUUID().toString());
         when(openSearchIndexProgressState.getPitId()).thenReturn(pitId);
+        when(openSearchIndexProgressState.getSearchAfter()).thenReturn(searchAfter);
         when(openSearchIndexProgressState.hasValidPointInTime()).thenReturn(true);
         when(sourcePartition.getPartitionState()).thenReturn(Optional.of(openSearchIndexProgressState));
 
@@ -199,7 +200,8 @@ public class PitWorkerTest {
 
         when(searchAccessor.searchWithPit(any(SearchPointInTimeRequest.class))).thenReturn(searchPointInTimeResults);
 
-        doNothing().when(buffer).writeAll(anyCollection(), eq(BUFFER_TIMEOUT_MILLIS));
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
 
         final ArgumentCaptor<DeletePointInTimeRequest> deleteRequestArgumentCaptor = ArgumentCaptor.forClass(DeletePointInTimeRequest.class);
         doNothing().when(searchAccessor).deletePit(deleteRequestArgumentCaptor.capture());

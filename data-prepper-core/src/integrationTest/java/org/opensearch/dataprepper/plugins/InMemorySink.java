@@ -21,6 +21,7 @@ public class InMemorySink implements Sink<Record<Event>> {
     private final String testingKey;
     private final InMemorySinkAccessor inMemorySinkAccessor;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final Boolean acknowledgements;
 
     @DataPrepperPluginConstructor
     public InMemorySink(final InMemoryConfig inMemoryConfig,
@@ -29,6 +30,7 @@ public class InMemorySink implements Sink<Record<Event>> {
         testingKey = inMemoryConfig.getTestingKey();
         this.inMemorySinkAccessor = inMemorySinkAccessor;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        acknowledgements = inMemoryConfig.getAcknowledgements();
     }
 
     @Override
@@ -37,7 +39,9 @@ public class InMemorySink implements Sink<Record<Event>> {
         boolean result = inMemorySinkAccessor.getResult();
         records.stream().forEach((record) -> {
             EventHandle eventHandle = ((Event)record.getData()).getEventHandle();
-            acknowledgementSetManager.releaseEventReference(eventHandle, result);
+            if (acknowledgements) {
+                acknowledgementSetManager.releaseEventReference(eventHandle, result);
+            }
         });
     }
 

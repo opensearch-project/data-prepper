@@ -4,7 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
-import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -26,10 +26,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.Collectors;
+
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
 /**
  * PitWorker polls the source cluster via Point-In-Time contexts.
@@ -38,27 +40,30 @@ public class PitWorker implements SearchWorker, Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(PitWorker.class);
 
-    static final int BUFFER_TIMEOUT_MILLIS = 180_000;
     private static final int STANDARD_BACKOFF_MILLIS = 30_000;
     private static final Duration BACKOFF_ON_PIT_LIMIT_REACHED = Duration.ofSeconds(60);
+
     static final String STARTING_KEEP_ALIVE = "15m";
+    private static final Duration STARTING_KEEP_ALIVE_DURATION = Duration.ofMinutes(15);
+
     static final String EXTEND_KEEP_ALIVE_TIME = "1m";
+    private static final Duration EXTEND_KEEP_ALIVE_DURATION = Duration.ofMinutes(1);
 
     private final SearchAccessor searchAccessor;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
-    private final Buffer<Record<Event>> buffer;
+    private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
 
     public PitWorker(final SearchAccessor searchAccessor,
                      final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                      final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
-                     final Buffer<Record<Event>> buffer,
+                     final BufferAccumulator<Record<Event>> bufferAccumulator,
                      final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier) {
         this.searchAccessor = searchAccessor;
         this.sourceCoordinator = sourceCoordinator;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
-        this.buffer = buffer;
+        this.bufferAccumulator = bufferAccumulator;
         this.openSearchIndexPartitionCreationSupplier = openSearchIndexPartitionCreationSupplier;
     }
 
@@ -123,7 +128,8 @@ public class PitWorker implements SearchWorker, Runnable {
 
             openSearchIndexProgressState.setPitId(createPointInTimeResponse.getPitId());
             openSearchIndexProgressState.setPitCreationTime(createPointInTimeResponse.getPitCreationTime());
-            openSearchIndexProgressState.setKeepAlive(createPointInTimeResponse.getKeepAlive());
+            openSearchIndexProgressState.setKeepAlive(STARTING_KEEP_ALIVE_DURATION.toMillis());
+            openSearchIndexProgressState.setSearchAfter(null);
         }
 
         final SearchConfiguration searchConfiguration = openSearchSourceConfiguration.getSearchConfiguration();
@@ -136,20 +142,33 @@ public class PitWorker implements SearchWorker, Runnable {
                         .withPitId(openSearchIndexProgressState.getPitId())
                         .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
                         .withPaginationSize(searchConfiguration.getBatchSize())
-                        .withSearchAfter(Objects.nonNull(searchPointInTimeResults) ? searchPointInTimeResults.getNextSearchAfter() : null)
+                        .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchPointInTimeResults))
                         .build());
-                buffer.writeAll(searchPointInTimeResults.getDocuments().stream().map(Record::new).collect(Collectors.toList()), BUFFER_TIMEOUT_MILLIS);
-            } catch (final TimeoutException e) {
-                // todo: implement backoff and retry, can reuse buffer accumulator code from the s3 source
+
+                searchPointInTimeResults.getDocuments().stream().map(Record::new).forEach(record -> {
+                    try {
+                        bufferAccumulator.add(record);
+                    } catch (Exception e) {
+                        LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
+                                record.getData().getMetadata().getAttribute(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME),
+                                record.getData().getMetadata().getAttribute(INDEX_METADATA_ATTRIBUTE_NAME), e.getMessage());
+                    }
+                });
             } catch (final Exception e) {
                 LOG.error("Received an exception while searching with PIT for index '{}'", indexName);
                 throw new RuntimeException(e);
             }
 
-            // todo: Don't save state on every iteration of paginating, save search_after to state to pick up where left off in case of crash
+            openSearchIndexProgressState.setSearchAfter(searchPointInTimeResults.getNextSearchAfter());
+            openSearchIndexProgressState.setKeepAlive(Duration.ofMillis(openSearchIndexProgressState.getKeepAlive()).plus(EXTEND_KEEP_ALIVE_DURATION).toMillis());
             sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
         } while (searchPointInTimeResults.getDocuments().size() == searchConfiguration.getBatchSize());
 
+        try {
+            bufferAccumulator.flush();
+        } catch (final Exception e) {
+            LOG.error("Failed writing remaining OpenSearch documents to buffer due to: {}", e.getMessage());
+        }
 
         // todo: This API call is failing with sigv4 enabled due to a mismatch in the signature. Tracking issue (https://github.com/opensearch-project/opensearch-java/issues/521)
         searchAccessor.deletePit(DeletePointInTimeRequest.builder().withPitId(openSearchIndexProgressState.getPitId()).build());
@@ -157,5 +176,17 @@ public class PitWorker implements SearchWorker, Runnable {
 
     private OpenSearchIndexProgressState initializeProgressState() {
         return new OpenSearchIndexProgressState();
+    }
+
+    private List<String> getSearchAfter(final OpenSearchIndexProgressState openSearchIndexProgressState, final SearchPointInTimeResults searchPointInTimeResults) {
+        if (Objects.isNull(searchPointInTimeResults) && Objects.isNull(openSearchIndexProgressState.getSearchAfter())) {
+            return null;
+        }
+
+        if (Objects.isNull(searchPointInTimeResults) && Objects.nonNull(openSearchIndexProgressState.getSearchAfter())) {
+            return openSearchIndexProgressState.getSearchAfter();
+        }
+
+        return searchPointInTimeResults.getNextSearchAfter();
     }
 }
