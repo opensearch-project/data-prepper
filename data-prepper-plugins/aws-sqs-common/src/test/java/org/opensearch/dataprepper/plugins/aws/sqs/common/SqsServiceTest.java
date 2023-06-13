@@ -4,6 +4,8 @@ import com.linecorp.armeria.client.retry.Backoff;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.exception.SqsRetriesExhaustedException;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.metrics.SqsMetrics;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.model.SqsOptions;
@@ -21,9 +23,11 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -142,6 +146,23 @@ class SqsServiceTest {
     void backoff_should_throw_when_a_SqsException_is_thrown_with_max_retries() {
         when(backoff.nextDelayMillis(anyInt())).thenReturn((long) -1);
         assertThrows(SqsRetriesExhaustedException.class, () -> sqsService.applyBackoff());
+    }
+
+    @Test
+    void do_end_to_end_ack_test() {
+        List<DeleteMessageBatchRequestEntry> entry = mock(List.class);
+        AcknowledgementSet acknowledgementSetMockObj = mock(AcknowledgementSet.class);
+        final Counter counter = mock(Counter.class);
+        AcknowledgementSetManager acknowledgementSetManager = mock(AcknowledgementSetManager.class);
+        when(acknowledgementSetManager.create(any(Consumer.class),any(Duration.class))).thenReturn(acknowledgementSetMockObj);
+        when(sqsMetrics.getAcknowledgementSetCallbackCounter()).thenReturn(counter);
+        final AcknowledgementSet acknowledgementSet = sqsService.doEndToEndAcknowledgements(
+                UUID.randomUUID().toString(),
+                acknowledgementSetManager,
+                Boolean.TRUE,
+                entry);
+        assertThat(acknowledgementSet,notNullValue());
+        verify(acknowledgementSetManager).create(any(), any(Duration.class));
     }
 
 }

@@ -5,6 +5,8 @@
 package org.opensearch.dataprepper.plugins.aws.sqs.common;
 
 import com.linecorp.armeria.client.retry.Backoff;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.exception.SqsRetriesExhaustedException;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.metrics.SqsMetrics;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.model.SqsOptions;
@@ -175,5 +177,27 @@ public class SqsService {
                 deleteMsgBatchReqList.add(DeleteMessageBatchRequestEntry.builder()
                         .id(message.messageId()).receiptHandle(message.receiptHandle()).build()));
         return deleteMsgBatchReqList;
+    }
+
+    /**
+     *  helps to send end to end acknowledgements after successful processing.
+     *
+     * @param waitingForAcknowledgements  - will pass the processed messages batch in Delete message batch request.
+     * @return AcknowledgementSet - will generate the AcknowledgementSet if endToEndAcknowledgementsEnabled is true.
+     */
+    public AcknowledgementSet doEndToEndAcknowledgements(final String queueUrl,
+                                                         final AcknowledgementSetManager acknowledgementSetManager,
+                                                         final boolean endToEndAcknowledgementsEnabled,
+                                                         final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements) {
+        AcknowledgementSet acknowledgementSet = null;
+        if (endToEndAcknowledgementsEnabled) {
+            acknowledgementSet = acknowledgementSetManager.create(result -> {
+                sqsMetrics.getAcknowledgementSetCallbackCounter().increment();
+                if (result == true) {
+                    deleteMessagesFromQueue(waitingForAcknowledgements,queueUrl);
+                }
+            }, Duration.ofSeconds(10));
+        }
+        return acknowledgementSet;
     }
 }
