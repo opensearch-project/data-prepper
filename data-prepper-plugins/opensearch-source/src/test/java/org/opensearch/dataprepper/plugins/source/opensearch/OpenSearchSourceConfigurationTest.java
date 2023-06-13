@@ -78,6 +78,43 @@ public class OpenSearchSourceConfigurationTest {
         assertThat(sourceConfiguration.getPassword(), equalTo(null));
         assertThat(sourceConfiguration.getUsername(), equalTo(null));
         assertThat(sourceConfiguration.getAwsAuthenticationOptions(), notNullValue());
+
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn(),
+            equalTo("arn:aws:iam::123456789012:role/aos-role"));
+    }
+
+    @Test
+    void opensearch_source_aws_sts_external_id() throws JsonProcessingException {
+        final String sourceConfigurationYaml = "max_retries: 5\n" +
+            "hosts: [\"http://localhost:9200\"]\n" +
+            "connection:\n" +
+            "  insecure: true\n" +
+            "  cert: \"cert\"\n" +
+            "indices:\n" +
+            "  include:\n" +
+            "    - index_name_regex: \"regex\"\n" +
+            "    - index_name_regex: \"regex-two\"\n" +
+            "aws:\n" +
+            "  region: \"us-east-1\"\n" +
+            "  sts_role_arn: \"arn:aws:iam::123456789012:role/aos-role\"\n" +
+            "  sts_external_id: \"some-random-id\"\n" +
+            "scheduling:\n" +
+            "  job_count: 3\n" +
+            "search_options:\n" +
+            "  batch_size: 1000\n" +
+            "  query: \"test\"\n";
+
+        final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
+
+        assertThat(sourceConfiguration.validateAwsConfigWithUsernameAndPassword(), equalTo(true));
+        assertThat(sourceConfiguration.getPassword(), equalTo(null));
+        assertThat(sourceConfiguration.getUsername(), equalTo(null));
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions(), notNullValue());
+
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn(),
+            equalTo("arn:aws:iam::123456789012:role/aos-role"));
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions().getAwsStsExternalId(),
+            equalTo("some-random-id"));
     }
 
     @Test

@@ -104,13 +104,13 @@ public class DynamoDbClientWrapperTest {
     private DynamoDbClientWrapper createObjectUnderTest() {
         try (final MockedStatic<DynamoDbClientFactory> dynamoDbClientFactoryMockedStatic = mockStatic(DynamoDbClientFactory.class);
              final MockedStatic<DynamoDbEnhancedClient> dynamoDbEnhancedClientMockedStatic = mockStatic(DynamoDbEnhancedClient.class)) {
-              dynamoDbClientFactoryMockedStatic.when(() -> DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn)).thenReturn(dynamoDbClient);
+              dynamoDbClientFactoryMockedStatic.when(() -> DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, null)).thenReturn(dynamoDbClient);
             final DynamoDbEnhancedClient.Builder builder = mock(DynamoDbEnhancedClient.Builder.class);
 
             dynamoDbEnhancedClientMockedStatic.when(DynamoDbEnhancedClient::builder).thenReturn(builder);
             when(builder.dynamoDbClient(dynamoDbClient)).thenReturn(builder);
             when(builder.build()).thenReturn(dynamoDbEnhancedClient);
-            return DynamoDbClientWrapper.create(region, stsRoleArn);
+            return DynamoDbClientWrapper.create(region, stsRoleArn, null);
         }
     }
 
