@@ -150,7 +150,7 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `queue_url` (Required) : The SQS queue URL of the queue to read from.
 * `maximum_messages` (Optional) : Duration - The maximum number of messages to read from the queue in any request to the SQS queue. Defaults to 10.
-* `visibility_timeout` (Optional) : Duration - The visibility timeout to apply to messages read from the SQS queue. This should be set to the amount of time that Data Prepper may take to read all the S3 objects in a batch. Defaults to 30 seconds.
+* `visibility_timeout` (Optional) : Duration - The visibility timeout to apply to messages read from the SQS queue. This should be set to the amount of time that Data Prepper may take to read all the S3 objects in a batch. Defaults to use the visibility timeout set on the queue.
 * `wait_time` (Optional) : Duration - The time to wait for long-polling on the SQS API. Defaults to 20 seconds.
 * `poll_delay` (Optional) : Duration - A delay to place between reading and processing a batch of SQS messages and making a subsequent request. Defaults to 0 seconds.
 
