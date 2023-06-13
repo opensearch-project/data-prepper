@@ -7,15 +7,19 @@ package org.opensearch.dataprepper.plugins.source;
 
 import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import software.amazon.awssdk.services.sqs.model.GetQueueAttributesRequest;
+import software.amazon.awssdk.services.sqs.model.GetQueueAttributesResponse;
+import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 
 import java.time.Duration;
+import java.util.Objects;
 
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
@@ -42,6 +46,11 @@ public class SqsService {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.sqsClient = createSqsClient(credentialsProvider);
+
+        if (s3SourceConfig.getAcknowledgements() && Objects.isNull(s3SourceConfig.getSqsOptions().getVisibilityTimeout())) {
+            setVisibilityTimeoutFromQueueAttribute();
+        }
+
         s3EventMessageParser = new S3EventMessageParser();
     }
 
@@ -65,5 +74,16 @@ public class SqsService {
 
     public void stop() {
         sqsWorkerThread.interrupt();
+    }
+
+    private void setVisibilityTimeoutFromQueueAttribute() {
+        final GetQueueAttributesResponse getQueueAttributesResponse = sqsClient.getQueueAttributes(GetQueueAttributesRequest.builder()
+                .queueUrl(s3SourceConfig.getSqsOptions().getSqsUrl())
+                .attributeNames(QueueAttributeName.VISIBILITY_TIMEOUT)
+                .build());
+
+        if (getQueueAttributesResponse.attributes().containsKey(QueueAttributeName.VISIBILITY_TIMEOUT)) {
+            s3SourceConfig.getSqsOptions().setVisibilityTimeout(Duration.ofSeconds(Long.parseLong(getQueueAttributesResponse.attributes().get(QueueAttributeName.VISIBILITY_TIMEOUT))));
+        }
     }
 }
