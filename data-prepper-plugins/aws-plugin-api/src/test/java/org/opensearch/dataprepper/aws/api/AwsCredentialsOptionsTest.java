@@ -41,6 +41,27 @@ class AwsCredentialsOptionsTest {
     }
 
     @Test
+    void without_StsExternalId() {
+        final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
+                .build();
+
+        assertThat(awsCredentialsOptions, notNullValue());
+        assertThat(awsCredentialsOptions.getStsExternalId(), nullValue());
+    }
+
+    @Test
+    void with_StsExternalId() {
+        final String externalId = UUID.randomUUID().toString();
+        final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
+                .withStsExternalId(externalId)
+                .build();
+
+        assertThat(awsCredentialsOptions, notNullValue());
+        assertThat(awsCredentialsOptions.getStsExternalId(), notNullValue());
+        assertThat(awsCredentialsOptions.getStsExternalId(), equalTo(externalId));
+    }
+
+    @Test
     void without_Region() {
         final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
                 .build();

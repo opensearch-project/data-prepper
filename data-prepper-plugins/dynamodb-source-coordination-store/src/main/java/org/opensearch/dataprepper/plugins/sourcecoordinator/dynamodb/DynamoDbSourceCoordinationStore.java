@@ -41,7 +41,10 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     public DynamoDbSourceCoordinationStore(final DynamoStoreSettings dynamoStoreSettings, final PluginMetrics pluginMetrics) {
         this.dynamoStoreSettings = dynamoStoreSettings;
         this.pluginMetrics = pluginMetrics;
-        this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(), dynamoStoreSettings.getStsRoleArn());
+        this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(
+            dynamoStoreSettings.getRegion(),
+            dynamoStoreSettings.getStsRoleArn(),
+            dynamoStoreSettings.getStsExternalId());
     }
 
     @Override
