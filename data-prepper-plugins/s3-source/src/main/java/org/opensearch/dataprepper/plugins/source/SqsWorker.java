@@ -14,7 +14,8 @@ import org.opensearch.dataprepper.plugins.source.configuration.NotificationSourc
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.exception.SqsRetriesExhaustedException;
-import org.opensearch.dataprepper.plugins.source.filter.ObjectCreatedFilter;
+import org.opensearch.dataprepper.plugins.source.filter.EventBridgeObjectCreatedFilter;
+import org.opensearch.dataprepper.plugins.source.filter.S3ObjectCreatedFilter;
 import org.opensearch.dataprepper.plugins.source.filter.S3EventFilter;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -58,6 +59,7 @@ public class SqsWorker implements Runnable {
     private final S3Service s3Service;
     private final SqsOptions sqsOptions;
     private final S3EventFilter objectCreatedFilter;
+    private final S3EventFilter evenBridgeObjectCreatedFilter;
     private final Counter sqsMessagesReceivedCounter;
     private final Counter sqsMessagesDeletedCounter;
     private final Counter sqsMessagesFailedCounter;
@@ -76,17 +78,16 @@ public class SqsWorker implements Runnable {
                      final S3Service s3Service,
                      final S3SourceConfig s3SourceConfig,
                      final PluginMetrics pluginMetrics,
-//                     final S3EventMessageParser s3EventMessageParser,
                      final Backoff backoff) {
         this.sqsClient = sqsClient;
         this.s3Service = s3Service;
         this.s3SourceConfig = s3SourceConfig;
         this.acknowledgementSetManager = acknowledgementSetManager;
-//        this.s3EventMessageParser = s3EventMessageParser;
         this.standardBackoff = backoff;
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         sqsOptions = s3SourceConfig.getSqsOptions();
-        objectCreatedFilter = new ObjectCreatedFilter();
+        objectCreatedFilter = new S3ObjectCreatedFilter();
+        evenBridgeObjectCreatedFilter = new EventBridgeObjectCreatedFilter();
         failedAttemptCount = 0;
 
         sqsMessagesReceivedCounter = pluginMetrics.counter(SQS_MESSAGES_RECEIVED_METRIC_NAME);
@@ -204,14 +205,13 @@ public class SqsWorker implements Runnable {
                     deleteMessageBatchRequestEntryCollection.add(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
                 }
             } else {
-                // for generic SQS messages
-                if (parsedMessage.getRecordSize() > 0
-                        && s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.S3)
-                        && isEventNameCreated(parsedMessage.getEventName())) {
+                if (s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.S3)
+                        && !parsedMessage.isEmptyNotification()
+                        && isS3EventNameCreated(parsedMessage)) {
                     parsedMessagesToRead.add(parsedMessage);
                 }
-                else if (parsedMessage.getRecordSize() > 0
-                        && s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.EVENTBRIDGE)) {
+                else if (s3SourceConfig.getNotificationSource().equals(NotificationSourceOption.EVENTBRIDGE)
+                        && isEventBridgeEventTypeCreated(parsedMessage)) {
                     parsedMessagesToRead.add(parsedMessage);
                 }
                 else {
@@ -321,12 +321,12 @@ public class SqsWorker implements Runnable {
                 .build();
     }
 
-    private boolean isEventNameCreated(final String eventName) {
-        return objectCreatedFilter.isObjectCreated(eventName);
+    private boolean isS3EventNameCreated(final ParsedMessage parsedMessage) {
+        return objectCreatedFilter.filter(parsedMessage).isPresent();
     }
 
-    private boolean isEventBridgeEventNameCreated(final String eventName) {
-        return eventName.equals("Object Created");
+    private boolean isEventBridgeEventTypeCreated(final ParsedMessage parsedMessage) {
+        return evenBridgeObjectCreatedFilter.filter(parsedMessage).isPresent();
     }
 
     private S3ObjectReference populateS3Reference(final String bucketName, final String objectKey) {

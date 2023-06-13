@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.source.parser;
 
 import org.joda.time.DateTime;
@@ -9,28 +14,29 @@ import java.util.List;
 
 public class ParsedMessage {
     private final Message message;
-    private final boolean failedParsing;
+    private boolean failedParsing;
     private String bucketName;
     private String objectKey;
     private String eventName;
     private DateTime eventTime;
-    private final int recordSize;
+    private boolean emptyNotification;
     private String detailType;
 
     public ParsedMessage(final Message message, final boolean failedParsing) {
         this.message = message;
         this.failedParsing = failedParsing;
-        this.recordSize = 0;
+        this.emptyNotification = true;
     }
 
-    ParsedMessage(final Message message, final List<S3EventNotification.S3EventNotificationRecord> notificationRecords) {
+    // S3EventNotification contains only one S3EventNotificationRecord
+     ParsedMessage(final Message message, final List<S3EventNotification.S3EventNotificationRecord> notificationRecords) {
         this.message = message;
         this.bucketName = notificationRecords.get(0).getS3().getBucket().getName();
         this.objectKey = notificationRecords.get(0).getS3().getObject().getUrlDecodedKey();
         this.eventName = notificationRecords.get(0).getEventName();
         this.eventTime = notificationRecords.get(0).getEventTime();
         this.failedParsing = false;
-        this.recordSize = notificationRecords.size();
+        this.emptyNotification = notificationRecords.isEmpty();
     }
 
     ParsedMessage(final Message message, final S3EventBridgeNotification eventBridgeNotification) {
@@ -39,8 +45,6 @@ public class ParsedMessage {
         this.objectKey = eventBridgeNotification.getDetail().getObject().getUrlDecodedKey();
         this.detailType = eventBridgeNotification.getDetailType();
         this.eventTime = eventBridgeNotification.getTime();
-        this.failedParsing = false;
-        this.recordSize = 1;
     }
 
     public Message getMessage() {
@@ -67,8 +71,8 @@ public class ParsedMessage {
         return eventTime;
     }
 
-    public int getRecordSize() {
-        return recordSize;
+    public boolean isEmptyNotification() {
+        return emptyNotification;
     }
 
     public String getDetailType() {

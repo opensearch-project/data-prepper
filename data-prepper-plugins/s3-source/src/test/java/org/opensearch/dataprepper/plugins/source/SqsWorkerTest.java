@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.plugins.source.configuration.NotificationSourc
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.exception.SqsRetriesExhaustedException;
-import org.opensearch.dataprepper.plugins.source.filter.ObjectCreatedFilter;
+import org.opensearch.dataprepper.plugins.source.filter.S3ObjectCreatedFilter;
 import org.opensearch.dataprepper.plugins.source.filter.S3EventFilter;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -91,7 +91,6 @@ class SqsWorkerTest {
     private Timer sqsMessageDelayTimer;
     private AcknowledgementSetManager acknowledgementSetManager;
     private AcknowledgementSet acknowledgementSet;
-//    private S3EventMessageParser s3EventMessageParser;
 
     @BeforeEach
     void setUp() {
@@ -100,13 +99,11 @@ class SqsWorkerTest {
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         acknowledgementSet = mock(AcknowledgementSet.class);
         s3SourceConfig = mock(S3SourceConfig.class);
-        objectCreatedFilter = new ObjectCreatedFilter();
+        objectCreatedFilter = new S3ObjectCreatedFilter();
         backoff = mock(Backoff.class);
 
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
-
-//        s3EventMessageParser = new S3EventMessageParser();
 
         SqsOptions sqsOptions = mock(SqsOptions.class);
         when(sqsOptions.getSqsUrl()).thenReturn("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue");
@@ -186,44 +183,6 @@ class SqsWorkerTest {
             assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
             assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
         }
-
-        @Test
-        void processSqsMessages_should_return_number_of_messages_processed_when_using_eventbridge() throws IOException {
-            when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.EVENTBRIDGE);
-            Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
-            final Message message = mock(Message.class);
-            when(message.body()).thenReturn(createEventBridgeNotification(startTime));
-            final String testReceiptHandle = UUID.randomUUID().toString();
-            when(message.messageId()).thenReturn(testReceiptHandle);
-            when(message.receiptHandle()).thenReturn(testReceiptHandle);
-
-            final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
-            when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
-            when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
-
-            final int messagesProcessed = sqsWorker.processSqsMessages();
-            final ArgumentCaptor<DeleteMessageBatchRequest> deleteMessageBatchRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteMessageBatchRequest.class);
-            verify(sqsClient).deleteMessageBatch(deleteMessageBatchRequestArgumentCaptor.capture());
-            final DeleteMessageBatchRequest actualDeleteMessageBatchRequest = deleteMessageBatchRequestArgumentCaptor.getValue();
-
-            final ArgumentCaptor<Duration> durationArgumentCaptor = ArgumentCaptor.forClass(Duration.class);
-            verify(sqsMessageDelayTimer).record(durationArgumentCaptor.capture());
-            Duration actualDelay = durationArgumentCaptor.getValue();
-
-            assertThat(actualDeleteMessageBatchRequest, notNullValue());
-            assertThat(actualDeleteMessageBatchRequest.entries().size(), equalTo(1));
-            assertThat(actualDeleteMessageBatchRequest.queueUrl(), equalTo(s3SourceConfig.getSqsOptions().getSqsUrl()));
-            assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(message.messageId()));
-            assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(message.receiptHandle()));
-            assertThat(messagesProcessed, equalTo(1));
-            verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
-            verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
-            verify(sqsMessagesReceivedCounter).increment(1);
-            verify(sqsMessagesDeletedCounter).increment(1);
-            assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
-            assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
-        }
-
 
         @ParameterizedTest
         @ValueSource(strings = {"ObjectCreated:Put", "ObjectCreated:Post", "ObjectCreated:Copy", "ObjectCreated:CompleteMultipartUpload"})
@@ -361,6 +320,81 @@ class SqsWorkerTest {
             verify(sqsMessagesDeletedCounter).increment(1);
             verify(sqsMessagesFailedCounter).increment();
         }
+
+        @Test
+        void processSqsMessages_should_return_number_of_messages_processed_when_using_EventBridge() throws IOException {
+            when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.EVENTBRIDGE);
+            Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+            final Message message = mock(Message.class);
+            when(message.body()).thenReturn(createEventBridgeNotification(startTime));
+            final String testReceiptHandle = UUID.randomUUID().toString();
+            when(message.messageId()).thenReturn(testReceiptHandle);
+            when(message.receiptHandle()).thenReturn(testReceiptHandle);
+
+            final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+            when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+            when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+
+            final int messagesProcessed = sqsWorker.processSqsMessages();
+            final ArgumentCaptor<DeleteMessageBatchRequest> deleteMessageBatchRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteMessageBatchRequest.class);
+            verify(sqsClient).deleteMessageBatch(deleteMessageBatchRequestArgumentCaptor.capture());
+            final DeleteMessageBatchRequest actualDeleteMessageBatchRequest = deleteMessageBatchRequestArgumentCaptor.getValue();
+
+            final ArgumentCaptor<Duration> durationArgumentCaptor = ArgumentCaptor.forClass(Duration.class);
+            verify(sqsMessageDelayTimer).record(durationArgumentCaptor.capture());
+            Duration actualDelay = durationArgumentCaptor.getValue();
+
+            assertThat(actualDeleteMessageBatchRequest, notNullValue());
+            assertThat(actualDeleteMessageBatchRequest.entries().size(), equalTo(1));
+            assertThat(actualDeleteMessageBatchRequest.queueUrl(), equalTo(s3SourceConfig.getSqsOptions().getSqsUrl()));
+            assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(message.messageId()));
+            assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(message.receiptHandle()));
+            assertThat(messagesProcessed, equalTo(1));
+            verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+            verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+            verify(sqsMessagesReceivedCounter).increment(1);
+            verify(sqsMessagesDeletedCounter).increment(1);
+            assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
+            assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
+        }
+
+        @Test
+        void processSqsMessages_should_return_number_of_messages_processed_when_using_SecurityLake() throws IOException {
+            when(s3SourceConfig.getNotificationSource()).thenReturn(NotificationSourceOption.EVENTBRIDGE);
+            Instant startTime = Instant.now().minus(1, ChronoUnit.HOURS);
+            final Message message = mock(Message.class);
+            when(message.body()).thenReturn(createSecurityLakeNotification(startTime));
+            final String testReceiptHandle = UUID.randomUUID().toString();
+            when(message.messageId()).thenReturn(testReceiptHandle);
+            when(message.receiptHandle()).thenReturn(testReceiptHandle);
+
+            final ReceiveMessageResponse receiveMessageResponse = mock(ReceiveMessageResponse.class);
+            when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(receiveMessageResponse);
+            when(receiveMessageResponse.messages()).thenReturn(Collections.singletonList(message));
+
+            final int messagesProcessed = sqsWorker.processSqsMessages();
+            final ArgumentCaptor<DeleteMessageBatchRequest> deleteMessageBatchRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteMessageBatchRequest.class);
+            verify(sqsClient).deleteMessageBatch(deleteMessageBatchRequestArgumentCaptor.capture());
+            final DeleteMessageBatchRequest actualDeleteMessageBatchRequest = deleteMessageBatchRequestArgumentCaptor.getValue();
+
+            final ArgumentCaptor<Duration> durationArgumentCaptor = ArgumentCaptor.forClass(Duration.class);
+            verify(sqsMessageDelayTimer).record(durationArgumentCaptor.capture());
+            Duration actualDelay = durationArgumentCaptor.getValue();
+
+            assertThat(actualDeleteMessageBatchRequest, notNullValue());
+            assertThat(actualDeleteMessageBatchRequest.entries().size(), equalTo(1));
+            assertThat(actualDeleteMessageBatchRequest.queueUrl(), equalTo(s3SourceConfig.getSqsOptions().getSqsUrl()));
+            assertThat(actualDeleteMessageBatchRequest.entries().get(0).id(), equalTo(message.messageId()));
+            assertThat(actualDeleteMessageBatchRequest.entries().get(0).receiptHandle(), equalTo(message.receiptHandle()));
+            assertThat(messagesProcessed, equalTo(1));
+            verify(s3Service).addS3Object(any(S3ObjectReference.class), any());
+            verify(sqsClient).deleteMessageBatch(any(DeleteMessageBatchRequest.class));
+            verify(sqsMessagesReceivedCounter).increment(1);
+            verify(sqsMessagesDeletedCounter).increment(1);
+            assertThat(actualDelay, lessThanOrEqualTo(Duration.ofHours(1).plus(Duration.ofSeconds(5))));
+            assertThat(actualDelay, greaterThanOrEqualTo(Duration.ofHours(1).minus(Duration.ofSeconds(5))));
+        }
+
     }
 
     @Test
@@ -537,14 +571,17 @@ class SqsWorkerTest {
     }
 
     private static String createEventBridgeNotification(final Instant startTime) {
-//        return "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"ObjectCreated\"," +
-//                "\"source\":\"aws.s3\",\"account\":\"111122223333\",\"time\":\"" + startTime + "\"," +
-//                "\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::DOC-EXAMPLE-BUCKET1\"]," +
-//                "\"detail\":{\"version\":\"0\",\"bucket\":{\"name\":\"DOC-EXAMPLE-BUCKET1\"}," +
-//                "\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\"," +
-//                "\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"617f08299329d189\"}," +
-//                "\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\"," +
-//                "\"reason\":\"PutObject\"}}";
+        return "{\"version\":\"0\",\"id\":\"17793124-05d4-b198-2fde-7ededc63b103\",\"detail-type\":\"Object Created\"," +
+                "\"source\":\"aws.s3\",\"account\":\"111122223333\",\"time\":\"" + startTime + "\"," +
+                "\"region\":\"ca-central-1\",\"resources\":[\"arn:aws:s3:::DOC-EXAMPLE-BUCKET1\"]," +
+                "\"detail\":{\"version\":\"0\",\"bucket\":{\"name\":\"DOC-EXAMPLE-BUCKET1\"}," +
+                "\"object\":{\"key\":\"example-key\",\"size\":5,\"etag\":\"b1946ac92492d2347c6235b4d2611184\"," +
+                "\"version-id\":\"IYV3p45BT0ac8hjHg1houSdS1a.Mro8e\",\"sequencer\":\"617f08299329d189\"}," +
+                "\"request-id\":\"N4N7GDK58NMKJ12R\",\"requester\":\"123456789012\",\"source-ip-address\":\"1.2.3.4\"," +
+                "\"reason\":\"PutObject\"}}";
+    }
+
+    private static String createSecurityLakeNotification(final Instant startTime) {
         return "{\"source\":\"aws.s3\",\"time\":\"" + startTime + "\",\"account\":\"123456789012\",\"region\":\"ca-central-1\"," +
                 "\"resources\":[\"arn:aws:s3:::example-bucket\"],\"detail\":{\"bucket\":{\"name\":\"example-bucket\"}," +
                 "\"object\":{\"key\":\"example-key\",\"size\":5," +

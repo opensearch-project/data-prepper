@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public enum NotificationSourceOption {
+    // SQS and SNS with fan-out
     S3("s3"),
     EVENTBRIDGE("eventbridge");
 

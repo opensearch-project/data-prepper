@@ -8,28 +8,31 @@ import software.amazon.awssdk.utils.http.SdkHttpUtils;
 
 import java.util.List;
 
+/**
+ * A helper class that represents a strongly typed notification item sent to EvenBridge
+ */
 public class S3EventBridgeNotification {
-    private String version;
-    private String id;
-    private String detailType;
+    private final String version;
+    private final String id;
+    private final String detailType;
     private String source;
-    private String account;
+    private final String account;
     private DateTime time;
-    private String region;
-    private List<String> resources;
-    private Detail detail;
+    private final String region;
+    private final List<String> resources;
+    private final Detail detail;
 
     @JsonCreator
     public S3EventBridgeNotification(
-            @JsonProperty("version") String version,
-            @JsonProperty("id") String id,
-            @JsonProperty("detail-type") String detailType,
-            @JsonProperty("source") String source,
-            @JsonProperty("account") String account,
-            @JsonProperty("time") String time,
-            @JsonProperty("region") String region,
-            @JsonProperty("resources") List<String> resources,
-            @JsonProperty("detail") Detail detail) {
+            @JsonProperty("version") final String version,
+            @JsonProperty("id") final String id,
+            @JsonProperty(value = "detail-type") final String detailType,
+            @JsonProperty(value = "source", required = true) final String source,
+            @JsonProperty(value = "account", required = true) final String account,
+            @JsonProperty(value = "time", required = true) final String time,
+            @JsonProperty(value = "region", required = true) final String region,
+            @JsonProperty(value = "resources", required = true) final List<String> resources,
+            @JsonProperty(value = "detail", required = true) final Detail detail) {
         this.version = version;
         this.id = id;
         this.detailType = detailType;
@@ -84,17 +87,29 @@ public class S3EventBridgeNotification {
     }
 
     public static class Detail {
-        private String version;
-        private Bucket bucket;
-        private Object object;
-        @JsonProperty("request-id")
-        private String requestId;
-        private String requester;
-        @JsonProperty("source-ip-address")
-        private String sourceIpAddress;
-        private String reason;
+        private final String version;
+        private final Bucket bucket;
+        private final Object object;
+        private final String requestId;
+        private final String requester;
+        private final String sourceIpAddress;
+        private final String reason;
 
-        public Detail() {
+        @JsonCreator
+        public Detail(@JsonProperty(value = "version") final String version,
+                      @JsonProperty(value = "bucket", required = true) final Bucket bucket,
+                      @JsonProperty(value = "object", required = true) final Object object,
+                      @JsonProperty("request-id") final String requestId,
+                      @JsonProperty("requester") final String requester,
+                      @JsonProperty("source-ip-address") final String sourceIpAddress,
+                      @JsonProperty("reason") final String reason) {
+            this.version = version;
+            this.bucket = bucket;
+            this.object = object;
+            this.requestId = requestId;
+            this.requester = requester;
+            this.sourceIpAddress = sourceIpAddress;
+            this.reason = reason;
         }
 
         public String getVersion() {
@@ -127,9 +142,11 @@ public class S3EventBridgeNotification {
     }
 
     public static class Bucket {
-        private String name;
+        private final String name;
 
-        public Bucket() {
+        @JsonCreator
+        public Bucket(@JsonProperty(value = "name", required = true) final String name) {
+            this.name = name;
         }
 
         public String getName() {
@@ -138,18 +155,22 @@ public class S3EventBridgeNotification {
     }
 
     public static class Object {
-        private String key;
-        private int size;
-        private String etag;
-        @JsonProperty("version-id")
-        private String versionId;
-        private String sequencer;
+        private final String key;
+        private final int size;
+        private final String etag;
+        private final String versionId;
+        private final String sequencer;
 
-        public Object() {
-        }
-
-        public String getKey() {
-            return key;
+        public Object(@JsonProperty(value = "key") final String key,
+                      @JsonProperty(value = "size") final int size,
+                      @JsonProperty(value = "etag") final String etag,
+                      @JsonProperty(value = "version-id") final String versionId,
+                      @JsonProperty(value = "sequencer") final String sequencer) {
+            this.key = key;
+            this.size = size;
+            this.etag = etag;
+            this.versionId = versionId;
+            this.sequencer = sequencer;
         }
 
         public int getSize() {
@@ -169,7 +190,7 @@ public class S3EventBridgeNotification {
         }
 
         public String getUrlDecodedKey() {
-            return SdkHttpUtils.urlDecode(getKey());
+            return SdkHttpUtils.urlDecode(key);
         }
     }
 }
