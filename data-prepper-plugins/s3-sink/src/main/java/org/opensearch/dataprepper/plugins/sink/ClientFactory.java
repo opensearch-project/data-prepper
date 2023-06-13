@@ -35,9 +35,10 @@ public final class ClientFactory {
 
     private static AwsCredentialsOptions convertToCredentialsOptions(final AwsAuthenticationOptions awsAuthenticationOptions) {
         return AwsCredentialsOptions.builder()
-                .withRegion(awsAuthenticationOptions.getAwsRegion())
-                .withStsRoleArn(awsAuthenticationOptions.getAwsStsRoleArn())
-                .withStsHeaderOverrides(awsAuthenticationOptions.getAwsStsHeaderOverrides())
-                .build();
+            .withRegion(awsAuthenticationOptions.getAwsRegion())
+            .withStsRoleArn(awsAuthenticationOptions.getAwsStsRoleArn())
+            .withStsExternalId(awsAuthenticationOptions.getAwsStsExternalId())
+            .withStsHeaderOverrides(awsAuthenticationOptions.getAwsStsHeaderOverrides())
+            .build();
     }
 }

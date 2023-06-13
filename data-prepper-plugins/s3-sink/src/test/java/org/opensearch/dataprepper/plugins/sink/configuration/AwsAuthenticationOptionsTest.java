@@ -60,6 +60,21 @@ class AwsAuthenticationOptionsTest {
     }
 
     @Test
+    void getAwsStsExternalId_returns_value_from_deserialized_JSON() {
+        final String stsExternalId = UUID.randomUUID().toString();
+        final Map<String, Object> jsonMap = Map.of("sts_external_id", stsExternalId);
+        final AwsAuthenticationOptions objectUnderTest = objectMapper.convertValue(jsonMap, AwsAuthenticationOptions.class);
+        assertThat(objectUnderTest.getAwsStsExternalId(), equalTo(stsExternalId));
+    }
+
+    @Test
+    void getAwsStsExternalId_returns_null_if_not_in_JSON() {
+        final Map<String, Object> jsonMap = Collections.emptyMap();
+        final AwsAuthenticationOptions objectUnderTest = objectMapper.convertValue(jsonMap, AwsAuthenticationOptions.class);
+        assertThat(objectUnderTest.getAwsStsExternalId(), nullValue());
+    }
+
+    @Test
     void getAwsStsHeaderOverrides_returns_value_from_deserialized_JSON() {
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         final Map<String, Object> jsonMap = Map.of("sts_header_overrides", stsHeaderOverrides);
