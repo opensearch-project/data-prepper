@@ -63,9 +63,11 @@ class ClientFactoryTest {
     void createS3Client_provides_correct_inputs(final String regionString) {
         final Region region = Region.of(regionString);
         final String stsRoleArn = UUID.randomUUID().toString();
+        final String externalId = UUID.randomUUID().toString();
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(region);
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn(stsRoleArn);
+        when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn(externalId);
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
 
         final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
@@ -94,6 +96,7 @@ class ClientFactoryTest {
         final AwsCredentialsOptions actualCredentialsOptions = optionsArgumentCaptor.getValue();
         assertThat(actualCredentialsOptions.getRegion(), equalTo(region));
         assertThat(actualCredentialsOptions.getStsRoleArn(), equalTo(stsRoleArn));
+        assertThat(actualCredentialsOptions.getStsExternalId(), equalTo(externalId));
         assertThat(actualCredentialsOptions.getStsHeaderOverrides(), equalTo(stsHeaderOverrides));
     }
 }
