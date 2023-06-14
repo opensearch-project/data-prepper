@@ -31,7 +31,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -221,12 +221,12 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.search(searchRequestArgumentCaptor.capture(), eq(ObjectNode.class))).thenReturn(searchResponse);
 
-        final SearchPointInTimeResults searchPointInTimeResults = createObjectUnderTest().searchWithPit(searchPointInTimeRequest);
+        final SearchWithSearchAfterResults searchWithSearchAfterResults = createObjectUnderTest().searchWithPit(searchPointInTimeRequest);
 
-        assertThat(searchPointInTimeResults, notNullValue());
-        assertThat(searchPointInTimeResults.getDocuments(), notNullValue());
-        assertThat(searchPointInTimeResults.getDocuments().size(), equalTo(2));
+        assertThat(searchWithSearchAfterResults, notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments(), notNullValue());
+        assertThat(searchWithSearchAfterResults.getDocuments().size(), equalTo(2));
 
-        assertThat(searchPointInTimeResults.getNextSearchAfter(), equalTo(secondHit.sort()));
+        assertThat(searchWithSearchAfterResults.getNextSearchAfter(), equalTo(secondHit.sort()));
     }
 }

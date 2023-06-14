@@ -30,9 +30,10 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.NoSearchContextSearchRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 import org.slf4j.Logger;
@@ -93,41 +94,22 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     }
 
     @Override
-    public SearchPointInTimeResults searchWithPit(final SearchPointInTimeRequest searchPointInTimeRequest) {
-        try {
-            final SearchResponse<ObjectNode> searchResponse = openSearchClient.search(
-                    SearchRequest.of(builder -> {
-                        builder
-                            .pit(Pit.of(pitBuilder -> pitBuilder.id(searchPointInTimeRequest.getPitId()).keepAlive(searchPointInTimeRequest.getKeepAlive())))
-                            .size(searchPointInTimeRequest.getPaginationSize())
-                            .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
-                            .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery.queryName("*")))));
+    public SearchWithSearchAfterResults searchWithPit(final SearchPointInTimeRequest searchPointInTimeRequest) {
+        final SearchRequest searchRequest = SearchRequest.of(builder -> {
+            builder
+                    .pit(Pit.of(pitBuilder -> pitBuilder.id(searchPointInTimeRequest.getPitId()).keepAlive(searchPointInTimeRequest.getKeepAlive())))
+                    .size(searchPointInTimeRequest.getPaginationSize())
+                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
+                    .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery.queryName("*")))));
 
-                        if (Objects.nonNull(searchPointInTimeRequest.getSearchAfter())) {
-                            builder.searchAfter(searchPointInTimeRequest.getSearchAfter());
-                        }
+            if (Objects.nonNull(searchPointInTimeRequest.getSearchAfter())) {
+                builder.searchAfter(searchPointInTimeRequest.getSearchAfter());
+            }
 
-                        return builder;
-        }), ObjectNode.class);
+            return builder;
+        });
 
-            final List<Event> documents = searchResponse.hits().hits().stream()
-                    .map(hit -> JacksonEvent.builder()
-                            .withData(hit.source())
-                            .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
-                            .withEventType(EventType.DOCUMENT.toString()).build())
-                    .collect(Collectors.toList());
-
-            final List<String> nextSearchAfter = Objects.nonNull(searchResponse.hits().hits()) && !searchResponse.hits().hits().isEmpty() ?
-                searchResponse.hits().hits().get(searchResponse.hits().hits().size() - 1).sort() :
-                null;
-
-            return SearchPointInTimeResults.builder()
-                    .withDocuments(documents)
-                    .withNextSearchAfter(nextSearchAfter)
-                    .build();
-        } catch (final IOException e) {
-            throw new RuntimeException(e);
-        }
+        return searchWithSearchAfter(searchRequest);
     }
 
     @Override
@@ -162,6 +144,25 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     }
 
     @Override
+    public SearchWithSearchAfterResults searchWithoutSearchContext(final NoSearchContextSearchRequest noSearchContextSearchRequest) {
+        final SearchRequest searchRequest = SearchRequest.of(builder -> {
+            builder
+                    .index(noSearchContextSearchRequest.getIndex())
+                    .size(noSearchContextSearchRequest.getPaginationSize())
+                    .sort(SortOptions.of(sortOptionsBuilder -> sortOptionsBuilder.doc(ScoreSort.of(scoreSort -> scoreSort.order(SortOrder.Asc)))))
+                    .query(Query.of(query -> query.matchAll(MatchAllQuery.of(matchAllQuery -> matchAllQuery.queryName("*")))));
+
+            if (Objects.nonNull(noSearchContextSearchRequest.getSearchAfter())) {
+                builder.searchAfter(noSearchContextSearchRequest.getSearchAfter());
+            }
+
+            return builder;
+        });
+
+        return searchWithSearchAfter(searchRequest);
+    }
+
+    @Override
     public Object getClient() {
         return openSearchClient;
     }
@@ -174,5 +175,29 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     private boolean isDueToPitLimitExceeded(final OpenSearchException e) {
         return Objects.nonNull(e.error()) && Objects.nonNull(e.error().causedBy()) && Objects.nonNull(e.error().causedBy().type())
                 && PIT_RESOURCE_LIMIT_ERROR_TYPE.equals(e.error().causedBy().type());
+    }
+
+    private SearchWithSearchAfterResults searchWithSearchAfter(final SearchRequest searchRequest) {
+        try {
+            final SearchResponse<ObjectNode> searchResponse = openSearchClient.search(searchRequest, ObjectNode.class);
+
+            final List<Event> documents = searchResponse.hits().hits().stream()
+                    .map(hit -> JacksonEvent.builder()
+                            .withData(hit.source())
+                            .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
+                            .withEventType(EventType.DOCUMENT.toString()).build())
+                    .collect(Collectors.toList());
+
+            final List<String> nextSearchAfter = Objects.nonNull(searchResponse.hits().hits()) && !searchResponse.hits().hits().isEmpty() ?
+                    searchResponse.hits().hits().get(searchResponse.hits().hits().size() - 1).sort() :
+                    null;
+
+            return SearchWithSearchAfterResults.builder()
+                    .withDocuments(documents)
+                    .withNextSearchAfter(nextSearchAfter)
+                    .build();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

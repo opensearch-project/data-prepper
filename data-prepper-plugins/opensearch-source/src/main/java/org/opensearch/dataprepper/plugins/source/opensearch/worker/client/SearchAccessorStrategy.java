@@ -109,7 +109,11 @@ public class SearchAccessorStrategy {
 
         SearchContextType searchContextType;
 
-        if (versionSupportsPointInTimeForOpenSearch(versionNumber)) {
+        if (Objects.nonNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
+            LOG.info("Using search_context_type set in the config: '{}'", openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType().toString().toLowerCase());
+            validateSearchContextTypeOverride(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType(), versionNumber);
+            searchContextType = openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType();
+        } else if (versionSupportsPointInTimeForOpenSearch(versionNumber)) {
             LOG.info("OpenSearch version {} detected. Point in time APIs will be used to search documents", versionNumber);
             searchContextType = SearchContextType.POINT_IN_TIME;
         } else {
@@ -267,6 +271,15 @@ public class SearchAccessorStrategy {
             return SSLContexts.custom().loadTrustMaterial(null, trustStrategy).build();
         } catch (Exception ex) {
             throw new RuntimeException(ex.getMessage(), ex);
+        }
+    }
+
+    private void validateSearchContextTypeOverride(final SearchContextType searchContextType, final String version) {
+
+        if (searchContextType.equals(SearchContextType.POINT_IN_TIME) && !versionSupportsPointInTimeForOpenSearch(version)) {
+            throw new IllegalArgumentException(
+                    String.format("A search_context_type of point_in_time is only supported on OpenSearch versions %s and above. " +
+                    "The version of the OpenSearch cluster passed is %s", OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF, version));
         }
     }
 
