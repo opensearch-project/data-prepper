@@ -3,18 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source;
+package org.opensearch.dataprepper.plugins.source.parser;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.sqs.model.Message;
 
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-class S3EventMessageParserTest {
+class S3EventNotificationParserTest {
     private static final String DIRECT_SQS_MESSAGE =
             "{\"Records\":[{\"eventVersion\":\"2.1\",\"eventSource\":\"aws:s3\",\"awsRegion\":\"us-east-1\",\"eventTime\":\"2023-04-28T16:00:11.324Z\"," +
                     "\"eventName\":\"ObjectCreated:Put\",\"userIdentity\":{\"principalId\":\"AWS:xyz\"},\"requestParameters\":{\"sourceIPAddress\":\"127.0.0.1\"}," +
@@ -36,51 +38,53 @@ class S3EventMessageParserTest {
             "  \"UnsubscribeURL\" : \"https://sns.us-east-1.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-1:123456789012:notifications:abc\"\n" +
             "}";
 
-    private S3EventMessageParser createObjectUnderTest() {
-        return new S3EventMessageParser();
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private Message message;
+    @BeforeEach
+    public void setUp() {
+        message = mock(Message.class);
+    }
+
+    private S3EventNotificationParser createObjectUnderTest() {
+        return new S3EventNotificationParser();
     }
 
     @Test
-    void parseMessage_returns_expected_S3EventNotification_from_SQS_message() throws JsonProcessingException {
-        final S3EventNotification s3EventNotification = createObjectUnderTest().parseMessage(DIRECT_SQS_MESSAGE);
+    void parseMessage_returns_expected_ParsedMessage_from_SQS_message() {
+        when(message.body()).thenReturn(DIRECT_SQS_MESSAGE);
+        final ParsedMessage parsedMessage = createObjectUnderTest().parseMessage(message, objectMapper);
 
-        assertThat(s3EventNotification, notNullValue());
-        assertThat(s3EventNotification.getRecords(), notNullValue());
-        assertThat(s3EventNotification.getRecords(), hasSize(1));
-        final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord = s3EventNotification.getRecords().get(0);
-        assertThat(s3EventNotificationRecord, notNullValue());
-        assertThat(s3EventNotificationRecord.getEventName(), equalTo("ObjectCreated:Put"));
-        assertThat(s3EventNotificationRecord.getS3(), notNullValue());
-        assertThat(s3EventNotificationRecord.getS3().getBucket(), notNullValue());
-        assertThat(s3EventNotificationRecord.getS3().getBucket().getName(), equalTo("my-bucket"));
-        assertThat(s3EventNotificationRecord.getS3().getObject(), notNullValue());
-        assertThat(s3EventNotificationRecord.getS3().getObject().getKey(), equalTo("path/to/myfile.log.gz"));
+        assertThat(parsedMessage, notNullValue());
+        assertThat(parsedMessage.getMessage(), notNullValue());
+
+        assertThat(parsedMessage.getBucketName(), equalTo("my-bucket"));
+        assertThat(parsedMessage.getEventName(), equalTo("ObjectCreated:Put"));
+        assertThat(parsedMessage.getObjectKey(), equalTo("path/to/myfile.log.gz"));
     }
 
     @Test
-    void parseMessage_returns_expected_S3EventNotification_from_SNS_to_SQS_message() throws JsonProcessingException {
-        final S3EventNotification s3EventNotification = createObjectUnderTest().parseMessage(SNS_BASED_MESSAGE);
+    void parseMessage_returns_expected_ParsedMessage_from_SNS_to_SQS_message() {
+        when(message.body()).thenReturn(SNS_BASED_MESSAGE);
+        final ParsedMessage parsedMessage = createObjectUnderTest().parseMessage(message, objectMapper);
 
-        assertThat(s3EventNotification, notNullValue());
-        assertThat(s3EventNotification.getRecords(), notNullValue());
-        assertThat(s3EventNotification.getRecords(), hasSize(1));
-        final S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord = s3EventNotification.getRecords().get(0);
-        assertThat(s3EventNotificationRecord, notNullValue());
-        assertThat(s3EventNotificationRecord.getEventName(), equalTo("ObjectCreated:Put"));
-        assertThat(s3EventNotificationRecord.getS3(), notNullValue());
-        assertThat(s3EventNotificationRecord.getS3().getBucket(), notNullValue());
-        assertThat(s3EventNotificationRecord.getS3().getBucket().getName(), equalTo("my-sns-bucket"));
-        assertThat(s3EventNotificationRecord.getS3().getObject(), notNullValue());
-        assertThat(s3EventNotificationRecord.getS3().getObject().getKey(), equalTo("path/to/testlogs.log.gz"));
+        assertThat(parsedMessage, notNullValue());
+        assertThat(parsedMessage.getMessage(), notNullValue());
+        assertThat(parsedMessage.getBucketName(), equalTo("my-sns-bucket"));
+        assertThat(parsedMessage.getObjectKey(), equalTo("path/to/testlogs.log.gz"));
+        assertThat(parsedMessage.getEventName(), equalTo("ObjectCreated:Put"));
     }
 
     @Test
-    void parseMessage_throws_for_TestEvent() {
+    void parseMessage_fails_for_TestEvent() {
         final String testEventMessage = "{\"Service\":\"Amazon S3\",\"Event\":\"s3:TestEvent\",\"Time\":\"2022-10-15T16:36:25.510Z\"," +
                 "\"Bucket\":\"bucketname\",\"RequestId\":\"abcdefg\",\"HostId\":\"hijklm\"}";
 
-        final S3EventMessageParser objectUnderTest = createObjectUnderTest();
+        when(message.body()).thenReturn(testEventMessage);
 
-        assertThrows(JsonProcessingException.class, () -> objectUnderTest.parseMessage(testEventMessage));
+        final ParsedMessage parsedMessage = createObjectUnderTest().parseMessage(message, objectMapper);
+
+        assertThat(parsedMessage, notNullValue());
+        assertThat(parsedMessage.isFailedParsing(), equalTo(false));
+        assertThat(parsedMessage.isEmptyNotification(), equalTo(true));
     }
 }
