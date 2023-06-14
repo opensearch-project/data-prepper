@@ -146,7 +146,7 @@ class SqsSourceTaskTest {
     @Test
     void processSqsMessages_should_return_zero_messages_with_backoff() {
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(SqsException.class);
-        when(sqsMetrics.getSqsMessagesFailedCounter()).thenReturn(sqsMessagesFailedCounter);
+        when(sqsMetrics.getSqsReceiveMessagesFailedCounter()).thenReturn(sqsMessagesFailedCounter);
         createObjectUnderTest(buffer,endToEndAcknowledgementsEnabled).processSqsMessages();
         verify(backoff).nextDelayMillis(1);
         verify(sqsMessagesFailedCounter).increment();

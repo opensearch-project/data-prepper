@@ -57,9 +57,21 @@ public class SqsSourceTask implements Runnable{
      */
     @Override
     public void run() {
-        LOG.info("task called for - {} ", sqsOptions.getSqsUrl());
         while (!Thread.currentThread().isInterrupted()) {
-            processSqsMessages();
+            int messagesProcessed = 0;
+            try {
+                messagesProcessed = processSqsMessages();
+            } catch (final Exception e) {
+                LOG.error("Unable to process SQS messages. Processing error due to: {}", e.getMessage());
+                sqsService.applyBackoff();
+            }
+            if (messagesProcessed > 0 && sqsOptions.getPollDelay().toMillis() > 0) {
+                try {
+                    Thread.sleep(sqsOptions.getPollDelay().toMillis());
+                } catch (final InterruptedException e) {
+                    LOG.error("Thread is interrupted while polling SQS.", e);
+                }
+            }
         }
     }
 
@@ -67,9 +79,9 @@ public class SqsSourceTask implements Runnable{
      * read the messages from sqs queue and push the message into buffer and finally will delete
      * the sqs message from queue after successful buffer push.
      */
-    void processSqsMessages() {
-       List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
-        AcknowledgementSet acknowledgementSet = sqsService.doEndToEndAcknowledgements(sqsOptions.getSqsUrl(),
+    int processSqsMessages() {
+       final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
+       AcknowledgementSet acknowledgementSet = sqsService.doEndToEndAcknowledgements(sqsOptions.getSqsUrl(),
                 acknowledgementSetManager,
                 endToEndAcknowledgementsEnabled,
                 waitingForAcknowledgements);
@@ -90,6 +102,6 @@ public class SqsSourceTask implements Runnable{
                    sqsService.deleteMessagesFromQueue(deleteMessageBatchRequestEntries, sqsOptions.getSqsUrl());
            }
        }
-
+        return messages.size();
     }
 }

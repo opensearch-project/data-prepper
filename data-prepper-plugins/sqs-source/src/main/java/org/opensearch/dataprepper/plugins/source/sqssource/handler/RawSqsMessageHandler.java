@@ -27,7 +27,7 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
 
     private final SqsService sqsService;
 
-    private Buffer<Record<Event>> buffer;
+    private final Buffer<Record<Event>> buffer;
 
     public RawSqsMessageHandler(final Buffer<Record<Event>> buffer,
                                 final SqsService sqsService){
@@ -44,7 +44,7 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
     @Override
     public List<DeleteMessageBatchRequestEntry> handleMessage(final List<Message> messages,
                                                               final AcknowledgementSet acknowledgementSet) {
-        List<Record<Event>> events = new ArrayList<>(messages.size());
+        final List<Record<Event>> events = new ArrayList<>(messages.size());
         messages.forEach(message -> {
             final Record<Event> eventRecord = new Record<Event>(JacksonEvent.fromMessage(message.body()));
             events.add(eventRecord);
@@ -55,7 +55,7 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
         try {
             if(!events.isEmpty())
                 buffer.writeAll(events, (int) Duration.ofSeconds(10).toMillis());
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new RuntimeException(e);
         }
         return sqsService.getDeleteMessageBatchRequestEntryList(messages);

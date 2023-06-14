@@ -82,7 +82,7 @@ class SqsServiceTest {
     @Test
     void error_while_read_message_from_sqs_with_backoff_flow(){
         Counter sqsMessagesFailedCounter = mock(Counter.class);
-        when(sqsMetrics.getSqsMessagesFailedCounter()).thenReturn(sqsMessagesFailedCounter);
+        when(sqsMetrics.getSqsReceiveMessagesFailedCounter()).thenReturn(sqsMessagesFailedCounter);
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenThrow(StsException.class);
         final List<Message> messagesFromSqs = sqsService.getMessagesFromSqs(sqsOptions);
         verify(backoff).nextDelayMillis(1);

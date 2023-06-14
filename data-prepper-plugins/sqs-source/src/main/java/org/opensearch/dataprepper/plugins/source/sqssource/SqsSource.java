@@ -71,16 +71,16 @@ public class SqsSource implements Source<Record<Event>> {
 
         final SqsMetrics sqsMetrics = new SqsMetrics(pluginMetrics);
 
-        SqsClient sqsClient = ClientFactory.createSqsClient(sqsSourceConfig.getAws().getAwsRegion(),
+        final SqsClient sqsClient = ClientFactory.createSqsClient(sqsSourceConfig.getAws().getAwsRegion(),
                 sqsSourceConfig.getAws().getAwsStsRoleArn(),
                 sqsSourceConfig.getAws().getAwsStsHeaderOverrides(),
                 awsCredentialsSupplier);
 
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-        SqsService sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
-        SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService);
-        SqsOptions.Builder sqsOptionsBuilder = new SqsOptions.Builder()
+        final SqsService sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
+        final SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService);
+        final SqsOptions.Builder sqsOptionsBuilder = new SqsOptions.Builder()
                 .setPollDelay(sqsSourceConfig.getQueues().getPollingFrequency())
                 .setMaximumMessages(sqsSourceConfig.getQueues().getBatchSize());
         sqsSourceConfig.getQueues().getUrls().forEach(url -> {

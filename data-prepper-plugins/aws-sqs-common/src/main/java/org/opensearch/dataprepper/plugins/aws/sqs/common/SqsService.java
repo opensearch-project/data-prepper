@@ -63,6 +63,8 @@ public class SqsService {
         return ReceiveMessageRequest.builder()
                 .queueUrl(sqsOptions.getSqsUrl())
                 .maxNumberOfMessages(sqsOptions.getMaximumMessages())
+                .visibilityTimeout(null)
+                .waitTimeSeconds(null)
                 .build();
     }
 
@@ -79,7 +81,7 @@ public class SqsService {
             return receiveMessageResponse.messages();
         } catch (final SqsException | StsException e) {
             LOG.error("Error reading from SQS: {}. Retrying with exponential backoff.", e.getMessage());
-            sqsMetrics.getSqsMessagesFailedCounter().increment();
+            sqsMetrics.getSqsReceiveMessagesFailedCounter().increment();
             applyBackoff();
             return Collections.emptyList();
         }
@@ -150,7 +152,7 @@ public class SqsService {
     }
 
     /**
-     *  helps to update the metrics for failed messages.
+     * helps to update the metrics for delete failed messages.
      * @param deleteMessageBatchResponse - required list deleteMessageBatchResponse object
      */
     private void updateMetricsForUnDeletedMessages(DeleteMessageBatchResponse deleteMessageBatchResponse) {
@@ -171,8 +173,8 @@ public class SqsService {
      * @param messages - required list deleteMessageBatchResponse object
      * @return DeleteMessageBatchRequestEntry list - provide the DeleteMessageBatchRequestEntry list
      */
-    public List<DeleteMessageBatchRequestEntry> getDeleteMessageBatchRequestEntryList(List<Message> messages){
-        List<DeleteMessageBatchRequestEntry> deleteMsgBatchReqList = new ArrayList<>(messages.size());
+    public List<DeleteMessageBatchRequestEntry> getDeleteMessageBatchRequestEntryList(final List<Message> messages){
+        final List<DeleteMessageBatchRequestEntry> deleteMsgBatchReqList = new ArrayList<>(messages.size());
         messages.forEach(message ->
                 deleteMsgBatchReqList.add(DeleteMessageBatchRequestEntry.builder()
                         .id(message.messageId()).receiptHandle(message.receiptHandle()).build()));

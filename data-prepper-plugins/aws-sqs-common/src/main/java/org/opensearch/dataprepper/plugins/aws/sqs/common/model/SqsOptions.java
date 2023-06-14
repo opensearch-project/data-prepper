@@ -13,7 +13,7 @@ public class SqsOptions {
     private final int maximumMessages;
     private final Duration pollDelay;
 
-    public SqsOptions(Builder builder) {
+    public SqsOptions(final Builder builder) {
         this.sqsUrl = builder.sqsUrl;
         this.maximumMessages = builder.maximumMessages;
         this.pollDelay = builder.pollDelay;
@@ -37,17 +37,17 @@ public class SqsOptions {
         private int maximumMessages = DEFAULT_MAXIMUM_MESSAGES;
         private Duration pollDelay = DEFAULT_POLL_DELAY_SECONDS;
 
-        public Builder setSqsUrl(String sqsUrl) {
+        public Builder setSqsUrl(final String sqsUrl) {
             this.sqsUrl = sqsUrl;
             return this;
         }
 
-        public Builder setMaximumMessages(int maximumMessages) {
+        public Builder setMaximumMessages(final int maximumMessages) {
             this.maximumMessages = maximumMessages;
             return this;
         }
 
-        public Builder setPollDelay(Duration pollDelay) {
+        public Builder setPollDelay(final Duration pollDelay) {
             this.pollDelay = pollDelay;
             return this;
         }

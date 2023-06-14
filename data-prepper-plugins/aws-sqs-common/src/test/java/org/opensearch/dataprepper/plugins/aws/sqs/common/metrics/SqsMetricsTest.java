@@ -27,7 +27,7 @@ class SqsMetricsTest {
         when(pluginMetrics.timer(SqsMetrics.SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(timer);
         when(pluginMetrics.counter(SqsMetrics.SQS_MESSAGES_RECEIVED_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(SqsMetrics.SQS_MESSAGES_DELETED_METRIC_NAME)).thenReturn(counter);
-        when(pluginMetrics.counter(SqsMetrics.SQS_MESSAGES_FAILED_METRIC_NAME)).thenReturn(counter);
+        when(pluginMetrics.counter(SqsMetrics.SQS_RECEIVE_MESSAGES_FAILED_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(SqsMetrics.SQS_MESSAGES_DELETE_FAILED_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(SqsMetrics.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
 
@@ -35,7 +35,7 @@ class SqsMetricsTest {
         assertThat(metrics.getAcknowledgementSetCallbackCounter(),sameInstance(counter));
         assertThat(metrics.getSqsMessagesDeletedCounter(),sameInstance(counter));
         assertThat(metrics.getSqsMessagesReceivedCounter(),sameInstance(counter));
-        assertThat(metrics.getSqsMessagesFailedCounter(),sameInstance(counter));
+        assertThat(metrics.getSqsReceiveMessagesFailedCounter(),sameInstance(counter));
         assertThat(metrics.getSqsMessagesDeleteFailedCounter(),sameInstance(counter));
         assertThat(metrics.getSqsMessageDelayTimer(),sameInstance(timer));
 
