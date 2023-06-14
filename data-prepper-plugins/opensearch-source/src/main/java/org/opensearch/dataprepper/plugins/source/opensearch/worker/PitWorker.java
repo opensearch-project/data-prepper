@@ -179,12 +179,12 @@ public class PitWorker implements SearchWorker, Runnable {
     }
 
     private List<String> getSearchAfter(final OpenSearchIndexProgressState openSearchIndexProgressState, final SearchWithSearchAfterResults searchWithSearchAfterResults) {
-        if (Objects.isNull(searchWithSearchAfterResults) && Objects.isNull(openSearchIndexProgressState.getSearchAfter())) {
-            return null;
-        }
-
-        if (Objects.isNull(searchWithSearchAfterResults) && Objects.nonNull(openSearchIndexProgressState.getSearchAfter())) {
-            return openSearchIndexProgressState.getSearchAfter();
+        if (Objects.isNull(searchWithSearchAfterResults)) {
+            if (Objects.isNull(openSearchIndexProgressState.getSearchAfter())) {
+                return null;
+            } else {
+                return openSearchIndexProgressState.getSearchAfter();
+            }
         }
 
         return searchWithSearchAfterResults.getNextSearchAfter();
