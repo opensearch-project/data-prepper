@@ -11,3 +11,34 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.sqs.source.aws.region', System.getProperty('tests.sqs.source.aws.region')
+    systemProperty 'tests.sqs.source.queue.url', System.getProperty('tests.sqs.source.queue.url')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}
