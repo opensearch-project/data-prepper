@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.processor.ruby;
 
 import org.checkerframework.checker.units.qual.C;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.Event;
@@ -10,7 +11,14 @@ import org.opensearch.dataprepper.plugins.source.loggenerator.LogGeneratorSource
 import org.opensearch.dataprepper.plugins.source.loggenerator.logtypes.CommonApacheLogTypeGenerator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -46,6 +54,11 @@ public class RubyProcessorIT {
         PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
 
         rubyProcessor = new RubyProcessor( pluginMetrics, rubyProcessorConfig);
+    }
+
+    @AfterEach
+    void tearDown() {
+        rubyProcessor.shutdown();
     }
 
     @Test
@@ -312,5 +325,368 @@ public class RubyProcessorIT {
 
             // todo: make the dates generic.
         }
+
     }
+
+    @Test
+    void when_codeFromFileAndContainsProcessMethodWithCorrectSignature_then_processorWorks()
+        throws IOException
+    {
+        String code = "def process(event)\n" +
+                "event.put('processed', true)\n" +
+                "end\n";
+
+        final List<Record<Event>> parsedRecords = runGenericStartupCode(code);
+        for (int recordNumber = 0; recordNumber < parsedRecords.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.get("processed", Boolean.class), equalTo(true));
+        }
+    }
+
+    @Test
+    void when_codeFromFileWithInitAndParams_then_processorWorks()
+            throws IOException {
+
+
+        String code = "def init(params)\n" +
+                "$global_var = params.get('message_to_write')\n" +
+                "end\n" +
+                "def process(event)\n" +
+                "event.put('processed', true)\n" +
+                "event.put('message_written', $global_var)\n" +
+                "end\n";
+
+        Map<String, String> params = Map.of("message_to_write", "hello world");
+
+        String testDataFilePath = "LocalInputFileTest";
+
+        File testDataFile = File.createTempFile(testDataFilePath, "rb");
+
+        writeRubyCodeToFile(testDataFile, code);
+
+        setup();
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "path",
+                    testDataFile.getAbsolutePath());
+            // testDataFilePath + ".rb");
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "params",
+                    params
+                    );
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+
+        rubyProcessor = new RubyProcessor( pluginMetrics, rubyProcessorConfig);
+
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+
+
+        for (int recordNumber = 0; recordNumber < parsedRecords.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.get("processed", Boolean.class), equalTo(true));
+            assertThat(parsedEvent.get("message_written", String.class), equalTo("hello world"));
+        }
+
+    }
+
+
+    // todo: test params when assigned to global var can be used within process
+    @Test
+    void when_codeFromFileAndDoesNotContainProcessMethod_then_exceptionThrown()
+            throws IOException
+    {
+        String code = "def init\n" +
+                        "end\n";
+        assertThrows(RuntimeException.class, () -> runGenericStartupCode(code));
+    }
+
+    @Test
+    void when_codeFromFileAndContainsTooManyInitParameters_then_exceptionThrown()
+            throws IOException
+    {
+        String code = "def init(params1, params2)\n" +
+                "end\n"
+                + "def process(event)\n" +
+                "end\n";
+        assertThrows(RuntimeException.class, () -> runGenericStartupCode(code));
+    }
+
+    @Test
+    void when_codeFromFileAndContainsProcessMethodNoParameters_then_exceptionThrown()
+            throws IOException {
+        String code = "def process\n" +
+                "end\n";
+
+        assertThrows(RuntimeException.class, () -> runGenericStartupCode(code));
+    }
+
+    @Test
+    void when_codeFromFileAndContainsProcessMethodWithTooManyParameters_then_exceptionThrown()
+            throws IOException {
+        String code = "def process(event, event2)\n" +
+                "end\n";
+
+        assertThrows(RuntimeException.class, () -> runGenericStartupCode(code));
+    }
+
+    @Test
+    void when_withConfigCodeAndParamsCalledInProcess_then_exceptionThrown() {
+        rubyProcessorConfig = new RubyProcessorConfig();
+
+        String code =
+                "puts params.get('message_to_write')\n" +
+                "event.put('processed', true)\n" +
+                "event.put('message_written', $global_var)\n";
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "code",
+            code
+                    );
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        Map<String, String> params = Map.of("message_to_write", "hello world");
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "params",
+                    params
+            );
+
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+        apacheLogGenerator = new CommonApacheLogTypeGenerator();
+
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+
+        rubyProcessor = new RubyProcessor( pluginMetrics, rubyProcessorConfig);
+
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        assertThrows(Exception.class, () -> rubyProcessor.doExecute(records));
+
+    }
+
+
+    // todo: assert test params not accessible outside method
+    @Test
+    void when_withFileAndParamsCalledInProcess_then_exceptionThrown()
+            throws IOException {
+
+
+        String code = "def init(params)\n" +
+                "$global_var = params.get('message_to_write')\n" +
+                "end\n" +
+                "def process(event)\n" +
+                "puts params.get('message_to_write')\n" +
+                "event.put('processed', true)\n" +
+                "event.put('message_written', $global_var)\n" +
+                "end\n";
+
+        Map<String, String> params = Map.of("message_to_write", "hello world");
+
+        String testDataFilePath = "LocalInputFileTest";
+
+        File testDataFile = File.createTempFile(testDataFilePath, "rb");
+
+        writeRubyCodeToFile(testDataFile, code);
+
+        setup();
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "path",
+                    testDataFile.getAbsolutePath());
+            // testDataFilePath + ".rb");
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "params",
+                    params
+            );
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+
+        rubyProcessor = new RubyProcessor( pluginMetrics, rubyProcessorConfig);
+
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        assertThrows(Exception.class, () -> rubyProcessor.doExecute(records));
+    }
+
+    @Test
+    void when_paramsThenAccessibleWithRubyHashIndexing() {
+        // todo: or should behavior just be java-like?
+    }
+
+    @Test
+    void when_initCodeDefinedInConfigWithParams_then_paramsAccessible() {
+
+        String initCode =
+                "$global_var = params.get('message_to_write')\n";
+
+
+                String code = "event.put('processed', true)\n" +
+                "event.put('message_written', $global_var)\n";
+
+
+        Map<String, String> params = Map.of("message_to_write", "hello world");
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "initCode",
+                    initCode
+            );
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "code",
+                    code
+            );
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "params",
+                    params
+            );
+
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+        apacheLogGenerator = new CommonApacheLogTypeGenerator();
+
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+
+        rubyProcessor = new RubyProcessor( pluginMetrics, rubyProcessorConfig);
+
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+
+
+        for (int recordNumber = 0; recordNumber < parsedRecords.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.get("processed", Boolean.class), equalTo(true));
+            assertThat(parsedEvent.get("message_written", String.class), equalTo("hello world"));
+        }
+
+    }
+
+    @Test
+    void utility_testThatInitRegexMatches() {
+        String[] listOfTestCode = {
+                "def init(params)\n\nend",
+                "def init(parameter_name)",
+                "def init(parameter_name, parameter_name2)",
+                "def init",
+                "def init()",
+                "def init(1h)",
+                "def init(_local)",
+        };
+        ArrayList<Boolean> expectedRegexMatches = new ArrayList<>(List.of(true, true, false, false,  false, false, true));
+        String pattern = "def init\\(\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\)";
+
+        assertMatches(listOfTestCode, expectedRegexMatches, pattern);
+    }
+
+    @Test
+    void utility_testThatProcessRegexMatches() {
+        String[] listOfTestCode = {
+                "def process(parameter_name)",
+                "def process(parameter_name, parameter_name2)",
+                "def process",
+                "def process()",
+                "def process(1h)",
+                "def process(event)",
+        };
+        ArrayList<Boolean> expectedRegexMatches = new ArrayList<>(List.of(true, false, false,  false, false, true));
+        String pattern = "def process\\(\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\)";
+
+        assertMatches(listOfTestCode, expectedRegexMatches, pattern);
+    }
+
+    private void assertMatches(String[] toMatch, ArrayList<Boolean> expectedRegexMatches, String pattern) {
+        Pattern compiledPattern = Pattern.compile(pattern);
+
+        ArrayList<Boolean> regexMatches = new ArrayList<>();
+        for (String rubyCode : toMatch ) {
+            Matcher matcher = compiledPattern.matcher(rubyCode);
+            regexMatches.add(matcher.find());
+        }
+        assertThat(regexMatches, equalTo(expectedRegexMatches));
+    }
+
+
+    private List<Record<Event>> runGenericStartupCode(String code) throws IOException {
+
+        String testDataFilePath = "LocalInputFileTest";
+
+        File testDataFile = File.createTempFile(testDataFilePath, "rb");
+
+        writeRubyCodeToFile(testDataFile, code);
+
+        setup();
+
+        try {
+            setField(RubyProcessorConfig.class, RubyProcessorIT.this.rubyProcessorConfig, "path",
+                    testDataFile.getAbsolutePath());
+            // testDataFilePath + ".rb");
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+
+        PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+
+        rubyProcessor = new RubyProcessor( pluginMetrics, rubyProcessorConfig);
+
+        final List<Record<Event>> records = IntStream.range(0, NUMBER_EVENTS_TO_TEST)
+                .mapToObj(i -> new Record<>(apacheLogGenerator.generateEvent()))
+                .collect(Collectors.toList());
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+        return parsedRecords;
+    }
+
+    private void writeRubyCodeToFile(File file, String code) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(file, StandardCharsets.UTF_8))) {
+            writer.write(code);
+        } catch (IOException e) {
+            System.err.println("An error occurred while writing to the file: " + e.getMessage());
+        }
+    }
+
+
+
 }

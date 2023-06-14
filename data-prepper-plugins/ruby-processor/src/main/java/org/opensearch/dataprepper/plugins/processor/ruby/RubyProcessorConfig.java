@@ -11,6 +11,7 @@ public class RubyProcessorConfig {
     static final Boolean DEFAULT_IGNORE_EXCEPTION = false;
 
     private static final String INIT_METHOD_SIGNATURE = "def init(";
+    private static final Map<String, String> DEFAULT_PARAMETERS = Map.of();
     private Boolean initDefined; // todo: make this an optional?
     @JsonProperty("code")
     private String code;
@@ -22,7 +23,7 @@ public class RubyProcessorConfig {
     private String initCode;
 
     @JsonProperty("params")
-    private Map<String,String> params;
+    private Map<String,String> params = DEFAULT_PARAMETERS;
     @JsonProperty("ignore_exception")
     private Boolean ignoreException = DEFAULT_IGNORE_EXCEPTION;
     public Boolean isCodeFromFile() {
@@ -70,6 +71,6 @@ public class RubyProcessorConfig {
 
     @AssertTrue(message = "file path must be specified when using params")
     boolean areParamsSpecifiedWithFilePath() { // todo: rename for clarity?
-        return Objects.isNull(params) || Objects.nonNull(path); // equiv to assert(params implies path)
+        return Objects.equals(params, DEFAULT_PARAMETERS) || Objects.nonNull(path); // equiv to assert(params implies path)
     }
 }

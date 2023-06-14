@@ -9,11 +9,23 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
+import org.apache.parquet.io.SeekableInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 @DataPrepperPlugin(name= "ruby", pluginType = Processor.class, pluginConfigurationType = RubyProcessorConfig.class)
 public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -24,6 +36,11 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private String script;
 
     private Boolean runningCodeFromFile = false;
+
+    private SeekableInputStream fileStream;
+    private boolean fileCodeContainsInitCall = false;
+    private boolean shouldThrowExceptionSinceNoProcessFound = false;
+
 
     @DataPrepperPluginConstructor
     public RubyProcessor(final PluginMetrics pluginMetrics, final RubyProcessorConfig config) {
@@ -37,37 +54,104 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         container.put("LOG", LOG); // inject logger, perform cold start
 
         if (config.isInitDefined()) {
+            container.put("params", config.getParams());
             container.runScriptlet(config.getInitCode());
+            container.remove("params");
         }
 
         if (config.isCodeFromFile()) {
-            // will throw a RuntimeException if not, but todo: look at file source
             verifyFileExists(config.getPath());
             runningCodeFromFile = true;
-            runInitCodeFromFileAndDefineProcessMethod(config.getPath());
-//            verifyFileExistsAndContainsProcessMethod(config.getCodeFilePath());
+            runInitCodeFromFileAndDefineProcessMethod();
         }
     }
 
-    private void verifyFileExists(final String codeFilePath) {
-        LocalInputFile inputFile = new LocalInputFile(codeFilePath);
+    private void runFileInitCode(Map<String, String> params) {
+        // todo: make params optional?
+        container.callMethod("", "init", params);
     }
 
-    private void runInitCodeFromFileAndDefineProcessMethod(final String codeFilePath) {
-        // check if init code exists
+    private void verifyFileExists(final String codeFilePath) {
+        File codeFile = new File(codeFilePath);
+        LocalInputFile inputFile = new LocalInputFile(codeFile);
 
-        // open file read to read InputStream at codeFilePath
+        try {
+            this.fileStream = inputFile.newStream();
+            // todo: should be able to extend with S3 file input source, as it returns the same SeekableInputStream.
+        } catch (Exception exception) {
+            LOG.error("Error opening the input file path [{}]", codeFilePath, exception);
+            throw new RuntimeException(format("Error opening the input file %s",
+                    codeFilePath), exception);
+        }
 
-        // check if file contains init method (scan until we hit def init)
+        try {
+            SeekableInputStream fileStreamForTestingRegex = inputFile.newStream();
+            // need two booleans about
+            this.fileCodeContainsInitCall = assertThatRubyProcessorInterfaceImplementedAndReturnInitMethodDefined(
+                    fileStreamForTestingRegex);
 
-        // if so, then run the following:
-        // scan all into a single String (todo: max String size?)
+        } catch (IOException exception) {
+            LOG.error("Error panother file or regex exception.", exception);
+            throw new RuntimeException(exception.toString());
+        }
 
-        // container.runScriplet(this string)
+        if (this.shouldThrowExceptionSinceNoProcessFound) {
+            LOG.error("must implement interface described in README when using Ruby code from file. Exiting pipeline.");
+            throw new RuntimeException("Ruby Processor file bad implementation");
+        }
+    }
 
-        // then scan process(event) and runScriplet on it.
+    private boolean assertThatRubyProcessorInterfaceImplementedAndReturnInitMethodDefined(SeekableInputStream fileStreamForTestingRegex)
+    throws IOException
+    {
+        String rubyCodeAsString = convertInputStreamToString(fileStreamForTestingRegex);
 
-        // would all need to be in one.
+        String processPattern = "def process\\(\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\)";
+
+        this.shouldThrowExceptionSinceNoProcessFound = !stringContainsPattern(rubyCodeAsString, processPattern);
+
+        String initPattern = "def init\\(\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\)";
+        boolean correctInitMethodFound = stringContainsPattern(rubyCodeAsString, initPattern);
+
+        if (!correctInitMethodFound) {
+            String bareboneInitPattern = "def init";
+            boolean incorrectInitMethodSignature = stringContainsPattern(rubyCodeAsString, bareboneInitPattern);
+
+            if (incorrectInitMethodSignature) {
+                LOG.error("must implement interface described in README when using Ruby code from file " +
+                        "— init method signature is incorrect. Exiting pipeline.");
+                throw new RuntimeException("Ruby Processor file bad implementation");
+            }
+        }
+        return correctInitMethodFound;
+    }
+
+    private boolean stringContainsPattern(String inString, String pattern) {
+        Pattern compiledPattern = Pattern.compile(pattern);
+        Matcher matcher = compiledPattern.matcher(inString);
+        return matcher.find();
+    }
+
+    private String convertInputStreamToString(SeekableInputStream inputStream)
+    throws IOException
+    {
+        // from https://stackoverflow.com/questions/309424/how-do-i-read-convert-an-inputstream-into-a-string-in-java,
+        // fastest solution.
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        for (int length; (length = inputStream.read(buffer)) != -1; ) {
+            result.write(buffer, 0, length);
+        }
+        return result.toString("UTF-8");
+    }
+
+    private void runInitCodeFromFileAndDefineProcessMethod() {
+        // Below will also pull in any dependencies in `require` statements.
+        container.runScriptlet(this.fileStream, "RUBY_FILE_FOR_LOGGING_PURPOSES");
+
+        if (this.fileCodeContainsInitCall) {
+            runFileInitCode(config.getParams());
+        }
     }
 
     @Override
@@ -89,8 +173,7 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 + "process(event)\n" +
                 "}";
         // todo: make it like LogStash where it returns an array of events?
-
-        container.runScriptlet(config.getCode());
+        container.runScriptlet(script);
     }
 
     private void injectAndProcessEvents(List<Event> events) {
@@ -102,9 +185,11 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         try {
             container.runScriptlet(script);
         } catch (Exception exception) {
-            LOG.error("Exception processing Ruby code", exception);
+            LOG.error("Exception while processing Ruby code on Events: [{}]",events, exception);
             if (!config.isIgnoreException()) {
-                throw new RuntimeException(exception.toString());
+                throw new RuntimeException(format("Exception while processing Ruby code on Events: [%s]",events),
+                        exception
+                );
             }
         }
     }
