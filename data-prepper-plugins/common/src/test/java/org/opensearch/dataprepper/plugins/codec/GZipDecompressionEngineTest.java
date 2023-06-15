@@ -21,6 +21,7 @@ import java.util.UUID;
 import java.util.zip.GZIPOutputStream;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -54,5 +55,21 @@ class GZipDecompressionEngineTest {
 
         assertThat(inputStream, instanceOf(GzipCompressorInputStream.class));
         assertThat(inputStream.readAllBytes(), equalTo(testStringBytes));
+    }
+
+    @Test
+    void createInputStream_without_gzip_should_throw_exception() throws IOException {
+        decompressionEngine = new GZipDecompressionEngine();
+
+        final String testString = UUID.randomUUID().toString();
+        final byte[] testStringBytes = testString.getBytes(StandardCharsets.UTF_8);
+
+        final ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
+        byteOut.write(testStringBytes, 0, testStringBytes.length);
+        byteOut.close();
+        final byte[] bites = byteOut.toByteArray();
+        final ByteArrayInputStream byteInStream = new ByteArrayInputStream(bites);
+
+        assertThrows(IOException.class, () -> decompressionEngine.createInputStream(byteInStream));
     }
 }
