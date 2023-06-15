@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -23,8 +24,6 @@ import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBuffer;
 import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.codec.Codec;
-import org.opensearch.dataprepper.plugins.sink.codec.JsonCodec;
 import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
@@ -34,6 +33,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -78,19 +78,17 @@ class S3SinkServiceTest {
     public static final String PATH_PREFIX = "logdata/";
     private S3SinkConfig s3SinkConfig;
     private S3Client s3Client;
-    private JsonCodec codec;
+    private OutputCodec codec;
     private PluginMetrics pluginMetrics;
     private BufferFactory bufferFactory;
     private Counter snapshotSuccessCounter;
     private DistributionSummary s3ObjectSizeSummary;
     private Random random;
-    private String tagsTargetKey;
 
     @BeforeEach
     void setUp() {
 
         random = new Random();
-        tagsTargetKey = RandomStringUtils.randomAlphabetic(5);
         s3SinkConfig = mock(S3SinkConfig.class);
         s3Client = mock(S3Client.class);
         ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
@@ -100,7 +98,7 @@ class S3SinkServiceTest {
         pluginMetrics = mock(PluginMetrics.class);
         PluginModel pluginModel = mock(PluginModel.class);
         PluginFactory pluginFactory = mock(PluginFactory.class);
-        codec = mock(JsonCodec.class);
+        codec = mock(OutputCodec.class);
         snapshotSuccessCounter = mock(Counter.class);
         Counter snapshotFailedCounter = mock(Counter.class);
         Counter numberOfRecordsSuccessCounter = mock(Counter.class);
@@ -123,7 +121,7 @@ class S3SinkServiceTest {
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(S3_REGION));
         when(s3SinkConfig.getCodec()).thenReturn(pluginModel);
         when(pluginModel.getPluginName()).thenReturn(CODEC_PLUGIN_NAME);
-        when(pluginFactory.loadPlugin(Codec.class, pluginSetting)).thenReturn(codec);
+        when(pluginFactory.loadPlugin(OutputCodec.class, pluginSetting)).thenReturn(codec);
 
         lenient().when(pluginMetrics.counter(S3SinkService.OBJECTS_SUCCEEDED)).thenReturn(snapshotSuccessCounter);
         lenient().when(pluginMetrics.counter(S3SinkService.OBJECTS_FAILED)).thenReturn(snapshotFailedCounter);
@@ -135,7 +133,7 @@ class S3SinkServiceTest {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, tagsTargetKey, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, pluginMetrics);
     }
 
     @Test
@@ -150,7 +148,7 @@ class S3SinkServiceTest {
         String pathPrefix = "events/";
         when(s3SinkConfig.getObjectKeyOptions().getPathPrefix()).thenReturn(pathPrefix);
         S3SinkService s3SinkService = createObjectUnderTest();
-        String key = s3SinkService.generateKey();
+        String key = s3SinkService.generateKey(codec);
         assertNotNull(key);
         assertThat(key, true);
         assertThat(key, key.contains(pathPrefix));
@@ -169,7 +167,7 @@ class S3SinkServiceTest {
         when(s3SinkConfig.getObjectKeyOptions()
                 .getPathPrefix()).thenReturn(pathPrefix + datePattern);
         S3SinkService s3SinkService = createObjectUnderTest();
-        String key = s3SinkService.generateKey();
+        String key = s3SinkService.generateKey(codec);
         assertNotNull(key);
         assertThat(key, true);
         assertThat(key, key.contains(pathPrefix + dateString));
@@ -290,7 +288,9 @@ class S3SinkServiceTest {
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         assertNotNull(buffer);
-        buffer.writeEvent(generateByteArray());
+        OutputStream outputStream = buffer.getOutputStream();
+        final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        codec.writeEvent(event, outputStream);
         final String s3Key = UUID.randomUUID().toString();
         boolean isUploadedToS3 = s3SinkService.retryFlushToS3(buffer, s3Key);
         assertTrue(isUploadedToS3);
@@ -304,7 +304,9 @@ class S3SinkServiceTest {
         when(s3SinkConfig.getBucketName()).thenReturn("");
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
-        buffer.writeEvent(generateByteArray());
+        OutputStream outputStream = buffer.getOutputStream();
+        final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
+        codec.writeEvent(event, outputStream);
         final String s3Key = UUID.randomUUID().toString();
         doThrow(AwsServiceException.class).when(buffer).flushToS3(eq(s3Client), anyString(), anyString());
         boolean isUploadedToS3 = s3SinkService.retryFlushToS3(buffer, s3Key);

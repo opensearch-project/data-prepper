@@ -13,6 +13,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -46,7 +47,10 @@ class LocalFileBufferTest {
     @Test
     void test_with_write_events_into_buffer() throws IOException {
         while (localFileBuffer.getEventCount() < 55) {
-            localFileBuffer.writeEvent(generateByteArray());
+            OutputStream outputStream = localFileBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = localFileBuffer.getEventCount() +1;
+            localFileBuffer.setEventCount(eventCount);
         }
         assertThat(localFileBuffer.getSize(), greaterThan(1l));
         assertThat(localFileBuffer.getEventCount(), equalTo(55));
@@ -69,7 +73,10 @@ class LocalFileBufferTest {
     @Test
     void test_with_write_events_into_buffer_and_flush_toS3() throws IOException {
         while (localFileBuffer.getEventCount() < 55) {
-            localFileBuffer.writeEvent(generateByteArray());
+            OutputStream outputStream = localFileBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = localFileBuffer.getEventCount() +1;
+            localFileBuffer.setEventCount(eventCount);
         }
         assertThat(localFileBuffer.getSize(), greaterThan(1l));
         assertThat(localFileBuffer.getEventCount(), equalTo(55));

@@ -11,6 +11,8 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory;
 import java.io.IOException;
+import java.io.OutputStream;
+
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,7 +25,10 @@ class ThresholdCheckTest {
         inMemoryBuffer = new InMemoryBufferFactory().getBuffer();
 
         while (inMemoryBuffer.getEventCount() < 100) {
-            inMemoryBuffer.writeEvent(generateByteArray());
+            OutputStream outputStream = inMemoryBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = inMemoryBuffer.getEventCount() +1;
+            inMemoryBuffer.setEventCount(eventCount);
         }
     }
 
@@ -78,7 +83,10 @@ class ThresholdCheckTest {
         boolean isThresholdExceed = Boolean.FALSE;
         synchronized (this) {
             while (inMemoryBuffer.getEventCount() < 100) {
-                inMemoryBuffer.writeEvent(generateByteArray());
+                OutputStream outputStream = inMemoryBuffer.getOutputStream();
+                outputStream.write(generateByteArray());
+                int eventCount = inMemoryBuffer.getEventCount() +1;
+                inMemoryBuffer.setEventCount(eventCount);
                 isThresholdExceed = ThresholdCheck.checkThresholdExceed(inMemoryBuffer, maxEvents,
                         maxBytes, maxCollectionDuration);
                 if (isThresholdExceed) {
@@ -102,7 +110,10 @@ class ThresholdCheckTest {
         boolean isThresholdExceed = Boolean.FALSE;
         synchronized (this) {
             while (inMemoryBuffer.getEventCount() < 100) {
-                inMemoryBuffer.writeEvent(generateByteArray());
+                OutputStream outputStream = inMemoryBuffer.getOutputStream();
+                outputStream.write(generateByteArray());
+                int eventCount = inMemoryBuffer.getEventCount() +1;
+                inMemoryBuffer.setEventCount(eventCount);
                 isThresholdExceed = ThresholdCheck.checkThresholdExceed(inMemoryBuffer,
                         maxEvents, maxBytes, maxCollectionDuration);
                 if (isThresholdExceed) {
