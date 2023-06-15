@@ -60,6 +60,10 @@ class CredentialsProviderFactory {
                 .roleSessionName("Data-Prepper-" + UUID.randomUUID())
                 .roleArn(stsRoleArn);
 
+        if (credentialsOptions.getStsExternalId() != null && !credentialsOptions.getStsExternalId().isEmpty()) {
+            assumeRoleRequestBuilder = assumeRoleRequestBuilder.externalId(credentialsOptions.getStsExternalId());
+        }
+
         final Map<String, String> awsStsHeaderOverrides = credentialsOptions.getStsHeaderOverrides();
 
         if(awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {

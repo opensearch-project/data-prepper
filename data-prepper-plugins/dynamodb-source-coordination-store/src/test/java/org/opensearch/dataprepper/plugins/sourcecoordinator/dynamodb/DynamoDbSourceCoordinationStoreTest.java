@@ -55,12 +55,14 @@ public class DynamoDbSourceCoordinationStoreTest {
     void setup() {
         given(dynamoStoreSettings.getRegion()).willReturn(UUID.randomUUID().toString());
         given(dynamoStoreSettings.getStsRoleArn()).willReturn(UUID.randomUUID().toString());
+        given(dynamoStoreSettings.getStsExternalId()).willReturn(UUID.randomUUID().toString());
     }
 
     private DynamoDbSourceCoordinationStore createObjectUnderTest() {
         try (final MockedStatic<DynamoDbClientWrapper> dynamoDbClientWrapperMockedStatic = mockStatic(DynamoDbClientWrapper.class)) {
-            dynamoDbClientWrapperMockedStatic.when(() -> DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(), dynamoStoreSettings.getStsRoleArn()))
-                            .thenReturn(dynamoDbClientWrapper);
+            dynamoDbClientWrapperMockedStatic.when(() -> DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(),
+                    dynamoStoreSettings.getStsRoleArn(), dynamoStoreSettings.getStsExternalId()))
+                .thenReturn(dynamoDbClientWrapper);
             return new DynamoDbSourceCoordinationStore(dynamoStoreSettings, pluginMetrics);
         }
     }

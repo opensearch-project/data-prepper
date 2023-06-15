@@ -13,6 +13,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.lang.reflect.Field;
+import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -47,6 +48,17 @@ public class S3DlqWriterConfigTest {
     public void getS3ClientWithValidStsRoleArn(final String stsRoleArn) throws NoSuchFieldException, IllegalAccessException {
         final S3DlqWriterConfig config = new S3DlqWriterConfig();
         reflectivelySetField(config, "stsRoleArn", stsRoleArn);
+        final S3Client s3Client = config.getS3Client();
+        assertThat(s3Client, is(notNullValue()));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "arn:aws:iam::123456789012:role/some-role"})
+    public void getS3ClientWithValidStsRoleArnAndExternalId(final String stsRoleArn) throws NoSuchFieldException, IllegalAccessException {
+        final S3DlqWriterConfig config = new S3DlqWriterConfig();
+        reflectivelySetField(config, "stsRoleArn", stsRoleArn);
+        reflectivelySetField(config, "stsExternalId", UUID.randomUUID().toString());
         final S3Client s3Client = config.getS3Client();
         assertThat(s3Client, is(notNullValue()));
     }

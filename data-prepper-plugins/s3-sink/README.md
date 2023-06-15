@@ -37,6 +37,8 @@ pipeline:
 
 - `sts_role_arn` (Optional) : The AWS STS role to assume for requests to S3. which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html). 
 
+- `sts_external_id` (Optional) : The external ID to attach to AssumeRole requests.
+
 - `max_retries` (Optional) : An integer value indicates the maximum number of times that single request should be retired in-order to ingest data to amazon s3. Defaults to `5`.
 
 - `bucket` (Required) : Object storage built to store and retrieve any amount of data from anywhere, User must provide bucket name.

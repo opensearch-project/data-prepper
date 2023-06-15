@@ -9,6 +9,7 @@ import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.NotificationTypeOption;
+import org.opensearch.dataprepper.plugins.source.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
@@ -27,6 +28,9 @@ public class S3SourceConfig {
 
     @JsonProperty("notification_type")
     private NotificationTypeOption notificationType;
+
+    @JsonProperty("notification_source")
+    private NotificationSourceOption notificationSource = NotificationSourceOption.S3;
 
     @JsonProperty("compression")
     private CompressionOption compression = CompressionOption.NONE;
@@ -74,6 +78,10 @@ public class S3SourceConfig {
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
+    }
+
+    public NotificationSourceOption getNotificationSource() {
+        return notificationSource;
     }
 
     boolean getAcknowledgements() {
