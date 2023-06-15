@@ -18,38 +18,37 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import org.opensearch.dataprepper.plugins.source.S3EventNotification;
+import org.opensearch.dataprepper.plugins.source.parser.ParsedMessage;
 
-class ObjectCreatedFilterTest {
+class S3ObjectCreatedFilterTest {
 
-    private ObjectCreatedFilter objectCreatedFilter;
-    private S3EventNotification.S3EventNotificationRecord s3EventNotificationRecord;
+    private S3ObjectCreatedFilter s3ObjectCreatedFilter;
+    private ParsedMessage parsedMessage;
 
 
     @BeforeEach
     void setUp() {
-        objectCreatedFilter = new ObjectCreatedFilter();
-        s3EventNotificationRecord = mock(S3EventNotification.S3EventNotificationRecord.class);
+        s3ObjectCreatedFilter = new S3ObjectCreatedFilter();
+        parsedMessage = mock(ParsedMessage.class);
     }
 
     @Test
     void filter_with_eventName_ObjectCreated_should_return_non_empty_instance_of_optional() {
-        when(s3EventNotificationRecord.getEventName()).thenReturn("ObjectCreated:Put");
-        Optional<S3EventNotification.S3EventNotificationRecord> actualValue = objectCreatedFilter.filter(s3EventNotificationRecord);
+        when(parsedMessage.getEventName()).thenReturn("ObjectCreated:Put");
+        Optional<ParsedMessage> actualValue = s3ObjectCreatedFilter.filter(parsedMessage);
 
         assertThat(actualValue, instanceOf(Optional.class));
         assertTrue(actualValue.isPresent());
-        assertThat(actualValue, equalTo(Optional.of(s3EventNotificationRecord)));
+        assertThat(actualValue, equalTo(Optional.of(parsedMessage)));
     }
 
     @Test
     void filter_with_eventName_ObjectRemoved_should_return_empty_instance_of_optional() {
-        when(s3EventNotificationRecord.getEventName()).thenReturn("ObjectRemoved:Delete");
-        Optional<S3EventNotification.S3EventNotificationRecord> actualValue = objectCreatedFilter.filter(s3EventNotificationRecord);
+        when(parsedMessage.getEventName()).thenReturn("ObjectRemoved:Delete");
+        Optional<ParsedMessage> actualValue = s3ObjectCreatedFilter.filter(parsedMessage);
 
         assertThat(actualValue, instanceOf(Optional.class));
         assertFalse(actualValue.isPresent());
         assertThat(actualValue, equalTo(Optional.empty()));
     }
-
 }

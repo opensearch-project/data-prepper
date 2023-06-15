@@ -43,6 +43,7 @@ public class IndexConfiguration {
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
+    public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
@@ -58,6 +59,7 @@ public class IndexConfiguration {
     private final String action;
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
+    private final String s3AwsExternalId;
     private final S3Client s3Client;
     private final boolean serverless;
     private final String documentRootKey;
@@ -72,6 +74,7 @@ public class IndexConfiguration {
 
         this.s3AwsRegion = builder.s3AwsRegion;
         this.s3AwsStsRoleArn = builder.s3AwsStsRoleArn;
+        this.s3AwsExternalId = builder.s3AwsStsExternalId;
         this.s3Client = builder.s3Client;
 
         this.templateType = builder.templateType != null ? builder.templateType : TemplateType.V1;
@@ -164,8 +167,10 @@ public class IndexConfiguration {
             || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
             builder.withS3AwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
             builder.withS3AWSStsRoleArn(pluginSetting.getStringOrDefault(S3_AWS_STS_ROLE_ARN, null));
+            builder.withS3AWSStsExternalId(pluginSetting.getStringOrDefault(S3_AWS_STS_EXTERNAL_ID, null));
 
-            final S3ClientProvider clientProvider = new S3ClientProvider(builder.s3AwsRegion, builder.s3AwsStsRoleArn);
+            final S3ClientProvider clientProvider = new S3ClientProvider(
+                builder.s3AwsRegion, builder.s3AwsStsRoleArn, builder.s3AwsStsExternalId);
             builder.withS3Client(clientProvider.buildS3Client());
         }
 
@@ -224,6 +229,10 @@ public class IndexConfiguration {
 
     public String getS3AwsStsRoleArn() {
         return s3AwsStsRoleArn;
+    }
+
+    public String getS3AwsStsExternalId() {
+        return s3AwsExternalId;
     }
 
     public boolean getServerless() {
@@ -294,6 +303,7 @@ public class IndexConfiguration {
         private String action;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
+        private String s3AwsStsExternalId;
         private S3Client s3Client;
         private boolean serverless;
         private String documentRootKey;
@@ -378,6 +388,12 @@ public class IndexConfiguration {
                 }
             }
             this.s3AwsStsRoleArn = s3AwsStsRoleArn;
+            return this;
+        }
+
+        public Builder withS3AWSStsExternalId(final String s3AwsStsExternalId) {
+            checkArgument(s3AwsStsExternalId == null || s3AwsStsExternalId.length() <= 1224, "s3AwsStsExternalId length cannot exceed 1224");
+            this.s3AwsStsExternalId = s3AwsStsExternalId;
             return this;
         }
 

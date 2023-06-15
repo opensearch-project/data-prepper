@@ -42,6 +42,7 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -126,12 +127,13 @@ class CredentialsProviderFactoryTest {
         @ParameterizedTest
         @ValueSource(strings = {"us-east-1", "us-west-2", "eu-west-1"})
         void providerFromOptions_should_return_StsCredentialsProvider_with_sts_role_arn(final String regionString) {
+            final String externalId = UUID.randomUUID().toString();
             final Region region = Region.of(regionString);
             when(awsCredentialsOptions.getRegion()).thenReturn(region);
             when(awsCredentialsOptions.getStsRoleArn()).thenReturn(testStsRole);
+            when(awsCredentialsOptions.getStsExternalId()).thenReturn(externalId);
 
             when(stsClientBuilder.region(region)).thenReturn(stsClientBuilder);
-
 
             final CredentialsProviderFactory objectUnderTest = createObjectUnderTest();
             final AwsCredentialsProvider actualCredentialsProvider;
@@ -157,6 +159,7 @@ class CredentialsProviderFactoryTest {
 
             final AssumeRoleRequest assumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
             assertThat(assumeRoleRequest.roleArn(), equalTo(testStsRole));
+            assertThat(assumeRoleRequest.externalId(), equalTo(externalId));
             assertThat(assumeRoleRequest.roleSessionName(), startsWith("Data-Prepper"));
             assertThat(assumeRoleRequest.roleSessionName().length(), lessThanOrEqualTo(MAXIMUM_ROLE_SESSION_LENGTH));
         }
@@ -255,6 +258,67 @@ class CredentialsProviderFactoryTest {
             assertThat(actualAssumeRoleRequest.overrideConfiguration(), notNullValue());
             assertThat(actualAssumeRoleRequest.overrideConfiguration().isPresent(), equalTo(false));
         }
+
+        @Test
+        void providerFromOptions_should_not_set_externalId_when_externalId_is_null() {
+            when(awsCredentialsOptions.getRegion()).thenReturn(Region.US_EAST_1);
+            when(awsCredentialsOptions.getStsRoleArn()).thenReturn(testStsRole);
+            when(awsCredentialsOptions.getStsExternalId()).thenReturn(null);
+
+            when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
+
+            final CredentialsProviderFactory objectUnderTest = createObjectUnderTest();
+            final AwsCredentialsProvider actualCredentialsProvider;
+
+            try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+                 final MockedStatic<StsAssumeRoleCredentialsProvider> credentialsProviderMockedStatic = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
+                stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+                credentialsProviderMockedStatic.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(stsCredentialsProviderBuilder);
+                actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
+            }
+
+            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+
+            final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
+            verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
+
+            final AssumeRoleRequest actualAssumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
+            assertThat(actualAssumeRoleRequest.roleArn(), equalTo(testStsRole));
+            assertThat(actualAssumeRoleRequest.roleSessionName(), startsWith("Data-Prepper-"));
+            assertThat(actualAssumeRoleRequest.roleSessionName().length(), lessThanOrEqualTo(MAXIMUM_ROLE_SESSION_LENGTH));
+            assertThat(actualAssumeRoleRequest.externalId(), nullValue());
+        }
+
+        @Test
+        void providerFromOptions_should_not_set_externalId_when_externalId_is_empty() {
+            when(awsCredentialsOptions.getRegion()).thenReturn(Region.US_EAST_1);
+            when(awsCredentialsOptions.getStsRoleArn()).thenReturn(testStsRole);
+            when(awsCredentialsOptions.getStsExternalId()).thenReturn("");
+
+            when(stsClientBuilder.region(Region.US_EAST_1)).thenReturn(stsClientBuilder);
+
+            final CredentialsProviderFactory objectUnderTest = createObjectUnderTest();
+            final AwsCredentialsProvider actualCredentialsProvider;
+
+            try (final MockedStatic<StsClient> stsClientMockedStatic = mockStatic(StsClient.class);
+                 final MockedStatic<StsAssumeRoleCredentialsProvider> credentialsProviderMockedStatic = mockStatic(StsAssumeRoleCredentialsProvider.class)) {
+                stsClientMockedStatic.when(StsClient::builder).thenReturn(stsClientBuilder);
+                credentialsProviderMockedStatic.when(StsAssumeRoleCredentialsProvider::builder).thenReturn(stsCredentialsProviderBuilder);
+                actualCredentialsProvider = objectUnderTest.providerFromOptions(awsCredentialsOptions);
+            }
+
+            assertThat(actualCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
+
+            final ArgumentCaptor<AssumeRoleRequest> assumeRoleRequestArgumentCaptor = ArgumentCaptor.forClass(AssumeRoleRequest.class);
+            verify(stsCredentialsProviderBuilder).refreshRequest(assumeRoleRequestArgumentCaptor.capture());
+
+            final AssumeRoleRequest actualAssumeRoleRequest = assumeRoleRequestArgumentCaptor.getValue();
+            assertThat(actualAssumeRoleRequest.roleArn(), equalTo(testStsRole));
+            assertThat(actualAssumeRoleRequest.roleSessionName(), startsWith("Data-Prepper-"));
+            assertThat(actualAssumeRoleRequest.roleSessionName().length(), lessThanOrEqualTo(MAXIMUM_ROLE_SESSION_LENGTH));
+            assertThat(actualAssumeRoleRequest.externalId(), nullValue());
+        }
+
 
         @ParameterizedTest
         @ValueSource(strings = {"us-east-1", "us-west-2", "eu-west-1"})

@@ -78,6 +78,7 @@ public class ConnectionConfiguration {
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
+  public static final String AWS_STS_EXTERNAL_ID = "aws_sts_external_id";
   public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
   public static final String PROXY = "proxy";
   public static final String SERVERLESS = "serverless";
@@ -98,6 +99,7 @@ public class ConnectionConfiguration {
   private final boolean awsSigv4;
   private final String awsRegion;
   private final String awsStsRoleArn;
+  private final String awsStsExternalId;
   private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
   private final String pipelineName;
@@ -158,6 +160,7 @@ public class ConnectionConfiguration {
     this.awsSigv4 = builder.awsSigv4;
     this.awsRegion = builder.awsRegion;
     this.awsStsRoleArn = builder.awsStsRoleArn;
+    this.awsStsExternalId = builder.awsStsExternalId;
     this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
     this.serverless = builder.serverless;
@@ -194,6 +197,7 @@ public class ConnectionConfiguration {
         builder.withAwsSigv4(true);
         builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
         builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
+        builder.withAWSStsExternalId((String)(awsOption.getOrDefault(AWS_STS_EXTERNAL_ID.substring(4), null)));
         builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
         builder.withServerless((Boolean)awsOption.getOrDefault(SERVERLESS, false));
     } else {
@@ -208,6 +212,7 @@ public class ConnectionConfiguration {
       builder.withAwsSigv4(true);
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
       builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
+      builder.withAWSStsExternalId(pluginSetting.getStringOrDefault(AWS_STS_EXTERNAL_ID, null));
       builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
     }
 
@@ -278,10 +283,11 @@ public class ConnectionConfiguration {
 
   private AwsCredentialsOptions createAwsCredentialsOptions() {
     final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
-            .withStsRoleArn(awsStsRoleArn)
-            .withRegion(awsRegion)
-            .withStsHeaderOverrides(awsStsHeaderOverrides)
-            .build();
+        .withStsRoleArn(awsStsRoleArn)
+        .withStsExternalId(awsStsExternalId)
+        .withRegion(awsRegion)
+        .withStsHeaderOverrides(awsStsHeaderOverrides)
+        .build();
     return awsCredentialsOptions;
   }
 
@@ -439,6 +445,7 @@ public class ConnectionConfiguration {
     private boolean awsSigv4;
     private String awsRegion;
     private String awsStsRoleArn;
+    private String awsStsExternalId;
     private Map<String, String> awsStsHeaderOverrides;
     private Optional<String> proxy = Optional.empty();
     private String pipelineName;
@@ -521,6 +528,12 @@ public class ConnectionConfiguration {
         validateStsRoleArn(awsStsRoleArn);
       }
       this.awsStsRoleArn = awsStsRoleArn;
+      return this;
+    }
+
+    public Builder withAWSStsExternalId(final String awsStsExternalId) {
+      checkArgument(awsStsExternalId == null || awsStsExternalId.length() <= 1224, "awsStsExternalId length cannot exceed 1224");
+      this.awsStsExternalId = awsStsExternalId;
       return this;
     }
 

@@ -126,6 +126,8 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `notification_type` (Optional) : Must be `sqs`.
 
+* `notification_source` (Optional): Provide how the notifications are generated. Must be either `s3` or `eventbridge`. Defaults to `s3`. `s3` represents notifications that are sent S3 to SQS directly or fanout pattern from S3 to SNS to SQS. `eventbridge` represents notifications which are sent from S3 to EventBridge to SQS. Only `Object Created` events are supported.
+
 * `compression` (Optional) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
 
 * `codec` (Required) : The codec to apply. Must be either `newline`, `csv` or `json`.
@@ -160,6 +162,8 @@ The AWS configuration is the same for both SQS and S3.
 
 * `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
 * `sts_role_arn` (Optional) : The AWS STS role to assume for requests to SQS and S3. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html). 
+* `sts_external_id` (Optional) : The external ID to attach to AssumeRole requests.
+
 The following policy shows the necessary permissions for S3 source. `kms:Decrypt` is required if SQS queue is encrypted with AWS [KMS](https://aws.amazon.com/kms/).
 ```json
 {
