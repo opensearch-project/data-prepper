@@ -5,9 +5,12 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchVersionInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -102,6 +105,82 @@ public class SearchAccessStrategyTest {
 
         verifyNoInteractions(awsCredentialsSupplier);
 
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"7.10.2", "8.1.1", "7.10.0"})
+    void testHappyPath_with_username_and_password_and_insecure_for_different_point_in_time_versions_for_elasticsearch(final String esVersion) {
+        final String username = UUID.randomUUID().toString();
+        final String password = UUID.randomUUID().toString();
+        when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+        when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(null);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(null);
+
+        final co.elastic.clients.elasticsearch.core.InfoResponse infoResponse = mock(co.elastic.clients.elasticsearch.core.InfoResponse.class);
+        final ElasticsearchVersionInfo elasticsearchVersionInfo = mock(ElasticsearchVersionInfo.class);
+        when(elasticsearchVersionInfo.buildFlavor()).thenReturn("default");
+        when(elasticsearchVersionInfo.number()).thenReturn(esVersion);
+        when(infoResponse.version()).thenReturn(elasticsearchVersionInfo);
+
+        try (MockedConstruction<ElasticsearchClient> elasticsearchClientMockedConstruction = mockConstruction(ElasticsearchClient.class,
+                (clientMock, context) -> {
+                    when(clientMock.info()).thenReturn(infoResponse);
+                })) {
+
+            final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+            assertThat(searchAccessor, notNullValue());
+            assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
+
+            final List<ElasticsearchClient> constructedClients = elasticsearchClientMockedConstruction.constructed();
+            assertThat(constructedClients.size(), equalTo(1));
+        }
+
+        verifyNoInteractions(awsCredentialsSupplier);
+
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {"6.3.0,default", "7.9.0,default", "0.3.2,default", "7.10.2,oss"})
+    void search_context_type_set_to_point_in_time_with_invalid_version_throws_IllegalArgumentException_for_elasticsearch(final String esVersion, final String esBuildFlavor) {
+        final String username = UUID.randomUUID().toString();
+        final String password = UUID.randomUUID().toString();
+        when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+        when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+
+        final co.elastic.clients.elasticsearch.core.InfoResponse infoResponse = mock(co.elastic.clients.elasticsearch.core.InfoResponse.class);
+        final ElasticsearchVersionInfo elasticsearchVersionInfo = mock(ElasticsearchVersionInfo.class);
+        when(elasticsearchVersionInfo.buildFlavor()).thenReturn(esBuildFlavor);
+        when(elasticsearchVersionInfo.number()).thenReturn(esVersion);
+        when(infoResponse.version()).thenReturn(elasticsearchVersionInfo);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.POINT_IN_TIME);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        try (MockedConstruction<ElasticsearchClient> elasticsearchClientMockedConstruction = mockConstruction(ElasticsearchClient.class,
+                (clientMock, context) -> {
+                    when(clientMock.info()).thenReturn(infoResponse);
+                })) {
+
+            assertThrows(IllegalArgumentException.class, () -> createObjectUnderTest().getSearchAccessor());
+
+            final List<ElasticsearchClient> constructedClients = elasticsearchClientMockedConstruction.constructed();
+            assertThat(constructedClients.size(), equalTo(1));
+        }
     }
 
     @ParameterizedTest

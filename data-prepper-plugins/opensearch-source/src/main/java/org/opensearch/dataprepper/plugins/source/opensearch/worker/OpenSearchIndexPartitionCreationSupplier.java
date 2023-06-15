@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cat.IndicesResponse;
@@ -32,7 +34,9 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
 
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final IndexParametersConfiguration indexParametersConfiguration;
-    private final OpenSearchClient openSearchClient;
+    private OpenSearchClient openSearchClient;
+    private ElasticsearchClient elasticsearchClient;
+
 
     public OpenSearchIndexPartitionCreationSupplier(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                                                     final ClusterClientFactory clusterClientFactory) {
@@ -43,6 +47,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
 
         if (client instanceof OpenSearchClient) {
             this.openSearchClient = (OpenSearchClient) client;
+        } else if (client instanceof ElasticsearchClient) {
+            this.elasticsearchClient = (ElasticsearchClient) client;
         } else {
             throw new IllegalArgumentException(String.format("ClusterClientFactory provided an invalid client object to the index partition creation supplier. " +
                     "The client must be of type OpenSearchClient. The client passed is of class %s", client.getClass()));
@@ -55,6 +61,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
 
         if (Objects.nonNull(openSearchClient)) {
             return applyForOpenSearchClient(globalStateMap);
+        } else if (Objects.nonNull(elasticsearchClient)) {
+            return applyForElasticSearchClient(globalStateMap);
         }
 
         return Collections.emptyList();
@@ -70,13 +78,37 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         }
 
         return indicesResponse.valueBody().stream()
-                .filter(this::shouldIndexBeProcessed)
+                .filter(osIndicesRecord -> shouldIndexBeProcessed(osIndicesRecord, null))
                 .map(indexRecord -> PartitionIdentifier.builder().withPartitionKey(indexRecord.index()).build())
                 .collect(Collectors.toList());
     }
 
-    private boolean shouldIndexBeProcessed(final IndicesRecord indicesRecord) {
-        if (Objects.isNull(indicesRecord.index())) {
+    private List<PartitionIdentifier> applyForElasticSearchClient(final Map<String, Object> globalStateMap) {
+        co.elastic.clients.elasticsearch.cat.IndicesResponse indicesResponse;
+        try {
+            indicesResponse = elasticsearchClient.cat().indices();
+        } catch (IOException | ElasticsearchException e) {
+            LOG.error("There was an exception when calling /_cat/indices to create new index partitions", e);
+            return Collections.emptyList();
+        }
+
+        return indicesResponse.valueBody().stream()
+                .filter(esIndicesRecord -> shouldIndexBeProcessed(null, esIndicesRecord))
+                .map(indexRecord -> PartitionIdentifier.builder().withPartitionKey(indexRecord.index()).build())
+                .collect(Collectors.toList());
+    }
+
+    private boolean shouldIndexBeProcessed(final IndicesRecord openSearchIndicesRecord, final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord elasticSearchIndicesRecord) {
+
+        String indexName = null;
+
+        if (Objects.nonNull(openSearchIndicesRecord)) {
+            indexName = openSearchIndicesRecord.index();
+        } else if (Objects.nonNull(elasticSearchIndicesRecord)) {
+            indexName = elasticSearchIndicesRecord.index();
+        }
+
+        if (Objects.isNull(indexName)) {
             return false;
         }
 
@@ -87,16 +119,16 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         final List<OpenSearchIndex> includedIndices = indexParametersConfiguration.getIncludedIndices();
         final List<OpenSearchIndex> excludedIndices = indexParametersConfiguration.getExcludedIndices();
 
-        final boolean matchesIncludedPattern = includedIndices.isEmpty() || doesIndexMatchPattern(includedIndices, indicesRecord);
-        final boolean matchesExcludePattern = doesIndexMatchPattern(excludedIndices, indicesRecord);
+        final boolean matchesIncludedPattern = includedIndices.isEmpty() || doesIndexMatchPattern(includedIndices, indexName);
+        final boolean matchesExcludePattern = doesIndexMatchPattern(excludedIndices, indexName);
 
 
         return matchesIncludedPattern && !matchesExcludePattern;
     }
 
-    private boolean doesIndexMatchPattern(final List<OpenSearchIndex> indices, final IndicesRecord indicesRecord) {
+    private boolean doesIndexMatchPattern(final List<OpenSearchIndex> indices, final String indexName) {
         for (final OpenSearchIndex index : indices) {
-            final Matcher matcher = index.getIndexNamePattern().matcher(indicesRecord.index());
+            final Matcher matcher = index.getIndexNamePattern().matcher(indexName);
 
             if (matcher.matches()) {
                 return true;
