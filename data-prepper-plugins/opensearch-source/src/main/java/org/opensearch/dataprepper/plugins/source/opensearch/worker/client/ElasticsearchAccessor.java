@@ -10,9 +10,10 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.NoSearchContextSearchRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
@@ -30,7 +31,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     }
 
     @Override
-    public SearchPointInTimeResults searchWithPit(SearchPointInTimeRequest searchPointInTimeRequest) {
+    public SearchWithSearchAfterResults searchWithPit(SearchPointInTimeRequest searchPointInTimeRequest) {
         //todo: implement
         return null;
     }
@@ -55,6 +56,11 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     @Override
     public void deleteScroll(DeleteScrollRequest deleteScrollRequest) {
         //todo: implement
+    }
+
+    @Override
+    public SearchWithSearchAfterResults searchWithoutSearchContext(NoSearchContextSearchRequest noSearchContextSearchRequest) {
+        return null;
     }
 
     @Override
