@@ -16,7 +16,7 @@ public class OAuthConfig {
     private static final String OAUTH_SASL_MECHANISM = "OAUTHBEARER";
     private static final String OAUTH_SECURITY_PROTOCOL = "SASL_PLAINTEXT";
     private static final String OAUTH_SASL_LOGIN_CALLBACK_HANDLER_CLASS = "org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler";
-
+    private static final String OAUTH_INTROSPECT_ENDPOINT = "/oauth2/default/v1/introspect";
     @JsonProperty("oauth_client_id")
     private String oauthClientId;
     @JsonProperty("oauth_client_secret")
@@ -47,7 +47,7 @@ public class OAuthConfig {
     private String oauthSaslLoginCallbackHandlerClass = OAUTH_SASL_LOGIN_CALLBACK_HANDLER_CLASS;
 
     @JsonProperty("oauth_jwks_endpoint_url")
-    private String oauthJwksEndpointURL;
+    private String oauthJwksEndpointURL = "";
 
     public String getOauthJwksEndpointURL() {
         return oauthJwksEndpointURL;
@@ -81,53 +81,26 @@ public class OAuthConfig {
         return oauthLoginServer;
     }
 
-    public void setOauthLoginServer(String oauthLoginServer) {
-        this.oauthLoginServer = oauthLoginServer;
-    }
-
     public String getOauthLoginEndpoint() {
         return oauthLoginEndpoint;
-    }
-
-    public void setOauthLoginEndpoint(String oauthLoginEndpoint) {
-        this.oauthLoginEndpoint = oauthLoginEndpoint;
     }
 
     public String getOauthLoginGrantType() {
         return oauthLoginGrantType;
     }
 
-    public void setOauthLoginGrantType(String oauthLoginGrantType) {
-        this.oauthLoginGrantType = oauthLoginGrantType;
-    }
-
     public String getOauthLoginScope() {
         return oauthLoginScope;
     }
 
-    public void setOauthLoginScope(String oauthLoginScope) {
-        this.oauthLoginScope = oauthLoginScope;
-    }
-
     public String getOauthIntrospectServer() {
-        if (oauthIntrospectServer.isEmpty() || oauthIntrospectServer.isBlank()) {
-            return oauthLoginServer;
-        }
         return oauthIntrospectServer;
     }
 
-    public void setOauthIntrospectServer(String oauthIntrospectServer) {
-        this.oauthIntrospectServer = oauthIntrospectServer;
-    }
-
     public String getOauthIntrospectEndpoint() {
-        if (oauthIntrospectEndpoint.isEmpty() || oauthIntrospectEndpoint.isBlank()) {
-            return oauthLoginEndpoint;
+        if (!oauthIntrospectServer.isEmpty() || !oauthIntrospectServer.isBlank()) {
+            return OAUTH_INTROSPECT_ENDPOINT;
         }
         return oauthIntrospectEndpoint;
-    }
-
-    public void setOauthIntrospectEndpoint(String oauthIntrospectEndpoint) {
-        this.oauthIntrospectEndpoint = oauthIntrospectEndpoint;
     }
 }

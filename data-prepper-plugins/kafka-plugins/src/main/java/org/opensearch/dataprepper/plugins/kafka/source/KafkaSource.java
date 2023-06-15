@@ -147,7 +147,8 @@ public class KafkaSource implements Source<Record<Object>> {
         String oauthLoginScope = sourceConfig.getAuthConfig().getoAuthConfig().getOauthLoginScope();
         String oauthAuthorizationToken = Base64.getEncoder().encodeToString((oauthClientId + ":" + oauthClientSecret).getBytes());
         String oauthIntrospectEndpoint = sourceConfig.getAuthConfig().getoAuthConfig().getOauthIntrospectEndpoint();
-        String tokenEndPointURL = sourceConfig.getAuthConfig().getoAuthConfig().getOauthTokenEndpointURL();
+        //String tokenEndPointURL = sourceConfig.getAuthConfig().getoAuthConfig().getOauthTokenEndpointURL();
+        String tokenEndPointURL = oauthLoginServer.concat(oauthLoginEndpoint);
         String saslMechanism = sourceConfig.getAuthConfig().getoAuthConfig().getOauthSaslMechanism();
         String securityProtocol = sourceConfig.getAuthConfig().getoAuthConfig().getOauthSecurityProtocol();
         String loginCallBackHandler = sourceConfig.getAuthConfig().getoAuthConfig().getOauthSaslLoginCallbackHandlerClass();
@@ -156,8 +157,14 @@ public class KafkaSource implements Source<Record<Object>> {
         properties.put("sasl.mechanism", saslMechanism);
         properties.put("security.protocol", securityProtocol);
         properties.put("sasl.oauthbearer.token.endpoint.url", tokenEndPointURL);
-        properties.put("sasl.oauthbearer.jwks.endpoint.url", oauthJwksEndpointURL);
+        if (!oauthJwksEndpointURL.isEmpty() || !oauthJwksEndpointURL.isBlank()) {
+            properties.put("sasl.oauthbearer.jwks.endpoint.url", oauthJwksEndpointURL);
+        }
         properties.put("sasl.login.callback.handler.class", loginCallBackHandler);
-        properties.put("sasl.jaas.config", "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId='" + oauthClientId + "' clientSecret='" + oauthClientSecret + "' scope='" + oauthLoginScope + "' OAUTH_LOGIN_SERVER='" + oauthLoginServer + "' OAUTH_LOGIN_ENDPOINT='" + oauthLoginEndpoint + "' OAUT_LOGIN_GRANT_TYPE=" + oauthLoginGrantType + " OAUTH_LOGIN_SCOPE=kafka OAUTH_AUTHORIZATION='Basic " + oauthAuthorizationToken + "' OAUTH_INTROSPECT_SERVER='" + oauthLoginServer + "' OAUTH_INTROSPECT_ENDPOINT='" + oauthIntrospectEndpoint + "' OAUTH_INTROSPECT_AUTHORIZATION='Basic " + oauthAuthorizationToken + "';");
+        if (oauthIntrospectEndpoint.isBlank() || oauthIntrospectEndpoint.isEmpty()) {
+            properties.put("sasl.jaas.config", "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId='" + oauthClientId + "' clientSecret='" + oauthClientSecret + "' scope='" + oauthLoginScope + "' OAUTH_LOGIN_SERVER='" + oauthLoginServer + "' OAUTH_LOGIN_ENDPOINT='" + oauthLoginEndpoint + "' OAUT_LOGIN_GRANT_TYPE=" + oauthLoginGrantType + " OAUTH_LOGIN_SCOPE=" + oauthLoginScope + " OAUTH_AUTHORIZATION='Basic " + oauthAuthorizationToken + "' OAUTH_INTROSPECT_AUTHORIZATION='Basic " + oauthAuthorizationToken + "';");
+        } else {
+            properties.put("sasl.jaas.config", "org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule required clientId='" + oauthClientId + "' clientSecret='" + oauthClientSecret + "' scope='" + oauthLoginScope + "' OAUTH_LOGIN_SERVER='" + oauthLoginServer + "' OAUTH_LOGIN_ENDPOINT='" + oauthLoginEndpoint + "' OAUT_LOGIN_GRANT_TYPE=" + oauthLoginGrantType + " OAUTH_LOGIN_SCOPE=" + oauthLoginScope + " OAUTH_AUTHORIZATION='Basic " + oauthAuthorizationToken + "' OAUTH_INTROSPECT_SERVER='" + oauthLoginServer + "' OAUTH_INTROSPECT_ENDPOINT='" + oauthIntrospectEndpoint + "' OAUTH_INTROSPECT_AUTHORIZATION='Basic " + oauthAuthorizationToken + "';");
+        }
     }
 }
