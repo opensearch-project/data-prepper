@@ -4,7 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
-import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -19,7 +19,7 @@ public class ScanOptions {
 
     private Duration range;
 
-    private String bucket;
+    private S3ScanBucketOption bucketOption;
 
     private LocalDateTime endDateTime;
 
@@ -27,24 +27,17 @@ public class ScanOptions {
 
     private LocalDateTime useEndDateTime;
 
-    private S3ScanKeyPathOption s3ScanKeyPathOption;
-
     private ScanOptions(Builder builder){
         this.startDateTime = builder.startDateTime;
         this.range = builder.range;
-        this.bucket = builder.bucket;
+        this.bucketOption = builder.bucketOption;
         this.endDateTime = builder.endDateTime;
         this.useStartDateTime = builder.useStartDateTime;
         this.useEndDateTime = builder.useEndDateTime;
-        this.s3ScanKeyPathOption = builder.s3ScanKeyPathOption;
-
-    }
-    public Duration getRange() {
-        return range;
     }
 
-    public String getBucket() {
-        return bucket;
+    public S3ScanBucketOption getBucketOption() {
+        return bucketOption;
     }
 
     public LocalDateTime getUseStartDateTime() {
@@ -55,39 +48,29 @@ public class ScanOptions {
         return useEndDateTime;
     }
 
-    public S3ScanKeyPathOption getS3ScanKeyPathOption() {
-        return s3ScanKeyPathOption;
-    }
-
     @Override
     public String toString() {
         return "startDateTime=" + startDateTime +
                 ", range=" + range +
                 ", endDateTime=" + endDateTime;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
     public static class Builder{
 
         private LocalDateTime startDateTime;
 
         private Duration range;
 
-        private String bucket;
+        private S3ScanBucketOption bucketOption;
 
         private LocalDateTime endDateTime;
 
         private LocalDateTime useStartDateTime;
         private LocalDateTime useEndDateTime;
-
-        private S3ScanKeyPathOption s3ScanKeyPathOption;
-
-        Builder(){
-
-        }
-
-        public Builder setS3ScanKeyPathOption(S3ScanKeyPathOption s3ScanKeyPathOption) {
-            this.s3ScanKeyPathOption = s3ScanKeyPathOption;
-            return this;
-        }
 
         public Builder setStartDateTime(LocalDateTime startDateTime) {
             this.startDateTime = startDateTime;
@@ -99,36 +82,68 @@ public class ScanOptions {
             return this;
         }
 
-        public Builder setBucket(String bucket) {
-            this.bucket = bucket;
-            return this;
-        }
-
         public Builder setEndDateTime(LocalDateTime endDateTime) {
             this.endDateTime = endDateTime;
             return this;
         }
-        public ScanOptions build() {
-            if(Objects.nonNull(startDateTime) && Objects.nonNull(range) && Objects.nonNull(endDateTime))
-                scanRangeDateValidationError();
 
-            if(Objects.nonNull(startDateTime) && Objects.nonNull(endDateTime)){
+        public Builder setBucketOption(S3ScanBucketOption bucketOption) {
+            this.bucketOption = bucketOption;
+            return this;
+        }
+
+        public ScanOptions build() {
+            // Check for bucket-specific time range first
+            LocalDateTime bucketStartDateTime = bucketOption.getStartTime();
+            LocalDateTime bucketEndDateTime = bucketOption.getEndTime();
+            Duration bucketRange = bucketOption.getRange();
+            int nonNullCount = (Objects.isNull(bucketStartDateTime) ? 0 : 1) + (Objects.isNull(bucketRange) ? 0 : 1)
+                    + (Objects.isNull(bucketEndDateTime) ? 0 : 1);
+            if (nonNullCount == 1 || nonNullCount == 3) {
+                scanRangeDateValidationError(bucketOption.getName());
+            } else if (nonNullCount == 2) {
+                if (Objects.nonNull(bucketStartDateTime) && Objects.nonNull(bucketEndDateTime)) {
+                    this.useStartDateTime = bucketStartDateTime;
+                    this.useEndDateTime = bucketEndDateTime;
+                } else if (Objects.nonNull(bucketStartDateTime)) {
+                    this.useStartDateTime = bucketStartDateTime;
+                    this.useEndDateTime = bucketStartDateTime.plus(bucketRange);
+                } else {
+                    this.useStartDateTime = bucketEndDateTime.minus(bucketRange);
+                    this.useEndDateTime = bucketEndDateTime;
+                }
+                return new ScanOptions(this);
+            }
+
+            // Bucket-specific time range is not configured, use global time range
+            nonNullCount = (Objects.isNull(startDateTime) ? 0 : 1) + (Objects.isNull(range) ? 0 : 1)
+                    + (Objects.isNull(endDateTime) ? 0 : 1);
+            if (nonNullCount == 1 || nonNullCount == 3) {
+                scanRangeDateValidationError(null);
+            }
+
+            if (Objects.nonNull(startDateTime) && Objects.nonNull(endDateTime)){
                 this.useStartDateTime = startDateTime;
                 this.useEndDateTime = endDateTime;
             } else if (Objects.nonNull(endDateTime) && Objects.nonNull(range)) {
                 this.useStartDateTime = endDateTime.minus(range);
                 this.useEndDateTime = endDateTime;
-            } else if(Objects.nonNull(startDateTime) && Objects.nonNull(range)) {
+            } else if (Objects.nonNull(startDateTime) && Objects.nonNull(range)) {
                 this.useStartDateTime = startDateTime;
                 this.useEndDateTime = startDateTime.plus(range);
-            } else
-                scanRangeDateValidationError();
+            }
 
             return new ScanOptions(this);
         }
-        private void scanRangeDateValidationError(){
-            throw new IllegalArgumentException("start_date/range,start_date/end_date,end_date/range any two combinations " +
-                    "are required to process scan range");
+        private void scanRangeDateValidationError(String bucketName){
+            String message;
+            if (Objects.nonNull(bucketName)) {
+                message = "To set a time range for the bucket with name " + bucketName +
+                        ", specify any two configurations from start_time, end_time and range";
+            } else {
+                message = "To set a time range for all buckets, specify any two configurations from start_time, end_time and range";
+            }
+            throw new IllegalArgumentException(message);
         }
 
         @Override
