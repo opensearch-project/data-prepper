@@ -57,37 +57,28 @@ public class SqsSourceTask implements Runnable{
      */
     @Override
     public void run() {
-        while (!Thread.currentThread().isInterrupted()) {
-            int messagesProcessed = 0;
             try {
-                messagesProcessed = processSqsMessages();
+                processSqsMessages();
             } catch (final Exception e) {
                 LOG.error("Unable to process SQS messages. Processing error due to: {}", e.getMessage());
                 sqsService.applyBackoff();
             }
-            if (messagesProcessed > 0 && sqsOptions.getPollDelay().toMillis() > 0) {
-                try {
-                    Thread.sleep(sqsOptions.getPollDelay().toMillis());
-                } catch (final InterruptedException e) {
-                    LOG.error("Thread is interrupted while polling SQS.", e);
-                }
-            }
-        }
     }
 
     /**
      * read the messages from sqs queue and push the message into buffer and finally will delete
      * the sqs message from queue after successful buffer push.
      */
-    int processSqsMessages() {
+    void processSqsMessages() {
        final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
        AcknowledgementSet acknowledgementSet = sqsService.doEndToEndAcknowledgements(sqsOptions.getSqsUrl(),
                 acknowledgementSetManager,
                 endToEndAcknowledgementsEnabled,
                 waitingForAcknowledgements);
        final List<Message> messages = sqsService.getMessagesFromSqs(sqsOptions);
-       List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = null;
+        List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = null;
        if(!messages.isEmpty()) {
+           LOG.info("Thread Name : {} , messages processed: {}",Thread.currentThread().getName(),messages.size());
            sqsMetrics.getSqsMessagesReceivedCounter().increment();
            try {
                deleteMessageBatchRequestEntries = sqsHandler.handleMessage(messages, acknowledgementSet);
@@ -102,6 +93,5 @@ public class SqsSourceTask implements Runnable{
                    sqsService.deleteMessagesFromQueue(deleteMessageBatchRequestEntries, sqsOptions.getSqsUrl());
            }
        }
-        return messages.size();
     }
 }
