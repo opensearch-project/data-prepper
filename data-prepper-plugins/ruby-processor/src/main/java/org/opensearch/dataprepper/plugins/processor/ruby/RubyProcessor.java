@@ -10,14 +10,14 @@ import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
-import org.apache.parquet.io.SeekableInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -30,17 +30,21 @@ import static java.lang.String.format;
 @DataPrepperPlugin(name= "ruby", pluginType = Processor.class, pluginConfigurationType = RubyProcessorConfig.class)
 public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(RubyProcessor.class);
+    // matches: any method with def [method_name] and a single parameter that is validly named in Ruby.
+    private static final String RUBY_METHOD_PATTERN = "def %s\\(\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\)";
+    static final String RUBY_METHOD_PROCESS_PATTERN = String.format(RUBY_METHOD_PATTERN, "process");
+    static final String RUBY_METHOD_INIT_PATTERN = String.format(RUBY_METHOD_PATTERN, "init");
+    private static final String PROCESS_METHOD_NOT_FOUND_ERROR_MESSAGE =
+            "must implement interface described in README when using Ruby code from file. Exiting pipeline.";
+    private static final String BAD_INIT_METHOD_SIGNATURE_ERROR_MESSAGE = "must implement interface described in README" +
+            " when using Ruby code from file — init method signature is incorrect. Exiting pipeline.";
     private final RubyProcessorConfig config;
     private final String codeToInject;
-    private ScriptingContainer container;
+    private final ScriptingContainer container;
     private String script;
-
     private Boolean runningCodeFromFile = false;
-
-    private SeekableInputStream fileStream;
+    private InputStream fileStream;
     private boolean fileCodeContainsInitCall = false;
-    private boolean shouldThrowExceptionSinceNoProcessFound = false;
-
 
     @DataPrepperPluginConstructor
     public RubyProcessor(final PluginMetrics pluginMetrics, final RubyProcessorConfig config) {
@@ -77,7 +81,7 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
         try {
             this.fileStream = inputFile.newStream();
-            // todo: should be able to extend with S3 file input source, as it returns the same SeekableInputStream.
+            // todo: should be able to extend with S3 file input source, as it returns the same InputStream.
         } catch (Exception exception) {
             LOG.error("Error opening the input file path [{}]", codeFilePath, exception);
             throw new RuntimeException(format("Error opening the input file %s",
@@ -85,45 +89,41 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
 
         try {
-            SeekableInputStream fileStreamForTestingRegex = inputFile.newStream();
-            // need two booleans about
-            this.fileCodeContainsInitCall = assertThatRubyProcessorInterfaceImplementedAndReturnInitMethodDefined(
-                    fileStreamForTestingRegex);
+            InputStream fileStreamForTestingRegex = inputFile.newStream();
+
+            assertThatInterfaceImplementedInRubyFile(fileStreamForTestingRegex);
 
         } catch (IOException exception) {
-            LOG.error("Error panother file or regex exception.", exception);
+            LOG.error("Error: another file or regex exception.", exception);
             throw new RuntimeException(exception.toString());
-        }
-
-        if (this.shouldThrowExceptionSinceNoProcessFound) {
-            LOG.error("must implement interface described in README when using Ruby code from file. Exiting pipeline.");
-            throw new RuntimeException("Ruby Processor file bad implementation");
         }
     }
 
-    private boolean assertThatRubyProcessorInterfaceImplementedAndReturnInitMethodDefined(SeekableInputStream fileStreamForTestingRegex)
+    private void assertThatInterfaceImplementedInRubyFile(InputStream fileStreamForTestingRegex)
     throws IOException
     {
         String rubyCodeAsString = convertInputStreamToString(fileStreamForTestingRegex);
 
-        String processPattern = "def process\\(\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\)";
+        if (!stringContainsPattern(rubyCodeAsString, RUBY_METHOD_PROCESS_PATTERN)) {
+            throwBadInterfaceImplementationException(PROCESS_METHOD_NOT_FOUND_ERROR_MESSAGE);
+        }
 
-        this.shouldThrowExceptionSinceNoProcessFound = !stringContainsPattern(rubyCodeAsString, processPattern);
+        this.fileCodeContainsInitCall = stringContainsPattern(rubyCodeAsString,
+                RUBY_METHOD_INIT_PATTERN);
 
-        String initPattern = "def init\\(\\s*([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\)";
-        boolean correctInitMethodFound = stringContainsPattern(rubyCodeAsString, initPattern);
-
-        if (!correctInitMethodFound) {
+        if (!this.fileCodeContainsInitCall) {
             String bareboneInitPattern = "def init";
             boolean incorrectInitMethodSignature = stringContainsPattern(rubyCodeAsString, bareboneInitPattern);
 
             if (incorrectInitMethodSignature) {
-                LOG.error("must implement interface described in README when using Ruby code from file " +
-                        "— init method signature is incorrect. Exiting pipeline.");
-                throw new RuntimeException("Ruby Processor file bad implementation");
+                throwBadInterfaceImplementationException(BAD_INIT_METHOD_SIGNATURE_ERROR_MESSAGE);
             }
         }
-        return correctInitMethodFound;
+    }
+
+    private void throwBadInterfaceImplementationException(final String errorMessage) {
+        LOG.error(errorMessage);
+        throw new RuntimeException("Ruby Processor file bad implementation");
     }
 
     private boolean stringContainsPattern(String inString, String pattern) {
@@ -132,17 +132,10 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         return matcher.find();
     }
 
-    private String convertInputStreamToString(SeekableInputStream inputStream)
+    private String convertInputStreamToString(InputStream inputStream)
     throws IOException
     {
-        // from https://stackoverflow.com/questions/309424/how-do-i-read-convert-an-inputstream-into-a-string-in-java,
-        // fastest solution.
-        ByteArrayOutputStream result = new ByteArrayOutputStream();
-        byte[] buffer = new byte[1024];
-        for (int length; (length = inputStream.read(buffer)) != -1; ) {
-            result.write(buffer, 0, length);
-        }
-        return result.toString("UTF-8");
+        return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
     }
 
     private void runInitCodeFromFileAndDefineProcessMethod() {
@@ -190,6 +183,12 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
                 throw new RuntimeException(format("Exception while processing Ruby code on Events: [%s]",events),
                         exception
                 );
+            } else {
+                events.forEach(event ->
+                        event.getMetadata().addTags(config.getTagsOnFailure())
+                );
+                // todo: one thing to note is that this will tag every single event in the batch.
+                // todo: an alternative approach is to run events one-by-one upon exception.
             }
         }
     }

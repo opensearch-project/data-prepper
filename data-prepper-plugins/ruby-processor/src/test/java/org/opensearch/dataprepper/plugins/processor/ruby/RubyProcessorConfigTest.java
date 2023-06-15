@@ -4,6 +4,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -25,6 +27,17 @@ public class RubyProcessorConfigTest {
     public void defaultRubyProcessorConfig_then_returns_default_values() { // todo: test naming guidance.
         final RubyProcessorConfig objectUnderTest = createObjectUnderTest();
         assertThat(objectUnderTest.isIgnoreException(), equalTo(DEFAULT_IGNORE_EXCEPTION));
+    }
+
+    @Test
+    public void when_settingTagsOnFailure_then_setsTagsOnFailure()
+            throws NoSuchFieldException, IllegalAccessException
+    {
+        List<String > tagsOnFailure = new ArrayList<>(List.of("tag1", "tag2"));
+        final RubyProcessorConfig objectUnderTest = createObjectUnderTest();
+        reflectivelySetField(objectUnderTest, "tagsOnFailure", tagsOnFailure);
+
+        assertThat(objectUnderTest.getTagsOnFailure(), equalTo(tagsOnFailure));
     }
 
     @Nested

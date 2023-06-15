@@ -5,6 +5,7 @@ import jakarta.validation.constraints.AssertTrue;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.List;
 
 public class RubyProcessorConfig {
     static final Boolean DEFAULT_SEND_MULTIPLE_EVENTS = false;
@@ -26,10 +27,16 @@ public class RubyProcessorConfig {
     private Map<String,String> params = DEFAULT_PARAMETERS;
     @JsonProperty("ignore_exception")
     private Boolean ignoreException = DEFAULT_IGNORE_EXCEPTION;
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
+    }
+
     public Boolean isCodeFromFile() {
         return Objects.nonNull(path);
     }
-
 
     public Boolean isIgnoreException() {
         return ignoreException;
