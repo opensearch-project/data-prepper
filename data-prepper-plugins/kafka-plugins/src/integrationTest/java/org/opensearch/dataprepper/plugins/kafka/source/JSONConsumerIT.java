@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.source.testing;
+package org.opensearch.dataprepper.plugins.kafka.source;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +14,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.connect.json.JsonSerializer;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
@@ -27,20 +28,15 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.apache.kafka.connect.json.JsonSerializer;
-import org.opensearch.dataprepper.plugins.kafka.source.EmbeddedKafkaClusterSingleNode;
-import org.opensearch.dataprepper.plugins.kafka.source.KafkaSource;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
+import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @ExtendWith(MockitoExtension.class)
 public class JSONConsumerIT {
@@ -84,16 +80,12 @@ public class JSONConsumerIT {
         }
     }
 
-    @Test
-    public void testKafkaMessagesForJsonConsumer1(){
 
-        assertEquals(true,true);
-    }
-    /*@Test
+    @Test
     public void testKafkaMessagesForJsonConsumer() throws JsonProcessingException {
         produceTestMessages();
         kafkaSource.start(buffer);
-    }*/
+    }
 
     private void produceTestMessages() throws JsonProcessingException {
 
