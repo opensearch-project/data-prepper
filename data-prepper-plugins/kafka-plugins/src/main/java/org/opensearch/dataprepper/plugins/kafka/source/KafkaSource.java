@@ -20,10 +20,8 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-//import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.MultithreadedConsumer;
-import org.opensearch.dataprepper.plugins.kafka.util.AuthenticationType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
@@ -63,7 +61,7 @@ public class KafkaSource implements Source<Record<Object>> {
     private MultithreadedConsumer multithreadedConsumer;
     private int totalWorkers;
     private String pipelineName;
-    private static String schemaType = "";
+    private static String schemaType = MessageFormat.PLAINTEXT.toString();
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig, final PluginMetrics pluginMetrics,
@@ -83,7 +81,7 @@ public class KafkaSource implements Source<Record<Object>> {
                 totalWorkers = topic.getWorkers();
                 consumerGroupID = getGroupId(topic.getName());
                 executorService = Executors.newFixedThreadPool(totalWorkers);
-                IntStream.range(0, totalWorkers+1).forEach(index -> {
+                IntStream.range(0, totalWorkers + 1).forEach(index -> {
                     String consumerId = consumerGroupID + "::" + Integer.toString(index + 1);
                     multithreadedConsumer = new MultithreadedConsumer(consumerId,
                             consumerGroupID, consumerProperties, topic, sourceConfig, buffer, pluginMetrics, schemaType);
@@ -117,8 +115,9 @@ public class KafkaSource implements Source<Record<Object>> {
     }
 
     private String getGroupId(String name) {
-        return  pipelineName +"::"+ name;
+        return pipelineName + "::" + name;
     }
+
     private long calculateLongestThreadWaitingTime() {
         List<TopicConfig> topicsList = sourceConfig.getTopics();
         return topicsList.stream().
@@ -139,35 +138,32 @@ public class KafkaSource implements Source<Record<Object>> {
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
                 topicConfig.getAutoCommit());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
-         schemaType = getSchemaType(sourceConfig.getSchemaConfig().getRegistryURL(), topicConfig.getName(), sourceConfig.getSchemaConfig().getVersion());
-         if (schemaType.isEmpty()) {
-        schemaType = MessageFormat.PLAINTEXT.toString();
+        schemaType = getSchemaType(sourceConfig.getSchemaConfig().getRegistryURL(), topicConfig.getName(), sourceConfig.getSchemaConfig().getVersion());
+        if (schemaType.isEmpty()) {
+            schemaType = MessageFormat.PLAINTEXT.toString();
         }
         setPropertiesForSchemaType(properties, schemaType);
-        if (sourceConfig.getAuthType()!=null && sourceConfig.getAuthType().equalsIgnoreCase(AuthenticationType.PLAINTEXT.toString())) {
-             setPropertiesForAuth(properties);
+        if (sourceConfig.getAuthConfig() != null && sourceConfig.getAuthConfig().getPlainTextAuthConfig() != null) {
+            setPropertiesForAuth(properties);
         }
-        LOG.info("Starting consumer with the properties : {}",properties);
+        LOG.info("Starting consumer with the properties : {}", properties);
         return properties;
     }
 
-    private void setPropertiesForSchemaType(Properties properties,final String schemaType) {
+    private void setPropertiesForSchemaType(Properties properties, final String schemaType) {
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                 StringDeserializer.class);
         if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
-        }
-        else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
+        } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                     KafkaAvroDeserializer.class);
-            if(validateURL(getSchemaRegUrl())){
-                properties.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegUrl());
-            }
-            else{
+            if (validateURL(getSchemaRegistryUrl())) {
+                properties.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegistryUrl());
+            } else {
                 throw new RuntimeException("Invalid Schema Registry URI");
             }
-        }
-        else {
+        } else {
             properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
                     StringDeserializer.class);
         }
@@ -181,14 +177,15 @@ public class KafkaSource implements Source<Record<Object>> {
             }
             return true;
         } catch (URISyntaxException ex) {
-            LOG.error("Invalid Schema Registry URI: ",ex);
+            LOG.error("Invalid Schema Registry URI: ", ex);
             return false;
         }
     }
 
-    private String getSchemaRegUrl(){
+    private String getSchemaRegistryUrl() {
         return sourceConfig.getSchemaConfig().getRegistryURL();
     }
+
     private void setPropertiesForAuth(Properties properties) {
         String username = sourceConfig.getAuthConfig().getPlainTextAuthConfig().getUsername();
         String password = sourceConfig.getAuthConfig().getPlainTextAuthConfig().getPassword();
@@ -199,7 +196,7 @@ public class KafkaSource implements Source<Record<Object>> {
 
     private static String getSchemaType(final String registryUrl, final String topicName, final int schemaVersion) {
         StringBuilder response = new StringBuilder();
-        String schemaType = "";
+        String schemaType = MessageFormat.PLAINTEXT.toString();
         try {
             String urlPath = registryUrl + "subjects/" + topicName + "-value/versions/" + schemaVersion;
             URL url = new URL(urlPath);

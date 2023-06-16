@@ -20,4 +20,5 @@ dependencies {
     testImplementation 'org.yaml:snakeyaml:2.0'
     testImplementation testLibs.spring.test
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
+    testImplementation project(':data-prepper-test-common')
 }

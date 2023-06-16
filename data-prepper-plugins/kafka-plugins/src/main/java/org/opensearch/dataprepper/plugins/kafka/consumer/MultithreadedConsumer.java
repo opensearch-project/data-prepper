@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSchemaFactory;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,14 +73,14 @@ public class MultithreadedConsumer implements Runnable {
 			MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
 			switch(schema){
 				case JSON:
-					KafkaSourceSchemaFactory.createConsumer(MessageFormat.JSON, jsonConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics).consumeRecords();
+					new KafkaSourceCustomConsumer(jsonConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics).consumeRecords();
 					break;
 				case AVRO:
-					KafkaSourceSchemaFactory.createConsumer(MessageFormat.AVRO, avroConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics).consumeRecords();
+					new KafkaSourceCustomConsumer(avroConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics).consumeRecords();
 					break;
 				case PLAINTEXT:
 				default:
-					KafkaSourceSchemaFactory.createConsumer(MessageFormat.PLAINTEXT, plainTextConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics).consumeRecords();
+					new KafkaSourceCustomConsumer(plainTextConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics).consumeRecords();
 					break;
 			}
 

@@ -156,12 +156,4 @@ class KafkaSourceBufferAccumulatorTest {
 		spyBuffer.commitOffsets(kafkaConsumer, 0L, null);
 		verify(spyBuffer).commitOffsets(kafkaConsumer, 0L, null);
 	}
-
-	@Test
-	void testGetEventRecord() throws Exception {
-		KafkaSourceBufferAccumulator<String, String> spyBuffer = spy(buffer);
-		doCallRealMethod().when(spyBuffer).commitOffsets(kafkaConsumer, 0L, null);
-		spyBuffer.getEventRecord("test line");
-		verify(spyBuffer).getEventRecord("test line");
-	}
 }

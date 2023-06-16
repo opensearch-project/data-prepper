@@ -13,14 +13,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * pipelines.yaml
  */
 public class AuthConfig {
-
     @JsonProperty("sasl_plaintext")
     private PlainTextAuthConfig plainTextAuthConfig;
 
-    public PlainTextAuthConfig getPlainTextAuthConfig() {
-        return plainTextAuthConfig;
+    @JsonProperty("sasl_oauth")
+    private OAuthConfig oAuthConfig;
+
+    public OAuthConfig getoAuthConfig() {
+        return oAuthConfig;
     }
+
+    public void setoAuthConfig(OAuthConfig oAuthConfig) {
+        this.oAuthConfig = oAuthConfig;
+    }
+
     public void setPlainTextAuthConfig(PlainTextAuthConfig plainTextAuthConfig) {
         this.plainTextAuthConfig = plainTextAuthConfig;
+    }
+
+    public PlainTextAuthConfig getPlainTextAuthConfig() {
+        return plainTextAuthConfig;
     }
 }

@@ -49,6 +49,7 @@ class AuthConfigTest {
         assertThat(authConfig.getPlainTextAuthConfig(), notNullValue());
         assertThat(authConfig.getPlainTextAuthConfig(), hasProperty("username"));
         assertThat(authConfig.getPlainTextAuthConfig(), hasProperty("password"));
+        assertThat(authConfig.getoAuthConfig(), notNullValue());
     }
 
 }
