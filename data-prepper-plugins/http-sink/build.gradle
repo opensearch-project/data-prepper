@@ -1,0 +1,14 @@
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:sts'
+}
+
+test {
+    useJUnitPlatform()
+}
