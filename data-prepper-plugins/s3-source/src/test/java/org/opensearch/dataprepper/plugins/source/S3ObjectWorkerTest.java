@@ -233,6 +233,23 @@ class S3ObjectWorkerTest {
     }
 
     @Test
+    void parseS3Object_codec_parse_exception() throws Exception {
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
+        when(s3ObjectPluginMetrics.getS3ObjectsFailedCounter()).thenReturn(s3ObjectsFailedCounter);
+
+        doThrow(IOException.class).when(codec).parse(any(InputFile.class), any(DecompressionEngine.class), any(Consumer.class));
+
+        assertThrows(
+            IOException.class,
+            () -> createObjectUnderTest(s3ObjectPluginMetrics).parseS3Object(s3ObjectReference, acknowledgementSet));
+
+        final ArgumentCaptor<InputFile> inputFileArgumentCaptor = ArgumentCaptor.forClass(InputFile.class);
+        verify(codec).parse(inputFileArgumentCaptor.capture(), any(DecompressionEngine.class), any(Consumer.class));
+        final InputFile actualInputFile = inputFileArgumentCaptor.getValue();
+        assertThat(actualInputFile, instanceOf(S3InputFile.class));
+    }
+
+    @Test
     void parseS3Object_calls_Codec_parse_with_Consumer_that_adds_to_BufferAccumulator() throws Exception {
         when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(headObjectResponse);
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(s3ObjectEventsSummary);
