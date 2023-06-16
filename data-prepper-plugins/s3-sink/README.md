@@ -18,10 +18,9 @@ pipeline:
           sts_role_arn: arn:aws:iam::123456789012:role/Data-Prepper
           sts_header_overrides:
         max_retries: 5
-        bucket:
-          name: bucket_name
-          object_key:
-            path_prefix: my-elb/%{yyyy}/%{MM}/%{dd}/
+        bucket: bucket_name
+        object_key:
+          path_prefix: my-elb/%{yyyy}/%{MM}/%{dd}/
         threshold:
           event_count: 2000
           maximum_size: 50mb
@@ -41,7 +40,7 @@ pipeline:
 
 - `max_retries` (Optional) : An integer value indicates the maximum number of times that single request should be retired in-order to ingest data to amazon s3. Defaults to `5`.
 
-- `bucket` (Required) : Object storage built to store and retrieve any amount of data from anywhere, User must provide bucket name.
+- `bucket` (Required) : The name of the S3 bucket to write to.
 
 - `object_key` (Optional) : It contains `path_prefix` and `file_pattern`. Defaults to s3 object `events-%{yyyy-MM-dd'T'hh-mm-ss}` inside bucket root directory.
 
