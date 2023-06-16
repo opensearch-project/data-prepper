@@ -59,6 +59,19 @@ pipeline:
 
 - `buffer_type` (Optional) : Records stored temporary before flushing into s3 bucket. Possible values are `local_file` and `in_memory`. Defaults to `in_memory`.
 
+## Metrics
+
+### Counters
+
+* `s3SinkObjectsSucceeded` - The number of S3 objects that the S3 sink has successfully written to S3.
+* `s3SinkObjectsFailed` - The number of S3 objects that the S3 sink failed to write to S3.
+* `s3SinkObjectsEventsSucceeded` - The number of records that the S3 sink has successfully written to S3.
+* `s3SinkObjectsEventsFailed` - The number of records that the S3 sink has failed to write to S3.
+
+### Distribution Summaries
+
+* `s3SinkObjectSizeBytes` - Measures the distribution of the S3 request's payload size in bytes.
+
 
 ## Developer Guide
 
