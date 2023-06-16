@@ -11,10 +11,14 @@ import com.fasterxml.jackson.datatype.jsr310.deser.DurationDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.DurationSerializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
+import jakarta.validation.constraints.AssertTrue;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
+
 /**
  * Class consists the scan options list bucket configuration properties.
  */
@@ -37,6 +41,11 @@ public class S3ScanScanOptions {
 
     @JsonProperty("buckets")
     private List<S3ScanBucketOptions> buckets;
+
+    @AssertTrue(message = "At most two options from start_time, end_time and range can be specified at the same time")
+    public boolean hasValidTimeOptions() {
+        return Stream.of(startTime, endTime, range).filter(Objects::nonNull).count() < 3;
+    }
 
     public Duration getRange() {
         return range;
