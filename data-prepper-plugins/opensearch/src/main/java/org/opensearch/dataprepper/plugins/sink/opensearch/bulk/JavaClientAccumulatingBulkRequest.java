@@ -5,19 +5,28 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import org.opensearch.client.opensearch.core.bulk.BulkOperation;
+import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.client.opensearch.core.BulkRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> {
-    static final int OPERATION_OVERHEAD = 50;
+    private static final Logger LOG = LoggerFactory.getLogger(JavaClientAccumulatingBulkRequest.class);
 
     private final List<BulkOperationWrapper> bulkOperations;
     private BulkRequest.Builder bulkRequestBuilder;
     private long currentBulkSize = 0L;
+    private long sampledOperationSize = 0L;
     private int operationCount = 0;
     private BulkRequest builtRequest;
 
@@ -28,14 +37,17 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
 
     @Override
     public long estimateSizeInBytesWithDocument(BulkOperationWrapper documentOrOperation) {
-        return currentBulkSize + estimateBulkOperationSize(documentOrOperation);
+        return sampledOperationSize + currentBulkSize;
     }
 
     @Override
     public void addOperation(BulkOperationWrapper bulkOperation) {
-        final Long documentLength = estimateBulkOperationSize(bulkOperation);
+        if (bulkOperations.size() == 5000) {
+            currentBulkSize = estimateBulkSize();
+            sampledOperationSize = currentBulkSize / 5000;
+        }
 
-        currentBulkSize += documentLength;
+        currentBulkSize = sampledOperationSize * bulkOperations.size();
 
         bulkRequestBuilder = bulkRequestBuilder.operations(bulkOperation.getBulkOperation());
 
@@ -50,6 +62,10 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
 
     @Override
     public long getEstimatedSizeInBytes() {
+        if (currentBulkSize == 0) {
+            currentBulkSize = estimateBulkSize();
+        }
+
         return currentBulkSize;
     }
 
@@ -70,29 +86,24 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
         return builtRequest;
     }
 
-    private long estimateBulkOperationSize(BulkOperationWrapper bulkOperation) {
+    private long estimateBulkSize() {
+        try {
+            final List<Object> documents = bulkOperations.stream()
+                    .map(BulkOperationWrapper::getBulkOperation)
+                    .map(BulkOperation::index)
+                    .map(IndexOperation::document)
+                    .collect(Collectors.toList());
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
+            ObjectOutputStream objectOut = new ObjectOutputStream(gzipOut);
+            objectOut.writeObject(documents);
+            objectOut.close();
+            final long compDocLength = baos.toByteArray().length;
+            LOG.warn("Compressed length: {}", compDocLength);
 
-        Object anyDocument;
-
-        if (bulkOperation.getBulkOperation().isIndex()) {
-            anyDocument = bulkOperation.getBulkOperation().index().document();
-        } else if (bulkOperation.getBulkOperation().isCreate()) {
-            anyDocument = bulkOperation.getBulkOperation().create().document();
-        } else {
-            throw new UnsupportedOperationException("Only index or create operations are supported currently. " + bulkOperation);
+            return compDocLength;
+        } catch (final Exception e) {
+            throw new RuntimeException(e);
         }
-
-        if (anyDocument == null)
-            return OPERATION_OVERHEAD;
-
-        if (!(anyDocument instanceof SizedDocument)) {
-            throw new IllegalArgumentException("Only SizedDocument is permitted for accumulating bulk requests. " + bulkOperation);
-        }
-
-        SizedDocument sizedDocument = (SizedDocument) anyDocument;
-
-        final long documentLength = sizedDocument.getDocumentSize();
-        return documentLength + OPERATION_OVERHEAD;
-
     }
 }

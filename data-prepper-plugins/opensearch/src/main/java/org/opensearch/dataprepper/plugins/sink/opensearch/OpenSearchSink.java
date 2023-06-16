@@ -16,6 +16,7 @@ import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
+import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.common.unit.ByteSizeUnit;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.MetricNames;
@@ -55,10 +56,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -82,9 +85,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final IndexManagerFactory indexManagerFactory;
   private RestHighLevelClient restHighLevelClient;
   private IndexManager indexManager;
-  private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
+  private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
+  private final long flushTimeout;
   private final IndexType indexType;
   private final String documentIdField;
   private final String routingField;
@@ -105,6 +109,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private FailedBulkOperationConverter failedBulkOperationConverter;
 
   private DlqProvider dlqProvider;
+  private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
+  private final ConcurrentHashMap<Long, Long> lastFlushTimeMap;
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
@@ -119,6 +125,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
+    this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
@@ -130,6 +137,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.initialized = false;
     this.lock = new ReentrantLock(true);
     this.pluginSetting = pluginSetting;
+    this.bulkRequestMap = new ConcurrentHashMap<>();
+    this.lastFlushTimeMap = new ConcurrentHashMap<>();
 
     final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
     if (dlqConfig.isPresent()) {
@@ -179,10 +188,13 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
     indexManager.setupIndex();
 
-    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
+    final OpenSearchClient filteringOpenSearchClient = openSearchClient.withTransportOptions(
+            TransportOptions.builder()
+                    .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
+                    .build());
     bulkRetryStrategy = new BulkRetryStrategy(
-            bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
+            bulkRequest -> filteringOpenSearchClient.bulk(bulkRequest.getRequest()),
             this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,
@@ -201,11 +213,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   @Override
   public void doOutput(final Collection<Record<Event>> records) {
-    if (records.isEmpty()) {
-      return;
+    final long threadId = Thread.currentThread().getId();
+    if (!bulkRequestMap.containsKey(threadId)) {
+      bulkRequestMap.put(threadId, bulkRequestSupplier.get());
+    }
+    if (!lastFlushTimeMap.containsKey(threadId)) {
+      lastFlushTimeMap.put(threadId, System.currentTimeMillis());
     }
 
-    AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestSupplier.get();
+    AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestMap.get(threadId);
+    long lastFlushTime = lastFlushTimeMap.get(threadId);
 
     for (final Record<Event> record : records) {
       final Event event = record.getData();
@@ -263,17 +280,24 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle());
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
+        LOG.warn("Flushing batch with size: {}", bulkRequest.getEstimatedSizeInBytes());
         flushBatch(bulkRequest);
+        lastFlushTime = System.currentTimeMillis();
         bulkRequest = bulkRequestSupplier.get();
       }
       bulkRequest.addOperation(bulkOperationWrapper);
     }
 
-    // Flush the remaining requests
-    if (bulkRequest.getOperationsCount() > 0) {
+    // Flush the remaining requests if flush timeout expired
+    if (System.currentTimeMillis() - lastFlushTime > flushTimeout && bulkRequest.getOperationsCount() > 0) {
+      LOG.warn("Flushing batch with size: {}", bulkRequest.getEstimatedSizeInBytes());
       flushBatch(bulkRequest);
+      lastFlushTime = System.currentTimeMillis();
+      bulkRequest = bulkRequestSupplier.get();
     }
 
+    bulkRequestMap.put(threadId, bulkRequest);
+    lastFlushTimeMap.put(threadId, lastFlushTime);
   }
 
   private SerializedJson getDocument(final Event event) {
