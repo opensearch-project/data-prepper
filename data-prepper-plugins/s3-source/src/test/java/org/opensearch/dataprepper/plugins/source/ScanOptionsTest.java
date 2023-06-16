@@ -72,6 +72,21 @@ class ScanOptionsTest {
     }
 
     @ParameterizedTest
+    @MethodSource("invalidTimeRangeOptions")
+    public void s3scan_options_with_invalid_bucket_time_range_throws_exception_when_build(
+            LocalDateTime bucketStartDateTime, LocalDateTime bucketEndDateTime, Duration bucketRange
+    ) throws NoSuchFieldException, IllegalAccessException {
+        S3ScanBucketOption bucketOption = new S3ScanBucketOption();
+        setField(S3ScanBucketOption.class, bucketOption, "name", "bucket_name");
+        setField(S3ScanBucketOption.class, bucketOption, "startTime", bucketStartDateTime);
+        setField(S3ScanBucketOption.class, bucketOption, "endTime", bucketEndDateTime);
+        setField(S3ScanBucketOption.class, bucketOption, "range", bucketRange);
+        assertThrows(IllegalArgumentException.class, () -> ScanOptions.builder()
+                .setBucketOption(bucketOption)
+                .build());
+    }
+
+    @ParameterizedTest
     @MethodSource("validCombinedTimeRangeOptions")
     public void s3scan_options_with_valid_combined_time_range_build_success(
             LocalDateTime globalStartDateTime, LocalDateTime globeEndDateTime, Duration globalRange,
@@ -93,21 +108,6 @@ class ScanOptionsTest {
         assertThat(scanOptions.getUseEndDateTime(), equalTo(useEndDateTime));
         assertThat(scanOptions.getBucketOption(), instanceOf(S3ScanBucketOption.class));
         assertThat(scanOptions.getBucketOption().getName(), equalTo("bucket_name"));
-    }
-
-    @ParameterizedTest
-    @MethodSource("invalidTimeRangeOptions")
-    public void s3scan_options_with_valid_combined_time_range_build_success(
-            LocalDateTime bucketStartDateTime, LocalDateTime bucketEndDateTime, Duration bucketRange
-    ) throws NoSuchFieldException, IllegalAccessException {
-        S3ScanBucketOption bucketOption = new S3ScanBucketOption();
-        setField(S3ScanBucketOption.class, bucketOption, "name", "bucket_name");
-        setField(S3ScanBucketOption.class, bucketOption, "startTime", bucketStartDateTime);
-        setField(S3ScanBucketOption.class, bucketOption, "endTime", bucketEndDateTime);
-        setField(S3ScanBucketOption.class, bucketOption, "range", bucketRange);
-        assertThrows(IllegalArgumentException.class, () -> ScanOptions.builder()
-                .setBucketOption(bucketOption)
-                .build());
     }
 
     @ParameterizedTest
