@@ -13,11 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.http.Abortable;
+import software.amazon.awssdk.http.HttpStatusCode;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
-import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
-
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 class S3InputStream extends SeekableInputStream {
 
@@ -32,6 +32,8 @@ class S3InputStream extends SeekableInputStream {
     private final S3ObjectReference s3ObjectReference;
 
     private final HeadObjectResponse metadata;
+
+    private final S3ObjectPluginMetrics s3ObjectPluginMetrics;
 
     private final LongAdder bytesCounter;
 
@@ -54,11 +56,13 @@ class S3InputStream extends SeekableInputStream {
             final S3Client s3Client,
             final S3ObjectReference s3ObjectReference,
             final HeadObjectResponse metadata,
-            final LongAdder bytesCounter) {
+            final S3ObjectPluginMetrics s3ObjectPluginMetrics
+    ) {
         this.s3Client = s3Client;
         this.s3ObjectReference = s3ObjectReference;
         this.metadata = metadata;
-        this.bytesCounter = bytesCounter;
+        this.s3ObjectPluginMetrics = s3ObjectPluginMetrics;
+        this.bytesCounter = new LongAdder();
 
         this.getObjectRequestBuilder = GetObjectRequest.builder()
                 .bucket(this.s3ObjectReference.getBucketName())
@@ -90,6 +94,7 @@ class S3InputStream extends SeekableInputStream {
         super.close();
         closed = true;
         closeStream();
+        s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary().record(bytesCounter.doubleValue());
     }
 
     /**
@@ -436,8 +441,13 @@ class S3InputStream extends SeekableInputStream {
 
         try {
             stream = s3Client.getObject(request, ResponseTransformer.toInputStream());
-        } catch (NoSuchKeyException e) {
-            throw new IOException("Location does not exist: " + s3ObjectReference.toString(), e);
+        } catch (Exception ex) {
+            LOG.error("Error reading from S3 object: s3ObjectReference={}", s3ObjectReference);
+            if (ex instanceof S3Exception) {
+                recordS3Exception((S3Exception) ex);
+            }
+
+            throw new IOException(ex.getMessage());
         }
     }
 
@@ -491,6 +501,7 @@ class S3InputStream extends SeekableInputStream {
             return bytesRead;
         } else {
             buf.position(buf.position() + bytesRead);
+
             return bytesRead;
         }
     }
@@ -597,5 +608,13 @@ class S3InputStream extends SeekableInputStream {
         }
 
         return totalBytesRead;
+    }
+
+    private void recordS3Exception(final S3Exception ex) {
+        if (ex.statusCode() == HttpStatusCode.NOT_FOUND) {
+            s3ObjectPluginMetrics.getS3ObjectsFailedNotFoundCounter().increment();
+        } else if (ex.statusCode() == HttpStatusCode.FORBIDDEN) {
+            s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter().increment();
+        }
     }
 }

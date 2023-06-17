@@ -157,8 +157,6 @@ public class ParquetInputCodecTest {
 
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         for (final Record<Event> record: actualRecords) {
-            String s = record.getData().toString();
-            System.out.println(s);
             final String arch = record.getData().get("architecture", String.class);
             assertThat(arch, startsWith("x86"));
         }
