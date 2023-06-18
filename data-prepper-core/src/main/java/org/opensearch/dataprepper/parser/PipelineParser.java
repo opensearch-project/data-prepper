@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
@@ -293,12 +294,12 @@ public class PipelineParser {
     }
 
     private DataFlowComponent<Sink> buildRoutedSinkOrConnector(final RoutedPluginSetting pluginSetting) {
-        final Sink sink = buildSinkOrConnector(pluginSetting);
+        final Sink sink = buildSinkOrConnector(pluginSetting, pluginSetting.getSinkContext());
 
-        return new DataFlowComponent<>(sink, pluginSetting.getRoutes());
+        return new DataFlowComponent<>(sink, pluginSetting.getSinkContext().getRoutes());
     }
 
-    private Sink buildSinkOrConnector(final PluginSetting pluginSetting) {
+    private Sink buildSinkOrConnector(final PluginSetting pluginSetting, final SinkContext sinkContext) {
         LOG.info("Building [{}] as sink component", pluginSetting.getName());
         final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9
@@ -307,7 +308,7 @@ public class PipelineParser {
             sourceConnectorMap.put(pipelineName, pipelineConnector); //TODO retrieve from parent Pipeline using name
             return pipelineConnector;
         } else {
-            return pluginFactory.loadPlugin(Sink.class, pluginSetting);
+            return pluginFactory.loadPlugin(Sink.class, pluginSetting, sinkContext);
         }
     }
 

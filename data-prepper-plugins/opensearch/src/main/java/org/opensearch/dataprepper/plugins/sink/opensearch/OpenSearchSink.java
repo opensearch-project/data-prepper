@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -57,6 +58,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.concurrent.locks.ReentrantLock;
@@ -101,6 +103,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private ObjectMapper objectMapper;
   private volatile boolean initialized;
   private PluginSetting pluginSetting;
+  private final SinkContext sinkContext;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
 
@@ -109,9 +112,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
                         final PluginFactory pluginFactory,
+                        final SinkContext sinkContext,
                         final AwsCredentialsSupplier awsCredentialsSupplier) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
+    this.sinkContext = sinkContext;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
@@ -280,7 +285,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
     String routing = (routingField != null) ? event.get(routingField, String.class) : null;
 
-    final String document = DocumentBuilder.build(event, documentRootKey);
+    final String document = DocumentBuilder.build(event, documentRootKey, Objects.nonNull(sinkContext)?sinkContext.getTagsTargetKey():null);
 
     return SerializedJson.fromStringAndOptionals(document, docId, routing);
   }

@@ -19,8 +19,8 @@ public class JsonCodec implements Codec {
      * Generates a serialized json string of the Event
      */
     @Override
-    public String parse(Event event) throws IOException {
+    public String parse(final Event event, final String tagsTargetKey) throws IOException {
         Objects.requireNonNull(event);
-        return event.toJsonString();
+        return event.jsonBuilder().includeTags(tagsTargetKey).toJsonString();
     }
 }

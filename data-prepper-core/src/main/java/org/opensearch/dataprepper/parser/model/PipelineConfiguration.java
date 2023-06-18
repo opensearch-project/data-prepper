@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.configuration.SinkModel;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
 import java.util.Collections;
@@ -134,7 +135,7 @@ public class PipelineConfiguration {
         final Map<String, Object> settingsMap = Optional
                 .ofNullable(sinkModel.getPluginSettings())
                 .orElseGet(HashMap::new);
-        return new RoutedPluginSetting(sinkModel.getPluginName(), settingsMap, sinkModel.getRoutes());
+        return new RoutedPluginSetting(sinkModel.getPluginName(), settingsMap, new SinkContext(sinkModel.getTagsTargetKey(), sinkModel.getRoutes()));
     }
 
     private Integer getWorkersFromPipelineModel(final PipelineModel pipelineModel) {

@@ -6,19 +6,20 @@
 package org.opensearch.dataprepper.parser.model;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 
 import java.util.Collection;
 import java.util.Map;
 
 public class RoutedPluginSetting extends PluginSetting {
-    private final Collection<String> routes;
+    private final SinkContext sinkContext;
 
-    public RoutedPluginSetting(final String name, final Map<String, Object> settings, final Collection<String> routes) {
+    public RoutedPluginSetting(final String name, final Map<String, Object> settings, final SinkContext sinkContext) {
         super(name, settings);
-        this.routes = routes;
+        this.sinkContext = sinkContext;
     }
 
-    public Collection<String> getRoutes() {
-        return routes;
+    public SinkContext getSinkContext() {
+        return sinkContext;
     }
 }

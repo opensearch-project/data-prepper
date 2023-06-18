@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink;
 
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.record.Record;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,7 +52,7 @@ public class StdOutSinkTests {
 
     @Test
     public void testSinkWithEvents() {
-        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
+        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()), null);
         stdOutSink.output(testRecords);
         stdOutSink.shutdown();
     }
@@ -59,7 +60,7 @@ public class StdOutSinkTests {
     // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     @Test
     public void testSinkWithCustomType() {
-        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
+        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()), null);
         stdOutSink.output(Collections.singletonList(new Record<Object>(new TestObject())));
     }
 

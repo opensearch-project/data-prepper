@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.parser.model;
 
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -15,22 +16,23 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
 
 class RoutedPluginSettingTest {
     private String name;
     private Map<String, Object> settings;
-    private Collection<String> routes;
+    private SinkContext sinkContext;
 
     @BeforeEach
     void setUp() {
         name = UUID.randomUUID().toString();
         settings = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        routes = Set.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        sinkContext = mock(SinkContext.class);
 
     }
 
     private RoutedPluginSetting createObjectUnderTest() {
-        return new RoutedPluginSetting(name, settings, routes);
+        return new RoutedPluginSetting(name, settings, sinkContext);
     }
 
     @Test
@@ -44,7 +46,7 @@ class RoutedPluginSettingTest {
     }
 
     @Test
-    void getRoutes_returns_routes_from_constructor() {
-        assertThat(createObjectUnderTest().getRoutes(), equalTo(routes));
+    void getRoutes_returns_sink_context_from_constructor() {
+        assertThat(createObjectUnderTest().getSinkContext(), equalTo(sinkContext));
     }
 }
