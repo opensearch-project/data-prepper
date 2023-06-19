@@ -58,7 +58,7 @@ class PipelineConfigurationTests {
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcesserPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
-        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, TestDataProvider.VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
@@ -99,7 +99,7 @@ class PipelineConfigurationTests {
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
-        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, TestDataProvider.VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
@@ -221,7 +221,7 @@ class PipelineConfigurationTests {
 
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
 
-        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         assertThat(actualSinkPluginSettings.size(), equalTo(2));
         comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);
@@ -248,7 +248,7 @@ class PipelineConfigurationTests {
 
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
 
-        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         assertThat(actualSinkPluginSettings.size(), equalTo(2));
         comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);

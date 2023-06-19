@@ -22,7 +22,7 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
-import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
+import org.opensearch.dataprepper.parser.model.SinkContextPluginSetting;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
@@ -293,7 +293,7 @@ public class PipelineParser {
         return Optional.empty();
     }
 
-    private DataFlowComponent<Sink> buildRoutedSinkOrConnector(final RoutedPluginSetting pluginSetting) {
+    private DataFlowComponent<Sink> buildRoutedSinkOrConnector(final SinkContextPluginSetting pluginSetting) {
         final Sink sink = buildSinkOrConnector(pluginSetting, pluginSetting.getSinkContext());
 
         return new DataFlowComponent<>(sink, pluginSetting.getSinkContext().getRoutes());
@@ -338,7 +338,7 @@ public class PipelineParser {
                 sourcePipeline, pipelineConfigurationMap, pipelineMap));
 
         //remove sink connected pipelines
-        final List<RoutedPluginSetting> sinkPluginSettings = failedPipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> sinkPluginSettings = failedPipelineConfiguration.getSinkPluginSettings();
         sinkPluginSettings.forEach(sinkPluginSetting -> {
             getPipelineNameIfPipelineType(sinkPluginSetting).ifPresent(sinkPipeline -> processRemoveIfRequired(
                     sinkPipeline, pipelineConfigurationMap, pipelineMap));

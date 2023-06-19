@@ -9,16 +9,14 @@ import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 
-class RoutedPluginSettingTest {
+class SinkContextPluginSettingTest {
     private String name;
     private Map<String, Object> settings;
     private SinkContext sinkContext;
@@ -31,8 +29,8 @@ class RoutedPluginSettingTest {
 
     }
 
-    private RoutedPluginSetting createObjectUnderTest() {
-        return new RoutedPluginSetting(name, settings, sinkContext);
+    private SinkContextPluginSetting createObjectUnderTest() {
+        return new SinkContextPluginSetting(name, settings, sinkContext);
     }
 
     @Test

@@ -31,7 +31,7 @@ public class PipelineConfiguration {
     private final PluginSetting sourcePluginSetting;
     private final PluginSetting bufferPluginSetting;
     private final List<PluginSetting> processorPluginSettings;
-    private final List<RoutedPluginSetting> sinkPluginSettings;
+    private final List<SinkContextPluginSetting> sinkPluginSettings;
 
     private final Integer workers;
     private final Integer readBatchDelay;
@@ -59,7 +59,7 @@ public class PipelineConfiguration {
         return processorPluginSettings;
     }
 
-    public List<RoutedPluginSetting> getSinkPluginSettings() {
+    public List<SinkContextPluginSetting> getSinkPluginSettings() {
         return sinkPluginSettings;
     }
 
@@ -105,12 +105,12 @@ public class PipelineConfiguration {
         return getPluginSettingFromPluginModel(pluginModel);
     }
 
-    private List<RoutedPluginSetting> getSinksFromPluginModel(
+    private List<SinkContextPluginSetting> getSinksFromPluginModel(
             final List<SinkModel> sinkConfigurations) {
         if (sinkConfigurations == null || sinkConfigurations.isEmpty()) {
             throw new IllegalArgumentException("Invalid configuration, at least one sink is required");
         }
-        return sinkConfigurations.stream().map(PipelineConfiguration::getRoutedPluginSettingFromSinkModel)
+        return sinkConfigurations.stream().map(PipelineConfiguration::getSinkContextPluginSettingFromSinkModel)
                 .collect(Collectors.toList());
     }
 
@@ -131,11 +131,11 @@ public class PipelineConfiguration {
         return new PluginSetting(pluginModel.getPluginName(), settingsMap);
     }
 
-    private static RoutedPluginSetting getRoutedPluginSettingFromSinkModel(final SinkModel sinkModel) {
+    private static SinkContextPluginSetting getSinkContextPluginSettingFromSinkModel(final SinkModel sinkModel) {
         final Map<String, Object> settingsMap = Optional
                 .ofNullable(sinkModel.getPluginSettings())
                 .orElseGet(HashMap::new);
-        return new RoutedPluginSetting(sinkModel.getPluginName(), settingsMap, new SinkContext(sinkModel.getTagsTargetKey(), sinkModel.getRoutes()));
+        return new SinkContextPluginSetting(sinkModel.getPluginName(), settingsMap, new SinkContext(sinkModel.getTagsTargetKey(), sinkModel.getRoutes()));
     }
 
     private Integer getWorkersFromPipelineModel(final PipelineModel pipelineModel) {
