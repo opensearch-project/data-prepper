@@ -120,6 +120,10 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
             throw new UnsupportedOperationException("Only index or create operations are supported currently. " + bulkOperation);
         }
 
+        if (anyDocument == null) {
+            return new SerializedJsonImpl(null);
+        }
+
         if (!(anyDocument instanceof Serializable)) {
             throw new IllegalArgumentException("Only classes implementing Serializable are permitted for accumulating bulk requests. " + bulkOperation);
         }

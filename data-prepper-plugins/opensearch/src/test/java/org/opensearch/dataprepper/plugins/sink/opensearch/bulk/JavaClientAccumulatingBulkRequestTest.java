@@ -25,6 +25,7 @@ import java.util.zip.GZIPOutputStream;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -178,6 +179,15 @@ class JavaClientAccumulatingBulkRequestTest {
         final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
 
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.addOperation(bulkOperation));
+    }
+
+    @Test
+    void addOperation_does_not_throw_when_document_is_null() {
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(null));
+
+        final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
+
+        assertDoesNotThrow(() -> objectUnderTest.addOperation(bulkOperation));
     }
 
     @Test
