@@ -16,6 +16,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:log-generator-source')
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:common')
+    implementation 'com.opencsv:opencsv:5.7.1'
 }
 
 test {
