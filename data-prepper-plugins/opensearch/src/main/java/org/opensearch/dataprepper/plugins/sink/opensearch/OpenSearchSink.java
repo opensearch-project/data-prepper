@@ -56,7 +56,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -85,7 +84,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private final IndexManagerFactory indexManagerFactory;
   private RestHighLevelClient restHighLevelClient;
   private IndexManager indexManager;
-  private final Supplier<AccumulatingBulkRequest> bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+  private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
   private final long flushTimeout;
@@ -188,6 +187,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
     indexManager.setupIndex();
 
+    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
     final OpenSearchClient filteringOpenSearchClient = openSearchClient.withTransportOptions(
             TransportOptions.builder()
@@ -280,7 +280,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       BulkOperationWrapper bulkOperationWrapper = new BulkOperationWrapper(bulkOperation, event.getEventHandle());
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
-        LOG.warn("Flushing batch with size: {}", bulkRequest.getEstimatedSizeInBytes());
         flushBatch(bulkRequest);
         lastFlushTime = System.currentTimeMillis();
         bulkRequest = bulkRequestSupplier.get();
@@ -290,7 +289,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     // Flush the remaining requests if flush timeout expired
     if (System.currentTimeMillis() - lastFlushTime > flushTimeout && bulkRequest.getOperationsCount() > 0) {
-      LOG.warn("Flushing batch with size: {}", bulkRequest.getEstimatedSizeInBytes());
       flushBatch(bulkRequest);
       lastFlushTime = System.currentTimeMillis();
       bulkRequest = bulkRequestSupplier.get();

@@ -5,15 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
-import org.opensearch.client.opensearch.core.bulk.IndexOperation;
+import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.client.opensearch.core.BulkRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,9 +19,8 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
 public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> {
-    private static final Logger LOG = LoggerFactory.getLogger(JavaClientAccumulatingBulkRequest.class);
-
     private final List<BulkOperationWrapper> bulkOperations;
+    private final int sampleSize;
     private BulkRequest.Builder bulkRequestBuilder;
     private long currentBulkSize = 0L;
     private long sampledOperationSize = 0L;
@@ -33,26 +30,34 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
     public JavaClientAccumulatingBulkRequest(BulkRequest.Builder bulkRequestBuilder) {
         this.bulkRequestBuilder = bulkRequestBuilder;
         bulkOperations = new ArrayList<>();
+        this.sampleSize = 5000;
+    }
+
+    @VisibleForTesting
+    JavaClientAccumulatingBulkRequest(BulkRequest.Builder bulkRequestBuilder, final int sampleSize) {
+        this.bulkRequestBuilder = bulkRequestBuilder;
+        bulkOperations = new ArrayList<>();
+        this.sampleSize = sampleSize;
     }
 
     @Override
     public long estimateSizeInBytesWithDocument(BulkOperationWrapper documentOrOperation) {
-        return sampledOperationSize + currentBulkSize;
+        return currentBulkSize + sampledOperationSize;
     }
 
     @Override
     public void addOperation(BulkOperationWrapper bulkOperation) {
-        if (bulkOperations.size() == 5000) {
-            currentBulkSize = estimateBulkSize();
-            sampledOperationSize = currentBulkSize / 5000;
-        }
-
-        currentBulkSize = sampledOperationSize * bulkOperations.size();
-
         bulkRequestBuilder = bulkRequestBuilder.operations(bulkOperation.getBulkOperation());
 
         operationCount++;
         bulkOperations.add(bulkOperation);
+
+        if (bulkOperations.size() == sampleSize) {
+            currentBulkSize = estimateBulkSize();
+            sampledOperationSize = currentBulkSize / sampleSize;
+        } else {
+            currentBulkSize += sampledOperationSize;
+        }
     }
 
     @Override
@@ -87,23 +92,38 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
     }
 
     private long estimateBulkSize() {
+        final List<Object> documents = bulkOperations.stream()
+                .map(this::mapBulkOperationToDocument)
+                .collect(Collectors.toList());
+
         try {
-            final List<Object> documents = bulkOperations.stream()
-                    .map(BulkOperationWrapper::getBulkOperation)
-                    .map(BulkOperation::index)
-                    .map(IndexOperation::document)
-                    .collect(Collectors.toList());
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
-            ObjectOutputStream objectOut = new ObjectOutputStream(gzipOut);
+            final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            final GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
+            final ObjectOutputStream objectOut = new ObjectOutputStream(gzipOut);
             objectOut.writeObject(documents);
             objectOut.close();
-            final long compDocLength = baos.toByteArray().length;
-            LOG.warn("Compressed length: {}", compDocLength);
 
-            return compDocLength;
+            return baos.toByteArray().length;
         } catch (final Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Caught exception measuring compressed bulk request size.", e);
         }
+    }
+
+    private Object mapBulkOperationToDocument(final BulkOperationWrapper bulkOperation) {
+        Object anyDocument;
+
+        if (bulkOperation.getBulkOperation().isIndex()) {
+            anyDocument = bulkOperation.getBulkOperation().index().document();
+        } else if (bulkOperation.getBulkOperation().isCreate()) {
+            anyDocument = bulkOperation.getBulkOperation().create().document();
+        } else {
+            throw new UnsupportedOperationException("Only index or create operations are supported currently. " + bulkOperation);
+        }
+
+        if (!(anyDocument instanceof Serializable)) {
+            throw new IllegalArgumentException("Only classes implementing Serializable are permitted for accumulating bulk requests. " + bulkOperation);
+        }
+
+        return anyDocument;
     }
 }
