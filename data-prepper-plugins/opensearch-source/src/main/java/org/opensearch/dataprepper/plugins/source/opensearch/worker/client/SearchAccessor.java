@@ -10,9 +10,10 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.NoSearchContextSearchRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPitResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
 
@@ -38,11 +39,11 @@ public interface SearchAccessor {
 
     /**
      * Searches using a PIT context
-     * @param searchPitRequest payload for searching with PIT context
+     * @param searchPointInTimeRequest payload for searching with PIT context
      * @return
      * @since 2.4
      */
-    SearchPitResponse searchWithPit(SearchPitRequest searchPitRequest);
+    SearchWithSearchAfterResults searchWithPit(SearchPointInTimeRequest searchPointInTimeRequest);
 
     /**
      * Deletes PITs
@@ -71,4 +72,9 @@ public interface SearchAccessor {
      * @param deleteScrollRequest payload for deleting scroll contexts
      */
     void deleteScroll(DeleteScrollRequest deleteScrollRequest);
+
+    /**
+     * Searches with sort and search_after without using any search contexts (Point-in-Time or Scroll)
+     */
+    SearchWithSearchAfterResults searchWithoutSearchContext(NoSearchContextSearchRequest noSearchContextSearchRequest);
 }

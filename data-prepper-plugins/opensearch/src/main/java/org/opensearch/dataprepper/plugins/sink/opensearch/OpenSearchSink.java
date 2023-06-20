@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -182,7 +183,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
-            this::logFailure,
+            this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
@@ -214,8 +215,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       String indexName = configuredIndexAlias;
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName));
-      } catch (IOException e) {
+      } catch (IOException | EventKeyNotFoundException e) {
+          LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
+          logFailureForDlqObjects(List.of(DlqObject.builder()
+                  .withEventHandle(event.getEventHandle())
+                  .withFailedData(FailedDlqData.builder().withDocument(event.toJsonString()).withIndex(indexName).withMessage(e.getMessage()).build())
+                  .withPluginName(pluginSetting.getName())
+                  .withPipelineName(pluginSetting.getPipelineName())
+                  .withPluginId(pluginSetting.getName())
+                  .build()), e);
           continue;
       }
 
@@ -290,19 +299,23 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     });
   }
 
-  private void logFailure(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
+  private void logFailureForBulkRequests(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
 
     final List<DlqObject> dlqObjects = failedBulkOperations.stream()
         .map(failedBulkOperationConverter::convertToDlqObject)
         .collect(Collectors.toList());
 
+    logFailureForDlqObjects(dlqObjects, failure);
+  }
+
+  private void logFailureForDlqObjects(final List<DlqObject> dlqObjects, final Throwable failure) {
     if (dlqFileWriter != null) {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
         final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
-              BulkOperationWriter.dlqObjectToString(dlqObject), message));
+                  BulkOperationWriter.dlqObjectToString(dlqObject), message));
           dlqObject.releaseEventHandle(true);
         } catch (final IOException e) {
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);

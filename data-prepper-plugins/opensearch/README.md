@@ -75,6 +75,8 @@ Default is null.
 
 - `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon OpenSearch Service. If not provided the plugin will use the default credentials.
 
+- `aws_sts_external_id`: An optional external ID to use when assuming an IAM role. 
+
 - `aws_sts_header_overrides`: An optional map of header overrides to make when assuming the IAM role for the sink plugin.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
@@ -160,6 +162,8 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 - `s3_aws_region` (optional): A String represents the region of S3 bucket to read `template_file` or `ism_policy_file`, e.g. us-west-2. Only applies to Amazon OpenSearch Service. Defaults to `us-east-1`.
 
 - `s3_aws_sts_role_arn` (optional): An IAM role arn which the sink plugin will assume to read `template_file` or `ism_policy_file` from S3. If not provided the plugin will use the default credentials.
+
+- `s3_aws_sts_external_id` (optional): An external ID that be attached to Assume Role requests.
 
 - `trace_analytics_raw`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
 

@@ -158,6 +158,7 @@ public class IndexConfigurationTests {
         final String testTemplateFilePath = "s3://folder/file.json";
         final String testS3AwsRegion = "us-east-2";
         final String testS3StsRoleArn = "arn:aws:iam::123456789:user/user-role";
+        final String testS3StsExternalId = UUID.randomUUID().toString();
         final String fileContent = "{}";
         final long CONTENT_LENGTH = 3 * ONE_MB;
 
@@ -172,17 +173,19 @@ public class IndexConfigurationTests {
 
         final String testIndexAlias = UUID.randomUUID().toString();
         IndexConfiguration indexConfiguration = new IndexConfiguration.Builder()
-                .withIndexAlias(testIndexAlias)
-                .withTemplateFile(testTemplateFilePath)
-                .withS3AwsRegion(testS3AwsRegion)
-                .withS3AWSStsRoleArn(testS3StsRoleArn)
-                .withS3Client(s3Client)
-                .build();
+            .withIndexAlias(testIndexAlias)
+            .withTemplateFile(testTemplateFilePath)
+            .withS3AwsRegion(testS3AwsRegion)
+            .withS3AWSStsRoleArn(testS3StsRoleArn)
+            .withS3AWSStsExternalId(testS3StsExternalId)
+            .withS3Client(s3Client)
+            .build();
 
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
         assertEquals(testS3AwsRegion, indexConfiguration.getS3AwsRegion());
         assertEquals(testS3StsRoleArn, indexConfiguration.getS3AwsStsRoleArn());
+        assertEquals(testS3StsExternalId, indexConfiguration.getS3AwsStsExternalId());
     }
 
     @Test

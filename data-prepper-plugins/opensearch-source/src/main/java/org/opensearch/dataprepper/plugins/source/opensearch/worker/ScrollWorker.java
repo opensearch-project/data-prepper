@@ -4,7 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
-import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -20,18 +20,18 @@ public class ScrollWorker implements SearchWorker {
     private final SearchAccessor searchAccessor;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
-    private final Buffer<Record<Event>> buffer;
+    private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
 
     public ScrollWorker(final SearchAccessor searchAccessor,
                         final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                         final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
-                        final Buffer<Record<Event>> buffer,
+                        final BufferAccumulator<Record<Event>> bufferAccumulator,
                         final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier) {
         this.searchAccessor = searchAccessor;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.sourceCoordinator = sourceCoordinator;
-        this.buffer = buffer;
+        this.bufferAccumulator = bufferAccumulator;
         this.openSearchIndexPartitionCreationSupplier = openSearchIndexPartitionCreationSupplier;
     }
 

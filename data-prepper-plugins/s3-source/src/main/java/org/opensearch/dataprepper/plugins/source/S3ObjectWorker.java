@@ -5,18 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.http.HttpStatusCode;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -75,7 +74,7 @@ class S3ObjectWorker implements S3ObjectHandler {
 
         LOG.info("Read S3 object: {}", s3ObjectReference);
 
-        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference);
+        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, s3ObjectPluginMetrics);
 
         final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
                 compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
@@ -94,13 +93,9 @@ class S3ObjectWorker implements S3ObjectHandler {
                     LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
             });
-            totalBytesRead = inputFile.getBytesCount();
         } catch (final Exception ex) {
             s3ObjectPluginMetrics.getS3ObjectsFailedCounter().increment();
-            if (ex instanceof S3Exception) {
-                LOG.error("Error reading from S3 object: s3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
-                recordS3Exception((S3Exception) ex);
-            }
+            LOG.error("Error reading from S3 object: s3ObjectReference={}. {}", s3ObjectReference, ex.getMessage());
             throw ex;
         }
 
@@ -117,15 +112,6 @@ class S3ObjectWorker implements S3ObjectHandler {
             s3ObjectPluginMetrics.getS3ObjectNoRecordsFound().increment();
         }
         s3ObjectPluginMetrics.getS3ObjectSizeSummary().record(s3ObjectSize);
-        s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary().record(totalBytesRead);
         s3ObjectPluginMetrics.getS3ObjectEventsSummary().record(recordsWritten);
-    }
-
-    private void recordS3Exception(final S3Exception ex) {
-        if (ex.statusCode() == HttpStatusCode.NOT_FOUND) {
-            s3ObjectPluginMetrics.getS3ObjectsFailedNotFoundCounter().increment();
-        } else if (ex.statusCode() == HttpStatusCode.FORBIDDEN) {
-            s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter().increment();
-        }
     }
 }

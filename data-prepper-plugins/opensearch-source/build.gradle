@@ -4,6 +4,7 @@
   */
 dependencies {
     implementation project(path: ':data-prepper-api')
+    implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'com.fasterxml.jackson.core:jackson-databind'

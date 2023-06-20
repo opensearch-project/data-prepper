@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.slf4j.Logger;
@@ -63,6 +64,7 @@ public class FileSink implements Sink<Record<Object>> {
             for (final Record<Object> record : records) {
                 try {
                     checkTypeAndWriteObject(record.getData(), writer);
+                    
                 } catch (final IOException ex) {
                     throw new RuntimeException(format("Encountered exception writing to file %s", outputFilePath), ex);
                 }
@@ -84,6 +86,10 @@ public class FileSink implements Sink<Record<Object>> {
         if (object instanceof Event) {
             writer.write(((Event) object).toJsonString());
             writer.newLine();
+            EventHandle eventHandle = ((Event)object).getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(true);
+            }
         } else {
             writer.write(object.toString());
             writer.newLine();

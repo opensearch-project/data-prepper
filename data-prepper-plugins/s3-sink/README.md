@@ -18,10 +18,9 @@ pipeline:
           sts_role_arn: arn:aws:iam::123456789012:role/Data-Prepper
           sts_header_overrides:
         max_retries: 5
-        bucket:
-          name: bucket_name
-          object_key:
-            path_prefix: my-elb/%{yyyy}/%{MM}/%{dd}/
+        bucket: bucket_name
+        object_key:
+          path_prefix: my-elb/%{yyyy}/%{MM}/%{dd}/
         threshold:
           event_count: 2000
           maximum_size: 50mb
@@ -37,9 +36,11 @@ pipeline:
 
 - `sts_role_arn` (Optional) : The AWS STS role to assume for requests to S3. which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html). 
 
+- `sts_external_id` (Optional) : The external ID to attach to AssumeRole requests.
+
 - `max_retries` (Optional) : An integer value indicates the maximum number of times that single request should be retired in-order to ingest data to amazon s3. Defaults to `5`.
 
-- `bucket` (Required) : Object storage built to store and retrieve any amount of data from anywhere, User must provide bucket name.
+- `bucket` (Required) : The name of the S3 bucket to write to.
 
 - `object_key` (Optional) : It contains `path_prefix` and `file_pattern`. Defaults to s3 object `events-%{yyyy-MM-dd'T'hh-mm-ss}` inside bucket root directory.
 
@@ -56,6 +57,19 @@ pipeline:
 ## Buffer Type Configuration
 
 - `buffer_type` (Optional) : Records stored temporary before flushing into s3 bucket. Possible values are `local_file` and `in_memory`. Defaults to `in_memory`.
+
+## Metrics
+
+### Counters
+
+* `s3SinkObjectsSucceeded` - The number of S3 objects that the S3 sink has successfully written to S3.
+* `s3SinkObjectsFailed` - The number of S3 objects that the S3 sink failed to write to S3.
+* `s3SinkObjectsEventsSucceeded` - The number of records that the S3 sink has successfully written to S3.
+* `s3SinkObjectsEventsFailed` - The number of records that the S3 sink has failed to write to S3.
+
+### Distribution Summaries
+
+* `s3SinkObjectSizeBytes` - Measures the distribution of the S3 request's payload size in bytes.
 
 
 ## Developer Guide

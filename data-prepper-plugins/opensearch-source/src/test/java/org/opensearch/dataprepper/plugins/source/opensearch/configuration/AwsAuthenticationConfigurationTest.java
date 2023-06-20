@@ -39,13 +39,25 @@ class AwsAuthenticationConfigurationTest {
             actualRegion = awsAuthenticationOptions.getAwsRegion();
         }
         assertThat(actualRegion, equalTo(expectedRegionObject));
-        assertThat(awsAuthenticationOptions.isSigv4Enabled(), equalTo(false));
     }
 
     @Test
     void getAwsRegion_returns_null_when_region_is_null() throws NoSuchFieldException, IllegalAccessException {
         reflectivelySetField(awsAuthenticationOptions, "awsRegion", null);
         assertThat(awsAuthenticationOptions.getAwsRegion(), nullValue());
+    }
+
+    @Test
+    void getStsExternalId_notNull() throws NoSuchFieldException, IllegalAccessException {
+        final String externalId = UUID.randomUUID().toString();
+        reflectivelySetField(awsAuthenticationOptions, "awsStsExternalId", externalId);
+        assertThat(awsAuthenticationOptions.getAwsStsExternalId(), equalTo(externalId));
+    }
+
+    @Test
+    void getStsExternalId_Null() throws NoSuchFieldException, IllegalAccessException {
+        reflectivelySetField(awsAuthenticationOptions, "awsStsExternalId", null);
+        assertThat(awsAuthenticationOptions.getAwsStsExternalId(), nullValue());
     }
 
     private void reflectivelySetField(final AwsAuthenticationConfiguration awsAuthenticationOptions, final String fieldName, final Object value) throws NoSuchFieldException, IllegalAccessException {

@@ -16,11 +16,13 @@ import java.util.Map;
  */
 public class AwsCredentialsOptions {
     private final String stsRoleArn;
+    private final String stsExternalId;
     private final Region region;
     private final Map<String, String> stsHeaderOverrides;
 
     private AwsCredentialsOptions(final Builder builder) {
         this.stsRoleArn = builder.stsRoleArn;
+        this.stsExternalId = builder.stsExternalId;
         this.region = builder.region;
         this.stsHeaderOverrides = builder.stsHeaderOverrides != null ? new HashMap<>(builder.stsHeaderOverrides) : Collections.emptyMap();
     }
@@ -39,6 +41,10 @@ public class AwsCredentialsOptions {
         return stsRoleArn;
     }
 
+    public String getStsExternalId() {
+        return stsExternalId;
+    }
+
     public Region getRegion() {
         return region;
     }
@@ -52,6 +58,7 @@ public class AwsCredentialsOptions {
      */
     public static class Builder {
         private String stsRoleArn;
+        private String stsExternalId;
         private Region region;
         private Map<String, String> stsHeaderOverrides = Collections.emptyMap();
 
@@ -66,6 +73,10 @@ public class AwsCredentialsOptions {
             return this;
         }
 
+        public Builder withStsExternalId(final String stsExternalId) {
+            this.stsExternalId = stsExternalId;
+            return this;
+        }
         /**
          * Sets the AWS region using the model class from the AWS SDK.
          *

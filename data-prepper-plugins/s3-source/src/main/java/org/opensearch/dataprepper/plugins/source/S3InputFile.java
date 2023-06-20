@@ -6,21 +6,24 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 
-import java.util.concurrent.atomic.LongAdder;
-
 public class S3InputFile implements InputFile {
 
-    private S3Client s3Client;
+    private final S3Client s3Client;
 
-    private S3ObjectReference s3ObjectReference;
+    private final S3ObjectReference s3ObjectReference;
 
-    private LongAdder bytesCounter;
+    private final S3ObjectPluginMetrics s3ObjectPluginMetrics;
 
     private HeadObjectResponse metadata;
 
-    public S3InputFile(final S3Client s3Client, final S3ObjectReference s3ObjectReference) {
+    public S3InputFile(
+        final S3Client s3Client,
+        final S3ObjectReference s3ObjectReference,
+        final S3ObjectPluginMetrics s3ObjectPluginMetrics
+    ) {
         this.s3Client = s3Client;
         this.s3ObjectReference = s3ObjectReference;
+        this.s3ObjectPluginMetrics = s3ObjectPluginMetrics;
     }
 
     /**
@@ -39,21 +42,8 @@ public class S3InputFile implements InputFile {
      */
     @Override
     public SeekableInputStream newStream() {
-        bytesCounter = new LongAdder();
 
-        return new S3InputStream(s3Client, s3ObjectReference, getMetadata(), bytesCounter);
-    }
-
-    /**
-     * Get the count of bytes read from the S3 object
-     * @return
-     */
-    public long getBytesCount() {
-        if (bytesCounter == null) {
-            return 0;
-        }
-
-        return bytesCounter.longValue();
+        return new S3InputStream(s3Client, s3ObjectReference, getMetadata(), s3ObjectPluginMetrics);
     }
 
     /**
