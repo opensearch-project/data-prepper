@@ -90,7 +90,7 @@ class TopicConfigTest {
     @Tag(YAML_FILE_WITH_CONSUMER_CONFIG)
     void testConfigValues_from_yaml() {
 
-        assertEquals("my-topic-2", topicConfig.getName());
+        assertEquals("my-topic-1", topicConfig.getName());
         assertEquals("DPKafkaProj-2", topicConfig.getGroupId());
         assertEquals("kafka-consumer-group-2", topicConfig.getGroupName());
         assertEquals("false", topicConfig.getAutoCommit());
