@@ -10,7 +10,6 @@ import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.cat.IndicesResponse;
-import org.opensearch.client.opensearch.cat.indices.IndicesRecord;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.IndexParametersConfiguration;
@@ -78,7 +77,7 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         }
 
         return indicesResponse.valueBody().stream()
-                .filter(osIndicesRecord -> shouldIndexBeProcessed(osIndicesRecord, null))
+                .filter(osIndicesRecord -> shouldIndexBeProcessed(osIndicesRecord.index()))
                 .map(indexRecord -> PartitionIdentifier.builder().withPartitionKey(indexRecord.index()).build())
                 .collect(Collectors.toList());
     }
@@ -93,20 +92,12 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         }
 
         return indicesResponse.valueBody().stream()
-                .filter(esIndicesRecord -> shouldIndexBeProcessed(null, esIndicesRecord))
+                .filter(esIndicesRecord -> shouldIndexBeProcessed(esIndicesRecord.index()))
                 .map(indexRecord -> PartitionIdentifier.builder().withPartitionKey(indexRecord.index()).build())
                 .collect(Collectors.toList());
     }
 
-    private boolean shouldIndexBeProcessed(final IndicesRecord openSearchIndicesRecord, final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord elasticSearchIndicesRecord) {
-
-        String indexName = null;
-
-        if (Objects.nonNull(openSearchIndicesRecord)) {
-            indexName = openSearchIndicesRecord.index();
-        } else if (Objects.nonNull(elasticSearchIndicesRecord)) {
-            indexName = elasticSearchIndicesRecord.index();
-        }
+    private boolean shouldIndexBeProcessed(final String indexName) {
 
         if (Objects.isNull(indexName)) {
             return false;
