@@ -3,49 +3,52 @@ package org.opensearch.dataprepper.plugins.kafka.consumer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doCallRealMethod;
 
 
 public class KafkaSourceCustomConsumerTest {
-    @Mock
-    private KafkaConsumer<String, Object> plainTextConsumer;
 
-    @Mock
-    private KafkaConsumer<String, Object> jsonConsumer;
+    private KafkaConsumer<String, Object> kafkaConsumer;
 
-    @Mock
-    private KafkaConsumer<String, Object> avroConsumer;
     private AtomicBoolean status;
 
-    @Mock
     private Buffer<Record<Object>> buffer;
 
     @Mock
@@ -57,7 +60,13 @@ public class KafkaSourceCustomConsumerTest {
     private PluginMetrics pluginMetrics;
 
     private String schemaType;
+
     private KafkaSourceCustomConsumer consumer;
+
+    private final String TEST_PIPELINE_NAME = "test_pipeline";
+
+    private Map<TopicPartition, List<ConsumerRecord<String, Object>>> records = new LinkedHashMap<TopicPartition, List<ConsumerRecord<String, Object>>>();
+
 
     @BeforeEach
     public void setUp() throws IOException {
@@ -77,49 +86,59 @@ public class KafkaSourceCustomConsumerTest {
             topicConfig = sourceConfig.getTopics().get(0);
         }
         pluginMetrics = mock(PluginMetrics.class);
-        buffer = mock(Buffer.class);
-        status = new AtomicBoolean();
-        plainTextConsumer = mock(KafkaConsumer.class);
-        jsonConsumer = mock(KafkaConsumer.class);
-        avroConsumer = mock(KafkaConsumer.class);
-        consumer = new KafkaSourceCustomConsumer(plainTextConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics);
+        buffer = getBuffer();
+        status = new AtomicBoolean(true);
+        kafkaConsumer = mock(KafkaConsumer.class);
+        schemaType = "plaintext";
+        consumer = new KafkaSourceCustomConsumer(kafkaConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics);
+    }
+
+    private BlockingBuffer<Record<Object>> getBuffer() {
+        final HashMap<String, Object> integerHashMap = new HashMap<>();
+        integerHashMap.put("buffer_size", 10);
+        integerHashMap.put("batch_size", 10);
+        final PluginSetting pluginSetting = new PluginSetting("blocking_buffer", integerHashMap);
+        pluginSetting.setPipelineName(TEST_PIPELINE_NAME);
+        return new BlockingBuffer<>(pluginSetting);
     }
 
     @Test
     public void testConsumeRecords() throws InterruptedException {
-        consumer = new KafkaSourceCustomConsumer(plainTextConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics);
+
         String topic = topicConfig.getName();
-        schemaType = "plaintext";
-        Map<TopicPartition, List<ConsumerRecord<String, Object>>> records = new LinkedHashMap<>();
+
         Thread producerThread = new Thread(() -> {
-            ConsumerRecord<String, Object> record1 = new ConsumerRecord<>(topic, 0, 0L, "mykey-1", "myvalue-1");
-            ConsumerRecord<String, Object> record2 = new ConsumerRecord<>(topic, 0, 0L, "mykey-2", "myvalue-2");
-            records.put(new TopicPartition(topic, 1), Arrays.asList(record1, record2));
+            setTopicData(topic);
         });
         producerThread.start();
         TimeUnit.SECONDS.sleep(1);
-        producerThread.join();
+        ConsumerRecords consumerRecords = new ConsumerRecords(records);
+        when(kafkaConsumer.poll(any())).thenReturn(consumerRecords);
         KafkaSourceCustomConsumer spyConsumer = spy(consumer);
-        doCallRealMethod().when(spyConsumer).consumeRecords();
         spyConsumer.consumeRecords();
         verify(spyConsumer).consumeRecords();
+        final Map.Entry<Collection<Record<Object>>, CheckpointState> bufferRecords = buffer.read(1000);
+        Assertions.assertEquals(2, new ArrayList<>(bufferRecords.getKey()).size());
+    }
 
+    private void setTopicData(String topic) {
+        ConsumerRecord<String, Object> record1 = new ConsumerRecord<>(topic, 0, 0L, "mykey-1", "myvalue-1");
+        ConsumerRecord<String, Object> record2 = new ConsumerRecord<>(topic, 0, 0L, "mykey-2", "myvalue-2");
+        records.put(new TopicPartition(topic, 1), Arrays.asList(record1, record2));
     }
 
     @Test
     void testOnPartitionsRevoked() {
-        consumer = new KafkaSourceCustomConsumer(plainTextConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics);
         KafkaSourceCustomConsumer spyConsumer = spy(consumer);
-        ReflectionTestUtils.setField(spyConsumer, "kafkaConsumer", plainTextConsumer);
-        doCallRealMethod().when(spyConsumer).onPartitionsRevoked(anyList());
-        spyConsumer.onPartitionsRevoked(anyList());
-        verify(spyConsumer).onPartitionsRevoked(anyList());
+        setTopicData(topicConfig.getName());
+        final List<TopicPartition> topicPartitions = records.keySet().stream().collect(Collectors.toList());
+        spyConsumer.onPartitionsRevoked(topicPartitions);
+        verify(spyConsumer).onPartitionsRevoked(topicPartitions);
     }
 
     @Test
     void testOnPartitionsAssigned() {
         //Map<TopicPartition, List<ConsumerRecord<String, Object>>> records = new LinkedHashMap<>();
-        consumer = new KafkaSourceCustomConsumer(plainTextConsumer, status, buffer, topicConfig, sourceConfig, schemaType, pluginMetrics);
         ConsumerRecord<String, Object> record1 = new ConsumerRecord<>("my-topic-1", 0, 0L, "mykey-1", "myvalue-1");
         ConsumerRecord<String, Object> record2 = new ConsumerRecord<>("my-topic-1", 0, 0L, "mykey-2", "myvalue-2");
         //records.put(new TopicPartition("my-topic-1", 1), Arrays.asList(record1, record2));
@@ -127,7 +146,6 @@ public class KafkaSourceCustomConsumerTest {
         //records.put(partition, Arrays.asList(record1, record2));
 
         KafkaSourceCustomConsumer spyConsumer = spy(consumer);
-        ReflectionTestUtils.setField(spyConsumer, "kafkaConsumer", plainTextConsumer);
         doCallRealMethod().when(spyConsumer).onPartitionsAssigned(Arrays.asList(partition));
 
         spyConsumer.onPartitionsAssigned(Arrays.asList(partition));

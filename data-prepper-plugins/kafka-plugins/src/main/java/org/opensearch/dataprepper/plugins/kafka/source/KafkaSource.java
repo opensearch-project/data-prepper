@@ -62,6 +62,7 @@ public class KafkaSource implements Source<Record<Object>> {
     private int totalWorkers;
     private String pipelineName;
     private static String schemaType = MessageFormat.PLAINTEXT.toString();
+    private static final String SCHEMA_TYPE= "schemaType";
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig, final PluginMetrics pluginMetrics,
@@ -214,8 +215,9 @@ public class KafkaSource implements Source<Record<Object>> {
                 Object json = mapper.readValue(response.toString(), Object.class);
                 String indented = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
                 JsonNode rootNode = mapper.readTree(indented);
-                if (rootNode.has("schemaType")) {
-                    schemaType = MessageFormat.JSON.toString();
+                if (rootNode.has(SCHEMA_TYPE)) {
+                    JsonNode node = rootNode.findValue(SCHEMA_TYPE);
+                    schemaType = node.textValue();
                 } else {
                     schemaType = MessageFormat.AVRO.toString();
                 }

@@ -19,24 +19,22 @@ import java.util.List;
 
 public class KafkaSourceConfig {
 
-  @JsonProperty("bootstrap_servers")
-  @NotNull
-  @Size(min = 1, message = "Bootstrap servers can't be empty")
-  private List<String> bootStrapServers;
+    @JsonProperty("bootstrap_servers")
+    @NotNull
+    @Size(min = 1, message = "Bootstrap servers can't be empty")
+    private List<String> bootStrapServers;
 
     @JsonProperty("topics")
     @NotNull
     @Size(min = 1, max = 10, message = "The number of Topics should be between 1 and 10")
     private List<TopicConfig> topics;
 
-  @JsonProperty("schema")
-  //@NotNull
-  @Valid
-  private SchemaConfig schemaConfig;
+    @JsonProperty("schema")
+    @Valid
+    private SchemaConfig schemaConfig;
 
-  @JsonProperty("authentication")
- // @Valid
-  private AuthConfig authConfig;
+    @JsonProperty("authentication")
+    private AuthConfig authConfig;
 
     public List<TopicConfig> getTopics() {
         return topics;
@@ -46,27 +44,27 @@ public class KafkaSourceConfig {
         this.topics = topics;
     }
 
-  public List<String> getBootStrapServers() {
-    return bootStrapServers;
-  }
+    public List<String> getBootStrapServers() {
+        return bootStrapServers;
+    }
 
-  public void setBootStrapServers(List<String> bootStrapServers) {
-    this.bootStrapServers = bootStrapServers;
-  }
+    public void setBootStrapServers(List<String> bootStrapServers) {
+        this.bootStrapServers = bootStrapServers;
+    }
 
-  public SchemaConfig getSchemaConfig() {
-    return schemaConfig;
-  }
+    public SchemaConfig getSchemaConfig() {
+        return schemaConfig;
+    }
 
-  public void setSchemaConfig(SchemaConfig schemaConfig) {
-    this.schemaConfig = schemaConfig;
-  }
+    public void setSchemaConfig(SchemaConfig schemaConfig) {
+        this.schemaConfig = schemaConfig;
+    }
 
-  public AuthConfig getAuthConfig() {
-    return authConfig;
-  }
+    public AuthConfig getAuthConfig() {
+        return authConfig;
+    }
 
-  public void setAuthConfig(AuthConfig authConfig) {
-    this.authConfig = authConfig;
-  }
+    public void setAuthConfig(AuthConfig authConfig) {
+        this.authConfig = authConfig;
+    }
 }

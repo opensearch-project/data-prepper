@@ -21,4 +21,5 @@ dependencies {
     testImplementation testLibs.spring.test
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
     testImplementation project(':data-prepper-test-common')
+    testImplementation project(':data-prepper-plugins:blocking-buffer')
 }
