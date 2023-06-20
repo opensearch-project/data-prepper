@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -554,7 +555,7 @@ public class JacksonEventTest {
                 .withData(jsonString)
                 .getThis()
                 .build();
-        assertThat(event.formatString("test-${boo}-string"), is(equalTo(null)));
+        assertThrows(EventKeyNotFoundException.class, () -> event.formatString("test-${boo}-string"));
     }
 
     @Test

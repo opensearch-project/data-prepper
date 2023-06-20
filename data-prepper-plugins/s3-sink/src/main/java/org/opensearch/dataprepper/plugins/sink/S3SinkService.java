@@ -35,11 +35,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public class S3SinkService {
 
     private static final Logger LOG = LoggerFactory.getLogger(S3SinkService.class);
-    public static final String OBJECTS_SUCCEEDED = "s3ObjectsSucceeded";
-    public static final String OBJECTS_FAILED = "s3ObjectsFailed";
-    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS = "s3ObjectsEventsSucceeded";
-    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED = "s3ObjectsEventsFailed";
-    static final String S3_OBJECTS_SIZE = "s3ObjectSizeBytes";
+    public static final String OBJECTS_SUCCEEDED = "s3SinkObjectsSucceeded";
+    public static final String OBJECTS_FAILED = "s3SinkObjectsFailed";
+    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS = "s3SinkObjectsEventsSucceeded";
+    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED = "s3SinkObjectsEventsFailed";
+    static final String S3_OBJECTS_SIZE = "s3SinkObjectSizeBytes";
     private final S3SinkConfig s3SinkConfig;
     private final Lock reentrantLock;
     private final BufferFactory bufferFactory;
