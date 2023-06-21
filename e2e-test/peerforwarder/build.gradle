@@ -203,6 +203,7 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:common')
     integrationTestImplementation project(':data-prepper-plugins:log-generator-source')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
+    integrationTestImplementation project(':data-prepper-plugins:aws-plugin-api')
     integrationTestImplementation project(':data-prepper-plugins:otel-trace-group-processor')
     integrationTestImplementation 'org.awaitility:awaitility:4.2.0'
     integrationTestImplementation libs.opentelemetry.proto

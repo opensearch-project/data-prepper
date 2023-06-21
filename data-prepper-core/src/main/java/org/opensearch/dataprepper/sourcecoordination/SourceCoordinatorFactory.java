@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.sourcecoordination;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
@@ -20,6 +21,8 @@ import org.slf4j.LoggerFactory;
 public class SourceCoordinatorFactory {
     private static final Logger LOG = LoggerFactory.getLogger(SourceCoordinatorFactory.class);
 
+    private static final String SOURCE_COORDINATOR_PLUGIN_NAME_FOR_METRICS = "source-coordinator";
+
     private final SourceCoordinationConfig sourceCoordinationConfig;
     private final PluginFactory pluginFactory;
 
@@ -30,20 +33,20 @@ public class SourceCoordinatorFactory {
         this.pluginFactory = pluginFactory;
     }
 
-    public <T> SourceCoordinator<T> provideSourceCoordinator(final Class<T> clazz, final String ownerPrefix) {
+    public <T> SourceCoordinator<T> provideSourceCoordinator(final Class<T> clazz, final String subPipelineName) {
         if (sourceCoordinationConfig == null
                 || sourceCoordinationConfig.getSourceCoordinationStoreConfig() == null
                 || sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName() == null) {
             return null;
         }
 
-
-
         final SourceCoordinationStore sourceCoordinationStore =
                 pluginFactory.loadPlugin(SourceCoordinationStore.class, sourceCoordinationConfig.getSourceCoordinationStoreConfig());
 
+        final PluginMetrics sourceCoordinatorMetrics = PluginMetrics.fromNames(SOURCE_COORDINATOR_PLUGIN_NAME_FOR_METRICS, subPipelineName);
+
         LOG.info("Creating LeaseBasedSourceCoordinator with coordination store {} for sub-pipeline {}",
-                sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName(), ownerPrefix);
-        return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig, new PartitionManager<>(), ownerPrefix);
+                sourceCoordinationConfig.getSourceCoordinationStoreConfig().getName(), subPipelineName);
+        return new LeaseBasedSourceCoordinator<T>(clazz, sourceCoordinationStore, sourceCoordinationConfig, new PartitionManager<>(), subPipelineName, sourceCoordinatorMetrics);
     }
 }

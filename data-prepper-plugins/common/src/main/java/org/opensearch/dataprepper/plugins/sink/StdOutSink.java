@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 
@@ -43,6 +44,10 @@ public class StdOutSink implements Sink<Record<Object>> {
     private void checkTypeAndPrintObject(final Object object) {
         if (object instanceof Event) {
             System.out.println(((Event) object).toJsonString());
+            EventHandle eventHandle = ((Event)object).getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(true);
+            }
         } else {
             System.out.println(object);
         }

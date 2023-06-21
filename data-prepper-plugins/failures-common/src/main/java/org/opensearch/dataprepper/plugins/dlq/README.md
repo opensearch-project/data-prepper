@@ -36,6 +36,11 @@ Example:
 dlq-v2-apache-log-pipeline-opensearch-2023-04-05T15:26:19.152938Z-e7eb675a-f558-4048-8566-dac15a4f8343
 ```
 
+The full key path for a file written to the S3 DLQ will have the following pattern using the `key_path_prefix` from the 
+configuration and the file name specified above: `${key_path_prefix}${file name}`. If the `key_prefix` is non-null and is
+not suffixed with a `/`, one will be added by default. This will enforce a `/` is always between the `key_path_prefix`
+and `file name` when a `key_path_prefix` is provided. 
+
 The DLQ file will JSON file with an array of failed [DLQ Objects](#DLQ-Objects).
 
 ### Configurations
@@ -44,6 +49,7 @@ The DLQ file will JSON file with an array of failed [DLQ Objects](#DLQ-Objects).
 * `key_path_prefix` (Optional) : The key_prefix to use in the S3 bucket.  Defaults to “” . This field supports time value patterns variables like: `/%{yyyy}/%{MM}/%{dd}`. The pattern supports all the symbols that represent one hour or above and are listed in [Java DateTimeFormatter](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html). For example, with a pattern like `/%{yyyy}/%{MM}/%{dd}`, the following key prefix will be used: `/2023/01/24`.
 * `region` (Optional) : The AWS region of the S3 Bucket. Defaults to us-east-1.
 * `sts_role_arn` (Optional) : The STS role to assume to write to the AWS S3 bucket. Defaults to null, which will use the standard SDK behavior for credentials. The role or credentials used must have S3:PutObject permissions on the configured S3 Bucket.
+* `sts_external_id` (Optional): The STS external ID to attach to AssumeRole requests.
 
 ### Metrics
 

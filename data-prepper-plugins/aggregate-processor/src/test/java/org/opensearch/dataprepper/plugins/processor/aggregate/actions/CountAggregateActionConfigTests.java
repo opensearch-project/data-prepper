@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import org.junit.jupiter.api.extension.ExtendWith; 
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,7 +17,6 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

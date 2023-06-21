@@ -31,7 +31,7 @@ public class ObjectKey {
      * @return s3 object path
      */
     public static String buildingPathPrefix(final S3SinkConfig s3SinkConfig) {
-        String pathPrefix = s3SinkConfig.getBucketOptions().getObjectKeyOptions().getPathPrefix();
+        String pathPrefix = s3SinkConfig.getObjectKeyOptions().getPathPrefix();
         StringBuilder s3ObjectPath = new StringBuilder();
         if (pathPrefix != null && !pathPrefix.isEmpty()) {
             String[] pathPrefixList = pathPrefix.split("\\/");
@@ -53,7 +53,7 @@ public class ObjectKey {
      * @return s3 object name with prefix
      */
     public static String objectFileName(S3SinkConfig s3SinkConfig) {
-        String configNamePattern = s3SinkConfig.getBucketOptions().getObjectKeyOptions().getNamePattern();
+        String configNamePattern = s3SinkConfig.getObjectKeyOptions().getNamePattern();
         int extensionIndex = configNamePattern.lastIndexOf('.');
         if (extensionIndex > 0) {
             return S3ObjectIndexUtility.getObjectNameWithDateTimeId(configNamePattern.substring(0, extensionIndex)) + "."

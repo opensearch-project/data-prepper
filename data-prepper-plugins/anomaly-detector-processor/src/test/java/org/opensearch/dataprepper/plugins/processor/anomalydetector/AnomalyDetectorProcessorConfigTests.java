@@ -11,10 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 public class AnomalyDetectorProcessorConfigTests {
     @Test

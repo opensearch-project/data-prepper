@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor.oteltracegroup;
 
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -60,10 +62,11 @@ public class OTelTraceGroupProcessor extends AbstractProcessor<Record<Span>, Rec
     private final Counter recordsOutFixedTraceGroupCounter;
     private final Counter recordsOutMissingTraceGroupCounter;
 
-    public OTelTraceGroupProcessor(final PluginSetting pluginSetting) {
+    @DataPrepperPluginConstructor
+    public OTelTraceGroupProcessor(final PluginSetting pluginSetting, final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         otelTraceGroupProcessorConfig = OTelTraceGroupProcessorConfig.buildConfig(pluginSetting);
-        restHighLevelClient = otelTraceGroupProcessorConfig.getEsConnectionConfig().createClient();
+        restHighLevelClient = otelTraceGroupProcessorConfig.getEsConnectionConfig().createClient(awsCredentialsSupplier);
 
         recordsInMissingTraceGroupCounter = pluginMetrics.counter(RECORDS_IN_MISSING_TRACE_GROUP);
         recordsOutFixedTraceGroupCounter = pluginMetrics.counter(RECORDS_OUT_FIXED_TRACE_GROUP);

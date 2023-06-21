@@ -22,10 +22,10 @@ import java.util.Objects;
 public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private final List<CopyValueProcessorConfig.Entry> entries;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public CopyValueProcessor(final PluginMetrics pluginMetrics, final CopyValueProcessorConfig config, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public CopyValueProcessor(final PluginMetrics pluginMetrics, final CopyValueProcessorConfig config, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.entries = config.getEntries();
         this.expressionEvaluator = expressionEvaluator;
@@ -36,7 +36,7 @@ public class CopyValueProcessor extends AbstractProcessor<Record<Event>, Record<
         for(final Record<Event> record : records) {
             final Event recordEvent = record.getData();
             for(CopyValueProcessorConfig.Entry entry : entries) {
-                if (Objects.nonNull(entry.getCopyWhen()) && !expressionEvaluator.evaluate(entry.getCopyWhen(), recordEvent)) {
+                if (Objects.nonNull(entry.getCopyWhen()) && !expressionEvaluator.evaluateConditional(entry.getCopyWhen(), recordEvent)) {
                     continue;
                 }
 

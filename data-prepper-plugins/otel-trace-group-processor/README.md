@@ -48,6 +48,8 @@ Default is null.
 
 - `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon OpenSearch Service. If not provided the plugin will use the default credentials.
 
+- `aws_sts_external_id`: The external ID to attach to all AssumeRole requests.
+
 - `aws_sts_header_overrides`: An optional map of header overrides to make when assuming the IAM role for the sink plugin.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.

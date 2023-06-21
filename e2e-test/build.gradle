@@ -43,6 +43,10 @@ subprojects {
         into("${project.buildDir}/bin/data-prepper")
     }
 
+    dependencies {
+        testImplementation testLibs.junit.vintage
+    }
+
     ext {
         dataPrepperJarFilepath = "${project.buildDir.name}/bin/data-prepper/"
         targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : '11'

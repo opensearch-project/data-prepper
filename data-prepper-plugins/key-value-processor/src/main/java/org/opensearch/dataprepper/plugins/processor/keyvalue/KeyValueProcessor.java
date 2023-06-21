@@ -17,10 +17,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -32,6 +34,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
+    private final Set<String> includeKeysSet = new HashSet<String>();
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -50,7 +53,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             fieldDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex());
         } else {
             String regex;
-            if(keyValueProcessorConfig.getFieldSplitCharacters().isEmpty()) {
+            if (keyValueProcessorConfig.getFieldSplitCharacters().isEmpty()) {
                 regex = KeyValueProcessorConfig.DEFAULT_FIELD_SPLIT_CHARACTERS;
             } else {
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getFieldSplitCharacters());
@@ -86,6 +89,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         if(!validateRegex(keyValueProcessorConfig.getDeleteValueRegex())) {
             throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
+        }
+
+        if(keyValueProcessorConfig.getIncludeKeys() != null) {
+            includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         }
     }
 
@@ -130,6 +137,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 final String[] terms = keyValueDelimiterPattern.split(group, 2);
                 String key = terms[0];
                 Object value;
+
+                if (!includeKeysSet.isEmpty() && !includeKeysSet.contains(key)) {
+                    LOG.debug(String.format("Skipping not included key: '%s'", key));
+                    continue;
+                }
 
                 if(keyValueProcessorConfig.getDeleteKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteKeyRegex(), "")) {
                     key = key.replaceAll(keyValueProcessorConfig.getDeleteKeyRegex(), "");

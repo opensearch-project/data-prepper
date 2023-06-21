@@ -5,12 +5,11 @@
 
 package org.opensearch.dataprepper.model.event;
 
-import com.google.common.collect.ImmutableMap;
-
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Set;
 
@@ -28,7 +27,7 @@ public class DefaultEventMetadata implements EventMetadata {
 
     private final Instant timeReceived;
 
-    private final ImmutableMap<String, Object> attributes;
+    private Map<String, Object> attributes;
 
     private Set<String> tags;
 
@@ -41,7 +40,7 @@ public class DefaultEventMetadata implements EventMetadata {
 
         this.timeReceived = builder.timeReceived == null ? Instant.now() : builder.timeReceived;
 
-        this.attributes = builder.attributes == null ? ImmutableMap.of() : ImmutableMap.copyOf(builder.attributes);
+        this.attributes = builder.attributes == null ? new HashMap<>() : new HashMap<>(builder.attributes);
 
         this.tags = builder.tags == null ? new HashSet<>() : new HashSet(builder.tags);
     }
@@ -49,7 +48,7 @@ public class DefaultEventMetadata implements EventMetadata {
     private DefaultEventMetadata(final EventMetadata eventMetadata) {
         this.eventType = eventMetadata.getEventType();
         this.timeReceived = eventMetadata.getTimeReceived();
-        this.attributes = ImmutableMap.copyOf(eventMetadata.getAttributes());
+        this.attributes = new HashMap<>(eventMetadata.getAttributes());
         this.tags = new HashSet<>(eventMetadata.getTags());
     }
 
@@ -66,6 +65,11 @@ public class DefaultEventMetadata implements EventMetadata {
     @Override
     public Map<String, Object> getAttributes() {
         return attributes;
+    }
+
+    @Override
+    public void setAttribute(final String key, final Object value) {
+        attributes.put(key, value);
     }
 
     @Override

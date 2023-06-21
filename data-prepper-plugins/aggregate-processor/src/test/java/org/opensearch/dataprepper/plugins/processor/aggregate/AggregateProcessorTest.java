@@ -110,7 +110,7 @@ public class AggregateProcessorTest {
     private Timer timeElapsed;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     private Event event;
 
@@ -212,9 +212,9 @@ public class AggregateProcessorTest {
             when(aggregateIdentificationKeysHasher.createIdentificationKeysMapFromEvent(firstEvent))
                     .thenReturn(identificationKeysMap);
             when(aggregateActionSynchronizer.handleEventForGroup(firstEvent, identificationKeysMap, aggregateGroup)).thenReturn(firstAggregateActionResponse);
-            when(expressionEvaluator.evaluate(condition, event)).thenReturn(true);
-            when(expressionEvaluator.evaluate(condition, firstEvent)).thenReturn(true);
-            when(expressionEvaluator.evaluate(condition, secondEvent)).thenReturn(false);
+            when(expressionEvaluator.evaluateConditional(condition, event)).thenReturn(true);
+            when(expressionEvaluator.evaluateConditional(condition, firstEvent)).thenReturn(true);
+            when(expressionEvaluator.evaluateConditional(condition, secondEvent)).thenReturn(false);
             when(aggregateProcessorConfig.getWhenCondition()).thenReturn(condition);
             final AggregateProcessor objectUnderTest = createObjectUnderTest();
             when(aggregateGroupManager.getGroupsToConclude(eq(false))).thenReturn(Collections.emptyList());

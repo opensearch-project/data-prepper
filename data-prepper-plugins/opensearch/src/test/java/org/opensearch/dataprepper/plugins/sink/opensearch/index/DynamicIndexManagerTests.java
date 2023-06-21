@@ -5,35 +5,34 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import org.apache.commons.lang3.RandomStringUtils;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.client.IndicesClient;
 import org.opensearch.client.RestHighLevelClient;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSinkConfiguration;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Optional;
-import java.time.format.DateTimeFormatter;
 
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
-
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.MockitoAnnotations.initMocks;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import static org.junit.Assert.assertThrows;
-import org.apache.commons.lang3.RandomStringUtils;
 
 public class DynamicIndexManagerTests {
 
@@ -70,6 +69,9 @@ public class DynamicIndexManagerTests {
     @Mock
     private ClusterSettingsParser clusterSettingsParser;
 
+    @Mock
+    private TemplateStrategy templateStrategy;
+
     static final String EVENT_TYPE = "event";
 
     @BeforeEach
@@ -84,7 +86,7 @@ public class DynamicIndexManagerTests {
         when(restHighLevelClient.indices()).thenReturn(indicesClient);
         dynamicIndexManager = new DynamicIndexManager(
                 IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration,
-                clusterSettingsParser, mockIndexManagerFactory);
+                clusterSettingsParser, templateStrategy, mockIndexManagerFactory);
     }
 
     @Test
@@ -96,7 +98,7 @@ public class DynamicIndexManagerTests {
         String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC);
         innerIndexManager = mock(IndexManager.class);
         when(mockIndexManagerFactory.getIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, expectedIndexAlias)).thenReturn(innerIndexManager);
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
         final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
@@ -113,7 +115,7 @@ public class DynamicIndexManagerTests {
         String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC) + "-" + dateFormatter.format(AbstractIndexManager.getCurrentUtcTime());
         innerIndexManager = mock(IndexManager.class);
         when(mockIndexManagerFactory.getIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, expectedIndexAlias)).thenReturn(innerIndexManager);
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
         final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
@@ -129,7 +131,7 @@ public class DynamicIndexManagerTests {
         String expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", DYNAMIC);
         innerIndexManager = mock(IndexManager.class);
         when(mockIndexManagerFactory.getIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, expectedIndexAlias)).thenReturn(innerIndexManager);
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
 
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, DYNAMIC)).build();
@@ -138,18 +140,18 @@ public class DynamicIndexManagerTests {
             final String indexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
             assertThat(expectedIndexAlias, equalTo(indexName));
             verify(mockIndexManagerFactory, times(1)).getIndexManager(
-                    eq(IndexType.CUSTOM), eq(openSearchClient), eq(restHighLevelClient), eq(openSearchSinkConfiguration), anyString());
+                    eq(IndexType.CUSTOM), eq(openSearchClient), eq(restHighLevelClient), eq(openSearchSinkConfiguration), eq(templateStrategy), anyString());
         }
 
         expectedIndexAlias = INDEX_ALIAS.replace("${" + ID + "}", NEW_DYNAMIC);
         when(mockIndexManagerFactory.getIndexManager(
-                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, expectedIndexAlias)).thenReturn(innerIndexManager);
+                IndexType.CUSTOM, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy, expectedIndexAlias)).thenReturn(innerIndexManager);
         when(innerIndexManager.getIndexName(expectedIndexAlias)).thenReturn(expectedIndexAlias);
         event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(ID, NEW_DYNAMIC)).build();
         final String newIndexName = dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias));
         // When a new index is used, verify that getIndexManager is called again
         verify(mockIndexManagerFactory, times(2)).getIndexManager(
-                eq(IndexType.CUSTOM), eq(openSearchClient), eq(restHighLevelClient), eq(openSearchSinkConfiguration), anyString());
+                eq(IndexType.CUSTOM), eq(openSearchClient), eq(restHighLevelClient), eq(openSearchSinkConfiguration), eq(templateStrategy), anyString());
         assertThat(expectedIndexAlias, equalTo(newIndexName));
     }
 
@@ -161,6 +163,6 @@ public class DynamicIndexManagerTests {
         String configuredIndexAlias = openSearchSinkConfiguration.getIndexConfiguration().getIndexAlias();
 
         JacksonEvent event = JacksonEvent.builder().withEventType(EVENT_TYPE).withData(Map.of(RandomStringUtils.randomAlphabetic(10), DYNAMIC)).build();
-        assertThrows(IOException.class, () -> dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias)));
+        assertThrows(EventKeyNotFoundException.class, () -> dynamicIndexManager.getIndexName(event.formatString(configuredIndexAlias)));
     }
 }

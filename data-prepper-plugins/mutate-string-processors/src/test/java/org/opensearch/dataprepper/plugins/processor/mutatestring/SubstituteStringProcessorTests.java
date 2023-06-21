@@ -40,7 +40,7 @@ public class SubstituteStringProcessorTests {
     private SubstituteStringProcessorConfig config;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     @BeforeEach
     public void setup() {
@@ -147,7 +147,7 @@ public class SubstituteStringProcessorTests {
         final SubstituteStringProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("abcd");
 
-        when(expressionEvaluator.evaluate(substituteWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(substituteWhen, record.getData())).thenReturn(false);
         final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertThat(editedRecords.get(0).getData().toMap(), equalTo(record.getData().toMap()));

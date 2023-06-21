@@ -5,12 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.client.opensearch.OpenSearchClient;
-import org.opensearch.client.transport.OpenSearchTransport;
-import org.opensearch.client.transport.aws.AwsSdk2Transport;
-import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
@@ -26,25 +20,24 @@ import org.apache.http.ssl.SSLContexts;
 import org.opensearch.client.RestClient;
 import org.opensearch.client.RestClientBuilder;
 import org.opensearch.client.RestHighLevelClient;
+import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.transport.OpenSearchTransport;
+import org.opensearch.client.transport.aws.AwsSdk2Transport;
+import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
+import org.opensearch.client.transport.rest_client.RestClientTransport;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
-import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.retry.RetryPolicy;
-import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
-import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
-import software.amazon.awssdk.core.retry.conditions.RetryCondition;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.apache.ProxyConfiguration;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -62,7 +55,6 @@ import java.time.temporal.ValueRange;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -74,9 +66,6 @@ public class ConnectionConfiguration {
   private static final String AOS_SERVICE_NAME = "es";
   private static final String AOSS_SERVICE_NAME = "aoss";
   private static final String DEFAULT_AWS_REGION = "us-east-1";
-  private static final int STS_CLIENT_RETRIES = 10;
-  private static final long STS_CLIENT_BASE_BACKOFF_MILLIS = 1000l;
-  private static final long STS_CLIENT_MAX_BACKOFF_MILLIS = 60000l;
 
   public static final String HOSTS = "hosts";
   public static final String USERNAME = "username";
@@ -89,6 +78,7 @@ public class ConnectionConfiguration {
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
+  public static final String AWS_STS_EXTERNAL_ID = "aws_sts_external_id";
   public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
   public static final String PROXY = "proxy";
   public static final String SERVERLESS = "serverless";
@@ -109,6 +99,7 @@ public class ConnectionConfiguration {
   private final boolean awsSigv4;
   private final String awsRegion;
   private final String awsStsRoleArn;
+  private final String awsStsExternalId;
   private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
   private final String pipelineName;
@@ -169,6 +160,7 @@ public class ConnectionConfiguration {
     this.awsSigv4 = builder.awsSigv4;
     this.awsRegion = builder.awsRegion;
     this.awsStsRoleArn = builder.awsStsRoleArn;
+    this.awsStsExternalId = builder.awsStsExternalId;
     this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
     this.serverless = builder.serverless;
@@ -205,6 +197,7 @@ public class ConnectionConfiguration {
         builder.withAwsSigv4(true);
         builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
         builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
+        builder.withAWSStsExternalId((String)(awsOption.getOrDefault(AWS_STS_EXTERNAL_ID.substring(4), null)));
         builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
         builder.withServerless((Boolean)awsOption.getOrDefault(SERVERLESS, false));
     } else {
@@ -219,6 +212,7 @@ public class ConnectionConfiguration {
       builder.withAwsSigv4(true);
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
       builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
+      builder.withAWSStsExternalId(pluginSetting.getStringOrDefault(AWS_STS_EXTERNAL_ID, null));
       builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
     }
 
@@ -240,7 +234,7 @@ public class ConnectionConfiguration {
     return pipelineName;
   }
 
-  public RestHighLevelClient createClient() {
+  public RestHighLevelClient createClient(AwsCredentialsSupplier awsCredentialsSupplier) {
     final HttpHost[] httpHosts = new HttpHost[hosts.size()];
     int i = 0;
     for (final String host : hosts) {
@@ -253,7 +247,7 @@ public class ConnectionConfiguration {
      * We will not support FGAC and Custom endpoint domains. This will be followed in the next version.
      */
     if(awsSigv4) {
-      attachSigV4(restClientBuilder);
+      attachSigV4(restClientBuilder, awsCredentialsSupplier);
     } else {
       attachUserCredentials(restClientBuilder);
     }
@@ -270,29 +264,13 @@ public class ConnectionConfiguration {
     return new RestHighLevelClient(restClientBuilder);
   }
 
-  private void attachSigV4(final RestClientBuilder restClientBuilder) {
+  private void attachSigV4(final RestClientBuilder restClientBuilder, AwsCredentialsSupplier awsCredentialsSupplier) {
     //if aws signing is enabled we will add AWSRequestSigningApacheInterceptor interceptor,
     //if not follow regular credentials process
     LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
     final Aws4Signer aws4Signer = Aws4Signer.create();
-    final AwsCredentialsProvider credentialsProvider;
-    if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
-      AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
-              .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
-              .roleArn(awsStsRoleArn);
-
-      if(awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
-        assumeRoleRequestBuilder = assumeRoleRequestBuilder
-                .overrideConfiguration(configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
-      }
-
-      credentialsProvider = StsAssumeRoleCredentialsProvider.builder()
-              .stsClient(getStsClient())
-              .refreshRequest(assumeRoleRequestBuilder.build())
-              .build();
-    } else {
-      credentialsProvider = DefaultCredentialsProvider.create();
-    }
+    final AwsCredentialsOptions awsCredentialsOptions = createAwsCredentialsOptions();
+    final AwsCredentialsProvider credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
     final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(AOS_SERVICE_NAME, aws4Signer,
             credentialsProvider, awsRegion);
     restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
@@ -303,24 +281,14 @@ public class ConnectionConfiguration {
     });
   }
 
-  private StsClient getStsClient() {
-    final BackoffStrategy backoffStrategy = EqualJitterBackoffStrategy.builder()
-            .baseDelay(Duration.ofMillis(STS_CLIENT_BASE_BACKOFF_MILLIS))
-            .maxBackoffTime(Duration.ofMillis(STS_CLIENT_MAX_BACKOFF_MILLIS))
-            .build();
-    final RetryPolicy retryPolicy = RetryPolicy.builder()
-            .numRetries(STS_CLIENT_RETRIES)
-            .retryCondition(RetryCondition.defaultRetryCondition())
-            .backoffStrategy(backoffStrategy)
-            .throttlingBackoffStrategy(backoffStrategy)
-            .build();
-    final ClientOverrideConfiguration clientOverrideConfiguration = ClientOverrideConfiguration.builder()
-            .retryPolicy(retryPolicy)
-            .build();
-
-    return StsClient.builder()
-            .overrideConfiguration(clientOverrideConfiguration)
-            .build();
+  private AwsCredentialsOptions createAwsCredentialsOptions() {
+    final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
+        .withStsRoleArn(awsStsRoleArn)
+        .withStsExternalId(awsStsExternalId)
+        .withRegion(awsRegion)
+        .withStsHeaderOverrides(awsStsHeaderOverrides)
+        .build();
+    return awsCredentialsOptions;
   }
 
   private void attachUserCredentials(final RestClientBuilder restClientBuilder) {
@@ -393,30 +361,14 @@ public class ConnectionConfiguration {
     }
   }
 
-  public OpenSearchClient createOpenSearchClient(final RestHighLevelClient restHighLevelClient) {
-    return new OpenSearchClient(createOpenSearchTransport(restHighLevelClient));
+  public OpenSearchClient createOpenSearchClient(final RestHighLevelClient restHighLevelClient, final AwsCredentialsSupplier awsCredentialsSupplier) {
+    return new OpenSearchClient(createOpenSearchTransport(restHighLevelClient, awsCredentialsSupplier));
   }
 
-  private OpenSearchTransport createOpenSearchTransport(final RestHighLevelClient restHighLevelClient) {
+  private OpenSearchTransport createOpenSearchTransport(final RestHighLevelClient restHighLevelClient, final AwsCredentialsSupplier awsCredentialsSupplier) {
     if (awsSigv4) {
-      final AwsCredentialsProvider credentialsProvider;
-      if (awsStsRoleArn != null && !awsStsRoleArn.isEmpty()) {
-        AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
-                .roleSessionName("OpenSearch-Sink-" + UUID.randomUUID())
-                .roleArn(awsStsRoleArn);
-
-        if(awsStsHeaderOverrides != null && !awsStsHeaderOverrides.isEmpty()) {
-          assumeRoleRequestBuilder = assumeRoleRequestBuilder
-                  .overrideConfiguration(configuration -> awsStsHeaderOverrides.forEach(configuration::putHeader));
-        }
-
-        credentialsProvider = StsAssumeRoleCredentialsProvider.builder()
-                .stsClient(getStsClient())
-                .refreshRequest(assumeRoleRequestBuilder.build())
-                .build();
-      } else {
-        credentialsProvider = DefaultCredentialsProvider.create();
-      }
+      final AwsCredentialsOptions awsCredentialsOptions = createAwsCredentialsOptions();
+      final AwsCredentialsProvider credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
       final String serviceName = serverless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
       return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).getHostName(),
               serviceName, Region.of(awsRegion),
@@ -493,6 +445,7 @@ public class ConnectionConfiguration {
     private boolean awsSigv4;
     private String awsRegion;
     private String awsStsRoleArn;
+    private String awsStsExternalId;
     private Map<String, String> awsStsHeaderOverrides;
     private Optional<String> proxy = Optional.empty();
     private String pipelineName;
@@ -575,6 +528,12 @@ public class ConnectionConfiguration {
         validateStsRoleArn(awsStsRoleArn);
       }
       this.awsStsRoleArn = awsStsRoleArn;
+      return this;
+    }
+
+    public Builder withAWSStsExternalId(final String awsStsExternalId) {
+      checkArgument(awsStsExternalId == null || awsStsExternalId.length() <= 1224, "awsStsExternalId length cannot exceed 1224");
+      this.awsStsExternalId = awsStsExternalId;
       return this;
     }
 

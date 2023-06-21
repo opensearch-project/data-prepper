@@ -45,6 +45,10 @@ class S3ObjectReference {
         return "[bucketName=" + bucketName + ", key=" + key + "]";
     }
 
+    public String uri() {
+        return String.format("s3://%s/%s", bucketName, key);
+    }
+
     public static final class Builder {
 
         private final String bucketName;

@@ -5,21 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.dataprepper.metrics.MetricNames;
-import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
-import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.failures.DlqObject;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.sink.AbstractSink;
-import org.opensearch.dataprepper.model.sink.Sink;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -32,6 +17,22 @@ import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.common.unit.ByteSizeUnit;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
+import org.opensearch.dataprepper.model.failures.DlqObject;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.AbstractSink;
+import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
+import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
@@ -45,6 +46,7 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +59,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.StringJoiner;
-import java.util.function.Supplier;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
@@ -71,6 +73,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public static final String DYNAMIC_INDEX_DROPPED_EVENTS = "dynamicIndexDroppedEvents";
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
+  private static final int INITIALIZE_RETRY_WAIT_TIME_MS = 5000;
+  private final AwsCredentialsSupplier awsCredentialsSupplier;
 
   private DlqWriter dlqWriter;
   private BufferedWriter dlqFileWriter;
@@ -104,8 +108,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
-                        final PluginFactory pluginFactory) {
-    super(pluginSetting);
+                        final PluginFactory pluginFactory,
+                        final AwsCredentialsSupplier awsCredentialsSupplier) {
+    super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
+    this.awsCredentialsSupplier = awsCredentialsSupplier;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
@@ -144,12 +150,11 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
         LOG.error("Failed to initialize OpenSearch sink due to a configuration error.", e);
         this.shutdown();
         throw new RuntimeException(e.getMessage(), e);
+    } catch (IllegalArgumentException e) {
+        LOG.error("Failed to initialize OpenSearch sink due to a configuration error.", e);
+        this.shutdown();
+        throw e;
     } catch (Exception e) {
-        if (!BulkRetryStrategy.canRetry(e)) {
-            LOG.error("Failed to initialize OpenSearch sink with a non-retryable exception.", e);
-            this.shutdown();
-            throw e;
-        }
         LOG.warn("Failed to initialize OpenSearch sink with a retryable exception. ", e);
         closeFiles();
     }
@@ -157,11 +162,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   private void doInitializeInternal() throws IOException {
     LOG.info("Initializing OpenSearch sink");
-    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient();
-    openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient);
+    restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient(awsCredentialsSupplier);
+    openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
+    final TemplateStrategy templateStrategy = openSearchSinkConfig.getIndexConfiguration().getTemplateType().createTemplateStrategy(openSearchClient);
     indexManager = indexManagerFactory.getIndexManager(indexType, openSearchClient, restHighLevelClient,
-            openSearchSinkConfig, configuredIndexAlias);
+            openSearchSinkConfig, templateStrategy, configuredIndexAlias);
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
     if (dlqFile != null) {
       dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
@@ -177,7 +183,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
     bulkRetryStrategy = new BulkRetryStrategy(
             bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
-            this::logFailure,
+            this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
@@ -209,8 +215,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       String indexName = configuredIndexAlias;
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName));
-      } catch (IOException e) {
+      } catch (IOException | EventKeyNotFoundException e) {
+          LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
+          logFailureForDlqObjects(List.of(DlqObject.builder()
+                  .withEventHandle(event.getEventHandle())
+                  .withFailedData(FailedDlqData.builder().withDocument(event.toJsonString()).withIndex(indexName).withMessage(e.getMessage()).build())
+                  .withPluginName(pluginSetting.getName())
+                  .withPipelineName(pluginSetting.getPipelineName())
+                  .withPluginId(pluginSetting.getName())
+                  .build()), e);
           continue;
       }
 
@@ -285,19 +299,23 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     });
   }
 
-  private void logFailure(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
+  private void logFailureForBulkRequests(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
 
     final List<DlqObject> dlqObjects = failedBulkOperations.stream()
         .map(failedBulkOperationConverter::convertToDlqObject)
         .collect(Collectors.toList());
 
+    logFailureForDlqObjects(dlqObjects, failure);
+  }
+
+  private void logFailureForDlqObjects(final List<DlqObject> dlqObjects, final Throwable failure) {
     if (dlqFileWriter != null) {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
         final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
-              BulkOperationWriter.dlqObjectToString(dlqObject), message));
+                  BulkOperationWriter.dlqObjectToString(dlqObject), message));
           dlqObject.releaseEventHandle(true);
         } catch (final IOException e) {
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);

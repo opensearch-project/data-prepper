@@ -9,6 +9,7 @@ import com.linecorp.armeria.client.retry.Backoff;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.sqs.SqsClient;
@@ -27,34 +28,33 @@ public class SqsService {
     private final SqsClient sqsClient;
     private final PluginMetrics pluginMetrics;
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final S3EventMessageParser s3EventMessageParser;
 
     private Thread sqsWorkerThread;
 
     public SqsService(final AcknowledgementSetManager acknowledgementSetManager,
                       final S3SourceConfig s3SourceConfig,
                       final S3Service s3Accessor,
-                      final PluginMetrics pluginMetrics) {
+                      final PluginMetrics pluginMetrics,
+                      final AwsCredentialsProvider credentialsProvider) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3Accessor = s3Accessor;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
-        this.sqsClient = createSqsClient();
-        s3EventMessageParser = new S3EventMessageParser();
+        this.sqsClient = createSqsClient(credentialsProvider);
     }
 
     public void start() {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-        sqsWorkerThread = new Thread(new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, s3EventMessageParser, backoff));
+        sqsWorkerThread = new Thread(new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
         sqsWorkerThread.start();
     }
 
-    SqsClient createSqsClient() {
+    SqsClient createSqsClient(final AwsCredentialsProvider credentialsProvider) {
         LOG.info("Creating SQS client");
         return SqsClient.builder()
                 .region(s3SourceConfig.getAwsAuthenticationOptions().getAwsRegion())
-                .credentialsProvider(s3SourceConfig.getAwsAuthenticationOptions().authenticateAwsConfiguration())
+                .credentialsProvider(credentialsProvider)
                 .overrideConfiguration(ClientOverrideConfiguration.builder()
                         .retryPolicy(RetryPolicy.builder().numRetries(5).build())
                         .build())

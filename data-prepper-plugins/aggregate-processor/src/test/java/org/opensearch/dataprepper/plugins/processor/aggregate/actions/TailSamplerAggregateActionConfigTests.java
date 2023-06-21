@@ -38,14 +38,14 @@ public class TailSamplerAggregateActionConfigTests {
 
     @Test
     void testValidConfig() throws NoSuchFieldException, IllegalAccessException {
-        final double testPercent = ThreadLocalRandom.current().nextDouble(0.01, 99.9);
+        final int testPercent = ThreadLocalRandom.current().nextInt(1, 99);
         setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "percent", testPercent);
         assertThat(tailSamplerAggregateActionConfig.getPercent(), equalTo(testPercent));
     }
     
     @ParameterizedTest
-    @ValueSource(doubles = {0.0, 100.0, -1.0, 110.0})
-    void testInvalidConfig(double percent) throws NoSuchFieldException, IllegalAccessException {
+    @ValueSource(ints = {0, 100, -1, 110})
+    void testInvalidConfig(int percent) throws NoSuchFieldException, IllegalAccessException {
         setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "percent", percent);
         assertThat(tailSamplerAggregateActionConfig.isPercentValid(), equalTo(false));
     }
@@ -59,15 +59,15 @@ public class TailSamplerAggregateActionConfigTests {
 
     @Test
     void testErrorConditionEmptyOrNull() throws NoSuchFieldException, IllegalAccessException {
-        assertThat(tailSamplerAggregateActionConfig.getErrorCondition(), equalTo(null));
-        setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "errorCondition", "");
-        assertTrue(tailSamplerAggregateActionConfig.getErrorCondition().isEmpty());
+        assertThat(tailSamplerAggregateActionConfig.getCondition(), equalTo(null));
+        setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "condition", "");
+        assertTrue(tailSamplerAggregateActionConfig.getCondition().isEmpty());
     }
 
     @Test
     void testValidErrorCondition() throws NoSuchFieldException, IllegalAccessException {
         final String testErrorCondition = RandomStringUtils.randomAlphabetic(20);
-        setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "errorCondition", testErrorCondition);
-        assertThat(tailSamplerAggregateActionConfig.getErrorCondition(), equalTo(testErrorCondition));
+        setField(TailSamplerAggregateActionConfig.class, tailSamplerAggregateActionConfig, "condition", testErrorCondition);
+        assertThat(tailSamplerAggregateActionConfig.getCondition(), equalTo(testErrorCondition));
     }
 }

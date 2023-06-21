@@ -38,7 +38,7 @@ public class ConvertEntryTypeProcessorTests {
     private ConvertEntryTypeProcessorConfig mockConfig;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     private ConvertEntryTypeProcessor typeConversionProcessor;
 
@@ -191,7 +191,7 @@ public class ConvertEntryTypeProcessorTests {
         when(mockConfig.getConvertWhen()).thenReturn(convertWhen);
 
         final Record<Event> record = getMessage(UUID.randomUUID().toString(), TEST_KEY, testValue);
-        when(expressionEvaluator.evaluate(convertWhen, record.getData())).thenReturn(false);
+        when(expressionEvaluator.evaluateConditional(convertWhen, record.getData())).thenReturn(false);
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(record);
         assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue));

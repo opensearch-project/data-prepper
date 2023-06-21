@@ -38,7 +38,7 @@ public class TailSamplerAggregateActionTests {
     AggregateActionInput aggregateActionInput;
 
     @Mock
-    private ExpressionEvaluator<Boolean> expressionEvaluator;
+    private ExpressionEvaluator expressionEvaluator;
 
     private AggregateAction tailSamplerAggregateAction;
 
@@ -52,10 +52,10 @@ public class TailSamplerAggregateActionTests {
     @Test
     void testTailSamplerAggregateBasic() throws InterruptedException {
         final Duration testWaitPeriod = Duration.ofSeconds(3);
-        final double testPercent = 100;
+        final int testPercent = 100;
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
         when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
-        when(tailSamplerAggregateActionConfig.getErrorCondition()).thenReturn("");
+        when(tailSamplerAggregateActionConfig.getCondition()).thenReturn("");
         tailSamplerAggregateAction = createObjectUnderTest(tailSamplerAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();
@@ -89,14 +89,14 @@ public class TailSamplerAggregateActionTests {
     @Test
     void testTailSamplerAggregateWithErrorCondition() throws InterruptedException {
         final Duration testWaitPeriod = Duration.ofSeconds(3);
-        final double testPercent = 0;
+        final int testPercent = 0;
         final String statusKey = "status";
         final int errorStatusValue = 1;
         final String errorCondition = "/"+statusKey+" == "+errorStatusValue;
         when(tailSamplerAggregateActionConfig.getPercent()).thenReturn(testPercent);
         when(tailSamplerAggregateActionConfig.getWaitPeriod()).thenReturn(testWaitPeriod);
-        when(tailSamplerAggregateActionConfig.getErrorCondition()).thenReturn(errorCondition);
-        when(expressionEvaluator.evaluate(any(String.class), any(Event.class))).thenReturn(true);
+        when(tailSamplerAggregateActionConfig.getCondition()).thenReturn(errorCondition);
+        when(expressionEvaluator.evaluateConditional(any(String.class), any(Event.class))).thenReturn(true);
         tailSamplerAggregateAction = createObjectUnderTest(tailSamplerAggregateActionConfig);
         final String key = UUID.randomUUID().toString();
         final String value = UUID.randomUUID().toString();

@@ -50,6 +50,9 @@ class ManagementDisabledIndexManagerTest {
     private OpenSearchSinkConfiguration openSearchSinkConfiguration;
 
     @Mock
+    private TemplateStrategy templateStrategy;
+
+    @Mock
     private ClusterSettingsParser clusterSettingsParser;
 
     @Mock
@@ -73,8 +76,9 @@ class ManagementDisabledIndexManagerTest {
     @Mock
     private ResponseException responseException;
 
+
     @BeforeEach
-    void setup() throws IOException {
+    void setup() {
         baseIndexAlias = UUID.randomUUID().toString();
         indexAliasWithTimePattern = baseIndexAlias + "-%{yyyy.MM.dd.HH}";
         indexManagerFactory = new IndexManagerFactory(clusterSettingsParser);
@@ -101,7 +105,7 @@ class ManagementDisabledIndexManagerTest {
     void getIndexAlias_IndexWithTimePattern() {
         when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern);
         final IndexManager objectUnderTest = indexManagerFactory.getIndexManager(
-                IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
+                IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
         final Pattern expectedIndexPattern = Pattern.compile(baseIndexAlias + "-\\d{4}.\\d{2}.\\d{2}.\\d{2}");
         try {
             final String actualIndexPattern = objectUnderTest.getIndexName(null);
@@ -116,7 +120,7 @@ class ManagementDisabledIndexManagerTest {
         when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern + "randomtext");
         assertThrows(IllegalArgumentException.class,
                 () -> indexManagerFactory.getIndexManager(
-                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration));
+                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -127,7 +131,7 @@ class ManagementDisabledIndexManagerTest {
         when(indexConfiguration.getIndexAlias()).thenReturn(baseIndexAlias + "-%{yyyy" + invalidCharacter + ".MM.dd.HH}");
         assertThrows(IllegalArgumentException.class,
                 () -> indexManagerFactory.getIndexManager(
-                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration));
+                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -137,7 +141,7 @@ class ManagementDisabledIndexManagerTest {
         when(indexConfiguration.getIndexAlias()).thenReturn(baseIndexAlias + "-%{yyyy}-%{MM.dd.HH}");
         assertThrows(IllegalArgumentException.class,
                 () -> indexManagerFactory.getIndexManager(
-                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration));
+                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -147,7 +151,7 @@ class ManagementDisabledIndexManagerTest {
         when(indexConfiguration.getIndexAlias()).thenReturn(baseIndexAlias + "-%{%{yyyy.MM.dd}}");
         assertThrows(IllegalArgumentException.class,
                 () -> indexManagerFactory.getIndexManager(
-                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration));
+                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -158,7 +162,7 @@ class ManagementDisabledIndexManagerTest {
         when(indexConfiguration.getIndexAlias()).thenReturn(baseIndexAlias + "-%{yyyy.MM.dd.HH." + granularTimePattern + "}");
         assertThrows(IllegalArgumentException.class,
                 () -> indexManagerFactory.getIndexManager(
-                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration));
+                        IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy));
         verify(openSearchSinkConfiguration).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
     }
@@ -167,7 +171,7 @@ class ManagementDisabledIndexManagerTest {
     void setupIndex_does_nothing() throws IOException {
         when(indexConfiguration.getIndexAlias()).thenReturn(indexAliasWithTimePattern);
         final IndexManager objectUnderTest = indexManagerFactory.getIndexManager(
-                IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration);
+                IndexType.MANAGEMENT_DISABLED, openSearchClient, restHighLevelClient, openSearchSinkConfiguration, templateStrategy);
 
         verifyNoMoreInteractions(
                 restHighLevelClient,

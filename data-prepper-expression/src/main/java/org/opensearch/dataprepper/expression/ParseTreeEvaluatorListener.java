@@ -85,7 +85,7 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
                 if (op.shouldEvaluate(ctx)) {
                     operatorSymbolStack.pop();
                     try {
-                        performSingleOperation(op);
+                        performSingleOperation(op, ctx);
                     } catch (final Exception e) {
                         throw new ExpressionEvaluationException("Unable to evaluate the part of input statement: "
                                 + getPartialStatementFromContext(ctx), e);
@@ -95,8 +95,8 @@ class ParseTreeEvaluatorListener extends DataPrepperExpressionBaseListener {
         }
     }
 
-    private void performSingleOperation(final Operator<?> operator) {
-        final int numOfArgs = operator.getNumberOfOperands();
+    private void performSingleOperation(final Operator<?> operator, final ParserRuleContext ctx) {
+        final int numOfArgs = operator.getNumberOfOperands(ctx);
         final Object[] args = new Object[numOfArgs];
         for (int i = numOfArgs - 1; i >= 0; i--) {
             args[i] = operandStack.pop();

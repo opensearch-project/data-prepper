@@ -10,7 +10,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.codec.csv.CsvInputCodecConfig;
 import org.opensearch.dataprepper.plugins.codec.csv.CsvInputCodec;
 
-import java.io.OutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Random;
 
@@ -28,11 +29,13 @@ class CsvRecordsGenerator implements RecordsGenerator {
     private final Random random = new Random();
 
     @Override
-    public void write(final int numberOfRecords, final OutputStream outputStream) {
-        try (final PrintWriter printWriter = new PrintWriter(outputStream)) {
+    public void write(final File file, int numberOfRecords) {
+        try (final PrintWriter printWriter = new PrintWriter(file)) {
             for (int i = 0; i < numberOfRecords; i++) {
                 writeLine(printWriter);
             }
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -94,5 +97,10 @@ class CsvRecordsGenerator implements RecordsGenerator {
     @Override
     public String getS3SelectExpression() {
         return "SELECT * FROM S3OBJECT";
+    }
+
+    @Override
+    public boolean canCompress() {
+        return true;
     }
 }
