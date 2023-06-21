@@ -85,9 +85,9 @@ public class SqsSourceTask implements Runnable{
            LOG.info("Thread Name : {} , messages processed: {}",Thread.currentThread().getName(),messages.size());
            sqsMetrics.getSqsMessagesReceivedCounter().increment();
            try {
-               deleteMessageBatchRequestEntries = sqsHandler.handleMessage(messages, acknowledgementSet);
+               deleteMessageBatchRequestEntries = sqsHandler.handleMessages(messages, acknowledgementSet);
            } catch(final Exception e) {
-               LOG.error("Exception while handleMessage : ",e);
+               LOG.error("Error while processing handleMessages : ",e);
                sqsService.applyBackoff();
            }
            if(deleteMessageBatchRequestEntries != null) {

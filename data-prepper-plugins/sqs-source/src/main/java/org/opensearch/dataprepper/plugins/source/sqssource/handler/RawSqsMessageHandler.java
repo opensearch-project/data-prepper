@@ -45,7 +45,7 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
      * @return AcknowledgementSet - will generate the AcknowledgementSet if endToEndAcknowledgementsEnabled is true else null
      */
     @Override
-    public List<DeleteMessageBatchRequestEntry> handleMessage(final List<Message> messages,
+    public List<DeleteMessageBatchRequestEntry> handleMessages(final List<Message> messages,
                                                               final AcknowledgementSet acknowledgementSet) {
         final List<Record<Event>> events = new ArrayList<>(messages.size());
         messages.forEach(message -> {

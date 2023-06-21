@@ -11,6 +11,6 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import java.util.List;
 
 public interface SqsMessageHandler {
-    List<DeleteMessageBatchRequestEntry> handleMessage(final List<Message> messages,
+    List<DeleteMessageBatchRequestEntry> handleMessages(final List<Message> messages,
                                                        final AcknowledgementSet acknowledgementSet);
 }
