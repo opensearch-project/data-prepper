@@ -16,7 +16,6 @@ import java.time.Duration;
  * pipelines.yaml
  */
 public class TopicConfig {
-
     private static final String AUTO_COMMIT = "false";
     private static final Duration AUTOCOMMIT_INTERVAL = Duration.ofSeconds(5);
     private static final Duration SESSION_TIMEOUT = Duration.ofSeconds(45);
@@ -113,10 +112,6 @@ public class TopicConfig {
 
     public void setGroupId(String groupId) {
         this.groupId = groupId;
-    }
-
-    public Integer getMaxRetryAttempts() {
-        return maxRetryAttempts;
     }
 
     public void setMaxRetryAttempts(Integer maxRetryAttempts) {
