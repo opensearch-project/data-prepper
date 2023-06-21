@@ -19,3 +19,4 @@ service-map-pipeline:
         username: "admin"
         password: "admin"
         index_type: trace-analytics-service-map
+        flush_timeout: 5000

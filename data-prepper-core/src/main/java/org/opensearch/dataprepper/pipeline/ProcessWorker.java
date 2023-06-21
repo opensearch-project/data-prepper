@@ -117,9 +117,8 @@ public class ProcessWorker implements Runnable {
                 processAcknowledgements(inputEvents, records);
             }
         }
-        if (!records.isEmpty()) {
-            postToSink(records);
-        }
+
+        postToSink(records);
         // Checkpoint the current batch read from the buffer after being processed by processors and sinks.
         readBuffer.checkpoint(checkpointState);
     }
