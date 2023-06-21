@@ -3,13 +3,14 @@ plugins {
 }
 
 group = 'org.opensearch.dataprepper.plugins.processor'
-version = '2.3.0-SNAPSHOT'
+version = '2.4.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
+
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
@@ -17,9 +18,45 @@ dependencies {
     implementation 'org.apache.parquet:parquet-common:1.12.3'
     testImplementation project(path: ':data-prepper-test-common')
     testImplementation project(path: ':data-prepper-plugins:log-generator-source')
-
+    implementation files('./rubygems/rubygems.jar')
 }
 
 test {
     useJUnitPlatform()
+}
+
+configurations {
+    // So that runBundleInstall task can be resolved
+    resolveImplementation {
+        extendsFrom implementation
+        canBeResolved = true
+    }
+}
+
+task runBundleInstall(type: Exec) {
+    dependsOn configurations.resolveImplementation
+
+    doFirst {
+        println "Name: $name"
+        // Get the path of the JRuby jar
+        def jrubyPath = configurations.resolveImplementation.files.find {
+            it.name.contains('jruby-complete')
+        }
+
+        if (jrubyPath == null) {
+            throw new GradleException('JRuby jar not found in the implementation dependencies.')
+        }
+        file('runBundlerToUpdateGems.sh').setExecutable(true, false) // The first argument to setExecutable is whether the file should be executable, and the second argument is whether this permission should be applied to all users (false means it's only applied to the current user).
+
+        println "Running script with JRuby at $jrubyPath"
+
+        commandLine 'bash', './runBundlerToUpdateGems.sh', jrubyPath.toString()
+    }
+
+    // Run the script only when it's explicitly called
+    onlyIf {
+        gradle.startParameter.taskNames.contains("runBundleInstall") || // gradle runScript
+                gradle.startParameter.taskNames.contains(":data-prepper-plugins:ruby-processor:runBundleInstall") // ./gradlew :data-prepper-plugins:ruby-processor:runScript
+
+    }
 }

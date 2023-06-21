@@ -3,6 +3,7 @@ package org.opensearch.dataprepper.plugins.processor.ruby;
 import org.checkerframework.checker.units.qual.C;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -19,6 +20,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -571,6 +574,156 @@ public class RubyProcessorIT {
         Matcher matcher = compiledPattern.matcher(rubyCode);
         assertThat(matcher.find(), equalTo(expectedRegexMatchValue));
     }
+
+    @Nested
+    class nested_GemTest {
+        void nestedGemTestMethod(String toRequire, String operation, String expectedResult) {
+            // create new container
+            CODE_STRING = String.format("event.put('test_result', %s)",operation);
+            setRubyProcessorConfigField("code", CODE_STRING);
+
+//            File gemDir = new File("./src/main/resources/vendor/gems/jruby/3.1.0/gems");
+//            String loadPathUpdates = "";
+//
+//            if (gemDir.isDirectory()) {
+//                String[] gemNames = gemDir.list();
+//                for (String gemName : gemNames) {
+//                    if (gemName.contains("concurrent-ruby")) {
+//                        continue;
+//                    }
+//                    Path gemPath = Paths.get(gemDir.toString(), gemName, "lib");
+//                    loadPathUpdates += String.format("$LOAD_PATH << '%s'\n", gemPath);
+//                }
+//            }
+//
+//            loadPathUpdates += "$LOAD_PATH << './src/main/resources/vendor/gems/jruby/3.1.0/gems/concurrent-ruby-1.2.2/lib/concurrent-ruby'\n";
+//
+//
+//
+//            String LOAD_PATH_MAGIC =
+////                    "$LOAD_PATH << '/Users/finnrobl/.rbenv/versions/jruby-9.4.2.0/lib/ruby/gems/shared/gems/i18n-1.14.1/lib'\n" +
+//                    "$LOAD_PATH << '/Users/finnrobl/.rbenv/versions/jruby-9.4.2.0/lib/ruby/gems/shared/gems/jmespath-1.6.2/lib'\n" +
+//                    "$LOAD_PATH << '/Users/finnrobl/.rbenv/versions/jruby-9.4.2.0/lib/ruby/gems/shared/gems/concurrent-ruby-1.2.2/lib'\n" +
+//                                    "$LOAD_PATH << '/Users/finnrobl/.rbenv/versions/jruby-9.4.2.0/lib/ruby/gems/shared/gems/i18n-1.14.1/lib'\n";
+//
+//            LOAD_PATH_MAGIC = loadPathUpdates;
+            String initCode =
+//                    LOAD_PATH_MAGIC +
+                    "puts $LOAD_PATH\n" +toRequire + "\nputs 'success'";
+            setRubyProcessorConfigField("initCode", initCode);
+
+            PluginMetrics pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, TEST_PIPELINE_NAME);
+
+            rubyProcessor = new RubyProcessor(pluginMetrics, rubyProcessorConfig);
+
+            final List<Record<Event>> records = getSampleEventLogs();
+            final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+
+            for (int recordNumber = 0; recordNumber < parsedRecords.size(); recordNumber++) {
+                final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+                assertThat(parsedEvent.get("test_result", String.class), equalTo(expectedResult));
+            }
+        }
+        @Test
+        void test_all_gems() {
+            String toRequire = "require 'concurrent-ruby'\n" +
+                    "require 'diff-lcs'\n" +
+                    "require 'i18n'\n" +
+                    "require 'jmespath'\n" +
+                    "require 'tzinfo'\n" +
+                    "require 'i18n'\n" +
+                    "require 'mime/types'\n";
+            String toRun = "puts JMESPath.search('foo.bar', foo: { bar: 'baz' })  # should print 'baz'\n" +
+                    "puts Diff::LCS.diff('foo', 'foo').to_s\n"
+                    + "\n$my_map = Concurrent::Map.new\n" +
+                    "$my_map[:key] = 'value'\n" +
+                    "puts my_map[:key]\n" +
+                    "puts I18n.locale.to_s\n" +
+                    "puts JSON.parse('{\"hello\":\"world\"}').to_s\n" +
+                    "puts TZInfo::Timezone.get('America/New_York').name.to_s\n" +
+                    "puts MIME::Types['text/plain'].first.extensions.first\n";
+
+        }
+//            "puts JMESPath.search('foo.bar', foo: { bar: 'baz' })  # should print 'baz'\n
+//        puts Diff::LCS.diff('foo', 'foo').to_s\n
+//                $my_map = Concurrent::Map.new\n
+//        $my_map[:key] = 'value'\n
+//        puts my_map[:key]\n
+//        puts I18n.locale.to_s\n
+//        puts JSON.parse('{\"hello\":\"world\"}').to_s\n
+//        puts TZInfo::Timezone.get('America/New_York').name.to_s\n
+//        puts MIME::Types['text/plain'].first.extensions.first\n";
+        @Test
+        void when_requireJmespath_then_works() {
+            String toRequire = "require 'jmespath'";
+            String operation = "JMESPath.search('foo.bar', foo: { bar: 'baz' })  # should print 'baz'\n";
+            String expectedResult = "baz";
+            nestedGemTestMethod(toRequire, operation, expectedResult);
+//            assertThat(nestedGemTestMethod(toRequire, operation, expectedResult), equalTo(true));
+        }
+
+        @Test
+        void when_require_Diff_Lcs_then_works() {
+            String toRequire = "require 'diff-lcs'";
+            String operation = "Diff::LCS.diff('foo', 'foo').to_s\n";
+            String expectedResult = "[]";
+            nestedGemTestMethod(toRequire, operation, expectedResult);
+//            assertThat(nestedGemTestMethod(toRequire, operation, expectedResult), equalTo(true));
+        }
+
+        @Test
+        void when_require_concurrent_map_then_works() {
+
+            String toRequire =
+                    "require 'concurrent'" +
+
+//                    "require 'concurrent-ruby'" +
+                    "\n$my_map = Concurrent::Map.new\n" +
+                    "$my_map[:key] = 'value'\n" +
+                    "# prints \"value\"\n";
+            String operation = "$my_map[:key]";
+            String expectedResult = "value";
+            nestedGemTestMethod(toRequire, operation, expectedResult);
+        }
+
+
+        @Test
+        void when_require_i18n_then_works() {
+            String toRequire = "puts $LOAD_PATH\nrequire 'i18n'\n"
+//                    +
+//                    "I18n.locale = en"
+                    ;
+            String operation = "I18n.locale.to_s";
+            String expectedResult = "en";
+            nestedGemTestMethod(toRequire, operation, expectedResult);
+        }
+
+        @Test
+        void when_require_tzInfo_then_works() {
+            String toRequire = "require 'tzinfo'";
+            String operation = "TZInfo::Timezone.get('America/New_York').name.to_s";
+            String expectedResult = "America/New_York";
+            nestedGemTestMethod(toRequire, operation, expectedResult);
+        }
+
+        @Test
+        void when_require_json_then_works() {
+            String toRequire = "require 'json'";
+            String operation = "JSON.parse('{\"hello\":\"world\"}').to_s";
+            String expectedResult = "{\"hello\"=>\"world\"}";
+            nestedGemTestMethod(toRequire, operation, expectedResult);
+        }
+
+        @Test
+        void when_require_mime_types_then_works() {
+            String toRequire = "require 'mime/types'";
+            String operation = "MIME::Types['text/plain'].first.extensions.first";
+            String expectedResult = "txt";
+            nestedGemTestMethod(toRequire, operation, expectedResult);
+        }
+    }
+
     private List<Record<Event>> runGenericStartupCode(String code) throws IOException {
 
         String testDataFilePath = "LocalInputFileTest";
