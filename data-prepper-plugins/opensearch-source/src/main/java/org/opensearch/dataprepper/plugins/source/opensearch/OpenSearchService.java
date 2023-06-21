@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.NoSearchContextWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.ScrollWorker;
@@ -75,6 +76,9 @@ public class OpenSearchService {
                 break;
             case SCROLL:
                 searchWorker = new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
+                break;
+            case NONE:
+                searchWorker = new NoSearchContextWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
                 break;
             default:
                 throw new IllegalArgumentException(

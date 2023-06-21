@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.NoSearchContextWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.ScrollWorker;
@@ -133,6 +134,24 @@ public class OpenSearchServiceTest {
 
         try (final MockedConstruction<ScrollWorker> scrollWorkerMockedConstruction = mockConstruction(ScrollWorker.class, (scrollWorker, context) -> {
             searchWorker = scrollWorker;
+        })) {}
+
+        createObjectUnderTest().start();
+
+        verify(scheduledExecutorService).schedule(ArgumentMatchers.any(Runnable.class), eq(0L), eq(TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    void search_context_types_get_submitted_correctly_for_no_search_context_and_executor_service_with_start_time_in_the_past() {
+        when(openSearchAccessor.getSearchContextType()).thenReturn(SearchContextType.NONE);
+        final Instant startTime = Instant.now().minusSeconds(60);
+
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getStartTime()).thenReturn(startTime);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        try (final MockedConstruction<NoSearchContextWorker> noSearchContextWorkerMockedConstruction = mockConstruction(NoSearchContextWorker.class, (noSearchContextWorker, context) -> {
+            searchWorker = noSearchContextWorker;
         })) {}
 
         createObjectUnderTest().start();

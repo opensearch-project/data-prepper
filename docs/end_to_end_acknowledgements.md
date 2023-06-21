@@ -1,5 +1,5 @@
 
-## End-to-end Acknowledgements
+## End-to-end Acknowledgments
 The Data Prepper framework offers a reliable way for sources to ensure the durability and reliability of data by tracking its delivery to sinks through end-to-end acknowledgments. If the pipeline has multiple sinks, including other pipeline sinks, the event level acknowledgments are sent only after the event is sent to all final sinks. The framework enables a source to create an acknowledgment set to monitor a batch of events and receive a positive acknowledgment when those events are successfully pushed to the sinks or negative acknowledgment when any one of the events could not be pushed to the sinks for any reason. In the event of a failure or crash of any component of the Data Prepper, if it is unable to send an event, the source will not receive an acknowledgment. In this case, the source will time out and can take necessary actions like retrying or logging the failure.
 
 ### Limitations

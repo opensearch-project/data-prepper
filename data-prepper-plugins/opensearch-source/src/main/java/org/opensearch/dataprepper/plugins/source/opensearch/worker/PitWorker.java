@@ -21,7 +21,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeResults;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,19 +133,19 @@ public class PitWorker implements SearchWorker, Runnable {
         }
 
         final SearchConfiguration searchConfiguration = openSearchSourceConfiguration.getSearchConfiguration();
-        SearchPointInTimeResults searchPointInTimeResults = null;
+        SearchWithSearchAfterResults searchWithSearchAfterResults = null;
 
         // todo: Pass query and sort options from SearchConfiguration to the search request
         do {
             try {
-                searchPointInTimeResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
+                searchWithSearchAfterResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
                         .withPitId(openSearchIndexProgressState.getPitId())
                         .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
                         .withPaginationSize(searchConfiguration.getBatchSize())
-                        .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchPointInTimeResults))
+                        .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchWithSearchAfterResults))
                         .build());
 
-                searchPointInTimeResults.getDocuments().stream().map(Record::new).forEach(record -> {
+                searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {
                     try {
                         bufferAccumulator.add(record);
                     } catch (Exception e) {
@@ -159,10 +159,10 @@ public class PitWorker implements SearchWorker, Runnable {
                 throw new RuntimeException(e);
             }
 
-            openSearchIndexProgressState.setSearchAfter(searchPointInTimeResults.getNextSearchAfter());
+            openSearchIndexProgressState.setSearchAfter(searchWithSearchAfterResults.getNextSearchAfter());
             openSearchIndexProgressState.setKeepAlive(Duration.ofMillis(openSearchIndexProgressState.getKeepAlive()).plus(EXTEND_KEEP_ALIVE_DURATION).toMillis());
             sourceCoordinator.saveProgressStateForPartition(indexName, openSearchIndexProgressState);
-        } while (searchPointInTimeResults.getDocuments().size() == searchConfiguration.getBatchSize());
+        } while (searchWithSearchAfterResults.getDocuments().size() == searchConfiguration.getBatchSize());
 
         try {
             bufferAccumulator.flush();
@@ -178,15 +178,15 @@ public class PitWorker implements SearchWorker, Runnable {
         return new OpenSearchIndexProgressState();
     }
 
-    private List<String> getSearchAfter(final OpenSearchIndexProgressState openSearchIndexProgressState, final SearchPointInTimeResults searchPointInTimeResults) {
-        if (Objects.isNull(searchPointInTimeResults) && Objects.isNull(openSearchIndexProgressState.getSearchAfter())) {
+    private List<String> getSearchAfter(final OpenSearchIndexProgressState openSearchIndexProgressState, final SearchWithSearchAfterResults searchWithSearchAfterResults) {
+        if (Objects.isNull(searchWithSearchAfterResults) && Objects.isNull(openSearchIndexProgressState.getSearchAfter())) {
             return null;
         }
 
-        if (Objects.isNull(searchPointInTimeResults) && Objects.nonNull(openSearchIndexProgressState.getSearchAfter())) {
+        if (Objects.isNull(searchWithSearchAfterResults) && Objects.nonNull(openSearchIndexProgressState.getSearchAfter())) {
             return openSearchIndexProgressState.getSearchAfter();
         }
 
-        return searchPointInTimeResults.getNextSearchAfter();
+        return searchWithSearchAfterResults.getNextSearchAfter();
     }
 }

@@ -3,9 +3,8 @@ log-pipeline:
     kafka:
       bootstrap_servers:
         - 127.0.0.1:9093
-      auth_type: plaintext
       topics:
-        - name: my-topic-2
+        - name: my-topic-1
           group_name: kafka-consumer-group-2
           group_id: DPKafkaProj-2
           workers: 10 #optional and default is 10
@@ -25,10 +24,28 @@ log-pipeline:
           retry_backoff: 100  #optional and dafault is 10s
           max_poll_interval: 300000  #optional and dafault is 300000s
           consumer_max_poll_records: 500  #optional and dafault is 500
-        - name: my-topic-1
+        - name: my-topic-2
           group_id: DPKafkaProj-1
       schema:
         registry_url: http://localhost:8081/
         version: 1
+      authentication:
+        sasl_plaintext:
+          username: admin
+          password: admin-secret
+        sasl_oauth:
+          oauth_client_id: 0oa9wc21447Pc5vsV5d7
+          oauth_client_secret: aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPa
+          oauth_login_server: https://dev-13650048.okta.com
+          oauth_login_endpoint: /oauth2/default/v1/token
+          oauth_login_grant_type: refresh_token
+          oauth_login_scope: kafka
+          oauth_introspect_server: https://dev-13650048.okta.com
+          oauth_introspect_endpoint: /oauth2/default/v1/introspect
+          oauth_token_endpoint_url: https://dev-13650048.okta.com/oauth2/default/v1/token
+          oauth_sasl_mechanism: OAUTHBEARER
+          oauth_security_protocol: SASL_PLAINTEXT
+          oauth_sasl_login_callback_handler_class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
+          oauth_jwks_endpoint_url: https://dev-13650048.okta.com/oauth2/default/v1/keys
   sink:
     - stdout:
