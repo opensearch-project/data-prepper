@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.plugins.aws.sqs.common.handler.SqsMessageHandl
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -29,10 +28,14 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
 
     private final Buffer<Record<Event>> buffer;
 
+    private final int bufferTimeOut;
+
     public RawSqsMessageHandler(final Buffer<Record<Event>> buffer,
-                                final SqsService sqsService){
+                                final SqsService sqsService,
+                                final int bufferTimeOut){
         this.buffer = buffer;
         this.sqsService = sqsService;
+        this.bufferTimeOut = bufferTimeOut;
     }
 
     /**
@@ -54,7 +57,7 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
         });
         try {
             if(!events.isEmpty())
-                buffer.writeAll(events, (int) Duration.ofSeconds(10).toMillis());
+                buffer.writeAll(events, bufferTimeOut);
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

@@ -133,7 +133,7 @@ class SqsSourceTaskTest {
 
     private SqsSourceTask createObjectUnderTest(Buffer<Record<Event>> buffer,boolean endToEndAckFlag) {
         sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
-        sqsHandler = new RawSqsMessageHandler(buffer,sqsService);
+        sqsHandler = new RawSqsMessageHandler(buffer,sqsService,10);
         sqsOptions = new SqsOptions.Builder()
                 .setSqsUrl("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue")
                 .setVisibilityTimeout(Duration.ofSeconds(30))

@@ -45,7 +45,7 @@ class RawSqsMessageHandlerTest {
         String receiptHandle = UUID.randomUUID().toString();
         List<Message> messageList = List.of(Message.builder().body(message).messageId(messageId).receiptHandle(receiptHandle).build());
         SqsService sqsService = new SqsService(mock(SqsMetrics.class),mock(SqsClient.class),mock(Backoff.class));
-        RawSqsMessageHandler rawSqsMessageHandler = new RawSqsMessageHandler(buffer,sqsService);
+        RawSqsMessageHandler rawSqsMessageHandler = new RawSqsMessageHandler(buffer,sqsService,10);
         final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = rawSqsMessageHandler.handleMessage(messageList, acknowledgementSet);
 
 

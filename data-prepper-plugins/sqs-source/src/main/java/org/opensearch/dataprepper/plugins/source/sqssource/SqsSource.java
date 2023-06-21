@@ -35,6 +35,8 @@ public class SqsSource implements Source<Record<Event>> {
 
     static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
 
+    static final int BUFFER_TIMEOUT =  (int) Duration.ofSeconds(10).toMillis();
+
     static final double JITTER_RATE = 0.20;
 
     private final SqsSourceConfig sqsSourceConfig;
@@ -78,7 +80,7 @@ public class SqsSource implements Source<Record<Event>> {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
         final SqsService sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
-        final SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService);
+        final SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService,BUFFER_TIMEOUT);
         final SqsOptions.Builder sqsOptionsBuilder = new SqsOptions.Builder()
                 .setPollDelay(sqsSourceConfig.getPollingFrequency())
                 .setVisibilityTimeout(sqsSourceConfig.getVisibilityTimeout())
