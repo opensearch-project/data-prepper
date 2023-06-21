@@ -18,6 +18,7 @@ public class S3ObjectPluginMetrics {
     static final String S3_OBJECTS_FAILED_NOT_FOUND_ACCESS_DENIED = "s3ObjectsAccessDenied";
     static final String S3_OBJECTS_TIME_ELAPSED_METRIC_NAME = "s3ObjectReadTimeElapsed";
     static final String S3_OBJECTS_SIZE = "s3ObjectSizeBytes";
+    static final String S3_OBJECTS_NO_RECORDS_FOUND = "s3ObjectNoRecordsFound";
     private final Counter s3ObjectsFailedCounter;
     private final Counter s3ObjectsFailedNotFoundCounter;
     private final Counter s3ObjectsFailedAccessDeniedCounter;
@@ -26,6 +27,7 @@ public class S3ObjectPluginMetrics {
     private final DistributionSummary s3ObjectSizeSummary;
     private final DistributionSummary s3ObjectSizeProcessedSummary;
     private final DistributionSummary s3ObjectEventsSummary;
+    private final Counter s3ObjectNoRecordsFound;
 
     public S3ObjectPluginMetrics(final PluginMetrics pluginMetrics){
         s3ObjectsFailedCounter = pluginMetrics.counter(S3_OBJECTS_FAILED_METRIC_NAME);
@@ -36,6 +38,7 @@ public class S3ObjectPluginMetrics {
         s3ObjectSizeSummary = pluginMetrics.summary(S3_OBJECTS_SIZE);
         s3ObjectSizeProcessedSummary = pluginMetrics.summary(S3_OBJECTS_SIZE_PROCESSED);
         s3ObjectEventsSummary = pluginMetrics.summary(S3_OBJECTS_EVENTS);
+        s3ObjectNoRecordsFound = pluginMetrics.counter(S3_OBJECTS_NO_RECORDS_FOUND);
     }
 
     public Counter getS3ObjectsFailedCounter() {
@@ -68,5 +71,8 @@ public class S3ObjectPluginMetrics {
 
     public DistributionSummary getS3ObjectEventsSummary() {
         return s3ObjectEventsSummary;
+    }
+    public Counter getS3ObjectNoRecordsFound() {
+        return s3ObjectNoRecordsFound;
     }
 }

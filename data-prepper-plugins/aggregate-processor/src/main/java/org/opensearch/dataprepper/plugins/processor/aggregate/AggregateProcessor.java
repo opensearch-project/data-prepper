@@ -46,15 +46,15 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     private boolean forceConclude = false;
     private final String whenCondition;
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
-    public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+    public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final ExpressionEvaluator expressionEvaluator) {
         this(aggregateProcessorConfig, pluginMetrics, pluginFactory, new AggregateGroupManager(aggregateProcessorConfig.getGroupDuration()),
                 new AggregateIdentificationKeysHasher(aggregateProcessorConfig.getIdentificationKeys()), new AggregateActionSynchronizer.AggregateActionSynchronizerProvider(), expressionEvaluator);
     }
     public AggregateProcessor(final AggregateProcessorConfig aggregateProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory, final AggregateGroupManager aggregateGroupManager,
-                              final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher, final AggregateActionSynchronizer.AggregateActionSynchronizerProvider aggregateActionSynchronizerProvider, final ExpressionEvaluator<Boolean> expressionEvaluator) {
+                              final AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher, final AggregateActionSynchronizer.AggregateActionSynchronizerProvider aggregateActionSynchronizerProvider, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.aggregateProcessorConfig = aggregateProcessorConfig;
         this.aggregateGroupManager = aggregateGroupManager;
@@ -101,7 +101,7 @@ public class AggregateProcessor extends AbstractProcessor<Record<Event>, Record<
         int handleEventsDropped = 0;
         for (final Record<Event> record : records) {
             final Event event = record.getData();
-            if (whenCondition != null && !expressionEvaluator.evaluate(whenCondition, event)) {
+            if (whenCondition != null && !expressionEvaluator.evaluateConditional(whenCondition, event)) {
                 handleEventsDropped++;
                 continue;
             }

@@ -31,6 +31,7 @@ public class IndexConfiguration {
     public static final String SETTINGS = "settings";
     public static final String INDEX_ALIAS = "index";
     public static final String INDEX_TYPE = "index_type";
+    public static final String TEMPLATE_TYPE = "template_type";
     public static final String TEMPLATE_FILE = "template_file";
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
@@ -42,11 +43,13 @@ public class IndexConfiguration {
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
+    public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
     private IndexType indexType;
+    private final TemplateType templateType;
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
@@ -56,6 +59,7 @@ public class IndexConfiguration {
     private final String action;
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
+    private final String s3AwsExternalId;
     private final S3Client s3Client;
     private final boolean serverless;
     private final String documentRootKey;
@@ -70,9 +74,11 @@ public class IndexConfiguration {
 
         this.s3AwsRegion = builder.s3AwsRegion;
         this.s3AwsStsRoleArn = builder.s3AwsStsRoleArn;
+        this.s3AwsExternalId = builder.s3AwsStsExternalId;
         this.s3Client = builder.s3Client;
 
-        this.indexTemplate = readIndexTemplate(builder.templateFile, indexType);
+        this.templateType = builder.templateType != null ? builder.templateType : TemplateType.V1;
+        this.indexTemplate = readIndexTemplate(builder.templateFile, indexType, templateType);
 
         if (builder.numReplicas > 0) {
             indexTemplate.putIfAbsent(SETTINGS, new HashMap<>());
@@ -131,6 +137,10 @@ public class IndexConfiguration {
         if(indexType != null) {
             builder = builder.withIndexType(indexType);
         }
+        final String templateType = pluginSetting.getStringOrDefault(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
+        if(templateType != null) {
+            builder = builder.withTemplateType(templateType);
+        }
         final String templateFile = pluginSetting.getStringOrDefault(TEMPLATE_FILE, null);
         if (templateFile != null) {
             builder = builder.withTemplateFile(templateFile);
@@ -157,8 +167,10 @@ public class IndexConfiguration {
             || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
             builder.withS3AwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
             builder.withS3AWSStsRoleArn(pluginSetting.getStringOrDefault(S3_AWS_STS_ROLE_ARN, null));
+            builder.withS3AWSStsExternalId(pluginSetting.getStringOrDefault(S3_AWS_STS_EXTERNAL_ID, null));
 
-            final S3ClientProvider clientProvider = new S3ClientProvider(builder.s3AwsRegion, builder.s3AwsStsRoleArn);
+            final S3ClientProvider clientProvider = new S3ClientProvider(
+                builder.s3AwsRegion, builder.s3AwsStsRoleArn, builder.s3AwsStsExternalId);
             builder.withS3Client(clientProvider.buildS3Client());
         }
 
@@ -177,6 +189,10 @@ public class IndexConfiguration {
 
     public IndexType getIndexType() {
         return indexType;
+    }
+
+    public TemplateType getTemplateType() {
+        return templateType;
     }
 
     public String getIndexAlias() {
@@ -215,6 +231,10 @@ public class IndexConfiguration {
         return s3AwsStsRoleArn;
     }
 
+    public String getS3AwsStsExternalId() {
+        return s3AwsExternalId;
+    }
+
     public boolean getServerless() {
         return serverless;
     }
@@ -230,18 +250,17 @@ public class IndexConfiguration {
      *
      * @param templateFile
      * @param indexType
+     * @param templateType
      * @return
      */
-    private Map<String, Object> readIndexTemplate(final String templateFile, final IndexType indexType) {
+    private Map<String, Object> readIndexTemplate(final String templateFile, final IndexType indexType, TemplateType templateType) {
         try {
             URL templateURL = null;
             InputStream s3TemplateFile = null;
             if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
-                templateURL = getClass().getClassLoader()
-                        .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
+                templateURL = loadExistingTemplate(templateType, IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
-                templateURL = getClass().getClassLoader()
-                        .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
+                templateURL = loadExistingTemplate(templateType, IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
                 if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
                     FileReader s3FileReader = new S3FileReader(s3Client);
@@ -264,9 +283,16 @@ public class IndexConfiguration {
         }
     }
 
+    private URL loadExistingTemplate(TemplateType templateType, String predefinedTemplateName) {
+        String resourcePath = templateType == TemplateType.V1 ? predefinedTemplateName : templateType.getTypeName() + "/" + predefinedTemplateName;
+        return getClass().getClassLoader()
+                .getResource(resourcePath);
+    }
+
     public static class Builder {
         private String indexAlias;
         private String indexType;
+        private TemplateType templateType;
         private String templateFile;
         private int numShards;
         private int numReplicas;
@@ -277,6 +303,7 @@ public class IndexConfiguration {
         private String action;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
+        private String s3AwsStsExternalId;
         private S3Client s3Client;
         private boolean serverless;
         private String documentRootKey;
@@ -292,6 +319,13 @@ public class IndexConfiguration {
             checkArgument(indexType != null, "indexType cannot be null.");
             checkArgument(!indexType.isEmpty(), "indexType cannot be empty");
             this.indexType = indexType;
+            return this;
+        }
+
+        public Builder withTemplateType(final String templateType) {
+            checkArgument(templateType != null, "templateType cannot be null.");
+            checkArgument(!templateType.isEmpty(), "templateType cannot be empty");
+            this.templateType = TemplateType.fromTypeName(templateType);
             return this;
         }
 
@@ -354,6 +388,12 @@ public class IndexConfiguration {
                 }
             }
             this.s3AwsStsRoleArn = s3AwsStsRoleArn;
+            return this;
+        }
+
+        public Builder withS3AWSStsExternalId(final String s3AwsStsExternalId) {
+            checkArgument(s3AwsStsExternalId == null || s3AwsStsExternalId.length() <= 1224, "s3AwsStsExternalId length cannot exceed 1224");
+            this.s3AwsStsExternalId = s3AwsStsExternalId;
             return this;
         }
 

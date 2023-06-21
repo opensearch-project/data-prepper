@@ -25,9 +25,11 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -54,7 +56,7 @@ public class S3ScanPartitionCreationSupplierTest {
     }
 
 
-    private Supplier<List<PartitionIdentifier>> createObjectUnderTest() {
+    private Function<Map<String, Object>, List<PartitionIdentifier>> createObjectUnderTest() {
         return new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsList);
     }
 
@@ -88,7 +90,7 @@ public class S3ScanPartitionCreationSupplierTest {
         given(secondBucketScanKeyPath.getS3ScanExcludeSuffixOptions()).willReturn(null);
         scanOptionsList.add(secondBucketScanOptions);
 
-        final Supplier<List<PartitionIdentifier>> partitionCreationSupplier = createObjectUnderTest();
+        final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier = createObjectUnderTest();
 
         final List<PartitionIdentifier> expectedPartitionIdentifiers = new ArrayList<>();
 
@@ -123,7 +125,7 @@ public class S3ScanPartitionCreationSupplierTest {
         final ArgumentCaptor<ListObjectsV2Request> listObjectsV2RequestArgumentCaptor = ArgumentCaptor.forClass(ListObjectsV2Request.class);
         given(s3Client.listObjectsV2(listObjectsV2RequestArgumentCaptor.capture())).willReturn(listObjectsResponse);
 
-        final List<PartitionIdentifier> resultingPartitions = partitionCreationSupplier.get();
+        final List<PartitionIdentifier> resultingPartitions = partitionCreationSupplier.apply(new HashMap<>());
 
         assertThat(resultingPartitions, notNullValue());
         assertThat(resultingPartitions.size(), equalTo(expectedPartitionIdentifiers.size()));

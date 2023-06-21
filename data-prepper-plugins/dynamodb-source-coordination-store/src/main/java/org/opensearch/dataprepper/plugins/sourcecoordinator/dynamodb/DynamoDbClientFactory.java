@@ -12,7 +12,6 @@ import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.core.retry.backoff.BackoffStrategy;
 import software.amazon.awssdk.core.retry.backoff.EqualJitterBackoffStrategy;
-import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -32,15 +31,13 @@ public class DynamoDbClientFactory {
     private static final long DYNAMO_CLIENT_BASE_BACKOFF_MILLIS = 1000L;
     private static final long DYNAMO_CLIENT_MAX_BACKOFF_MILLIS = 60000L;
 
-    public static DynamoDbEnhancedClient provideDynamoDbEnhancedClient(final String region, final String stsRoleArn) {
-        final DynamoDbClient dynamoDbClient = DynamoDbClient.builder()
+    public static DynamoDbClient provideDynamoDbClient(
+        final String region, final String stsRoleArn, final String stsExternalId
+    ) {
+        return DynamoDbClient.builder()
                 .region(Region.of(region))
-                .credentialsProvider(getAwsCredentials(Region.of(region), stsRoleArn))
+                .credentialsProvider(getAwsCredentials(Region.of(region), stsRoleArn, stsExternalId))
                 .overrideConfiguration(getClientOverrideConfiguration())
-                .build();
-
-        return DynamoDbEnhancedClient.builder()
-                .dynamoDbClient(dynamoDbClient)
                 .build();
     }
 
@@ -62,8 +59,9 @@ public class DynamoDbClientFactory {
                 .build();
     }
 
-    private static AwsCredentialsProvider getAwsCredentials(final Region region, final String stsRoleArn) {
-
+    private static AwsCredentialsProvider getAwsCredentials(
+        final Region region, final String stsRoleArn, final String stsExternalId
+    ) {
         AwsCredentialsProvider awsCredentialsProvider;
         if (stsRoleArn != null && !stsRoleArn.isEmpty()) {
             try {
@@ -80,6 +78,10 @@ public class DynamoDbClientFactory {
             AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
                     .roleSessionName("Dynamo-Source-Coordination-" + UUID.randomUUID())
                     .roleArn(stsRoleArn);
+
+            if (stsExternalId != null && !stsExternalId.isEmpty()) {
+                assumeRoleRequestBuilder = assumeRoleRequestBuilder.externalId(stsExternalId);
+            }
 
             awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder()
                     .stsClient(stsClient)

@@ -13,21 +13,33 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.Instant;
 
 @DataPrepperPlugin(name = "test_sink", deprecatedName = "test_sink_deprecated_name", pluginType = Sink.class)
 public class TestSink implements Sink<Record<String>> {
+    public boolean isShutdown = false;
     private final List<Record<String>> collectedRecords;
     private final boolean failSinkForTest;
-    public boolean isShutdown = false;
+    private boolean ready;
+    private Instant readyTime;
 
     public TestSink() {
         this.failSinkForTest = false;
         this.collectedRecords = new ArrayList<>();
+        this.ready = true;
+    }
+
+    public TestSink(int readyAfterSecs) {
+        this.ready = false;
+        this.failSinkForTest = false;
+        this.collectedRecords = new ArrayList<>();
+        this.readyTime = Instant.now().plusSeconds(readyAfterSecs);
     }
 
     public TestSink(boolean failSinkForTest) {
         this.failSinkForTest = failSinkForTest;
         this.collectedRecords = new ArrayList<>();
+        this.ready = false;
     }
 
     @Override
@@ -49,7 +61,10 @@ public class TestSink implements Sink<Record<String>> {
 
     @Override
     public boolean isReady() {
-        return true;
+        if (!ready) {
+            ready = Instant.now().isAfter(readyTime);
+        }
+        return ready;
     }
 
     public List<Record<String>> getCollectedRecords() {

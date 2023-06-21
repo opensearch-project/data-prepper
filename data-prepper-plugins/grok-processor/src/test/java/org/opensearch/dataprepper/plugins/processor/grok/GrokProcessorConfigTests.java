@@ -17,7 +17,7 @@ import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_BREAK_ON_MATCH;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_KEEP_EMPTY_CAPTURES;
 import static org.opensearch.dataprepper.plugins.processor.grok.GrokProcessorConfig.DEFAULT_NAMED_CAPTURES_ONLY;

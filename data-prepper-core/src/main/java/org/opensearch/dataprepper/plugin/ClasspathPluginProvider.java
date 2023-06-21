@@ -8,11 +8,14 @@ package org.opensearch.dataprepper.plugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.reflections.Reflections;
 import org.reflections.util.ConfigurationBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEFAULT_DEPRECATED_NAME;
 
@@ -23,7 +26,7 @@ import static org.opensearch.dataprepper.model.annotations.DataPrepperPlugin.DEF
  * @since 1.2
  */
 public class ClasspathPluginProvider implements PluginProvider {
-
+    private static final Logger LOG = LoggerFactory.getLogger(ClasspathPluginProvider.class);
     private final Reflections reflections;
     private Map<String, Map<Class<?>, Class<?>>> nameToSupportedTypeToPluginType;
 
@@ -57,6 +60,12 @@ public class ClasspathPluginProvider implements PluginProvider {
     private Map<String, Map<Class<?>, Class<?>>> scanForPlugins() {
         final Set<Class<?>> dataPrepperPluginClasses =
                 reflections.getTypesAnnotatedWith(DataPrepperPlugin.class);
+
+        if(LOG.isDebugEnabled()) {
+            LOG.debug("Found {} plugin classes.", dataPrepperPluginClasses.size());
+            LOG.debug("Plugin classes: {}",
+                    dataPrepperPluginClasses.stream().map(Class::getName).collect(Collectors.joining(", ")));
+        }
 
         final Map<String, Map<Class<?>, Class<?>>> pluginsMap = new HashMap<>(dataPrepperPluginClasses.size());
         for (final Class<?> concretePluginClass : dataPrepperPluginClasses) {

@@ -26,7 +26,7 @@ dependencyResolutionManagement {
             library('protobuf-util', 'com.google.protobuf', 'protobuf-java-util').versionRef('protobuf')
             version('opentelemetry', '0.16.0-alpha')
             library('opentelemetry-proto', 'io.opentelemetry.proto', 'opentelemetry-proto').versionRef('opentelemetry')
-            version('opensearchJava', '2.2.0')
+            version('opensearchJava', '2.5.0')
             library('opensearch-java', 'org.opensearch.client', 'opensearch-java').versionRef('opensearchJava')
             version('opensearch', '1.3.8')
             library('opensearch-client', 'org.opensearch.client', 'opensearch-rest-client').versionRef('opensearch')
@@ -48,7 +48,7 @@ dependencyResolutionManagement {
             library('junit-params', 'org.junit.jupiter', 'junit-jupiter-params').versionRef('junit')
             library('junit-engine', 'org.junit.jupiter', 'junit-jupiter-engine').versionRef('junit')
             library('junit-vintage', 'org.junit.vintage', 'junit-vintage-engine').versionRef('junit')
-            bundle('junit', ['junit-core', 'junit-params', 'junit-vintage'])
+            bundle('junit', ['junit-core', 'junit-params'])
             library('mockito-core', 'org.mockito', 'mockito-core').versionRef('mockito')
             library('mockito-junit', 'org.mockito', 'mockito-junit-jupiter').versionRef('mockito')
             library('mockito-inline', 'org.mockito', 'mockito-inline').versionRef('mockito')
@@ -84,6 +84,7 @@ include 'data-prepper-plugins:drop-events-processor'
 include 'data-prepper-plugins:key-value-processor'
 include 'data-prepper-plugins:type-conversion-processor'
 include 'data-prepper-plugins:mutate-event-processors'
+include 'data-prepper-plugins:geoip-processor'
 include 'data-prepper-plugins:grok-processor'
 include 'data-prepper-plugins:aggregate-processor'
 include 'data-prepper-plugins:log-generator-source'
@@ -114,3 +115,13 @@ include 'data-prepper-plugins:failures-common'
 include 'data-prepper-plugins:newline-codecs'
 include 'data-prepper-plugins:avro-codecs'
 include 'data-prepper-plugins:kafka-plugins'
+include 'data-prepper-plugins:opensearch-source'
+include 'data-prepper-plugins:user-agent-processor'
+include 'data-prepper-plugins:in-memory-source-coordination-store'
+include 'data-prepper-plugins:aws-plugin-api'
+include 'data-prepper-plugins:aws-plugin'
+include 'data-prepper-plugins:obfuscate-processor'
+include 'data-prepper-plugins:parquet-codecs'
+include 'data-prepper-plugins:buffer-common'
+include 'data-prepper-plugins:sqs-source'
+include 'data-prepper-plugins:http-sink'

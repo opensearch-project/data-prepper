@@ -27,7 +27,7 @@ class PluginCreatorTest {
 
     private PluginSetting pluginSetting;
     private String pluginName;
-    private PluginArgumentsContext pluginConstructionContext;
+    private ComponentPluginArgumentsContext pluginConstructionContext;
 
     public static class ValidPluginClass {
         private final PluginSetting pluginSetting;
@@ -86,7 +86,7 @@ class PluginCreatorTest {
 
         pluginName = UUID.randomUUID().toString();
 
-        pluginConstructionContext = mock(PluginArgumentsContext.class);
+        pluginConstructionContext = mock(ComponentPluginArgumentsContext.class);
     }
 
     private PluginCreator createObjectUnderTest() {

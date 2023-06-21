@@ -11,7 +11,39 @@ grammar DataPrepperExpression;
 
 expression
     : conditionalExpression EOF
+    | arithmeticExpression EOF
+    | stringExpression EOF
     | OTHER {System.err.println("unknown char: " + $OTHER.text);}
+    ;
+
+stringExpression
+    : stringExpression PLUS stringExpression
+    | function
+    | jsonPointer
+    | String
+    ;
+
+arithmeticExpression
+    : arithmeticExpression (PLUS | SUBTRACT) multiplicativeExpression
+    | multiplicativeExpression
+    ;
+
+multiplicativeExpression
+    : multiplicativeExpression (MULTIPLY | DIVIDE) arithmeticTerm
+    | arithmeticTerm
+    ;
+
+arithmeticTerm
+    : function
+    | jsonPointer
+    | Integer
+    | Float
+    | LPAREN arithmeticExpression RPAREN
+    | arithmeticUnaryExpression
+    ;
+
+arithmeticUnaryExpression
+    : arithmeticUnaryOperator arithmeticTerm
     ;
 
 conditionalExpression
@@ -59,6 +91,7 @@ relationalOperator
 setOperatorExpression
     : setOperatorExpression setOperator setInitializer
     | unaryOperatorExpression
+    | arithmeticUnaryExpression
     ;
 
 setOperator
@@ -88,7 +121,10 @@ setInitializer
 
 unaryOperator
     : NOT
-    | SUBTRACT
+    ;
+
+arithmeticUnaryOperator
+    : SUBTRACT
     ;
 
 primary
@@ -247,6 +283,11 @@ EscapeSequence
 SET_DELIMITER
     : COMMA
     ;
+
+DIVIDE
+    : FORWARDSLASH
+    ;
+
 COMMA : ',';
 EQUAL : '==';
 NOT_EQUAL : '!=';
@@ -269,6 +310,9 @@ RBRACE : '}';
 FORWARDSLASH : '/';
 DOUBLEQUOTE : '"';
 ZERO : '0';
+PLUS: '+';
+MULTIPLY: '*';
+DOT : '.';
 EXPONENTLETTER
     : 'E'
     | 'e'

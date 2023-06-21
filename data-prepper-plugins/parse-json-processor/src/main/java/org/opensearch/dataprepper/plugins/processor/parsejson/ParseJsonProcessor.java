@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -38,19 +39,21 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
     private final String destination;
     private final String pointer;
     private final String parseWhen;
+    private final List<String> tagsOnFailure;
 
-    private final ExpressionEvaluator<Boolean> expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
 
     @DataPrepperPluginConstructor
     public ParseJsonProcessor(final PluginMetrics pluginMetrics,
                               final ParseJsonProcessorConfig parseJsonProcessorConfig,
-                              final ExpressionEvaluator<Boolean> expressionEvaluator) {
+                              final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
 
         source = parseJsonProcessorConfig.getSource();
         destination = parseJsonProcessorConfig.getDestination();
         pointer = parseJsonProcessorConfig.getPointer();
         parseWhen = parseJsonProcessorConfig.getParseWhen();
+        tagsOnFailure = parseJsonProcessorConfig.getTagsOnFailure();
         this.expressionEvaluator = expressionEvaluator;
     }
 
@@ -63,7 +66,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
         for (final Record<Event> record : records) {
             final Event event = record.getData();
 
-            if (Objects.nonNull(parseWhen) && !expressionEvaluator.evaluate(parseWhen, event)) {
+            if (Objects.nonNull(parseWhen) && !expressionEvaluator.evaluateConditional(parseWhen, event)) {
                 continue;
             }
 
@@ -86,6 +89,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
                     event.put(destination, parsedJson);
                 }
             } catch (final JsonProcessingException jsonException) {
+                event.getMetadata().addTags(tagsOnFailure);
                 LOG.error(EVENT, "An exception occurred due to invalid JSON while reading event [{}]", event, jsonException);
             }
         }

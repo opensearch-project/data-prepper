@@ -108,7 +108,7 @@ public class S3DlqWriterTest {
         bucket = UUID.randomUUID().toString();
         keyPathPrefix = UUID.randomUUID().toString();
 
-        expectedKeyPrefix = String.format("%s/dlq-v%s-%s-%s", keyPathPrefix, DataPrepperVersion.getCurrentVersion(), pipelineName, pluginId);
+        expectedKeyPrefix = String.format("%sdlq-v%s-%s-%s", keyPathPrefix, DataPrepperVersion.getCurrentVersion(), pipelineName, pluginId);
 
         putObjectResponse = (PutObjectResponse) PutObjectResponse.builder()
             .sdkHttpResponse(mockHttpResponse)
@@ -168,7 +168,9 @@ public class S3DlqWriterTest {
 
         return Stream.of(
             Arguments.of(randomKeyPathPrefix, String.format("%s/dlq-v%s", randomKeyPathPrefix, DataPrepperVersion.getCurrentVersion().getMajorVersion())),
-            Arguments.of(null, String.format("dlq-v%s", DataPrepperVersion.getCurrentVersion().getMajorVersion()))
+            Arguments.of(randomKeyPathPrefix + "/", String.format("%s/dlq-v%s", randomKeyPathPrefix, DataPrepperVersion.getCurrentVersion().getMajorVersion())),
+            Arguments.of(null, String.format("dlq-v%s", DataPrepperVersion.getCurrentVersion().getMajorVersion())),
+            Arguments.of("", String.format("dlq-v%s", DataPrepperVersion.getCurrentVersion().getMajorVersion()))
         );
     }
 

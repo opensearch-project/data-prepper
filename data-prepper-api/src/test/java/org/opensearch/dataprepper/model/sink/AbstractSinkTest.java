@@ -86,7 +86,7 @@ public class AbstractSinkTest {
     private static class AbstractSinkImpl extends AbstractSink<Record<String>> {
 
         public AbstractSinkImpl(PluginSetting pluginSetting) {
-            super(pluginSetting);
+            super(pluginSetting, 10, 1000);
         }
 
         @Override
@@ -140,7 +140,7 @@ public class AbstractSinkTest {
         @Override
         public void doInitialize() {
             // make this check for smaller number so that test finishes sooner
-            if (initCount++ == NUMBER_OF_RETRIES/200) {
+            if (initCount++ == DEFAULT_MAX_RETRIES/200) {
                 initialized = true;
             }
         }

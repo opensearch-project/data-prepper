@@ -164,6 +164,7 @@ public class PipelineConnectorTest {
     @Test(expected = RuntimeException.class)
     public void testOutputAfterBufferStopRequested() {
         sut.start(buffer);
+        assertTrue(sut.isReady());
         sut.stop();
 
         sut.output(recordList);
@@ -174,6 +175,7 @@ public class PipelineConnectorTest {
         doThrow(new TimeoutException()).doNothing().when(buffer).write(any(), anyInt());
 
         sut.start(buffer);
+        assertTrue(sut.isReady());
 
         sut.output(recordList);
 
@@ -183,6 +185,7 @@ public class PipelineConnectorTest {
     @Test
     public void testOutputSuccess() throws Exception {
         sut.start(buffer);
+        assertTrue(sut.isReady());
 
         sut.output(recordList);
 
@@ -192,6 +195,7 @@ public class PipelineConnectorTest {
     @Test
     public void testEventBufferOutputSuccess() throws Exception {
         eut.start(eventBuffer);
+        assertTrue(eut.isReady());
 
         eut.output(eventRecordList);
 
@@ -212,6 +216,7 @@ public class PipelineConnectorTest {
     @Test
     public void testSpanBufferOutputSuccess() throws Exception {
         sput.start(spanBuffer);
+        assertTrue(sput.isReady());
 
         sput.output(spanRecordList);
 

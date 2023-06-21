@@ -34,6 +34,7 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -46,11 +47,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
@@ -156,6 +159,61 @@ class PipelineTests {
         assertThat("Pipeline is expected to have a default buffer", testPipeline.getBuffer(), notNullValue());
         assertEquals("Pipeline processorSets size should be 1", 1, testPipeline.getProcessorSets().size());
         testPipeline.execute();
+        assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
+        testPipeline.shutdown();
+        assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
+        assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
+        assertThat("Processor shutdown should be called", testProcessor.isShutdown, is(true));
+    }
+
+    @Test
+    void testPipelineDelayedReady() throws InterruptedException {
+        final int delayTimeSeconds = 10;
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink(delayTimeSeconds);
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+        final TestProcessor testProcessor = new TestProcessor(new PluginSetting("test_processor", new HashMap<>()));
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.singletonList(Collections.singletonList(testProcessor)),
+                Collections.singletonList(sinkDataFlowComponent),
+                router, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS,
+                TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+        Instant startTime = Instant.now();
+        testPipeline.execute();
+        assertFalse(testPipeline.isReady());
+        for (int i = 0; i < delayTimeSeconds + 2; i++) {
+            Thread.sleep(1000);
+        }
+        assertTrue(testPipeline.isReady());
+        assertThat(Duration.between(startTime, Instant.now()), greaterThanOrEqualTo(Duration.ofSeconds(delayTimeSeconds)));
+        assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
+        testPipeline.shutdown();
+        assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
+        assertThat("Sink shutdown should be called", testSink.isShutdown, is(true));
+        assertThat("Processor shutdown should be called", testProcessor.isShutdown, is(true));
+    }
+
+    @Test
+    void testPipelineDelayedReadyShutdownBeforeReady() throws InterruptedException {
+        final int delayTimeSeconds = 10;
+        final Source<Record<String>> testSource = new TestSource();
+        final TestSink testSink = new TestSink(delayTimeSeconds);
+        final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
+        final TestProcessor testProcessor = new TestProcessor(new PluginSetting("test_processor", new HashMap<>()));
+        when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
+        final Pipeline testPipeline = new Pipeline(TEST_PIPELINE_NAME, testSource, new BlockingBuffer(TEST_PIPELINE_NAME),
+                Collections.singletonList(Collections.singletonList(testProcessor)),
+                Collections.singletonList(sinkDataFlowComponent),
+                router, eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, TEST_PROCESSOR_THREADS,
+                TEST_READ_BATCH_TIMEOUT, processorShutdownTimeout, sinkShutdownTimeout, peerForwarderDrainTimeout);
+        Instant startTime = Instant.now();
+        testPipeline.execute();
+        assertFalse(testPipeline.isReady());
+        for (int i = 0; i < 1; i++) {
+            Thread.sleep(1000);
+        }
+        assertFalse(testPipeline.isReady());
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         testPipeline.shutdown();
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));

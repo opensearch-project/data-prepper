@@ -20,9 +20,10 @@ public interface SourceCoordinationStore {
 
     void initializeStore();
 
-    Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String partitionKey);
+    Optional<SourcePartitionStoreItem> getSourcePartitionItem(final String sourceIdentifier, final String sourcePartitionKey);
 
-    boolean tryCreatePartitionItem(final String partitionKey,
+    boolean tryCreatePartitionItem(final String sourceIdentifier,
+                                   final String partitionKey,
                                    final SourcePartitionStatus sourcePartitionStatus,
                                    final Long closedCount,
                                    final String partitionProgressState);
@@ -32,8 +33,12 @@ public interface SourceCoordinationStore {
      * 1. The partition status is UNASSIGNED
      * 2. The partition status is CLOSED and the reOpenAt timestamp has passed
      * 3. The partition status is ASSIGNED and the partitionOwnershipTimeout has passed
+     * @param sourceIdentifier - The identifier for the source
+     * @param ownerId - The unique owner id for a sub-pipeline
+     * @param ownershipTimeout The amount of time before the ownership of the acquired partition expires
+     * @return The partition that was acquired successfully. Empty if no partition could be acquired.
      */
-    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String ownerId, final Duration ownershipTimeout);
+    Optional<SourcePartitionStoreItem> tryAcquireAvailablePartition(final String sourceIdentifier, final String ownerId, final Duration ownershipTimeout);
 
     /**
      * This method attempts to update the partition item to the desired state

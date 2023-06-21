@@ -190,6 +190,7 @@ dependencies {
     integrationTestImplementation project(':data-prepper-plugins:common')
     integrationTestImplementation project(':data-prepper-plugins:log-generator-source')
     integrationTestImplementation project(':data-prepper-plugins:opensearch')
+    integrationTestImplementation project(':data-prepper-plugins:aws-plugin-api')
     integrationTestImplementation libs.armeria.core
     integrationTestImplementation testLibs.awaitility
     integrationTestImplementation libs.opensearch.rhlc
