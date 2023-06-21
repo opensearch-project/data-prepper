@@ -1,3 +1,7 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.sink;
 
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
