@@ -53,6 +53,8 @@ class SqsServiceTest {
         this.sqsOptions = new SqsOptions.Builder()
                 .setSqsUrl("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue")
                 .setMaximumMessages(10)
+                .setWaitTime(Duration.ofSeconds(10))
+                .setVisibilityTimeout(Duration.ofSeconds(10))
                 .setPollDelay(Duration.ZERO).build();
         this.sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
     }
@@ -149,17 +151,16 @@ class SqsServiceTest {
     }
 
     @Test
-    void do_end_to_end_ack_test() {
+    void create_acknowledgement_set_test() {
         List<DeleteMessageBatchRequestEntry> entry = mock(List.class);
         AcknowledgementSet acknowledgementSetMockObj = mock(AcknowledgementSet.class);
         final Counter counter = mock(Counter.class);
         AcknowledgementSetManager acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         when(acknowledgementSetManager.create(any(Consumer.class),any(Duration.class))).thenReturn(acknowledgementSetMockObj);
         when(sqsMetrics.getAcknowledgementSetCallbackCounter()).thenReturn(counter);
-        final AcknowledgementSet acknowledgementSet = sqsService.doEndToEndAcknowledgements(
+        final AcknowledgementSet acknowledgementSet = sqsService.createAcknowledgementSet(
                 UUID.randomUUID().toString(),
                 acknowledgementSetManager,
-                Boolean.TRUE,
                 entry);
         assertThat(acknowledgementSet,notNullValue());
         verify(acknowledgementSetManager).create(any(), any(Duration.class));

@@ -59,7 +59,7 @@ public class SqsSource implements Source<Record<Event>> {
         this.acknowledgementsEnabled = sqsSourceConfig.getAcknowledgements();
         this.pluginMetrics = pluginMetrics;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
-        this.scheduledExecutorService = Executors.newScheduledThreadPool(sqsSourceConfig.getQueues().getNumberOfThreads());
+        this.scheduledExecutorService = Executors.newScheduledThreadPool(sqsSourceConfig.getNumberOfThreads());
     }
 
     @Override
@@ -80,10 +80,12 @@ public class SqsSource implements Source<Record<Event>> {
         final SqsService sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
         final SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService);
         final SqsOptions.Builder sqsOptionsBuilder = new SqsOptions.Builder()
-                .setPollDelay(sqsSourceConfig.getQueues().getPollingFrequency())
-                .setMaximumMessages(sqsSourceConfig.getQueues().getBatchSize());
-        final long pollingFrequencyInMillis = sqsSourceConfig.getQueues().getPollingFrequency().toMillis();
-        sqsSourceConfig.getQueues().getUrls().forEach(url -> {
+                .setPollDelay(sqsSourceConfig.getPollingFrequency())
+                .setVisibilityTimeout(sqsSourceConfig.getVisibilityTimeout())
+                .setWaitTime(sqsSourceConfig.getWaitTime())
+                .setMaximumMessages(sqsSourceConfig.getBatchSize());
+        final long pollingFrequencyInMillis = sqsSourceConfig.getPollingFrequency().toMillis();
+        sqsSourceConfig.getUrls().forEach(url -> {
             scheduledExecutorService.scheduleAtFixedRate(new SqsSourceTask(sqsService,
                     sqsOptionsBuilder.setSqsUrl(url).build(),
                     sqsMetrics,

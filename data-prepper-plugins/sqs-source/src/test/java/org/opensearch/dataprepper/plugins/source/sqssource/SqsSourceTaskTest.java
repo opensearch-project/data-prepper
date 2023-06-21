@@ -134,7 +134,10 @@ class SqsSourceTaskTest {
     private SqsSourceTask createObjectUnderTest(Buffer<Record<Event>> buffer,boolean endToEndAckFlag) {
         sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
         sqsHandler = new RawSqsMessageHandler(buffer,sqsService);
-        sqsOptions = new SqsOptions.Builder().setSqsUrl("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue").build();
+        sqsOptions = new SqsOptions.Builder()
+                .setSqsUrl("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue")
+                .setVisibilityTimeout(Duration.ofSeconds(30))
+                .setWaitTime(Duration.ofSeconds(20)).build();
         return new SqsSourceTask(sqsService,
                 sqsOptions,
                 sqsMetrics,

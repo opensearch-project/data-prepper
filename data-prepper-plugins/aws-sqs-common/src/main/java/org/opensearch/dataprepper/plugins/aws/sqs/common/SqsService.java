@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +37,8 @@ import java.util.stream.Collectors;
 public class SqsService {
     private static final Logger LOG = LoggerFactory.getLogger(SqsService.class);
 
+    static final Duration END_TO_END_ACK_TIME_OUT = Duration.ofSeconds(10);
+
     private final SqsMetrics sqsMetrics;
 
     private final SqsClient sqsClient;
@@ -43,6 +46,7 @@ public class SqsService {
     private final Backoff backoff;
 
     private int failedAttemptCount;
+
 
     public SqsService(final SqsMetrics sqsMetrics,
                       final SqsClient sqsClient,
@@ -63,9 +67,15 @@ public class SqsService {
         return ReceiveMessageRequest.builder()
                 .queueUrl(sqsOptions.getSqsUrl())
                 .maxNumberOfMessages(sqsOptions.getMaximumMessages())
-                .visibilityTimeout(null)
-                .waitTimeSeconds(null)
+                .visibilityTimeout(getTimeOutValueByDuration(sqsOptions.getVisibilityTimeout()))
+                .waitTimeSeconds(getTimeOutValueByDuration(sqsOptions.getWaitTime()))
                 .build();
+    }
+
+    private static Integer getTimeOutValueByDuration(final Duration duration) {
+        if(Objects.nonNull(duration))
+            return (int) duration.toSeconds();
+        return null;
     }
 
     /**
@@ -184,22 +194,21 @@ public class SqsService {
     /**
      *  helps to send end to end acknowledgements after successful processing.
      *
+     * @param queueUrl - queue url for deleting the messages from the queue
+     * @param acknowledgementSetManager - required acknowledgementSetManager for creating acknowledgementSet
      * @param waitingForAcknowledgements  - will pass the processed messages batch in Delete message batch request.
      * @return AcknowledgementSet - will generate the AcknowledgementSet if endToEndAcknowledgementsEnabled is true.
      */
-    public AcknowledgementSet doEndToEndAcknowledgements(final String queueUrl,
-                                                         final AcknowledgementSetManager acknowledgementSetManager,
-                                                         final boolean endToEndAcknowledgementsEnabled,
-                                                         final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements) {
+    public AcknowledgementSet createAcknowledgementSet(final String queueUrl,
+                                                       final AcknowledgementSetManager acknowledgementSetManager,
+                                                       final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements) {
         AcknowledgementSet acknowledgementSet = null;
-        if (endToEndAcknowledgementsEnabled) {
             acknowledgementSet = acknowledgementSetManager.create(result -> {
                 sqsMetrics.getAcknowledgementSetCallbackCounter().increment();
                 if (result == true) {
                     deleteMessagesFromQueue(waitingForAcknowledgements,queueUrl);
                 }
-            }, Duration.ofSeconds(10));
-        }
+            }, END_TO_END_ACK_TIME_OUT);
         return acknowledgementSet;
     }
 }

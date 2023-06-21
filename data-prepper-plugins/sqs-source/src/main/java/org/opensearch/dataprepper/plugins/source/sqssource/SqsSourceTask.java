@@ -70,13 +70,17 @@ public class SqsSourceTask implements Runnable{
      * the sqs message from queue after successful buffer push.
      */
     void processSqsMessages() {
-       final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
-       AcknowledgementSet acknowledgementSet = sqsService.doEndToEndAcknowledgements(sqsOptions.getSqsUrl(),
-                acknowledgementSetManager,
-                endToEndAcknowledgementsEnabled,
-                waitingForAcknowledgements);
-       final List<Message> messages = sqsService.getMessagesFromSqs(sqsOptions);
+        AcknowledgementSet acknowledgementSet = null;
         List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = null;
+        final List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
+
+       if(endToEndAcknowledgementsEnabled)
+           acknowledgementSet = sqsService.createAcknowledgementSet(sqsOptions.getSqsUrl(),
+                acknowledgementSetManager,
+                waitingForAcknowledgements);
+
+       final List<Message> messages = sqsService.getMessagesFromSqs(sqsOptions);
+
        if(!messages.isEmpty()) {
            LOG.info("Thread Name : {} , messages processed: {}",Thread.currentThread().getName(),messages.size());
            sqsMetrics.getSqsMessagesReceivedCounter().increment();

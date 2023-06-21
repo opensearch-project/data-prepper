@@ -13,11 +13,11 @@ import java.util.Map;
 
 public class AwsAuthenticationOptions {
 
-    @JsonProperty("region")
+    @JsonProperty("sts_region")
     @Size(min = 1, message = "Region cannot be empty string")
     private String awsRegion;
 
-    @JsonProperty("role_arn")
+    @JsonProperty("sts_role_arn")
     @Size(min = 20, max = 2048, message = "awsStsRoleArn length should be between 1 and 2048 characters")
     private String awsStsRoleArn;
 

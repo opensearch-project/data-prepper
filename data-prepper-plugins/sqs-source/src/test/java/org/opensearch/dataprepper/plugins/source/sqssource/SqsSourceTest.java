@@ -9,7 +9,6 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.metrics.SqsMetrics;
-import org.opensearch.dataprepper.plugins.source.sqssource.config.QueuesOptions;
 import org.opensearch.dataprepper.plugins.source.sqssource.config.SqsSourceConfig;
 
 import java.util.List;
@@ -37,7 +36,6 @@ class SqsSourceTest {
         pluginMetrics = mock(PluginMetrics.class);
         Timer timer = mock(Timer.class);
         Counter counter = mock(Counter.class);
-        final QueuesOptions queuesOptions = mock(QueuesOptions.class);
 
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         when(pluginMetrics.timer(SqsMetrics.SQS_MESSAGE_DELAY_METRIC_NAME)).thenReturn(timer);
@@ -46,8 +44,7 @@ class SqsSourceTest {
         when(pluginMetrics.counter(SqsMetrics.SQS_RECEIVE_MESSAGES_FAILED_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(SqsMetrics.SQS_MESSAGES_DELETE_FAILED_METRIC_NAME)).thenReturn(counter);
         when(pluginMetrics.counter(SqsMetrics.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
-        when(sqsSourceConfig.getQueues()).thenReturn(queuesOptions);
-        when(queuesOptions.getUrls()).thenReturn(List.of("https://sqs.us-east-1.amazonaws.com/123099425585/dp"));
+        when(sqsSourceConfig.getUrls()).thenReturn(List.of("https://sqs.us-east-1.amazonaws.com/123099425585/dp"));
         this. sqsSource =
                 new SqsSource(pluginMetrics,sqsSourceConfig,acknowledgementSetManager,awsCredentialsSupplier);
     }
