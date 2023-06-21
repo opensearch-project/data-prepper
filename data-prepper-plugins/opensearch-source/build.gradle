@@ -14,6 +14,7 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'org.opensearch.client:opensearch-java:2.5.0'
     implementation 'org.opensearch.client:opensearch-rest-client:2.7.0'
+    implementation 'co.elastic.clients:elasticsearch-java:7.17.0'
     implementation "org.apache.commons:commons-lang3:3.12.0"
     implementation('org.apache.maven:maven-artifact:3.0.3') {
         exclude group: 'org.codehaus.plexus'
