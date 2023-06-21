@@ -33,6 +33,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -56,21 +57,106 @@ public class AvroCodecsIT {
     private static int index;
 
     private static int numberOfRecords;
-
-    @Mock
-    private Consumer<Record<Event>> eventConsumer;
-
-    private AvroInputCodec avroInputCodec;
-
     private static FileInputStream fileInputStream;
-    private AvroOutputCodecConfig config;
-
     @TempDir
     private static java.nio.file.Path path;
+    @Mock
+    private Consumer<Record<Event>> eventConsumer;
+    private AvroInputCodec avroInputCodec;
+    private AvroOutputCodecConfig config;
 
-    private AvroInputCodec createInputCodecObjectUnderTest(){
+    private static Object decodeOutputIfEncoded(Object encodedActualOutput) throws UnsupportedEncodingException {
+        if (encodedActualOutput instanceof Utf8) {
+            byte[] utf8Bytes = encodedActualOutput.toString().getBytes(StandardCharsets.UTF_8);
+            return new String(utf8Bytes, StandardCharsets.UTF_8);
+        } else {
+            return encodedActualOutput;
+        }
+    }
+
+    private static Event getEvent(int index) {
+        List<GenericRecord> recordList = generateRecords(parseSchema(), numberOfRecords);
+        GenericRecord record = recordList.get(index);
+        Schema schema = parseSchema();
+        final Map<String, Object> eventData = new HashMap<>();
+        for (Schema.Field field : schema.getFields()) {
+
+            eventData.put(field.name(), record.get(field.name()));
+
+        }
+        final Event event = JacksonLog.builder().withData(eventData).build();
+        return event;
+    }
+
+    private static InputStream createRandomAvroStream(int numberOfRecords) throws IOException {
+
+        Files.deleteIfExists(Path.of(FILE_NAME + FILE_SUFFIX));
+        Schema schema = parseSchema();
+        DatumWriter<GenericRecord> datumWriter = new SpecificDatumWriter<>(schema);
+        DataFileWriter<GenericRecord> dataFileWriter = new DataFileWriter<>(datumWriter);
+
+        List<GenericRecord> recordList = generateRecords(schema, numberOfRecords);
+
+        File avroTestFile = new File(FILE_NAME + FILE_SUFFIX);
+        path = Paths.get(FILE_NAME + FILE_SUFFIX);
+        dataFileWriter.create(schema, avroTestFile);
+
+        for (GenericRecord record : recordList) {
+            dataFileWriter.append(record);
+        }
+        dataFileWriter.close();
+
+        fileInputStream = new FileInputStream(path.toString());
+        return fileInputStream;
+
+    }
+
+    private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
+
+        List<GenericRecord> recordList = new ArrayList<>();
+
+        for (int rows = 0; rows < numberOfRecords; rows++) {
+
+            GenericRecord record = new GenericData.Record(schema);
+
+            record.put("name", "Person" + rows);
+            record.put("age", rows);
+            recordList.add((record));
+
+        }
+
+        return recordList;
+
+    }
+
+    private static Schema parseSchema() {
+
+        return SchemaBuilder.record("Person")
+                .fields()
+                .name("name").type().stringType().noDefault()
+                .name("age").type().intType().noDefault()
+                .endRecord();
+
+    }
+
+    private static List<GenericRecord> createAvroRecordsList(ByteArrayOutputStream outputStream) throws IOException {
+        final byte[] avroData = outputStream.toByteArray();
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(avroData);
+        DataFileStream<GenericRecord> stream = new DataFileStream<GenericRecord>(byteArrayInputStream, new GenericDatumReader<GenericRecord>());
+        Schema schema = stream.getSchema();
+        List<GenericRecord> actualRecords = new ArrayList<>();
+
+        while (stream.hasNext()) {
+            GenericRecord avroRecord = stream.next();
+            actualRecords.add(avroRecord);
+        }
+        return actualRecords;
+    }
+
+    private AvroInputCodec createInputCodecObjectUnderTest() {
         return new AvroInputCodec();
     }
+
     private AvroOutputCodec createOutputCodecObjectUnderTest() {
 
         config = new AvroOutputCodecConfig();
@@ -78,27 +164,24 @@ public class AvroCodecsIT {
         return new AvroOutputCodec(config);
     }
 
-
-
-
     @ParameterizedTest
-    @ValueSource(ints={1,10,100,1000})
+    @ValueSource(ints = {1, 10, 100, 1000})
     public void test_HappyCaseAvroInputStream_then_callsConsumerWithParsedEvents(final int numberOfRecords) throws Exception {
 
-        this.numberOfRecords =numberOfRecords;
-        avroInputCodec= createInputCodecObjectUnderTest();
+        AvroCodecsIT.numberOfRecords = numberOfRecords;
+        avroInputCodec = createInputCodecObjectUnderTest();
         AvroOutputCodec avroOutputCodec = createOutputCodecObjectUnderTest();
-        InputStream inputStream=createRandomAvroStream(numberOfRecords);
+        InputStream inputStream = createRandomAvroStream(numberOfRecords);
 
-        avroInputCodec.parse(inputStream,eventConsumer);
+        avroInputCodec.parse(inputStream, eventConsumer);
 
         final ArgumentCaptor<Record<Event>> recordArgumentCaptor = ArgumentCaptor.forClass(Record.class);
         verify(eventConsumer, times(numberOfRecords)).accept(recordArgumentCaptor.capture());
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         avroOutputCodec.start(outputStream);
-        for(Record<Event> record: actualRecords){
-            avroOutputCodec.writeEvent(record.getData(),outputStream);
+        for (Record<Event> record : actualRecords) {
+            avroOutputCodec.writeEvent(record.getData(), outputStream);
         }
         avroOutputCodec.complete(outputStream);
         List<GenericRecord> actualOutputRecords = createAvroRecordsList(outputStream);
@@ -120,94 +203,5 @@ public class AvroCodecsIT {
         fileInputStream.close();
         Files.delete(path);
 
-    }
-
-    private static Object decodeOutputIfEncoded(Object encodedActualOutput) throws UnsupportedEncodingException {
-        if(encodedActualOutput instanceof Utf8){
-            byte[] utf8Bytes = encodedActualOutput.toString().getBytes("UTF-8");
-            return new String(utf8Bytes, "UTF-8");
-        }
-        else{
-            return encodedActualOutput;
-        }
-    }
-
-    private static Event getEvent(int index){
-        List<GenericRecord> recordList=generateRecords(parseSchema(),numberOfRecords);
-        GenericRecord record=recordList.get(index);
-        Schema schema=parseSchema();
-        final Map<String, Object> eventData = new HashMap<>();
-        for(Schema.Field field : schema.getFields()) {
-
-            eventData.put(field.name(), record.get(field.name()));
-
-        }
-        final Event event = JacksonLog.builder().withData(eventData).build();
-        return event;
-    }
-
-
-    private static InputStream createRandomAvroStream(int numberOfRecords) throws IOException {
-
-        Files.deleteIfExists(Path.of(FILE_NAME + FILE_SUFFIX));
-        Schema schema=parseSchema();
-        DatumWriter<GenericRecord> datumWriter = new SpecificDatumWriter<>(schema);
-        DataFileWriter<GenericRecord> dataFileWriter=new DataFileWriter<>(datumWriter);
-
-        List<GenericRecord> recordList = generateRecords(schema, numberOfRecords);
-
-        File avroTestFile=new File(FILE_NAME+FILE_SUFFIX);
-        path= Paths.get(FILE_NAME+FILE_SUFFIX);
-        dataFileWriter.create(schema, avroTestFile);
-
-        for(GenericRecord record: recordList) {
-            dataFileWriter.append(record);
-        }
-        dataFileWriter.close();
-
-        fileInputStream = new FileInputStream(path.toString());
-        return fileInputStream;
-
-    }
-
-    private static List<GenericRecord> generateRecords(Schema schema, int numberOfRecords) {
-
-        List<GenericRecord> recordList = new ArrayList<>();
-
-        for(int rows = 0; rows < numberOfRecords; rows++){
-
-            GenericRecord record = new GenericData.Record(schema);
-
-            record.put("name", "Person"+rows);
-            record.put("age", rows);
-            recordList.add((record));
-
-        }
-
-        return recordList;
-
-    }
-
-    private static Schema  parseSchema() {
-
-        return SchemaBuilder.record("Person")
-                .fields()
-                .name("name").type().stringType().noDefault()
-                .name("age").type().intType().noDefault()
-                .endRecord();
-
-    }
-    private static List<GenericRecord> createAvroRecordsList(ByteArrayOutputStream outputStream) throws IOException {
-        final byte[] avroData = outputStream.toByteArray();
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(avroData);
-        DataFileStream<GenericRecord> stream = new DataFileStream<GenericRecord>(byteArrayInputStream, new GenericDatumReader<GenericRecord>());
-        Schema schema = stream.getSchema();
-        List<GenericRecord> actualRecords = new ArrayList<>();
-
-        while (stream.hasNext()) {
-            GenericRecord avroRecord = stream.next();
-            actualRecords.add(avroRecord);
-        }
-        return actualRecords;
     }
 }

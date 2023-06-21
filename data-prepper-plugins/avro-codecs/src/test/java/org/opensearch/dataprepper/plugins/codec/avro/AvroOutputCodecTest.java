@@ -45,7 +45,7 @@ public class AvroOutputCodecTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
-    void test_happy_case(final int numberOfRecords) throws IOException {
+    void test_happy_case(final int numberOfRecords) throws Exception {
         this.numberOfRecords = numberOfRecords;
         AvroOutputCodec avroOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
@@ -65,8 +65,14 @@ public class AvroOutputCodecTest {
             Map expectedMap = generateRecords(numberOfRecords).get(index);
             Map actualMap = new HashMap();
             for (Schema.Field field : actualRecord.getSchema().getFields()) {
-                Object decodedActualOutput = decodeOutputIfEncoded(actualRecord.get(field.name()));
-                actualMap.put(field.name(), decodedActualOutput);
+                if(actualRecord.get(field.name()) instanceof GenericRecord){
+                    GenericRecord nestedRecord = (GenericRecord) actualRecord.get(field.name());
+                    actualMap.put(field.name(), convertRecordToMap(nestedRecord));
+                }
+                else{
+                    Object decodedActualOutput = decodeOutputIfEncoded(actualRecord.get(field.name()));
+                    actualMap.put(field.name(), decodedActualOutput);
+                }
             }
             assertThat(expectedMap, Matchers.equalTo(actualMap));
             index++;
@@ -90,17 +96,37 @@ public class AvroOutputCodecTest {
 
             eventData.put("name", "Person" + rows);
             eventData.put("age", rows);
+            HashMap<String, Object> nestedRecord = new HashMap<>();
+            nestedRecord.put("firstFieldInNestedRecord", "testString"+rows);
+            nestedRecord.put("secondFieldInNestedRecord", rows);
+            eventData.put("nestedRecord", nestedRecord);
             recordList.add((eventData));
 
         }
         return recordList;
     }
 
-    static Schema parseSchema() {
+    private static Schema  parseSchema() {
+        Schema innerSchema=parseInnerSchemaForNestedRecord();
         return SchemaBuilder.record("Person")
                 .fields()
                 .name("name").type().stringType().noDefault()
                 .name("age").type().intType().noDefault()
+                .name("nestedRecord").type(innerSchema).noDefault()
+                .endRecord();
+
+    }
+
+    private static Schema parseInnerSchemaForNestedRecord(){
+        return SchemaBuilder
+                .record("nestedRecord")
+                .fields()
+                .name("firstFieldInNestedRecord")
+                .type(Schema.create(Schema.Type.STRING))
+                .noDefault()
+                .name("secondFieldInNestedRecord")
+                .type(Schema.create(Schema.Type.INT))
+                .noDefault()
                 .endRecord();
     }
 
@@ -118,7 +144,6 @@ public class AvroOutputCodecTest {
         final byte[] avroData = outputStream.toByteArray();
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(avroData);
         DataFileStream<GenericRecord> stream = new DataFileStream<GenericRecord>(byteArrayInputStream, new GenericDatumReader<GenericRecord>());
-        Schema schema = stream.getSchema();
         List<GenericRecord> actualRecords = new ArrayList<>();
 
         while (stream.hasNext()) {
@@ -126,5 +151,13 @@ public class AvroOutputCodecTest {
             actualRecords.add(avroRecord);
         }
         return actualRecords;
+    }
+    private static Map<String, Object> convertRecordToMap(GenericRecord nestedRecord) throws Exception {
+        final Map<String, Object> eventData = new HashMap<>();
+        for(Schema.Field field : nestedRecord.getSchema().getFields()){
+            Object value = decodeOutputIfEncoded(nestedRecord.get(field.name()));
+            eventData.put(field.name(), value);
+        }
+        return eventData;
     }
 }

@@ -5,6 +5,7 @@
 package org.opensearch.dataprepper.plugins.codec.avro;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 /**
@@ -18,19 +19,29 @@ public class AvroOutputCodecConfig {
     @JsonProperty("schema_file_location")
     private String fileLocation;
 
-	@JsonProperty("exclude_keys")
+    @JsonProperty("exclude_keys")
     private List<String> excludeKeys;
+    @JsonProperty("schema_registry_url")
+    private String schemaRegistryUrl;
 
     public List<String> getExcludeKeys() {
         return excludeKeys;
     }
+
     public String getSchema() {
         return schema;
     }
-    public String getFileLocation() {
-        return fileLocation;
-    }
+
     public void setSchema(String schema) {
         this.schema = schema;
     }
+
+    public String getFileLocation() {
+        return fileLocation;
+    }
+
+    public String getSchemaRegistryUrl() {
+        return schemaRegistryUrl;
+    }
+
 }

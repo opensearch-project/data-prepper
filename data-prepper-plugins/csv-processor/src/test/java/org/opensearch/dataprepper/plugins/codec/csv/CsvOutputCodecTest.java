@@ -25,71 +25,10 @@ import java.util.List;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class CsvOutputCodecTest {
-    private ByteArrayOutputStream outputStream;
-
     private static int numberOfRecords;
+    private ByteArrayOutputStream outputStream;
     private CsvOutputCodecConfig config;
 
-
-
-    private CsvOutputCodec createObjectUnderTest() {
-
-        config = new CsvOutputCodecConfig();
-        config.setHeader(header());
-        return new CsvOutputCodec(config);
-    }
-
-
-    @ParameterizedTest
-    @ValueSource(ints = {1, 2, 10, 100})
-    void test_happy_case(final int numberOfRecords) throws IOException {
-        this.numberOfRecords = numberOfRecords;
-        CsvOutputCodec csvOutputCodec = createObjectUnderTest();
-        outputStream = new ByteArrayOutputStream();
-        csvOutputCodec.start(outputStream);
-        for (int index = 0; index < numberOfRecords; index++) {
-            final Event event = (Event) getRecord(index).getData();
-            csvOutputCodec.writeEvent(event, outputStream);
-        }
-        csvOutputCodec.complete(outputStream);
-        String csvData = new String(outputStream.toByteArray(), StandardCharsets.UTF_8);
-        StringReader stringReader = new StringReader(csvData);
-        CSVReader csvReader = new CSVReaderBuilder(stringReader).build();
-
-        try {
-            String[] line;
-            int index=0;
-            int headerIndex;
-            List<String> headerList = header();
-            List<HashMap> expectedRecords = generateRecords(numberOfRecords);
-            while ((line = csvReader.readNext()) != null) {
-                if(index==0){
-                    headerIndex=0;
-                    for(String value: line){
-                        assertThat(headerList.get(headerIndex), Matchers.equalTo(value));
-                        headerIndex++;
-                    }
-                }
-                else{
-                    headerIndex=0;
-                    for (String value : line) {
-                        assertThat(expectedRecords.get(index-1).get(headerList.get(headerIndex)), Matchers.equalTo(value));
-                        headerIndex++;
-                    }
-                }
-                index++;
-            }
-        } catch (IOException | CsvValidationException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                csvReader.close();
-                stringReader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
     private static Record getRecord(int index) {
         List<HashMap> recordList = generateRecords(numberOfRecords);
         final Event event = JacksonLog.builder().withData(recordList.get(index)).build();
@@ -112,10 +51,67 @@ public class CsvOutputCodecTest {
         return recordList;
     }
 
-    private static List<String> header(){
+    private static List<String> header() {
         List<String> header = new ArrayList<>();
         header.add("name");
         header.add("age");
         return header;
+    }
+
+    private CsvOutputCodec createObjectUnderTest() {
+
+        config = new CsvOutputCodecConfig();
+        config.setHeader(header());
+        return new CsvOutputCodec(config);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void test_happy_case(final int numberOfRecords) throws IOException {
+        CsvOutputCodecTest.numberOfRecords = numberOfRecords;
+        CsvOutputCodec csvOutputCodec = createObjectUnderTest();
+        outputStream = new ByteArrayOutputStream();
+        csvOutputCodec.start(outputStream);
+        for (int index = 0; index < numberOfRecords; index++) {
+            final Event event = (Event) getRecord(index).getData();
+            csvOutputCodec.writeEvent(event, outputStream);
+        }
+        csvOutputCodec.complete(outputStream);
+        String csvData = outputStream.toString(StandardCharsets.UTF_8);
+        StringReader stringReader = new StringReader(csvData);
+        CSVReader csvReader = new CSVReaderBuilder(stringReader).build();
+
+        try {
+            String[] line;
+            int index = 0;
+            int headerIndex;
+            List<String> headerList = header();
+            List<HashMap> expectedRecords = generateRecords(numberOfRecords);
+            while ((line = csvReader.readNext()) != null) {
+                if (index == 0) {
+                    headerIndex = 0;
+                    for (String value : line) {
+                        assertThat(headerList.get(headerIndex), Matchers.equalTo(value));
+                        headerIndex++;
+                    }
+                } else {
+                    headerIndex = 0;
+                    for (String value : line) {
+                        assertThat(expectedRecords.get(index - 1).get(headerList.get(headerIndex)), Matchers.equalTo(value));
+                        headerIndex++;
+                    }
+                }
+                index++;
+            }
+        } catch (IOException | CsvValidationException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                csvReader.close();
+                stringReader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

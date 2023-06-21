@@ -19,6 +19,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 /**
  * An implementation of {@link OutputCodec} which deserializes Data-Prepper events
@@ -28,6 +32,7 @@ import java.util.Objects;
 public class AvroOutputCodec implements OutputCodec {
 
     private final AvroOutputCodecConfig config;
+    private static final List<String> nonComplexTypes = Arrays.asList("int", "long", "string", "float", "double", "bytes");
     private static final Logger LOG = LoggerFactory.getLogger(AvroOutputCodec.class);
 
     @DataPrepperPluginConstructor
@@ -47,13 +52,15 @@ public class AvroOutputCodec implements OutputCodec {
     @Override
     public void start(final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(outputStream);
-        if(config.getSchema()!=null){
-            schema=parseSchema(config.getSchema());
-        }
-        else if(config.getFileLocation()!=null){
+        if (config.getSchema() != null) {
+            schema = parseSchema(config.getSchema());
+        } else if(config.getFileLocation() != null){
             schema = AvroSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
+        }else if(config.getSchemaRegistryUrl() != null){
+            schema = parseSchema(AvroSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
         }else{
             LOG.error("Schema not provided.");
+            throw new IOException("Can't proceed without Schema.");
         }
         final DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<GenericRecord>(schema);
         dataFileWriter = new DataFileWriter<>(datumWriter);
@@ -69,14 +76,7 @@ public class AvroOutputCodec implements OutputCodec {
     @Override
     public void writeEvent(final Event event,final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
-        final GenericRecord avroRecord = new GenericData.Record(schema);
-        final boolean isExcludeKeyAvailable = !Objects.isNull(config.getExcludeKeys());
-        for (final String key : event.toMap().keySet()) {
-            if (isExcludeKeyAvailable && config.getExcludeKeys().contains(key)) {
-                continue;
-            }
-            avroRecord.put(key, event.toMap().get(key));
-        }
+        final GenericRecord avroRecord = buildAvroRecord(schema, event.toMap());
         dataFileWriter.append(avroRecord);
     }
 
@@ -94,6 +94,53 @@ public class AvroOutputCodec implements OutputCodec {
             throw new IOException("Can't proceed without schema.");
          }
      }
+    private GenericRecord buildAvroRecord(final Schema schema, final Map<String, Object> eventData) {
+        final GenericRecord avroRecord = new GenericData.Record(schema);
+        final boolean isExcludeKeyAvailable = !Objects.isNull(config.getExcludeKeys());
+        for (final String key : eventData.keySet()) {
+            if (isExcludeKeyAvailable && config.getExcludeKeys().contains(key)) {
+                continue;
+            }
+            final Schema.Field field = schema.getField(key);
+            final Object value = schemaMapper(field, eventData.get(key));
+            avroRecord.put(key, value);
+        }
+        return avroRecord;
+    }
+    private Object schemaMapper(final Schema.Field field , final Object rawValue){
+        Object finalValue=null;
+        final String fieldType = field.schema().getType().name().toString().toLowerCase();
+        if(nonComplexTypes.contains(fieldType)){
+            switch (fieldType){
+                case "string":
+                    finalValue = rawValue.toString();
+                    break;
+                case "int":
+                    finalValue = Integer.parseInt(rawValue.toString());
+                    break;
+                case "float":
+                    finalValue = Float.parseFloat(rawValue.toString());
+                    break;
+                case "double":
+                    finalValue = Double.parseDouble(rawValue.toString());
+                    break;
+                case "long":
+                    finalValue = Long.parseLong(rawValue.toString());
+                    break;
+                case "bytes":
+                    finalValue = rawValue.toString().getBytes(StandardCharsets.UTF_8);
+                    break;
+                default:
+                    LOG.error("Unrecognised Field name : '{}' & type : '{}'", field.name(), fieldType);
+                    break;
+            }
+        }else{
+            if(fieldType.equals("record") && rawValue instanceof Map){
+                finalValue = buildAvroRecord(field.schema(), (Map<String, Object>) rawValue);
+            }
+        }
+        return finalValue;
+    }
 }
 
 
