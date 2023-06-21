@@ -15,8 +15,7 @@ import java.time.Duration;
  * * A helper class that helps to read consumer configuration values from
  * pipelines.yaml
  */
-public class TopicsConfig {
-
+public class TopicConfig {
     private static final String AUTO_COMMIT = "false";
     private static final Duration AUTOCOMMIT_INTERVAL = Duration.ofSeconds(5);
     private static final Duration SESSION_TIMEOUT = Duration.ofSeconds(45);
@@ -113,10 +112,6 @@ public class TopicsConfig {
 
     public void setGroupId(String groupId) {
         this.groupId = groupId;
-    }
-
-    public Integer getMaxRetryAttempts() {
-        return maxRetryAttempts;
     }
 
     public void setMaxRetryAttempts(Integer maxRetryAttempts) {

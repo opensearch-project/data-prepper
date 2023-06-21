@@ -15,9 +15,6 @@ log-pipeline:
     kafka:
       bootstrap_servers:
         - 127.0.0.1:9093
-        - 127.0.0.1:9094
-        - 127.0.0.1:9095
-      auth_type: plaintext
       topics:
         - name: my-topic-1
           workers: 10
@@ -45,6 +42,19 @@ log-pipeline:
         sasl_plaintext:
           username: admin
           password: admin-secret
+        sasl_oauth:
+          oauth_client_id: 0oa9wc21447Pc5vsV5d8
+          oauth_client_secret: aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPb
+          oauth_login_server: https://dev-1365.okta.com
+          oauth_login_endpoint: /oauth2/default/v1/token
+          oauth_login_grant_type: refresh_token
+          oauth_login_scope: kafka
+          oauth_introspect_server: https://dev-1365.okta.com
+          oauth_introspect_endpoint: /oauth2/default/v1/introspect
+          oauth_sasl_mechanism: OAUTHBEARER
+          oauth_security_protocol: SASL_PLAINTEXT
+          oauth_sasl_login_callback_handler_class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
+          oauth_jwks_endpoint_url: https://dev-1365.okta.com/oauth2/default/v1/keys
   sink:
     - stdout:
 
@@ -57,8 +67,6 @@ log-pipeline:
 - `topics` (Required) : The topic in which kafka source plugin associated with to read the messages.The maximum number of topics should be 10.
 
 - `name` (Required) : This denotes the name of the topic, and it is a mandatory one. Multiple list can be configured and the maximum number of topic should be 10.
-
-- `auth_type` (Optional) : The auth_type directive selects the method that is used to authenticate the user. There is no auth type by default. The most common supported methods are SASL_PLAINTEXT,SASL_SSL and SASL_OAUTH.
 
 - `workers` (Optional) : Number of multithreaded consumers associated with each topic. Defaults to `10` and its maximum value should be 200.
 
@@ -101,8 +109,37 @@ Defaults to `52428800`.
 - `version` (Optional) : Deserialize a record key from a bytearray into a String. Defaults to `org.apache.kafka.common.serialization.StringDeserializer`.
 
 ### <a name="auth_configuration">Auth Configuration for SASL PLAINTEXT</a>
-- `username` (Optional) : The location of the trust store file.
-- `password` (Optional) : The password for the trust store file.
+
+- `username` (Optional) : The username for the Plaintext authentication.
+
+- `password` (Optional) : The password for the Plaintext authentication.
+
+### <a name="auth_configuration">OAuth Configuration for SASLOAUTH</a>
+
+- `oauth_client_id`: It is the client id is the public identifier of your authorization server.
+
+- `oauth_client_secret` : It is a secret known only to the application and the authorization server.
+
+- `oauth_login_server` : The URL of the OAuth server.(Eg: https://dev.okta.com)
+
+- `oauth_login_endpoint`: The End point URL of the OAuth server.(Eg: /oauth2/default/v1/token)
+
+- `oauth_login_grant_type` (Optional) : This grant type refers to the way an application gets an access token.
+
+- `oauth_login_scope` (Optional) : This scope limit an application's access to a user's account.
+  
+- `oauth_introspect_server` (Optional) : The URL of the introspect server. Most of the cases it should be similar to the oauth_login_server URL (Eg:https://dev.okta.com)
+
+- `oauth_introspect_endpoint` (Optional) : The end point of the introspect server URL.(Eg: /oauth2/default/v1/introspect)
+
+- `oauth_sasl_mechanism` (Optional) : It describes the authentication mechanism.
+
+- `oauth_security_protocol` (Optional) : It is the SASL security protocol like PLAINTEXT or SSL.
+
+- `oauth_sasl_login_callback_handler_class` (Optional) : It is the user defined or built in Kafka class to handle login and its callbeck.
+
+- `oauth_jwks_endpoint_url` (Optional) : The absolute URL for the oauth token refresh.
+
 ## Developer Guide
 
 This plugin is compatible with Java 11. See
