@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugins.sink.configuration;
 
+import com.google.common.primitives.Bytes;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
@@ -27,6 +28,11 @@ public class CwlSinkConfigTest {
     @Test
     void check_null_auth_config_test() {
         assertThat(new CwlSinkConfig().getAwsConfig(), equalTo(null));
+    }
+
+    @Test
+    void check_null_threshold_config_test() {
+        assertThat(new CwlSinkConfig().getThresholdConfig(), equalTo(null));
     }
 
     @Test
@@ -60,4 +66,3 @@ public class CwlSinkConfigTest {
         assertThat(cwlSinkConfig.getAwsConfig(), equalTo(awsConfig));
         assertThat(cwlSinkConfig.getThresholdConfig(), equalTo(thresholdConfig));
     }
-}
