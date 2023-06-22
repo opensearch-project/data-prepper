@@ -5,16 +5,26 @@
 
 package org.opensearch.dataprepper.plugins.processor;
 
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
-import java.net.MalformedURLException;
+import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
+import org.opensearch.dataprepper.plugins.processor.utils.IPValidationcheck;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Implementation class of geoIP-processor plugin. It is responsible for enrichment of
@@ -23,19 +33,33 @@ import java.util.Collection;
 @DataPrepperPlugin(name = "geoip", pluginType = Processor.class, pluginConfigurationType = GeoIPProcessorConfig.class)
 public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
+  private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessor.class);
+  private static final String GEO_IP_PROCESSING_MATCH = "geoIpProcessingMatch";
+  private static final String GEO_IP_PROCESSING_MISMATCH = "geoIpProcessingMismatch";
+  private final Counter geoIpProcessingMatchCounter;
+  private final Counter geoIpProcessingMismatchCounter;
+  private final GeoIPProcessorConfig geoIPProcessorConfig;
+  private final String tempPath;
+  private static final String TAGS_ON_MATCH_FAILURE = "tags_on_match_failure";
+  private final List<String> tagsOnMatchFailure;
+  private GeoIPProcessorService geoIPProcessorService;
+  private final String TEMP_PATH_FOLDER = "GeoIP";
+
   /**
    * GeoIPProcessor constructor for initialization of required attributes
    * @param pluginSetting pluginSetting
    * @param geoCodingProcessorConfig geoCodingProcessorConfig
-   * @param pluginFactory pluginFactory
-   * @throws MalformedURLException MalformedURLException
    */
   @DataPrepperPluginConstructor
   public GeoIPProcessor(PluginSetting pluginSetting,
-                        final GeoIPProcessorConfig geoCodingProcessorConfig,
-                        final PluginFactory pluginFactory) throws MalformedURLException {
+                        final GeoIPProcessorConfig geoCodingProcessorConfig) {
     super(pluginSetting);
-    //TODO
+    this.geoIPProcessorConfig = geoCodingProcessorConfig;
+    this.tempPath = System.getProperty("java.io.tmpdir")+ File.separator + TEMP_PATH_FOLDER;
+    geoIPProcessorService = new GeoIPProcessorService(geoCodingProcessorConfig,tempPath);
+    tagsOnMatchFailure = pluginSetting.getTypedList(TAGS_ON_MATCH_FAILURE, String.class);
+    this.geoIpProcessingMatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MATCH);
+    this.geoIpProcessingMismatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH);
   }
 
   /**
@@ -46,23 +70,50 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   @Override
   public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
 
-    //TODO : logic call the enrichment of data class methods
-    return null;
+    Map<String, Object> geoData;
+
+    for (final Record<Event> eventRecord : records) {
+      Event event = eventRecord.getData();
+      for (KeysConfig key : geoIPProcessorConfig.getKeysConfig()) {
+        String source = key.getKeyConfig().getSource();
+        List<String> attributes = key.getKeyConfig().getAttributes();
+        String ipAddress = event.get(source, String.class);
+
+        //Lookup from DB
+        if (ipAddress != null && (!(ipAddress.isEmpty()))) {
+          try {
+            if (!(IPValidationcheck.ipValidationcheck(ipAddress))) {
+              InetAddress inetAddress = InetAddress.getByName(ipAddress);
+              geoData = geoIPProcessorService.getGeoData(inetAddress, attributes);
+              eventRecord.getData().put(key.getKeyConfig().getTarget(), geoData);
+              geoIpProcessingMatchCounter.increment();
+            }
+          } catch (IOException e) {
+            geoIpProcessingMismatchCounter.increment();
+            event.getMetadata().addTags(tagsOnMatchFailure);
+            throw new EnrichFailedException("Enrichment failed for ip address: " + ipAddress);
+          }
+        } else {
+          //No Enrichment.
+          event.getMetadata().addTags(tagsOnMatchFailure);
+        }
+      }
+    }
+    return records;
   }
 
   @Override
   public void prepareForShutdown() {
-    //TODO
+    LOG.info("GeoIP plugin prepare For Shutdown");
   }
 
   @Override
   public boolean isReadyForShutdown() {
-    //TODO
     return false;
   }
 
   @Override
   public void shutdown() {
-    //TODO
+    LOG.info("GeoIP plugin Shutdown");
   }
 }
