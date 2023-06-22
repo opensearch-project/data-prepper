@@ -10,7 +10,7 @@ public class CwlSinkConfig {
     public static final String DEFAULT_BUFFER_TYPE = "in_memory";
 
     //Class was utilized from the
-    @JsonProperty("aws_config")
+    @JsonProperty("aws")
     @NotNull
     @Valid
     private AwsAuthenticationOptions awsConfig;
