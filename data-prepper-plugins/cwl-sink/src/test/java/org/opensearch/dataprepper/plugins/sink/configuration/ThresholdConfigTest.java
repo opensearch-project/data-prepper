@@ -12,7 +12,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 public class ThresholdConfigTest {
-
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -34,5 +33,29 @@ public class ThresholdConfigTest {
         final Map<String, Integer> jsonMap = Map.of("max_event_size", max_event_size);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
         assertThat(thresholdConfigTest.getMaxEventSize(), equalTo(max_event_size));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 100, 1048576})
+    void check_valid_request_size(final int max_batch_request_size) {
+        final Map<String, Integer> jsonMap = Map.of("max_request_size", max_batch_request_size);
+        final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
+        assertThat(thresholdConfigTest.getMaxBatchSize(), equalTo(max_batch_request_size));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10, 15})
+    void check_valid_retry_count(final int retryCount) {
+        final Map<String, Integer> jsonMap = Map.of("retry_count", retryCount);
+        final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
+        assertThat(thresholdConfigTest.getRetryCount(), equalTo(retryCount));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {5, 10, 300})
+    void check_valid_log_send_interval(final int logSendInterval) {
+        final Map<String, Integer> jsonMap = Map.of("log_send_interval", logSendInterval);
+        final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
+        assertThat(thresholdConfigTest.getLogSendInterval(), equalTo(logSendInterval));
     }
 }

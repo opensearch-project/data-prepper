@@ -8,7 +8,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 public class CwlSinkConfigTest {
-    //Client Config:
     public static final String LOG_GROUP = "testGroup";
     public static final String LOG_STREAM = "testStream";
     public static final String BUFFER_TYPE = "in_memory";
@@ -16,11 +15,6 @@ public class CwlSinkConfigTest {
     public static final int MAX_RETRIES = 10;
     //Auth Config:
     public static final String REGION = "us-east-1";
-
-    @BeforeEach
-    void setUp() {
-
-    }
 
     @Test
     void check_null_auth_config_test() {
