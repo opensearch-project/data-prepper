@@ -26,7 +26,7 @@ public class InMemoryBuffer implements Buffer {
     }
 
     @Override
-    public void writeEvent(byte[] event) {
+    public void writeEvent(final byte[] event) {
         eventsBuffered.add(event);
         bufferSize += event.length;
     }

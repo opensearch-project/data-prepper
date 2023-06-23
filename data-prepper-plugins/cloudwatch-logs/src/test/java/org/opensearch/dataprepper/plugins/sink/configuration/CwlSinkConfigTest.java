@@ -44,6 +44,7 @@ public class CwlSinkConfigTest {
     void check_null_log_group_test() {
         assertThat(new CwlSinkConfig().getLogGroup(), equalTo(null));
     }
+
     @Test
     void check_null_log_stream_test() {
         assertThat(new CwlSinkConfig().getLogStream(), equalTo(null));
@@ -66,3 +67,4 @@ public class CwlSinkConfigTest {
         assertThat(cwlSinkConfig.getAwsConfig(), equalTo(awsConfig));
         assertThat(cwlSinkConfig.getThresholdConfig(), equalTo(thresholdConfig));
     }
+}

@@ -30,6 +30,10 @@ public class AwsConfig {
     @Size(min = 2, max = 1224, message = "awsStsExternalId length should be between 2 and 1224 characters")
     private String awsStsExternalId;
 
+    public int getDEFAULT_CONNECTION_ATTEMPTS() {
+        return DEFAULT_CONNECTION_ATTEMPTS;
+    }
+
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
     }
