@@ -69,6 +69,7 @@ public class SqsService {
                 .maxNumberOfMessages(sqsOptions.getMaximumMessages())
                 .visibilityTimeout(getTimeOutValueByDuration(sqsOptions.getVisibilityTimeout()))
                 .waitTimeSeconds(getTimeOutValueByDuration(sqsOptions.getWaitTime()))
+                .messageAttributeNames("All")
                 .build();
     }
 

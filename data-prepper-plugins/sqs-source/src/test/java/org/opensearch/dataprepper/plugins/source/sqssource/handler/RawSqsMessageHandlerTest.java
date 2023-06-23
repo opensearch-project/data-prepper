@@ -3,8 +3,8 @@ package org.opensearch.dataprepper.plugins.source.sqssource.handler;
 import com.linecorp.armeria.client.retry.Backoff;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -27,6 +27,10 @@ import static org.mockito.Mockito.mock;
 
 class RawSqsMessageHandlerTest {
 
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(10);
+
+    static final int NO_OF_RECORDS_TO_ACCUMULATE = 100;
+
     private BlockingBuffer<Record<Event>> getBuffer() {
         final HashMap<String, Object> integerHashMap = new HashMap<>();
         integerHashMap.put("buffer_size", 2);
@@ -38,17 +42,16 @@ class RawSqsMessageHandlerTest {
 
     @Test
     void sqs_messages_handler_will_read_sqs_message_and_push_to_buffer(){
-        Buffer<Record<Event>> buffer = getBuffer();
+        final BlockingBuffer<Record<Event>> buffer = getBuffer();
         AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         String message = UUID.randomUUID().toString();
         String messageId = UUID.randomUUID().toString();
         String receiptHandle = UUID.randomUUID().toString();
         List<Message> messageList = List.of(Message.builder().body(message).messageId(messageId).receiptHandle(receiptHandle).build());
         SqsService sqsService = new SqsService(mock(SqsMetrics.class),mock(SqsClient.class),mock(Backoff.class));
-        RawSqsMessageHandler rawSqsMessageHandler = new RawSqsMessageHandler(buffer,sqsService,10);
-        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = rawSqsMessageHandler.handleMessages(messageList, acknowledgementSet);
-
-
+        final BufferAccumulator<Record<Event>> recordBufferAccumulator = BufferAccumulator.create(buffer, NO_OF_RECORDS_TO_ACCUMULATE, BUFFER_TIMEOUT);
+        RawSqsMessageHandler rawSqsMessageHandler = new RawSqsMessageHandler(sqsService);
+        final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntries = rawSqsMessageHandler.handleMessages(messageList,recordBufferAccumulator, acknowledgementSet);
         final List<Record<Event>> bufferEvents = new ArrayList<>(buffer.read((int) Duration.ofSeconds(10).toMillis()).getKey());
         final String bufferMessage = bufferEvents.get(0).getData().get("message", String.class);
 

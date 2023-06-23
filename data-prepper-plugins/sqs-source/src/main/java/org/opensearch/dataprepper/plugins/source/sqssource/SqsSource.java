@@ -35,7 +35,9 @@ public class SqsSource implements Source<Record<Event>> {
 
     static final long MAXIMUM_DELAY = Duration.ofMinutes(5).toMillis();
 
-    static final int BUFFER_TIMEOUT =  (int) Duration.ofSeconds(10).toMillis();
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(10);
+
+    static final int NO_OF_RECORDS_TO_ACCUMULATE = 100;
 
     static final double JITTER_RATE = 0.20;
 
@@ -47,7 +49,7 @@ public class SqsSource implements Source<Record<Event>> {
 
     private final boolean acknowledgementsEnabled;
 
-    private final org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier awsCredentialsSupplier;
+    private final AwsCredentialsSupplier awsCredentialsSupplier;
 
     private final ScheduledExecutorService scheduledExecutorService;
 
@@ -80,7 +82,8 @@ public class SqsSource implements Source<Record<Event>> {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
         final SqsService sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
-        final SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService,BUFFER_TIMEOUT);
+
+        final SqsMessageHandler sqsHandler = new RawSqsMessageHandler(sqsService);
         final SqsOptions.Builder sqsOptionsBuilder = new SqsOptions.Builder()
                 .setPollDelay(sqsSourceConfig.getPollingFrequency())
                 .setVisibilityTimeout(sqsSourceConfig.getVisibilityTimeout())
@@ -88,11 +91,13 @@ public class SqsSource implements Source<Record<Event>> {
                 .setMaximumMessages(sqsSourceConfig.getBatchSize());
         final long pollingFrequencyInMillis = sqsSourceConfig.getPollingFrequency().toMillis();
         sqsSourceConfig.getUrls().forEach(url -> {
-            scheduledExecutorService.scheduleAtFixedRate(new SqsSourceTask(sqsService,
+            scheduledExecutorService.scheduleAtFixedRate(new SqsSourceTask(buffer,NO_OF_RECORDS_TO_ACCUMULATE,BUFFER_TIMEOUT,
+                    sqsService,
                     sqsOptionsBuilder.setSqsUrl(url).build(),
                     sqsMetrics,
                     acknowledgementSetManager,
-                    sqsSourceConfig.getAcknowledgements(), sqsHandler)
+                    sqsSourceConfig.getAcknowledgements(),
+                    sqsHandler)
                     ,0, pollingFrequencyInMillis == 0 ? 1 : pollingFrequencyInMillis,
                     TimeUnit.MILLISECONDS);
         });

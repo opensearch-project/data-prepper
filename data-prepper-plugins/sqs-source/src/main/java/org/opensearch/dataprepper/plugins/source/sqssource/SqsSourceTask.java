@@ -4,8 +4,12 @@
  */
 package org.opensearch.dataprepper.plugins.source.sqssource;
 
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.SqsService;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.handler.SqsMessageHandler;
 import org.opensearch.dataprepper.plugins.aws.sqs.common.metrics.SqsMetrics;
@@ -15,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,7 +43,12 @@ public class SqsSourceTask implements Runnable{
 
     private final SqsMessageHandler sqsHandler;
 
-    public SqsSourceTask(final SqsService sqsService,
+    private final BufferAccumulator<Record<Event>> bufferAccumulator;
+
+    public SqsSourceTask(final Buffer<Record<Event>> buffer,
+                         final int noOfRecordsToAccumulate,
+                         final Duration bufferTimeout,
+                         final SqsService sqsService,
                          final SqsOptions sqsOptions,
                          final SqsMetrics sqsMetrics,
                          final AcknowledgementSetManager acknowledgementSetManager,
@@ -50,6 +60,7 @@ public class SqsSourceTask implements Runnable{
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.endToEndAcknowledgementsEnabled = endToEndAcknowledgementsEnabled;
         this.sqsHandler = sqsHandler;
+        this.bufferAccumulator = BufferAccumulator.create(buffer,noOfRecordsToAccumulate,bufferTimeout);
     }
 
     /**
@@ -85,7 +96,7 @@ public class SqsSourceTask implements Runnable{
            LOG.info("Thread Name : {} , messages processed: {}",Thread.currentThread().getName(),messages.size());
            sqsMetrics.getSqsMessagesReceivedCounter().increment();
            try {
-               deleteMessageBatchRequestEntries = sqsHandler.handleMessages(messages, acknowledgementSet);
+               deleteMessageBatchRequestEntries = sqsHandler.handleMessages(messages, bufferAccumulator, acknowledgementSet);
            } catch(final Exception e) {
                LOG.error("Error while processing handleMessages : ",e);
                sqsService.applyBackoff();

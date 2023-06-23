@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -26,6 +27,7 @@ import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageResponse;
 import software.amazon.awssdk.services.sqs.model.SqsException;
+import software.amazon.awssdk.services.sts.model.StsException;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -62,6 +64,10 @@ class SqsSourceTaskTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     private final boolean endToEndAcknowledgementsEnabled = false;
+
+    static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(10);
+
+    static final int NO_OF_RECORDS_TO_ACCUMULATE = 100;
 
     @Mock
     private SqsMessageHandler sqsHandler;
@@ -132,13 +138,15 @@ class SqsSourceTaskTest {
     }
 
     private SqsSourceTask createObjectUnderTest(Buffer<Record<Event>> buffer,boolean endToEndAckFlag) {
+        final BufferAccumulator<Record<Event>> recordBufferAccumulator =
+                BufferAccumulator.create(buffer, NO_OF_RECORDS_TO_ACCUMULATE, BUFFER_TIMEOUT);
         sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
-        sqsHandler = new RawSqsMessageHandler(buffer,sqsService,10);
+        sqsHandler = new RawSqsMessageHandler(sqsService);
         sqsOptions = new SqsOptions.Builder()
                 .setSqsUrl("https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue")
                 .setVisibilityTimeout(Duration.ofSeconds(30))
                 .setWaitTime(Duration.ofSeconds(20)).build();
-        return new SqsSourceTask(sqsService,
+        return new SqsSourceTask(buffer,100,Duration.ofSeconds(10),sqsService,
                 sqsOptions,
                 sqsMetrics,
                 acknowledgementSetManager,
@@ -160,8 +168,10 @@ class SqsSourceTaskTest {
         String message ="'{\"S.No\":\"1\",\"name\":\"data-prep\",\"country\":\"USA\"}'";
         List<Message> messageList = List.of(Message.builder().body(message).messageId(UUID.randomUUID().toString()).receiptHandle(UUID.randomUUID().toString()).build());
         when(sqsClient.receiveMessage(any(ReceiveMessageRequest.class))).thenReturn(ReceiveMessageResponse.builder().messages(messageList).build());
+        when(sqsClient.deleteMessageBatch(any(DeleteMessageBatchRequest.class))).thenThrow(mock(StsException.class));
         when(sqsMetrics.getSqsMessagesReceivedCounter()).thenReturn(messageReceivedCounter);
-        createObjectUnderTest(null,endToEndAcknowledgementsEnabled).processSqsMessages();
+        when(sqsMetrics.getSqsMessagesDeleteFailedCounter()).thenReturn(messageDeletedCounter);
+        createObjectUnderTest(mock(Buffer.class),endToEndAcknowledgementsEnabled).processSqsMessages();
         verify(backoff).nextDelayMillis(1);
         verify(messageReceivedCounter).increment();
     }

@@ -4,8 +4,8 @@
  */
 package org.opensearch.dataprepper.plugins.source.sqssource.handler;
 
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
@@ -14,7 +14,6 @@ import org.opensearch.dataprepper.plugins.aws.sqs.common.handler.SqsMessageHandl
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.Message;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -26,16 +25,8 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
 
     private final SqsService sqsService;
 
-    private final Buffer<Record<Event>> buffer;
-
-    private final int bufferTimeOut;
-
-    public RawSqsMessageHandler(final Buffer<Record<Event>> buffer,
-                                final SqsService sqsService,
-                                final int bufferTimeOut){
-        this.buffer = buffer;
+    public RawSqsMessageHandler(final SqsService sqsService){
         this.sqsService = sqsService;
-        this.bufferTimeOut = bufferTimeOut;
     }
 
     /**
@@ -46,18 +37,21 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
      */
     @Override
     public List<DeleteMessageBatchRequestEntry> handleMessages(final List<Message> messages,
-                                                              final AcknowledgementSet acknowledgementSet) {
-        final List<Record<Event>> events = new ArrayList<>(messages.size());
+                                                               final BufferAccumulator<Record<Event>> bufferAccumulator,
+                                                               final AcknowledgementSet acknowledgementSet) {
         messages.forEach(message -> {
             final Record<Event> eventRecord = new Record<Event>(JacksonEvent.fromMessage(message.body()));
-            events.add(eventRecord);
+            try {
+                bufferAccumulator.add(eventRecord);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
             if(Objects.nonNull(acknowledgementSet)){
                 acknowledgementSet.add(eventRecord.getData());
             }
         });
         try {
-            if(!events.isEmpty())
-                buffer.writeAll(events, bufferTimeOut);
+            bufferAccumulator.flush();
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }

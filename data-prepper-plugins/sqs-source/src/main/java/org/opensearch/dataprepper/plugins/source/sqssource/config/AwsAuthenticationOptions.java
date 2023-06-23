@@ -37,13 +37,13 @@ public class AwsAuthenticationOptions {
     @AssertTrue(message = "sts_role_arn must be an IAM Role")
     boolean isValidStsRoleArn() {
         final Arn arn = getArn();
-        boolean status = false;
+        boolean status = true;
         if (!AWS_IAM.equals(arn.service())) {
-            status = true;
+            status = false;
         }
         final Optional<String> resourceType = arn.resource().resourceType();
         if (resourceType.isEmpty() || !resourceType.get().equals(AWS_IAM_ROLE)) {
-            status = true;
+            status = false;
         }
         return status;
     }

@@ -2,6 +2,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation libs.armeria.core
     implementation project(':data-prepper-plugins:aws-sqs-common')
+    implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'software.amazon.awssdk:sqs'
     implementation 'software.amazon.awssdk:arns'
