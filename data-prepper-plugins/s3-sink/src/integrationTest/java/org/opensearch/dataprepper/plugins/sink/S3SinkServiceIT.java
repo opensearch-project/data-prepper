@@ -24,7 +24,6 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.ObjectKey;
-import org.opensearch.dataprepper.plugins.sink.codec.JsonCodec;
 import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;

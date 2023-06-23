@@ -21,7 +21,6 @@ import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.LocalFileBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
