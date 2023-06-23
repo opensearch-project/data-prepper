@@ -62,7 +62,7 @@ public class ParquetOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream) throws IOException {
+    public synchronized void start(final OutputStream outputStream) throws IOException {
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
         } else if(config.getFileLocation()!=null){
@@ -95,7 +95,7 @@ public class ParquetOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void complete(final OutputStream outputStream) throws IOException {
+    public synchronized void complete(final OutputStream outputStream) throws IOException {
         writer.close();
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
         final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference);
