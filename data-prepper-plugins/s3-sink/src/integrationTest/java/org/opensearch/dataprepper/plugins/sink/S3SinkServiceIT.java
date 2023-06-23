@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -57,7 +58,6 @@ class S3SinkServiceIT {
     private static final String PATH_PREFIX = UUID.randomUUID().toString() + "/%{yyyy}/%{MM}/%{dd}/";
     private S3Client s3Client;
     private String bucketName;
-    private JsonCodec codec;
     private BufferFactory bufferFactory;
     @Mock
     private S3SinkConfig s3SinkConfig;
@@ -79,6 +79,8 @@ class S3SinkServiceIT {
     private Counter numberOfRecordsFailedCounter;
     @Mock
     private DistributionSummary s3ObjectSizeSummary;
+    @Mock
+    private OutputCodec codec;
 
 
     @BeforeEach
@@ -87,8 +89,6 @@ class S3SinkServiceIT {
 
         s3Client = S3Client.builder().region(Region.of(s3region)).build();
         bucketName = System.getProperty("tests.s3sink.bucket");
-
-        codec = new JsonCodec();
         bufferFactory = new InMemoryBufferFactory();
 
         when(objectKeyOptions.getNamePattern()).thenReturn("elb-log-%{yyyy-MM-dd'T'hh-mm-ss}");
