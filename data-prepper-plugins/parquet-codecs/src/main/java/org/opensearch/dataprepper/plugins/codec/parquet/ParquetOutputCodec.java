@@ -41,7 +41,6 @@ public class ParquetOutputCodec implements OutputCodec {
     private ParquetWriter<GenericRecord> writer;
     private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
     private S3Client s3Client;
-    private static final String s3Key = "s3";
     private static final String PARQUET = "parquet";
 
     private static final String TIME_PATTERN_REGULAR_EXPRESSION = "\\%\\{.*?\\}";
@@ -85,7 +84,7 @@ public class ParquetOutputCodec implements OutputCodec {
     public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         final GenericData.Record parquetRecord = new GenericData.Record(schema);
         for (final String key : event.toMap().keySet()) {
-            if (config.getExcludeKeys().contains(key) && s3Key.equals(key)) {
+            if (config.getExcludeKeys().contains(key)) {
                 continue;
             }
             final Schema.Field field = schema.getField(key);
