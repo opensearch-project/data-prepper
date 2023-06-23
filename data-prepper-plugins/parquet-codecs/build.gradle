@@ -7,6 +7,8 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
     implementation 'org.apache.avro:avro:1.11.0'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:apache-client'
     implementation 'org.apache.hadoop:hadoop-common:3.3.5'
     implementation 'org.apache.hadoop:hadoop-hdfs-client:3.3.5'
     implementation 'org.apache.hadoop:hadoop-yarn-client:3.3.5'

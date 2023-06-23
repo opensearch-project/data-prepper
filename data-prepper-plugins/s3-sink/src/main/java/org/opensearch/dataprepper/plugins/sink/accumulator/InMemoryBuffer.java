@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -21,12 +22,14 @@ public class InMemoryBuffer implements Buffer {
     private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     private int eventCount;
     private final StopWatch watch;
+    private boolean isCodecStarted;
 
     InMemoryBuffer() {
         byteArrayOutputStream.reset();
         eventCount = 0;
         watch = new StopWatch();
         watch.start();
+        isCodecStarted = false;
     }
 
     @Override
@@ -69,5 +72,22 @@ public class InMemoryBuffer implements Buffer {
         byteArrayOutputStream.write(bytes);
         byteArrayOutputStream.write(System.lineSeparator().getBytes());
         eventCount++;
+    }
+    @Override
+    public boolean isCodecStarted() {
+        return isCodecStarted;
+    }
+
+    @Override
+    public void setCodecStarted(boolean codecStarted) {
+        isCodecStarted = codecStarted;
+    }
+    @Override
+    public void setEventCount(int eventCount) {
+        this.eventCount = eventCount;
+    }
+    @Override
+    public OutputStream getOutputStream() {
+        return byteArrayOutputStream;
     }
 }

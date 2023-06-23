@@ -31,6 +31,7 @@ public class LocalFileBuffer implements Buffer {
     private int eventCount;
     private final StopWatch watch;
     private final File localFile;
+    private boolean isCodecStarted;
 
     LocalFileBuffer(File tempFile) throws FileNotFoundException {
         localFile = tempFile;
@@ -38,6 +39,7 @@ public class LocalFileBuffer implements Buffer {
         eventCount = 0;
         watch = new StopWatch();
         watch.start();
+        isCodecStarted = false;
     }
 
     @Override
@@ -111,4 +113,23 @@ public class LocalFileBuffer implements Buffer {
             }
         }
     }
+    @Override
+    public boolean isCodecStarted() {
+        return isCodecStarted;
+    }
+
+    @Override
+    public void setCodecStarted(boolean codecStarted) {
+        isCodecStarted = codecStarted;
+    }
+    @Override
+    public void setEventCount(int eventCount) {
+        this.eventCount = eventCount;
+    }
+
+    @Override
+    public OutputStream getOutputStream() {
+        return outputStream;
+    }
+
 }
