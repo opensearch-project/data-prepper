@@ -41,7 +41,7 @@ public interface DBSource {
         final File destFile = new File(outputFilePath);
         try {
             if (!destFile.exists()) {
-                destFile.mkdir();
+                destFile.mkdirs();
             }
         }
         catch (UncheckedIOException ex) {
