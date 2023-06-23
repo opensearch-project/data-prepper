@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.codec.newline;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -18,7 +19,7 @@ public class NewlineDelimitedOutputConfig {
     private String headerDestination;
 
     @JsonProperty("exclude_keys")
-    private List<String> excludeKeys;
+    private List<String> excludeKeys = new ArrayList<>();
 
     public List<String> getExcludeKeys() {
         return excludeKeys;

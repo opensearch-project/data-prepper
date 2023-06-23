@@ -65,15 +65,12 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
     }
 
     private void writeToOutputStream(final OutputStream outputStream, final Object object) throws IOException {
-        boolean isExcludeKeyAvailable = !Objects.isNull(config.getExcludeKeys());
         byte[] byteArr = null;
         if (object instanceof Map) {
             Map<Object, Object> map = objectMapper.convertValue(object, Map.class);
-            if (isExcludeKeyAvailable) {
-                for (String key : config.getExcludeKeys()) {
-                    if (map.containsKey(key)) {
-                        map.remove(key);
-                    }
+            for (String key : config.getExcludeKeys()) {
+                if (map.containsKey(key)) {
+                    map.remove(key);
                 }
             }
             String json = objectMapper.writeValueAsString(map);
