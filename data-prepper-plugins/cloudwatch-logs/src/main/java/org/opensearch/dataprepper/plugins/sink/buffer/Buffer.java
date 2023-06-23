@@ -6,6 +6,9 @@ import org.opensearch.dataprepper.model.record.Record;
 /**
  * Buffer that handles the temporary storage of
  * events. It isolates the implementation of system storage.
+ * 1. Reads in a String.
+ * 2. Transforms to Byte type.
+ * 3. Returns a Byte type.
  */
 public interface Buffer {
     /**
@@ -16,7 +19,7 @@ public interface Buffer {
 
     int getBufferSize();
 
-    void writeEvent(Record<Event> event);
+    void writeEvent(byte[] event);
 
-    Record<Event> getEvent();
+    byte[] getEvent();
 }

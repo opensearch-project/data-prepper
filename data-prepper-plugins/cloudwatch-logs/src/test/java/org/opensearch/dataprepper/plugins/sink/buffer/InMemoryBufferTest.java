@@ -29,6 +29,10 @@ public class InMemoryBufferTest {
         return testCollection;
     }
 
+    String getStringJsonMessage() {
+        return JacksonEvent.fromMessage("testing").toJsonString();
+    }
+
     @Test
     void check_empty_buffer() {
         assertThat(inMemoryBuffer.getBufferSize(), equalTo(0));
@@ -38,20 +42,54 @@ public class InMemoryBufferTest {
     @Test
     void check_buffer_has_right_number_of_events_test() {
         for (Record<Event> eventToTest: getTestCollection()) {
-            inMemoryBuffer.writeEvent(eventToTest);
+            inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
 
         assertThat(inMemoryBuffer.getEventCount(), equalTo(3));
     }
 
     @Test
+    void check_right_event_count_after_event_fetch_test() {
+        for (Record<Event> eventToTest: getTestCollection()) {
+            inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
+        }
+
+        inMemoryBuffer.getEvent();
+
+        assertThat(inMemoryBuffer.getEventCount(), equalTo(2));
+    }
+
+    @Test
+    void check_right_buffer_size_after_event_fetch_test() {
+        for (Record<Event> eventToTest: getTestCollection()) {
+            inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
+        }
+
+        inMemoryBuffer.getEvent();
+
+        assertThat(inMemoryBuffer.getBufferSize(), equalTo(42));
+    }
+
+    @Test
     void check_buffer_has_right_size_test() {
         for (Record<Event> eventToTest: getTestCollection()) {
-            inMemoryBuffer.writeEvent(eventToTest);
+            inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
 
         assertThat(inMemoryBuffer.getBufferSize(), equalTo(63));
     }
 
     //TODO: Add tests for getting events.
+    @Test
+    void check_if_event_matches_test() {
+        for (Record<Event> eventToTest: getTestCollection()) {
+            inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
+        }
+
+        int eventCount = inMemoryBuffer.getEventCount();
+
+        for (int i = 0; i < eventCount; i++) {
+            assertThat(new String(inMemoryBuffer.getEvent()), equalTo(getStringJsonMessage()));
+        }
+    }
 }

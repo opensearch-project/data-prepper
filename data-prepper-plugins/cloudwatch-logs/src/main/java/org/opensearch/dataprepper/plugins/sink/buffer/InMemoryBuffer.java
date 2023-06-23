@@ -8,7 +8,7 @@ import java.util.Optional;
 
 //TODO: Might not be thread safe to use static variables in a buffer that can be shared.
 public class InMemoryBuffer implements Buffer {
-    private ArrayList<Record<Event>> eventsBuffered;
+    private ArrayList<byte[]> eventsBuffered;
     private int bufferSize = 0;
 
     InMemoryBuffer() {
@@ -26,14 +26,14 @@ public class InMemoryBuffer implements Buffer {
     }
 
     @Override
-    public void writeEvent(Record<Event> event) {
+    public void writeEvent(byte[] event) {
         eventsBuffered.add(event);
-        bufferSize += event.getData().toJsonString().length();
+        bufferSize += event.length;
     }
 
     @Override
-    public Record<Event> getEvent() {
-        bufferSize -= eventsBuffered.get(0).getData().toJsonString().length();
+    public byte[] getEvent() {
+        bufferSize -= eventsBuffered.get(0).length;
         return eventsBuffered.remove(0);
     }
 }
