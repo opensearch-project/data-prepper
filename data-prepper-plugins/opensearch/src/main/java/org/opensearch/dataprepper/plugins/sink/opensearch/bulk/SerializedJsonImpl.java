@@ -5,9 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import java.io.Serializable;
 import java.util.Optional;
 
-class SerializedJsonImpl implements SerializedJson {
+class SerializedJsonImpl implements SerializedJson, Serializable {
     private byte[] document;
     private String documentId = null;
     private String routingField = null;

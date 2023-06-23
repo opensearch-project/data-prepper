@@ -259,8 +259,8 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(2058.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(2058.0, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(773.0, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(773.0, 0));
     }
 
     @Test
@@ -315,8 +315,8 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(2072.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(2072.0, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(1066.0, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(1066.0, 0));
 
     }
 
@@ -372,8 +372,8 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(265.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(265.0, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(366.0, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(366.0, 0));
 
         // Check restart for index already exists
         sink = createObjectUnderTest(pluginSetting, true);
@@ -824,6 +824,7 @@ public class OpenSearchSinkIT {
         metadata.put(ConnectionConfiguration.HOSTS, getHosts());
         metadata.put(IndexConfiguration.INDEX_ALIAS, indexAlias);
         metadata.put(IndexConfiguration.TEMPLATE_FILE, templateFilePath);
+        metadata.put(IndexConfiguration.FLUSH_TIMEOUT, -1);
         final String user = System.getProperty("tests.opensearch.user");
         final String password = System.getProperty("tests.opensearch.password");
         if (user != null) {
