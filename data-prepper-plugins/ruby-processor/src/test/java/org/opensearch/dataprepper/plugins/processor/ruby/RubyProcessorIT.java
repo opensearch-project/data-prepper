@@ -1,17 +1,13 @@
 package org.opensearch.dataprepper.plugins.processor.ruby;
 
-import org.checkerframework.checker.units.qual.C;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.loggenerator.ApacheLogFaker;
-import org.opensearch.dataprepper.plugins.source.loggenerator.LogGeneratorSource;
 import org.opensearch.dataprepper.plugins.source.loggenerator.logtypes.CommonApacheLogTypeGenerator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 
@@ -20,16 +16,17 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.*;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.array;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
@@ -64,6 +61,7 @@ public class RubyProcessorIT {
         rubyProcessor.shutdown();
     }
 
+    // TODO: Assert that logging from within Ruby works, and think of custom metrics.
     @Test
     void rubyProcessorWithFileIntegrationTest()
             throws IOException {
@@ -206,6 +204,33 @@ public class RubyProcessorIT {
     @Test
     void when_rubyProcessingException_then_eventsAreTagged() {
         // todo
+        // create event with string field
+        final List<Record<Event>> records = getSampleEventLogs();
+
+        // make ruby code_string add a new field called upcase, upcase the event, throw an exception,
+        // add a new field called downcase, and downcase the event.
+
+        CODE_STRING = "event.put('upcase', event.get('message').upcase)\n" +
+                "call_undefined_function()\n" +
+                "event.put('downcase', event.get('message').downcase)";
+
+        setup();
+
+        final List<String> tags = List.of("Sample 1", "Sample 2");
+
+        setRubyProcessorConfigField("tagsOnFailure", tags);
+        setRubyProcessorConfigField("ignoreException", true);
+        spinUpNewRubyProcessor();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            final String originalString = parsedEvent.get("message", String.class);
+            assertThat(parsedEvent.get("upcase", String.class), equalTo(originalString.toUpperCase()));
+            assertThat(parsedEvent.containsKey("downcase"), equalTo(false));
+            assertThat(parsedEvent.getMetadata().hasTags(tags), equalTo(true));
+        }
     }
 
     @Test
@@ -582,33 +607,8 @@ public class RubyProcessorIT {
             CODE_STRING = String.format("event.put('test_result', %s)",operation);
             setRubyProcessorConfigField("code", CODE_STRING);
 
-//            File gemDir = new File("./src/main/resources/vendor/gems/jruby/3.1.0/gems");
-//            String loadPathUpdates = "";
-//
-//            if (gemDir.isDirectory()) {
-//                String[] gemNames = gemDir.list();
-//                for (String gemName : gemNames) {
-//                    if (gemName.contains("concurrent-ruby")) {
-//                        continue;
-//                    }
-//                    Path gemPath = Paths.get(gemDir.toString(), gemName, "lib");
-//                    loadPathUpdates += String.format("$LOAD_PATH << '%s'\n", gemPath);
-//                }
-//            }
-//
-//            loadPathUpdates += "$LOAD_PATH << './src/main/resources/vendor/gems/jruby/3.1.0/gems/concurrent-ruby-1.2.2/lib/concurrent-ruby'\n";
-//
-//
-//
-//            String LOAD_PATH_MAGIC =
-////                    "$LOAD_PATH << '/Users/finnrobl/.rbenv/versions/jruby-9.4.2.0/lib/ruby/gems/shared/gems/i18n-1.14.1/lib'\n" +
-//                    "$LOAD_PATH << '/Users/finnrobl/.rbenv/versions/jruby-9.4.2.0/lib/ruby/gems/shared/gems/jmespath-1.6.2/lib'\n" +
-//                    "$LOAD_PATH << '/Users/finnrobl/.rbenv/versions/jruby-9.4.2.0/lib/ruby/gems/shared/gems/concurrent-ruby-1.2.2/lib'\n" +
-//                                    "$LOAD_PATH << '/Users/finnrobl/.rbenv/versions/jruby-9.4.2.0/lib/ruby/gems/shared/gems/i18n-1.14.1/lib'\n";
-//
-//            LOAD_PATH_MAGIC = loadPathUpdates;
             String initCode =
-//                    LOAD_PATH_MAGIC +
+
                     "puts $LOAD_PATH\n" +toRequire + "\nputs 'success'";
             setRubyProcessorConfigField("initCode", initCode);
 
@@ -645,22 +645,13 @@ public class RubyProcessorIT {
                     "puts MIME::Types['text/plain'].first.extensions.first\n";
 
         }
-//            "puts JMESPath.search('foo.bar', foo: { bar: 'baz' })  # should print 'baz'\n
-//        puts Diff::LCS.diff('foo', 'foo').to_s\n
-//                $my_map = Concurrent::Map.new\n
-//        $my_map[:key] = 'value'\n
-//        puts my_map[:key]\n
-//        puts I18n.locale.to_s\n
-//        puts JSON.parse('{\"hello\":\"world\"}').to_s\n
-//        puts TZInfo::Timezone.get('America/New_York').name.to_s\n
-//        puts MIME::Types['text/plain'].first.extensions.first\n";
+
         @Test
         void when_requireJmespath_then_works() {
             String toRequire = "require 'jmespath'";
             String operation = "JMESPath.search('foo.bar', foo: { bar: 'baz' })  # should print 'baz'\n";
             String expectedResult = "baz";
             nestedGemTestMethod(toRequire, operation, expectedResult);
-//            assertThat(nestedGemTestMethod(toRequire, operation, expectedResult), equalTo(true));
         }
 
         @Test
@@ -669,7 +660,6 @@ public class RubyProcessorIT {
             String operation = "Diff::LCS.diff('foo', 'foo').to_s\n";
             String expectedResult = "[]";
             nestedGemTestMethod(toRequire, operation, expectedResult);
-//            assertThat(nestedGemTestMethod(toRequire, operation, expectedResult), equalTo(true));
         }
 
         @Test
@@ -677,8 +667,6 @@ public class RubyProcessorIT {
 
             String toRequire =
                     "require 'concurrent'" +
-
-//                    "require 'concurrent-ruby'" +
                     "\n$my_map = Concurrent::Map.new\n" +
                     "$my_map[:key] = 'value'\n" +
                     "# prints \"value\"\n";
@@ -690,10 +678,7 @@ public class RubyProcessorIT {
 
         @Test
         void when_require_i18n_then_works() {
-            String toRequire = "puts $LOAD_PATH\nrequire 'i18n'\n"
-//                    +
-//                    "I18n.locale = en"
-                    ;
+            String toRequire = "puts $LOAD_PATH\nrequire 'i18n'\n";
             String operation = "I18n.locale.to_s";
             String expectedResult = "en";
             nestedGemTestMethod(toRequire, operation, expectedResult);

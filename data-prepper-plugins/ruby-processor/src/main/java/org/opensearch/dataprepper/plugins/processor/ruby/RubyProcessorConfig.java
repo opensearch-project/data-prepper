@@ -10,10 +10,10 @@ import java.util.List;
 public class RubyProcessorConfig {
     static final Boolean DEFAULT_SEND_MULTIPLE_EVENTS = false;
     static final Boolean DEFAULT_IGNORE_EXCEPTION = false;
+    static final List<String> DEFAULT_TAGS_ON_FAILURE = List.of();
 
     private static final String INIT_METHOD_SIGNATURE = "def init(";
     private static final Map<String, String> DEFAULT_PARAMETERS = Map.of();
-    private Boolean initDefined; // todo: make this an optional?
     @JsonProperty("code")
     private String code;
 
@@ -28,7 +28,7 @@ public class RubyProcessorConfig {
     @JsonProperty("ignore_exception")
     private Boolean ignoreException = DEFAULT_IGNORE_EXCEPTION;
     @JsonProperty("tags_on_failure")
-    private List<String> tagsOnFailure;
+    private List<String> tagsOnFailure = DEFAULT_TAGS_ON_FAILURE; // TODO: Change this to a set.
 
     public List<String> getTagsOnFailure() {
         return tagsOnFailure;
@@ -76,8 +76,8 @@ public class RubyProcessorConfig {
         return Objects.isNull(initCode) || !Objects.isNull(code); // case where init, path specified should be covered by isExactlyOneOfCodeAndPathSpecified()
     }
 
-    @AssertTrue(message = "file path must be specified when using params")
-    boolean areParamsSpecifiedWithFilePath() { // todo: rename for clarity?
-        return Objects.equals(params, DEFAULT_PARAMETERS) || Objects.nonNull(path); // equiv to assert(params implies path)
+    @AssertTrue(message = "when ignore_exception is true, tags_on_failure must be specified.")
+    boolean isTagsOnFailureSpecifiedWhenIgnoreExceptionIsTrue() {
+        return !ignoreException || !tagsOnFailure.isEmpty();
     }
 }

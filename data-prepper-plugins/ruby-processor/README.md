@@ -9,7 +9,7 @@ Can specify their Ruby code in the config file, like the following example to tr
   processor:
      - ruby:
             code: 'event.put("de_translation", 
-            I18n.t(event.get("message", String.class)))'
+            I18n.t(event.get("message"))'
   sink:
     ...
 ```
@@ -35,11 +35,10 @@ def init(params) # code must implement this interface. See [[Ruby interface]] be
     I18n.locale = locale
 end
 
-def process(events) # code must implement this interface. See [[Ruby interface]] below.
-    events.each { |event|
-        event.put("{locale}_translation", 
-            I18n.t(event.get("message", String.class)))
-    }
+def process(event) # code must implement this interface. See [[Ruby interface]] below.
+        event.put("message_translation", 
+            I18n.t(event.get("message"))
+        )
 end
 ```
 
@@ -63,22 +62,20 @@ init — Ruby code run once at pipeline startup.
 * Optional and intended to be used with code. Cannot be used with path. To specify init code with a Ruby file, implement the init method in the Ruby file.
 * There is no default.
 
-params — A map of variable names to their values. These are passed into the init method.
+params — A map of variable names to their values. These are passed into the init method (either from config or in the Ruby file).
 
-* Optional and intended to be used with path.
+* Optional.
 * The default is an empty map.
 * The type is Map<String, String>.
-
-send_multiple_events — Boolean representing whether multiple Events should be emitted to the process command.
-
-* Optional and intended to be used with path.
-* Default: false
-* If true, then the process method will receive all the Events emitted by the input buffer.
-* This option is provided to support more flexibility for event processing.
 
 ignore_exception — Boolean representing whether the processor should ignore exceptions.
 
 * Optional.
 * Default: false, meaning the Data Prepper pipeline will be stopped on exception.
-* Data Prepper supports end-to-end acknowledgement, so setting this to true may cause data loss. 
+* If set to `true`, then events that trigger exceptions when processed will be tagged.  
 
+tags_on_failure — A list of tags to apply to events that trigger exceptions when processed. These tags may be used 
+in conditional expressions elsewhere in the configuration. 
+* Optional.
+* Default: []
+* The type is List<String>.

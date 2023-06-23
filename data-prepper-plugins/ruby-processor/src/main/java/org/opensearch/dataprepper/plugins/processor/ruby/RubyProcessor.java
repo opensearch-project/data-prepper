@@ -17,17 +17,9 @@ import java.io.File;
 import java.io.IOException;
 
 import java.io.InputStream;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.Map;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -49,7 +41,6 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     private final String codeToInject;
     private final ScriptingContainer container;
     private String script;
-    private Boolean runningCodeFromFile = false;
     private InputStream fileStream;
     private boolean fileCodeContainsInitCall = false;
 
@@ -57,7 +48,7 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     public RubyProcessor(final PluginMetrics pluginMetrics, final RubyProcessorConfig config) {
         super(pluginMetrics);
         this.config = config;
-        this.codeToInject = config.getCode();
+        this.codeToInject = config.isCodeFromFile() ? "process(event)" : config.getCode();
 
         container = new ScriptingContainer();
         container.setCompileMode(RubyInstanceConfig.CompileMode.JIT);
@@ -72,14 +63,8 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
         if (config.isCodeFromFile()) {
             verifyFileExists(config.getPath());
-            runningCodeFromFile = true;
-            runInitCodeFromFileAndDefineProcessMethod();
+            runInitCodeFromFileAndDeclareTheProcessMethod();
         }
-    }
-
-    private void runFileInitCode(Map<String, String> params) {
-        // todo: make params optional?
-        container.callMethod("", "init", params);
     }
 
     private void verifyFileExists(final String codeFilePath) {
@@ -145,12 +130,12 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
     }
 
-    private void runInitCodeFromFileAndDefineProcessMethod() {
+    private void runInitCodeFromFileAndDeclareTheProcessMethod() {
         // Below will also pull in any dependencies in `require` statements.
         container.runScriptlet(this.fileStream, "RUBY_FILE_FOR_LOGGING_PURPOSES");
 
         if (this.fileCodeContainsInitCall) {
-            runFileInitCode(config.getParams());
+            container.callMethod("", "init", config.getParams());
         }
     }
 
@@ -158,22 +143,9 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         final List<Event> events = records.stream().map(Record::getData).collect(Collectors.toList());
 
-        if (runningCodeFromFile) {
-            processEventsWithFileCode(events);
-        } else {
-            injectAndProcessEvents(events);
-        }
+        injectAndProcessEvents(events);
+
         return records;
-    }
-
-    private void processEventsWithFileCode(final List<Event> events) {
-        container.put("events", events);
-
-        script = "events.each { |event| \n"
-                + "process(event)\n" +
-                "}";
-        // todo: make it like LogStash where it returns an array of events?
-        container.runScriptlet(script);
     }
 
     private void injectAndProcessEvents(List<Event> events) {
@@ -191,11 +163,19 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
                         exception
                 );
             } else {
-                events.forEach(event ->
-                        event.getMetadata().addTags(config.getTagsOnFailure())
-                );
-                // todo: one thing to note is that this will tag every single event in the batch.
-                // todo: an alternative approach is to run events one-by-one upon exception.
+                retryEventsOneByOneAndApplyTags(events);
+            }
+        }
+    }
+
+    private void retryEventsOneByOneAndApplyTags(List<Event> events) {
+        for (Event event : events) {
+            container.put("event", event);
+            try {
+                container.runScriptlet(this.codeToInject);
+            } catch (Exception exception) {
+                LOG.error("Exception on Event: [{}]", event, exception);
+                event.getMetadata().addTags(config.getTagsOnFailure());
             }
         }
     }

@@ -10,9 +10,7 @@ import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.processor.ruby.RubyProcessorConfig.DEFAULT_IGNORE_EXCEPTION;
-import static org.opensearch.dataprepper.plugins.processor.ruby.RubyProcessorConfig.DEFAULT_SEND_MULTIPLE_EVENTS;
 
 
 public class RubyProcessorConfigTest {
@@ -107,35 +105,9 @@ public class RubyProcessorConfigTest {
         }
 
         @Test
-        void areParamsSpecifiedWithFilePath_true_cases()
-                throws NoSuchFieldException, IllegalAccessException
-        {
-            // params are not specified (path is not specified)
-            assertThat(rubyProcessorConfig.areParamsSpecifiedWithFilePath(),
-                    equalTo(true));
-
-            // params are not specified (path is specified)
-            reflectivelySetField(rubyProcessorConfig, "path", SAMPLE_PATH);
-            assertThat(rubyProcessorConfig.areParamsSpecifiedWithFilePath(),
-                    equalTo(true));
-
-            // params are specified and path is specified
-            reflectivelySetField(rubyProcessorConfig, "params", SAMPLE_MAP
-        ); // todo: behavior with empty map?
-            assertThat(rubyProcessorConfig.areParamsSpecifiedWithFilePath(),
-                    equalTo(true));
-        }
-
-        @Test
-        void areParamsSpecifiedWithFilePath_false_cases()
-                throws NoSuchFieldException, IllegalAccessException
-        {
-            // params are specified and path is not specified
-            reflectivelySetField(rubyProcessorConfig, "params", SAMPLE_MAP
-            ); // todo: behavior with empty map?
-
-            assertThat(rubyProcessorConfig.areParamsSpecifiedWithFilePath(),
-                    equalTo(false));
+        void when_tagsOnFailure_is_null_then_ignoreException_is_true()
+                throws NoSuchFieldException, IllegalAccessException {
+            assertThat(rubyProcessorConfig.isTagsOnFailureSpecifiedWhenIgnoreExceptionIsTrue(), equalTo(true));
         }
     }
 

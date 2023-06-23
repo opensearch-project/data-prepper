@@ -30,9 +30,6 @@ echo "The JRuby version in the Gemfile ($gemfile_version) does not match the JRu
 exit 1
 fi
 
-# Get Ruby version that the JRuby jar is using
-#ruby_version=$(java -jar $jruby_jar_path --version 2>&1 | awk '/ruby/{print $2}')
-
 # Assert that `ruby $RUBY_VERSION` is specified in the Gemfile
 if ! grep -q "ruby '$ruby_version'" Gemfile; then
 echo "The Ruby version in the Gemfile does not match the Ruby version in the JRuby jar ($ruby_version)."
