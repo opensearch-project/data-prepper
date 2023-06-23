@@ -142,7 +142,7 @@ public class ParquetOutputCodec implements OutputCodec {
         final StringBuilder s3ObjectPath = new StringBuilder();
         if (pathPrefix != null && !pathPrefix.isEmpty()) {
             String[] pathPrefixList = pathPrefix.split("\\/");
-            for (String prefixPath : pathPrefixList) {
+            for (final String prefixPath : pathPrefixList) {
                 if (SIMPLE_DURATION_PATTERN.matcher(prefixPath).find()) {
                     s3ObjectPath.append(S3ObjectIndexUtility.getObjectPathPrefix(prefixPath)).append("/");
                 } else {
@@ -184,7 +184,7 @@ public class ParquetOutputCodec implements OutputCodec {
                     break;
             }
         }else{
-            String logicalTypeName = field.schema().getLogicalType().getName();
+            final String logicalTypeName = field.schema().getLogicalType().getName();
             switch (logicalTypeName){
                 case "date":
                     finalValue = Integer.parseInt(rawValue.toString());

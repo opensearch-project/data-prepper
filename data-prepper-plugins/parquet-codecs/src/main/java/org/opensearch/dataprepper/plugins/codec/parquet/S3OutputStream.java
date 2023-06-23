@@ -79,17 +79,6 @@ public class S3OutputStream extends PositionOutputStream {
         open = true;
     }
 
-    /*public void cancel() {
-        open = false;
-        if (uploadId != null) {
-            s3Client.abortMultipartUpload(AbortMultipartUploadRequest.builder()
-                    .bucket(bucket)
-                    .key(path)
-                    .uploadId(uploadId)
-                    .build());
-        }
-    }*/
-
     @Override
     public void write(int b) {
         assertOpen();
