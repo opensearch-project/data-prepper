@@ -5,42 +5,59 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.client.opensearch.core.BulkRequest;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.zip.GZIPOutputStream;
 
 public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> {
-    static final int OPERATION_OVERHEAD = 50;
-
     private final List<BulkOperationWrapper> bulkOperations;
+    private final int sampleSize;
     private BulkRequest.Builder bulkRequestBuilder;
     private long currentBulkSize = 0L;
+    private long sampledOperationSize = 0L;
     private int operationCount = 0;
     private BulkRequest builtRequest;
 
     public JavaClientAccumulatingBulkRequest(BulkRequest.Builder bulkRequestBuilder) {
         this.bulkRequestBuilder = bulkRequestBuilder;
         bulkOperations = new ArrayList<>();
+        this.sampleSize = 5000;
+    }
+
+    @VisibleForTesting
+    JavaClientAccumulatingBulkRequest(BulkRequest.Builder bulkRequestBuilder, final int sampleSize) {
+        this.bulkRequestBuilder = bulkRequestBuilder;
+        bulkOperations = new ArrayList<>();
+        this.sampleSize = sampleSize;
     }
 
     @Override
     public long estimateSizeInBytesWithDocument(BulkOperationWrapper documentOrOperation) {
-        return currentBulkSize + estimateBulkOperationSize(documentOrOperation);
+        return currentBulkSize + sampledOperationSize;
     }
 
     @Override
     public void addOperation(BulkOperationWrapper bulkOperation) {
-        final Long documentLength = estimateBulkOperationSize(bulkOperation);
-
-        currentBulkSize += documentLength;
-
         bulkRequestBuilder = bulkRequestBuilder.operations(bulkOperation.getBulkOperation());
 
         operationCount++;
         bulkOperations.add(bulkOperation);
+
+        if (bulkOperations.size() == sampleSize) {
+            currentBulkSize = estimateBulkSize();
+            sampledOperationSize = currentBulkSize / sampleSize;
+        } else {
+            currentBulkSize += sampledOperationSize;
+        }
     }
 
     @Override
@@ -50,6 +67,10 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
 
     @Override
     public long getEstimatedSizeInBytes() {
+        if (currentBulkSize == 0) {
+            currentBulkSize = estimateBulkSize();
+        }
+
         return currentBulkSize;
     }
 
@@ -70,8 +91,25 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
         return builtRequest;
     }
 
-    private long estimateBulkOperationSize(BulkOperationWrapper bulkOperation) {
+    private long estimateBulkSize() {
+        final List<Object> documents = bulkOperations.stream()
+                .map(this::mapBulkOperationToDocument)
+                .collect(Collectors.toList());
 
+        try {
+            final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            final GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
+            final ObjectOutputStream objectOut = new ObjectOutputStream(gzipOut);
+            objectOut.writeObject(documents);
+            objectOut.close();
+
+            return baos.toByteArray().length;
+        } catch (final Exception e) {
+            throw new RuntimeException("Caught exception measuring compressed bulk request size.", e);
+        }
+    }
+
+    private Object mapBulkOperationToDocument(final BulkOperationWrapper bulkOperation) {
         Object anyDocument;
 
         if (bulkOperation.getBulkOperation().isIndex()) {
@@ -82,17 +120,14 @@ public class JavaClientAccumulatingBulkRequest implements AccumulatingBulkReques
             throw new UnsupportedOperationException("Only index or create operations are supported currently. " + bulkOperation);
         }
 
-        if (anyDocument == null)
-            return OPERATION_OVERHEAD;
-
-        if (!(anyDocument instanceof SizedDocument)) {
-            throw new IllegalArgumentException("Only SizedDocument is permitted for accumulating bulk requests. " + bulkOperation);
+        if (anyDocument == null) {
+            return new SerializedJsonImpl(null);
         }
 
-        SizedDocument sizedDocument = (SizedDocument) anyDocument;
+        if (!(anyDocument instanceof Serializable)) {
+            throw new IllegalArgumentException("Only classes implementing Serializable are permitted for accumulating bulk requests. " + bulkOperation);
+        }
 
-        final long documentLength = sizedDocument.getDocumentSize();
-        return documentLength + OPERATION_OVERHEAD;
-
+        return anyDocument;
     }
 }

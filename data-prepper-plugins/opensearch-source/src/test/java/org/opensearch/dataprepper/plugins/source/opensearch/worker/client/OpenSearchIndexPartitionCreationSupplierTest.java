@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
+import co.elastic.clients.elasticsearch.ElasticsearchClient;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch.cat.ElasticsearchCatClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -49,6 +52,9 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
     @Mock
     private OpenSearchClient openSearchClient;
 
+    @Mock
+    private ElasticsearchClient elasticsearchClient;
+
     private OpenSearchIndexPartitionCreationSupplier createObjectUnderTest() {
         return new OpenSearchIndexPartitionCreationSupplier(openSearchSourceConfiguration, clusterClientFactory);
     }
@@ -75,6 +81,21 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         assertThat(partitionIdentifierList.isEmpty(), equalTo(true));
     }
 
+    @ParameterizedTest
+    @MethodSource("elasticsearchCatIndicesExceptions")
+    void apply_with_elasticsearch_client_cat_indices_throws_exception_returns_empty_list(final Class exception) throws IOException {
+        when(clusterClientFactory.getClient()).thenReturn(elasticsearchClient);
+
+        final ElasticsearchCatClient elasticsearchCatClient = mock(ElasticsearchCatClient.class);
+        when(elasticsearchCatClient.indices()).thenThrow(exception);
+        when(elasticsearchClient.cat()).thenReturn(elasticsearchCatClient);
+
+        final List<PartitionIdentifier> partitionIdentifierList = createObjectUnderTest().apply(Collections.emptyMap());
+
+        assertThat(partitionIdentifierList, notNullValue());
+        assertThat(partitionIdentifierList.isEmpty(), equalTo(true));
+    }
+
     @Test
     void apply_with_opensearch_client_with_no_indices_return_empty_list() throws IOException {
         when(clusterClientFactory.getClient()).thenReturn(openSearchClient);
@@ -84,6 +105,22 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         when(indicesResponse.valueBody()).thenReturn(Collections.emptyList());
         when(openSearchCatClient.indices()).thenReturn(indicesResponse);
         when(openSearchClient.cat()).thenReturn(openSearchCatClient);
+
+        final List<PartitionIdentifier> partitionIdentifierList = createObjectUnderTest().apply(Collections.emptyMap());
+
+        assertThat(partitionIdentifierList, notNullValue());
+        assertThat(partitionIdentifierList.isEmpty(), equalTo(true));
+    }
+
+    @Test
+    void apply_with_elasticsearch_client_with_no_indices_return_empty_list() throws IOException {
+        when(clusterClientFactory.getClient()).thenReturn(elasticsearchClient);
+
+        final ElasticsearchCatClient elasticsearchCatClient = mock(ElasticsearchCatClient.class);
+        final co.elastic.clients.elasticsearch.cat.IndicesResponse indicesResponse = mock(co.elastic.clients.elasticsearch.cat.IndicesResponse.class);
+        when(indicesResponse.valueBody()).thenReturn(Collections.emptyList());
+        when(elasticsearchCatClient.indices()).thenReturn(indicesResponse);
+        when(elasticsearchClient.cat()).thenReturn(elasticsearchCatClient);
 
         final List<PartitionIdentifier> partitionIdentifierList = createObjectUnderTest().apply(Collections.emptyMap());
 
@@ -146,8 +183,68 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         assertThat(partitionIdentifierList, notNullValue());
     }
 
+    @Test
+    void apply_with_elasticsearch_client_with_indices_filters_them_correctly() throws IOException {
+        when(clusterClientFactory.getClient()).thenReturn(elasticsearchClient);
+
+        final ElasticsearchCatClient elasticsearchCatClient = mock(ElasticsearchCatClient.class);
+        final co.elastic.clients.elasticsearch.cat.IndicesResponse indicesResponse = mock(co.elastic.clients.elasticsearch.cat.IndicesResponse.class);
+
+        final IndexParametersConfiguration indexParametersConfiguration = mock(IndexParametersConfiguration.class);
+
+        final List<OpenSearchIndex> includedIndices = new ArrayList<>();
+        final OpenSearchIndex includeIndex = mock(OpenSearchIndex.class);
+        final String includePattern = "my-pattern-[a-c].*";
+        when(includeIndex.getIndexNamePattern()).thenReturn(Pattern.compile(includePattern));
+        includedIndices.add(includeIndex);
+
+        final List<OpenSearchIndex> excludedIndices = new ArrayList<>();
+        final OpenSearchIndex excludeIndex = mock(OpenSearchIndex.class);
+        final String excludePattern = "my-pattern-[a-c]-exclude";
+        when(excludeIndex.getIndexNamePattern()).thenReturn(Pattern.compile(excludePattern));
+        excludedIndices.add(excludeIndex);
+
+        final OpenSearchIndex secondExcludeIndex = mock(OpenSearchIndex.class);
+        final String secondExcludePattern = "second-exclude-.*";
+        when(secondExcludeIndex.getIndexNamePattern()).thenReturn(Pattern.compile(secondExcludePattern));
+        excludedIndices.add(secondExcludeIndex);
+
+        when(indexParametersConfiguration.getIncludedIndices()).thenReturn(includedIndices);
+        when(indexParametersConfiguration.getExcludedIndices()).thenReturn(excludedIndices);
+        when(openSearchSourceConfiguration.getIndexParametersConfiguration()).thenReturn(indexParametersConfiguration);
+
+        final List<co.elastic.clients.elasticsearch.cat.indices.IndicesRecord> indicesRecords = new ArrayList<>();
+        final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord includedIndex = mock(co.elastic.clients.elasticsearch.cat.indices.IndicesRecord.class);
+        when(includedIndex.index()).thenReturn("my-pattern-a-include");
+        final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord excludedIndex = mock(co.elastic.clients.elasticsearch.cat.indices.IndicesRecord.class);
+        when(excludedIndex.index()).thenReturn("second-exclude-test");
+        final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord includedAndThenExcluded = mock(co.elastic.clients.elasticsearch.cat.indices.IndicesRecord.class);
+        when(includedAndThenExcluded.index()).thenReturn("my-pattern-a-exclude");
+        final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord neitherIncludedOrExcluded = mock(co.elastic.clients.elasticsearch.cat.indices.IndicesRecord.class);
+        when(neitherIncludedOrExcluded.index()).thenReturn("random-index");
+
+        indicesRecords.add(includedIndex);
+        indicesRecords.add(excludedIndex);
+        indicesRecords.add(includedAndThenExcluded);
+        indicesRecords.add(neitherIncludedOrExcluded);
+
+        when(indicesResponse.valueBody()).thenReturn(indicesRecords);
+
+        when(elasticsearchCatClient.indices()).thenReturn(indicesResponse);
+        when(elasticsearchClient.cat()).thenReturn(elasticsearchCatClient);
+
+        final List<PartitionIdentifier> partitionIdentifierList = createObjectUnderTest().apply(Collections.emptyMap());
+
+        assertThat(partitionIdentifierList, notNullValue());
+    }
+
     private static Stream<Arguments> opensearchCatIndicesExceptions() {
         return Stream.of(Arguments.of(IOException.class),
                 Arguments.of(OpenSearchException.class));
+    }
+
+    private static Stream<Arguments> elasticsearchCatIndicesExceptions() {
+        return Stream.of(Arguments.of(IOException.class),
+                Arguments.of(ElasticsearchException.class));
     }
 }
