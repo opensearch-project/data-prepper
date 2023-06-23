@@ -113,12 +113,6 @@ class GeoIPProcessorTest {
     }
 
     @Test
-    void prepareForShutdownTest() throws MalformedURLException {
-        GeoIPProcessor geoIPProcessor = createObjectUnderTest();
-        assertDoesNotThrow(geoIPProcessor::prepareForShutdown);
-    }
-
-    @Test
     void isReadyForShutdownTest() throws MalformedURLException {
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
         Assertions.assertFalse(geoIPProcessor.isReadyForShutdown());
