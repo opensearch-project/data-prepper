@@ -159,7 +159,7 @@ public class ParquetOutputCodec implements OutputCodec {
     private static Object schemaMapper(final Schema.Field field , final Object rawValue){
         Object finalValue = null;
         final String fieldType = field.schema().getType().name().toString().toLowerCase();
-        if (field.schema().getLogicalType().getName() == null && primitiveTypes.contains(fieldType)){
+        if (field.schema().getLogicalType() == null && primitiveTypes.contains(fieldType)){
             switch (fieldType){
                 case "string":
                     finalValue = rawValue.toString();
