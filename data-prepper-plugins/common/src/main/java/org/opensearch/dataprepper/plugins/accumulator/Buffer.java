@@ -3,14 +3,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.accumulator;
+package org.opensearch.dataprepper.plugins.accumulator;
 
-import org.apache.hc.client5.http.classic.HttpClient;
+import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 
 /**
- * A buffer can hold data before flushing it to Http Endpoint.
+ * A buffer can hold data before flushing it to S3.
  */
 public interface Buffer {
 
@@ -23,7 +23,6 @@ public interface Buffer {
 
     long getDuration();
 
-    void sendDataToHttpEndpoint(HttpClient client) ;
-
+    void flushToS3(S3Client s3Client, String bucket, String key) ;
     void writeEvent(byte[] bytes) throws IOException;
 }

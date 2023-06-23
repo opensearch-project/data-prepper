@@ -4,11 +4,11 @@
  */
 package org.opensearch.dataprepper.plugins.sink.service;
 
+import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.sink.accumulator.Buffer;
-import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.handler.HttpAuthOptions;
 import org.opensearch.dataprepper.model.codec.OutputCodec;

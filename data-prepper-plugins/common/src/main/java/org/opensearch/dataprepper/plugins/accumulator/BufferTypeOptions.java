@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.accumulator;
+package org.opensearch.dataprepper.plugins.accumulator;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 

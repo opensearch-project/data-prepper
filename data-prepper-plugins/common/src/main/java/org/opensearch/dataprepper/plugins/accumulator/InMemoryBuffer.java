@@ -3,17 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.accumulator;
+package org.opensearch.dataprepper.plugins.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
-import org.apache.hc.client5.http.classic.HttpClient;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A buffer can hold in memory data and flushing it to Http Endpoint.
+ * A buffer can hold in memory data and flushing it to S3.
  */
 public class InMemoryBuffer implements Buffer {
 
@@ -42,14 +44,19 @@ public class InMemoryBuffer implements Buffer {
         return watch.getTime(TimeUnit.SECONDS);
     }
 
-
     /**
-     * Upload accumulated data to http endpoint.
-     * @param client HttpClient object.
+     * Upload accumulated data to s3 bucket.
+     *
+     * @param s3Client s3 client object.
+     * @param bucket   bucket name.
+     * @param key      s3 object key path.
      */
     @Override
-    public void sendDataToHttpEndpoint(final HttpClient client) {
-       //TODO: implement
+    public void flushToS3(S3Client s3Client, String bucket, String key) {
+        final byte[] byteArray = byteArrayOutputStream.toByteArray();
+        s3Client.putObject(
+                PutObjectRequest.builder().bucket(bucket).key(key).build(),
+                RequestBody.fromBytes(byteArray));
     }
 
     /**
@@ -59,7 +66,9 @@ public class InMemoryBuffer implements Buffer {
      * @throws IOException while writing to output stream fails.
      */
     @Override
-    public void writeEvent(final byte[] bytes) throws IOException {
-       //TODO: implement
+    public void writeEvent(byte[] bytes) throws IOException {
+        byteArrayOutputStream.write(bytes);
+        byteArrayOutputStream.write(System.lineSeparator().getBytes());
+        eventCount++;
     }
 }
