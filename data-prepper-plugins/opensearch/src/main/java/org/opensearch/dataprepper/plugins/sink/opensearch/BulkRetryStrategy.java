@@ -258,6 +258,10 @@ public final class BulkRetryStrategy {
 
     private BulkOperationRequestResponse handleRetry(final AccumulatingBulkRequest request, final BulkResponse response, int retryCount) throws InterruptedException {
         final AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequestForRetry = createBulkRequestForRetry(request, response);
+        if (bulkRequestForRetry.getOperationsCount() == 0) {
+            return null;
+        }
+
         final BulkResponse bulkResponse;
         try {
             bulkResponse = requestFunction.apply(bulkRequestForRetry);
