@@ -50,7 +50,7 @@ public class JsonOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public synchronized void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
         generator.writeStartObject();
         final boolean isExcludeKeyAvailable = !Objects.isNull(config.getExcludeKeys());
