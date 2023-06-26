@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchClientFactory;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessorStrategy;
 
@@ -34,6 +35,9 @@ public class OpenSearchSourceTest {
 
     @Mock
     private OpenSearchService openSearchService;
+
+    @Mock
+    private OpenSearchClientFactory openSearchClientFactory;
 
     @Mock
     private SearchAccessorStrategy searchAccessorStrategy;
@@ -66,8 +70,10 @@ public class OpenSearchSourceTest {
         objectUnderTest.setSourceCoordinator(sourceCoordinator);
 
         try (final MockedStatic<SearchAccessorStrategy> searchAccessorStrategyMockedStatic = mockStatic(SearchAccessorStrategy.class);
+             final MockedStatic<OpenSearchClientFactory> openSearchClientFactoryMockedStatic = mockStatic(OpenSearchClientFactory.class);
              final MockedStatic<OpenSearchService> openSearchServiceMockedStatic = mockStatic(OpenSearchService.class)) {
-            searchAccessorStrategyMockedStatic.when(() -> SearchAccessorStrategy.create(openSearchSourceConfiguration, awsCredentialsSupplier)).thenReturn(searchAccessorStrategy);
+            openSearchClientFactoryMockedStatic.when(() -> OpenSearchClientFactory.create(awsCredentialsSupplier)).thenReturn(openSearchClientFactory);
+            searchAccessorStrategyMockedStatic.when(() -> SearchAccessorStrategy.create(openSearchSourceConfiguration, openSearchClientFactory)).thenReturn(searchAccessorStrategy);
 
             openSearchServiceMockedStatic.when(() -> OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer))
                     .thenReturn(openSearchService);

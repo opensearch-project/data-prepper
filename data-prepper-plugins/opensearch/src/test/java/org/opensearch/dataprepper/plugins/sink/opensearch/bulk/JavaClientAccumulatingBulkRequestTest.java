@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,14 +15,17 @@ import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
+import java.util.zip.GZIPOutputStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -43,7 +47,7 @@ class JavaClientAccumulatingBulkRequestTest {
     }
 
     private JavaClientAccumulatingBulkRequest createObjectUnderTest() {
-        return new JavaClientAccumulatingBulkRequest(bulkRequestBuilder);
+        return new JavaClientAccumulatingBulkRequest(bulkRequestBuilder, 1);
     }
 
     @Test
@@ -79,27 +83,34 @@ class JavaClientAccumulatingBulkRequestTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3, 10})
-    void getEstimatedSizeInBytes_returns_the_current_size(final int operationCount) {
+    void getEstimatedSizeInBytes_returns_the_current_size(final int operationCount) throws Exception {
         final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
         final long arbitraryDocumentSize = 175;
+        long expectedDocumentSize = 0;
         for (int i = 0; i < operationCount; i++) {
-            final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(generateDocumentWithLength(arbitraryDocumentSize)));
+            final SizedDocument document = generateDocumentWithLength(arbitraryDocumentSize);
+            if (i == 0) {
+                expectedDocumentSize = getDocumentExpectedLength(document);
+            }
+            final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(document));
             objectUnderTest.addOperation(bulkOperation);
         }
 
-        final long expectedSize = operationCount * (arbitraryDocumentSize + JavaClientAccumulatingBulkRequest.OPERATION_OVERHEAD);
+        final long expectedSize = operationCount * (expectedDocumentSize);
         assertThat(objectUnderTest.getEstimatedSizeInBytes(), equalTo(expectedSize));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3, 10})
-    void getEstimatedSizeInBytes_returns_the_operation_overhead_if_requests_have_no_documents(final int operationCount) {
+    void getEstimatedSizeInBytes_returns_the_operation_overhead_if_requests_have_no_documents(final int operationCount) throws Exception {
         final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
+        final SizedDocument emptyDocument = generateDocumentWithLength(0);
+        final long expectedDocumentSize = getDocumentExpectedLength(emptyDocument);
         for (int i = 0; i < operationCount; i++) {
-            objectUnderTest.addOperation(new BulkOperationWrapper(createBulkOperation(null)));
+            objectUnderTest.addOperation(new BulkOperationWrapper(createBulkOperation(emptyDocument)));
         }
 
-        final long expectedSize = operationCount * JavaClientAccumulatingBulkRequest.OPERATION_OVERHEAD;
+        final long expectedSize = expectedDocumentSize * operationCount;
         assertThat(objectUnderTest.getEstimatedSizeInBytes(), equalTo(expectedSize));
     }
 
@@ -122,25 +133,16 @@ class JavaClientAccumulatingBulkRequestTest {
 
     @ParameterizedTest
     @ValueSource(longs = {0, 1, 2, 10, 50, 100})
-    void estimateSizeInBytesWithDocument_on_new_object_returns_estimated_document_size_plus_operation_overhead(long inputDocumentSize) {
+    void estimateSizeInBytesWithDocument_on_new_object_returns_estimated_document_size(long inputDocumentSize) throws Exception {
         final SizedDocument document = generateDocumentWithLength(inputDocumentSize);
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(document));
-
-        assertThat(createObjectUnderTest().estimateSizeInBytesWithDocument(bulkOperation),
-                equalTo(inputDocumentSize + JavaClientAccumulatingBulkRequest.OPERATION_OVERHEAD));
-    }
-
-    @ParameterizedTest
-    @ValueSource(longs = {0, 1, 2, 10, 50, 100})
-    void estimateSizeInBytesWithDocument_on_request_with_operations_returns_estimated_document_size_plus_operation_overhead(long inputDocumentSize) {
-        final SizedDocument document = generateDocumentWithLength(inputDocumentSize);
+        final long expectedDocumentSize = getDocumentExpectedLength(document);
         final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(document));
 
         final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
-        objectUnderTest.addOperation(new BulkOperationWrapper(createBulkOperation(generateDocumentWithLength(inputDocumentSize))));
+        objectUnderTest.addOperation(bulkOperation);
 
-        final long expectedSize = 2 * (inputDocumentSize + JavaClientAccumulatingBulkRequest.OPERATION_OVERHEAD);
-        assertThat(objectUnderTest.estimateSizeInBytesWithDocument(bulkOperation),
+        final long expectedSize = 2 * expectedDocumentSize;
+        assertThat(objectUnderTest.estimateSizeInBytesWithDocument(new BulkOperationWrapper(createBulkOperation(generateDocumentWithLength(inputDocumentSize)))),
                 equalTo(expectedSize));
     }
 
@@ -149,7 +151,7 @@ class JavaClientAccumulatingBulkRequestTest {
         final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(null));
 
         assertThat(createObjectUnderTest().estimateSizeInBytesWithDocument(bulkOperation),
-                equalTo((long) JavaClientAccumulatingBulkRequest.OPERATION_OVERHEAD));
+                equalTo(0L));
     }
 
     @Test
@@ -171,12 +173,21 @@ class JavaClientAccumulatingBulkRequestTest {
     }
 
     @Test
-    void addOperation_throws_when_document_is_not_JsonSize() {
-        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(UUID.randomUUID().toString()));
+    void addOperation_throws_when_document_is_not_Serializable() {
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(new Object()));
 
         final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
 
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.addOperation(bulkOperation));
+    }
+
+    @Test
+    void addOperation_does_not_throw_when_document_is_null() {
+        final BulkOperationWrapper bulkOperation = new BulkOperationWrapper(createBulkOperation(null));
+
+        final JavaClientAccumulatingBulkRequest objectUnderTest = createObjectUnderTest();
+
+        assertDoesNotThrow(() -> objectUnderTest.addOperation(bulkOperation));
     }
 
     @Test
@@ -215,8 +226,22 @@ class JavaClientAccumulatingBulkRequestTest {
     }
 
     private SizedDocument generateDocumentWithLength(long documentLength) {
-        final SizedDocument sizedDocument = mock(SizedDocument.class);
-        when(sizedDocument.getDocumentSize()).thenReturn(documentLength);
-        return sizedDocument;
+        final String documentContent = RandomStringUtils.randomAlphabetic((int) documentLength);
+        final byte[] documentBytes = documentContent.getBytes();
+
+        return new SerializedJsonImpl(documentBytes);
+    }
+
+    private long getDocumentExpectedLength(final SizedDocument sizedDocument) throws Exception {
+        final List<Object> docList = new ArrayList<>();
+        docList.add(sizedDocument);
+
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final GZIPOutputStream gzipOut = new GZIPOutputStream(baos);
+        final ObjectOutputStream objectOut = new ObjectOutputStream(gzipOut);
+        objectOut.writeObject(docList);
+        objectOut.close();
+
+        return baos.toByteArray().length;
     }
 }

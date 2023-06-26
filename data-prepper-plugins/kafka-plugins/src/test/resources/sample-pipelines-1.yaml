@@ -3,7 +3,6 @@ log-pipeline:
     kafka:
       bootstrap_servers:
         - 127.0.0.1:9093
-      auth_type: plaintext
       topics:
         - name: my-topic-2
           group_name: kafka-consumer-group-2

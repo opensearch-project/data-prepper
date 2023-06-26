@@ -139,11 +139,13 @@ public class IndexConfigurationTests {
                 .withTemplateFile(defaultTemplateFilePath)
                 .withIsmPolicyFile(TEST_CUSTOM_INDEX_POLICY_FILE)
                 .withBulkSize(10)
+                .withFlushTimeout(50)
                 .build();
 
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
         assertEquals(10, indexConfiguration.getBulkSize());
+        assertEquals(50, indexConfiguration.getFlushTimeout());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
 
         indexConfiguration = new IndexConfiguration.Builder()
@@ -270,7 +272,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_RawIndexType() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null, null, null);
+                IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         final URL expTemplateFile = indexConfiguration
@@ -279,13 +281,14 @@ public class IndexConfigurationTests {
         assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW), indexConfiguration.getIndexAlias());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(5, indexConfiguration.getBulkSize());
+        assertEquals(60_000L, indexConfiguration.getFlushTimeout());
         assertEquals("spanId", indexConfiguration.getDocumentIdField());
     }
 
     @Test
     public void testReadIndexConfig_InvalidIndexTypeValueString() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                "i-am-an-illegitimate-index-type", null, null, null, null);
+                "i-am-an-illegitimate-index-type", null, null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
     }
@@ -293,7 +296,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_ServiceMapIndexType() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null, null, null);
+                IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         final URL expTemplateFile = indexConfiguration
@@ -302,6 +305,7 @@ public class IndexConfigurationTests {
         assertEquals(TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP), indexConfiguration.getIndexAlias());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(5, indexConfiguration.getBulkSize());
+        assertEquals(60_000L, indexConfiguration.getFlushTimeout());
         assertEquals("hashId", indexConfiguration.getDocumentIdField());
     }
 
@@ -311,14 +315,16 @@ public class IndexConfigurationTests {
                 getClass().getClassLoader().getResource(DEFAULT_TEMPLATE_FILE)).getFile();
         final String testIndexAlias = "foo";
         final long testBulkSize = 10L;
+        final long testFlushTimeout = 30_000L;
         final String testIdField = "someId";
         final PluginSetting pluginSetting = generatePluginSetting(
-                null, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
+                null, testIndexAlias, defaultTemplateFilePath, testBulkSize, testFlushTimeout, testIdField);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(testBulkSize, indexConfiguration.getBulkSize());
+        assertEquals(testFlushTimeout, indexConfiguration.getFlushTimeout());
         assertEquals(testIdField, indexConfiguration.getDocumentIdField());
     }
 
@@ -329,15 +335,17 @@ public class IndexConfigurationTests {
         final String testIndexType = IndexType.CUSTOM.getValue();
         final String testIndexAlias = "foo";
         final long testBulkSize = 10L;
+        final long testFlushTimeout = 30_000L;
         final String testIdField = "someId";
         final Map<String, Object> metadata = initializeConfigMetaData(
-                testIndexType, testIndexAlias, defaultTemplateFilePath, testBulkSize, testIdField);
+                testIndexType, testIndexAlias, defaultTemplateFilePath, testBulkSize, testFlushTimeout, testIdField);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(testBulkSize, indexConfiguration.getBulkSize());
+        assertEquals(testFlushTimeout, indexConfiguration.getFlushTimeout());
         assertEquals(testIdField, indexConfiguration.getDocumentIdField());
     }
 
@@ -345,7 +353,7 @@ public class IndexConfigurationTests {
     public void testReadIndexConfig_awsOptionServerlessDefault() {
         final String testIndexAlias = "foo";
         final Map<String, Object> metadata = initializeConfigMetaData(
-                null, testIndexAlias, null, null, null);
+                null, testIndexAlias, null, null, null, null);
         metadata.put(AWS_OPTION, Map.of(SERVERLESS, true));
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
@@ -357,7 +365,7 @@ public class IndexConfigurationTests {
     public void testReadIndexConfig_awsServerlessIndexTypeOverride() {
         final String testIndexAlias = "foo";
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.CUSTOM.getValue(), testIndexAlias, null, null, null);
+                IndexType.CUSTOM.getValue(), testIndexAlias, null, null, null, null);
         metadata.put(AWS_OPTION, Map.of(SERVERLESS, true));
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
@@ -369,7 +377,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_documentRootKey() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-            IndexType.CUSTOM.getValue(), "foo", null, null, null);
+            IndexType.CUSTOM.getValue(), "foo", null, null, null, null);
         final String expectedRootKey = UUID.randomUUID().toString();
         metadata.put(DOCUMENT_ROOT_KEY, expectedRootKey);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
@@ -380,7 +388,7 @@ public class IndexConfigurationTests {
     @Test
     public void testReadIndexConfig_emptyDocumentRootKey() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-            IndexType.CUSTOM.getValue(), "foo", null, null, null);
+            IndexType.CUSTOM.getValue(), "foo", null, null, null, null);
         metadata.put(DOCUMENT_ROOT_KEY, "");
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         assertThrows(IllegalArgumentException.class, () -> IndexConfiguration.readIndexConfig(pluginSetting));
@@ -389,7 +397,7 @@ public class IndexConfigurationTests {
     @Test
     void getTemplateType_defaults_to_V1() {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.CUSTOM.getValue(), "foo", null, null, null);
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertThat(indexConfiguration.getTemplateType(), equalTo(TemplateType.V1));
@@ -399,18 +407,17 @@ public class IndexConfigurationTests {
     @EnumSource(TemplateType.class)
     void getTemplateType_with_configured_templateType(final TemplateType templateType) {
         final Map<String, Object> metadata = initializeConfigMetaData(
-                IndexType.CUSTOM.getValue(), "foo", null, null, null);
+                IndexType.CUSTOM.getValue(), "foo", null, null, null, null);
         metadata.put(TEMPLATE_TYPE, templateType.getTypeName());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertThat(indexConfiguration.getTemplateType(), equalTo(templateType));
     }
 
-
     private PluginSetting generatePluginSetting(
             final String indexType, final String indexAlias, final String templateFilePath,
-            final Long bulkSize, final String documentIdField) {
-        final Map<String, Object> metadata = initializeConfigMetaData(indexType, indexAlias, templateFilePath, bulkSize, documentIdField);
+            final Long bulkSize, final Long flushTimeout, final String documentIdField) {
+        final Map<String, Object> metadata = initializeConfigMetaData(indexType, indexAlias, templateFilePath, bulkSize, flushTimeout, documentIdField);
         return getPluginSetting(metadata);
     }
 
@@ -419,7 +426,7 @@ public class IndexConfigurationTests {
     }
 
     private Map<String, Object> initializeConfigMetaData(
-            String indexType, String indexAlias, String templateFilePath, Long bulkSize, String documentIdField) {
+            String indexType, String indexAlias, String templateFilePath, Long bulkSize, Long flushTimeout, String documentIdField) {
         final Map<String, Object> metadata = new HashMap<>();
         if (indexType != null) {
             metadata.put(IndexConfiguration.INDEX_TYPE, indexType);
@@ -432,6 +439,9 @@ public class IndexConfigurationTests {
         }
         if (bulkSize != null) {
             metadata.put(IndexConfiguration.BULK_SIZE, bulkSize);
+        }
+        if (flushTimeout != null) {
+            metadata.put(IndexConfiguration.FLUSH_TIMEOUT, flushTimeout);
         }
         if (documentIdField != null) {
             metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, documentIdField);
