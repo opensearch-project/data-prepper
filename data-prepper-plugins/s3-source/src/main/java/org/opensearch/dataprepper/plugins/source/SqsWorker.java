@@ -25,7 +25,6 @@ import org.opensearch.dataprepper.plugins.source.parser.S3EventNotificationParse
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
-import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageBatchRequestEntry;
@@ -254,7 +253,7 @@ public class SqsWorker implements Runnable {
             final ParsedMessage parsedMessage,
             final S3ObjectReference s3ObjectReference,
             final AcknowledgementSet acknowledgementSet) {
-        // SQS messages won't be deleted if we are unable to process S3Objects because of S3Exception: Access Denied
+        // SQS messages won't be deleted if we are unable to process S3Objects because of an exception
         try {
             s3Service.addS3Object(s3ObjectReference, acknowledgementSet);
             sqsMessageDelayTimer.record(Duration.between(
@@ -262,11 +261,9 @@ public class SqsWorker implements Runnable {
                     Instant.now()
             ));
             return Optional.of(buildDeleteMessageBatchRequestEntry(parsedMessage.getMessage()));
-        } catch (final S3Exception | StsException e) {
+        } catch (final Exception e) {
             LOG.error("Error processing from S3: {}. Retrying with exponential backoff.", e.getMessage());
             applyBackoff();
-            return Optional.empty();
-        } catch (final Exception e) {
             return Optional.empty();
         }
     }

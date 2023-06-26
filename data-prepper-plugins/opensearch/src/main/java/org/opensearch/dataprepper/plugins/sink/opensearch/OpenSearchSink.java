@@ -16,6 +16,7 @@ import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
+import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.common.unit.ByteSizeUnit;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.MetricNames;
@@ -24,6 +25,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -58,6 +60,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -84,6 +87,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
   private final long bulkSize;
+  private final long flushTimeout;
   private final IndexType indexType;
   private final String documentIdField;
   private final String routingField;
@@ -104,6 +108,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private FailedBulkOperationConverter failedBulkOperationConverter;
 
   private DlqProvider dlqProvider;
+  private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
+  private final ConcurrentHashMap<Long, Long> lastFlushTimeMap;
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
@@ -118,6 +124,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
+    this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
@@ -129,6 +136,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.initialized = false;
     this.lock = new ReentrantLock(true);
     this.pluginSetting = pluginSetting;
+    this.bulkRequestMap = new ConcurrentHashMap<>();
+    this.lastFlushTimeMap = new ConcurrentHashMap<>();
 
     final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
     if (dlqConfig.isPresent()) {
@@ -180,9 +189,13 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
+    final OpenSearchClient filteringOpenSearchClient = openSearchClient.withTransportOptions(
+            TransportOptions.builder()
+                    .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
+                    .build());
     bulkRetryStrategy = new BulkRetryStrategy(
-            bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
-            this::logFailure,
+            bulkRequest -> filteringOpenSearchClient.bulk(bulkRequest.getRequest()),
+            this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
@@ -200,11 +213,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   @Override
   public void doOutput(final Collection<Record<Event>> records) {
-    if (records.isEmpty()) {
-      return;
+    final long threadId = Thread.currentThread().getId();
+    if (!bulkRequestMap.containsKey(threadId)) {
+      bulkRequestMap.put(threadId, bulkRequestSupplier.get());
+    }
+    if (!lastFlushTimeMap.containsKey(threadId)) {
+      lastFlushTimeMap.put(threadId, System.currentTimeMillis());
     }
 
-    AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestSupplier.get();
+    AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestMap.get(threadId);
+    long lastFlushTime = lastFlushTimeMap.get(threadId);
 
     for (final Record<Event> record : records) {
       final Event event = record.getData();
@@ -214,8 +232,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       String indexName = configuredIndexAlias;
       try {
           indexName = indexManager.getIndexName(event.formatString(indexName));
-      } catch (IOException e) {
+      } catch (IOException | EventKeyNotFoundException e) {
+          LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
+          logFailureForDlqObjects(List.of(DlqObject.builder()
+                  .withEventHandle(event.getEventHandle())
+                  .withFailedData(FailedDlqData.builder().withDocument(event.toJsonString()).withIndex(indexName).withMessage(e.getMessage()).build())
+                  .withPluginName(pluginSetting.getName())
+                  .withPipelineName(pluginSetting.getPipelineName())
+                  .withPluginId(pluginSetting.getName())
+                  .build()), e);
           continue;
       }
 
@@ -255,16 +281,21 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);
+        lastFlushTime = System.currentTimeMillis();
         bulkRequest = bulkRequestSupplier.get();
       }
       bulkRequest.addOperation(bulkOperationWrapper);
     }
 
-    // Flush the remaining requests
-    if (bulkRequest.getOperationsCount() > 0) {
+    // Flush the remaining requests if flush timeout expired
+    if (System.currentTimeMillis() - lastFlushTime > flushTimeout && bulkRequest.getOperationsCount() > 0) {
       flushBatch(bulkRequest);
+      lastFlushTime = System.currentTimeMillis();
+      bulkRequest = bulkRequestSupplier.get();
     }
 
+    bulkRequestMap.put(threadId, bulkRequest);
+    lastFlushTimeMap.put(threadId, lastFlushTime);
   }
 
   private SerializedJson getDocument(final Event event) {
@@ -290,19 +321,23 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     });
   }
 
-  private void logFailure(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
+  private void logFailureForBulkRequests(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
 
     final List<DlqObject> dlqObjects = failedBulkOperations.stream()
         .map(failedBulkOperationConverter::convertToDlqObject)
         .collect(Collectors.toList());
 
+    logFailureForDlqObjects(dlqObjects, failure);
+  }
+
+  private void logFailureForDlqObjects(final List<DlqObject> dlqObjects, final Throwable failure) {
     if (dlqFileWriter != null) {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
         final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
-              BulkOperationWriter.dlqObjectToString(dlqObject), message));
+                  BulkOperationWriter.dlqObjectToString(dlqObject), message));
           dlqObject.releaseEventHandle(true);
         } catch (final IOException e) {
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);

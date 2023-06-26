@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -309,7 +310,7 @@ public class JacksonEvent implements Event {
             String name = format.substring(position + 2, endPosition);
             Object val = this.get(name, Object.class);
             if (val == null) {
-                return null;
+                throw new EventKeyNotFoundException(String.format("The key %s could not be found in the Event when formatting", name));
             }
             result += val.toString();
             fromIndex = endPosition + 1;

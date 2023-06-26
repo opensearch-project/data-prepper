@@ -27,7 +27,7 @@ import org.opensearch.dataprepper.model.source.SourceCoordinationStore;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
-import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
+import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
@@ -187,24 +187,25 @@ public class S3ScanObjectWorkerIT {
         final RecordsGenerator recordsGenerator = new ParquetRecordsGenerator();
         final String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
 
-        final String includeOptionsYaml = "                include:\n" +
-                "                  - "+keyPrefix+"\n" +
-                "                exclude_suffix:\n" +
-                "                  - .csv\n" +
-                "                  - .json\n" +
-                "                  - .txt\n" +
-                "                  - .gz";
-
+        final String buketOptionYaml = "name: " + bucket + "\n" +
+                "key_prefix:\n" +
+                "  include:\n" +
+                "    - " + keyPrefix + "\n" +
+                "  exclude_suffix:\n" +
+                "    - .csv\n" +
+                "    - .json\n" +
+                "    - .txt\n" +
+                "    - .gz";
 
         final String key = getKeyString(keyPrefix, recordsGenerator, Boolean.FALSE);
 
         s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, Boolean.FALSE);
         stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
         final ScanOptions startTimeAndRangeScanOptions = new ScanOptions.Builder()
-                .setBucket(bucket)
+                .setBucketOption(objectMapper.readValue(buketOptionYaml, S3ScanBucketOption.class))
                 .setStartDateTime(LocalDateTime.now().minusDays(1))
                 .setRange(Duration.parse("P2DT10M"))
-                .setS3ScanKeyPathOption(objectMapper.readValue(includeOptionsYaml, S3ScanKeyPathOption.class)).build();
+                .build();
 
         final ScanObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator,
                 numberOfRecordsToAccumulate,
@@ -234,9 +235,11 @@ public class S3ScanObjectWorkerIT {
             final ScanOptions.Builder scanOptions) throws Exception {
         String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
         final String key = getKeyString(keyPrefix,recordsGenerator, shouldCompress);
-        final String includeOptionsYaml = "                include:\n" +
-                "                  - "+keyPrefix;
-        scanOptions.setS3ScanKeyPathOption(objectMapper.readValue(includeOptionsYaml, S3ScanKeyPathOption.class));
+        final String buketOptionYaml = "name: " + bucket + "\n" +
+                "key_prefix:\n" +
+                "  include:\n" +
+                "    - " + keyPrefix;
+        scanOptions.setBucketOption(objectMapper.readValue(buketOptionYaml, S3ScanBucketOption.class));
 
         s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);
         stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
@@ -284,19 +287,14 @@ public class S3ScanObjectWorkerIT {
             final List<Integer> recordsToAccumulateList = List.of( 100);
             final List<Boolean> booleanList = List.of(Boolean.TRUE);
 
-            final String bucket = System.getProperty("tests.s3source.bucket");
-            final ScanOptions.Builder startTimeAndRangeScanOptions = new ScanOptions.Builder()
+            final ScanOptions.Builder startTimeAndRangeScanOptions = ScanOptions.builder()
                     .setStartDateTime(LocalDateTime.now())
-                    .setBucket(bucket)
                     .setRange(Duration.parse("P2DT10H"));
-            final ScanOptions.Builder endTimeAndRangeScanOptions = new ScanOptions.Builder()
+            final ScanOptions.Builder endTimeAndRangeScanOptions = ScanOptions.builder()
                     .setEndDateTime(LocalDateTime.now().plus(Duration.ofHours(1)))
-                    .setBucket(bucket)
                     .setRange(Duration.parse("P7DT10H"));
-
-            final ScanOptions.Builder startTimeAndEndTimeScanOptions = new ScanOptions.Builder()
+            final ScanOptions.Builder startTimeAndEndTimeScanOptions = ScanOptions.builder()
                     .setStartDateTime(LocalDateTime.now().minus(Duration.ofMinutes(10)))
-                    .setBucket(bucket)
                     .setEndDateTime(LocalDateTime.now().plus(Duration.ofHours(1)));
 
             List<ScanOptions.Builder> scanOptions = List.of(startTimeAndRangeScanOptions,endTimeAndRangeScanOptions,startTimeAndEndTimeScanOptions);

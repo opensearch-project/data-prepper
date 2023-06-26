@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchClientFactory;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessorStrategy;
 
@@ -41,7 +42,9 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
     }
 
     private void startProcess(final OpenSearchSourceConfiguration openSearchSourceConfiguration, final Buffer<Record<Event>> buffer)  {
-        final SearchAccessorStrategy searchAccessorStrategy = SearchAccessorStrategy.create(openSearchSourceConfiguration, awsCredentialsSupplier);
+
+        final OpenSearchClientFactory openSearchClientFactory = OpenSearchClientFactory.create(awsCredentialsSupplier);
+        final SearchAccessorStrategy searchAccessorStrategy = SearchAccessorStrategy.create(openSearchSourceConfiguration, openSearchClientFactory);
 
         final SearchAccessor searchAccessor = searchAccessorStrategy.getSearchAccessor();
 
