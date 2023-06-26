@@ -1,11 +1,9 @@
-
-
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.mapvalues;
+package org.opensearch.dataprepper.plugins.processor.translate;
 
 import org.apache.commons.lang3.Range;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -22,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
@@ -31,40 +30,39 @@ import java.util.regex.Pattern;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 
-@DataPrepperPlugin(name = "map_values", pluginType = Processor.class, pluginConfigurationType = MapValuesConfig.class)
-public class MapValues extends AbstractProcessor<Record<Event>, Record<Event>> {
+@DataPrepperPlugin(name = "translate", pluginType = Processor.class, pluginConfigurationType = TranslateProcessorConfig.class)
+public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(MapValues.class);
+    private static final Logger LOG = LoggerFactory.getLogger(TranslateProcessor.class);
     private final ExpressionEvaluator expressionEvaluator;
-    private final MapValuesConfig mapValuesConfig;
+    private final TranslateProcessorConfig translateProcessorConfig;
     private final LinkedHashMap<Range<Float>, String> rangeMappings;
     private final Map<String, String> individualMappings;
-    private final HashMap<String, String> patternMappings;
+    private final Map<String, String> patternMappings;
 
     @DataPrepperPluginConstructor
-    public MapValues(PluginMetrics pluginMetrics, final MapValuesConfig mapValuesConfig, final ExpressionEvaluator expressionEvaluator) {
+    public TranslateProcessor(PluginMetrics pluginMetrics, final TranslateProcessorConfig translateProcessorConfig, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
-        this.mapValuesConfig = mapValuesConfig;
+        this.translateProcessorConfig = translateProcessorConfig;
         this.expressionEvaluator = expressionEvaluator;
         individualMappings = new HashMap<>();
         rangeMappings = new LinkedHashMap<>();
-        patternMappings = this.mapValuesConfig.getRegexParameterConfiguration().getPatterns();
-        processMapField(mapValuesConfig.getMap());
-        parseFile(mapValuesConfig.getFilePath());
+        if(this.translateProcessorConfig.getRegexParameterConfiguration()!=null) {
+            patternMappings = translateProcessorConfig.getRegexParameterConfiguration().getPatterns();
+        }
+        else{
+            patternMappings = Collections.emptyMap();
+        }
+
+        processMapField(translateProcessorConfig.getMap());
+        parseFile(translateProcessorConfig.getFilePath());
         checkOverlappingKeys();
     }
 
     private void processMapField(Map<String, String> map){
         if(Objects.nonNull(map)) {
             for (Map.Entry<String, String> mapEntry : map.entrySet()) {
-                String key = mapEntry.getKey();
-                if (key.contains(",")) {
-                    parseIndividualKeys(mapEntry);
-                } else if (key.contains("-")) {
-                    addRangeMapping(mapEntry);
-                } else {
-                    addIndividualMapping(key, map.get(key));
-                }
+                parseIndividualKeys(mapEntry);
             }
         }
     }
@@ -82,25 +80,20 @@ public class MapValues extends AbstractProcessor<Record<Event>, Record<Event>> {
     }
 
     private void addRangeMapping(Map.Entry<String, String>  mapEntry){
-        try{
-            String[] rangeKeys = mapEntry.getKey().split("-");
-            if(rangeKeys.length!=2){
-                addIndividualMapping(mapEntry.getKey(), mapEntry.getValue());
-            }
-            else {
-                Float lowKey = Float.parseFloat(rangeKeys[0]);
-                Float highKey = Float.parseFloat(rangeKeys[1]);
-                Range<Float> rangeEntry = Range.between(lowKey, highKey);
-                if (isRangeOverlapping(rangeEntry)) {
-                    String exceptionMsg = "map option contains key "+mapEntry.getKey()+" that overlaps with other range entries";
-                    throw new InvalidPluginConfigurationException(exceptionMsg);
-                } else {
-                    rangeMappings.put(Range.between(lowKey, highKey), mapEntry.getValue());
-                }
-            }
-        }
-        catch (NumberFormatException ex){
+        String[] rangeKeys = mapEntry.getKey().split("-");
+        if(rangeKeys.length!=2 || !NumberUtils.isParsable(rangeKeys[0]) || !NumberUtils.isParsable(rangeKeys[1])){
             addIndividualMapping(mapEntry.getKey(), mapEntry.getValue());
+        }
+        else {
+            Float lowKey = Float.parseFloat(rangeKeys[0]);
+            Float highKey = Float.parseFloat(rangeKeys[1]);
+            Range<Float> rangeEntry = Range.between(lowKey, highKey);
+            if (isRangeOverlapping(rangeEntry)) {
+                String exceptionMsg = "map option contains key "+mapEntry.getKey()+" that overlaps with other range entries";
+                throw new InvalidPluginConfigurationException(exceptionMsg);
+            } else {
+                rangeMappings.put(Range.between(lowKey, highKey), mapEntry.getValue());
+            }
         }
     }
 
@@ -146,14 +139,14 @@ public class MapValues extends AbstractProcessor<Record<Event>, Record<Event>> {
         for(final Record<Event> record : records) {
             boolean matchFound = false;
             final Event recordEvent = record.getData();
-            if (Objects.nonNull(mapValuesConfig.getMapWhen()) && !expressionEvaluator.evaluateConditional(mapValuesConfig.getMapWhen(), recordEvent)) {
+            if (Objects.nonNull(translateProcessorConfig.getMapWhen()) && !expressionEvaluator.evaluateConditional(translateProcessorConfig.getMapWhen(), recordEvent)) {
                 continue;
             }
             try {
-                String matchKey = record.getData().get(mapValuesConfig.getSource(), String.class);
+                String matchKey = record.getData().get(translateProcessorConfig.getSource(), String.class);
                 if(!matchFound && individualMappings.containsKey(matchKey)){
                     //check individual keys
-                    record.getData().put(mapValuesConfig.getTarget(), individualMappings.get(matchKey));
+                    record.getData().put(translateProcessorConfig.getTarget(), individualMappings.get(matchKey));
                     matchFound = true;
                 }
                 if(!matchFound && NumberUtils.isParsable(matchKey)){
@@ -163,24 +156,24 @@ public class MapValues extends AbstractProcessor<Record<Event>, Record<Event>> {
                         Range<Float> range = rangeEntry.getKey();
                         if(range.contains(floatKey)){
                             matchFound = true;
-                            record.getData().put(mapValuesConfig.getTarget(), rangeEntry.getValue());
+                            record.getData().put(translateProcessorConfig.getTarget(), rangeEntry.getValue());
                             break;
                         }
                     }
                 }
-                if(!matchFound){
+                if(!matchFound && Objects.nonNull(patternMappings)){
                     //check in the patterns
                     //todo
                     for(String pattern : patternMappings.keySet()){
                         if(Pattern.matches(pattern, matchKey)){
-                            record.getData().put(mapValuesConfig.getTarget(), patternMappings.get(pattern));
+                            record.getData().put(translateProcessorConfig.getTarget(), patternMappings.get(pattern));
                             break;
                         }
                     }
                 }
             } catch (Exception ex){
                 LOG.error(EVENT, "Error mapping the source [{}] of entry [{}]",
-                        mapValuesConfig.getSource(), recordEvent, ex);
+                        translateProcessorConfig.getSource(), record.getData(), ex);
             }
         }
         return records;
