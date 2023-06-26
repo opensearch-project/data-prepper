@@ -4,8 +4,8 @@ jruby_jar_path=$1
 echo "Starting runBundlerToUpdateGems.sh...."
 # Check if JRuby jar path is provided
 if [[ -z "$jruby_jar_path" ]]; then
-echo "Please provide the JRuby jar path as an argument."
-exit 1
+  echo "Please provide the JRuby jar path as an argument."
+  exit 1
 fi
 
 # Extract JRuby version from the jar path
@@ -26,14 +26,14 @@ echo "JRuby version: $gemfile_version"
 
 # Compare versions and exit if they don't match
 if [[ $jar_version != $gemfile_version ]]; then
-echo "The JRuby version in the Gemfile ($gemfile_version) does not match the JRuby version in the jar ($jar_version)."
-exit 1
+  echo "The JRuby version in the Gemfile ($gemfile_version) does not match the JRuby version in the jar ($jar_version)."
+  exit 1
 fi
 
 # Assert that `ruby $RUBY_VERSION` is specified in the Gemfile
 if ! grep -q "ruby '$ruby_version'" Gemfile; then
-echo "The Ruby version in the Gemfile does not match the Ruby version in the JRuby jar ($ruby_version)."
-exit 1
+  echo "The Ruby version in the Gemfile does not match the Ruby version in the JRuby jar ($ruby_version)."
+  exit 1
 fi
 
 # remove all files in the rubygems directory
