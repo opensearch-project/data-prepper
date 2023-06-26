@@ -35,14 +35,14 @@ public class JsonOutputCodec implements OutputCodec {
     }
 
     @Override
-    public synchronized void start(final OutputStream outputStream) throws IOException {
+    public void start(final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(outputStream);
         generator = factory.createGenerator(outputStream, JsonEncoding.UTF8);
         generator.writeStartArray();
     }
 
     @Override
-    public synchronized void complete(final OutputStream outputStream) throws IOException {
+    public void complete(final OutputStream outputStream) throws IOException {
         generator.writeEndArray();
         generator.close();
         outputStream.flush();
