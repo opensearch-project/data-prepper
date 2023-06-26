@@ -61,7 +61,6 @@ public class RubyProcessorIT {
         rubyProcessor.shutdown();
     }
 
-    // TODO: Assert that logging from within Ruby works, and think of custom metrics.
     @Test
     void rubyProcessorWithFileIntegrationTest()
             throws IOException {
@@ -102,6 +101,9 @@ public class RubyProcessorIT {
 
     @Test
     void when_eventMessageIsDowncasedByRubyProcessor_then_eventMessageIsDowncased() {
+        CODE_STRING = "require 'java'\n" + "puts event.class\n" +
+                "event.put('downcase', event.get('message').downcase)";
+        setup();
         final List<Record<Event>> records = getSampleEventLogs();
         final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
 
@@ -152,22 +154,9 @@ public class RubyProcessorIT {
         }
     }
 
-    @Test
-    void when_dotClassMethodCalledAnywhereBesidesEventGetCall_then_remainsUnchanged() {
-        final List<Record<Event>> records = getSampleEventLogs();
-
-        CODE_STRING = "puts event.class\n" +
-                "event.put('downcase', event.get('message').downcase)";
-
-        setup();
-        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
-
-        assertThat(rubyProcessor.getCodeToExecute().contains("puts event.class"), equalTo(true));
-        // todo: will require a refactor to assert
-    }
 
     @Test
-    void when_eventAPICallsOverriddenOnString_then_returnedObjectDoesNotHaveArrayFunctionality // or "need not be typecast" or some variation
+    void when_eventAPICallsOverriddenOnString_then_returnedObjectDoesNotHaveArrayFunctionality
     () {
         // create event with string field
         final List<Record<Event>> records = getSampleEventLogs();
@@ -177,11 +166,11 @@ public class RubyProcessorIT {
                 "event.put('message_is_array_and_includes_x', out_str.include?('x')";
         setup();
 
-        assertThrows(Exception.class, () -> rubyProcessor.doExecute(records)); // todo: more descriptive exception
+        assertThrows(Exception.class, () -> rubyProcessor.doExecute(records));
     }
 
     @Test
-    void when_messageFieldIsAnArrayPrimitiveOfObjects_then_rubyArrayOperationsWork() { // todo: Test on actual primitives.
+    void when_messageFieldIsAnArrayPrimitiveOfObjects_then_rubyArrayOperationsWork() {
         final List<Record<Event>> records = getSampleEventLogs();
 
         for (Record record : records) {
@@ -203,13 +192,11 @@ public class RubyProcessorIT {
 
     @Test
     void when_rubyProcessingException_then_eventsAreTagged() {
-        // todo
         // create event with string field
         final List<Record<Event>> records = getSampleEventLogs();
 
         // make ruby code_string add a new field called upcase, upcase the event, throw an exception,
         // add a new field called downcase, and downcase the event.
-
         CODE_STRING = "event.put('upcase', event.get('message').upcase)\n" +
                 "call_undefined_function()\n" +
                 "event.put('downcase', event.get('message').downcase)";
@@ -279,9 +266,7 @@ public class RubyProcessorIT {
         for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
 
         }
-
-
-    } // todo: test array list
+    }
 
     @Test
     void when_customObjectIsDefinedInRuby_then_itsMethodsCanBeCalledWithinRubyAndAddedToEvent() {
@@ -339,16 +324,6 @@ public class RubyProcessorIT {
     }
 
     @Test
-    void when_timeObjectUsedInRuby() {
-        // todo: dealing with Time in Ruby might be dicey.
-    }
-
-    @Test
-    void when_customClassDefinedInInitCode_then_rubyClassUsableInEvents() {
-
-    }
-
-    @Test
     void when_requireUsedInInit_then_packageUsableInEvents() {
         CODE_STRING = "event.put('date', Date.new(2023, 6, 12))\n";
         setup();
@@ -371,10 +346,7 @@ public class RubyProcessorIT {
                     equalTo(2023));
             assertThat(parsedEvent.get("date", Calendar.class).get(Calendar.DAY_OF_MONTH),
                     equalTo(12));
-
-            // todo: make the dates generic.
         }
-
     }
 
     @Test
@@ -435,8 +407,6 @@ public class RubyProcessorIT {
 
     }
 
-
-    // todo: test params when assigned to global var can be used within process
     @Test
     void when_codeFromFileAndDoesNotContainProcessMethod_then_exceptionThrown()
             throws IOException {
@@ -494,8 +464,6 @@ public class RubyProcessorIT {
 
     }
 
-
-    // todo: assert test params not accessible outside method
     @Test
     void when_withFileAndParamsCalledInProcess_then_exceptionThrown()
             throws IOException {
@@ -528,11 +496,6 @@ public class RubyProcessorIT {
         final List<Record<Event>> records = getSampleEventLogs();
 
         assertThrows(Exception.class, () -> rubyProcessor.doExecute(records));
-    }
-
-    @Test
-    void when_paramsThenAccessibleWithRubyHashIndexing() {
-        // todo: or should behavior just be java-like?
     }
 
     @Test

@@ -142,7 +142,7 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         final List<Event> events = records.stream().map(Record::getData).collect(Collectors.toList());
-
+        LOG.debug("Ruby Processor received events: [{}]", events);
         injectAndProcessEvents(events);
 
         return records;

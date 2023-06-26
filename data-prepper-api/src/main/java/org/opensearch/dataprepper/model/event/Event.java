@@ -55,24 +55,25 @@ public interface Event extends Serializable {
 
     /**
      * Retrieves the given key, of generic type Object, from the Event.
-     * Used by the {@link org.opensearch.dataprepper.plugins.processor.ruby} to
+     * Used by the Ruby processor to
      * provide an Event API from within Ruby.
      *
      * @param key the value to retrieve from
      * @param <T> The type
      * @return T an Object from the key
-     * @since [todo]
+     * @since 2.4
      */
     <T> T get(String key);
 
     /**
      * Retrieves the given key, of generic type Object, from the Event as a List.
-     * Used by the {@link org.opensearch.dataprepper.plugins.processor.ruby} to
-     * provide an Event API from within Ruby
+     * Used by the Ruby processor to
+     * provide an Event API from within Ruby.
+     *
      * @param key the value to retrieve from
      * @param <T> The type
      * @return {@literal List<T>} a list of Object elements
-     * @since [todo]
+     * @since 2.4
      */
     <T> List<T> getList(String key);
 

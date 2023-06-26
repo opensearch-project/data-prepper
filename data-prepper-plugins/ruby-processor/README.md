@@ -1,15 +1,15 @@
 Ruby processor to run custom Ruby code from configuration file or a different file. More documentation to come.
-
-# Example
-Can specify their Ruby code in the config file, like the following example to translate a message:
+## Example
+You can specify Ruby code in the config file, like the following example that translates a message:
 
 ```code-string-ruby-pipeline:
   source:
     ...
   processor:
      - ruby:
-            code: 'event.put("de_translation", 
-            I18n.t(event.get("message"))'
+        init: "require 'i18n'\n I18n.locale = 'ie'"
+        code: "event.put('message_translation', 
+            I18n.t(event.get('message'))"
   sink:
     ...
 ```
@@ -22,7 +22,7 @@ ruby-file-pipeline:
      - ruby:
             file: "/path/to/file/translate_events.rb"
             params:
-                locale: "de"
+                locale: "ie"
   sink:
     ...
 ```
@@ -41,10 +41,7 @@ def process(event) # code must implement this interface. See [[Ruby interface]] 
         )
 end
 ```
-
-
-
-# Configuration options
+## Configuration options
 
 code — Ruby code that will be run on each Event.
 
@@ -79,3 +76,52 @@ in conditional expressions elsewhere in the configuration.
 * Optional.
 * Default: []
 * The type is List<String>.
+## Ruby Interface
+
+The Event interface is accessible from within Ruby processor code. We have added two new methods to the Event API, `get({field})` and `getList({field})` to accomodate the JRuby processor. Please use these methods instead of `get({field}, {value return class})` because JRuby classes are not a subset of Java classes, leading to type incompatibility. For example, if you were to call `event.get('message', String.class)` from within Ruby, the Event API would be called with `String.class` as the JRuby String class, which would cause a JacksonError.  
+
+If executing Ruby code from a file, you must **implement the following interface**:
+
+```Ruby
+def init(params)
+    # optional. params is a Map<String, String> from the config.
+    # code that is run once at pipeline startup.
+end
+
+def process(event)
+    # required.
+    # event processing logic. The changed state of events is available in Java.
+end
+```
+
+## A Word of Warning: JRuby and Java Types
+
+Because Events and Data Prepper are written in Java, all of the objects within Events are Java objects.
+
+If you are calling `event.get()` on a field that you expect to return an `ArrayList`, do note that you must call Java `ArrayList` methods on the returned object, **even within Ruby**. Instead of writing `arrayObject[1]` from within your Ruby processor code, call `arrayObject.get(1)`. 
+
+Since Ruby is dynamically typed, you do not need to (and should not) typecast objects. Instead, ensure that the method you are calling is implemented by the callee object.
+
+
+## Ruby Version
+
+The Ruby processor executes Ruby code on the JVM using JRuby 9.4.2.  
+
+## Ruby Gems
+
+Ruby has an ecosystem of extensions called Gems. The Ruby processor is bundled with the following utility gems:
+* jmespath
+* diff-lcs
+* i18n
+* tzinfo
+* json
+* mime-types
+* concurrent-ruby
+
+These gems are compatible with JRuby 9.4.2 and are bundled in a jar file. If you wish to add additional gems, please open an issue or build Data Prepper locally with your desired gems.
+
+You can bundle in additional gems through the following process:
+1. Modify the `Gemfile`. Please make sure that the Ruby and JRuby versions in the Gemfile match with the JRuby version in `build.gradle`.
+2. Run the following Gradle task: `gradle runBundleInstall`
+   1. This task uses Bundler, a Ruby package manager, to install the gems and package them into a jar.
+3. Please note that not every gem is compatible with JRuby. Gems that rely on C extensions are unlikely to be compatible.

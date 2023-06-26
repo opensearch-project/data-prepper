@@ -16,9 +16,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
     implementation 'org.jruby:jruby-complete:9.4.2.0'
     implementation 'org.apache.parquet:parquet-common:1.12.3'
+    implementation files('./rubygems/rubygems.jar')
     testImplementation project(path: ':data-prepper-test-common')
     testImplementation project(path: ':data-prepper-plugins:log-generator-source')
-    implementation files('./rubygems/rubygems.jar')
 }
 
 test {
@@ -58,5 +58,20 @@ task runBundleInstall(type: Exec) {
         gradle.startParameter.taskNames.contains("runBundleInstall") || // gradle runScript
                 gradle.startParameter.taskNames.contains(":data-prepper-plugins:ruby-processor:runBundleInstall") // ./gradlew :data-prepper-plugins:ruby-processor:runScript
 
+    }
+}
+
+task integrationTest(type: Test) {
+    useJUnitPlatform()
+
+    println "Running integrationTest"
+    testLogging {
+        showStandardStreams = true
+    }
+
+    systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
+
+    filter {
+        includeTestsMatching '*IT'
     }
 }

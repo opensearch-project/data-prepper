@@ -14,12 +14,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -651,6 +653,52 @@ public class JacksonEventTest {
         final String expectedJsonString = "{\"foo\":\"bar\",\"tags\":[\"tag1\",\"tag2\"]}";
         assertThat(event.jsonBuilder().includeTags("tags").toJsonString(), equalTo(expectedJsonString));
         assertThat(event.jsonBuilder().toJsonString(), equalTo(jsonString));
+    }
+
+    @Test
+    void testPutAndGetWithoutTypeSpecified() {
+        final String key = "foo/bar";
+        final String value = "val";
+
+        event.put(key, value);
+        final Object resultAsObject = event.get(key);
+
+        final String result = (String) resultAsObject;
+        assertThat(result, is(notNullValue()));
+        assertThat(result, is(equalTo(value)));
+    }
+
+    @Test
+    void testPutAndGetListWithoutTypeSpecified() {
+        final String keyString = "foo/barString";
+        final String keyInt = "foo/barInt";
+
+        final List<String> valueString = List.of("str1", "str2");
+        final List<Integer> valueInt = List.of(1, 2);
+
+
+        event.put(keyString, valueString);
+        event.put(keyInt, valueInt);
+
+
+        final List<Object> stringResultAsObject = event.getList(keyString);
+        final List<Object> intResultAsObject = event.getList(keyInt);
+
+        assertThat(stringResultAsObject.getClass(), equalTo(ArrayList.class));
+        assertThat(intResultAsObject.getClass(), equalTo(ArrayList.class));
+        final List<String> stringResult = stringResultAsObject.stream()
+                .map(object -> (String) object)
+                .collect(Collectors.toList());
+
+        final List<Integer> intResult = intResultAsObject.stream()
+                .map(object -> (Integer) object)
+                .collect(Collectors.toList());
+
+
+        assertThat(stringResult, is(notNullValue()));
+        assertThat(intResult, is(notNullValue()));
+        assertThat(stringResult, is(equalTo(valueString)));
+        assertThat(intResult, is(equalTo(valueInt)));
     }
 
     private static Map<String, Object> createComplexDataMap() {
