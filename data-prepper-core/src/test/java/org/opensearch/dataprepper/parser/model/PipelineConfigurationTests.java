@@ -58,7 +58,7 @@ class PipelineConfigurationTests {
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcesserPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
-        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, TestDataProvider.VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
@@ -99,7 +99,7 @@ class PipelineConfigurationTests {
         final PluginSetting actualSourcePluginSetting = pipelineConfiguration.getSourcePluginSetting();
         final PluginSetting actualBufferPluginSetting = pipelineConfiguration.getBufferPluginSetting();
         final List<PluginSetting> actualProcessorPluginSettings = pipelineConfiguration.getProcessorPluginSettings();
-        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         comparePluginSettings(actualSourcePluginSetting, TestDataProvider.VALID_PLUGIN_SETTING_1);
         assertThat(pipelineConfiguration.getBufferPluginSetting(), notNullValue());
@@ -221,13 +221,40 @@ class PipelineConfigurationTests {
 
         final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
 
-        final List<RoutedPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
 
         assertThat(actualSinkPluginSettings.size(), equalTo(2));
         comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);
         comparePluginSettings(actualSinkPluginSettings.get(1), TestDataProvider.VALID_PLUGIN_SETTING_2);
-        assertThat(actualSinkPluginSettings.get(0).getRoutes(), equalTo(orderedSinkRoutes.get(0)));
-        assertThat(actualSinkPluginSettings.get(1).getRoutes(), equalTo(orderedSinkRoutes.get(1)));
+        assertThat(actualSinkPluginSettings.get(0).getSinkContext().getRoutes(), equalTo(orderedSinkRoutes.get(0)));
+        assertThat(actualSinkPluginSettings.get(1).getSinkContext().getRoutes(), equalTo(orderedSinkRoutes.get(1)));
+    }
+
+    @Test
+    void testSinksWithTagsTargetKey() {
+        final List<String> orderedSinkTagTagets = new ArrayList<>();
+        for (final SinkModel sink : sinks) {
+            final String tagsTargetKey = UUID.randomUUID().toString();
+            when(sink.getTagsTargetKey()).thenReturn(tagsTargetKey);
+            orderedSinkTagTagets.add(tagsTargetKey);
+        }
+
+        final PipelineModel pipelineModel = mock(PipelineModel.class);
+        when(pipelineModel.getSource()).thenReturn(source);
+        when(pipelineModel.getSinks()).thenReturn(sinks);
+        when(pipelineModel.getProcessors()).thenReturn(null);
+        when(pipelineModel.getWorkers()).thenReturn(null);
+        when(pipelineModel.getReadBatchDelay()).thenReturn(null);
+
+        final PipelineConfiguration pipelineConfiguration = new PipelineConfiguration(pipelineModel);
+
+        final List<SinkContextPluginSetting> actualSinkPluginSettings = pipelineConfiguration.getSinkPluginSettings();
+
+        assertThat(actualSinkPluginSettings.size(), equalTo(2));
+        comparePluginSettings(actualSinkPluginSettings.get(0), TestDataProvider.VALID_PLUGIN_SETTING_1);
+        comparePluginSettings(actualSinkPluginSettings.get(1), TestDataProvider.VALID_PLUGIN_SETTING_2);
+        assertThat(actualSinkPluginSettings.get(0).getSinkContext().getTagsTargetKey(), equalTo(orderedSinkTagTagets.get(0)));
+        assertThat(actualSinkPluginSettings.get(1).getSinkContext().getTagsTargetKey(), equalTo(orderedSinkTagTagets.get(1)));
     }
 
     private void comparePluginSettings(final PluginSetting actual, final PluginSetting expected) {

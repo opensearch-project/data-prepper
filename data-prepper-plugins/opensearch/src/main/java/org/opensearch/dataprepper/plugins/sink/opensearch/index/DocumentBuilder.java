@@ -4,7 +4,7 @@ import org.opensearch.dataprepper.model.event.Event;
 
 public final class DocumentBuilder {
 
-    public static String build(final Event event, final String documentRootKey) {
+    public static String build(final Event event, final String documentRootKey, final String tagsTargetKey) {
         if (documentRootKey != null && event.containsKey(documentRootKey)) {
             final String document = event.getAsJsonString(documentRootKey);
             if (document == null || !document.startsWith("{")) {
@@ -12,6 +12,6 @@ public final class DocumentBuilder {
             }
             return document;
         }
-        return event.toJsonString();
+        return event.jsonBuilder().includeTags(tagsTargetKey).toJsonString();
     }
 }

@@ -25,6 +25,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasKey;
@@ -74,13 +75,15 @@ class SinkModelTest {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
         pluginSettings.put("key1", "value1");
         pluginSettings.put("key2", "value2");
-        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), pluginSettings);
+        final String tagsTargetKey = "tags";
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), tagsTargetKey, pluginSettings);
 
         final String actualJson = objectMapper.writeValueAsString(sinkModel);
 
         final String expectedJson = createStringFromInputStream(this.getClass().getResourceAsStream("sink_plugin.yaml"));
 
         assertThat("---\n" + actualJson, equalTo(expectedJson));
+        assertThat(sinkModel.getTagsTargetKey(), equalTo(tagsTargetKey));
     }
 
     @Test
@@ -93,7 +96,8 @@ class SinkModelTest {
         assertAll(
                 () -> assertThat(sinkModel.getPluginName(), equalTo("customPlugin")),
                 () -> assertThat(sinkModel.getPluginSettings(), notNullValue()),
-                () -> assertThat(sinkModel.getRoutes(), notNullValue())
+                () -> assertThat(sinkModel.getRoutes(), notNullValue()),
+                () -> assertThat(sinkModel.getTagsTargetKey(), nullValue())
         );
         assertAll(
                 () -> assertThat(sinkModel.getPluginSettings().size(), equalTo(3)),
@@ -123,7 +127,7 @@ class SinkModelTest {
         pluginSettings.put("key1", "value1");
         pluginSettings.put("key2", "value2");
         pluginSettings.put("key3", "value3");
-        final SinkModel sinkModel = new SinkModel("customPlugin", null, pluginSettings);
+        final SinkModel sinkModel = new SinkModel("customPlugin", null, null, pluginSettings);
 
         final String actualJson = objectMapper.writeValueAsString(sinkModel);
 
@@ -156,6 +160,7 @@ class SinkModelTest {
             assertThat(actualSinkModel.getPluginSettings(), equalTo(pluginSettings));
             assertThat(actualSinkModel.getRoutes(), notNullValue());
             assertThat(actualSinkModel.getRoutes(), empty());
+            assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
         }
     }
 
