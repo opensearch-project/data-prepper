@@ -19,6 +19,7 @@ import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
@@ -75,6 +76,16 @@ public class LocalFileBuffer implements Buffer {
                 PutObjectRequest.builder().bucket(bucket).key(key).build(),
                 RequestBody.fromFile(localFile));
         removeTemporaryFile();
+    }
+
+    /**
+     * Upload accumulated data to HttpEndpoint.
+     *
+     * @param client httpclient object.
+     */
+    @Override
+    public void sendDataToHttpEndpoint(HttpClient client) {
+        //TODO:implement
     }
 
     /**

@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.http.HttpClient;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -57,6 +58,16 @@ public class InMemoryBuffer implements Buffer {
         s3Client.putObject(
                 PutObjectRequest.builder().bucket(bucket).key(key).build(),
                 RequestBody.fromBytes(byteArray));
+    }
+
+    /**
+     * Upload accumulated data to HttpEndpoint.
+     *
+     * @param client httpclient object.
+     */
+    @Override
+    public void sendDataToHttpEndpoint(HttpClient client) {
+        //TODO: implement
     }
 
     /**
