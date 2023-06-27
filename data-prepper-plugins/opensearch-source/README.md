@@ -197,4 +197,3 @@ The default behavior is to process all indices.
 #### <a name="index_configuration">Index Configuration</a>
 
 * `index_name_regex`: A regex pattern to represent the index names for filtering
-
