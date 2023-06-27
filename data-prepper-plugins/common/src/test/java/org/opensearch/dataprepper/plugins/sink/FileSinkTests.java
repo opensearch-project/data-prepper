@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -37,33 +38,38 @@ class FileSinkTests {
     private final String TEST_DATA_1 = "data_prepper";
     private final String TEST_DATA_2 = "file_sink";
     private final String TEST_KEY = "test_key";
+    private final String tagStr1 = "tag1";
+    private final String tagStr2 = "tag2";
     private final Record<Object> TEST_STRING_RECORD_1 = new Record<>(TEST_DATA_1);
     private final Record<Object> TEST_STRING_RECORD_2 = new Record<>(TEST_DATA_2);
     // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private final List<Record<Object>> TEST_STRING_RECORDS = Arrays.asList(TEST_STRING_RECORD_1, TEST_STRING_RECORD_2);
     private List<Record<Object>> TEST_RECORDS;
     private FileSinkConfig fileSinkConfig;
+    private SinkContext sinkContext;
 
     @BeforeEach
     void setUp() throws IOException {
         fileSinkConfig = mock(FileSinkConfig.class);
+        sinkContext = mock(SinkContext.class);
         TEST_OUTPUT_FILE = Files.createTempFile("", "output.txt").toFile();
         TEST_RECORDS = new ArrayList<>();
 
-        TEST_RECORDS.add(new Record<>(JacksonEvent
-                .builder()
+      JacksonEvent event = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(Map.of(TEST_KEY, TEST_DATA_1))
-                .build()));
-        TEST_RECORDS.add(new Record<>(JacksonEvent
-                .builder()
+                .build();
+        event.getMetadata().addTags(List.of(tagStr1, tagStr2));
+        TEST_RECORDS.add(new Record<>(event));
+        event = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(Map.of(TEST_KEY, TEST_DATA_2))
-                .build()));
+                .build();
+        TEST_RECORDS.add(new Record<>(event));
     }
 
     private FileSink createObjectUnderTest() {
-        return new FileSink(fileSinkConfig);
+        return new FileSink(fileSinkConfig, sinkContext);
     }
 
     @AfterEach
@@ -74,6 +80,7 @@ class FileSinkTests {
     @Test
     void testInvalidFilePath() {
         when(fileSinkConfig.getPath()).thenReturn("");
+        when(sinkContext.getTagsTargetKey()).thenReturn(null);
         final FileSink objectUnderTest = createObjectUnderTest();
         assertThrows(RuntimeException.class, objectUnderTest::initialize);
     }
@@ -88,6 +95,7 @@ class FileSinkTests {
         // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
         @Test
         void testValidFilePathStringRecord() throws IOException {
+            when(sinkContext.getTagsTargetKey()).thenReturn(null);
             final FileSink fileSink = createObjectUnderTest();
             fileSink.initialize();
 
@@ -100,9 +108,27 @@ class FileSinkTests {
             Assertions.assertTrue(outputData.contains(TEST_DATA_2));
         }
 
+        @Test
+        void testValidFilePathStringRecord_EventsWithTags() throws IOException {
+            when(sinkContext.getTagsTargetKey()).thenReturn("tags");
+            final FileSink fileSink = createObjectUnderTest();
+            fileSink.initialize();
+
+            Assertions.assertTrue(fileSink.isReady());
+            fileSink.output(TEST_RECORDS);
+            fileSink.shutdown();
+
+            final String outputData = readDocFromFile(TEST_OUTPUT_FILE);
+            Assertions.assertTrue(outputData.contains(TEST_DATA_1));
+            Assertions.assertTrue(outputData.contains(tagStr1));
+            Assertions.assertTrue(outputData.contains(tagStr2));
+            Assertions.assertTrue(outputData.contains(TEST_DATA_2));
+        }
+
         // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
         @Test
         void testValidFilePathCustomTypeRecord() throws IOException {
+            when(sinkContext.getTagsTargetKey()).thenReturn(null);
             final FileSink fileSink = createObjectUnderTest();
             fileSink.initialize();
             Assertions.assertTrue(fileSink.isReady());
@@ -115,6 +141,7 @@ class FileSinkTests {
         }
         @Test
         void testValidFilePath() throws IOException {
+            when(sinkContext.getTagsTargetKey()).thenReturn(null);
             final FileSink fileSink = createObjectUnderTest();
             fileSink.initialize();
             Assertions.assertTrue(fileSink.isReady());
@@ -128,6 +155,7 @@ class FileSinkTests {
 
         @Test
         void testMultipleCallsToOutput() throws IOException {
+            when(sinkContext.getTagsTargetKey()).thenReturn(null);
             final FileSink fileSink = createObjectUnderTest();
             fileSink.initialize();
             Assertions.assertTrue(fileSink.isReady());
@@ -142,6 +170,7 @@ class FileSinkTests {
 
         @Test
         void testCallingOutputAfterShutdownDoesNotWrite() throws IOException {
+            when(sinkContext.getTagsTargetKey()).thenReturn(null);
             final FileSink fileSink = createObjectUnderTest();
             fileSink.initialize();
             Assertions.assertTrue(fileSink.isReady());
@@ -157,6 +186,7 @@ class FileSinkTests {
 
     @Test
     void testWithDefaultFile() {
+        when(sinkContext.getTagsTargetKey()).thenReturn(null);
         when(fileSinkConfig.getPath()).thenReturn(null);
         final FileSink objectUnderTest = createObjectUnderTest();
         assertThrows(RuntimeException.class, objectUnderTest::initialize);
