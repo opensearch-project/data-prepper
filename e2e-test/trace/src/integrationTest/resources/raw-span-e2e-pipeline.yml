@@ -22,3 +22,4 @@ raw-pipeline:
         username: "admin"
         password: "admin"
         index_type: trace-analytics-raw
+        flush_timeout: 5000

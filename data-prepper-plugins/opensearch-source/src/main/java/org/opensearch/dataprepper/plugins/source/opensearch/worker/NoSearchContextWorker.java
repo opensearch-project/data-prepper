@@ -117,7 +117,7 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                     }
                 });
             } catch (final Exception e) {
-                LOG.error("Received an exception while searching with PIT for index '{}'", indexName);
+                LOG.error("Received an exception while searching with no search context for index '{}'", indexName);
                 throw new RuntimeException(e);
             }
 

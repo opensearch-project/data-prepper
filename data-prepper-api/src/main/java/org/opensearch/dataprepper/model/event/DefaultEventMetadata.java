@@ -97,7 +97,9 @@ public class DefaultEventMetadata implements EventMetadata {
 
     @Override
     public void addTags(final List<String> newTags) {
-        tags.addAll(newTags);
+        if (Objects.nonNull(newTags)) {
+            tags.addAll(newTags);
+        }
     }
 
     @Override

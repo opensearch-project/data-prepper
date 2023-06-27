@@ -13,3 +13,4 @@ aggregate-pipeline:
         username: "admin"
         password: "admin"
         index: "test-peer-forwarder-index"
+        flush_timeout: 5000
