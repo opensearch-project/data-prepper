@@ -373,18 +373,8 @@ public class JacksonEvent implements Event {
     }
 
     private boolean isValidKey(final String key) {
-        char previous = ' ';
-        char next = ' ';
         for (int i = 0; i < key.length(); i++) {
             char c = key.charAt(i);
-
-            if (i < key.length() - 1) {
-                next = key.charAt(i + 1);
-            }
-
-            if ((i == 0 || i == key.length() - 1 || previous == '/' || next == '/') && (c == '_' || c == '.' || c == '-')) {
-                return false;
-            }
 
             if (!(c >= 48 && c <= 57
                     || c >= 65 && c <= 90
@@ -397,7 +387,6 @@ public class JacksonEvent implements Event {
 
                 return false;
             }
-            previous = c;
         }
         return true;
     }
