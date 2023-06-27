@@ -4,12 +4,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.regions.Region;
 
+import java.util.Map;
+
 /**
  * AwsConfig is based on the S3-Sink AwsAuthenticationOptions
  * where the configuration allows the sink to fetch Aws credentials
  * and resources.
  */
 public class AwsConfig {
+    private int DEFAULT_CONNECTION_ATTEMPTS = 5;
+
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
     private String awsRegion;
@@ -18,8 +22,17 @@ public class AwsConfig {
     @Size(min = 20, max = 2048, message = "awsStsRoleArn length should be between 1 and 2048 characters")
     private String awsStsRoleArn;
 
-    @JsonProperty("path_to_credentials")
-    private String pathToCredentials;
+    @JsonProperty("sts_header_overrides")
+    @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
+    private Map<String, String> awsStsHeaderOverrides;
+
+    @JsonProperty("sts_external_id")
+    @Size(min = 2, max = 1224, message = "awsStsExternalId length should be between 2 and 1224 characters")
+    private String awsStsExternalId;
+
+    public int getDEFAULT_CONNECTION_ATTEMPTS() {
+        return DEFAULT_CONNECTION_ATTEMPTS;
+    }
 
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
@@ -29,7 +42,11 @@ public class AwsConfig {
         return awsStsRoleArn;
     }
 
-    public String getPathToCredentials() {
-        return pathToCredentials;
+    public String getAwsStsExternalId() {
+        return awsStsExternalId;
+    }
+
+    public Map<String, String> getAwsStsHeaderOverrides() {
+        return awsStsHeaderOverrides;
     }
 }
