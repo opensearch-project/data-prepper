@@ -8,7 +8,6 @@ import jakarta.validation.constraints.NotNull;
 public class CwlSinkConfig {
     public static final String DEFAULT_BUFFER_TYPE = "in_memory";
 
-    //Class was utilized from the
     @JsonProperty("aws")
     @NotNull
     @Valid

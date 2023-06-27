@@ -45,17 +45,25 @@ public class ThresholdConfigTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 15})
-    void check_valid_retry_count(final int retryCount) {
-        final Map<String, Integer> jsonMap = Map.of("retry_count", retryCount);
+    void check_valid_retry_count(final int retry_count) {
+        final Map<String, Integer> jsonMap = Map.of("retry_count", retry_count);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
-        assertThat(thresholdConfigTest.getRetryCount(), equalTo(retryCount));
+        assertThat(thresholdConfigTest.getRetryCount(), equalTo(retry_count));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {5, 10, 300})
-    void check_valid_log_send_interval(final int logSendInterval) {
-        final Map<String, Integer> jsonMap = Map.of("log_send_interval", logSendInterval);
+    void check_valid_log_send_interval(final int log_send_interval) {
+        final Map<String, Integer> jsonMap = Map.of("log_send_interval", log_send_interval);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
-        assertThat(thresholdConfigTest.getLogSendInterval(), equalTo(logSendInterval));
+        assertThat(thresholdConfigTest.getLogSendInterval(), equalTo(log_send_interval));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 100, 5000})
+    void check_valid_back_off_time(final int back_off_time) {
+        final Map<String, Integer> jsonMap = Map.of("back_off_time", back_off_time);
+        final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
+        assertThat(thresholdConfigTest.getBackOffTime(), equalTo(back_off_time));
     }
 }

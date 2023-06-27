@@ -9,9 +9,9 @@ import jakarta.validation.constraints.Size;
  * restrictions.
  */
 public class ThresholdConfig {
-    public static final int DEFAULT_BATCH_SIZE = 10;
+    public static final int DEFAULT_BATCH_SIZE = 100;
     public static final int DEFAULT_EVENT_SIZE = 50;
-    public static final int DEFAULT_SIZE_OF_REQUEST = 25000;
+    public static final int DEFAULT_SIZE_OF_REQUEST = 524288;
     public static final int DEFAULT_RETRY_COUNT = 5;
     public static final int DEFAULT_LOG_SEND_INTERVAL_TIME = 60;
     public static final int DEFAULT_BACKOFF_TIME = 5000;
@@ -21,7 +21,7 @@ public class ThresholdConfig {
     private int batchSize = DEFAULT_BATCH_SIZE;
 
     @JsonProperty("max_event_size")
-    @Size(min = 1, max = 256, message = "max_event_size amount should be between 1 to 256 bytes")
+    @Size(min = 1, max = 256, message = "max_event_size amount should be between 1 to 256 kilobytes")
     private int maxEventSize = DEFAULT_EVENT_SIZE;
 
     @JsonProperty("max_request_size")
@@ -36,6 +36,8 @@ public class ThresholdConfig {
     @Size(min = 5, max = 300, message = "log_send_interval amount should be between 5 and 300 seconds")
     private int logSendInterval = DEFAULT_LOG_SEND_INTERVAL_TIME;
 
+    @JsonProperty("back_off_time")
+    @Size(min = 0, max = 10000, message = "back_off_time amount should be between 0 and 10000 milliseconds")
     private int backOffTime = DEFAULT_BACKOFF_TIME;
 
     public int getBatchSize() {
