@@ -88,9 +88,9 @@ public class GeoIPProcessorUrlServiceIT {
 
         Map<String, Object> geoData = new HashMap<>();
         this.geoIPProcessorService = createObjectUnderTest();
-
-        if (!(IPValidationcheck.ipValidationcheck(geoIPInputJson.getPeer().getIp()))) {
-            InetAddress inetAddress = InetAddress.getByName(geoIPInputJson.getPeer().getIp());
+        String ipAddress = geoIPInputJson.getPeer().getIp();
+        if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
+            InetAddress inetAddress = InetAddress.getByName(ipAddress);
             //All attributes are considered by default with null
             geoData = geoIPProcessorService.getGeoData(inetAddress, null);
 
