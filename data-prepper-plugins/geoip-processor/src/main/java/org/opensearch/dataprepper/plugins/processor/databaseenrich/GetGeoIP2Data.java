@@ -5,7 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.processor.databaseenrich;
 
-import com.maxmind.db.Network;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.exception.GeoIp2Exception;
 import com.maxmind.geoip2.model.EnterpriseResponse;
@@ -41,14 +40,11 @@ public class GetGeoIP2Data implements GetGeoData {
     public static final String CONTINENT_NAME = "continent_name";
     public static final String REGION_NAME = "region_name";
     public static final String CITY_NAME = "city_name";
-    public static final String ORGANIZATION_NAME = "organization_name";
-    public static final String NETWORK = "network";
     public static final String COUNTRY_ISO_CODE = "country_iso_code";
     public static final String IP = "ip";
     public static final String REGION_ISO_CODE = "region_iso_code";
     public static final String TIMEZONE = "timezone";
     public static final String LOCATION = "location";
-    public static final String ASN = "asn";
     public static final String POSTAL = "postal";
     private DatabaseReader.Builder readerEnterprise;
     private Country country;
@@ -56,9 +52,6 @@ public class GetGeoIP2Data implements GetGeoData {
     private City city;
     private Location location;
     private Subdivision subdivision;
-    private Long asn;
-    private String organizationName;
-    private Network network;
     private String dbPath;
     private LoadTypeOptions loadType;
     private int cacheSize;
@@ -158,17 +151,6 @@ public class GetGeoIP2Data implements GetGeoData {
                         case POSTAL:
                             enrichData(geoData, "postalCode", postal.getCode());
                             break;
-                        case ASN:
-                            if (asn != null) {
-                                geoData.put(ASN, asn);
-                            }
-                            break;
-                        case ORGANIZATION_NAME:
-                            enrichData(geoData, ORGANIZATION_NAME, organizationName);
-                            break;
-                        case NETWORK:
-                            enrichData(geoData, NETWORK, network.toString());
-                            break;
                     }
                 }
             } else {
@@ -186,13 +168,6 @@ public class GetGeoIP2Data implements GetGeoData {
 
                 enrichData(geoData, TIMEZONE, location.getTimeZone());
                 enrichLocationData(geoData, location.getLatitude(), location.getLongitude());
-
-                if (asn != null) {
-                    geoData.put(ASN, asn);
-                }
-
-                enrichData(geoData, ORGANIZATION_NAME, organizationName);
-                enrichData(geoData, NETWORK, network.toString());
             }
         } catch (Exception ex) {
             throw new EnrichFailedException("Enrichment failed exception" + ex);

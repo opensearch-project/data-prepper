@@ -38,8 +38,8 @@ import java.util.concurrent.TimeUnit;
 public class GeoIPProcessorService {
 
     private static final Logger LOG = LoggerFactory.getLogger(GeoIPProcessorService.class);
-    public static final String DATABASE_1 = "first_database";
-    public static final String DATABASE_2 = "second_database";
+    public static final String DATABASE_1 = "first_database_path";
+    public static final String DATABASE_2 = "second_database_path";
     private GeoIPProcessorConfig geoIPProcessorConfig;
     private LicenseTypeOptions licenseType;
     private GetGeoData geoData;
@@ -96,13 +96,11 @@ public class GeoIPProcessorService {
      */
     public synchronized void downloadThroughURLandS3() {
         DBSource dbSource;
-
+        toggle = !toggle;
         if (!toggle) {
             flipDatabase = DATABASE_1;
-            toggle = !toggle;
         } else {
             flipDatabase = DATABASE_2;
-            toggle = !toggle;
         }
 
         try {

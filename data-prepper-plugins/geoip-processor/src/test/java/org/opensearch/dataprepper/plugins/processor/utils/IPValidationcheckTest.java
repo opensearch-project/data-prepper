@@ -21,16 +21,16 @@ class IPValidationcheckTest {
 
     @Test
     void ipValidationcheckTest_positive() throws UnknownHostException {
-        Assertions.assertTrue(IPValidationcheck.ipValidationcheck(PRIVATE_IP_ADDRESS));
+        Assertions.assertTrue(IPValidationcheck.isPublicIpAddress(PUBLIC_IP_ADDRESS));
     }
 
     @Test
     void ipValidationcheckTest_negative() throws UnknownHostException {
-        Assertions.assertFalse(IPValidationcheck.ipValidationcheck(PUBLIC_IP_ADDRESS));
+        Assertions.assertFalse(IPValidationcheck.isPublicIpAddress(PRIVATE_IP_ADDRESS));
     }
 
     @Test
     void ipValidationcheckTest_invalid() throws UnknownHostException {
-        Assertions.assertFalse(IPValidationcheck.ipValidationcheck(INVALID_IP_ADDRESS));
+        Assertions.assertTrue(IPValidationcheck.isPublicIpAddress(INVALID_IP_ADDRESS));
     }
 }

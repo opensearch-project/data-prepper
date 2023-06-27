@@ -46,17 +46,17 @@ pipeline:
 
 - `keys` (Required) : List of properties like source, target and attributes can be specified where the location fields are written
 
-- `source` (Required) : source IP for which enrichment will be done. Public IP can be either IPV4 or IPV6.
+  - `source` (Required) : source IP for which enrichment will be done. Public IP can be either IPV4 or IPV6.
 
-- `target` (Optional) : Property used to specify the key for the enriched fields. 
+  - `target` (Optional) : Property used to specify the key for the enriched fields. 
 
-- `attributes` (Optional) : Used to specify the properties which are included in the enrichment of data. By default all attributes are considered.  
+  - `attributes` (Optional) : Used to specify the properties which are included in the enrichment of data. By default all attributes are considered.  
 
 ## Service type Configuration
 
 - `database_path` (Required) :  Used to provide either S3 path, maxmind URL or local file path where the .mmdb file is available.
 
-- `url` (Required) : Provide URL for all three S3, maxmind URL or local file path. 
+  - `url` (Required) : Provide URL for all three S3, maxmind URL or local file path. 
 
 - `load_type` (Required) :  Load type used for better performance while enrich the data. There are two type load_type are present i.e "in_memory" or "cache".
 
@@ -64,6 +64,7 @@ pipeline:
 
 - `cache_refresh_schedule` (Required) : Switch the DatabaseReader when ever Refresh schedule threshold is met. 
 
+- `tags_on_source_not_found` (Optional): A `List` of `String`s that specifies the tags to be set in the event the processor fails to parse or an unknown exception occurs while parsing. This tag may be used in conditional expressions in other parts of the configuration
 
 ## Developer Guide
 

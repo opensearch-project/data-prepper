@@ -62,6 +62,7 @@ public interface DBSource {
             }
             subFile.delete();
         }
+        file.delete();
     }
 
     /**

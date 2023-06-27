@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
 import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.utils.IPValidationcheck;
+import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,10 +41,9 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   private final Counter geoIpProcessingMismatchCounter;
   private final GeoIPProcessorConfig geoIPProcessorConfig;
   private final String tempPath;
-  private static final String TAGS_ON_MATCH_FAILURE = "tags_on_match_failure";
-  private final List<String> tagsOnMatchFailure;
+  private final List<String> tagsOnSourceNotFoundFailure;
   private GeoIPProcessorService geoIPProcessorService;
-  private final String TEMP_PATH_FOLDER = "GeoIP";
+  private static final String TEMP_PATH_FOLDER = "GeoIP";
 
   /**
    * GeoIPProcessor constructor for initialization of required attributes
@@ -57,7 +57,7 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
     this.geoIPProcessorConfig = geoCodingProcessorConfig;
     this.tempPath = System.getProperty("java.io.tmpdir")+ File.separator + TEMP_PATH_FOLDER;
     geoIPProcessorService = new GeoIPProcessorService(geoCodingProcessorConfig,tempPath);
-    tagsOnMatchFailure = pluginSetting.getTypedList(TAGS_ON_MATCH_FAILURE, String.class);
+    tagsOnSourceNotFoundFailure = geoCodingProcessorConfig.getTagsOnSourceNotFoundFailure();
     this.geoIpProcessingMatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MATCH);
     this.geoIpProcessingMismatchCounter = pluginMetrics.counter(GEO_IP_PROCESSING_MISMATCH);
   }
@@ -82,20 +82,19 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
         //Lookup from DB
         if (ipAddress != null && (!(ipAddress.isEmpty()))) {
           try {
-            if (!(IPValidationcheck.ipValidationcheck(ipAddress))) {
-              InetAddress inetAddress = InetAddress.getByName(ipAddress);
-              geoData = geoIPProcessorService.getGeoData(inetAddress, attributes);
+            if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
+              geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
               eventRecord.getData().put(key.getKeyConfig().getTarget(), geoData);
               geoIpProcessingMatchCounter.increment();
             }
-          } catch (IOException e) {
+          } catch (IOException | EnrichFailedException ex) {
             geoIpProcessingMismatchCounter.increment();
-            event.getMetadata().addTags(tagsOnMatchFailure);
-            throw new EnrichFailedException("Enrichment failed for ip address: " + ipAddress);
+            event.getMetadata().addTags(tagsOnSourceNotFoundFailure);
+            LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]",  event, ipAddress, ex);
           }
         } else {
           //No Enrichment.
-          event.getMetadata().addTags(tagsOnMatchFailure);
+          event.getMetadata().addTags(tagsOnSourceNotFoundFailure);
         }
       }
     }

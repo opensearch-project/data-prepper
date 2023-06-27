@@ -28,6 +28,9 @@ public class GeoIPProcessorConfig {
     @NotNull
     private List<KeysConfig> keysConfig;
 
+    @JsonProperty("tags_on_source_not_found")
+    private List<String> tagsOnSourceNotFoundFailure;
+
     @JsonProperty("service_type")
     @NotNull
     private ServiceTypeOptions serviceType;
@@ -46,6 +49,14 @@ public class GeoIPProcessorConfig {
      */
     public List<KeysConfig> getKeysConfig() {
         return keysConfig;
+    }
+
+    /**
+     * Get the List of failure tags
+     * @return List of failure tags
+     */
+    public List<String> getTagsOnSourceNotFoundFailure() {
+        return tagsOnSourceNotFoundFailure;
     }
 
     /**

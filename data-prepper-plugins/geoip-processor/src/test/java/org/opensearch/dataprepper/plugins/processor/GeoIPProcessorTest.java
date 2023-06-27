@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.plugins.processor.configuration.KeyConfig;
 import org.opensearch.dataprepper.plugins.processor.configuration.KeysConfig;
 import org.opensearch.dataprepper.plugins.processor.configuration.MaxMindServiceConfig;
 import org.opensearch.dataprepper.plugins.processor.configuration.ServiceTypeOptions;
+import org.opensearch.dataprepper.plugins.processor.databaseenrich.EnrichFailedException;
 import org.opensearch.dataprepper.plugins.processor.loadtype.LoadTypeOptions;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
@@ -37,7 +38,10 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -96,19 +100,47 @@ class GeoIPProcessorTest {
         when(geoCodingProcessorConfig.getKeysConfig()).thenReturn(configs);
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
-        Map<String, Object> geoData = new HashMap<>();
-        geoData.put("country_IsoCode", "US");
-        geoData.put("continent_name", "North America");
-        geoData.put("timezone", "America/Chicago");
-        geoData.put("country_name", "United States");
-
-        when(geoIPProcessorService.getGeoData(any(), any())).thenReturn(geoData);
+        when(geoIPProcessorService.getGeoData(any(), any())).thenReturn(prepareGeoData());
         ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
                 "geoIPProcessorService", geoIPProcessorService);
         Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
         for (final Record<Event> record : records) {
             Event event = record.getData();
             assertThat(event.get("/peer/ip", String.class), equalTo("136.226.242.205"));
+        }
+    }
+
+
+    @Test
+    void test_tags_when_enrich_fails() throws MalformedURLException, NoSuchFieldException, IllegalAccessException {
+
+        KeyConfig keyConfig = new KeyConfig();
+        final List<String> attributes = setAttributes();
+        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "attributes", attributes);
+        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "source", SOURCE);
+        ReflectivelySetField.setField(KeyConfig.class, keyConfig, "target", TARGET);
+
+        List<String> testTags = List.of("tag1", "tag2");
+        when(geoCodingProcessorConfig.getTagsOnSourceNotFoundFailure()).thenReturn(testTags);
+
+        KeysConfig keysConfig1 = new KeysConfig();
+        ReflectivelySetField.setField(KeysConfig.class,
+                keysConfig1, "keyConfig", keyConfig);
+
+        List<KeysConfig> configs = new ArrayList<>();
+        configs.add(keysConfig1);
+        when(geoCodingProcessorConfig.getKeysConfig()).thenReturn(configs);
+        GeoIPProcessor geoIPProcessor = createObjectUnderTest();
+
+        doThrow(EnrichFailedException.class).when(geoIPProcessorService).getGeoData(any(), any());
+
+        ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
+                "geoIPProcessorService", geoIPProcessorService);
+        Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
+
+        for (final Record<Event> record : records) {
+            Event event = record.getData();
+            assertTrue(event.getMetadata().hasTags(testTags));
         }
     }
 
@@ -122,6 +154,15 @@ class GeoIPProcessorTest {
     void shutdownTest() throws MalformedURLException {
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
         assertDoesNotThrow(geoIPProcessor::shutdown);
+    }
+
+    private Map<String, Object> prepareGeoData() {
+        Map<String, Object> geoDataMap = new HashMap<>();
+        geoDataMap.put("country_IsoCode", "US");
+        geoDataMap.put("continent_name", "North America");
+        geoDataMap.put("timezone", "America/Chicago");
+        geoDataMap.put("country_name", "United States");
+        return geoDataMap;
     }
 
     private GeoIPProcessor createObjectUnderTest() throws MalformedURLException {
