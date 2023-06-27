@@ -57,6 +57,8 @@ public class SqsSourceTaskIT {
     private static final String AWS_SQS_QUEUE_URL = "tests.sqs.source.queue.url";
 
     private static final String AWS_REGION = "tests.sqs.source.aws.region";
+    public static final Duration BUFFER_TIMEOUT = Duration.ofSeconds(10);
+    public static final int RECORDS_TO_ACCUMULATE = 100;
 
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
@@ -113,8 +115,10 @@ public class SqsSourceTaskIT {
 
     public SqsSourceTask createObjectUnderTest(final SqsOptions sqsOptions){
         SqsService sqsService = new SqsService(sqsMetrics,sqsClient,backoff);
-        SqsMessageHandler sqsHandler = new RawSqsMessageHandler(buffer,sqsService,10);
-        return new SqsSourceTask(sqsService,sqsOptions,sqsMetrics,acknowledgementSetManager,Boolean.FALSE,sqsHandler);
+        SqsMessageHandler sqsHandler = new RawSqsMessageHandler(sqsService);
+        return new SqsSourceTask(buffer, RECORDS_TO_ACCUMULATE, BUFFER_TIMEOUT
+                ,sqsService,sqsOptions,sqsMetrics,
+                acknowledgementSetManager,Boolean.FALSE,sqsHandler);
     }
 
     private static List<String> pushMessagesToQueue(SqsRecordsGenerator sqsRecordsGenerator, String queueUrl,final int load) {
