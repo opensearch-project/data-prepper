@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.sink.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
@@ -17,6 +18,18 @@ public class ThresholdConfigTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
+    }
+
+    @Test
+    void check_default_values() {
+        final ThresholdConfig thresholdConfig = new ThresholdConfig();
+
+        assertThat(thresholdConfig.getBackOffTime(), equalTo(ThresholdConfig.DEFAULT_BACKOFF_TIME));
+        assertThat(thresholdConfig.getRetryCount(), equalTo(ThresholdConfig.DEFAULT_RETRY_COUNT));
+        assertThat(thresholdConfig.getBatchSize(), equalTo(ThresholdConfig.DEFAULT_BATCH_SIZE));
+        assertThat(thresholdConfig.getMaxEventSize(), equalTo(ThresholdConfig.DEFAULT_EVENT_SIZE));
+        assertThat(thresholdConfig.getMaxRequestSize(), equalTo(ThresholdConfig.DEFAULT_SIZE_OF_REQUEST));
+        assertThat(thresholdConfig.getLogSendInterval(), equalTo(ThresholdConfig.DEFAULT_LOG_SEND_INTERVAL_TIME));
     }
 
     @ParameterizedTest
@@ -40,7 +53,7 @@ public class ThresholdConfigTest {
     void check_valid_request_size(final int max_batch_request_size) {
         final Map<String, Integer> jsonMap = Map.of("max_request_size", max_batch_request_size);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
-        assertThat(thresholdConfigTest.getMaxBatchSize(), equalTo(max_batch_request_size));
+        assertThat(thresholdConfigTest.getMaxRequestSize(), equalTo(max_batch_request_size));
     }
 
     @ParameterizedTest

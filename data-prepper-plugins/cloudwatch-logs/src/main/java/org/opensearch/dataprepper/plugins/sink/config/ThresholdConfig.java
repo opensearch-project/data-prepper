@@ -48,7 +48,7 @@ public class ThresholdConfig {
         return maxEventSize;
     }
 
-    public int getMaxBatchSize() {
+    public int getMaxRequestSize() {
         return maxRequestSize;
     }
 
