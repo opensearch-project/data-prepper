@@ -13,7 +13,7 @@ public class CwlSinkConfig {
     @Valid
     private AwsConfig awsConfig;
 
-    @JsonProperty("threshold_config")
+    @JsonProperty("threshold")
     @NotNull
     private ThresholdConfig thresholdConfig;
 
