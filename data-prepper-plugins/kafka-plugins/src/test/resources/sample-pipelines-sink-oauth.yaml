@@ -1,0 +1,37 @@
+log-pipeline :
+  source :
+    random :
+  sink :
+       kafka-sink :
+        bootstrap_servers :
+          - "localhost:29092"
+        batch_size: 100
+        acks: "acks"
+        compression_type: "none"
+        thread_wait_time: 1000
+        aws:
+          bucket: "mydlqtestbucket"
+          sts_role_arn: "arn:aws:iam::045129910014:role/dataprepper"
+          region: "ap-south-1"
+        serde_format: json
+        topics:
+          - name: my-test-topic2
+        schema:
+          registry_url: http://localhost:8085/
+          version: 1
+        authentication:
+         sasl_oauth:
+           oauth_client_id: XXXXXXXXXXXXXXX
+           oauth_client_secret: XXXXXXXXXXXXXXX
+           oauth_login_server: https://dev-XXXXXXXXXXXXXXX.okta.com
+           oauth_login_endpoint: /oauth2/default/v1/token
+           oauth_login_grant_type: refresh_token
+           oauth_login_scope: kafka
+           oauth_introspect_server: https://dev-XXXXXXXXXXXXXXX.okta.com
+           oauth_introspect_endpoint: /oauth2/default/v1/introspect
+           oauth_token_endpoint_url: https://dev-XXXXXXXXXXXXXXX.okta.com/oauth2/default/v1/token
+           oauth_sasl_mechanism: OAUTHBEARER
+           oauth_security_protocol: SASL_PLAINTEXT
+           oauth_sasl_login_callback_handler_class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
+           oauth_jwks_endpoint_url: https://dev-XXXXXXXXXXXXXXX.okta.com/oauth2/default/v1/keys
+
