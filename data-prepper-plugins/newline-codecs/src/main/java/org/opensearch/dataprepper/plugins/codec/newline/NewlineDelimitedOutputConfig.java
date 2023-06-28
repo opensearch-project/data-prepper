@@ -14,12 +14,13 @@ import java.util.List;
  * Configuration class for the newline delimited codec.
  */
 public class NewlineDelimitedOutputConfig {
+    private static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
 
     @JsonProperty("header_destination")
     private String headerDestination;
 
     @JsonProperty("exclude_keys")
-    private List<String> excludeKeys = new ArrayList<>();
+    private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     public List<String> getExcludeKeys() {
         return excludeKeys;

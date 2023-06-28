@@ -43,16 +43,12 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
     public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
         final Map<String, Object> eventDataMap = event.toMap();
-        if (eventDataMap.containsKey(headerDestination) || eventDataMap.containsKey(MESSAGE_FIELD_NAME)) {
-            final Object headerValue = eventDataMap.get(headerDestination);
-            if (headerValue != null) {
-                writeToOutputStream(outputStream, headerValue);
-                eventDataMap.remove(headerDestination);
-            }
-
-            final Object value = eventDataMap.get(MESSAGE_FIELD_NAME);
-            if (value != null) {
-                writeToOutputStream(outputStream, value);
+        if (eventDataMap.containsKey(MESSAGE_FIELD_NAME)) {
+            for (String key: eventDataMap.keySet() ) {
+                if(!key.equalsIgnoreCase("s3")) {
+                    Object object = eventDataMap.get(key);
+                    writeToOutputStream(outputStream, object);
+                }
             }
         } else {
             writeToOutputStream(outputStream, eventDataMap);
