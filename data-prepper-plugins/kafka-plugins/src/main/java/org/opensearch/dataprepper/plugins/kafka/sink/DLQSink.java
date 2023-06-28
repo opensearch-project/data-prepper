@@ -23,7 +23,7 @@ import static java.util.UUID.randomUUID;
 
 
 /**
- * * An util class which helps log failed data to AWS S3 bucket
+ * *This class which helps log failed data to AWS S3 bucket
  */
 
 public class DLQSink {
@@ -57,7 +57,6 @@ public class DLQSink {
             dlqWriter.write(Arrays.asList(dlqObject), pluginSetting.getPipelineName(), pluginId);
         } catch (final IOException io) {
             LOG.error("Error occured while performing DLQ operation ",io);
-            io.printStackTrace();
         }
     }
 

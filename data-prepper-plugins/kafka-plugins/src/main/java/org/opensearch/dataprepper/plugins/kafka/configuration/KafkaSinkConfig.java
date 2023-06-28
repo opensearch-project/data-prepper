@@ -101,10 +101,6 @@ public class KafkaSinkConfig {
         return serdeFormat;
     }
 
-    public Long getThreadWaitTime() {
-        return threadWaitTime;
-    }
-
 
 
 }

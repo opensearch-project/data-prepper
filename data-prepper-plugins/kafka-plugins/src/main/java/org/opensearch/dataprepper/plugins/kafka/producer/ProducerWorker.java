@@ -19,8 +19,8 @@ public class ProducerWorker implements Runnable {
     private final KafkaSinkProducer producer;
 
 
-    public ProducerWorker(KafkaSinkProducer producer,
-                          Record<Event> record) {
+    public ProducerWorker(final KafkaSinkProducer producer,
+                          final Record<Event> record) {
         this.record = record;
         this.producer=producer;
     }

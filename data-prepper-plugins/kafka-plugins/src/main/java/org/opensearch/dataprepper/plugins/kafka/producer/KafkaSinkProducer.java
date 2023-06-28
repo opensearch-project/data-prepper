@@ -27,13 +27,13 @@ import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 public class KafkaSinkProducer<T> {
 
-    final Producer<String, T> producer;
+    private final Producer<String, T> producer;
 
-    final KafkaSinkConfig kafkaSinkConfig;
+    private final KafkaSinkConfig kafkaSinkConfig;
 
-    final DLQSink dlqSink;
+    private final DLQSink dlqSink;
 
-    final CachedSchemaRegistryClient schemaRegistryClient;
+    private final CachedSchemaRegistryClient schemaRegistryClient;
 
 
     public KafkaSinkProducer(final Producer producer,

@@ -48,9 +48,9 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private ExecutorService executorService;
 
-    final PluginFactory pluginFactory;
+    private final PluginFactory pluginFactory;
 
-    final PluginSetting pluginSetting;
+    private final PluginSetting pluginSetting;
 
 
     @DataPrepperPluginConstructor
@@ -93,9 +93,9 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
             records.forEach(record -> {
                 producerWorker = new ProducerWorker(producer, record);
                 //TODO: uncomment this line after testing as this is the right way to do things
-                executorService.submit(producerWorker);
+                //executorService.submit(producerWorker);
                 //TODO: remove this line after testing as it executes the thread immediately
-               // executorService.execute(producerWorker);
+                executorService.execute(producerWorker);
             });
 
         } catch (Exception e) {
@@ -130,7 +130,6 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         LOG.info("Producer shutdown successfully...");
     }
 
-    //TODO: read the thread waiting time from config once HLD is finalized
     private long calculateLongestThreadWaitingTime() {
         return kafkaSinkConfig.getThreadWaitTime();
     }

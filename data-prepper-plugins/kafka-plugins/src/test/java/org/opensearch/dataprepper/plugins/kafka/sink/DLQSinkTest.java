@@ -74,21 +74,11 @@ public class DLQSinkTest {
 
     @Test
     public void testPerform() throws IOException {
-        // Mock the required dependencies and setup their behavior
-
         Object failedData = new Object();
-
         ReflectionTestUtils.setField(pluginSetting,"pipelineName","test");
-
-
         doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
-
-        // Invoke the method under test
         dlqSink.perform(failedData);
-
-        // Verify the interactions and assertions
         verify(dlqWriter).write(anyList(), anyString(), anyString());
-        // Add more assertions if needed
     }
 
 
