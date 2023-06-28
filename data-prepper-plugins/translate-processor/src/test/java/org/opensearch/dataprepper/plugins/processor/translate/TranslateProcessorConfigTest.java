@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.processor.translate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import java.util.Collections;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,19 +25,19 @@ class TranslateProcessorConfigTest {
 
     @Test
     void test_no_map_patterns_filepath_options_present(){
-        assertFalse(translateProcessorConfig.hasAnyMappings());
+        assertFalse(translateProcessorConfig.hasMappings());
     }
 
     @Test
     void test_only_map_option_present() throws NoSuchFieldException, IllegalAccessException{
         setField(TranslateProcessorConfig.class, translateProcessorConfig, "map", Collections.singletonMap("key1", "val1"));
-        assertTrue(translateProcessorConfig.hasAnyMappings());
+        assertTrue(translateProcessorConfig.hasMappings());
     }
 
     @Test
     void test_only_filepath_option_present() throws NoSuchFieldException, IllegalAccessException{
         setField(TranslateProcessorConfig.class, translateProcessorConfig, "filePath", "/path/to/file.yaml");
-        assertTrue(translateProcessorConfig.hasAnyMappings());
+        assertTrue(translateProcessorConfig.hasMappings());
     }
 
     @Test
@@ -44,6 +45,15 @@ class TranslateProcessorConfigTest {
         regexParameterConfiguration = new RegexParameterConfiguration();
         setField(RegexParameterConfiguration.class, regexParameterConfiguration, "patterns", Collections.singletonMap("patternKey1", "patternVal1"));
         setField(TranslateProcessorConfig.class, translateProcessorConfig, "regexParameterConfiguration", regexParameterConfiguration);
-        assertTrue(translateProcessorConfig.hasAnyMappings());
+        assertTrue(translateProcessorConfig.hasMappings());
+    }
+
+    @Test
+    void test_no_patterns_under_regex() throws NoSuchFieldException, IllegalAccessException{
+        regexParameterConfiguration = new RegexParameterConfiguration();
+        setField(RegexParameterConfiguration.class, regexParameterConfiguration, "exact", true);
+        setField(TranslateProcessorConfig.class, translateProcessorConfig, "map", Collections.singletonMap("key1", "val1"));
+        setField(TranslateProcessorConfig.class, translateProcessorConfig, "regexParameterConfiguration", regexParameterConfiguration);
+        assertFalse(translateProcessorConfig.hasMappings());
     }
 }

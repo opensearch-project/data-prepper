@@ -35,7 +35,7 @@ public class TranslateProcessorConfig {
     private String mapWhen;
 
     @JsonProperty("regex")
-    private RegexParameterConfiguration regexParameterConfiguration = new RegexParameterConfiguration();
+    private RegexParameterConfiguration regexParameterConfiguration;
 
 
     public String getSource() { return source; }
@@ -51,9 +51,16 @@ public class TranslateProcessorConfig {
     public RegexParameterConfiguration getRegexParameterConfiguration(){ return regexParameterConfiguration; }
 
 
-    @AssertTrue(message = "Either of map / patterns / file_path options need to be configured")
-    public boolean hasAnyMappings() {
-        return Stream.of(map, filePath, regexParameterConfiguration.getPatterns()).filter(n -> n!=null).count() != 0;
+    @AssertTrue(message = "Either of map / patterns / file_path options need to be configured. (pattern option is mandatory while configuring regex option)")
+    public boolean hasMappings() {
+        return (Stream.of(map, filePath, regexParameterConfiguration).filter(n -> n!=null).count() != 0) && checkPatternUnderRegex();
+    }
+
+    public boolean checkPatternUnderRegex(){
+        if(regexParameterConfiguration!=null && regexParameterConfiguration.getPatterns()==null){
+            return false;
+        }
+        return true;
     }
 
 }

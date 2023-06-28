@@ -17,12 +17,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Collections;
 import java.util.AbstractMap;
+import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.hamcrest.CoreMatchers.is;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,10 +53,10 @@ class TranslateProcessorTest {
         when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("key1","mappedValue1")));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("key1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
     }
 
     @Test
@@ -61,10 +64,10 @@ class TranslateProcessorTest {
         when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("123","mappedValue1")));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("123");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
     }
 
     @Test
@@ -72,10 +75,10 @@ class TranslateProcessorTest {
         when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("1-10","mappedValue1")));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("5");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
 
     }
 
@@ -83,24 +86,38 @@ class TranslateProcessorTest {
     public void test_comma_separated_keys_in_map(){
         when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("key1,key2, key3","mappedValue1")));
         final TranslateProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("key3");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        for(String key : Arrays.asList("key1","key2","key3")){
+            final Record<Event> record = getEvent(key);
+            final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
+            assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+            assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        }
+
+        final Record<Event> failureRecord = getEvent("key4");
+        final List<Record<Event>> failingTranslatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(failureRecord));
+
+        assertFalse(failingTranslatedRecords.get(0).getData().containsKey("targetField"));
     }
 
     @Test
     public void test_comma_separated_range_keys_in_map(){
         when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("1-10,11-20, 21-30","mappedValue1")));
         final TranslateProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("15");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        for(String key : Arrays.asList("5","15","25")){
+            final Record<Event> record = getEvent(key);
+            final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
+            assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+            assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        }
+
+        final Record<Event> failureRecord = getEvent("35");
+        final List<Record<Event>> failingTranslatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(failureRecord));
+
+        assertFalse(failingTranslatedRecords.get(0).getData().containsKey("targetField"));
     }
 
     @Test
@@ -108,45 +125,48 @@ class TranslateProcessorTest {
         when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("1-10,11-20, 21-30","mappedValue1")));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("11.1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
 
+        final Record<Event> failureRecord = getEvent("20.5");
+        final List<Record<Event>> failingTranslatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(failureRecord));
+
+        assertFalse(failingTranslatedRecords.get(0).getData().containsKey("targetField"));
     }
 
     @Test
-    public void test_integer_source_in_comma_separated_integer_ranges_and_string_keys(){
+    public void test_comma_separated_integer_ranges_and_string_keys(){
         when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("1-10,key1","mappedValue1")));
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("5.2");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
 
-    }
+        final Record<Event> recordStringKey = getEvent("key1");
+        final List<Record<Event>> translatedStringKeyRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(recordStringKey));
 
-    @Test
-    public void test_string_source_in_comma_separated_integer_ranges_and_string_keys(){
-        when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("1-10,key1","mappedValue1")));
-        final TranslateProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("key1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
-
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
-
+        assertTrue(translatedStringKeyRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedStringKeyRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
     }
 
     @Test
     public void test_multiple_dashes_in_keys_should_be_treated_as_string_literal(){
         when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("1-10-20","mappedValue1")));
         final TranslateProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("10");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final Record<Event> failureRecord = getEvent("1-10-20");
+        final List<Record<Event>> failingTranslatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(failureRecord));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(false));
+        assertTrue(failingTranslatedRecords.get(0).getData().containsKey("targetField"));
+
+        final Record<Event> record = getEvent("10");
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertFalse(translatedRecords.get(0).getData().containsKey("targetField"));
+
     }
 
     @Test
@@ -170,10 +190,15 @@ class TranslateProcessorTest {
 
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("key1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+
+        final Record<Event> failureRecord = getEvent("key2");
+        final List<Record<Event>> failingTranslatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(failureRecord));
+
+        assertFalse(failingTranslatedRecords.get(0).getData().containsKey("targetField"));
     }
 
     @Test
@@ -183,22 +208,15 @@ class TranslateProcessorTest {
 
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("15");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("patternValue1"));
-    }
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("patternValue1"));
 
-    @Test
-    public void test_non_matching_of_regex_pattern_in_pattern_option(){
-        when(mockConfig.getRegexParameterConfiguration()).thenReturn(mockRegexConfig);
-        when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("^(1[0-9]|20)$", "patternValue1"))); //Range between 10-20
+        final Record<Event> failureRecord = getEvent("1");
+        final List<Record<Event>> failingTranslatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(failureRecord));
 
-        final TranslateProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
-
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(false));
+        assertFalse(failingTranslatedRecords.get(0).getData().containsKey("targetField"));
     }
 
     @Test
@@ -209,10 +227,16 @@ class TranslateProcessorTest {
 
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("patternKey1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("patternValue1"));
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("patternValue1"));
+
+        final Record<Event> recordMapKey = getEvent("key1");
+        final List<Record<Event>> translatedMapKeyRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(recordMapKey));
+
+        assertTrue(translatedMapKeyRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedMapKeyRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
     }
 
     @Test
@@ -223,10 +247,16 @@ class TranslateProcessorTest {
 
         final TranslateProcessor processor = createObjectUnderTest();
         final Record<Event> record = getEvent("400");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
-        assertThat(editedRecords.get(0).getData().containsKey("targetField"), is(true));
-        assertThat(editedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+
+        final Record<Event> recordPatternKey = getEvent("404");
+        final List<Record<Event>> translatedPatternKeyRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(recordPatternKey));
+
+        assertTrue(translatedPatternKeyRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedPatternKeyRecords.get(0).getData().get("targetField", String.class), is("patternValue1"));
     }
 
 

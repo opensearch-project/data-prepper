@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.translate;
 
 import org.apache.commons.lang3.Range;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -81,7 +82,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
 
     private void addRangeMapping(Map.Entry<String, String>  mapEntry){
         String[] rangeKeys = mapEntry.getKey().split("-");
-        if(rangeKeys.length!=2 || !NumberUtils.isParsable(rangeKeys[0]) || !NumberUtils.isParsable(rangeKeys[1])){
+        if(rangeKeys.length!=2 || !StringUtils.isNumericSpace(rangeKeys[0]) || !StringUtils.isNumericSpace(rangeKeys[1])){
             addIndividualMapping(mapEntry.getKey(), mapEntry.getValue());
         }
         else {
@@ -137,39 +138,19 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         //todo
         for(final Record<Event> record : records) {
-            boolean matchFound = false;
             final Event recordEvent = record.getData();
             if (Objects.nonNull(translateProcessorConfig.getMapWhen()) && !expressionEvaluator.evaluateConditional(translateProcessorConfig.getMapWhen(), recordEvent)) {
                 continue;
             }
             try {
                 String matchKey = record.getData().get(translateProcessorConfig.getSource(), String.class);
-                if(!matchFound && individualMappings.containsKey(matchKey)){
-                    //check individual keys
-                    record.getData().put(translateProcessorConfig.getTarget(), individualMappings.get(matchKey));
-                    matchFound = true;
+                if(matchesIndividualEntry(record, matchKey) || matchesRangeEntry(record, matchKey) || matchesPatternEntry(record, matchKey)){
+                    continue;
                 }
-                if(!matchFound && NumberUtils.isParsable(matchKey)){
-                    //check in the range
-                    Float floatKey = Float.parseFloat(matchKey);
-                    for(Map.Entry<Range<Float>, String> rangeEntry : rangeMappings.entrySet()){
-                        Range<Float> range = rangeEntry.getKey();
-                        if(range.contains(floatKey)){
-                            matchFound = true;
-                            record.getData().put(translateProcessorConfig.getTarget(), rangeEntry.getValue());
-                            break;
-                        }
-                    }
-                }
-                if(!matchFound && Objects.nonNull(patternMappings)){
-                    //check in the patterns
-                    //todo
-                    for(String pattern : patternMappings.keySet()){
-                        if(Pattern.matches(pattern, matchKey)){
-                            record.getData().put(translateProcessorConfig.getTarget(), patternMappings.get(pattern));
-                            break;
-                        }
-                    }
+                else{
+
+                    // todo : add default, increment metrics, and/or add_tags
+
                 }
             } catch (Exception ex){
                 LOG.error(EVENT, "Error mapping the source [{}] of entry [{}]",
@@ -179,7 +160,42 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return records;
     }
 
+    public boolean matchesIndividualEntry(Record<Event> record, String matchKey){
+        if(individualMappings.containsKey(matchKey)){
+            record.getData().put(translateProcessorConfig.getTarget(), individualMappings.get(matchKey));
+            return true;
+        }
+        return false;
+    }
 
+    public boolean matchesRangeEntry(Record<Event> record, String matchKey){
+        if(!NumberUtils.isParsable(matchKey)){
+            return false;
+        }
+        Float floatKey = Float.parseFloat(matchKey);
+        for(Map.Entry<Range<Float>, String> rangeEntry : rangeMappings.entrySet()) {
+            Range<Float> range = rangeEntry.getKey();
+            if (range.contains(floatKey)) {
+                record.getData().put(translateProcessorConfig.getTarget(), rangeEntry.getValue());
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean matchesPatternEntry(Record<Event> record, String matchKey){
+        //todo
+        if(!Objects.nonNull(patternMappings)){
+            return false;
+        }
+        for(String pattern : patternMappings.keySet()){
+            if(Pattern.matches(pattern, matchKey)){
+                record.getData().put(translateProcessorConfig.getTarget(), patternMappings.get(pattern));
+                return true;
+            }
+        }
+        return false;
+    }
     @Override
     public void prepareForShutdown() {
 
