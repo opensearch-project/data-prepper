@@ -16,27 +16,10 @@ import java.util.List;
 public class NewlineDelimitedOutputConfig {
     private static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
 
-    @JsonProperty("header_destination")
-    private String headerDestination;
-
     @JsonProperty("exclude_keys")
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     public List<String> getExcludeKeys() {
         return excludeKeys;
-    }
-
-    /**
-     * The key containing the header line of the S3 object.
-     * If this option is specified then each Event will contain a header_destination field.
-     *
-     * @return The name of the header_destination field.
-     */
-    public String getHeaderDestination() {
-        return headerDestination;
-    }
-
-    public void setHeaderDestination(String headerDestination) {
-        this.headerDestination = headerDestination;
     }
 }

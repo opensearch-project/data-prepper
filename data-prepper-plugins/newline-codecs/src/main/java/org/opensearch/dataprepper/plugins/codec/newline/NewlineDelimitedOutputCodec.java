@@ -23,7 +23,6 @@ import java.util.Objects;
 public class NewlineDelimitedOutputCodec implements OutputCodec {
     private static final String NDJSON = "ndjson";
     private static final String MESSAGE_FIELD_NAME = "message";
-    private final String headerDestination;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final NewlineDelimitedOutputConfig config;
 
@@ -31,7 +30,6 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
     public NewlineDelimitedOutputCodec(final NewlineDelimitedOutputConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
-        headerDestination = config.getHeaderDestination();
     }
 
     @Override
