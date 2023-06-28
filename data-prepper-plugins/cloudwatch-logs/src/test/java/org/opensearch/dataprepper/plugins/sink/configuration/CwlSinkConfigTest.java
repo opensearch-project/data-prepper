@@ -7,9 +7,6 @@ import org.opensearch.dataprepper.plugins.sink.config.CwlSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
-import java.util.Map;
-import java.util.UUID;
-
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
