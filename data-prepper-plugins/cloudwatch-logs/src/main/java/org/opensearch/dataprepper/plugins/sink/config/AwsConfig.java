@@ -12,7 +12,7 @@ import java.util.Map;
  * and resources.
  */
 public class AwsConfig {
-    private int DEFAULT_CONNECTION_ATTEMPTS = 5;
+    public static int DEFAULT_CONNECTION_ATTEMPTS = 5;
 
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
@@ -29,10 +29,6 @@ public class AwsConfig {
     @JsonProperty("sts_external_id")
     @Size(min = 2, max = 1224, message = "awsStsExternalId length should be between 2 and 1224 characters")
     private String awsStsExternalId;
-
-    public int getDEFAULT_CONNECTION_ATTEMPTS() {
-        return DEFAULT_CONNECTION_ATTEMPTS;
-    }
 
     public Region getAwsRegion() {
         return awsRegion != null ? Region.of(awsRegion) : null;
