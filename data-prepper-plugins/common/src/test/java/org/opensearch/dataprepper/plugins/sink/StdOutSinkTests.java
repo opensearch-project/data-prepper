@@ -51,7 +51,7 @@ public class StdOutSinkTests {
 
     @Test
     public void testSinkWithEvents() {
-        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
+        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()), null);
         stdOutSink.output(testRecords);
         stdOutSink.shutdown();
     }
@@ -59,7 +59,7 @@ public class StdOutSinkTests {
     // TODO: remove with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     @Test
     public void testSinkWithCustomType() {
-        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()));
+        final StdOutSink stdOutSink = new StdOutSink(new PluginSetting(PLUGIN_NAME, new HashMap<>()), null);
         stdOutSink.output(Collections.singletonList(new Record<Object>(new TestObject())));
     }
 

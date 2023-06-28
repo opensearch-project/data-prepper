@@ -50,7 +50,7 @@ class PipelinesDataFlowModelTest {
 
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", (Map<String, Object>) null));
-        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
@@ -72,7 +72,7 @@ class PipelinesDataFlowModelTest {
         final DataPrepperVersion version = DataPrepperVersion.parse("2.0");
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
         final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", (Map<String, Object>) null));
-        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(version, Collections.singletonMap(pipelineName, pipelineModel));
@@ -93,7 +93,7 @@ class PipelinesDataFlowModelTest {
 
         final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
         final List<PluginModel> preppers = Collections.singletonList(new PluginModel("testPrepper", (Map<String, Object>) null));
-        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.singletonList("my-route"), null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.singletonList("my-route"), null, null));
         final PipelineModel pipelineModel = new PipelineModel(source, null, preppers, Collections.singletonList(new ConditionalRoute("my-route", "/a==b")), sinks, 8, 50);
 
         final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(Collections.singletonMap(pipelineName, pipelineModel));
