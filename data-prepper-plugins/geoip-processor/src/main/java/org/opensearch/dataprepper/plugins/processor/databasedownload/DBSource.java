@@ -56,13 +56,15 @@ public interface DBSource {
      */
     public static void deleteDirectory(File file) {
 
-        for (final File subFile : file.listFiles()) {
-            if (subFile.isDirectory()) {
-                deleteDirectory(subFile);
+        if (file.exists()) {
+            for (final File subFile : file.listFiles()) {
+                if (subFile.isDirectory()) {
+                    deleteDirectory(subFile);
+                }
+                subFile.delete();
             }
-            subFile.delete();
+            file.delete();
         }
-        file.delete();
     }
 
     /**
