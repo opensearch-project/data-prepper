@@ -29,13 +29,10 @@ public class NewlineDelimitedOutputCodecTest {
     private static NewlineDelimitedOutputConfig config;
 
     private static int numberOfRecords;
-    private static final String MESSAGE_FIELD_NAME = "message";
-    private static final String TEST_HEADER = "Header";
     private static final String REGEX = "\\r?\\n";
     private static ObjectMapper objectMapper = new ObjectMapper();
 
     private NewlineDelimitedOutputCodec createObjectUnderTest() {
-        String headerDestination = TEST_HEADER;
         config = new NewlineDelimitedOutputConfig();
         return new NewlineDelimitedOutputCodec(config);
     }
@@ -63,15 +60,9 @@ public class NewlineDelimitedOutputCodecTest {
         List<HashMap> expectedRecords = generateRecords(numberOfRecords);
         String[] jsonObjects = jsonString.split(REGEX);
         for (String jsonObject : jsonObjects) {
-            if (index != 0) {
-                Map actualMap = objectMapper.readValue(jsonObject, Map.class);
-                Map expectedMap = (Map) expectedRecords.get(index).get(MESSAGE_FIELD_NAME);
-                assertThat(expectedMap, Matchers.equalTo(actualMap));
-            } else {
-                Object expectedData = expectedRecords.get(0).get(TEST_HEADER);
-                Object actualData = objectMapper.readValue(jsonObject, Map.class).get(TEST_HEADER);
-                assertThat(expectedData, Matchers.equalTo(actualData));
-            }
+            Object expectedMap = expectedRecords.get(index);
+            Object actualMap = objectMapper.readValue(jsonObject, Map.class);
+            assertThat(expectedMap, Matchers.equalTo(actualMap));
             index++;
         }
     }
@@ -86,16 +77,10 @@ public class NewlineDelimitedOutputCodecTest {
 
         List<HashMap> recordList = new ArrayList<>();
         for (int rows = 0; rows < numberOfRecords; rows++) {
-            HashMap ndjsonRecord = new HashMap<>();
-            if (rows == 0) {
-                ndjsonRecord.put(TEST_HEADER, "[Name, Age]");
-            } else {
-                HashMap<String, Object> eventData = new HashMap<>();
-                eventData.put("name", "Person" + rows);
-                eventData.put("age", rows);
-                ndjsonRecord.put(MESSAGE_FIELD_NAME, eventData);
-            }
-            recordList.add((ndjsonRecord));
+            HashMap<String, Object> eventData = new HashMap<>();
+            eventData.put("name", "Person" + rows);
+            eventData.put("age", rows);
+            recordList.add(eventData);
         }
         return recordList;
     }
