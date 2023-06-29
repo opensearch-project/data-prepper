@@ -17,7 +17,7 @@ public class ThresholdConfig {
     public static final int DEFAULT_BACKOFF_TIME = 5000;
 
     @JsonProperty("batch_size")
-    @Size(min = 1, max = 10, message = "batch_size amount should be between 1 to 10")
+    @Size(min = 1, max = 10000, message = "batch_size amount should be between 1 to 10000")
     private int batchSize = DEFAULT_BATCH_SIZE;
 
     @JsonProperty("max_event_size")
