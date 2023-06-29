@@ -43,7 +43,7 @@ public final class CwlClientFactory {
     }
 
     private static ClientOverrideConfiguration createOverrideConfiguration(final AwsConfig awsConfig) {
-        final RetryPolicy retryPolicy = RetryPolicy.builder().numRetries(awsConfig.getDEFAULT_CONNECTION_ATTEMPTS()).build();
+        final RetryPolicy retryPolicy = RetryPolicy.builder().numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS).build();
 
         return ClientOverrideConfiguration.builder()
                 .retryPolicy(retryPolicy)
