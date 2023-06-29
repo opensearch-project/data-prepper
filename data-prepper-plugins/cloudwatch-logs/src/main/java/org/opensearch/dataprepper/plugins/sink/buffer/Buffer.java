@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.model.record.Record;
  */
 public interface Buffer {
     /**
-     * Size of buffer in bytes.
+     * Size of buffer in events.
      * @return
      */
     int getEventCount();
