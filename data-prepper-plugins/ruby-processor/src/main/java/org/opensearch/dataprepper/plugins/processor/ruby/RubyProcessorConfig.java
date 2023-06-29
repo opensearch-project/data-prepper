@@ -8,9 +8,8 @@ import java.util.Objects;
 import java.util.List;
 
 public class RubyProcessorConfig {
-    static final Boolean DEFAULT_IGNORE_EXCEPTION = false;
     static final List<String> DEFAULT_TAGS_ON_FAILURE = List.of();
-    private static final Map<String, String> DEFAULT_PARAMETERS = Map.of();
+    static final Map<String, String> DEFAULT_PARAMETERS = Map.of();
     @JsonProperty("code")
     private String code;
 
@@ -22,8 +21,6 @@ public class RubyProcessorConfig {
 
     @JsonProperty("params")
     private Map<String,String> params = DEFAULT_PARAMETERS;
-    @JsonProperty("ignore_exception")
-    private Boolean ignoreException = DEFAULT_IGNORE_EXCEPTION;
     @JsonProperty("tags_on_failure")
     private List<String> tagsOnFailure = DEFAULT_TAGS_ON_FAILURE;
 
@@ -42,15 +39,6 @@ public class RubyProcessorConfig {
      */
     public Boolean isCodeFromFile() {
         return Objects.nonNull(path);
-    }
-
-    /**
-     * Whether exceptions within Ruby code should be ignored, or crash the pipeline.
-     *
-     * @return True if exceptions within Ruby code will be ignored, false if the pipeline will be crashed.
-     */
-    public Boolean isIgnoreException() {
-        return ignoreException;
     }
 
     /**
@@ -102,10 +90,5 @@ public class RubyProcessorConfig {
     @AssertTrue(message = "init must be used with code.")
     boolean isInitOnlySpecifiedWithCode() {
         return Objects.isNull(initCode) || !Objects.isNull(code); // case where init, path specified should be covered by isExactlyOneOfCodeAndPathSpecified()
-    }
-
-    @AssertTrue(message = "when ignore_exception is true, tags_on_failure must be specified.")
-    boolean isTagsOnFailureSpecifiedWhenIgnoreExceptionIsTrue() {
-        return !ignoreException || !tagsOnFailure.isEmpty();
     }
 }

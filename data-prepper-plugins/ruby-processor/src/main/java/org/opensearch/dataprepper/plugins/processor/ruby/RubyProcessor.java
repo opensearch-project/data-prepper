@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.processor.ruby;
 
 import org.jruby.RubyInstanceConfig;
 import org.jruby.embed.ScriptingContainer;
+import org.opensearch.dataprepper.logging.DataPrepperMarkers;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -69,7 +70,8 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
 
     private void verifyFileExists(final String codeFilePath) {
         File codeFile = new File(codeFilePath);
-        LocalInputFile inputFile = new LocalInputFile(codeFile);
+        LOG.debug("Attempting to access .rb file with absolute path {}", codeFile.getAbsolutePath());
+        final LocalInputFile inputFile = new LocalInputFile(codeFile);
 
         try {
             this.fileStream = inputFile.newStream();
@@ -81,20 +83,22 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         }
 
         try {
-            InputStream fileStreamForTestingRegex = inputFile.newStream();
+            // create new InputStream since the stream will be consumed by assertThatInterfaceImplementedInRubyFile
+            final InputStream fileStreamForTestingRegex = inputFile.newStream();
 
             assertThatInterfaceImplementedInRubyFile(fileStreamForTestingRegex);
 
         } catch (IOException exception) {
-            LOG.error("Error: another file or regex exception.", exception);
+            LOG.error("Error: file or regex exception " +
+                    "while starting up Ruby processor with code from file.", exception);
             throw new RuntimeException(exception.toString());
         }
     }
 
-    private void assertThatInterfaceImplementedInRubyFile(InputStream fileStreamForTestingRegex)
+    private void assertThatInterfaceImplementedInRubyFile(final InputStream fileStreamForTestingRegex)
     throws IOException
     {
-        String rubyCodeAsString = convertInputStreamToString(fileStreamForTestingRegex);
+        final String rubyCodeAsString = convertInputStreamToString(fileStreamForTestingRegex);
 
         if (!stringContainsPattern(rubyCodeAsString, RUBY_METHOD_PROCESS_PATTERN)) {
             throwBadInterfaceImplementationException(PROCESS_METHOD_NOT_FOUND_ERROR_MESSAGE);
@@ -118,13 +122,13 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         throw new RuntimeException("Ruby Processor file bad implementation");
     }
 
-    private boolean stringContainsPattern(String inString, String pattern) {
-        Pattern compiledPattern = Pattern.compile(pattern);
-        Matcher matcher = compiledPattern.matcher(inString);
+    private boolean stringContainsPattern(final String inString, final String pattern) {
+        final Pattern compiledPattern = Pattern.compile(pattern);
+        final Matcher matcher = compiledPattern.matcher(inString);
         return matcher.find();
     }
 
-    private String convertInputStreamToString(InputStream inputStream)
+    private String convertInputStreamToString(final InputStream inputStream)
     throws IOException
     {
         return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
@@ -142,13 +146,12 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         final List<Event> events = records.stream().map(Record::getData).collect(Collectors.toList());
-        LOG.debug("Ruby Processor received events: [{}]", events);
         injectAndProcessEvents(events);
 
         return records;
     }
 
-    private void injectAndProcessEvents(List<Event> events) {
+    private void injectAndProcessEvents(final List<Event> events) {
         container.put("events", events);
         script = "events.each { |event| \n"
                 + this.codeToInject +
@@ -157,24 +160,24 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
         try {
             container.runScriptlet(script);
         } catch (Exception exception) {
-            LOG.error("Exception while processing Ruby code on Events: [{}]",events, exception);
-            if (!config.isIgnoreException()) {
-                throw new RuntimeException(format("Exception while processing Ruby code on Events: [%s]",events),
-                        exception
-                );
-            } else {
-                retryEventsOneByOneAndApplyTags(events);
-            }
+            LOG.error(DataPrepperMarkers.SENSITIVE, "Exception while processing Event batch in Ruby code. " +
+                    "Retrying Events one by one.", exception);
+            retryEventsOneByOneAndApplyTags(events);
         }
     }
 
-    private void retryEventsOneByOneAndApplyTags(List<Event> events) {
+    private void retryEventsOneByOneAndApplyTags(final List<Event> events) {
+        if (config.getTagsOnFailure().isEmpty()) {
+            LOG.debug("No tags to apply to Event that triggers Ruby processor exception. The exception and the Event " +
+                    "will be logged as an Error.");
+        }
         for (Event event : events) {
             container.put("event", event);
             try {
                 container.runScriptlet(this.codeToInject);
             } catch (Exception exception) {
-                LOG.error("Exception on Event: [{}]", event, exception);
+                LOG.error(DataPrepperMarkers.SENSITIVE, "Exception within Ruby processor on Event: [{}]",
+                        event, exception);
                 event.getMetadata().addTags(config.getTagsOnFailure());
             }
         }
@@ -193,9 +196,5 @@ public class RubyProcessor extends AbstractProcessor<Record<Event>, Record<Event
     @Override
     public void shutdown() {
         container.terminate();
-    }
-
-    public String getCodeToExecute() {
-        return this.script;
     }
 }

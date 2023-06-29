@@ -17,8 +17,6 @@ import java.util.HashMap;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,8 +34,6 @@ public class RubyProcessorTest {
     @BeforeEach
     void setup() {
         RubyProcessorConfig defaultConfig = new RubyProcessorConfig();
-
-        lenient().when(processorConfig.isIgnoreException()).thenReturn(defaultConfig.isIgnoreException());
 
         rubyProcessor = createObjectUnderTest();
     }
@@ -63,23 +59,25 @@ public class RubyProcessorTest {
     }
 
     @Test
-    void test_when_exceptionInRubyThenCrashesPipelineByDefault() {
+    void test_when_exceptionInRubyThenDoesNotCrashPipeline() {
         when(processorConfig.getCode()).thenReturn(RUBY_EXCEPTION_CODE);
         rubyProcessor = createObjectUnderTest(); // to get updated code.
         final Map<String, Object> eventData = new HashMap<>();
         eventData.put("message","message datum.");
 
         Record<Event> eventUnderTest = buildRecordWithEvent(eventData);
-        assertThrows(RuntimeException.class, () ->
-                rubyProcessor.doExecute(Collections.singletonList(eventUnderTest))
-        );
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(
+                Collections.singletonList(eventUnderTest));
+
+        final Event parsedEvent = parsedRecords.get(0).getData();
+        assertThat(parsedEvent.get("message", String.class), equalTo("message datum."));
     }
 
     @Test
     void test_when_exceptionInRubyAndIgnoreExceptionSpecifiedThenPipelineDoesNotCrash() {
         // todo: is the intended behavior to persist this given event, or something else?
         when(processorConfig.getCode()).thenReturn(RUBY_EXCEPTION_CODE);
-        when(processorConfig.isIgnoreException()).thenReturn(true);
         rubyProcessor = createObjectUnderTest(); // to get updated code.
 
         final Map<String, Object> eventData = new HashMap<>();

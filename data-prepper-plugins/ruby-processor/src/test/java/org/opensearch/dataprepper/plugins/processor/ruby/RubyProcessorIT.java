@@ -25,6 +25,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -166,7 +167,19 @@ public class RubyProcessorIT {
                 "event.put('message_is_array_and_includes_x', out_str.include?('x')";
         setup();
 
-        assertThrows(Exception.class, () -> rubyProcessor.doExecute(records));
+        List<String> errorTags = List.of("error");
+
+        setRubyProcessorConfigField("tagsOnFailure", errorTags);
+        spinUpNewRubyProcessor();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.containsKey("message"), equalTo(true));
+            assertThat(parsedEvent.containsKey("message_is_array_and_includes_x"), equalTo(false));
+            assertThat(parsedEvent.getMetadata().hasTags(errorTags), equalTo(true));
+        }
     }
 
     @Test
@@ -206,7 +219,6 @@ public class RubyProcessorIT {
         final List<String> tags = List.of("Sample 1", "Sample 2");
 
         setRubyProcessorConfigField("tagsOnFailure", tags);
-        setRubyProcessorConfigField("ignoreException", true);
         spinUpNewRubyProcessor();
 
         final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
@@ -217,6 +229,47 @@ public class RubyProcessorIT {
             assertThat(parsedEvent.get("upcase", String.class), equalTo(originalString.toUpperCase()));
             assertThat(parsedEvent.containsKey("downcase"), equalTo(false));
             assertThat(parsedEvent.getMetadata().hasTags(tags), equalTo(true));
+        }
+    }
+
+    @Test
+    void when_rubyProcessingExceptionOnSingleEvent_then_onlyThatEventIsTagged() {
+        // create event with string field
+        final List<Record<Event>> records = getSampleEventLogs();
+        List<String> EMPTY_LIST = List.of();
+
+        for (Record record : records) {
+            Event event = (Event) record.getData();
+            assertThat(event.getMetadata().hasTags(EMPTY_LIST), equalTo(true));
+        }
+
+        records.get(0).getData().delete("message"); // delete message key and value on the first event.
+
+        // make ruby code_string add a new field called upcase, upcase the event, throw an exception,
+        // add a new field called downcase, and downcase the event.
+        CODE_STRING = "event.put('upcase', event.get('message').upcase)\n";
+
+        setup();
+
+        final List<String> tags = List.of("Sample 1", "Sample 2");
+
+        setRubyProcessorConfigField("tagsOnFailure", tags);
+        spinUpNewRubyProcessor();
+
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        // the first event should have tags and not contain message field or upcase field.
+        final Event parsedErrorEvent = parsedRecords.get(0).getData();
+        assertThat(parsedErrorEvent.getMetadata().hasTags(tags), equalTo(true));
+        assertThat(parsedErrorEvent.containsKey("message"), equalTo(false));
+        assertThat(parsedErrorEvent.containsKey("upcase"), equalTo(false));
+
+        for (int recordNumber = 1; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            final String originalString = parsedEvent.get("message", String.class);
+            assertThat(parsedEvent.get("upcase", String.class), equalTo(originalString.toUpperCase()));
+            assertThat(parsedEvent.getMetadata().hasTags(tags), equalTo(false));
+            assertThat(parsedEvent.getMetadata().hasTags(EMPTY_LIST), equalTo(true));
         }
     }
 
@@ -444,27 +497,6 @@ public class RubyProcessorIT {
     }
 
     @Test
-    void when_withConfigCodeAndParamsCalledInProcess_then_exceptionThrown() {
-        rubyProcessorConfig = new RubyProcessorConfig();
-
-        String code =
-                "puts params.get('message_to_write')\n" +
-                        "event.put('processed', true)\n" +
-                        "event.put('message_written', $global_var)\n";
-        setRubyProcessorConfigField("code", code);
-
-        Map<String, String> params = Map.of("message_to_write", "hello world");
-
-        setRubyProcessorConfigField("params", params);
-        spinUpNewRubyProcessor();
-
-        final List<Record<Event>> records = getSampleEventLogs();
-
-        assertThrows(Exception.class, () -> rubyProcessor.doExecute(records));
-
-    }
-
-    @Test
     void when_withFileAndParamsCalledInProcess_then_exceptionThrown()
             throws IOException {
 
@@ -491,11 +523,30 @@ public class RubyProcessorIT {
         setRubyProcessorConfigField("path", testDataFile.getAbsolutePath());
 
         setRubyProcessorConfigField("params", params);
+
+        List<String> normalTags = List.of("normal");
+        List<String> errorTags = List.of("error");
+
+        List<String> allTags = Stream.concat(normalTags.stream(), errorTags.stream())
+                .collect(Collectors.toList());
+
+        setRubyProcessorConfigField("tagsOnFailure", errorTags);
         spinUpNewRubyProcessor();
 
         final List<Record<Event>> records = getSampleEventLogs();
+        for (Record record : records) {
+            Event event = (Event) record.getData();
+            event.getMetadata().addTags(normalTags);
+        }
 
-        assertThrows(Exception.class, () -> rubyProcessor.doExecute(records));
+        final List<Record<Event>> parsedRecords = (List<Record<Event>>) rubyProcessor.doExecute(records);
+
+        for (int recordNumber = 0; recordNumber < records.size(); recordNumber++) {
+            final Event parsedEvent = parsedRecords.get(recordNumber).getData();
+            assertThat(parsedEvent.containsKey("processed"), equalTo(false));
+            assertThat(parsedEvent.containsKey("message_written"), equalTo(false));
+            assertThat(parsedEvent.getMetadata().hasTags(allTags), equalTo(true));
+        }
     }
 
     @Test

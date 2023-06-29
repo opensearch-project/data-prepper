@@ -10,7 +10,8 @@ import java.util.Map;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.opensearch.dataprepper.plugins.processor.ruby.RubyProcessorConfig.DEFAULT_IGNORE_EXCEPTION;
+import static org.opensearch.dataprepper.plugins.processor.ruby.RubyProcessorConfig.DEFAULT_PARAMETERS;
+import static org.opensearch.dataprepper.plugins.processor.ruby.RubyProcessorConfig.DEFAULT_TAGS_ON_FAILURE;
 
 
 public class RubyProcessorConfigTest {
@@ -24,7 +25,9 @@ public class RubyProcessorConfigTest {
     @Test
     public void defaultRubyProcessorConfig_then_returns_default_values() { // todo: test naming guidance.
         final RubyProcessorConfig objectUnderTest = createObjectUnderTest();
-        assertThat(objectUnderTest.isIgnoreException(), equalTo(DEFAULT_IGNORE_EXCEPTION));
+        assertThat(objectUnderTest.getParams(), equalTo(DEFAULT_PARAMETERS));
+        assertThat(objectUnderTest.getTagsOnFailure(), equalTo(DEFAULT_TAGS_ON_FAILURE));
+
     }
 
     @Test
@@ -102,12 +105,6 @@ public class RubyProcessorConfigTest {
             reflectivelySetField(rubyProcessorConfig, "initCode", "sample init");
 
             assertThat(rubyProcessorConfig.isInitOnlySpecifiedWithCode(), equalTo(false));
-        }
-
-        @Test
-        void when_tagsOnFailure_is_null_then_ignoreException_is_true()
-                throws NoSuchFieldException, IllegalAccessException {
-            assertThat(rubyProcessorConfig.isTagsOnFailureSpecifiedWhenIgnoreExceptionIsTrue(), equalTo(true));
         }
     }
 
