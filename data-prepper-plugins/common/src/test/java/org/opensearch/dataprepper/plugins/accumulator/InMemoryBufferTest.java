@@ -8,9 +8,7 @@ package org.opensearch.dataprepper.plugins.accumulator;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 
@@ -18,14 +16,12 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(MockitoExtension.class)
 class InMemoryBufferTest {
 
     public static final int MAX_EVENTS = 55;
-    @Mock
-    private S3Client s3Client;
+
     private InMemoryBuffer inMemoryBuffer;
 
     @Test
@@ -42,31 +38,12 @@ class InMemoryBufferTest {
     }
 
     @Test
-    void test_with_write_event_into_buffer_and_flush_toS3() throws IOException {
-        inMemoryBuffer = new InMemoryBuffer();
-
-        while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
-            inMemoryBuffer.writeEvent(generateByteArray());
-        }
-        assertDoesNotThrow(() -> {
-            inMemoryBuffer.flushToS3(s3Client, "data-prepper", "log.txt");
-        });
-    }
-
-    @Test
-    void test_uploadedToS3_success() {
+    void test_getSinkData_success() {
         inMemoryBuffer = new InMemoryBuffer();
         Assertions.assertNotNull(inMemoryBuffer);
         assertDoesNotThrow(() -> {
-            inMemoryBuffer.flushToS3(s3Client, "data-prepper", "log.txt");
+            inMemoryBuffer.getSinkBufferData();
         });
-    }
-
-    @Test
-    void test_uploadedToS3_fails() {
-        inMemoryBuffer = new InMemoryBuffer();
-        Assertions.assertNotNull(inMemoryBuffer);
-        assertThrows(Exception.class, () -> inMemoryBuffer.flushToS3(null, null, null));
     }
 
     private byte[] generateByteArray() {

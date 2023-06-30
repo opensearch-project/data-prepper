@@ -8,9 +8,6 @@ package org.opensearch.dataprepper.plugins.accumulator;
 import org.apache.commons.lang3.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -19,13 +16,12 @@ import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A buffer can hold local file data and flushing it to S3.
+ * A buffer can hold local file data and flushing it to any Sink.
  */
 public class LocalFileBuffer implements Buffer {
 
@@ -64,28 +60,14 @@ public class LocalFileBuffer implements Buffer {
     }
 
     /**
-     * Upload accumulated data to amazon s3.
-     * @param s3Client s3 client object.
-     * @param bucket bucket name.
-     * @param key s3 object key path.
+     * collect current buffer data.
+     * @throws IOException while collecting current buffer data.
      */
     @Override
-    public void flushToS3(S3Client s3Client, String bucket, String key) {
-        flushAndCloseStream();
-        s3Client.putObject(
-                PutObjectRequest.builder().bucket(bucket).key(key).build(),
-                RequestBody.fromFile(localFile));
+    public byte[] getSinkBufferData() throws IOException {
+        final byte[] fileData = Files.readAllBytes(localFile.toPath());
         removeTemporaryFile();
-    }
-
-    /**
-     * Upload accumulated data to HttpEndpoint.
-     *
-     * @param client httpclient object.
-     */
-    @Override
-    public void sendDataToHttpEndpoint(HttpClient client) {
-        //TODO:implement
+        return fileData;
     }
 
     /**
@@ -113,7 +95,7 @@ public class LocalFileBuffer implements Buffer {
     }
 
     /**
-     * Remove the local temp file after flushing data to s3.
+     * Remove the local temp file after flushing data to Sink.
      */
     protected void removeTemporaryFile() {
         if (localFile != null) {

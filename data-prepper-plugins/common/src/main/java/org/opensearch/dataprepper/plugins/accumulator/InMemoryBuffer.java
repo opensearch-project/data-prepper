@@ -6,17 +6,12 @@
 package org.opensearch.dataprepper.plugins.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.http.HttpClient;
 import java.util.concurrent.TimeUnit;
 
 /**
- * A buffer can hold in memory data and flushing it to S3.
+ * A buffer can hold in memory data and flushing it to any Sink.
  */
 public class InMemoryBuffer implements Buffer {
 
@@ -46,28 +41,12 @@ public class InMemoryBuffer implements Buffer {
     }
 
     /**
-     * Upload accumulated data to s3 bucket.
-     *
-     * @param s3Client s3 client object.
-     * @param bucket   bucket name.
-     * @param key      s3 object key path.
+     * collect current buffer data.
+     * @throws IOException while collecting current buffer data.
      */
     @Override
-    public void flushToS3(S3Client s3Client, String bucket, String key) {
-        final byte[] byteArray = byteArrayOutputStream.toByteArray();
-        s3Client.putObject(
-                PutObjectRequest.builder().bucket(bucket).key(key).build(),
-                RequestBody.fromBytes(byteArray));
-    }
-
-    /**
-     * Upload accumulated data to HttpEndpoint.
-     *
-     * @param client httpclient object.
-     */
-    @Override
-    public void sendDataToHttpEndpoint(HttpClient client) {
-        //TODO: implement
+    public byte[] getSinkBufferData() throws IOException {
+        return byteArrayOutputStream.toByteArray();
     }
 
     /**

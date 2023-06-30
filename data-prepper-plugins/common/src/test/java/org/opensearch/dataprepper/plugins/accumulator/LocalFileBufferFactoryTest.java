@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
-
 class LocalFileBufferFactoryTest {
+
     @Test
     void test_localFileBufferFactory_notNull() {
         LocalFileBufferFactory localFileBufferFactory = new LocalFileBufferFactory();

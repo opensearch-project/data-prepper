@@ -5,13 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.accumulator;
 
-import software.amazon.awssdk.services.s3.S3Client;
-
 import java.io.IOException;
-import java.net.http.HttpClient;
 
 /**
- * A buffer can hold data before flushing it to S3 and HttpEndpoint.
+ * A buffer can hold data before flushing it any Sink.
  */
 public interface Buffer {
 
@@ -21,11 +18,8 @@ public interface Buffer {
      */
     long getSize();
     int getEventCount();
-
     long getDuration();
 
-    void flushToS3(S3Client s3Client, String bucket, String key) ;
-
-    void sendDataToHttpEndpoint(HttpClient client);
+    byte[] getSinkBufferData() throws IOException;
     void writeEvent(byte[] bytes) throws IOException;
 }
