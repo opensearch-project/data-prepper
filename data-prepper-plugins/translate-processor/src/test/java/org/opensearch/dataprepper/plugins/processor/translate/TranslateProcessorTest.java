@@ -319,21 +319,26 @@ class TranslateProcessorTest {
         when(mockConfig.getRegexParameterConfiguration()).thenReturn(mockRegexConfig);
         when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(
                 createMapping("^(1[0-9]|20)$", "patternValue1"),
-                createMapping("footer", "bar2")));
+                createMapping("foo", "bar2")));
         when(mockRegexConfig.getExact()).thenReturn(false);
 
         final TranslateProcessor processor = createObjectUnderTest();
-        final Record<Event> record = getEvent("foo");
+        final Record<Event> record = getEvent("footer");
         final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
         assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("bar2"));
 
         final Record<Event> regexRecord = getEvent("15");
-        final List<Record<Event>> TranslatedRegexRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(regexRecord));
+        final List<Record<Event>> translatedRegexRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(regexRecord));
 
-        assertTrue(TranslatedRegexRecords.get(0).getData().containsKey("targetField"));
-        assertThat(TranslatedRegexRecords.get(0).getData().get("targetField", String.class), is("patternValue1"));
+        assertTrue(translatedRegexRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRegexRecords.get(0).getData().get("targetField", String.class), is("patternValue1"));
+
+        final Record<Event> negativeRecord = getEvent("fo");
+        final List<Record<Event>> translatedNegativeRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(negativeRecord));
+
+        assertFalse(translatedNegativeRecords.get(0).getData().containsKey("targetField"));
     }
 
     @Test

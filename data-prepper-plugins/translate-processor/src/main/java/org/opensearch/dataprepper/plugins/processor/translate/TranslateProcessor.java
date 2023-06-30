@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
@@ -41,7 +42,6 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     private final TranslateProcessorConfig translateProcessorConfig;
     private final LinkedHashMap<Range<Float>, String> rangeMappings;
     private final Map<String, String> individualMappings;
-    private final Map<String, String> patternMappings;
     private final Map<Pattern, String> compiledPatterns;
 
     @DataPrepperPluginConstructor
@@ -51,7 +51,6 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         this.expressionEvaluator = expressionEvaluator;
         individualMappings = new HashMap<>();
         rangeMappings = new LinkedHashMap<>();
-        patternMappings = new HashMap<>();
         compiledPatterns = new HashMap<>();
         if (Objects.nonNull(this.translateProcessorConfig.getRegexParameterConfiguration())) {
             compilePatterns(translateProcessorConfig
@@ -64,10 +63,9 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     }
 
     private void compilePatterns(Map<String, String> mappings) {
-        patternMappings.putAll(mappings);
         for (String pattern : mappings.keySet()) {
             Pattern compiledPattern = Pattern.compile(pattern);
-            compiledPatterns.put(compiledPattern, patternMappings.get(pattern));
+            compiledPatterns.put(compiledPattern, mappings.get(pattern));
         }
     }
 
@@ -94,8 +92,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         String[] rangeKeys = mapEntry.getKey().split("-");
         if(rangeKeys.length!=2 || !StringUtils.isNumericSpace(rangeKeys[0]) || !StringUtils.isNumericSpace(rangeKeys[1])){
             addIndividualMapping(mapEntry.getKey(), mapEntry.getValue());
-        }
-        else {
+        } else {
             Float lowKey = Float.parseFloat(rangeKeys[0]);
             Float highKey = Float.parseFloat(rangeKeys[1]);
             Range<Float> rangeEntry = Range.between(lowKey, highKey);
@@ -112,8 +109,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         if(individualMappings.containsKey(key)){
             String exceptionMsg = "map option contains duplicate entries of "+key;
             throw new InvalidPluginConfigurationException(exceptionMsg);
-        }
-        else{
+        } else {
             individualMappings.put(key.strip(), value);
         }
     }
@@ -152,12 +148,13 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                 continue;
             }
             try {
-                if (Objects.nonNull(translateProcessorConfig.getIterateOn())) {
-                    List<Map<String, Object>> nestedObjects = recordEvent.get(translateProcessorConfig.getIterateOn(), List.class);
-                    for (Map<String, Object> nextedObject : nestedObjects) {
-                        performMappings(nextedObject);
+                String iterateOn = translateProcessorConfig.getIterateOn();
+                if (Objects.nonNull(iterateOn)) {
+                    List<Map<String, Object>> objectsToIterate = recordEvent.get(iterateOn, List.class);
+                    for (Map<String, Object> recordObject : objectsToIterate) {
+                        performMappings(recordObject);
                     }
-                    recordEvent.put(translateProcessorConfig.getIterateOn(), nestedObjects);
+                    recordEvent.put(iterateOn, objectsToIterate);
                 } else {
                     performMappings(recordEvent);
                 }
@@ -169,11 +166,11 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return records;
     }
 
-    private String getSourceValue(Object nestedObject, String sourceKey) {
-        if (nestedObject instanceof Map) {
-            return (String) ((Map<?, ?>) nestedObject).get(sourceKey);
+    private String getSourceValue(Object recordObject, String sourceKey) {
+        if (recordObject instanceof Map) {
+            return (String) ((Map<?, ?>) recordObject).get(sourceKey);
         } else {
-            return ((Event) nestedObject).get(sourceKey, String.class);
+            return ((Event) recordObject).get(sourceKey, String.class);
         }
     }
 
@@ -187,42 +184,45 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     private void performMappings(Object recordObject) {
         List<String> targetValues = new ArrayList<>();
         Object sourceObject = translateProcessorConfig.getSource();
+        List<String> sourceKeys;
         if (sourceObject instanceof List<?>) {
-            List<String> sourceKeys = (ArrayList<String>) sourceObject;
-            for (String sourceKey : sourceKeys) {
-                String sourceValue = getSourceValue(recordObject, sourceKey);
-                populateTarget(sourceValue, targetValues);
-            }
+            sourceKeys = (ArrayList<String>) sourceObject;
         } else if (sourceObject instanceof String) {
-            String sourceKey = (String) sourceObject;
+            sourceKeys = List.of((String) sourceObject);
+        } else {
+            String exceptionMsg = "source option configured incorrectly. source can only be a String or list of Strings";
+            throw new InvalidPluginConfigurationException(exceptionMsg);
+        }
+        for (String sourceKey : sourceKeys) {
             String sourceValue = getSourceValue(recordObject, sourceKey);
-            populateTarget(sourceValue, targetValues);
+            Optional<String> targetValue = getTargetValueForSource(sourceValue);
+            targetValue.ifPresent(targetValues::add);
         }
         addTargetToRecords(sourceObject, targetValues, recordObject);
     }
 
-    private void populateTarget(final String sourceKey, List<String> targetValues) {
+    private Optional<String> getTargetValueForSource(final String sourceValue) {
         Optional<String> targetValue = Optional.empty();
         targetValue = targetValue
-                .or(() -> matchesIndividualEntry(sourceKey))
-                .or(() -> matchesRangeEntry(sourceKey))
-                .or(() -> matchesPatternEntry(sourceKey))
+                .or(() -> matchesIndividualEntry(sourceValue))
+                .or(() -> matchesRangeEntry(sourceValue))
+                .or(() -> matchesPatternEntry(sourceValue))
                 .or(() -> Optional.ofNullable(translateProcessorConfig.getDefaultValue()));
-        targetValue.ifPresent(targetValues::add);
+        return targetValue;
     }
 
-    private Optional<String> matchesIndividualEntry(final String sourceKey) {
-        if (individualMappings.containsKey(sourceKey)) {
-            return Optional.of(individualMappings.get(sourceKey));
+    private Optional<String> matchesIndividualEntry(final String sourceValue) {
+        if (individualMappings.containsKey(sourceValue)) {
+            return Optional.of(individualMappings.get(sourceValue));
         }
         return Optional.empty();
     }
 
-    private Optional<String> matchesRangeEntry(final String sourceKey) {
-        if (!NumberUtils.isParsable(sourceKey)) {
+    private Optional<String> matchesRangeEntry(final String sourceValue) {
+        if (!NumberUtils.isParsable(sourceValue)) {
             return Optional.empty();
         }
-        Float floatKey = Float.parseFloat(sourceKey);
+        Float floatKey = Float.parseFloat(sourceValue);
         for (Map.Entry<Range<Float>, String> rangeEntry : rangeMappings.entrySet()) {
             Range<Float> range = rangeEntry.getKey();
             if (range.contains(floatKey)) {
@@ -232,35 +232,31 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return Optional.empty();
     }
 
-    private Optional<String> matchesPatternEntry(final String sourceKey) {
-        if (!compiledPatterns.isEmpty()) {
-            for (Pattern pattern : compiledPatterns.keySet()) {
-                if (pattern.matcher(sourceKey).matches()) {
-                    return Optional.of(compiledPatterns.get(pattern));
-                }
-            }
-            if (!translateProcessorConfig.getRegexParameterConfiguration().getExact()) {
-                for (String pattern : patternMappings.keySet()) {
-                    if (pattern.contains(sourceKey)) {
-                        return Optional.of(patternMappings.get(pattern));
-                    }
-                }
+    private Optional<String> matchesPatternEntry(final String sourceValue) {
+        if (compiledPatterns.isEmpty()) {
+            return Optional.empty();
+        }
+        final boolean exact = translateProcessorConfig.getRegexParameterConfiguration().getExact();
+        for (Pattern pattern : compiledPatterns.keySet()) {
+            Matcher matcher = pattern.matcher(sourceValue);
+            if (matcher.matches() || (!exact && matcher.find())) {
+                return Optional.of(compiledPatterns.get(pattern));
             }
         }
         return Optional.empty();
     }
 
     private void addTargetToRecords(Object sourceObject, List<String> targetValues, Object recordObject) {
-        String targetField = translateProcessorConfig.getTarget();
-        if (!targetValues.isEmpty()) {
-            if(recordObject instanceof Map){
-                Map<String, Object> recordMap = (Map<String, Object>) recordObject;
-                recordMap.put(targetField, getTargetValue(sourceObject, targetValues));
-            }
-            else if(recordObject instanceof Event){
-                Event event = (Event) recordObject;
-                event.put(targetField, getTargetValue(sourceObject, targetValues));
-            }
+        if (targetValues.isEmpty()) {
+            return;
+        }
+        final String targetField = translateProcessorConfig.getTarget();
+        if (recordObject instanceof Map) {
+            Map<String, Object> recordMap = (Map<String, Object>) recordObject;
+            recordMap.put(targetField, getTargetValue(sourceObject, targetValues));
+        } else if (recordObject instanceof Event) {
+            Event event = (Event) recordObject;
+            event.put(targetField, getTargetValue(sourceObject, targetValues));
         }
     }
 
