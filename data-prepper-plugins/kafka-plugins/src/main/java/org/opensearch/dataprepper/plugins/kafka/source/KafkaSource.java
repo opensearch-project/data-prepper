@@ -100,7 +100,7 @@ public class KafkaSource implements Source<Record<Event>> {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
                 IntStream.range(0, numWorkers + 1).forEach(index -> {
-                    consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, topic, schemaType, topic.getAutoCommit(), pluginMetrics);
+                    consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, topic, schemaType, pluginMetrics);
 
                     executorService.submit(consumer);
                 });
@@ -118,7 +118,6 @@ public class KafkaSource implements Source<Record<Event>> {
         shutdownInProgress.set(true);
         executorService.shutdown();
         try {
-            System.out.println("Longest wait time..."+calculateLongestThreadWaitingTime());
             if (!executorService.awaitTermination(
                     calculateLongestThreadWaitingTime(), TimeUnit.SECONDS)) {
                 LOG.info("Consumer threads are waiting for shutting down...");

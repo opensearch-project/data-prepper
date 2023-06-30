@@ -39,8 +39,7 @@ import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
  */
 public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceListener {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceCustomConsumer.class);
-    private Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
-    private static final Long COMMIT_OFFSET_INTERVAL_MS = 30000L;
+    private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
     private volatile long lastCommitTime;
     private KafkaConsumer consumer= null;
@@ -53,30 +52,28 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private final Buffer<Record<Event>> buffer;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
-    private final Boolean autoCommit;
+    private Map<TopicPartition, OffsetAndMetadata> offsetsToCommit;
 
-    public KafkaSourceCustomConsumer(KafkaConsumer consumer,
-                                     AtomicBoolean shutdownInProgress,
-                                     Buffer<Record<Event>> buffer,
-                                     TopicConfig topicConfig,
-                                     String schemaType,
-                                     Boolean autoCommit,
-                                     PluginMetrics pluginMetrics) {
+    public KafkaSourceCustomConsumer(final KafkaConsumer consumer,
+                                     final AtomicBoolean shutdownInProgress,
+                                     final Buffer<Record<Event>> buffer,
+                                     final TopicConfig topicConfig,
+                                     final String schemaType,
+                                     final PluginMetrics pluginMetrics) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
-        this.autoCommit = autoCommit;
         this.shutdownInProgress = shutdownInProgress;
         this.consumer = consumer;
         this.buffer = buffer;
-        schema = MessageFormat.getByMessageFormatByName(schemaType);
+        this.offsetsToCommit = new HashMap<>();
         this.pluginMetrics = pluginMetrics;
-        int numberOfRecordsToAccumulate = DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE;
+        schema = MessageFormat.getByMessageFormatByName(schemaType);
         Duration bufferTimeout = Duration.ofSeconds(1);
-        bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
+        bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, bufferTimeout);
         lastCommitTime = System.currentTimeMillis();
     }
 
-    public <T> void consumeRecords(Map<TopicPartition, OffsetAndMetadata> offsetsToCommit) throws Exception {
+    public <T> void consumeRecords() throws Exception {
         ConsumerRecords<String, T> records =
             consumer.poll(topicConfig.getThreadWaitingTime().toMillis()/2);
         if (!records.isEmpty() && records.count() > 0) {
@@ -86,16 +83,18 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         }
     }
 
+    Map<TopicPartition, OffsetAndMetadata> getOffsetsToCommit() {
+        return offsetsToCommit;
+    }
+
     @Override
     public void run() {
         try {
             consumer.subscribe(Arrays.asList(topicName));
-            Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
             while (!shutdownInProgress.get()) {
-                offsetsToCommit.clear();
-                consumeRecords(offsetsToCommit);
+                consumeRecords();
                 long currentTimeMillis = System.currentTimeMillis();
-                if (!autoCommit && !offsetsToCommit.isEmpty() &&
+                if (!topicConfig.getAutoCommit() && !offsetsToCommit.isEmpty() &&
                     (currentTimeMillis - lastCommitTime) >= COMMIT_OFFSET_INTERVAL_MS) {
                         try {
                             consumer.commitSync(offsetsToCommit);

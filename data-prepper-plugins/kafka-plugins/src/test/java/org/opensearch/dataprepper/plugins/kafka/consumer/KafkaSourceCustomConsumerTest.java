@@ -84,6 +84,7 @@ public class KafkaSourceCustomConsumerTest {
         pluginMetrics = mock(PluginMetrics.class);
         topicConfig = mock(TopicConfig.class);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(topicConfig.getAutoCommit()).thenReturn(false);
         sourceConfig = mock(KafkaSourceConfig.class);
         buffer = getBuffer();
         shutdownInProgress = new AtomicBoolean(false);
@@ -91,7 +92,7 @@ public class KafkaSourceCustomConsumerTest {
     }
 
     public KafkaSourceCustomConsumer createObjectUnderTest(String schemaType) {
-        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, topicConfig, schemaType, false, pluginMetrics);
+        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, topicConfig, schemaType, pluginMetrics);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() {
@@ -110,13 +111,13 @@ public class KafkaSourceCustomConsumerTest {
         when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("plaintext");
 
-        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
         try {
-            consumer.consumeRecords(offsetsToCommit);
+            consumer.consumeRecords();
         } catch (Exception e){}
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
         ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
         Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
         offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
             Assertions.assertEquals(topicPartition.partition(), testPartition);
             Assertions.assertEquals(topicPartition.topic(), topic);
@@ -144,11 +145,11 @@ public class KafkaSourceCustomConsumerTest {
         when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("json");
 
-        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = new HashMap<>();
-        consumer.consumeRecords(offsetsToCommit);
+        consumer.consumeRecords();
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
         ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
         Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
         offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
             Assertions.assertEquals(topicPartition.partition(), testJsonPartition);
             Assertions.assertEquals(topicPartition.topic(), topic);

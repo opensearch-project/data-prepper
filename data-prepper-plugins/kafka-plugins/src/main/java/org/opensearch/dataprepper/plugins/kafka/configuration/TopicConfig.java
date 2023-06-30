@@ -21,7 +21,7 @@ public class TopicConfig {
     private static final Duration SESSION_TIMEOUT = Duration.ofSeconds(45);
     private static final int MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
     private static final String AUTO_OFFSET_RESET = "earliest";
-    public static final Duration THREAD_WAITING_TIME = Duration.ofSeconds(5);
+    static final Duration THREAD_WAITING_TIME = Duration.ofSeconds(5);
     private static final Duration MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
     private static final Duration BUFFER_DEFAULT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration MAX_RETRY_DELAY = Duration.ofSeconds(1);
