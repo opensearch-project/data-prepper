@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -64,6 +65,9 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         if (builder.acknowledgementSetManager != null) {
             typedArgumentsSuppliers.put(AcknowledgementSetManager.class, () -> builder.acknowledgementSetManager);
         }
+        if (builder.sinkContext != null) {
+            typedArgumentsSuppliers.put(SinkContext.class, () -> builder.sinkContext);
+        }
     }
 
     @Override
@@ -114,6 +118,7 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
         private BeanFactory beanFactory;
         private EventFactory eventFactory;
         private AcknowledgementSetManager acknowledgementSetManager;
+        private SinkContext sinkContext;
 
         Builder withPluginConfiguration(final Object pluginConfiguration) {
             this.pluginConfiguration = pluginConfiguration;
@@ -137,6 +142,11 @@ class ComponentPluginArgumentsContext implements PluginArgumentsContext {
 
         Builder withPluginFactory(final PluginFactory pluginFactory) {
             this.pluginFactory = pluginFactory;
+            return this;
+        }
+
+        Builder withSinkContext(final SinkContext sinkContext) {
+            this.sinkContext = sinkContext;
             return this;
         }
 

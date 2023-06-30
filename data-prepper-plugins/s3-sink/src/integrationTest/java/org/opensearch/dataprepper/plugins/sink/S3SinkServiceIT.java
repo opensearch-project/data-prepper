@@ -134,7 +134,7 @@ class S3SinkServiceIT {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, null, pluginMetrics);
     }
 
     private int gets3ObjectCount() {

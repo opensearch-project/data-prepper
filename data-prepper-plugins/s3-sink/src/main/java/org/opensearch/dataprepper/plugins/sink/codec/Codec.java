@@ -15,8 +15,9 @@ import org.opensearch.dataprepper.model.event.Event;
 public interface Codec {
     /**
      * @param event input data.
+     * @param tagsTargetKey key name for including tags if not null
      * @return parse string.
      * @throws IOException exception.
      */
-    String parse(Event event) throws IOException;
+    String parse(final Event event, final String tagsTargetKey) throws IOException;
 }

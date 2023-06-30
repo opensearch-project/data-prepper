@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.codec.Codec;
@@ -49,11 +50,13 @@ class S3SinkTest {
     private PluginSetting pluginSetting;
     private PluginFactory pluginFactory;
     private AwsCredentialsSupplier awsCredentialsSupplier;
+    private SinkContext sinkContext;
 
     @BeforeEach
     void setUp() {
 
         s3SinkConfig = mock(S3SinkConfig.class);
+        sinkContext = mock(SinkContext.class);
         ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         Codec codec = mock(JsonCodec.class);
@@ -80,7 +83,7 @@ class S3SinkTest {
     }
 
     private S3Sink createObjectUnderTest() {
-        return new S3Sink(pluginSetting, s3SinkConfig, pluginFactory, awsCredentialsSupplier);
+        return new S3Sink(pluginSetting, s3SinkConfig, pluginFactory, sinkContext, awsCredentialsSupplier);
     }
 
     @Test
