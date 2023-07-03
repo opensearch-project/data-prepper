@@ -118,7 +118,7 @@ public class KafkaSourceCustomConsumerTest {
 
     public KafkaSourceCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
-        when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(Duration.ofSeconds(5));
+        when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
         return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, pluginMetrics);
     }
 
