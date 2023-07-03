@@ -31,6 +31,8 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
                             final AwsCredentialsSupplier awsCredentialsSupplier) {
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
+
+        openSearchSourceConfiguration.validateAwsConfigWithUsernameAndPassword();
     }
 
     @Override

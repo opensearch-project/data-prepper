@@ -8,8 +8,8 @@ log-pipeline:
           group_name: kafka-consumer-group-2
           group_id: DPKafkaProj-2
           workers: 10 #optional and default is 10
-          autocommit: false  #optional and dafault is false
-          autocommit_interval: 5  #optional and dafault is 5s
+          auto_commit: false  #optional and dafault is false
+          auto_commit_interval: 5  #optional and dafault is 5s
           session_timeout: 45  #optional and dafault is 45s
           max_retry_attempts: 1000 #optional and dafault is 5
           max_retry_delay: 1 #optional and dafault is 5
