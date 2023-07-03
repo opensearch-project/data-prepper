@@ -1,0 +1,15 @@
+localize-pipeline:
+  source:
+    file:
+      path: "ingest.json"
+      record_type: "event"
+      format: plain
+  processor:
+    - parse_json:
+    - ruby:
+        params:
+          locale_map_path: es_en.yaml
+          locale: "es"
+        path: "translate_events.rb"
+  sink:
+    - stdout:

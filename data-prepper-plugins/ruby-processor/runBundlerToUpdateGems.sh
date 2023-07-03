@@ -43,6 +43,7 @@ rm -rf rubygems/*
 java -jar $jruby_jar_path -S bundle config set --local path 'rubygems'
 
 # Run bundle install
+
 java -jar $jruby_jar_path -S bundle install
 
 # Move rubygems directory

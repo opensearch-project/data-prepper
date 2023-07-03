@@ -1,0 +1,14 @@
+logstash-filter-pipeline:
+  source:
+    file:
+      path: "ingest.json"
+      record_type: "event"
+      format: plain
+  processor:
+    - ruby:
+        params:
+          source: "message"
+          target: "parsed"
+        path: "code/xml.rb"
+  sink:
+    - stdout:

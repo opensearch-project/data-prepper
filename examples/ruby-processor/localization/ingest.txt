@@ -1,0 +1,5 @@
+{"timestamp":"2023-06-29T12:34:56Z","item":"pollo","ip_address":"192.0.2.1","user_id":"101","quantity":"2","price":"12.99"}
+{"timestamp":"2023-06-29T12:35:30Z","item":"pescado","ip_address":"192.0.2.2","user_id":"102","quantity":"1","price":"19.99"}
+{"timestamp":"2023-06-29T12:36:10Z","item":"queso","ip_address":"192.0.2.3","user_id":"103","quantity":"3","price":"7.99"}
+{"timestamp":"2023-06-29T12:37:45Z","item":"manzana","ip_address":"192.0.2.4","user_id":"104","quantity":"5","price":"0.99"}
+{"timestamp":"2023-06-29T12:38:22Z","item":"vino","ip_address":"192.0.2.5","user_id":"105","quantity":"2","price":"15.99"}

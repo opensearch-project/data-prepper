@@ -1,0 +1,26 @@
+file_pipeline:
+  source:
+    log_generator:
+      log_type:
+        vpc_flow:
+  processor:
+    - csv:
+        column_names: ["VPC_FLOW_LOGS_VERSION", "AccountId", "InterfaceId", "SourceIp", "DestinationIp", "SourcePort", "DestinationPort", "Packets", "Bytes", "StartTime", "EndTime", "Action", "LogStatus"]
+        delimiter: " "
+    - ruby:
+        params:
+          proportion_to_sample: "0.3"
+        path: "ruby_code.rb"
+  route:
+    - should_be_sampled: '/should_be_sampled == true'
+  sink:
+    - stdout:
+    - opensearch:
+        routes:
+          - should_be_sampled
+        hosts:
+          - "https://opensearch:9200"
+        insecure: true
+        username: "admin"
+        password: "admin"
+        index: sampled_flow_logs

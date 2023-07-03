@@ -647,7 +647,8 @@ public class RubyProcessorIT {
                     "require 'jmespath'\n" +
                     "require 'tzinfo'\n" +
                     "require 'i18n'\n" +
-                    "require 'mime/types'\n";
+                    "require 'mime/types'\n" +
+                    "require 'nokogiri'\n";
             String toRun = "puts JMESPath.search('foo.bar', foo: { bar: 'baz' })  # should print 'baz'\n" +
                     "puts Diff::LCS.diff('foo', 'foo').to_s\n"
                     + "\n$my_map = Concurrent::Map.new\n" +
@@ -713,6 +714,16 @@ public class RubyProcessorIT {
             String expectedResult = "{\"hello\"=>\"world\"}";
             nestedGemTestMethod(toRequire, operation, expectedResult);
         }
+        @Test
+        void when_require_nokogiri_then_works() {
+            String toRequire = "require 'nokogiri'";
+//            String toRequire = "require 'json'\nrequire 'nokogiri'";
+
+            String operation = "Nokogiri::XML('<root>text here</root>').at('root').content";
+            String expectedResult = "text here";
+            nestedGemTestMethod(toRequire, operation, expectedResult);
+
+        }
 
         @Test
         void when_require_mime_types_then_works() {
@@ -721,6 +732,8 @@ public class RubyProcessorIT {
             String expectedResult = "txt";
             nestedGemTestMethod(toRequire, operation, expectedResult);
         }
+
+
     }
 
     private List<Record<Event>> runGenericStartupCode(String code) throws IOException {

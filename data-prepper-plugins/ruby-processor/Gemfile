@@ -3,9 +3,11 @@ ruby '3.1.0', :engine => 'jruby', :engine_version => '9.4.2.0'
 source "https://rubygems.org"
 
 gem "jmespath"
+gem "xml-simple"
 gem "diff-lcs"
 gem "i18n"
 gem "tzinfo"
 gem "json"
 gem "mime-types"
+gem 'nokogiri', '~> 1.6', '>= 1.6.1'
 gem 'concurrent-ruby', require: 'concurrent'

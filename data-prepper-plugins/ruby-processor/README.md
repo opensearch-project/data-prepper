@@ -115,6 +115,8 @@ Ruby has an ecosystem of extensions called Gems. The Ruby processor is bundled w
 * json
 * mime-types
 * concurrent-ruby
+* xml-simple
+* nokogiri (java)
 
 These gems are compatible with JRuby 9.4.2 and are bundled in a jar file. If you wish to add additional gems, please open an issue or build Data Prepper locally with your desired gems.
 
