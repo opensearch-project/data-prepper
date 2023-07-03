@@ -49,6 +49,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
     static final String POSITIVE_ACKNOWLEDGEMENT_METRIC_NAME = "positiveAcknowledgementSetCounter";
     static final String NEGATIVE_ACKNOWLEDGEMENT_METRIC_NAME = "negativeAcknowledgementSetCounter";
+    static final String DEFAULT_KEY = "message";
 
     private volatile long lastCommitTime;
     private KafkaConsumer consumer= null;
@@ -83,8 +84,9 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         this.consumer = consumer;
         this.buffer = buffer;
         this.offsetsToCommit = new HashMap<>();
-        this.acknowledgementsEnabled = sourceConfig.getAcknowledgementsEnabled();
         this.acknowledgementsTimeout = sourceConfig.getAcknowledgementsTimeout();
+        // If the timeout value is different from default value, then enable acknowledgements automatically.
+        this.acknowledgementsEnabled = sourceConfig.getAcknowledgementsEnabled() || acknowledgementsTimeout != KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginMetrics = pluginMetrics;
         this.partitionCommitTrackerMap = new HashMap<>();
@@ -189,7 +191,6 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     }
 
     private <T> Record<Event> getRecord(ConsumerRecord<String, T> consumerRecord) {
-        final String DEFAULT_KEY = "message";
         Map<String, Object> data = new HashMap<>();
         Event event;
         Object value;
@@ -215,7 +216,6 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     }
 
     private <T> void iterateRecordPartitions(ConsumerRecords<String, T> records, final AcknowledgementSet acknowledgementSet, Map<TopicPartition, Range<Long>> offsets) throws Exception {
-        //Map<TopicPartition, Range<Long>> offsets = new HashMap<>();
         for (TopicPartition topicPartition : records.partitions()) {
             List<Record<Event>> kafkaRecords = new ArrayList<>();
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
@@ -233,7 +233,6 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             Range<Long> offsetRange = Range.between(firstOffset, lastOffset);
             offsets.put(topicPartition, offsetRange);
         }
-        //return offsets;
     }
 
     public void closeConsumer(){

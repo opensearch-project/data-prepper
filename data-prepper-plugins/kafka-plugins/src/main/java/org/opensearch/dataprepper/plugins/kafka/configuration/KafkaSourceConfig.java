@@ -19,7 +19,7 @@ import java.time.Duration;
  */
 
 public class KafkaSourceConfig {
-    static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(5);
+    public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
     @NotNull
