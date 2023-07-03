@@ -90,9 +90,11 @@ public class HttpDBDownloadService implements DBSource {
      * @param tarFolder Tar Folder
      */
     private static void deleteTarFolder(String tarFolder) {
-          final File file = new File(tarFolder);
-          DBSource.deleteDirectory(file);
-          file.delete();
+        final File file = new File(tarFolder);
+        DBSource.deleteDirectory(file);
+        if (file.exists()) {
+            file.delete();
+        }
     }
 
     /**

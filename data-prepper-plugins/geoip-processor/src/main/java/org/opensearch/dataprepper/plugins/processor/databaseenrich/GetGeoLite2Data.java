@@ -97,6 +97,7 @@ public class GetGeoLite2Data implements GetGeoData {
      */
     @Override
     public void switchDatabaseReader() {
+        LOG.info("Switch DatabaseReader");
         closeReaderCity();
         closeReaderCountry();
         closeReaderAsn();

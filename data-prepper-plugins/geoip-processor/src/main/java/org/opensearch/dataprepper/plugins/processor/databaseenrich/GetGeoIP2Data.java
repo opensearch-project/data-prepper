@@ -83,6 +83,7 @@ public class GetGeoIP2Data implements GetGeoData {
      */
     @Override
     public void switchDatabaseReader() {
+        LOG.info("Switch DatabaseReader");
         closeReader();
         System.gc();
         File file = new File(dbPath);
