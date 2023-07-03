@@ -21,7 +21,7 @@ public class TopicConfig {
     private static final Duration SESSION_TIMEOUT = Duration.ofSeconds(45);
     private static final int MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
     private static final String AUTO_OFFSET_RESET = "earliest";
-    private static final Duration THREAD_WAITING_TIME = Duration.ofSeconds(1);
+    static final Duration THREAD_WAITING_TIME = Duration.ofSeconds(5);
     private static final Duration MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
     private static final Duration BUFFER_DEFAULT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration MAX_RETRY_DELAY = Duration.ofSeconds(1);
@@ -30,7 +30,7 @@ public class TopicConfig {
     private static final Long FETCH_MIN_BYTES = 1L;
     private static final Duration RETRY_BACKOFF = Duration.ofSeconds(100);
     private static final Duration MAX_POLL_INTERVAL = Duration.ofSeconds(300000);
-    private static final Long CONSUMER_MAX_POLL_RECORDS = 500L;
+    private static final Integer CONSUMER_MAX_POLL_RECORDS = 500;
     private static final Integer NUM_OF_WORKERS = 10;
     private static final Duration HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(3);
 
@@ -54,10 +54,10 @@ public class TopicConfig {
     @Size(min = 1)
     private Duration maxRetryDelay = MAX_RETRY_DELAY;
 
-    @JsonProperty("autocommit")
-    private String autoCommit = AUTO_COMMIT;
+    @JsonProperty("auto_commit")
+    private Boolean autoCommit = false;
 
-    @JsonProperty("autocommit_interval")
+    @JsonProperty("auto_commit_interval")
     @Size(min = 1)
     private Duration autoCommitInterval = AUTOCOMMIT_INTERVAL;
 
@@ -100,7 +100,7 @@ public class TopicConfig {
     private Duration maxPollInterval = MAX_POLL_INTERVAL;
 
     @JsonProperty("consumer_max_poll_records")
-    private Long consumerMaxPollRecords = CONSUMER_MAX_POLL_RECORDS;
+    private Integer consumerMaxPollRecords = CONSUMER_MAX_POLL_RECORDS;
 
     @JsonProperty("heart_beat_interval")
     @Size(min = 1)
@@ -118,7 +118,7 @@ public class TopicConfig {
         this.maxRetryAttempts = maxRetryAttempts;
     }
 
-    public String getAutoCommit() {
+    public Boolean getAutoCommit() {
         return autoCommit;
     }
 
@@ -186,7 +186,7 @@ public class TopicConfig {
         this.fetchMaxBytes = fetchMaxBytes;
     }
 
-    public void setAutoCommit(String autoCommit) {
+    public void setAutoCommit(Boolean autoCommit) {
         this.autoCommit = autoCommit;
     }
 
@@ -222,11 +222,11 @@ public class TopicConfig {
         this.maxPollInterval = maxPollInterval;
     }
 
-    public Long getConsumerMaxPollRecords() {
+    public Integer getConsumerMaxPollRecords() {
         return consumerMaxPollRecords;
     }
 
-    public void setConsumerMaxPollRecords(Long consumerMaxPollRecords) {
+    public void setConsumerMaxPollRecords(Integer consumerMaxPollRecords) {
         this.consumerMaxPollRecords = consumerMaxPollRecords;
     }
 
