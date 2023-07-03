@@ -378,7 +378,7 @@ public class KeyValueProcessorTests {
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
-        assertThat(parsed_message.size(), equalTo(2));
+        assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "key1", "value1");
     }
 
@@ -388,7 +388,7 @@ public class KeyValueProcessorTests {
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
-        assertThat(parsed_message.size(), equalTo(2));
+        assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "Key1", "value1");
     }
 
@@ -398,7 +398,7 @@ public class KeyValueProcessorTests {
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
-        assertThat(parsed_message.size(), equalTo(2));
+        assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "KEY1", "value1");
     }
 
