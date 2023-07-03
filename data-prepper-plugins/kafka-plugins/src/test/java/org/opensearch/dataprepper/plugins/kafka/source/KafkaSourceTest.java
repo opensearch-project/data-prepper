@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,6 +46,9 @@ class KafkaSourceTest {
     private SchemaConfig schemaConfig;
 
     @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
     private TopicConfig topicConfig;
     @Mock
     private PipelineDescription pipelineDescription;
@@ -61,7 +65,7 @@ class KafkaSourceTest {
 
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, pipelineDescription);
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
     }
 
     @BeforeEach
@@ -69,6 +73,7 @@ class KafkaSourceTest {
         sourceConfig = mock(KafkaSourceConfig.class);
         pipelineDescription = mock(PipelineDescription.class);
         pluginMetrics = mock(PluginMetrics.class);
+        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         when(topic1.getName()).thenReturn("topic1");
         when(topic2.getName()).thenReturn("topic2");
         when(topic1.getWorkers()).thenReturn(2);

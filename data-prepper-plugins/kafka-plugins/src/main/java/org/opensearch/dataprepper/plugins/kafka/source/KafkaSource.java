@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
@@ -66,12 +67,16 @@ public class KafkaSource implements Source<Record<Event>> {
     private String pipelineName;
     private String schemaType = MessageFormat.PLAINTEXT.toString();
     private static final String SCHEMA_TYPE= "schemaType";
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     @DataPrepperPluginConstructor
-    public KafkaSource(final KafkaSourceConfig sourceConfig, final PluginMetrics pluginMetrics,
+    public KafkaSource(final KafkaSourceConfig sourceConfig,
+                       final PluginMetrics pluginMetrics,
+                       final AcknowledgementSetManager acknowledgementSetManager,
                        final PipelineDescription pipelineDescription) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.kafkaWorkerThreadProcessingErrors = pluginMetrics.counter(KAFKA_WORKER_THREAD_PROCESSING_ERRORS);
         shutdownInProgress = new AtomicBoolean(false);
@@ -82,25 +87,25 @@ public class KafkaSource implements Source<Record<Event>> {
         sourceConfig.getTopics().forEach(topic -> {
             Properties consumerProperties = getConsumerProperties(topic);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
-            KafkaConsumer kafkaConsumer;
-            switch (schema) {
-                case JSON:
-                    kafkaConsumer = new KafkaConsumer<String, JsonNode>(consumerProperties);
-                    break;
-                case AVRO:
-                    kafkaConsumer = new KafkaConsumer<String, GenericRecord>(consumerProperties);
-                    break;
-                case PLAINTEXT:
-                default:
-                    kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);
-                    break;
-            }
 
             try {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
                 IntStream.range(0, numWorkers + 1).forEach(index -> {
-                    consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, topic, schemaType, pluginMetrics);
+                    KafkaConsumer kafkaConsumer;
+                    switch (schema) {
+                        case JSON:
+                            kafkaConsumer = new KafkaConsumer<String, JsonNode>(consumerProperties);
+                            break;
+                        case AVRO:
+                            kafkaConsumer = new KafkaConsumer<String, GenericRecord>(consumerProperties);
+                            break;
+                        case PLAINTEXT:
+                        default:
+                            kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);
+                            break;
+                    }
+                    consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, pluginMetrics);
 
                     executorService.submit(consumer);
                 });
