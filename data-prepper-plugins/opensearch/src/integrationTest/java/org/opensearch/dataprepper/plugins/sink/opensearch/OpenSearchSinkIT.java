@@ -41,11 +41,14 @@ import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
+import org.apache.commons.lang3.RandomStringUtils;
+import static org.mockito.Mockito.when;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -108,20 +111,33 @@ public class OpenSearchSinkIT {
 
     private RestClient client;
     private EventHandle eventHandle;
+    private SinkContext sinkContext;
+    private String testTagsTargetKey;
 
     @Mock
     private PluginFactory pluginFactory;
 
-  @Mock
-  private AwsCredentialsSupplier awsCredentialsSupplier;
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
 
-  public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, awsCredentialsSupplier);
-    if (doInitialize) {
-        sink.doInitialize();
+    public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
+        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, null, awsCredentialsSupplier);
+        if (doInitialize) {
+            sink.doInitialize();
+        }
+        return sink;
     }
-    return sink;
-  }
+
+    public OpenSearchSink createObjectUnderTestWithSinkContext(PluginSetting pluginSetting, boolean doInitialize) {
+        sinkContext = mock(SinkContext.class);
+        testTagsTargetKey = RandomStringUtils.randomAlphabetic(5);
+        when(sinkContext.getTagsTargetKey()).thenReturn(testTagsTargetKey);
+        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, sinkContext, awsCredentialsSupplier);
+        if (doInitialize) {
+            sink.doInitialize();
+        }
+        return sink;
+    }
 
     @BeforeEach
     public void setup() {
@@ -585,6 +601,34 @@ public class OpenSearchSinkIT {
         MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
         // COUNT
         Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testEventOutputWithTags() throws IOException, InterruptedException {
+        final Event testEvent = JacksonEvent.builder()
+                .withData("{\"log\": \"foobar\"}")
+                .withEventType("event")
+                .build();
+        ((JacksonEvent)testEvent).setEventHandle(eventHandle);
+        List<String> tagsList = List.of("tag1", "tag2");
+        testEvent.getMetadata().addTags(tagsList);
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
+        final OpenSearchSink sink = createObjectUnderTestWithSinkContext(pluginSetting, true);
+        sink.output(testRecords);
+
+        final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
+        final Map<String, Object> expectedContent = new HashMap<>();
+        expectedContent.put("log", "foobar");
+        expectedContent.put(testTagsTargetKey, tagsList);
+
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(retSources.containsAll(Arrays.asList(expectedContent)), equalTo(true));
+        MatcherAssert.assertThat(getDocumentCount(expIndexAlias, "log", "foobar"), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
     }
 
     @Test

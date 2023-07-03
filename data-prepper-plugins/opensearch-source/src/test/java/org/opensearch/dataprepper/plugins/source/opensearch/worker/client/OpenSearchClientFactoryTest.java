@@ -29,6 +29,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -118,5 +120,39 @@ public class OpenSearchClientFactoryTest {
         assertThat(awsCredentialsOptions.getRegion(), equalTo(Region.US_EAST_1));
         assertThat(awsCredentialsOptions.getStsHeaderOverrides(), equalTo(Collections.emptyMap()));
         assertThat(awsCredentialsOptions.getStsRoleArn(), equalTo(stsRoleArn));
+    }
+
+    @Test
+    void provideElasticSearchClient_with_auth_disabled() {
+        when(openSearchSourceConfiguration.isAuthenticationDisabled()).thenReturn(true);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+
+        final ElasticsearchClient elasticsearchClient = createObjectUnderTest().provideElasticSearchClient(openSearchSourceConfiguration);
+        assertThat(elasticsearchClient, notNullValue());
+
+        verifyNoInteractions(awsCredentialsSupplier);
+        verify(openSearchSourceConfiguration, never()).getUsername();
+        verify(openSearchSourceConfiguration, never()).getPassword();
+    }
+
+    @Test
+    void provideOpenSearchClient_with_auth_disabled() {
+        when(openSearchSourceConfiguration.isAuthenticationDisabled()).thenReturn(true);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+
+        final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
+        assertThat(openSearchClient, notNullValue());
+
+        verifyNoInteractions(awsCredentialsSupplier);
+        verify(openSearchSourceConfiguration, never()).getUsername();
+        verify(openSearchSourceConfiguration, never()).getPassword();
     }
 }
