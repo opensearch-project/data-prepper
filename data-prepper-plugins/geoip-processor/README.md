@@ -66,6 +66,32 @@ pipeline:
 
 - `tags_on_source_not_found` (Optional): A `List` of `String`s that specifies the tags to be set in the event the processor fails to parse or an unknown exception occurs while parsing. This tag may be used in conditional expressions in other parts of the configuration
 
+## Sample JSON input:
+
+"peer" : {
+"ip" : "1.2.3.4"
+"host" : "example.org"
+}
+"status" : "success"
+
+## Sample JSON Output:
+
+"peer" : {
+"ip" : "1.2.3.4"
+"host" : "example.org"
+}
+"location" : {
+"status" : "success"
+"country" : "United States"
+"city_name" : "Seattle"
+"latitude" : "47.64097"
+"longitude" : "122.25894"
+"zip_code" : "98115"
+}
+
+
+
+
 ## Developer Guide
 
 This plugin is compatible with Java 11. See below
