@@ -63,6 +63,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getPrefix()).thenReturn(defaultConfig.getPrefix());
         lenient().when(mockConfig.getDeleteKeyRegex()).thenReturn(defaultConfig.getDeleteKeyRegex());
         lenient().when(mockConfig.getDeleteValueRegex()).thenReturn(defaultConfig.getDeleteValueRegex());
+        lenient().when(mockConfig.getTransformKey()).thenReturn(defaultConfig.getTransformKey());
 
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
@@ -369,6 +370,36 @@ public class KeyValueProcessorTests {
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
         assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testLowercaseTransformKvProcessor() {
+        final Record<Event> record = getMessage("Key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
+    void testUppercaseTransformKvProcessor() {
+        final Record<Event> record = getMessage("key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "Key1", "value1");
+    }
+
+    @Test
+    void testCapitalizeTransformKvProcessor() {
+        final Record<Event> record = getMessage("key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "KEY1", "value1");
     }
 
     @Test
