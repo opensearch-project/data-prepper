@@ -28,7 +28,7 @@ public class StdOutSink implements Sink<Record<Object>> {
      * pluginSetting file.
      *
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
-     * @param SinkContext sink context
+     * @param sinkContext sink context
      */
     @DataPrepperPluginConstructor
     public StdOutSink(final PluginSetting pluginSetting, final SinkContext sinkContext) {
