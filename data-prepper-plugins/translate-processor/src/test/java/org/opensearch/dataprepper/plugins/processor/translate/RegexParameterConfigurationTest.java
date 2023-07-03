@@ -22,7 +22,7 @@ class RegexParameterConfigurationTest {
     }
 
     @Test
-    public void test_get_patterns() throws NoSuchFieldException, IllegalAccessException{
+    void test_get_patterns() throws NoSuchFieldException, IllegalAccessException{
         final Map<String, String> patternMap = Collections.singletonMap("key1", "val1");
         setField(RegexParameterConfiguration.class, regexParameterConfiguration, "patterns", patternMap);
         assertThat(regexParameterConfiguration.getPatterns(), is(patternMap));
