@@ -33,7 +33,7 @@ public interface OutputCodec {
      *
      * @param event         event Record event
      * @param outputStream  outputStream param to hold the event data
-     * @param tagsTargetKey
+     * @param tagsTargetKey to add tags to the record
      * @throws IOException throws IOException when not able to write data to {@link OutputStream}
      */
     void writeEvent(Event event, OutputStream outputStream, String tagsTargetKey) throws IOException;
