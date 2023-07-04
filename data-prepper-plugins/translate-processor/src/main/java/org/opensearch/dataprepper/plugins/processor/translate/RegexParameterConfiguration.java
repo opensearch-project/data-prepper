@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class RegexParameterConfiguration {
 
-    private static final boolean DEFAULT_EXACT = true;
+    final boolean DEFAULT_EXACT = true;
     @NotNull
     @JsonProperty("patterns")
     private Map<String, String> patterns;
