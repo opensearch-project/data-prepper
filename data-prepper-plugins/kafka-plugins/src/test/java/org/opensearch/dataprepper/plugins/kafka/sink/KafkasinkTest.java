@@ -1,3 +1,9 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
 package org.opensearch.dataprepper.plugins.kafka.sink;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,16 +23,19 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.*;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
-import org.opensearch.dataprepper.plugins.kafka.util.SinkPropertyConfigurer;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.Reader;
 import java.io.StringReader;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
@@ -34,7 +43,13 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -43,14 +58,11 @@ public class KafkasinkTest {
 
     KafkaSink kafkaSink;
 
-    // @Mock
+
     KafkaSinkConfig kafkaSinkConfig;
 
 
     ExecutorService executorService;
-
-
-    private SchemaConfig schemaConfig;
 
     @Mock
     PluginSetting pluginSetting;
@@ -58,8 +70,6 @@ public class KafkasinkTest {
     @Mock
     FutureTask futureTask;
 
-    @Mock
-    AuthConfig authConfig;
 
     Event event;
 
@@ -69,27 +79,16 @@ public class KafkasinkTest {
 
     MockedStatic<Executors> executorsMockedStatic;
 
-    MockedStatic<SinkPropertyConfigurer> propertyConfigurerMockedStatic;
 
-    @Mock
-    PlainTextAuthConfig plainTextAuthConfig;
 
-    @Mock
-    OAuthConfig oAuthConfig;
 
-    @Mock
-    private PluginSetting pluginSettingMock;
-
-    @Mock
-    private KafkaSinkConfig kafkaSinkConfigMock;
 
     @Mock
     private PluginFactory pluginFactoryMock;
 
     Properties props;
 
-    @Mock
-    AwsDLQConfig dlqConfig;
+
 
 
     @BeforeEach

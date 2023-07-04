@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,20 +15,15 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.notNullValue;
 
 class AwsDlqConfigTest {
 
 
 	AwsDLQConfig awsDLQConfig;
-
-	List<String> bootstrapServers;
 
 	@BeforeEach
 	void setUp() throws IOException {

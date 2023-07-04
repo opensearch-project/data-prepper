@@ -93,9 +93,9 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
             records.forEach(record -> {
                 producerWorker = new ProducerWorker(producer, record);
                 //TODO: uncomment this line after testing as this is the right way to do things
-                //executorService.submit(producerWorker);
+                 executorService.submit(producerWorker);
                 //TODO: remove this line after testing as it executes the thread immediately
-                executorService.execute(producerWorker);
+                //executorService.execute(producerWorker);
             });
 
         } catch (Exception e) {
