@@ -2,6 +2,9 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
+
+
+
 package org.opensearch.dataprepper.plugins.kafka.producer;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +22,9 @@ import static org.mockito.Mockito.verify;
 class ProducerWorkerTest {
 
     @Mock
+
     ProducerWorker producerWorker;
+
 
     private Record<Event> record;
 

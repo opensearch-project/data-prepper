@@ -1,3 +1,9 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
 package org.opensearch.dataprepper.plugins.kafka.sink;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,6 +58,7 @@ public class KafkasinkTest {
 
     KafkaSink kafkaSink;
 
+
     KafkaSinkConfig kafkaSinkConfig;
 
 
@@ -71,6 +78,7 @@ public class KafkasinkTest {
     private static final Integer totalWorkers = 1;
 
     MockedStatic<Executors> executorsMockedStatic;
+
     @Mock
     private PluginFactory pluginFactoryMock;
 
