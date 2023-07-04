@@ -37,7 +37,7 @@ public class ThresholdConfig {
     private int logSendInterval = DEFAULT_LOG_SEND_INTERVAL_TIME;
 
     @JsonProperty("back_off_time")
-    @Size(min = 0, max = 10000, message = "back_off_time amount should be between 0 and 10000 milliseconds")
+    @Size(min = 500, max = 1000, message = "back_off_time amount should be between 500 and 1000 milliseconds")
     private int backOffTime = DEFAULT_BACKOFF_TIME;
 
     public int getBatchSize() {
