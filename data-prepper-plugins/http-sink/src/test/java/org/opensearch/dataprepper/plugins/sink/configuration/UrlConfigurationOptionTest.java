@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.configuration;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -29,7 +30,7 @@ public class UrlConfigurationOptionTest {
 
     @Test
     void default_http_method_test() {
-        assertThat(new UrlConfigurationOption().getHttpMethod(),equalTo("POST"));
+        assertThat(new UrlConfigurationOption().getHttpMethod(),nullValue());
     }
 
     @Test

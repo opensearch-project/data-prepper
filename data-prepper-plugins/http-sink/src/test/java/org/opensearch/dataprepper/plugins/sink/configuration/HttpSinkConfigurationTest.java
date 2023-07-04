@@ -39,7 +39,7 @@ public class HttpSinkConfigurationTest {
             "            password: \"vip\"\n" +
             "          bearer_token:\n" +
             "            token: \"\"\n" +
-            "        insecure: false\n" +
+            "        ssl: false\n" +
             "        dlq_file: \"/your/local/dlq-file\"\n" +
             "        dlq:\n" +
             "        ssl_certificate_file: \"/full/path/to/certfile.crt\"\n" +
@@ -83,12 +83,12 @@ public class HttpSinkConfigurationTest {
 
     @Test
     void default_http_method_test() {
-        assertThat(new HttpSinkConfiguration().getHttpMethod(), CoreMatchers.equalTo("POST"));
+        assertThat(new HttpSinkConfiguration().getHttpMethod(), equalTo(HTTPMethodOptions.POST));
     }
 
     @Test
     void default_auth_type_test() {
-        assertNull(new HttpSinkConfiguration().getAuthType());
+        assertThat(new HttpSinkConfiguration().getAuthType(),equalTo(AuthTypeOptions.UNAUTHENTICATED));
     }
 
     @Test
@@ -103,7 +103,7 @@ public class HttpSinkConfigurationTest {
 
     @Test
     void default_insecure_test() {
-        assertThat(new HttpSinkConfiguration().isInsecure(), equalTo(false));
+        assertThat(new HttpSinkConfiguration().isSsl(), equalTo(false));
     }
 
     @Test
@@ -123,7 +123,7 @@ public class HttpSinkConfigurationTest {
 
     @Test
     void default_buffer_type_test() {
-        assertThat(new HttpSinkConfiguration().getBufferType(), equalTo("in_memory"));
+        assertThat(new HttpSinkConfiguration().getBufferType(), equalTo(BufferTypeOptions.IN_MEMORY));
     }
 
     @Test
@@ -150,9 +150,9 @@ public class HttpSinkConfigurationTest {
     void http_sink_pipeline_test_with_provided_config_options() throws JsonProcessingException {
         final HttpSinkConfiguration httpSinkConfiguration = objectMapper.readValue(SINK_YAML, HttpSinkConfiguration.class);
 
-        assertThat(httpSinkConfiguration.getHttpMethod(),equalTo("POST"));
-        assertThat(httpSinkConfiguration.getAuthType(),equalTo("http_basic"));
-        assertThat(httpSinkConfiguration.getBufferType(),equalTo("in_memory"));
+        assertThat(httpSinkConfiguration.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
+        assertThat(httpSinkConfiguration.getAuthType(),equalTo(AuthTypeOptions.HTTP_BASIC));
+        assertThat(httpSinkConfiguration.getBufferType(),equalTo(BufferTypeOptions.IN_MEMORY));
         assertThat(httpSinkConfiguration.getMaxUploadRetries(),equalTo(5));
         assertThat(httpSinkConfiguration.getProxy(),equalTo("test-proxy"));
         assertThat(httpSinkConfiguration.getSslCertificateFile(),equalTo("/full/path/to/certfile.crt"));
@@ -162,9 +162,9 @@ public class HttpSinkConfigurationTest {
 
         final UrlConfigurationOption urlConfigurationOption = httpSinkConfiguration.getUrlConfigurationOptions().get(0);
         assertThat(urlConfigurationOption.getUrl(),equalTo("https://httpbin.org/post"));
-        assertThat(urlConfigurationOption.getHttpMethod(),equalTo("POST"));
+        assertThat(urlConfigurationOption.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
         assertThat(urlConfigurationOption.getProxy(),equalTo("test"));
-        assertThat(urlConfigurationOption.getAuthType(),equalTo("http_basic"));
+        assertThat(urlConfigurationOption.getAuthType(),equalTo(AuthTypeOptions.HTTP_BASIC));
 
         final CustomHeaderOptions customHeaderOptions = httpSinkConfiguration.getCustomHeaderOptions();
 
