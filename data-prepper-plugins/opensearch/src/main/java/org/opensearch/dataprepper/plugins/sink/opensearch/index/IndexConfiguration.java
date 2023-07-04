@@ -36,11 +36,13 @@ public class IndexConfiguration {
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
+    public static final String BULK_SAMPLE_SIZE = "bulk_sample_size";
     public static final String FLUSH_TIMEOUT = "flush_timeout";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String ROUTING_FIELD = "routing_field";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
+    public static final int DEFAULT_BULK_SAMPLE_SIZE = 5000;
     public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
@@ -57,6 +59,7 @@ public class IndexConfiguration {
     private final String documentIdField;
     private final String routingField;
     private final long bulkSize;
+    private final int bulkSampleSize;
     private final long flushTimeout;
     private final Optional<String> ismPolicyFile;
     private final String action;
@@ -103,6 +106,7 @@ public class IndexConfiguration {
         }
         this.indexAlias = indexAlias;
         this.bulkSize = builder.bulkSize;
+        this.bulkSampleSize = builder.bulkSampleSize;
         this.flushTimeout = builder.flushTimeout;
         this.routingField = builder.routingField;
 
@@ -153,6 +157,8 @@ public class IndexConfiguration {
         builder = builder.withNumReplicas(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
         final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
         builder = builder.withBulkSize(batchSize);
+        final int bulkSampleSize = pluginSetting.getIntegerOrDefault(BULK_SAMPLE_SIZE, DEFAULT_BULK_SAMPLE_SIZE);
+        builder = builder.withBulkSampleSize(bulkSampleSize);
         final long flushTimeout = pluginSetting.getLongOrDefault(FLUSH_TIMEOUT, DEFAULT_FLUSH_TIMEOUT);
         builder = builder.withFlushTimeout(flushTimeout);
         final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
@@ -220,6 +226,11 @@ public class IndexConfiguration {
     public long getBulkSize() {
         return bulkSize;
     }
+
+    public int getBulkSampleSize() {
+        return bulkSampleSize;
+    }
+
 
     public long getFlushTimeout() {
         return flushTimeout;
@@ -309,6 +320,7 @@ public class IndexConfiguration {
         private String routingField;
         private String documentIdField;
         private long bulkSize = DEFAULT_BULK_SIZE;
+        private int bulkSampleSize = DEFAULT_BULK_SAMPLE_SIZE;
         private long flushTimeout = DEFAULT_FLUSH_TIMEOUT;
         private Optional<String> ismPolicyFile;
         private String action;
@@ -359,6 +371,11 @@ public class IndexConfiguration {
 
         public Builder withBulkSize(final long bulkSize) {
             this.bulkSize = bulkSize;
+            return this;
+        }
+
+        public Builder withBulkSampleSize(final int bulkSampleSize) {
+            this.bulkSampleSize = bulkSampleSize;
             return this;
         }
 

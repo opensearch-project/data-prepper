@@ -38,7 +38,8 @@ import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
-import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingCompressedBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingUncompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
@@ -192,7 +193,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
     indexManager.setupIndex();
 
-    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+    if (openSearchSinkConfig.getConnectionConfiguration().isRequestCompressionEnabled()) {
+      bulkRequestSupplier = () -> new JavaClientAccumulatingCompressedBulkRequest(new BulkRequest.Builder(), bulkSize);
+    } else {
+      bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+    }
+
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
     final OpenSearchClient filteringOpenSearchClient = openSearchClient.withTransportOptions(
             TransportOptions.builder()
@@ -316,6 +322,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     bulkRequestTimer.record(() -> {
       try {
         LOG.debug("Sending data to OpenSearch");
+        LOG.warn("Flushing batch with {} operations", accumulatingBulkRequest.getOperationsCount());
         bulkRetryStrategy.execute(accumulatingBulkRequest);
         bulkRequestSizeBytesSummary.record(accumulatingBulkRequest.getEstimatedSizeInBytes());
       } catch (final InterruptedException e) {
