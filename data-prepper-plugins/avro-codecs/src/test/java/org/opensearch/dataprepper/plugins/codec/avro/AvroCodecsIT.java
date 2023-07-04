@@ -181,7 +181,7 @@ public class AvroCodecsIT {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         avroOutputCodec.start(outputStream);
         for (Record<Event> record : actualRecords) {
-            avroOutputCodec.writeEvent(record.getData(), outputStream);
+            avroOutputCodec.writeEvent(record.getData(), outputStream, null);
         }
         avroOutputCodec.complete(outputStream);
         List<GenericRecord> actualOutputRecords = createAvroRecordsList(outputStream);

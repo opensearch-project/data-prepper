@@ -23,10 +23,10 @@ import java.util.Objects;
 @DataPrepperPlugin(name = "json", pluginType = OutputCodec.class, pluginConfigurationType = JsonOutputCodecConfig.class)
 public class JsonOutputCodec implements OutputCodec {
 
-    private JsonGenerator generator;
     private static final String JSON = "json";
     private static final JsonFactory factory = new JsonFactory();
     JsonOutputCodecConfig config;
+    private JsonGenerator generator;
 
     @DataPrepperPluginConstructor
     public JsonOutputCodec(final JsonOutputCodecConfig config) {
@@ -50,15 +50,21 @@ public class JsonOutputCodec implements OutputCodec {
     }
 
     @Override
-    public synchronized void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public synchronized void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
         Objects.requireNonNull(event);
+        final Event modifiedEvent;
+        if (tagsTargetKey != null) {
+            modifiedEvent = addTagsToEvent(event, tagsTargetKey);
+        } else {
+            modifiedEvent = event;
+        }
         generator.writeStartObject();
         final boolean isExcludeKeyAvailable = !Objects.isNull(config.getExcludeKeys());
-        for (final String key : event.toMap().keySet()) {
+        for (final String key : modifiedEvent.toMap().keySet()) {
             if (isExcludeKeyAvailable && config.getExcludeKeys().contains(key)) {
                 continue;
             }
-            generator.writeStringField(key, event.toMap().get(key).toString());
+            generator.writeStringField(key, modifiedEvent.toMap().get(key).toString());
         }
         generator.writeEndObject();
         generator.flush();

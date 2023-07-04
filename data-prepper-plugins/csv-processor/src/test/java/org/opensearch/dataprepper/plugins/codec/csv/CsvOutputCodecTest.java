@@ -74,7 +74,7 @@ public class CsvOutputCodecTest {
         csvOutputCodec.start(outputStream);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            csvOutputCodec.writeEvent(event, outputStream);
+            csvOutputCodec.writeEvent(event, outputStream, null);
         }
         csvOutputCodec.complete(outputStream);
         String csvData = outputStream.toString(StandardCharsets.UTF_8);

@@ -23,6 +23,13 @@ public class CsvOutputCodecConfig {
     @JsonProperty("header_file_location")
     private String headerFileLocation;
 
+    @JsonProperty("region")
+    private String region;
+    @JsonProperty("bucket_name")
+    private String bucketName;
+    @JsonProperty("fileKey")
+    private String file_key;
+
     public String getHeaderFileLocation() {
         return headerFileLocation;
     }
@@ -40,5 +47,16 @@ public class CsvOutputCodecConfig {
     }
     public void setHeader(List<String> header) {
         this.header = header;
+    }
+    public String getRegion() {
+        return region;
+    }
+
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    public String getFile_key() {
+        return file_key;
     }
 }

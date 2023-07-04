@@ -64,7 +64,7 @@ class JsonOutputCodecTest {
         jsonOutputCodec.start(outputStream);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            jsonOutputCodec.writeEvent(event, outputStream);
+            jsonOutputCodec.writeEvent(event, outputStream, null);
         }
         jsonOutputCodec.complete(outputStream);
         List<HashMap> expectedRecords = generateRecords(numberOfRecords);

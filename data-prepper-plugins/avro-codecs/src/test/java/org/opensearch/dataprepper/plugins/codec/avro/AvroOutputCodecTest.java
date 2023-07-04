@@ -52,7 +52,7 @@ public class AvroOutputCodecTest {
         avroOutputCodec.start(outputStream);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            avroOutputCodec.writeEvent(event, outputStream);
+            avroOutputCodec.writeEvent(event, outputStream, null);
         }
         avroOutputCodec.complete(outputStream);
         List<GenericRecord> actualRecords = createAvroRecordsList(outputStream);

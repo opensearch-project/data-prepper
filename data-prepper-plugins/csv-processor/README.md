@@ -136,6 +136,22 @@ pipeline:
         buffer_type: in_memory
 ```
 
+### Note:
+
+1) If the user wants the tags to be a part of the resultant CSV Data and has given `tagsTargetKey` in the config file, the user also has to modify the header to accommodate the tags. Another header field  has to be provided in the headers:
+
+   ```
+   header:
+              - Year
+              - Age
+              - Ethnic
+              - Sex
+              - Area
+              - <yourTagsTargetKey>
+   ```
+   Please note that if this is not done, then the codec will throw an error:
+   `"CSV Row doesn't conform with the header."`
+
 ## AWS Configuration
 
 ### Codec Configuration:

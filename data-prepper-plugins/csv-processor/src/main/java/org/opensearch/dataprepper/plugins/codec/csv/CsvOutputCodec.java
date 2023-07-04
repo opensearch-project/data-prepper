@@ -51,9 +51,11 @@ public class CsvOutputCodec implements OutputCodec {
                 LOG.error("Unable to parse CSV Header, Error:{} ",e.getMessage());
                 throw new IOException("Unable to parse CSV Header.");
             }
-        } else {
+        }else if(checkS3HeaderValidity()){
+            headerList = CsvHeaderParserFromS3.parseHeader(config);
+        }else {
             LOG.error("No header provided.");
-            throw new IOException("No header found.");
+            throw new IOException("No header found. Can't proceed without header.");
         }
 
         headerLength = headerList.size();
@@ -67,9 +69,14 @@ public class CsvOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
         Objects.requireNonNull(event);
-        final Map<String, Object> eventMap = event.toMap();
+        final Map<String, Object> eventMap;
+        if(tagsTargetKey!=null){
+            eventMap = addTagsToEvent(event,tagsTargetKey).toMap();
+        }else{
+            eventMap = event.toMap();
+        }
 
         if (!Objects.isNull(config.getExcludeKeys())) {
             for (final String key : config.getExcludeKeys()) {
@@ -102,5 +109,13 @@ public class CsvOutputCodec implements OutputCodec {
     @Override
     public String getExtension() {
         return CSV;
+    }
+    private boolean checkS3HeaderValidity() throws IOException {
+        if(config.getBucketName()!=null && config.getFile_key()!=null && config.getRegion()!=null){
+            return true;
+        }else{
+            LOG.error("Invalid S3 credentials, can't reach the header file.");
+            throw new IOException("Can't proceed without header.");
+        }
     }
 }

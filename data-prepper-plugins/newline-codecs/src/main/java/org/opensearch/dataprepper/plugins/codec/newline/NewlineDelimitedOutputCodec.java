@@ -24,7 +24,7 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
         // TODO: get the event data and
         //  get the header record and message record and write event data to the outputstream
     }

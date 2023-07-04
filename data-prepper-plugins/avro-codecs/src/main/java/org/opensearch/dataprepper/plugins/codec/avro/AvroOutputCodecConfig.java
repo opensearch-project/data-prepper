@@ -24,6 +24,13 @@ public class AvroOutputCodecConfig {
     @JsonProperty("schema_registry_url")
     private String schemaRegistryUrl;
 
+    @JsonProperty("region")
+    private String region;
+    @JsonProperty("bucket_name")
+    private String bucketName;
+    @JsonProperty("fileKey")
+    private String file_key;
+
     public List<String> getExcludeKeys() {
         return excludeKeys;
     }
@@ -42,6 +49,18 @@ public class AvroOutputCodecConfig {
 
     public String getSchemaRegistryUrl() {
         return schemaRegistryUrl;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    public String getFile_key() {
+        return file_key;
     }
 
 }

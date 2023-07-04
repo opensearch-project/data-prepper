@@ -80,7 +80,7 @@ public class CsvCodecsIT {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         csvOutputCodec.start(outputStream);
         for (Record<Event> record: actualRecords){
-            csvOutputCodec.writeEvent(record.getData(),outputStream);
+            csvOutputCodec.writeEvent(record.getData(),outputStream, null);
         }
         csvOutputCodec.complete(outputStream);
         //createTestFileFromStream(outputStream);

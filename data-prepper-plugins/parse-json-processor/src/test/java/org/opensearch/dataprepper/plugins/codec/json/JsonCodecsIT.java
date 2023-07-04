@@ -73,7 +73,7 @@ public class JsonCodecsIT {
         for (int i = 0; i < actualRecords.size(); i++) {
 
             final Record<Event> actualRecord = actualRecords.get(i);
-            jsonOutputCodec.writeEvent(actualRecord.getData(),outputStream);
+            jsonOutputCodec.writeEvent(actualRecord.getData(),outputStream, null);
         }
         jsonOutputCodec.complete(outputStream);
         int index=0;

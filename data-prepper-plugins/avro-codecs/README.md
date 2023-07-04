@@ -52,7 +52,16 @@ pipeline:
 
 ### Note:
 
-User can provide only one schema at a time i.e. through either of the ways provided in codec config.
+1) User can provide only one schema at a time i.e. through either of the ways provided in codec config.
+2) If the user wants the tags to be a part of the resultant Avro Data and has given `tagsTargetKey` in the config file, the user also has to modify the schema to accommodate the tags. Another field has to be provided in the `schema.json` file:
+
+    `{
+   "name": "yourTagsTargetKey",
+   "type": { "type": "array",
+   "items": "string"
+   }`
+
+
 
 ## Developer Guide
 
