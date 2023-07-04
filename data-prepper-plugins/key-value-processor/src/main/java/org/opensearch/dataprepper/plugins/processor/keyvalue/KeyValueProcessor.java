@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,7 +35,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
-    private final Set<String> validTransformOptionSet = new HashSet<>(Arrays.asList("lowercase", "uppercase", "capitalize"));
+    private final Set<String> validTransformOptionSet = Set.of("", "lowercase", "uppercase", "capitalize");
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -97,11 +96,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         }
 
-        if(keyValueProcessorConfig.getTransformKey() != null
-                && !keyValueProcessorConfig.getTransformKey().isEmpty()) {
-            if(!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
-                throw new IllegalArgumentException("transform_key is not a valid option");
-            }
+        if(!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
+            throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
         }
     }
 

@@ -62,7 +62,7 @@ When run, the processor will parse the message into the following output:
   * Cannot be an empty string
   * Example: `delete_value_regex` is `"\s"`. `{"key1=value1 "}` will parse into `{"key1": "value1"}`
 * `transform_key` - Change keys to lowercase, uppercase, or all capitals.
-  * Default is an empty string
+  * Default is an empty string (no transformation)
   * Example: `transform_key` is `lowercase`. `{"Key1=value1"}` will parse into `{"key1": "value1"}`
   * Example: `transform_key` is `uppercase`. `{"key1=value1"}` will parse into `{"Key1": "value1"}`
   * Example: `transform_key` is `capitalize`. `{"key1=value1"}` will parse into `{"KEY1": "value1"}`

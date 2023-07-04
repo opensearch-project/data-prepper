@@ -374,6 +374,8 @@ public class KeyValueProcessorTests {
 
     @Test
     void testLowercaseTransformKvProcessor() {
+        when(mockConfig.getTransformKey()).thenReturn("lowercase");
+
         final Record<Event> record = getMessage("Key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
@@ -384,6 +386,8 @@ public class KeyValueProcessorTests {
 
     @Test
     void testUppercaseTransformKvProcessor() {
+        when(mockConfig.getTransformKey()).thenReturn("uppercase");
+
         final Record<Event> record = getMessage("key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
@@ -394,6 +398,8 @@ public class KeyValueProcessorTests {
 
     @Test
     void testCapitalizeTransformKvProcessor() {
+        when(mockConfig.getTransformKey()).thenReturn("capitalize");
+
         final Record<Event> record = getMessage("key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
