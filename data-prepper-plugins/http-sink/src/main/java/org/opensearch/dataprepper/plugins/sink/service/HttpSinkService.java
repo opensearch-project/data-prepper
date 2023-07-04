@@ -153,7 +153,7 @@ public class HttpSinkService {
 
     /**
      * This method process buffer records and send to Http End points based on configured codec
-     * @param records Collection<Record<Event>>
+     * @param records Collection of Event
      */
     public void output(Collection<Record<Event>> records) {
         reentrantLock.lock();
