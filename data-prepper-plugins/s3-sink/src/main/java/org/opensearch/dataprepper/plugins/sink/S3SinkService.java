@@ -68,7 +68,7 @@ public class S3SinkService {
      * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
-                         final Codec codec, final S3Client s3Client, final String tagsTargetKey, final PluginMetrics pluginMetrics) {
+                         final OutputCodec codec, final S3Client s3Client, final String tagsTargetKey, final PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
@@ -101,19 +101,25 @@ public class S3SinkService {
             currentBuffer = bufferFactory.getBuffer();
         }
         try {
+            OutputStream outputStream = currentBuffer.getOutputStream();
+
             for (Record<Event> record : records) {
 
-                final Event event = record.getData();
-                final String encodedEvent;
-                encodedEvent = codec.parse(event, tagsTargetKey);
-                final byte[] encodedBytes = encodedEvent.getBytes();
+                if(currentBuffer.getEventCount() == 0) {
+                    codec.start(outputStream);
+                }
 
-                currentBuffer.writeEvent(encodedBytes);
+                final Event event = record.getData();
+                codec.writeEvent(event, outputStream, tagsTargetKey);
+                int count = currentBuffer.getEventCount() +1;
+                currentBuffer.setEventCount(count);
+
                 if(event.getEventHandle() != null) {
                     bufferedEventHandles.add(event.getEventHandle());
                 }
                 if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
-                    final String s3Key = generateKey();
+                    codec.complete(outputStream);
+                    final String s3Key = generateKey(codec);
                     LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
                             s3Key, currentBuffer.getEventCount(), currentBuffer.getSize());
                     final boolean isFlushToS3 = retryFlushToS3(currentBuffer, s3Key);

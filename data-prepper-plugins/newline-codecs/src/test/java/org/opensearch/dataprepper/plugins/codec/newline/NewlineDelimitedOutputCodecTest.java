@@ -46,7 +46,7 @@ public class NewlineDelimitedOutputCodecTest {
         newlineDelimitedOutputCodec.start(outputStream);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            newlineDelimitedOutputCodec.writeEvent(event, outputStream);
+            newlineDelimitedOutputCodec.writeEvent(event, outputStream, null);
         }
         newlineDelimitedOutputCodec.complete(outputStream);
         byte[] byteArray = outputStream.toByteArray();

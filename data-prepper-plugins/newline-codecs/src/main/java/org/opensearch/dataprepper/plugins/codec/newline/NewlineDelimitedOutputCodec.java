@@ -22,7 +22,6 @@ import java.util.Objects;
 @DataPrepperPlugin(name = "newline", pluginType = OutputCodec.class, pluginConfigurationType = NewlineDelimitedOutputConfig.class)
 public class NewlineDelimitedOutputCodec implements OutputCodec {
     private static final String NDJSON = "ndjson";
-    private static final String MESSAGE_FIELD_NAME = "message";
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final NewlineDelimitedOutputConfig config;
 
@@ -38,9 +37,15 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
         Objects.requireNonNull(event);
-        writeToOutputStream(outputStream, event.toMap());
+        Map<String, Object> eventMap;
+        if (tagsTargetKey != null) {
+            eventMap = addTagsToEvent(event, tagsTargetKey).toMap();
+        } else {
+            eventMap = event.toMap();
+        }
+        writeToOutputStream(outputStream, eventMap);
     }
 
     @Override
