@@ -1,3 +1,7 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
@@ -8,6 +12,9 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 
 import java.util.Properties;
 
+/**
+ * * This is static property configurer for related information given in pipeline.yml
+ */
 public class SinkPropertyConfigurer {
 
     private static final String VALUE_SERIALIZER = "value.serializer";
