@@ -155,7 +155,7 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
             LOG.debug("Found remaining percentage of {}, current size {}, target size {}. Skipping further estimations",
                     remainingBytesAsPercentage, currentBulkSize, targetBulkSize);
             // If we have packed at least 90% of the bulk request already, assume the sampled operation size is sufficient
-            // and continue with that estimate rather than eating the overhead of more local compressions
+            // and continue with that estimate rather than adding the overhead of more local compressions
             return;
         }
 
@@ -164,7 +164,7 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
         if (estimatedRemainingOperationsUntilFull < 100d) {
             LOG.debug("Found estimated remaining operations of {}. Skipping further estimations", estimatedRemainingOperationsUntilFull);
             // If we have less than 100 estimated operations until the bulk request is full, assume the sampled operation size is sufficient
-            // and continue with that estimate rather than eating the overhead of more local compressions
+            // and continue with that estimate rather than adding the overhead of more local compressions
             return;
         }
 
