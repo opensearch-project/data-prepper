@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,11 +21,17 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
+import io.micrometer.core.instrument.Counter;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.jupiter.api.Assertions;
@@ -40,6 +51,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;  
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -54,6 +67,9 @@ public class KafkaSourceCustomConsumerTest {
 
     @Mock
     private KafkaSourceConfig sourceConfig;
+
+    private ExecutorService callbackExecutor;
+    private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
     private TopicConfig topicConfig;
@@ -77,22 +93,33 @@ public class KafkaSourceCustomConsumerTest {
     private final String testJsonValue2 = "{ \"key3\": \"value3\", \"key4\": false}";
     private final int testPartition = 0;
     private final int testJsonPartition = 1;
+    private Counter counter;
 
     @BeforeEach
     public void setUp() {
         kafkaConsumer = mock(KafkaConsumer.class);
         pluginMetrics = mock(PluginMetrics.class);
+        counter = mock(Counter.class);
         topicConfig = mock(TopicConfig.class);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getAutoCommit()).thenReturn(false);
+        when(kafkaConsumer.committed(any(TopicPartition.class))).thenReturn(null);
+
+        when(pluginMetrics.counter(anyString())).thenReturn(counter);
+        doAnswer((i)-> {return null;}).when(counter).increment();
+        callbackExecutor = Executors.newFixedThreadPool(2); 
+        acknowledgementSetManager = new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(2000));
+
         sourceConfig = mock(KafkaSourceConfig.class);
         buffer = getBuffer();
         shutdownInProgress = new AtomicBoolean(false);
         when(topicConfig.getName()).thenReturn("topic1");
     }
 
-    public KafkaSourceCustomConsumer createObjectUnderTest(String schemaType) {
-        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, topicConfig, schemaType, pluginMetrics);
+    public KafkaSourceCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
+        when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
+        when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
+        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, pluginMetrics);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() {
@@ -109,7 +136,7 @@ public class KafkaSourceCustomConsumerTest {
         String topic = topicConfig.getName();
         consumerRecords = createPlainTextRecords(topic);
         when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
-        consumer = createObjectUnderTest("plaintext");
+        consumer = createObjectUnderTest("plaintext", false);
 
         try {
             consumer.consumeRecords();
@@ -118,6 +145,7 @@ public class KafkaSourceCustomConsumerTest {
         ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
         Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
         Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 1);
         offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
             Assertions.assertEquals(topicPartition.partition(), testPartition);
             Assertions.assertEquals(topicPartition.topic(), topic);
@@ -139,11 +167,54 @@ public class KafkaSourceCustomConsumerTest {
     }
 
     @Test
+    public void testPlainTextConsumeRecordsWithAcknowledgements() throws InterruptedException {
+        String topic = topicConfig.getName();
+        consumerRecords = createPlainTextRecords(topic);
+        when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("plaintext", true);
+
+        try {
+            consumer.consumeRecords();
+        } catch (Exception e){}
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 0);
+
+        for (Record<Event> record: bufferedRecords) {
+            Event event = record.getData();
+            String value1 = event.get(testKey1, String.class);
+            String value2 = event.get(testKey2, String.class);
+            assertTrue(value1 != null || value2 != null);
+            if (value1 != null) {
+                Assertions.assertEquals(value1, testValue1);
+            }
+            if (value2 != null) {
+                Assertions.assertEquals(value2, testValue2);
+            }
+            event.getEventHandle().release(true);
+        }
+        // Wait for acknowledgement callback function to run
+        try {
+            Thread.sleep(10000);
+        } catch (Exception e){}
+
+        offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 1);
+        offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
+            Assertions.assertEquals(topicPartition.partition(), testPartition);
+            Assertions.assertEquals(topicPartition.topic(), topic);
+            Assertions.assertEquals(offsetAndMetadata.offset(), 2L);
+        });
+    }
+
+    @Test
     public void testJsonConsumeRecords() throws InterruptedException, Exception {
         String topic = topicConfig.getName();
         consumerRecords = createJsonRecords(topic);
         when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
-        consumer = createObjectUnderTest("json");
+        consumer = createObjectUnderTest("json", false);
 
         consumer.consumeRecords();
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
