@@ -35,6 +35,9 @@ dependencies {
     testImplementation 'junit:junit:4.13.1'
     testImplementation 'org.apache.kafka:kafka-clients:3.4.0:test'
     testImplementation 'org.apache.kafka:connect-json:3.4.0'
+    implementation group: 'org.apache.kafka', name: 'connect-json', version: '3.4.0'
+    implementation project(':data-prepper-plugins:failures-common')
+    testImplementation group: 'org.powermock', name: 'powermock-api-mockito2', version: '2.0.9'
 }
 
 test {
