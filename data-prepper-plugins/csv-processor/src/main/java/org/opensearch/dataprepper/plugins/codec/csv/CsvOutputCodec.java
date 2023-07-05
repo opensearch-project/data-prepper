@@ -30,7 +30,7 @@ public class CsvOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
         // TODO: validate data according to header and write event data to the outputstream
     }
 
