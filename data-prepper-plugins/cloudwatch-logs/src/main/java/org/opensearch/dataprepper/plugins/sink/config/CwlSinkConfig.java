@@ -19,8 +19,7 @@ public class CwlSinkConfig {
     private AwsConfig awsConfig;
 
     @JsonProperty("threshold")
-    @NotNull
-    private ThresholdConfig thresholdConfig;
+    private ThresholdConfig thresholdConfig = new ThresholdConfig();
 
     @JsonProperty("buffer_type")
     private String bufferType = DEFAULT_BUFFER_TYPE;
