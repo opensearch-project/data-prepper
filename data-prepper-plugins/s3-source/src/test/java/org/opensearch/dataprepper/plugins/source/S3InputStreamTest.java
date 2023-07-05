@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.ByteArrayInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -104,6 +105,19 @@ class S3InputStreamTest {
     }
 
     @Test
+    void testReadEndOfFile() throws IOException {
+        InputStream inputStream = new ByteArrayInputStream("".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+
+        int firstByte = s3InputStream.read();
+        assertEquals(-1, firstByte);
+
+        s3InputStream.close();
+
+        verify(s3ObjectSizeProcessedSummary).record(0.0);
+    }
+
+    @Test
     void testReadByteArray() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
@@ -148,6 +162,20 @@ class S3InputStreamTest {
 
         s3InputStream.close();
         verify(s3ObjectSizeProcessedSummary).record(4.0);
+    }
+
+    @Test
+    void testReadNBytes_endOfFile() throws Exception {
+        InputStream inputStream = new ByteArrayInputStream("".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+
+        byte[] buffer = new byte[9];
+        int bytesRead = s3InputStream.readNBytes(buffer, 0, 4);
+
+        assertEquals(0, bytesRead);
+
+        s3InputStream.close();
+        verify(s3ObjectSizeProcessedSummary).record(0.0);
     }
 
     @Test
@@ -240,6 +268,19 @@ class S3InputStreamTest {
 
         s3InputStream.close();
         verify(s3ObjectSizeProcessedSummary).record(4.0);
+    }
+
+    @Test
+    void testReadFullyByteBuffer_endOfFile() throws IOException {
+        InputStream inputStream = new ByteArrayInputStream("".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        s3InputStream.seek(0); // Force opening the stream
+
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        assertThrows(EOFException.class, () -> s3InputStream.readFully(buffer));
+
+        s3InputStream.close();
+        verify(s3ObjectSizeProcessedSummary).record(0.0);
     }
 
     @Test
