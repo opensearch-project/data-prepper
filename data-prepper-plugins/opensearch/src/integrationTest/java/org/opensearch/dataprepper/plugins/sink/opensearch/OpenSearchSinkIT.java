@@ -48,6 +48,8 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfigurati
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.apache.commons.lang3.RandomStringUtils;
+
+import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.Mockito.when;
 
 import javax.ws.rs.HttpMethod;
@@ -215,8 +217,10 @@ public class OpenSearchSinkIT {
                 RuntimeException.class, () -> sink.doInitialize());
     }
 
-    @Test
-    public void testOutputRawSpanDefault() throws IOException, InterruptedException {
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+    public void testOutputRawSpanDefault(final boolean estimateBulkSizeUsingCompression,
+                                         final boolean isRequestCompressionEnabled) throws IOException, InterruptedException {
         final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
         final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_2);
         final ObjectMapper mapper = new ObjectMapper();
@@ -224,7 +228,8 @@ public class OpenSearchSinkIT {
         @SuppressWarnings("unchecked") final Map<String, Object> expData2 = mapper.readValue(testDoc2, Map.class);
 
         final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
-        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null,
+                estimateBulkSizeUsingCompression, isRequestCompressionEnabled);
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
 
@@ -275,12 +280,15 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(773.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(773.0, 0));
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 773.0 : 2058.0;
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
     }
 
-    @Test
-    public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+    public void testOutputRawSpanWithDLQ(final boolean estimateBulkSizeUsingCompression,
+                                         final boolean isRequestCompressionEnabled) throws IOException, InterruptedException {
         // TODO: write test case
         final String testDoc1 = readDocFromFile("raw-span-error.json");
         final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
@@ -288,7 +296,8 @@ public class OpenSearchSinkIT {
         @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
 
         final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
-        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null,
+                estimateBulkSizeUsingCompression, isRequestCompressionEnabled);
         // generate temporary directory for dlq file
         final File tempDirectory = Files.createTempDirectory("").toFile();
         // add dlq file path into setting
@@ -331,8 +340,9 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(1066.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(1066.0, 0));
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 1066.0 : 2072.0;
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
 
     }
 
@@ -355,14 +365,17 @@ public class OpenSearchSinkIT {
         }
     }
 
-    @Test
-    public void testOutputServiceMapDefault() throws IOException, InterruptedException {
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+    public void testOutputServiceMapDefault(final boolean estimateBulkSizeUsingCompression,
+                                            final boolean isRequestCompressionEnabled) throws IOException, InterruptedException {
         final String testDoc = readDocFromFile(DEFAULT_SERVICE_MAP_FILE);
         final ObjectMapper mapper = new ObjectMapper();
         @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
 
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(testDoc));
-        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null);
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null,
+                estimateBulkSizeUsingCompression, isRequestCompressionEnabled);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
@@ -388,8 +401,9 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(366.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(366.0, 0));
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 366.0 : 265.0;
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
 
         // Check restart for index already exists
         sink = createObjectUnderTest(pluginSetting, true);
@@ -881,6 +895,15 @@ public class OpenSearchSinkIT {
     private PluginSetting generatePluginSetting(final String indexType, final String indexAlias,
                                                 final String templateFilePath) {
         final Map<String, Object> metadata = initializeConfigurationMetadata(indexType, indexAlias, templateFilePath);
+        return generatePluginSettingByMetadata(metadata);
+    }
+
+    private PluginSetting generatePluginSetting(final String indexType, final String indexAlias,
+                                                final String templateFilePath, final boolean estimateBulkSizeUsingCompression,
+                                                final boolean requestCompressionEnabled) {
+        final Map<String, Object> metadata = initializeConfigurationMetadata(indexType, indexAlias, templateFilePath);
+        metadata.put(IndexConfiguration.ESTIMATE_BULK_SIZE_USING_COMPRESSION, estimateBulkSizeUsingCompression);
+        metadata.put(ConnectionConfiguration.REQUEST_COMPRESSION_ENABLED, requestCompressionEnabled);
         return generatePluginSettingByMetadata(metadata);
     }
 

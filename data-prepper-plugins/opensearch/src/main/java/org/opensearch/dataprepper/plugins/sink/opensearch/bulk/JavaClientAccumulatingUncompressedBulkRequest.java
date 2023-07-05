@@ -2,7 +2,6 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
-import org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchSink;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

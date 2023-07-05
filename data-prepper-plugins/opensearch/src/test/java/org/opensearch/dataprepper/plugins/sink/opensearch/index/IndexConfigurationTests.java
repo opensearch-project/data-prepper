@@ -282,6 +282,7 @@ public class IndexConfigurationTests {
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(5, indexConfiguration.getBulkSize());
         assertEquals(60_000L, indexConfiguration.getFlushTimeout());
+        assertEquals(false, indexConfiguration.isEstimateBulkSizeUsingCompression());
         assertEquals("spanId", indexConfiguration.getDocumentIdField());
     }
 
@@ -306,6 +307,7 @@ public class IndexConfigurationTests {
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(5, indexConfiguration.getBulkSize());
         assertEquals(60_000L, indexConfiguration.getFlushTimeout());
+        assertEquals(false, indexConfiguration.isEstimateBulkSizeUsingCompression());
         assertEquals("hashId", indexConfiguration.getDocumentIdField());
     }
 
@@ -319,12 +321,14 @@ public class IndexConfigurationTests {
         final String testIdField = "someId";
         final PluginSetting pluginSetting = generatePluginSetting(
                 null, testIndexAlias, defaultTemplateFilePath, testBulkSize, testFlushTimeout, testIdField);
+        pluginSetting.getSettings().put(IndexConfiguration.ESTIMATE_BULK_SIZE_USING_COMPRESSION, true);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(testBulkSize, indexConfiguration.getBulkSize());
         assertEquals(testFlushTimeout, indexConfiguration.getFlushTimeout());
+        assertEquals(true, indexConfiguration.isEstimateBulkSizeUsingCompression());
         assertEquals(testIdField, indexConfiguration.getDocumentIdField());
     }
 

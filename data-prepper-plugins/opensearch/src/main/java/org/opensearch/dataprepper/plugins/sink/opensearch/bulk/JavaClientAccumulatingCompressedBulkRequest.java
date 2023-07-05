@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.slf4j.Logger;
@@ -22,6 +23,8 @@ import java.util.zip.GZIPOutputStream;
 public class JavaClientAccumulatingCompressedBulkRequest implements AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> {
     private static final Logger LOG = LoggerFactory.getLogger(JavaClientAccumulatingCompressedBulkRequest.class);
 
+    private static final int MAX_SAMPLE_TIMES = 2;
+
     private final List<BulkOperationWrapper> bulkOperations;
     private long sampleSize;
     private final long targetBulkSize;
@@ -29,6 +32,7 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
     private long currentBulkSize = 0L;
     private double sampledOperationSize = 0.0;
     private int operationCount = 0;
+    private int timesSampled = 0;
     private BulkRequest builtRequest;
 
     public JavaClientAccumulatingCompressedBulkRequest(final BulkRequest.Builder bulkRequestBuilder, final long targetBulkSize) {
@@ -37,6 +41,14 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
         this.targetBulkSize = targetBulkSize;
         // Set the initial sample threshold by assuming each doc size is 5KB when compressed
         this.sampleSize = 10;
+    }
+
+    @VisibleForTesting
+    JavaClientAccumulatingCompressedBulkRequest(final BulkRequest.Builder bulkRequestBuilder, final long targetBulkSize, final int sampleSize) {
+        this.bulkRequestBuilder = bulkRequestBuilder;
+        bulkOperations = new ArrayList<>();
+        this.targetBulkSize = targetBulkSize;
+        this.sampleSize = sampleSize;
     }
 
     @Override
@@ -51,10 +63,11 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
         operationCount++;
         bulkOperations.add(bulkOperation);
 
-        if (bulkOperations.size() == sampleSize) {
+        if (timesSampled < MAX_SAMPLE_TIMES && bulkOperations.size() == sampleSize) {
             currentBulkSize = estimateBulkSize();
             sampledOperationSize = (double) currentBulkSize / (double) bulkOperations.size();
             updateTargetSampleSize();
+            timesSampled++;
         } else {
             currentBulkSize += sampledOperationSize;
         }
