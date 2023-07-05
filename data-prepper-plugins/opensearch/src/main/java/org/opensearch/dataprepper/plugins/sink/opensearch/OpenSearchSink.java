@@ -196,7 +196,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     final boolean isEstimateBulkSizeUsingCompression = openSearchSinkConfig.getIndexConfiguration().isEstimateBulkSizeUsingCompression();
     final boolean isRequestCompressionEnabled = openSearchSinkConfig.getConnectionConfiguration().isRequestCompressionEnabled();
     if (isEstimateBulkSizeUsingCompression && isRequestCompressionEnabled) {
-      bulkRequestSupplier = () -> new JavaClientAccumulatingCompressedBulkRequest(new BulkRequest.Builder(), bulkSize);
+      final int maxLocalCompressionsForEstimation = openSearchSinkConfig.getIndexConfiguration().getMaxLocalCompressionsForEstimation();
+      bulkRequestSupplier = () -> new JavaClientAccumulatingCompressedBulkRequest(new BulkRequest.Builder(), bulkSize, maxLocalCompressionsForEstimation);
     } else if (isEstimateBulkSizeUsingCompression) {
       LOG.warn("Estimate bulk request size using compression was enabled but request compression is disabled. " +
               "Estimating bulk request size without compression.");

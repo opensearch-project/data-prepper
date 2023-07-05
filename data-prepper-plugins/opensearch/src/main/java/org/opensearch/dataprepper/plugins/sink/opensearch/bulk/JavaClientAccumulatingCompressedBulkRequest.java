@@ -23,11 +23,10 @@ import java.util.zip.GZIPOutputStream;
 public class JavaClientAccumulatingCompressedBulkRequest implements AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> {
     private static final Logger LOG = LoggerFactory.getLogger(JavaClientAccumulatingCompressedBulkRequest.class);
 
-    private static final int MAX_SAMPLE_TIMES = 2;
-
     private final List<BulkOperationWrapper> bulkOperations;
     private long sampleSize;
     private final long targetBulkSize;
+    private final int maxLocalCompressionsForEstimation;
     private BulkRequest.Builder bulkRequestBuilder;
     private long currentBulkSize = 0L;
     private double sampledOperationSize = 0.0;
@@ -35,19 +34,23 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
     private int timesSampled = 0;
     private BulkRequest builtRequest;
 
-    public JavaClientAccumulatingCompressedBulkRequest(final BulkRequest.Builder bulkRequestBuilder, final long targetBulkSize) {
+    public JavaClientAccumulatingCompressedBulkRequest(final BulkRequest.Builder bulkRequestBuilder, final long targetBulkSize,
+                                                       final int maxLocalCompressionsForEstimation) {
         this.bulkRequestBuilder = bulkRequestBuilder;
         bulkOperations = new ArrayList<>();
         this.targetBulkSize = targetBulkSize;
-        // Set the initial sample threshold by assuming each doc size is 5KB when compressed
+        this.maxLocalCompressionsForEstimation = maxLocalCompressionsForEstimation;
+        // Set the sample size to 10 to get an initial data point
         this.sampleSize = 10;
     }
 
     @VisibleForTesting
-    JavaClientAccumulatingCompressedBulkRequest(final BulkRequest.Builder bulkRequestBuilder, final long targetBulkSize, final int sampleSize) {
+    JavaClientAccumulatingCompressedBulkRequest(final BulkRequest.Builder bulkRequestBuilder, final long targetBulkSize,
+                                                final int maxLocalCompressionsForEstimation, final int sampleSize) {
         this.bulkRequestBuilder = bulkRequestBuilder;
         bulkOperations = new ArrayList<>();
         this.targetBulkSize = targetBulkSize;
+        this.maxLocalCompressionsForEstimation = maxLocalCompressionsForEstimation;
         this.sampleSize = sampleSize;
     }
 
@@ -63,7 +66,7 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
         operationCount++;
         bulkOperations.add(bulkOperation);
 
-        if (timesSampled < MAX_SAMPLE_TIMES && bulkOperations.size() == sampleSize) {
+        if (timesSampled < maxLocalCompressionsForEstimation && bulkOperations.size() == sampleSize) {
             currentBulkSize = estimateBulkSize();
             sampledOperationSize = (double) currentBulkSize / (double) bulkOperations.size();
             updateTargetSampleSize();
@@ -149,7 +152,7 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
         final double remainingBytesAsPercentage = ((double) remainingBytes / (double) targetBulkSize) * 100d;
 
         if (remainingBytesAsPercentage < 10d) {
-            LOG.warn("Found remaining percentage of {}, current size {}, target size {}. Skipping further estimations",
+            LOG.debug("Found remaining percentage of {}, current size {}, target size {}. Skipping further estimations",
                     remainingBytesAsPercentage, currentBulkSize, targetBulkSize);
             // If we have packed at least 90% of the bulk request already, assume the sampled operation size is sufficient
             // and continue with that estimate rather than eating the overhead of more local compressions
@@ -159,14 +162,14 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
         final double estimatedRemainingOperationsUntilFull = (double) remainingBytes / sampledOperationSize;
 
         if (estimatedRemainingOperationsUntilFull < 100d) {
-            LOG.warn("Found estimated remaining operations of {}. Skipping further estimations", estimatedRemainingOperationsUntilFull);
+            LOG.debug("Found estimated remaining operations of {}. Skipping further estimations", estimatedRemainingOperationsUntilFull);
             // If we have less than 100 estimated operations until the bulk request is full, assume the sampled operation size is sufficient
             // and continue with that estimate rather than eating the overhead of more local compressions
             return;
         }
 
         final double operationsUntilNextSample = estimatedRemainingOperationsUntilFull / 2d;
-        LOG.warn("{} bytes remaining to {}. Average size so far {}, checking again in {} ops", targetBulkSize - currentBulkSize, targetBulkSize,
+        LOG.debug("{} bytes remaining to {}. Average size so far {}, checking again in {} ops", targetBulkSize - currentBulkSize, targetBulkSize,
                 sampledOperationSize, operationsUntilNextSample);
 
         sampleSize += operationsUntilNextSample;

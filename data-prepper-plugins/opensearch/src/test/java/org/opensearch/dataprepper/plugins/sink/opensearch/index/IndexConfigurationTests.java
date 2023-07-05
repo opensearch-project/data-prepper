@@ -283,6 +283,7 @@ public class IndexConfigurationTests {
         assertEquals(5, indexConfiguration.getBulkSize());
         assertEquals(60_000L, indexConfiguration.getFlushTimeout());
         assertEquals(false, indexConfiguration.isEstimateBulkSizeUsingCompression());
+        assertEquals(2, indexConfiguration.getMaxLocalCompressionsForEstimation());
         assertEquals("spanId", indexConfiguration.getDocumentIdField());
     }
 
@@ -308,6 +309,7 @@ public class IndexConfigurationTests {
         assertEquals(5, indexConfiguration.getBulkSize());
         assertEquals(60_000L, indexConfiguration.getFlushTimeout());
         assertEquals(false, indexConfiguration.isEstimateBulkSizeUsingCompression());
+        assertEquals(2, indexConfiguration.getMaxLocalCompressionsForEstimation());
         assertEquals("hashId", indexConfiguration.getDocumentIdField());
     }
 
@@ -322,6 +324,7 @@ public class IndexConfigurationTests {
         final PluginSetting pluginSetting = generatePluginSetting(
                 null, testIndexAlias, defaultTemplateFilePath, testBulkSize, testFlushTimeout, testIdField);
         pluginSetting.getSettings().put(IndexConfiguration.ESTIMATE_BULK_SIZE_USING_COMPRESSION, true);
+        pluginSetting.getSettings().put(IndexConfiguration.MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION, 5);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
@@ -329,6 +332,7 @@ public class IndexConfigurationTests {
         assertEquals(testBulkSize, indexConfiguration.getBulkSize());
         assertEquals(testFlushTimeout, indexConfiguration.getFlushTimeout());
         assertEquals(true, indexConfiguration.isEstimateBulkSizeUsingCompression());
+        assertEquals(5, indexConfiguration.getMaxLocalCompressionsForEstimation());
         assertEquals(testIdField, indexConfiguration.getDocumentIdField());
     }
 

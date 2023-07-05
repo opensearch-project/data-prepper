@@ -49,7 +49,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.apache.commons.lang3.RandomStringUtils;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.Mockito.when;
 
 import javax.ws.rs.HttpMethod;

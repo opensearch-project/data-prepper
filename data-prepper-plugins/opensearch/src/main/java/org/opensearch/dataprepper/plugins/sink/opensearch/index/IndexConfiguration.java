@@ -37,12 +37,14 @@ public class IndexConfiguration {
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
     public static final String ESTIMATE_BULK_SIZE_USING_COMPRESSION = "estimate_bulk_size_using_compression";
+    public static final String MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = "max_local_compressions_for_estimation";
     public static final String FLUSH_TIMEOUT = "flush_timeout";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String ROUTING_FIELD = "routing_field";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
     public static final boolean DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION = false;
+    public static final int DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = 2;
     public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
@@ -60,6 +62,7 @@ public class IndexConfiguration {
     private final String routingField;
     private final long bulkSize;
     private final boolean estimateBulkSizeUsingCompression;
+    private int maxLocalCompressionsForEstimation;
     private final long flushTimeout;
     private final Optional<String> ismPolicyFile;
     private final String action;
@@ -107,6 +110,7 @@ public class IndexConfiguration {
         this.indexAlias = indexAlias;
         this.bulkSize = builder.bulkSize;
         this.estimateBulkSizeUsingCompression = builder.estimateBulkSizeUsingCompression;
+        this.maxLocalCompressionsForEstimation = builder.maxLocalCompressionsForEstimation;
         this.flushTimeout = builder.flushTimeout;
         this.routingField = builder.routingField;
 
@@ -160,6 +164,11 @@ public class IndexConfiguration {
         final boolean estimateBulkSizeUsingCompression =
                 pluginSetting.getBooleanOrDefault(ESTIMATE_BULK_SIZE_USING_COMPRESSION, DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION);
         builder = builder.withEstimateBulkSizeUsingCompression(estimateBulkSizeUsingCompression);
+
+        final int maxLocalCompressionsForEstimation =
+                pluginSetting.getIntegerOrDefault(MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION, DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION);
+        builder = builder.withMaxLocalCompressionsForEstimation(maxLocalCompressionsForEstimation);
+
         final long flushTimeout = pluginSetting.getLongOrDefault(FLUSH_TIMEOUT, DEFAULT_FLUSH_TIMEOUT);
         builder = builder.withFlushTimeout(flushTimeout);
         final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
@@ -230,6 +239,10 @@ public class IndexConfiguration {
 
     public boolean isEstimateBulkSizeUsingCompression() {
         return estimateBulkSizeUsingCompression;
+    }
+
+    public int getMaxLocalCompressionsForEstimation() {
+        return maxLocalCompressionsForEstimation;
     }
 
     public long getFlushTimeout() {
@@ -321,6 +334,7 @@ public class IndexConfiguration {
         private String documentIdField;
         private long bulkSize = DEFAULT_BULK_SIZE;
         private boolean estimateBulkSizeUsingCompression = DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION;
+        private int maxLocalCompressionsForEstimation = DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION;
         private long flushTimeout = DEFAULT_FLUSH_TIMEOUT;
         private Optional<String> ismPolicyFile;
         private String action;
@@ -376,6 +390,11 @@ public class IndexConfiguration {
 
         public Builder withEstimateBulkSizeUsingCompression(final boolean estimateBulkSizeUsingCompression) {
             this.estimateBulkSizeUsingCompression = estimateBulkSizeUsingCompression;
+            return this;
+        }
+
+        public Builder withMaxLocalCompressionsForEstimation(final int maxLocalCompressionsForEstimation) {
+            this.maxLocalCompressionsForEstimation = maxLocalCompressionsForEstimation;
             return this;
         }
 

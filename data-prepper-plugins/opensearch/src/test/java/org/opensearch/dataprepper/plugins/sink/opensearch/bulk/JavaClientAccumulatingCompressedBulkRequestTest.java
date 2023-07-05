@@ -47,7 +47,7 @@ class JavaClientAccumulatingCompressedBulkRequestTest {
     }
 
     private JavaClientAccumulatingCompressedBulkRequest createObjectUnderTest() {
-        return new JavaClientAccumulatingCompressedBulkRequest(bulkRequestBuilder, 5 * 1024 * 1024, 1);
+        return new JavaClientAccumulatingCompressedBulkRequest(bulkRequestBuilder, 5 * 1024 * 1024, 2, 1);
     }
 
     @Test
