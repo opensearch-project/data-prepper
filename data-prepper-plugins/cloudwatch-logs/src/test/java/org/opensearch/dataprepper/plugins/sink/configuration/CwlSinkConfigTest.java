@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.sink.configuration;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +35,11 @@ public class CwlSinkConfigTest {
     }
 
     @Test
+    void check_null_threshold_config_test() {
+        assertThat(new CwlSinkConfig().getThresholdConfig(), equalTo(null));
+    }
+
+    @Test
     void check_default_buffer_type_test() {
         assertThat(new CwlSinkConfig().getBufferType(), equalTo(CwlSinkConfig.DEFAULT_BUFFER_TYPE));
     }
@@ -38,6 +48,7 @@ public class CwlSinkConfigTest {
     void check_null_log_group_test() {
         assertThat(new CwlSinkConfig().getLogGroup(), equalTo(null));
     }
+
     @Test
     void check_null_log_stream_test() {
         assertThat(new CwlSinkConfig().getLogStream(), equalTo(null));
