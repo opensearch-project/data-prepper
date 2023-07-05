@@ -15,7 +15,7 @@ public class ThresholdCheck {
     private final int maxRequestSizeBytes;
     private final long logSendInterval;
 
-    public ThresholdCheck(final int batchSize, final int maxEventSizeBytes, final int maxRequestSizeBytes, final int logSendInterval) {
+    ThresholdCheck (int batchSize, int maxEventSizeBytes, int maxRequestSizeBytes, int logSendInterval) {
         this.batchSize = batchSize;
         this.maxEventSizeBytes = maxEventSizeBytes;
         this.maxRequestSizeBytes = maxRequestSizeBytes;

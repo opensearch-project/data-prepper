@@ -9,6 +9,8 @@ repositories {
 
 dependencies {
     implementation project(':data-prepper-plugins:aws-plugin-api')
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation('org.mockito:mockito-inline:3.8.0')
     implementation project(path: ':data-prepper-plugins:common')
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
