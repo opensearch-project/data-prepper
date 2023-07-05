@@ -36,6 +36,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
     private final Set<String> validTransformOptionSet = Set.of("", "lowercase", "uppercase", "capitalize");
+    private final String LOWERCASE_KEY = "lowercase";
+    private final String UPPERCASE_KEY = "uppercase";
+    private final String CAPITALIZE_KEY = "capitalize";
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -182,11 +185,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private String transformKey(String key) {
-        if(keyValueProcessorConfig.getTransformKey().equals("lowercase")) {
+        if(keyValueProcessorConfig.getTransformKey().equals(LOWERCASE_KEY)) {
             key = key.toLowerCase();
-        } else if(keyValueProcessorConfig.getTransformKey().equals("uppercase")) {
+        } else if(keyValueProcessorConfig.getTransformKey().equals(UPPERCASE_KEY)) {
             key = key.substring(0, 1).toUpperCase() + key.substring(1);
-        } else if(keyValueProcessorConfig.getTransformKey().equals("capitalize")) {
+        } else if(keyValueProcessorConfig.getTransformKey().equals(CAPITALIZE_KEY)) {
             key = key.toUpperCase();
         }
         return key;
