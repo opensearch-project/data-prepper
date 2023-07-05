@@ -133,8 +133,7 @@ public class OpenSearchClientFactory {
 
         final RestClientBuilder restClientBuilder = RestClient.builder(httpHosts);
 
-        LOG.info("Using username and password for auth for the OpenSearch source");
-        attachUsernamePassword(restClientBuilder, openSearchSourceConfiguration);
+        attachBasicAuth(restClientBuilder, openSearchSourceConfiguration);
 
         setConnectAndSocketTimeout(restClientBuilder, openSearchSourceConfiguration);
 
@@ -161,33 +160,35 @@ public class OpenSearchClientFactory {
                 new BasicHeader("Content-type", "application/json")
         });
 
-        LOG.info("Using username and password for auth for the OpenSearch source");
-        attachUsernamePassword(restClientBuilder, openSearchSourceConfiguration);
-
+        attachBasicAuth(restClientBuilder, openSearchSourceConfiguration);
         setConnectAndSocketTimeout(restClientBuilder, openSearchSourceConfiguration);
 
         return restClientBuilder.build();
     }
 
-    private void attachUsernamePassword(final RestClientBuilder restClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
-        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(AuthScope.ANY,
-                new UsernamePasswordCredentials(openSearchSourceConfiguration.getUsername(), openSearchSourceConfiguration.getPassword()));
+    private void attachBasicAuth(final RestClientBuilder restClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
 
         restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
-            httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+            if (!openSearchSourceConfiguration.isAuthenticationDisabled()) {
+                attachUsernameAndPassword(httpClientBuilder, openSearchSourceConfiguration);
+            } else {
+                LOG.warn("Authentication was explicitly disabled for the OpenSearch source");
+            }
+
             attachSSLContext(httpClientBuilder, openSearchSourceConfiguration);
             return httpClientBuilder;
         });
     }
 
-    private void attachUsernamePassword(final org.elasticsearch.client.RestClientBuilder restClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
-        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        credentialsProvider.setCredentials(AuthScope.ANY,
-                new UsernamePasswordCredentials(openSearchSourceConfiguration.getUsername(), openSearchSourceConfiguration.getPassword()));
+    private void attachBasicAuth(final org.elasticsearch.client.RestClientBuilder restClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
 
         restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
-            httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+
+            if (!openSearchSourceConfiguration.isAuthenticationDisabled()) {
+                attachUsernameAndPassword(httpClientBuilder, openSearchSourceConfiguration);
+            } else {
+                LOG.warn("Authentication was explicitly disabled for the OpenSearch source");
+            }
             attachSSLContext(httpClientBuilder, openSearchSourceConfiguration);
             httpClientBuilder.addInterceptorLast(
                     (HttpResponseInterceptor)
@@ -209,6 +210,15 @@ public class OpenSearchClientFactory {
 
             return requestConfigBuilder;
         });
+    }
+
+    private void attachUsernameAndPassword(final HttpAsyncClientBuilder httpClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+        LOG.info("Using username and password for auth for the OpenSearch source");
+
+        final CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        credentialsProvider.setCredentials(AuthScope.ANY,
+                new UsernamePasswordCredentials(openSearchSourceConfiguration.getUsername(), openSearchSourceConfiguration.getPassword()));
+        httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
     }
 
     private void setConnectAndSocketTimeout(final org.elasticsearch.client.RestClientBuilder restClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {

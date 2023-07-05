@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import org.apache.avro.generic.GenericRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
@@ -12,16 +13,19 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.micrometer.core.instrument.Counter;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.consumer.MultithreadedConsumer;
+import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
@@ -43,6 +47,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * The starting point of the Kafka-source plugin and the Kafka consumer
  * properties and kafka multithreaded consumers are being handled here.
@@ -50,58 +55,76 @@ import java.util.stream.IntStream;
 
 @SuppressWarnings("deprecation")
 @DataPrepperPlugin(name = "kafka", pluginType = Source.class, pluginConfigurationType = KafkaSourceConfig.class)
-public class KafkaSource implements Source<Record<Object>> {
+public class KafkaSource implements Source<Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSource.class);
     private final KafkaSourceConfig sourceConfig;
+    private AtomicBoolean shutdownInProgress;
     private ExecutorService executorService;
     private static final String KAFKA_WORKER_THREAD_PROCESSING_ERRORS = "kafkaWorkerThreadProcessingErrors";
     private final Counter kafkaWorkerThreadProcessingErrors;
     private final PluginMetrics pluginMetrics;
-    private String consumerGroupID;
-    private MultithreadedConsumer multithreadedConsumer;
-    private int totalWorkers;
+    private KafkaSourceCustomConsumer consumer;
     private String pipelineName;
-    private static String schemaType = MessageFormat.PLAINTEXT.toString();
+    private String schemaType = MessageFormat.PLAINTEXT.toString();
     private static final String SCHEMA_TYPE= "schemaType";
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     @DataPrepperPluginConstructor
-    public KafkaSource(final KafkaSourceConfig sourceConfig, final PluginMetrics pluginMetrics,
+    public KafkaSource(final KafkaSourceConfig sourceConfig,
+                       final PluginMetrics pluginMetrics,
+                       final AcknowledgementSetManager acknowledgementSetManager,
                        final PipelineDescription pipelineDescription) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
+        this.acknowledgementSetManager = acknowledgementSetManager;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.kafkaWorkerThreadProcessingErrors = pluginMetrics.counter(KAFKA_WORKER_THREAD_PROCESSING_ERRORS);
+        shutdownInProgress = new AtomicBoolean(false);
     }
 
     @Override
-    public void start(Buffer<Record<Object>> buffer) {
+    public void start(Buffer<Record<Event>> buffer) {
         sourceConfig.getTopics().forEach(topic -> {
-            totalWorkers = 0;
+            Properties consumerProperties = getConsumerProperties(topic);
+            MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
+
             try {
-                Properties consumerProperties = getConsumerProperties(topic);
-                totalWorkers = topic.getWorkers();
-                consumerGroupID = getGroupId(topic.getName());
-                executorService = Executors.newFixedThreadPool(totalWorkers);
-                IntStream.range(0, totalWorkers + 1).forEach(index -> {
-                    String consumerId = consumerGroupID + "::" + Integer.toString(index + 1);
-                    multithreadedConsumer = new MultithreadedConsumer(consumerId,
-                            consumerGroupID, consumerProperties, topic, sourceConfig, buffer, pluginMetrics, schemaType);
-                    executorService.submit(multithreadedConsumer);
+                int numWorkers = topic.getWorkers();
+                executorService = Executors.newFixedThreadPool(numWorkers);
+                IntStream.range(0, numWorkers + 1).forEach(index -> {
+                    KafkaConsumer kafkaConsumer;
+                    switch (schema) {
+                        case JSON:
+                            kafkaConsumer = new KafkaConsumer<String, JsonNode>(consumerProperties);
+                            break;
+                        case AVRO:
+                            kafkaConsumer = new KafkaConsumer<String, GenericRecord>(consumerProperties);
+                            break;
+                        case PLAINTEXT:
+                        default:
+                            kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);
+                            break;
+                    }
+                    consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, pluginMetrics);
+
+                    executorService.submit(consumer);
                 });
             } catch (Exception e) {
                 LOG.error("Failed to setup the Kafka Source Plugin.", e);
                 throw new RuntimeException();
             }
+            LOG.info("Started Kafka source for topic " + topic.getName());
         });
     }
 
     @Override
     public void stop() {
         LOG.info("Shutting down Consumers...");
+        shutdownInProgress.set(true);
         executorService.shutdown();
         try {
             if (!executorService.awaitTermination(
-                    calculateLongestThreadWaitingTime(), TimeUnit.MILLISECONDS)) {
+                    calculateLongestThreadWaitingTime(), TimeUnit.SECONDS)) {
                 LOG.info("Consumer threads are waiting for shutting down...");
                 executorService.shutdownNow();
             }
@@ -113,10 +136,6 @@ public class KafkaSource implements Source<Record<Object>> {
             }
         }
         LOG.info("Consumer shutdown successfully...");
-    }
-
-    private String getGroupId(String name) {
-        return pipelineName + "::" + name;
     }
 
     private long calculateLongestThreadWaitingTime() {
@@ -138,8 +157,12 @@ public class KafkaSource implements Source<Record<Object>> {
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, sourceConfig.getBootStrapServers());
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
                 topicConfig.getAutoCommit());
+        properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
+                topicConfig.getConsumerMaxPollRecords());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
-        schemaType = getSchemaType(sourceConfig.getSchemaConfig().getRegistryURL(), topicConfig.getName(), sourceConfig.getSchemaConfig().getVersion());
+        if (sourceConfig.getSchemaConfig() != null) {
+            schemaType = getSchemaType(sourceConfig.getSchemaConfig().getRegistryURL(), topicConfig.getName(), sourceConfig.getSchemaConfig().getVersion());
+        }
         if (schemaType.isEmpty()) {
             schemaType = MessageFormat.PLAINTEXT.toString();
         }

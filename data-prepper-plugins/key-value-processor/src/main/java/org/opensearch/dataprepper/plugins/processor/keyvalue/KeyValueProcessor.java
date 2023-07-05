@@ -35,10 +35,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
-    private final Set<String> validTransformOptionSet = Set.of("", "lowercase", "uppercase", "capitalize");
     private final String LOWERCASE_KEY = "lowercase";
     private final String UPPERCASE_KEY = "uppercase";
     private final String CAPITALIZE_KEY = "capitalize";
+    private final Set<String> validTransformOptionSet = Set.of("", LOWERCASE_KEY, UPPERCASE_KEY, CAPITALIZE_KEY);
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {

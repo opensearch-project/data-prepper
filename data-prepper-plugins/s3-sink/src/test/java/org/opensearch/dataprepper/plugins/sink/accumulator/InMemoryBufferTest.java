@@ -14,6 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.s3.S3Client;
 import java.io.IOException;
+import java.io.OutputStream;
+
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,7 +33,10 @@ class InMemoryBufferTest {
         inMemoryBuffer = new InMemoryBuffer();
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
-            inMemoryBuffer.writeEvent(generateByteArray());
+            OutputStream outputStream = inMemoryBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = inMemoryBuffer.getEventCount() +1;
+            inMemoryBuffer.setEventCount(eventCount);
         }
         assertThat(inMemoryBuffer.getSize(), greaterThanOrEqualTo(54110L));
         assertThat(inMemoryBuffer.getEventCount(), equalTo(MAX_EVENTS));
@@ -44,7 +49,10 @@ class InMemoryBufferTest {
         inMemoryBuffer = new InMemoryBuffer();
 
         while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
-            inMemoryBuffer.writeEvent(generateByteArray());
+            OutputStream outputStream = inMemoryBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = inMemoryBuffer.getEventCount() +1;
+            inMemoryBuffer.setEventCount(eventCount);
         }
         assertDoesNotThrow(() -> {
             inMemoryBuffer.flushToS3(s3Client, "data-prepper", "log.txt");

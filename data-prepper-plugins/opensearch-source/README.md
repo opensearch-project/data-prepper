@@ -114,6 +114,9 @@ opensearch-source-pipeline:
 - `password` (Optional) : A String of password used in the internal users of OpenSearch cluster. Default is null.
 
 
+- `disable_authentication` (Optional) : A boolean that can disable authentication if the cluster supports it. Defaults to false.
+
+
 - `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details. SigV4 is enabled by default when this option is used.
 
 

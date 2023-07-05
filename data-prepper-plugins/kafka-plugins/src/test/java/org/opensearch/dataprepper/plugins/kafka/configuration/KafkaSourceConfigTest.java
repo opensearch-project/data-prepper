@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.time.Duration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
@@ -24,6 +25,7 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 class KafkaSourceConfigTest {
 
@@ -70,11 +72,13 @@ class KafkaSourceConfigTest {
 
 	@Test
 	void test_topics_not_null(){
+		assertEquals(false, kafkaSourceConfig.getAcknowledgementsEnabled());
+		assertEquals(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT, kafkaSourceConfig.getAcknowledgementsTimeout());
 		assertThat(kafkaSourceConfig.getTopics(), notNullValue());
 	}
 
 	@Test
-	void test_setters(){
+	void test_setters() throws NoSuchFieldException, IllegalAccessException {
 		kafkaSourceConfig = new KafkaSourceConfig();
 		kafkaSourceConfig.setBootStrapServers(new ArrayList<>(Arrays.asList("127.0.0.1:9092")));
 		TopicConfig topicConfig = mock(TopicConfig.class);
@@ -82,5 +86,10 @@ class KafkaSourceConfigTest {
 
 		assertEquals(Arrays.asList("127.0.0.1:9092"), kafkaSourceConfig.getBootStrapServers());
 		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
+        setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsEnabled", true);
+        Duration testTimeout = Duration.ofSeconds(10);
+        setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsTimeout", testTimeout);
+		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
+		assertEquals(testTimeout, kafkaSourceConfig.getAcknowledgementsTimeout());
 	}
 }
