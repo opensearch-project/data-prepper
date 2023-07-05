@@ -22,6 +22,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,9 +43,10 @@ public class ConvertEntryTypeProcessor_NullValueTests {
 
     @BeforeEach
     private void setup() {
-        when(mockConfig.getKey()).thenReturn(TEST_KEY);
-        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
-        when(mockConfig.getConvertWhen()).thenReturn(null);
+        lenient().when(mockConfig.getKey()).thenReturn(TEST_KEY);
+        lenient().when(mockConfig.getKeys()).thenReturn(null);
+        lenient().when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        lenient().when(mockConfig.getConvertWhen()).thenReturn(null);
     }
 
     private Event executeAndGetProcessedEvent(final Object testValue) {
@@ -115,6 +117,25 @@ public class ConvertEntryTypeProcessor_NullValueTests {
         int testNumber = 5432;
         event = executeAndGetProcessedEvent(testNumber);
         assertThat(event.get(TEST_KEY, Integer.class), equalTo(testNumber));
+    }
+
+    @Test
+    void testMultipleKeysNullValues() {
+        String testValue = "-";
+        String testKey1 = UUID.randomUUID().toString();
+        String testKey2 = UUID.randomUUID().toString();
+        when(mockConfig.getKey()).thenReturn(null);
+        when(mockConfig.getKeys()).thenReturn(List.of(testKey1, testKey2));
+        when(mockConfig.getNullValues()).thenReturn(Optional.of(List.of("-")));
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", "testMessage");
+        testData.put(testKey1, testValue);
+        testData.put(testKey2, testValue);
+        Record record = buildRecordWithEvent(testData);
+        nullValuesProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        Event event = executeAndGetProcessedEvent(record);
+        assertThat(event.get(testKey1, String.class), nullValue());
+        assertThat(event.get(testKey2, String.class), nullValue());
     }
 
 }
