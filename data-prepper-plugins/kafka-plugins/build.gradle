@@ -26,6 +26,7 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:blocking-buffer')
+    testImplementation project(':data-prepper-core')
     testImplementation 'org.mockito:mockito-inline:4.1.0'
     testImplementation 'org.apache.kafka:kafka_2.13:3.4.0'
     testImplementation 'org.apache.kafka:kafka_2.13:3.4.0:test'
