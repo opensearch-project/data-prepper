@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -44,7 +45,7 @@ public class PlainTextConsumerIT {
     private KafkaSourceConfig kafkaSourceConfig;
 
     private KafkaSource kafkaSource;
-    private Buffer<Record<Object>> buffer;
+    private Buffer<Record<Event>> buffer;
 
     @ClassRule
     public static final EmbeddedKafkaClusterSingleNode CLUSTER = new EmbeddedKafkaClusterSingleNode();

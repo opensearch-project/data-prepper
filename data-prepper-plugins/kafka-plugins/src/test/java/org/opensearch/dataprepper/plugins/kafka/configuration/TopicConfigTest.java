@@ -69,11 +69,11 @@ class TopicConfigTest {
         assertEquals("my-topic-2", topicConfig.getName());
         assertEquals("DPKafkaProj-2", topicConfig.getGroupId());
         assertEquals("kafka-consumer-group-2", topicConfig.getGroupName());
-        assertEquals("false", topicConfig.getAutoCommit());
+        assertEquals(false, topicConfig.getAutoCommit());
         assertEquals(Duration.ofSeconds(5), topicConfig.getAutoCommitInterval());
         assertEquals(Duration.ofSeconds(45), topicConfig.getSessionTimeOut());
         assertEquals("earliest", topicConfig.getAutoOffsetReset());
-        assertEquals(Duration.ofSeconds(1), topicConfig.getThreadWaitingTime());
+        assertEquals(TopicConfig.THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
         assertEquals(Duration.ofSeconds(4), topicConfig.getMaxRecordFetchTime());
         assertEquals(Duration.ofSeconds(5), topicConfig.getBufferDefaultTimeout());
         assertEquals(52428800L, topicConfig.getFetchMaxBytes().longValue());
@@ -93,7 +93,7 @@ class TopicConfigTest {
         assertEquals("my-topic-1", topicConfig.getName());
         assertEquals("DPKafkaProj-2", topicConfig.getGroupId());
         assertEquals("kafka-consumer-group-2", topicConfig.getGroupName());
-        assertEquals("false", topicConfig.getAutoCommit());
+        assertEquals(false, topicConfig.getAutoCommit());
         assertEquals(Duration.ofSeconds(5), topicConfig.getAutoCommitInterval());
         assertEquals(Duration.ofSeconds(45), topicConfig.getSessionTimeOut());
         assertEquals("earliest", topicConfig.getAutoOffsetReset());

@@ -2,11 +2,14 @@
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:sts'
+    implementation group: 'org.apache.httpcomponents.client5', name: 'httpclient5', version: '5.2'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
 }
 
 test {
