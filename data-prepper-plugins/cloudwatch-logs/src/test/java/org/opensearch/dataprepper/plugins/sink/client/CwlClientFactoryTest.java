@@ -44,7 +44,7 @@ public class CwlClientFactoryTest {
 
     @Test
     void check_created_real_default_client_test() {
-        final CloudWatchLogsClient cloudWatchLogsClientToTest = CwlClientFactory.createCwlClient();
+        final CloudWatchLogsClient cloudWatchLogsClientToTest = CwlClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
 
         assertThat(cloudWatchLogsClientToTest, notNullValue());
     }

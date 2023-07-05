@@ -36,17 +36,6 @@ public final class CwlClientFactory {
                 .overrideConfiguration(createOverrideConfiguration(awsConfig)).build();
     }
 
-    /**
-     * Generates a CloudWatchLogs Client based on default system credentials.
-     * @return CloudWatchLogsClient -> used to interact with CloudWatch Logs services.
-     * //TODO: Might not be needed, remove if this is the case.
-     */
-    public static CloudWatchLogsClient createCwlClient() {
-        return CloudWatchLogsClient.builder()
-                .credentialsProvider(ProfileCredentialsProvider.create())
-                .build();
-    }
-
     private static ClientOverrideConfiguration createOverrideConfiguration(final AwsConfig awsConfig) {
         final RetryPolicy retryPolicy = RetryPolicy.builder().numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS).build();
 
