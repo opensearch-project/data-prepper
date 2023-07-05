@@ -329,7 +329,6 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     bulkRequestTimer.record(() -> {
       try {
         LOG.debug("Sending data to OpenSearch");
-        LOG.warn("Flushing batch with {} operations", accumulatingBulkRequest.getOperationsCount());
         bulkRetryStrategy.execute(accumulatingBulkRequest);
         bulkRequestSizeBytesSummary.record(accumulatingBulkRequest.getEstimatedSizeInBytes());
       } catch (final InterruptedException e) {
