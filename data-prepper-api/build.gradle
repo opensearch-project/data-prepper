@@ -14,7 +14,7 @@ dependencies {
     testImplementation testLibs.junit.vintage
     testImplementation project(':data-prepper-test-common')
     testImplementation 'org.skyscreamer:jsonassert:1.5.1'
-    testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation 'commons-io:commons-io:2.13.0'
 }
 
 jacocoTestCoverageVerification {
