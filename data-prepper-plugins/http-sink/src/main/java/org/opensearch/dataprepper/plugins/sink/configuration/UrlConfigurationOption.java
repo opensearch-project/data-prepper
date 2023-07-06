@@ -12,8 +12,6 @@ public class UrlConfigurationOption {
 
     private static final int DEFAULT_WORKERS = 1;
 
-    private static final String DEFAULT_HTTP_METHOD = "POST";
-
     @NotNull
     @JsonProperty("url")
     private String url;
@@ -28,10 +26,10 @@ public class UrlConfigurationOption {
     private PluginModel codec;
 
     @JsonProperty("http_method")
-    private String httpMethod = DEFAULT_HTTP_METHOD;
+    private HTTPMethodOptions httpMethod;
 
     @JsonProperty("auth_type")
-    private String authType;
+    private AuthTypeOptions authType;
 
     public String getUrl() {
         return url;
@@ -49,11 +47,11 @@ public class UrlConfigurationOption {
         return codec;
     }
 
-    public String getHttpMethod() {
+    public HTTPMethodOptions getHttpMethod() {
         return httpMethod;
     }
 
-    public String getAuthType() {
+    public AuthTypeOptions getAuthType() {
         return authType;
     }
 
