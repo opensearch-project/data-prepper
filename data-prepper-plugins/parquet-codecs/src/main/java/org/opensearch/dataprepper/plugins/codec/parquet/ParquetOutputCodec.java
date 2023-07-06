@@ -9,10 +9,13 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.io.OutputFile;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
+import org.opensearch.dataprepper.plugins.fs.LocalOutputFile;
 import org.opensearch.dataprepper.plugins.s3keyindex.S3ObjectIndexUtility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +27,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -57,38 +61,60 @@ public class ParquetOutputCodec implements OutputCodec {
         this.config = config;
         this.region = config.getRegion();
         this.bucket = config.getBucket();
-        this.s3Client = buildS3Client();
-
     }
 
     @Override
     public synchronized void start(final OutputStream outputStream) throws IOException {
+        this.s3Client = buildS3Client();
+        buildSchemaAndKey();
+        final S3OutputFile s3OutputFile = new S3OutputFile(s3Client, bucket, key);
+        buildWriter(s3OutputFile);
+    }
+
+    public synchronized void start(final OutputStream outputStream, File file) throws IOException {
+        LocalOutputFile localOutputFile =new LocalOutputFile(file);
+        buildSchemaAndKey();
+        buildWriter(localOutputFile);
+    }
+
+    private void buildSchemaAndKey() throws IOException {
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
         } else if(config.getFileLocation()!=null){
             schema = ParquetSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
         }else if(config.getSchemaRegistryUrl()!=null){
             schema = parseSchema(ParquetSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
-        }else{
+        }else if(checkS3SchemaValidity()){
+            schema = ParquetSchemaParserFromS3.parseSchema(config);
+        }
+        else{
             LOG.error("Schema not provided.");
             throw new IOException("Can't proceed without Schema.");
         }
         key = generateKey();
-        final S3OutputFile s3OutputFile = new S3OutputFile(s3Client, bucket, key);
-        writer = AvroParquetWriter.<GenericRecord>builder(s3OutputFile)
+    }
+
+    private void buildWriter(OutputFile outputFile) throws IOException {
+        writer = AvroParquetWriter.<GenericRecord>builder(outputFile)
                 .withSchema(schema)
                 .build();
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream,final String tagsTargetKey) throws IOException {
         final GenericData.Record parquetRecord = new GenericData.Record(schema);
-        for (final String key : event.toMap().keySet()) {
+        final Event modifiedEvent;
+        if (tagsTargetKey != null) {
+            modifiedEvent = addTagsToEvent(event, tagsTargetKey);
+        } else {
+            modifiedEvent = event;
+        }
+        for (final String key : modifiedEvent.toMap().keySet()) {
             if (config.getExcludeKeys().contains(key)) {
                 continue;
             }
             final Schema.Field field = schema.getField(key);
-            final Object value = schemaMapper(field, event.toMap().get(key));
+            final Object value = schemaMapper(field, modifiedEvent.toMap().get(key));
             parquetRecord.put(key, value);
         }
         writer.write(parquetRecord);
@@ -106,6 +132,12 @@ public class ParquetOutputCodec implements OutputCodec {
                 .key(key)
                 .build();
         s3Client.deleteObject(deleteRequest);
+    }
+    public void closeWriter(final OutputStream outputStream, File file) throws IOException {
+        final LocalInputFile inputFile = new LocalInputFile(file);
+        byte[] byteBuffer = inputFile.newStream().readAllBytes();
+        outputStream.write(byteBuffer);
+        writer.close();
     }
 
     @Override
@@ -207,5 +239,13 @@ public class ParquetOutputCodec implements OutputCodec {
             }
         }
         return  finalValue;
+    }
+    private boolean checkS3SchemaValidity() throws IOException {
+        if (config.getSchemaBucket() != null && config.getFileKey() != null && config.getSchemaRegion() != null) {
+            return true;
+        } else {
+            LOG.error("Invalid S3 credentials, can't reach the schema file.");
+            throw new IOException("Can't proceed without schema.");
+        }
     }
 }

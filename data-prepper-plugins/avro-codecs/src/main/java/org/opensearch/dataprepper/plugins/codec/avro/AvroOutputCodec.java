@@ -31,7 +31,7 @@ public class AvroOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
         // TODO: write event data to the outputstream
     }
 

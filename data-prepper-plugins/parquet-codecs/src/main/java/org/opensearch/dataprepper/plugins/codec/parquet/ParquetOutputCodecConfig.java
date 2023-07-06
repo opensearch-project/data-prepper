@@ -22,6 +22,13 @@ public class ParquetOutputCodecConfig {
     @JsonProperty("schema_file_location")
     private String fileLocation;
 
+    @JsonProperty("schema_bucket")
+    private String schemaBucket;
+    @JsonProperty("file_key")
+    private String fileKey;
+    @JsonProperty("schema_region")
+    private String schemaRegion;
+
     @JsonProperty("region")
     @NotNull
     @Valid
@@ -81,6 +88,28 @@ public class ParquetOutputCodecConfig {
      */
     public String getNamePattern() {
         return DEFAULT_OBJECT_NAME_PATTERN;
+    }
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public void setBucket(String bucket) {
+        this.bucket = bucket;
+    }
+
+    public void setPathPrefix(String pathPrefix) {
+        this.pathPrefix = pathPrefix;
+    }
+    public String getSchemaBucket() {
+        return schemaBucket;
+    }
+
+    public String getFileKey() {
+        return fileKey;
+    }
+
+    public String getSchemaRegion() {
+        return schemaRegion;
     }
 }
 

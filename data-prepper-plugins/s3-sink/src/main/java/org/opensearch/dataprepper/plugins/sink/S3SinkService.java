@@ -109,7 +109,7 @@ public class S3SinkService {
                 }
 
                 final Event event = record.getData();
-                codec.writeEvent(event, outputStream);
+                codec.writeEvent(event, outputStream, null);
                 int count = currentBuffer.getEventCount() +1;
                 currentBuffer.setEventCount(count);
 
