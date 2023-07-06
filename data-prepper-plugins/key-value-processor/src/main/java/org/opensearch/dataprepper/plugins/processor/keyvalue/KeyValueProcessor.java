@@ -39,6 +39,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final String UPPERCASE_KEY = "uppercase";
     private final String CAPITALIZE_KEY = "capitalize";
     private final Set<String> validTransformOptionSet = Set.of("", LOWERCASE_KEY, UPPERCASE_KEY, CAPITALIZE_KEY);
+    private final String WHITESPACE_STRICT = "strict";
+    private final String WHITESPACE_LENIENT = "lenient";
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -84,23 +86,30 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
             }
 
+            regex = whitespace(); // do i need to put this in the above if/else statements before the regex is built?
+
             keyValueDelimiterPattern = Pattern.compile(regex);
         }
 
-        if(!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
+        if (!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
             throw new PatternSyntaxException("delete_key_regex is not a valid regex string", keyValueProcessorConfig.getDeleteKeyRegex(), -1);
         }
 
-        if(!validateRegex(keyValueProcessorConfig.getDeleteValueRegex())) {
+        if (!validateRegex(keyValueProcessorConfig.getDeleteValueRegex())) {
             throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
         }
 
-        if(keyValueProcessorConfig.getIncludeKeys() != null) {
+        if (keyValueProcessorConfig.getIncludeKeys() != null) {
             includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         }
 
-        if(!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
+        if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
+        }
+
+        if (!(keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)
+            || keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_LENIENT))) {
+            throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
         }
     }
 
@@ -184,12 +193,16 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return records;
     }
 
+    private String whitespace() {
+        return keyValueProcessorConfig.getValueSplitCharacters().strip();
+    }
+    
     private String transformKey(String key) {
-        if(keyValueProcessorConfig.getTransformKey().equals(LOWERCASE_KEY)) {
+        if (keyValueProcessorConfig.getTransformKey().equals(LOWERCASE_KEY)) {
             key = key.toLowerCase();
-        } else if(keyValueProcessorConfig.getTransformKey().equals(UPPERCASE_KEY)) {
+        } else if (keyValueProcessorConfig.getTransformKey().equals(UPPERCASE_KEY)) {
             key = key.substring(0, 1).toUpperCase() + key.substring(1);
-        } else if(keyValueProcessorConfig.getTransformKey().equals(CAPITALIZE_KEY)) {
+        } else if (keyValueProcessorConfig.getTransformKey().equals(CAPITALIZE_KEY)) {
             key = key.toUpperCase();
         }
         return key;
