@@ -62,5 +62,8 @@ public class AvroOutputCodecConfig {
     public String getFile_key() {
         return file_key;
     }
+    public void setExcludeKeys(List<String> excludeKeys) {
+        this.excludeKeys = excludeKeys;
+    }
 
 }
