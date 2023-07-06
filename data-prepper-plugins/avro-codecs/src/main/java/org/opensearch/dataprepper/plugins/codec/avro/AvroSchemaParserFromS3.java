@@ -41,7 +41,7 @@ public class AvroSchemaParserFromS3 {
         S3Client s3Client = buildS3Client(config);
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(config.getBucketName())
-                .key(config.getFile_key())
+                .key(config.getFileKey())
                 .build();
         ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest);
         final Map<String, Object> stringObjectMap = objectMapper.readValue(s3Object, new TypeReference<>() {});

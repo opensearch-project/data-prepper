@@ -49,6 +49,9 @@ pipeline:
 2) `schema_file_location`: Path to the schema json file through which the user can provide schema.
 3) `exclude_keys`: Those keys of the events that the user wants to exclude while converting them to avro records.
 4) `schema_registry_url`: Another way of providing the schema through schema registry.
+5) `region`: AWS Region of the S3 bucket in which `schema.json` file is kept.
+6) `bucket_name`: Name of the S3 bucket in which `schema.json` file is kept.
+7) `file_key`: File key of `schema.json` file kept in S3 bucket.
 
 ### Note:
 
@@ -60,6 +63,7 @@ pipeline:
    "type": { "type": "array",
    "items": "string"
    }`
+3) If the user wants to input schema through a `schema.json` file kept in S3, the user must provide corresponding credentials i.e. region, bucket name and file key of the same.
 
 
 

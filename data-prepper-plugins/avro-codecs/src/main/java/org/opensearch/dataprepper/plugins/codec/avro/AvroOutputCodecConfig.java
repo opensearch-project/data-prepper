@@ -28,8 +28,8 @@ public class AvroOutputCodecConfig {
     private String region;
     @JsonProperty("bucket_name")
     private String bucketName;
-    @JsonProperty("fileKey")
-    private String file_key;
+    @JsonProperty("file_key")
+    private String fileKey;
 
     public List<String> getExcludeKeys() {
         return excludeKeys;
@@ -59,8 +59,8 @@ public class AvroOutputCodecConfig {
         return bucketName;
     }
 
-    public String getFile_key() {
-        return file_key;
+    public String getFileKey() {
+        return fileKey;
     }
     public void setExcludeKeys(List<String> excludeKeys) {
         this.excludeKeys = excludeKeys;
