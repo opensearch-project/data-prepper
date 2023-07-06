@@ -35,7 +35,6 @@ public class JavaClientAccumulatingUncompressedBulkRequest implements Accumulati
         final Long documentLength = estimateBulkOperationSize(bulkOperation);
 
         currentBulkSize += documentLength;
-        LOG.warn("Current bulk size: {}", currentBulkSize);
 
         bulkRequestBuilder = bulkRequestBuilder.operations(bulkOperation.getBulkOperation());
 
