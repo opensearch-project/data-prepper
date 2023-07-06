@@ -23,6 +23,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_DELETE_KEY_REGEX = "";
     static final String DEFAULT_DELETE_VALUE_REGEX = "";
     static final String DEFAULT_TRANSFORM_KEY = "";
+    static final String DEFAULT_WHITESPACE = "lenient";
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -64,6 +65,10 @@ public class KeyValueProcessorConfig {
     @JsonProperty("transform_key")
     @NotNull
     private String transformKey = DEFAULT_TRANSFORM_KEY;
+
+    @JsonProperty("whitespace")
+    @NotNull
+    private String whitespace = DEFAULT_WHITESPACE;
 
     public String getSource() {
         return source;
@@ -111,5 +116,9 @@ public class KeyValueProcessorConfig {
 
     public String getTransformKey() {
         return transformKey;
+    }
+
+    public String getWhitespace() {
+        return whitespace;
     }
 }
