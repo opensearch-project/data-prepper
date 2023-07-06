@@ -2,6 +2,7 @@ package org.opensearch.dataprepper.plugins.processor.translate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
 import java.util.Collections;
 import java.util.List;
@@ -96,5 +97,16 @@ class TranslateProcessorConfigTest {
         assertNull(translateProcessorConfig.getIterateOn());
         setField(TranslateProcessorConfig.class, translateProcessorConfig, "iterateOn", "iteratorField");
         assertThat(translateProcessorConfig.getIterateOn(),is("iteratorField"));
+    }
+
+    @Test
+    void test_target_type_default(){
+        assertThat(translateProcessorConfig.getTargetType(), is(TargetType.STRING));
+    }
+
+    @Test
+    void test_get_target_type() throws NoSuchFieldException, IllegalAccessException{
+        setField(TranslateProcessorConfig.class, translateProcessorConfig, "targetType", TargetType.INTEGER);
+        assertThat(translateProcessorConfig.getTargetType(), is(TargetType.INTEGER));
     }
 }
