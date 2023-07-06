@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink;
 
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -27,7 +28,9 @@ public class StdOutSink implements Sink<Record<Object>> {
      * pluginSetting file.
      *
      * @param pluginSetting instance with metadata information from pipeline pluginSetting file.
+     * @param sinkContext sink context
      */
+    @DataPrepperPluginConstructor
     public StdOutSink(final PluginSetting pluginSetting, final SinkContext sinkContext) {
         this(Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
     }
