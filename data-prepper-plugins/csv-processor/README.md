@@ -93,6 +93,74 @@ Apart from common metrics in [AbstractProcessor](https://github.com/opensearch-p
 
 * `csvInvalidEvents`: The number of invalid Events. An invalid Event causes an Exception to be thrown when parsed. This is most commonly due to an unclosed quote. 
 
+# CSV Sink/Output Codec
+
+This is an implementation of CSV Sink Codec that parses the Dataprepper Events into CSV rows and writes them into the underlying OutputStream.
+
+## Usages
+
+CSV Codec can be configured with sink plugins (e.g. S3 Sink) in the Pipeline file.
+
+## Configuration Options
+
+```
+pipeline:
+  ...
+  sink:
+    - s3:
+        aws:
+          region: us-east-1
+          sts_role_arn: arn:aws:iam::123456789012:role/Data-Prepper
+          sts_header_overrides:
+        max_retries: 5
+        bucket: bucket_name
+        object_key:
+          path_prefix: my-elb/%{yyyy}/%{MM}/%{dd}/
+        threshold:
+          event_count: 2000
+          maximum_size: 50mb
+          event_collect_timeout: 15s
+        codec:
+          csv:
+            delimiter: ","
+            header:
+              - Year
+              - Age
+              - Ethnic
+              - Sex
+              - Area
+              - count
+            exclude_keys:
+              - s3
+            header_file_location: "C:\\Users\\OM20254233\\Downloads\\header.csv"
+        buffer_type: in_memory
+```
+
+### Note:
+
+1) If the user wants the tags to be a part of the resultant CSV Data and has given `tagsTargetKey` in the config file, the user also has to modify the header to accommodate the tags. Another header field  has to be provided in the headers:
+
+   ```
+   header:
+              - Year
+              - Age
+              - Ethnic
+              - Sex
+              - Area
+              - <yourTagsTargetKey>
+   ```
+   Please note that if this is not done, then the codec will throw an error:
+   `"CSV Row doesn't conform with the header."`
+
+## AWS Configuration
+
+### Codec Configuration:
+
+1) `exclude_keys`: Those keys of the events that the user wants to exclude while converting them to CSV Rows.
+2) `delimiter`: The user can provide the delimiter of choice.
+3) `header`: The user can provide the desired header for the resultant CSV file.
+4) `header_file_location`: Alternatively, the user can also provide header via a csv file instead of in the yaml.
+
 ## Developer Guide
 This plugin is compatible with Java 8 and up. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
