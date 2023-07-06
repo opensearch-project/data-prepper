@@ -37,6 +37,7 @@ public class KafkaSinkConfig {
         return Optional.ofNullable(dlq);
     }
 
+
     public void setDlqConfig(final PluginSetting pluginSetting) {
         final LinkedHashMap<String, Map<String, Object>> dlq = (LinkedHashMap) pluginSetting.getAttributeFromSettings(DLQ);
         if (dlq != null) {
@@ -56,6 +57,7 @@ public class KafkaSinkConfig {
     @JsonProperty("thread_wait_time")
     private Long threadWaitTime;
 
+
     @JsonProperty("topics")
     private List<TopicConfig> topics;
 
@@ -74,7 +76,6 @@ public class KafkaSinkConfig {
     public SchemaConfig getSchemaConfig() {
         return schemaConfig;
     }
-
 
     public List<TopicConfig> getTopics() {
         return topics;

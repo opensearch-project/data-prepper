@@ -28,7 +28,6 @@ import static org.mockito.Mockito.mock;
 
 class KafkaSinkConfigTest {
 
-
     KafkaSinkConfig kafkaSinkConfig;
 
     List<String> bootstrapServers;
