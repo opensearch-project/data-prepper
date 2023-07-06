@@ -24,11 +24,11 @@ import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.LocalFileBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.dlq.HttpSinkDlqUtil;
 import org.opensearch.dataprepper.plugins.sink.service.HttpSinkService;
 import org.opensearch.dataprepper.plugins.sink.service.WebhookService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,8 +43,6 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
     private WebhookService webhookService;
 
     private volatile boolean sinkInitialized;
-
-    private final Codec codec;
 
     private final HttpSinkService httpSinkService;
 
@@ -62,7 +60,6 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
         codecPluginSettings.setPipelineName(pipelineDescription.getPipelineName());
-        this.codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
         this.sinkInitialized = Boolean.FALSE;
         if (httpSinkConfiguration.getBufferType().equals(BufferTypeOptions.LOCALFILE)) {
             this.bufferFactory = new LocalFileBufferFactory();
@@ -82,7 +79,7 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
         if(Objects.nonNull(httpSinkConfiguration.getWebhookURL()))
             this.webhookService = new WebhookService(httpSinkConfiguration.getWebhookURL(),httpClientBuilder);
 
-        this.httpSinkService = new HttpSinkService(codec,
+        this.httpSinkService = new HttpSinkService(
                 httpSinkConfiguration,
                 bufferFactory,
                 httpSinkDLQService,

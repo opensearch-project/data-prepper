@@ -189,7 +189,6 @@ public class OpenSearchClientFactory {
             } else {
                 LOG.warn("Authentication was explicitly disabled for the OpenSearch source");
             }
-
             attachSSLContext(httpClientBuilder, openSearchSourceConfiguration);
             httpClientBuilder.addInterceptorLast(
                     (HttpResponseInterceptor)

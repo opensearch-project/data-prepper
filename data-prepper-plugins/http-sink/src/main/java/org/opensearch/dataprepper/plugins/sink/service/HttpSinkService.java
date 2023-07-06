@@ -27,7 +27,6 @@ import org.opensearch.dataprepper.plugins.sink.configuration.AuthTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.CustomHeaderOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.HTTPMethodOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.opensearch.dataprepper.plugins.sink.configuration.UrlConfigurationOption;
 import org.opensearch.dataprepper.plugins.sink.dlq.HttpSinkDlqUtil;
 import org.opensearch.dataprepper.plugins.sink.dlq.FailedDlqData;
@@ -83,8 +82,6 @@ public class HttpSinkService {
     public static final String HTTP_SINK_RECORDS_SUCCESS_COUNTER = "httpSinkRecordsSuccessPushToEndPoint";
     public static final String HTTP_SINK_RECORDS_FAILED_COUNTER = "httpSinkRecordsFailedToPushEndPoint";
 
-    private final Codec codec;
-
     private final Collection<EventHandle> bufferedEventHandles;
 
     private final HttpSinkConfiguration httpSinkConfiguration;
@@ -119,15 +116,13 @@ public class HttpSinkService {
 
     private Buffer currentBuffer;
 
-    public HttpSinkService(final Codec codec,
-                           final HttpSinkConfiguration httpSinkConfiguration,
+    public HttpSinkService(final HttpSinkConfiguration httpSinkConfiguration,
                            final BufferFactory bufferFactory,
                            final HttpSinkDlqUtil httpSinkDlqUtil,
                            final PluginSetting pluginSetting,
                            final WebhookService webhookService,
                            final HttpClientBuilder httpClientBuilder,
                            final PluginMetrics pluginMetrics){
-        this.codec= codec;
         this.httpSinkConfiguration = httpSinkConfiguration;
         this.bufferFactory = bufferFactory;
         this.httpSinkDlqUtil = httpSinkDlqUtil;
@@ -179,7 +174,7 @@ public class HttpSinkService {
                 }
                 currentBuffer = bufferFactory.getBuffer();
                 releaseEventHandles(Boolean.TRUE);
-                }
+            }
         });
         reentrantLock.unlock();
     }

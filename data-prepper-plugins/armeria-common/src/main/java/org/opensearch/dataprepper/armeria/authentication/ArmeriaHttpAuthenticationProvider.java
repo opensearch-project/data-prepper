@@ -30,6 +30,7 @@ public interface ArmeriaHttpAuthenticationProvider {
      * Gets an authentication decorator to an Armeria {@link ServerBuilder}.
      *
      * @since 2.0
+     * @return returns authentication decorator
      */
     default Optional<Function<? super HttpService, ? extends HttpService>> getAuthenticationDecorator() {
         return Optional.empty();
