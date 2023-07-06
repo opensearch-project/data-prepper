@@ -13,10 +13,10 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.15.0'
     implementation 'io.micrometer:micrometer-core'
     implementation project(path: ':data-prepper-api')
+    implementation project(path: ':data-prepper-plugins:mutate-event-processors')
     testImplementation project(':data-prepper-plugins:log-generator-source')
     testImplementation project(':data-prepper-test-common')
     implementation 'org.apache.commons:commons-lang3:3.12.0'
-    testImplementation project(path: ':data-prepper-plugins:mutate-event-processors')
 }
 
 test {

@@ -21,7 +21,6 @@ import java.util.stream.Stream;
 
 public class TranslateProcessorConfig {
 
-    final TargetType TARGET_TYPE = TargetType.STRING;
 
     @JsonProperty("source")
     @NotNull
@@ -51,7 +50,7 @@ public class TranslateProcessorConfig {
     private RegexParameterConfiguration regexParameterConfiguration;
 
     @JsonProperty("target_type")
-    private TargetType targetType = TARGET_TYPE;
+    private TargetType targetType = TargetType.STRING;
 
 
     public Object getSource() { return source; }
@@ -95,12 +94,12 @@ public class TranslateProcessorConfig {
         return regexParameterConfiguration == null || regexParameterConfiguration.getPatterns() != null;
     }
 
-    @AssertTrue(message = "The mapped values does not match the target type provided")
+    @AssertTrue(message = "The mapped values do not match the target type provided")
     public boolean isMapTypeValid() {
         return map.keySet().stream().allMatch(key -> checkTargetValueType(map.get(key)));
     }
 
-    @AssertTrue(message = "The pattern values does not match the target type provided")
+    @AssertTrue(message = "The pattern values do not match the target type provided")
     public boolean isPatternTypeValid() {
         if (Objects.isNull(regexParameterConfiguration) || Objects.isNull(regexParameterConfiguration.getPatterns())) {
             return true;
