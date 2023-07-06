@@ -31,17 +31,11 @@ public class KafkaSinkConfig {
     @JsonProperty("thread_wait_time")
     private Long threadWaitTime;
 
-    @JsonProperty("compression_type")
-    private String compressionType;
-
     @JsonProperty("batch_size")
     private Long batchSize;
 
     @JsonProperty("max_request_size")
     private String maxRequestSize;
-
-    @JsonProperty("acks")
-    private String acks;
 
     @JsonProperty("topics")
     private List<TopicConfig> topics;
@@ -62,20 +56,12 @@ public class KafkaSinkConfig {
         return schemaConfig;
     }
 
-    public String getCompressionType() {
-        return compressionType;
-    }
-
     public Long getBatchSize() {
         return batchSize;
     }
 
     public String getMaxRequestSize() {
         return maxRequestSize;
-    }
-
-    public String getAcks() {
-        return acks;
     }
 
 

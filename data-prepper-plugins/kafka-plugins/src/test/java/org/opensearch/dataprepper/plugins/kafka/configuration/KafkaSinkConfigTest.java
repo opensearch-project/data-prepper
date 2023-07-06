@@ -85,14 +85,6 @@ class KafkaSinkConfigTest {
 	void test_batch_size_not_null(){
 		assertThat(kafkaSinkConfig.getBatchSize(), notNullValue());
 	}
-	@Test
-	void test_compression_type_not_null(){
-		assertThat(kafkaSinkConfig.getCompressionType(), notNullValue());
-	}
-	@Test
-	void test_acks_null(){
-		assertThat(kafkaSinkConfig.getAcks(), notNullValue());
-	}
 
 	@Test
 	void test_dlq_config_null(){
