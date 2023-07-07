@@ -6,7 +6,13 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 
+import java.time.Duration;
+
 public class S3InputFile implements InputFile {
+
+    private static final Duration DEFAULT_RETRY_DELAY = Duration.ofSeconds(6);
+
+    private static final int DEFAULT_RETRIES = 10;
 
     private final S3Client s3Client;
 
@@ -42,8 +48,8 @@ public class S3InputFile implements InputFile {
      */
     @Override
     public SeekableInputStream newStream() {
-
-        return new S3InputStream(s3Client, s3ObjectReference, getMetadata(), s3ObjectPluginMetrics);
+        return new S3InputStream(
+            s3Client, s3ObjectReference, getMetadata(), s3ObjectPluginMetrics, DEFAULT_RETRY_DELAY, DEFAULT_RETRIES);
     }
 
     /**

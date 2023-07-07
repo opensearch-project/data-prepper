@@ -5,6 +5,8 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
@@ -15,21 +17,28 @@ import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.ByteArrayInputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class S3InputStreamTest {
+
+    private static final Duration RETRY_DELAY = Duration.ofMillis(10);
+
+    private static final int RETRIES = 3;
+
     @Mock(lenient = true)
     private S3Client s3Client;
     @Mock(lenient = true)
@@ -57,7 +66,8 @@ class S3InputStreamTest {
         when(s3ObjectPluginMetrics.getS3ObjectsFailedNotFoundCounter()).thenReturn(s3ObjectsFailedNotFoundCounter);
         when(s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter()).thenReturn(s3ObjectsFailedAccessDeniedCounter);
 
-        s3InputStream = new S3InputStream(s3Client, s3ObjectReference, metadata, s3ObjectPluginMetrics);
+        s3InputStream = new S3InputStream(
+            s3Client, s3ObjectReference, metadata, s3ObjectPluginMetrics, RETRY_DELAY, RETRIES);
     }
 
     @Test
@@ -117,6 +127,49 @@ class S3InputStreamTest {
         verify(s3ObjectSizeProcessedSummary).record(0.0);
     }
 
+    @ParameterizedTest
+    @MethodSource("retryableExceptions")
+    void testReadSucceedsAfterRetries(final Class<? extends Exception> retryableExceptionClass) throws IOException {
+        InputStream mockInputStream = mock(InputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class)))
+            .thenReturn(mockInputStream);
+
+        when(mockInputStream.read())
+            .thenThrow(retryableExceptionClass)
+            .thenReturn(1);
+
+        int firstByte = s3InputStream.read();
+        assertEquals(1, firstByte);
+
+        s3InputStream.close();
+
+        verify(s3ObjectSizeProcessedSummary).record(1.0);
+
+        verify(mockInputStream, times(2)).read();
+        verify(mockInputStream, times(2)).close();
+        verify(s3Client, times(2))
+            .getObject(any(GetObjectRequest.class), any(ResponseTransformer.class));
+    }
+
+    @ParameterizedTest
+    @MethodSource("retryableExceptions")
+    void testReadFailsAfterRetries(final Class<? extends Exception> retryableExceptionClass) throws IOException {
+        InputStream mockInputStream = mock(InputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class)))
+            .thenReturn(mockInputStream);
+
+        when(mockInputStream.read()).thenThrow(retryableExceptionClass);
+
+        assertThrows(IOException.class, () -> s3InputStream.read());
+
+        s3InputStream.close();
+
+        verify(mockInputStream, times(RETRIES + 1)).read();
+        verify(mockInputStream, times(RETRIES + 2)).close();
+        verify(s3Client, times(RETRIES + 2))
+            .getObject(any(GetObjectRequest.class), any(ResponseTransformer.class));
+    }
+
     @Test
     void testReadByteArray() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
@@ -146,6 +199,53 @@ class S3InputStreamTest {
 
         s3InputStream.close();
         verify(s3ObjectSizeProcessedSummary).record(9.0);
+    }
+
+    @ParameterizedTest
+    @MethodSource("retryableExceptions")
+    void testReadAllBytesSucceedsAfterRetries(final Class<? extends Exception> retryableExceptionClass)
+        throws IOException
+    {
+        InputStream mockInputStream = mock(InputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class)))
+            .thenReturn(mockInputStream);
+
+        when(mockInputStream.readAllBytes())
+            .thenThrow(retryableExceptionClass)
+            .thenReturn("Test data".getBytes());
+
+        final byte[] buffer = s3InputStream.readAllBytes();
+
+        assertArrayEquals("Test data".getBytes(), buffer);
+
+        s3InputStream.close();
+
+        verify(s3ObjectSizeProcessedSummary).record(9.0);
+        verify(mockInputStream, times(2)).readAllBytes();
+        verify(mockInputStream, times(2)).close();
+        verify(s3Client, times(2))
+            .getObject(any(GetObjectRequest.class), any(ResponseTransformer.class));
+    }
+
+    @ParameterizedTest
+    @MethodSource("retryableExceptions")
+    void testReadAllBytesFailsAfterRetries(final Class<? extends Exception> retryableExceptionClass)
+        throws IOException
+    {
+        InputStream mockInputStream = mock(InputStream.class);
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class)))
+            .thenReturn(mockInputStream);
+
+        when(mockInputStream.readAllBytes()).thenThrow(retryableExceptionClass);
+
+        assertThrows(IOException.class, () -> s3InputStream.readAllBytes());
+
+        s3InputStream.close();
+
+        verify(mockInputStream, times(RETRIES + 1)).readAllBytes();
+        verify(mockInputStream, times(RETRIES + 2)).close();
+        verify(s3Client, times(RETRIES + 2))
+            .getObject(any(GetObjectRequest.class), any(ResponseTransformer.class));
     }
 
     @Test
@@ -277,7 +377,7 @@ class S3InputStreamTest {
         s3InputStream.seek(0); // Force opening the stream
 
         ByteBuffer buffer = ByteBuffer.allocate(4);
-        assertThrows(EOFException.class, () -> s3InputStream.readFully(buffer));
+        assertThrows(IOException.class, () -> s3InputStream.readFully(buffer));
 
         s3InputStream.close();
         verify(s3ObjectSizeProcessedSummary).record(0.0);
@@ -377,4 +477,7 @@ class S3InputStreamTest {
         verify(s3ObjectsFailedAccessDeniedCounter).increment();
     }
 
+    private static Stream<Class<? extends Throwable>> retryableExceptions() {
+        return S3InputStream.RETRYABLE_EXCEPTIONS.stream();
+    }
 }
