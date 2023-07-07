@@ -22,6 +22,7 @@ import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
@@ -40,8 +41,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ParquetOutputCodecTest {
     private static final String FILE_NAME = "parquet-data";
@@ -95,7 +98,7 @@ public class ParquetOutputCodecTest {
         ParquetOutputCodec parquetOutputCodec = createObjectUnderTest();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
-        parquetOutputCodec.start(outputStream, tempFile);
+        parquetOutputCodec.start(tempFile);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
             parquetOutputCodec.writeEvent(event, outputStream, null);
@@ -110,6 +113,27 @@ public class ParquetOutputCodecTest {
             index++;
         }
         tempFile.delete();
+    }
+    @Test
+    public void test_getExtension() {
+        ParquetOutputCodec parquetOutputCodec = createObjectUnderTest();
+        String extension = parquetOutputCodec.getExtension();
+
+        assertThat(extension, equalTo("parquet"));
+    }
+
+    @Test
+    public void test_s3SchemaValidity() throws IOException {
+        config = new ParquetOutputCodecConfig();
+        config.setSchema(parseSchema().toString());
+        config.setSchemaBucket("test");
+        config.setSchemaRegion("test");
+        config.setFileKey("test");
+        ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
+        assertThat(parquetOutputCodec.checkS3SchemaValidity(), equalTo(Boolean.TRUE));
+        ParquetOutputCodec parquetOutputCodecFalse = createObjectUnderTest();
+        assertThrows(IOException.class,()->
+                parquetOutputCodecFalse.checkS3SchemaValidity());
     }
 
     private List<HashMap<String, Object>> createParquetRecordsList(final InputStream inputStream) throws IOException {

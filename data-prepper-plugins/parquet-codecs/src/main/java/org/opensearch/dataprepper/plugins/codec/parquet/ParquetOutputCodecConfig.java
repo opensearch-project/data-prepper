@@ -111,5 +111,16 @@ public class ParquetOutputCodecConfig {
     public String getSchemaRegion() {
         return schemaRegion;
     }
+
+    public void setFileKey(String fileKey) {
+        this.fileKey = fileKey;
+    }
+    public void setSchemaBucket(String schemaBucket) {
+        this.schemaBucket = schemaBucket;
+    }
+
+    public void setSchemaRegion(String schemaRegion) {
+        this.schemaRegion = schemaRegion;
+    }
 }
 

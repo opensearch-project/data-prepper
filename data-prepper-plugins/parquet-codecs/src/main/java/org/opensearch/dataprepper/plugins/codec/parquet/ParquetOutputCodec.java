@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
 public class ParquetOutputCodec implements OutputCodec {
     private static final Logger LOG =  LoggerFactory.getLogger(ParquetOutputCodec.class);
 
-    private ParquetOutputCodecConfig config;
+    private final ParquetOutputCodecConfig config;
     private static Schema schema;
     private ParquetWriter<GenericRecord> writer;
     private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
@@ -71,7 +71,7 @@ public class ParquetOutputCodec implements OutputCodec {
         buildWriter(s3OutputFile);
     }
 
-    public synchronized void start(final OutputStream outputStream, File file) throws IOException {
+    public synchronized void start(File file) throws IOException {
         LocalOutputFile localOutputFile =new LocalOutputFile(file);
         buildSchemaAndKey();
         buildWriter(localOutputFile);
@@ -240,7 +240,7 @@ public class ParquetOutputCodec implements OutputCodec {
         }
         return  finalValue;
     }
-    private boolean checkS3SchemaValidity() throws IOException {
+    boolean checkS3SchemaValidity() throws IOException {
         if (config.getSchemaBucket() != null && config.getFileKey() != null && config.getSchemaRegion() != null) {
             return true;
         } else {

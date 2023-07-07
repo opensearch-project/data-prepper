@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.Schema;
 
@@ -17,6 +18,10 @@ public class ParquetSchemaParser {
 
     public static Schema parseSchemaFromJsonFile(final String location) throws IOException {
         final Map<?, ?> map = mapper.readValue(Paths.get(location).toFile(), Map.class);
+        return getSchema(map);
+    }
+
+    public static Schema getSchema(Map<?, ?> map) throws JsonProcessingException {
         final Map schemaMap = new HashMap();
         for (Map.Entry<?, ?> entry : map.entrySet()) {
             schemaMap.put(entry.getKey(), entry.getValue());
