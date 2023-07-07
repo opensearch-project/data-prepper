@@ -26,7 +26,7 @@ dependencies {
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
     violationRules {
-        rule { //in addition to core projects rule
+        rule {
             limit {
                 minimum = 0.90
             }
