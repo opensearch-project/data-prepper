@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ class TranslateProcessorTest {
     void setup() {
         lenient().when(mockConfig.getSource()).thenReturn("sourceField");
         lenient().when(mockConfig.getTarget()).thenReturn("targetField");
+        lenient().when(mockConfig.getTargetType()).thenReturn(TargetType.STRING);
         lenient().when(mockRegexConfig.getExact()).thenReturn(mockRegexConfig.DEFAULT_EXACT);
     }
 
@@ -412,6 +414,52 @@ class TranslateProcessorTest {
         assertThat(translatedRecords.get(0).getData().get("collection", ArrayList.class), is(outputJson));
     }
 
+    @Test
+    void test_target_type_default(){
+        when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("key1", "200")));
+        final TranslateProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("key1");
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("200"));
+    }
+
+    @Test
+    void test_target_type_integer(){
+        when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("key1", "200")));
+        when(mockConfig.getTargetType()).thenReturn(TargetType.INTEGER);
+        final TranslateProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("key1");
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", Integer.class), is(200));
+    }
+
+    @Test
+    void test_target_type_boolean(){
+        when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("key1", "false")));
+        when(mockConfig.getTargetType()).thenReturn(TargetType.BOOLEAN);
+        final TranslateProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("key1");
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", Boolean.class), is(false));
+    }
+
+    @Test
+    void test_target_type_double(){
+        when(mockConfig.getMap()).thenReturn(createMapEntries(createMapping("key1", "20.3")));
+        when(mockConfig.getTargetType()).thenReturn(TargetType.DOUBLE);
+        final TranslateProcessor processor = createObjectUnderTest();
+        final Record<Event> record = getEvent("key1");
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", Double.class), is(20.3));
+    }
 
 
     private TranslateProcessor createObjectUnderTest() {
@@ -442,8 +490,8 @@ class TranslateProcessorTest {
         return new AbstractMap.SimpleEntry<>(key, value);
     }
 
-    private Map<String, String> createMapEntries(Map.Entry<String, String>... mappings) {
-        final Map<String, String> finalMap = new HashMap<>();
+    private Map<String, Object> createMapEntries(Map.Entry<String, String>... mappings) {
+        final Map<String, Object> finalMap = new HashMap<>();
         for (Map.Entry<String, String> mapping : mappings) {
             finalMap.put(mapping.getKey(), mapping.getValue());
         }

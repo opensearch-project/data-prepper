@@ -48,6 +48,7 @@ public class FileSink implements Sink<Record<Object>> {
      * pluginSetting file.
      *
      * @param fileSinkConfig The file sink configuration
+     * @param sinkContext sink context
      */
     @DataPrepperPluginConstructor
     public FileSink(final FileSinkConfig fileSinkConfig, final SinkContext sinkContext) {
