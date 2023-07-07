@@ -269,6 +269,9 @@ public class SqsWorker implements Runnable {
     }
 
     private void deleteSqsMessages(final List<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntryCollection) {
+        if (deleteMessageBatchRequestEntryCollection.size() == 0) {
+            return;
+        }
         final DeleteMessageBatchRequest deleteMessageBatchRequest = buildDeleteMessageBatchRequest(deleteMessageBatchRequestEntryCollection);
         try {
             final DeleteMessageBatchResponse deleteMessageBatchResponse = sqsClient.deleteMessageBatch(deleteMessageBatchRequest);
@@ -288,7 +291,7 @@ public class SqsWorker implements Runnable {
 
                 if(LOG.isErrorEnabled()) {
                     final String failedMessages = deleteMessageBatchResponse.failed().stream()
-                            .map(failed -> toString())
+                            .map(failed -> failed.toString())
                             .collect(Collectors.joining(", "));
                     LOG.error("Failed to delete {} messages from SQS with errors: [{}].", failedDeleteCount, failedMessages);
                 }
