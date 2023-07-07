@@ -1,26 +1,26 @@
 log-pipeline :
   source :
     random :
-  sink :
-       kafka-sink :
-        bootstrap_servers :
-          - "localhost:29092"
-        batch_size: 100
-        acks: "acks"
-        compression_type: "none"
-        thread_wait_time: 1000
-        aws:
+  sink:
+    kafka-sink:
+      bootstrap_servers:
+        - "localhost:29092"
+      thread_wait_time: 1000
+      dlq:
+        s3:
           bucket: "mydlqtestbucket"
-          sts_role_arn: "arn:aws:iam::045129910014:role/dataprepper"
+          key_path_prefix: "dlq-files/"
+          sts_role_arn: "arn:aws:iam::xxxxx:role/dataprepper"
           region: "ap-south-1"
-        serde_format: json
-        topics:
-          - name: my-test-topic2
-        schema:
-          registry_url: http://localhost:8085/
-          version: 1
-        authentication:
-         sasl_oauth:
+
+      serde_format: json
+      topics:
+        - name: my-test-topic2
+      schema:
+        registry_url: http://localhost:8085/
+        version: 1
+      authentication:
+        sasl_oauth:
            oauth_client_id: XXXXXXXXXXXXXXX
            oauth_client_secret: XXXXXXXXXXXXXXX
            oauth_login_server: https://dev-XXXXXXXXXXXXXXX.okta.com

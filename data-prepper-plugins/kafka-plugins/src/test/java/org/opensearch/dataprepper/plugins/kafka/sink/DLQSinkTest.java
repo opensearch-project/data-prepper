@@ -23,7 +23,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 
 public class DLQSinkTest {
 
@@ -49,14 +56,13 @@ public class DLQSinkTest {
         MockitoAnnotations.initMocks(this);
         when(pluginFactory.loadPlugin(any(Class.class), any(PluginSetting.class))).thenReturn(dlqProvider);
         when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
-        pluginSetting=new PluginSetting("kafka-sink",new HashMap<>());
-
+        pluginSetting = new PluginSetting("kafka-sink", new HashMap<>());
 
 
         Yaml yaml = new Yaml();
         FileReader fileReader = new FileReader(getClass().getClassLoader().getResource("sample-pipelines-sink.yaml").getFile());
         Object data = yaml.load(fileReader);
-        if(data instanceof Map){
+        if (data instanceof Map) {
             Map<String, Object> propertyMap = (Map<String, Object>) data;
             Map<String, Object> logPipelineMap = (Map<String, Object>) propertyMap.get("log-pipeline");
             Map<String, Object> sinkeMap = (Map<String, Object>) logPipelineMap.get("sink");
@@ -75,9 +81,9 @@ public class DLQSinkTest {
     @Test
     public void testPerform() throws IOException {
         Object failedData = new Object();
-        ReflectionTestUtils.setField(pluginSetting,"pipelineName","test");
+        ReflectionTestUtils.setField(pluginSetting, "pipelineName", "test");
         doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
-        dlqSink.perform(failedData);
+        dlqSink.perform(failedData, mock(Exception.class));
         verify(dlqWriter).write(anyList(), anyString(), anyString());
     }
 

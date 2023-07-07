@@ -14,10 +14,14 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+
+import java.util.Collection;
+import java.util.LinkedList;
 
 
 /**
@@ -35,48 +39,66 @@ public class KafkaSinkProducer<T> {
 
     private final CachedSchemaRegistryClient schemaRegistryClient;
 
+    private final Collection<EventHandle> bufferedEventHandles;
 
     public KafkaSinkProducer(final Producer producer,
                              final KafkaSinkConfig kafkaSinkConfig,
                              final DLQSink dlqSink) {
         this.producer = producer;
         this.kafkaSinkConfig = kafkaSinkConfig;
-        this.dlqSink=dlqSink;;
-        schemaRegistryClient=getSchemaRegistryClient();
+        this.dlqSink = dlqSink;
+        schemaRegistryClient = getSchemaRegistryClient();
+        bufferedEventHandles = new LinkedList<>();
     }
 
+    public KafkaSinkProducer(final Producer producer,
+                             final KafkaSinkConfig kafkaSinkConfig,
+                             final DLQSink dlqSink,
+                             final CachedSchemaRegistryClient schemaRegistryClient) {
+        this.producer = producer;
+        this.kafkaSinkConfig = kafkaSinkConfig;
+        this.dlqSink = dlqSink;
+        this.schemaRegistryClient = schemaRegistryClient;
+        bufferedEventHandles = new LinkedList<>();
+    }
 
     public void produceRecords(final Record<Event> record) {
+        if (record.getData().getEventHandle() != null) {
+            bufferedEventHandles.add(record.getData().getEventHandle());
+        }
         kafkaSinkConfig.getTopics().forEach(topic -> {
             Object dataForDlq = null;
             try {
-                String serdeFormat=kafkaSinkConfig.getSerdeFormat();
+               final String serdeFormat = kafkaSinkConfig.getSerdeFormat();
                 if (MessageFormat.JSON.toString().equalsIgnoreCase(serdeFormat)) {
-                    JsonNode dataNode = new ObjectMapper().convertValue(record.getData().toJsonString(), JsonNode.class);
+                    final JsonNode dataNode = new ObjectMapper().convertValue(record.getData().toJsonString(), JsonNode.class);
                     dataForDlq = dataNode;
                     producer.send(new ProducerRecord(topic.getName(), dataNode));
-                }
-                else if (MessageFormat.AVRO.toString().equalsIgnoreCase(serdeFormat)) {
+                } else if (MessageFormat.AVRO.toString().equalsIgnoreCase(serdeFormat)) {
                     final String valueToParse = schemaRegistryClient.
                             getLatestSchemaMetadata(topic.getName() + "-value").getSchema();
-                    Schema schema =new Schema.Parser().parse(valueToParse);
-                    GenericRecord genericRecord = getGenericRecord(record.getData(),schema);
+                    final Schema schema = new Schema.Parser().parse(valueToParse);
+                    final GenericRecord genericRecord = getGenericRecord(record.getData(), schema);
                     dataForDlq = genericRecord;
                     producer.send(new ProducerRecord(topic.getName(), genericRecord));
                 } else {
                     dataForDlq = record.getData().toJsonString();
                     producer.send(new ProducerRecord(topic.getName(), record.getData().toJsonString()));
                 }
+                releaseEventHandles(true);
             } catch (Exception e) {
-               dlqSink.perform(dataForDlq);
+                dlqSink.perform(dataForDlq, e);
+                releaseEventHandles(false);
             }
         });
 
 
     }
 
-    private CachedSchemaRegistryClient getSchemaRegistryClient(){
-        return new CachedSchemaRegistryClient(kafkaSinkConfig.getSchemaConfig().getRegistryURL(),
+    private CachedSchemaRegistryClient getSchemaRegistryClient() {
+
+        return new CachedSchemaRegistryClient(
+                kafkaSinkConfig.getSchemaConfig().getRegistryURL(),
                 100);
     }
 
@@ -88,6 +110,13 @@ public class KafkaSinkProducer<T> {
             record.put(key, event.toMap().get(key));
         }
         return record;
+    }
+
+    private void releaseEventHandles(final boolean result) {
+        for (final EventHandle eventHandle : bufferedEventHandles) {
+            eventHandle.release(result);
+        }
+        bufferedEventHandles.clear();
     }
 
 

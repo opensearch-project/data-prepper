@@ -7,6 +7,7 @@
 package org.opensearch.dataprepper.plugins.kafka.sink;
 
 import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -17,9 +18,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.StringJoiner;
 
 import static java.util.UUID.randomUUID;
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
 
 
 /**
@@ -30,51 +36,59 @@ public class DLQSink {
 
     private static final Logger LOG = LoggerFactory.getLogger(DLQSink.class);
 
-    private static final String BUCKET = "bucket";
-    private static final String ROLE_ARN = "sts_role_arn";
-    private static final String REGION = "region";
-    private static final String S3_PLUGIN_NAME = "s3";
     private final DlqProvider dlqProvider;
-    final PluginSetting pluginSetting;
+    private final PluginSetting pluginSetting;
 
     public DLQSink(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig,final PluginSetting pluginSetting) {
+        this.pluginSetting=pluginSetting;
          this.dlqProvider = getDlqProvider(pluginFactory, kafkaSinkConfig);
-         this.pluginSetting=pluginSetting;
-
     }
 
-    public  void perform(final Object failedData) {
-        DlqWriter dlqWriter = getDlqWriter(pluginSetting.getPipelineName());
-        try {
-            String pluginId = randomUUID().toString();
-            DlqObject dlqObject = DlqObject.builder()
-                    .withPluginId(pluginId)
-                    .withPluginName(pluginSetting.getName())
-                    .withPipelineName(pluginSetting.getPipelineName())
-                    .withFailedData(failedData)
-                    .build();
-
-            dlqWriter.write(Arrays.asList(dlqObject), pluginSetting.getPipelineName(), pluginId);
-        } catch (final IOException io) {
-            LOG.error("Error occured while performing DLQ operation ",io);
-        }
+    public  void perform(final Object failedData,final Exception e) {
+        final DlqWriter dlqWriter = getDlqWriter(pluginSetting.getPipelineName());
+        final DlqObject dlqObject = DlqObject.builder()
+                .withPluginId(randomUUID().toString())
+                .withPluginName(pluginSetting.getName())
+                .withPipelineName(pluginSetting.getPipelineName())
+                .withFailedData(failedData)
+                .build();
+        logFailureForDlqObjects(dlqWriter, List.of(dlqObject),e );
     }
 
     private  DlqWriter getDlqWriter( final String writerPipelineName) {
-        Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
-                .add(writerPipelineName).toString());
-        DlqWriter dlqWriter = potentialDlq.isPresent() ? potentialDlq.get() : null;
+        final Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
+                .add(pluginSetting.getPipelineName())
+                .add(pluginSetting.getName()).toString());
+        final DlqWriter dlqWriter = potentialDlq.isPresent() ? potentialDlq.get() : null;
         return dlqWriter;
     }
 
     private  DlqProvider getDlqProvider(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig) {
         final Map<String, Object> props = new HashMap<>();
-        props.put(BUCKET, kafkaSinkConfig.getDlqConfig().getBucket());
-        props.put(ROLE_ARN, kafkaSinkConfig.getDlqConfig().getRoleArn());
-        props.put(REGION, kafkaSinkConfig.getDlqConfig().getRegion());
-        final PluginSetting dlqPluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
-        DlqProvider dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
-        return dlqProvider;
+        kafkaSinkConfig.setDlqConfig(pluginSetting);
+        final Optional<PluginModel> dlq = kafkaSinkConfig.getDlq();
+        if(dlq.isPresent()){
+            final PluginModel dlqPluginModel = dlq.get();
+            final PluginSetting dlqPluginSetting = new PluginSetting(dlqPluginModel.getPluginName(), dlqPluginModel.getPluginSettings());
+            dlqPluginSetting.setPipelineName(pluginSetting.getPipelineName());
+            final DlqProvider dlqProvider = pluginFactory.loadPlugin(DlqProvider.class, dlqPluginSetting);
+            return dlqProvider;
+        }
+        return null;
+    }
+
+    private void logFailureForDlqObjects(final DlqWriter dlqWriter,final List<DlqObject> dlqObjects, final Throwable failure) {
+        try {
+            dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
+            dlqObjects.forEach((dlqObject) -> {
+                dlqObject.releaseEventHandle(true);
+            });
+        } catch (final IOException e) {
+            dlqObjects.forEach(dlqObject -> {
+                LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);
+                dlqObject.releaseEventHandle(false);
+            });
+        }
     }
 }
 

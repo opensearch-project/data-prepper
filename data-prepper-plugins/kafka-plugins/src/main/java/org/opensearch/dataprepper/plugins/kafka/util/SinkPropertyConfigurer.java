@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
@@ -8,6 +13,9 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 
 import java.util.Properties;
 
+/**
+ * * This is static property configurer for related information given in pipeline.yml
+ */
 public class SinkPropertyConfigurer {
 
     private static final String VALUE_SERIALIZER = "value.serializer";
@@ -18,24 +26,24 @@ public class SinkPropertyConfigurer {
 
     private static final String REGISTRY_URL = "schema.registry.url";
 
-    public static  Properties getProducerProperties(final KafkaSinkConfig kafkaSinkConfig) {
-        Properties properties = new Properties();
-        setCommonServerProperties(properties,kafkaSinkConfig);
-        setPropertiesForSerializer(properties, kafkaSinkConfig.getSerdeFormat(),kafkaSinkConfig);
+    public static Properties getProducerProperties(final KafkaSinkConfig kafkaSinkConfig) {
+        final Properties properties = new Properties();
+        setCommonServerProperties(properties, kafkaSinkConfig);
+        setPropertiesForSerializer(properties, kafkaSinkConfig.getSerdeFormat(), kafkaSinkConfig);
         if (kafkaSinkConfig.getAuthConfig().getPlainTextAuthConfig() != null) {
             AuthenticationPropertyConfigurer.setSaslPlainTextProperties(kafkaSinkConfig, properties);
-        } else if (kafkaSinkConfig.getAuthConfig().getoAuthConfig() != null) {
+        } else if (kafkaSinkConfig.getAuthConfig().getOAuthConfig() != null) {
             AuthenticationPropertyConfigurer.setOauthProperties(kafkaSinkConfig, properties);
         }
         return properties;
     }
 
-    private static void setCommonServerProperties(final Properties properties,final KafkaSinkConfig kafkaSinkConfig) {
+    private static void setCommonServerProperties(final Properties properties, final KafkaSinkConfig kafkaSinkConfig) {
         properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafkaSinkConfig.getBootStrapServers());
         properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
     }
 
-    private static void setPropertiesForSerializer(Properties properties, final String serdeFormat,final KafkaSinkConfig kafkaSinkConfig) {
+    private static void setPropertiesForSerializer(final Properties properties, final String serdeFormat, final KafkaSinkConfig kafkaSinkConfig) {
         properties.put(KEY_SERIALIZER, StringSerializer.class.getName());
         validateForRegistryURL(kafkaSinkConfig);
         if (serdeFormat.equalsIgnoreCase(MessageFormat.JSON.toString())) {
@@ -50,16 +58,16 @@ public class SinkPropertyConfigurer {
     }
 
     private static void validateForRegistryURL(KafkaSinkConfig kafkaSinkConfig) {
-       final String serdeFormat=kafkaSinkConfig.getSerdeFormat();
-        if(serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())){
-            if(kafkaSinkConfig.getSchemaConfig()==null ||kafkaSinkConfig.getSchemaConfig().getRegistryURL()==null||
-                    kafkaSinkConfig.getSchemaConfig().getRegistryURL().isBlank()||kafkaSinkConfig.getSchemaConfig().getRegistryURL().isEmpty()){
+        final String serdeFormat = kafkaSinkConfig.getSerdeFormat();
+        if (serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
+            if (kafkaSinkConfig.getSchemaConfig() == null || kafkaSinkConfig.getSchemaConfig().getRegistryURL() == null ||
+                    kafkaSinkConfig.getSchemaConfig().getRegistryURL().isBlank() || kafkaSinkConfig.getSchemaConfig().getRegistryURL().isEmpty()) {
                 throw new RuntimeException("Schema registry is mandatory when serde type is avro");
             }
         }
-        if(serdeFormat.equalsIgnoreCase(MessageFormat.PLAINTEXT.toString())){
-            if(kafkaSinkConfig.getSchemaConfig()!=null &&
-                    kafkaSinkConfig.getSchemaConfig().getRegistryURL()!=null){
+        if (serdeFormat.equalsIgnoreCase(MessageFormat.PLAINTEXT.toString())) {
+            if (kafkaSinkConfig.getSchemaConfig() != null &&
+                    kafkaSinkConfig.getSchemaConfig().getRegistryURL() != null) {
                 throw new RuntimeException("Schema registry is not required for type plaintext");
             }
         }

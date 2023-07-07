@@ -15,8 +15,6 @@ import java.util.Properties;
 
 public class AuthenticationPropertyConfigurer {
 
-    private static final String SESSION_TIMEOUT_MS_CONFIG = "30000";
-
     private static final String SASL_MECHANISM = "sasl.mechanism";
 
     private static final String SASL_SECURITY_PROTOCOL = "security.protocol";
@@ -57,20 +55,20 @@ public class AuthenticationPropertyConfigurer {
 
     public static void setOauthProperties(final KafkaSinkConfig kafkaSinkConfig,
                                           final Properties properties) {
-        String oauthClientId = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthClientId();
-        String oauthClientSecret = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthClientSecret();
-        String oauthLoginServer = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthLoginServer();
-        String oauthLoginEndpoint = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthLoginEndpoint();
-        String oauthLoginGrantType = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthLoginGrantType();
-        String oauthLoginScope = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthLoginScope();
-        String oauthAuthorizationToken = Base64.getEncoder().encodeToString((oauthClientId + ":" + oauthClientSecret).getBytes());
-        String oauthIntrospectEndpoint = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthIntrospectEndpoint();
-        String tokenEndPointURL = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthTokenEndpointURL();
-        String saslMechanism = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthSaslMechanism();
-        String securityProtocol = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthSecurityProtocol();
-        String loginCallBackHandler = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthSaslLoginCallbackHandlerClass();
-        String oauthJwksEndpointURL = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthJwksEndpointURL();
-        String introspectServer = kafkaSinkConfig.getAuthConfig().getoAuthConfig().getOauthIntrospectServer();
+        final String oauthClientId = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthClientId();
+        final String oauthClientSecret = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthClientSecret();
+        final String oauthLoginServer = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthLoginServer();
+        final String oauthLoginEndpoint = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthLoginEndpoint();
+        final String oauthLoginGrantType = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthLoginGrantType();
+        final String oauthLoginScope = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthLoginScope();
+        final String oauthAuthorizationToken = Base64.getEncoder().encodeToString((oauthClientId + ":" + oauthClientSecret).getBytes());
+        final String oauthIntrospectEndpoint = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthIntrospectEndpoint();
+        final String tokenEndPointURL = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthTokenEndpointURL();
+        final String saslMechanism = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthSaslMechanism();
+        final String securityProtocol = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthSecurityProtocol();
+        final String loginCallBackHandler = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthSaslLoginCallbackHandlerClass();
+        final String oauthJwksEndpointURL = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthJwksEndpointURL();
+        final String introspectServer = kafkaSinkConfig.getAuthConfig().getOAuthConfig().getOauthIntrospectServer();
 
 
         properties.put(SASL_MECHANISM, saslMechanism);

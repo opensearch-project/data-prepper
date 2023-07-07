@@ -1,18 +1,18 @@
 log-pipeline :
   source :
     random :
-  sink :
-       kafka-sink :
-        bootstrap_servers :
+  sink:
+      kafka-sink:
+        bootstrap_servers:
           - "localhost:29092"
-        batch_size: 100
-        acks: "acks"
-        compression_type: "none"
         thread_wait_time: 1000
-        aws:
-          bucket: "mydlqtestbucket"
-          sts_role_arn: "arn:aws:iam::045129910014:role/dataprepper"
-          region: "ap-south-1"
+        dlq:
+          s3:
+            bucket: "mydlqtestbucket"
+            key_path_prefix: "dlq-files/"
+            sts_role_arn: "arn:aws:iam::xxxxx:role/dataprepper"
+            region: "ap-south-1"
+
         serde_format: json
         topics:
           - name: my-test-topic2
@@ -23,4 +23,5 @@ log-pipeline :
           sasl_plaintext:
             username: "broker"
             password: "broker"
+
 

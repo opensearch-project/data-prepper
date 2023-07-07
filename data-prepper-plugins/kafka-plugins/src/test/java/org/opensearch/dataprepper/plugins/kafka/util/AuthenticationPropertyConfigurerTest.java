@@ -3,7 +3,6 @@ package org.opensearch.dataprepper.plugins.kafka.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,17 +20,14 @@ import java.util.Properties;
 public class AuthenticationPropertyConfigurerTest {
 
 
-
     KafkaSinkConfig kafkaSinkConfig;
-
-
 
 
     private KafkaSinkConfig createKafkaSinkConfig(String fileName) throws IOException {
         Yaml yaml = new Yaml();
         FileReader fileReader = new FileReader(getClass().getClassLoader().getResource(fileName).getFile());
         Object data = yaml.load(fileReader);
-        if(data instanceof Map){
+        if (data instanceof Map) {
             Map<String, Object> propertyMap = (Map<String, Object>) data;
             Map<String, Object> logPipelineMap = (Map<String, Object>) propertyMap.get("log-pipeline");
             Map<String, Object> sinkeMap = (Map<String, Object>) logPipelineMap.get("sink");
@@ -40,24 +36,25 @@ public class AuthenticationPropertyConfigurerTest {
             mapper.registerModule(new JavaTimeModule());
             String json = mapper.writeValueAsString(kafkaConfigMap);
             Reader reader = new StringReader(json);
-            return  mapper.readValue(reader, KafkaSinkConfig.class);
+            return mapper.readValue(reader, KafkaSinkConfig.class);
         }
         return null;
 
     }
 
     @Test
-     public void testSetSaslPlainTextProperties() throws IOException {
-        Properties props=new Properties();
-        kafkaSinkConfig=createKafkaSinkConfig("sample-pipelines-sink.yaml");
-        AuthenticationPropertyConfigurer.setSaslPlainTextProperties(kafkaSinkConfig,props);
-        Assertions.assertEquals("PLAIN",props.getProperty("sasl.mechanism"));
-     }
+    public void testSetSaslPlainTextProperties() throws IOException {
+        Properties props = new Properties();
+        kafkaSinkConfig = createKafkaSinkConfig("sample-pipelines-sink.yaml");
+        AuthenticationPropertyConfigurer.setSaslPlainTextProperties(kafkaSinkConfig, props);
+        Assertions.assertEquals("PLAIN", props.getProperty("sasl.mechanism"));
+    }
+
     @Test
     public void testSetSaslOauthProperties() throws IOException {
-        Properties props=new Properties();
-        kafkaSinkConfig=createKafkaSinkConfig("sample-pipelines-sink-oauth.yaml");
-        AuthenticationPropertyConfigurer.setOauthProperties(kafkaSinkConfig,props);
-        Assertions.assertEquals("OAUTHBEARER",props.getProperty("sasl.mechanism"));
+        Properties props = new Properties();
+        kafkaSinkConfig = createKafkaSinkConfig("sample-pipelines-sink-oauth.yaml");
+        AuthenticationPropertyConfigurer.setOauthProperties(kafkaSinkConfig, props);
+        Assertions.assertEquals("OAUTHBEARER", props.getProperty("sasl.mechanism"));
     }
 }

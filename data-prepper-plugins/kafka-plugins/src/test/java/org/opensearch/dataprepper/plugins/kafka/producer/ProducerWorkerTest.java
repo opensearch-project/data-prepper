@@ -1,3 +1,7 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.kafka.producer;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -6,43 +10,38 @@ import org.mockito.Mock;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 
 class ProducerWorkerTest {
 
     @Mock
-    ProducerWorker multithreadedProducer;
-
-    @Mock
-    KafkaSinkConfig kafkaSinkConfig;
+    ProducerWorker producerWorker;
 
     private Record<Event> record;
 
 
     @BeforeEach
-    public void setUp(){
-        Event event= JacksonEvent.fromMessage("Testing multithreaded producer");
-        record=new Record<>(event);
+    public void setUp() {
+        Event event = JacksonEvent.fromMessage("Testing multithreaded producer");
+        record = new Record<>(event);
     }
 
 
-    private ProducerWorker createObjectUnderTest(){
-           return new ProducerWorker(mock(KafkaSinkProducer.class),record);
+    private ProducerWorker createObjectUnderTest() {
+        return new ProducerWorker(mock(KafkaSinkProducer.class), record);
     }
 
     @Test
-    void testWritingToTopic()  {
-        multithreadedProducer = createObjectUnderTest();
-        Thread spySink = spy(new Thread(multithreadedProducer));
+    void testWritingToTopic() {
+        producerWorker = createObjectUnderTest();
+        Thread spySink = spy(new Thread(producerWorker));
         spySink.start();
         verify(spySink).start();
     }
-
-
-
 
 
 }

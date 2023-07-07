@@ -92,10 +92,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
             final KafkaSinkProducer producer = createProducer();
             records.forEach(record -> {
                 producerWorker = new ProducerWorker(producer, record);
-                //TODO: uncomment this line after testing as this is the right way to do things
-                //executorService.submit(producerWorker);
-                //TODO: remove this line after testing as it executes the thread immediately
-                executorService.execute(producerWorker);
+                executorService.submit(producerWorker);
             });
 
         } catch (Exception e) {
@@ -108,7 +105,7 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
         properties = Objects.requireNonNull(properties);
         return new KafkaSinkProducer(new KafkaProducer<>(properties),
-                kafkaSinkConfig, new DLQSink(pluginFactory, kafkaSinkConfig,pluginSetting));
+                kafkaSinkConfig, new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting));
     }
 
     @Override

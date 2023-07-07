@@ -1,7 +1,11 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
 package org.opensearch.dataprepper.plugins.kafka.producer;
 
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
-import io.confluent.kafka.serializers.KafkaAvroSerializer;
+import io.confluent.kafka.schemaregistry.client.SchemaMetadata;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.kafka.clients.producer.MockProducer;
@@ -22,19 +26,23 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
-import org.powermock.api.mockito.PowerMockito;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
-import static org.mockito.Mockito.*;
-import static org.powermock.api.mockito.PowerMockito.whenNew;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
+
 public class KafkaSinkProducerTest {
 
     private KafkaSinkProducer producer;
@@ -42,7 +50,7 @@ public class KafkaSinkProducerTest {
     @Mock
     private KafkaSinkConfig kafkaSinkConfig;
 
-    List<TopicConfig> topics = new ArrayList<TopicConfig>();
+    List<TopicConfig> topics = new ArrayList<>();
 
 
     private Record<Event> record;
@@ -53,51 +61,55 @@ public class KafkaSinkProducerTest {
     private DLQSink dlqSink;
 
     private Event event;
-    @BeforeEach
-    public void setUp(){
 
+    @Mock
+    private CachedSchemaRegistryClient cachedSchemaRegistryClient;
+
+    @BeforeEach
+    public void setUp() {
         event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        record=new Record<>(event);
+        record = new Record<>(event);
         final TopicConfig topicConfig = new TopicConfig();
         topicConfig.setName("test-topic");
         topics.add(topicConfig);
-
         when(kafkaSinkConfig.getTopics()).thenReturn(topics);
         when(kafkaSinkConfig.getSchemaConfig()).thenReturn(mock(SchemaConfig.class));
         when(kafkaSinkConfig.getSchemaConfig().getRegistryURL()).thenReturn("http://localhost:8085/");
 
     }
+
     @Test
-    public void producePlainTextRecordsTest() {
+    public void producePlainTextRecordsTest() throws ExecutionException, InterruptedException {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
         MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new StringSerializer());
-        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig,dlqSink);
+        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, cachedSchemaRegistryClient);
         sinkProducer = spy(producer);
         sinkProducer.produceRecords(record);
         verify(sinkProducer).produceRecords(record);
+        assertEquals(1, mockProducer.history().size());
 
     }
 
     @Test
-    public void produceJsonRecordsTest()  {
+    public void produceJsonRecordsTest() {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("json");
         MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new JsonSerializer());
-        producer=new KafkaSinkProducer(mockProducer, kafkaSinkConfig,dlqSink);
-        sinkProducer=spy(producer);
+        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, cachedSchemaRegistryClient);
+        sinkProducer = spy(producer);
         sinkProducer.produceRecords(record);
         verify(sinkProducer).produceRecords(record);
-
+        assertEquals(1, mockProducer.history().size());
     }
 
     @Test
     public void produceAvroRecordsTest() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("avro");
-        CachedSchemaRegistryClient schemaRegistryClient=PowerMockito.mock(CachedSchemaRegistryClient.class);
-        whenNew(CachedSchemaRegistryClient.class).withArguments(kafkaSinkConfig.getSchemaConfig().getRegistryURL(), 100)
-                .thenReturn(schemaRegistryClient);
-
-        MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new KafkaAvroSerializer());
-        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig,dlqSink);
+        MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new StringSerializer());
+        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, cachedSchemaRegistryClient);
+        SchemaMetadata schemaMetadata = mock(SchemaMetadata.class);
+        String avroSchema = "{\"type\":\"record\",\"name\":\"MyMessage\",\"fields\":[{\"name\":\"message\",\"type\":\"string\"}]}";
+        when(schemaMetadata.getSchema()).thenReturn(avroSchema);
+        when(cachedSchemaRegistryClient.getLatestSchemaMetadata(topics.get(0).getName() + "-value")).thenReturn(schemaMetadata);
         sinkProducer = spy(producer);
         sinkProducer.produceRecords(record);
         verify(sinkProducer).produceRecords(record);
@@ -106,11 +118,11 @@ public class KafkaSinkProducerTest {
 
     @Test
     public void testGetGenericRecord() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        producer=new KafkaSinkProducer(new MockProducer(), kafkaSinkConfig,dlqSink);
+        producer = new KafkaSinkProducer(new MockProducer(), kafkaSinkConfig, dlqSink);
         final Schema schema = createMockSchema();
         Method privateMethod = KafkaSinkProducer.class.getDeclaredMethod("getGenericRecord", Event.class, Schema.class);
         privateMethod.setAccessible(true);
-        GenericRecord result = (GenericRecord) privateMethod.invoke(producer, event,schema);
+        GenericRecord result = (GenericRecord) privateMethod.invoke(producer, event, schema);
         Assertions.assertNotNull(result);
     }
 

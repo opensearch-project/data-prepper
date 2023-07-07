@@ -35,6 +35,7 @@ public class OAuthConfigTest {
     private String oauthJwksEndpointURL;
 
     private static final String YAML_FILE_WITH_CONSUMER_CONFIG = "sample-pipelines.yaml";
+
     @BeforeEach
     void setUp() throws IOException {
         oAuthConfig = new OAuthConfig();
@@ -51,20 +52,20 @@ public class OAuthConfigTest {
             String json = mapper.writeValueAsString(kafkaConfigMap);
             Reader reader = new StringReader(json);
             KafkaSourceConfig kafkaSourceConfig = mapper.readValue(reader, KafkaSourceConfig.class);
-            oAuthConfig = kafkaSourceConfig.getAuthConfig().getoAuthConfig();
-            oauthClientId= oAuthConfig.getOauthClientId();
+            oAuthConfig = kafkaSourceConfig.getAuthConfig().getOAuthConfig();
+            oauthClientId = oAuthConfig.getOauthClientId();
             oauthClientSecret = oAuthConfig.getOauthClientSecret();
-            oauthLoginServer= oAuthConfig.getOauthLoginServer();
-            oauthLoginEndpoint= oAuthConfig.getOauthLoginEndpoint();
-            oauthLoginGrantType= oAuthConfig.getOauthLoginGrantType();
-            oauthLoginScope= oAuthConfig.getOauthLoginScope();
-            oauthAuthorizationToken= Base64.getEncoder().encodeToString((oauthClientId +":" + oauthClientSecret).getBytes());
-            oauthIntrospectEndpoint= oAuthConfig.getOauthIntrospectEndpoint();
-            tokenEndPointURL= oAuthConfig.getOauthTokenEndpointURL();
-            saslMechanism= oAuthConfig.getOauthSaslMechanism();
+            oauthLoginServer = oAuthConfig.getOauthLoginServer();
+            oauthLoginEndpoint = oAuthConfig.getOauthLoginEndpoint();
+            oauthLoginGrantType = oAuthConfig.getOauthLoginGrantType();
+            oauthLoginScope = oAuthConfig.getOauthLoginScope();
+            oauthAuthorizationToken = Base64.getEncoder().encodeToString((oauthClientId + ":" + oauthClientSecret).getBytes());
+            oauthIntrospectEndpoint = oAuthConfig.getOauthIntrospectEndpoint();
+            tokenEndPointURL = oAuthConfig.getOauthTokenEndpointURL();
+            saslMechanism = oAuthConfig.getOauthSaslMechanism();
             securityProtocol = oAuthConfig.getOauthSecurityProtocol();
-            loginCallBackHandler= oAuthConfig.getOauthSaslLoginCallbackHandlerClass();
-            oauthJwksEndpointURL= oAuthConfig.getOauthJwksEndpointURL();
+            loginCallBackHandler = oAuthConfig.getOauthSaslLoginCallbackHandlerClass();
+            oauthJwksEndpointURL = oAuthConfig.getOauthJwksEndpointURL();
         }
     }
 
@@ -72,24 +73,25 @@ public class OAuthConfigTest {
     void testConfig() {
         assertThat(oAuthConfig, notNullValue());
     }
+
     @Test
-    void assertConfigValues(){
+    void assertConfigValues() {
         assertEquals(oAuthConfig.getOauthClientId(), "0oa9wc21447Pc5vsV5d7");
         assertEquals(oAuthConfig.getOauthClientSecret(), "aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPa");
         assertEquals(oAuthConfig.getOauthJwksEndpointURL(), "https://dev-13650048.okta.com/oauth2/default/v1/keys");
-        assertEquals(oAuthConfig.getOauthSaslLoginCallbackHandlerClass(),"org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler");
-        assertEquals(oAuthConfig.getOauthSaslMechanism(),"OAUTHBEARER");
+        assertEquals(oAuthConfig.getOauthSaslLoginCallbackHandlerClass(), "org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler");
+        assertEquals(oAuthConfig.getOauthSaslMechanism(), "OAUTHBEARER");
         //assertEquals(oAuthConfig.getOauthAuthorizationToken(),"");
-        assertEquals(oAuthConfig.getOauthIntrospectEndpoint(),"/oauth2/default/v1/introspect");
-        assertEquals(oAuthConfig.getOauthIntrospectServer(),"https://dev-13650048.okta.com");
-        assertEquals(oAuthConfig.getOauthLoginEndpoint(),"/oauth2/default/v1/token");
-        assertEquals(oAuthConfig.getOauthLoginGrantType(),"refresh_token");
+        assertEquals(oAuthConfig.getOauthIntrospectEndpoint(), "/oauth2/default/v1/introspect");
+        assertEquals(oAuthConfig.getOauthIntrospectServer(), "https://dev-13650048.okta.com");
+        assertEquals(oAuthConfig.getOauthLoginEndpoint(), "/oauth2/default/v1/token");
+        assertEquals(oAuthConfig.getOauthLoginGrantType(), "refresh_token");
 
     }
 
     @Test
     @Tag(YAML_FILE_WITH_CONSUMER_CONFIG)
-    void assertNotNullForConfigs(){
+    void assertNotNullForConfigs() {
         /*assertNotNull(oAuthConfig.getOauthClientId());
         assertNotNull(oAuthConfig.getOauthClientSecret());
         assertNotNull(oAuthConfig.getOauthJwksEndpointURL());
