@@ -4,9 +4,6 @@
  */
 
 package org.opensearch.dataprepper.plugins.sink.threshold;
-
-import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
-
 /**
  * ThresholdCheck receives paramaters for which to reference the
  * limits of a buffer and CloudWatchLogsClient before making a
