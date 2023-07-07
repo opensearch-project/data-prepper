@@ -7,12 +7,9 @@ package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
-import org.mockito.Mock;
 import org.mockito.MockedStatic;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
@@ -26,8 +23,12 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
-import static org.mockito.Mockito.*;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 
 public class CwlClientFactoryTest {
     private AwsConfig awsConfig;
