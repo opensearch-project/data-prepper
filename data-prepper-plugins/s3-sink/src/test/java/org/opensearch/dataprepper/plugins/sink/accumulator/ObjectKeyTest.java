@@ -15,7 +15,6 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.plugins.sink.S3SinkConfig;
-import org.opensearch.dataprepper.plugins.sink.codec.JsonCodec;
 import org.opensearch.dataprepper.plugins.sink.configuration.ObjectKeyOptions;
 
 import static org.hamcrest.CoreMatchers.startsWith;
@@ -35,8 +34,6 @@ class ObjectKeyTest {
     private PluginSetting pluginSetting;
     @Mock
     private PluginFactory pluginFactory;
-    @Mock
-    private JsonCodec codec;
     @Mock
     private ObjectKeyOptions objectKeyOptions;
 
@@ -58,7 +55,7 @@ class ObjectKeyTest {
     void test_objectFileName() {
         
         when(objectKeyOptions.getNamePattern()).thenReturn("my-elb-%{yyyy-MM-dd'T'hh-mm-ss}");
-        String objectFileName = ObjectKey.objectFileName(s3SinkConfig);
+        String objectFileName = ObjectKey.objectFileName(s3SinkConfig, null);
         Assertions.assertNotNull(objectFileName);
         assertThat(objectFileName, startsWith("my-elb"));
     }
@@ -68,7 +65,7 @@ class ObjectKeyTest {
 
         when(s3SinkConfig.getObjectKeyOptions().getNamePattern())
                 .thenReturn("events-%{yyyy-MM-dd'T'hh-mm-ss}.pdf");
-        String objectFileName = ObjectKey.objectFileName(s3SinkConfig);
+        String objectFileName = ObjectKey.objectFileName(s3SinkConfig, null);
         Assertions.assertNotNull(objectFileName);
         Assertions.assertTrue(objectFileName.contains(".pdf"));
     }
@@ -78,7 +75,7 @@ class ObjectKeyTest {
 
         when(s3SinkConfig.getObjectKeyOptions().getNamePattern())
                 .thenReturn("events-%{yyyy-MM-dd'T'hh-mm-ss}");
-        String objectFileName = ObjectKey.objectFileName(s3SinkConfig);
+        String objectFileName = ObjectKey.objectFileName(s3SinkConfig, null);
         Assertions.assertNotNull(objectFileName);
         Assertions.assertTrue(objectFileName.contains(".json"));
     }
