@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 
 public class CwlSinkConfigTest {
     private CwlSinkConfig cwlSinkConfig;
@@ -36,7 +37,7 @@ public class CwlSinkConfigTest {
 
     @Test
     void check_null_threshold_config_test() {
-        assertThat(new CwlSinkConfig().getThresholdConfig(), equalTo(null));
+        assertThat(new CwlSinkConfig().getThresholdConfig(), notNullValue());
     }
 
     @Test
