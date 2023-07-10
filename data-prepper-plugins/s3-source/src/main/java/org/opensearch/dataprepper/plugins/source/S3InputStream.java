@@ -129,11 +129,15 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        pos += 1;
-        next += 1;
-        bytesCounter.increment();
+        final int byteRead = stream.read();
 
-        return stream.read();
+        if (byteRead != -1) {
+            pos += 1;
+            next += 1;
+            bytesCounter.increment();
+        }
+
+        return byteRead;
     }
 
     /**
@@ -161,10 +165,13 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        int bytesRead = stream.read(b, off, len);
-        pos += bytesRead;
-        next += bytesRead;
-        bytesCounter.add(bytesRead);
+        final int bytesRead = stream.read(b, off, len);
+
+        if (bytesRead > 0) {
+            pos += bytesRead;
+            next += bytesRead;
+            bytesCounter.add(bytesRead);
+        }
 
         return bytesRead;
     }
@@ -203,9 +210,11 @@ class S3InputStream extends SeekableInputStream {
 
         final int bytesRead = stream.readNBytes(b, off, len);
 
-        pos += bytesRead;
-        next += bytesRead;
-        bytesCounter.add(bytesRead);
+        if (bytesRead > 0) {
+            pos += bytesRead;
+            next += bytesRead;
+            bytesCounter.add(bytesRead);
+        }
 
         return bytesRead;
     }
@@ -325,9 +334,11 @@ class S3InputStream extends SeekableInputStream {
 
         int bytesRead = readFully(stream, bytes, start, len);
 
-        this.pos += bytesRead;
-        this.next += bytesRead;
-        this.bytesCounter.add(bytesRead);
+        if (bytesRead > 0) {
+            this.pos += bytesRead;
+            this.next += bytesRead;
+            this.bytesCounter.add(bytesRead);
+        }
     }
 
     /**
@@ -354,9 +365,11 @@ class S3InputStream extends SeekableInputStream {
             bytesRead = readDirectBuffer(stream, buf, temp);
         }
 
-        this.pos += bytesRead;
-        this.next += bytesRead;
-        this.bytesCounter.add(bytesRead);
+        if (bytesRead > 0) {
+            this.pos += bytesRead;
+            this.next += bytesRead;
+            this.bytesCounter.add(bytesRead);
+        }
 
         return bytesRead;
     }
@@ -385,9 +398,11 @@ class S3InputStream extends SeekableInputStream {
             bytesRead = readFullyDirectBuffer(stream, buf, temp);
         }
 
-        this.pos += bytesRead;
-        this.next += bytesRead;
-        this.bytesCounter.add(bytesRead);
+        if (bytesRead > 0) {
+            this.pos += bytesRead;
+            this.next += bytesRead;
+            this.bytesCounter.add(bytesRead);
+        }
     }
 
     /**
@@ -478,7 +493,7 @@ class S3InputStream extends SeekableInputStream {
      */
     private void abortStream() {
         try {
-            if (stream instanceof Abortable && stream.read() != -1) {
+            if (stream instanceof Abortable) {
                 ((Abortable) stream).abort();
             }
         } catch (Exception e) {

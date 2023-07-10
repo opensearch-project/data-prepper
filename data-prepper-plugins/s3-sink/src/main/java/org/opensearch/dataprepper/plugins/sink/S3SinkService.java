@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
@@ -15,7 +16,6 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.ObjectKey;
-import org.opensearch.dataprepper.plugins.sink.codec.Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -23,6 +23,7 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.locks.Lock;
@@ -44,7 +45,7 @@ public class S3SinkService {
     private final Lock reentrantLock;
     private final BufferFactory bufferFactory;
     private final Collection<EventHandle> bufferedEventHandles;
-    private final Codec codec;
+    private final OutputCodec codec;
     private final S3Client s3Client;
     private Buffer currentBuffer;
     private final int maxEvents;
@@ -67,7 +68,7 @@ public class S3SinkService {
      * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
-                         final Codec codec, final S3Client s3Client, final String tagsTargetKey, final PluginMetrics pluginMetrics) {
+                         final OutputCodec codec, final S3Client s3Client, final String tagsTargetKey, final PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
@@ -100,19 +101,25 @@ public class S3SinkService {
             currentBuffer = bufferFactory.getBuffer();
         }
         try {
+            OutputStream outputStream = currentBuffer.getOutputStream();
+
             for (Record<Event> record : records) {
 
-                final Event event = record.getData();
-                final String encodedEvent;
-                encodedEvent = codec.parse(event, tagsTargetKey);
-                final byte[] encodedBytes = encodedEvent.getBytes();
+                if(currentBuffer.getEventCount() == 0) {
+                    codec.start(outputStream);
+                }
 
-                currentBuffer.writeEvent(encodedBytes);
+                final Event event = record.getData();
+                codec.writeEvent(event, outputStream, tagsTargetKey);
+                int count = currentBuffer.getEventCount() +1;
+                currentBuffer.setEventCount(count);
+
                 if(event.getEventHandle() != null) {
                     bufferedEventHandles.add(event.getEventHandle());
                 }
                 if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
-                    final String s3Key = generateKey();
+                    codec.complete(outputStream);
+                    final String s3Key = generateKey(codec);
                     LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
                             s3Key, currentBuffer.getEventCount(), currentBuffer.getSize());
                     final boolean isFlushToS3 = retryFlushToS3(currentBuffer, s3Key);
@@ -178,9 +185,9 @@ public class S3SinkService {
      * Generate the s3 object path prefix and object file name.
      * @return object key path.
      */
-    protected String generateKey() {
+    protected String generateKey(OutputCodec codec) {
         final String pathPrefix = ObjectKey.buildingPathPrefix(s3SinkConfig);
-        final String namePattern = ObjectKey.objectFileName(s3SinkConfig);
+        final String namePattern = ObjectKey.objectFileName(s3SinkConfig, codec.getExtension());
         return (!pathPrefix.isEmpty()) ? pathPrefix + namePattern : namePattern;
     }
 }

@@ -35,7 +35,7 @@ public class ParquetOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
         // TODO: get the event data and write in output stream
     }
 
