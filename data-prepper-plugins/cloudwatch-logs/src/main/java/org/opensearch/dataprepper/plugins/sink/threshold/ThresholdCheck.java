@@ -50,7 +50,7 @@ public class ThresholdCheck {
      * @param currentTimeSeconds int denoting seconds.
      * @return boolean - true if greater than or equal to logInterval, false otherwise.
      */
-    public boolean checkLogSendInterval(final long currentTimeSeconds) {
+    private boolean checkLogSendInterval(final long currentTimeSeconds) {
         return currentTimeSeconds >= logSendInterval;
     }
 
@@ -68,7 +68,7 @@ public class ThresholdCheck {
      * @param currentRequestSize int denoting size of request(Sum of PutLogEvent messages).
      * @return boolean - true if greater than Max request size, smaller otherwise.
      */
-    public boolean checkGreaterThanMaxRequestSize(final int currentRequestSize) {
+    private boolean checkGreaterThanMaxRequestSize(final int currentRequestSize) {
         return currentRequestSize > maxRequestSizeBytes;
     }
 
@@ -78,7 +78,7 @@ public class ThresholdCheck {
      * @param batchSize int denoting the size of the batch of PutLogEvents.
      * @return boolean - true if greater, false otherwise.
      */
-    public boolean checkGreaterThanBatchSize(final int batchSize) {
+    private boolean checkGreaterThanBatchSize(final int batchSize) {
         return batchSize > this.batchSize;
     }
 
@@ -87,11 +87,11 @@ public class ThresholdCheck {
      * @param currentRequestSize int denoting size of request(Sum of PutLogEvent messages).
      * @return boolean - true if equal Max request size, smaller otherwise.
      */
-    public boolean checkEqualMaxRequestSize(final int currentRequestSize) {
+    private boolean checkEqualMaxRequestSize(final int currentRequestSize) {
         return currentRequestSize == maxRequestSizeBytes;
     }
 
-    public boolean checkEqualBatchSize(final int batchSize) {
+    private boolean checkEqualBatchSize(final int batchSize) {
         return batchSize == this.batchSize;
     }
 }

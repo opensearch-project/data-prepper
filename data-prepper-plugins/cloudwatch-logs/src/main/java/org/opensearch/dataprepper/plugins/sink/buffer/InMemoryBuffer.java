@@ -32,7 +32,7 @@ public class InMemoryBuffer implements Buffer {
     }
 
     @Override
-    public byte[] getEvent() {
+    public byte[] popEvent() {
         bufferSize -= eventsBuffered.get(0).length;
         return eventsBuffered.remove(0);
     }

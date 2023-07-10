@@ -27,5 +27,5 @@ public interface Buffer {
 
     void writeEvent(byte[] event);
 
-    byte[] getEvent();
+    byte[] popEvent();
 }

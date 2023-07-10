@@ -59,7 +59,7 @@ public class InMemoryBufferTest {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
 
-        inMemoryBuffer.getEvent();
+        inMemoryBuffer.popEvent();
 
         assertThat(inMemoryBuffer.getEventCount(), equalTo(2));
     }
@@ -70,7 +70,7 @@ public class InMemoryBufferTest {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
 
-        inMemoryBuffer.getEvent();
+        inMemoryBuffer.popEvent();
 
         assertThat(inMemoryBuffer.getBufferSize(), equalTo(42));
     }
@@ -94,7 +94,7 @@ public class InMemoryBufferTest {
         int eventCount = inMemoryBuffer.getEventCount();
 
         for (int i = 0; i < eventCount; i++) {
-            assertThat(new String(inMemoryBuffer.getEvent()), equalTo(getStringJsonMessage()));
+            assertThat(new String(inMemoryBuffer.popEvent()), equalTo(getStringJsonMessage()));
         }
     }
 }
