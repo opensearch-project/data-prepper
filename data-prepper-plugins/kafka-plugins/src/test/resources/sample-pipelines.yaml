@@ -30,22 +30,23 @@ log-pipeline:
         registry_url: http://localhost:8081/
         version: 1
       authentication:
-        sasl_plaintext:
-          username: admin
-          password: admin-secret
-        sasl_oauth:
-          oauth_client_id: 0oa9wc21447Pc5vsV5d7
-          oauth_client_secret: aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPa
-          oauth_login_server: https://dev-13650048.okta.com
-          oauth_login_endpoint: /oauth2/default/v1/token
-          oauth_login_grant_type: refresh_token
-          oauth_login_scope: kafka
-          oauth_introspect_server: https://dev-13650048.okta.com
-          oauth_introspect_endpoint: /oauth2/default/v1/introspect
-          oauth_token_endpoint_url: https://dev-13650048.okta.com/oauth2/default/v1/token
-          oauth_sasl_mechanism: OAUTHBEARER
-          oauth_security_protocol: SASL_PLAINTEXT
-          oauth_sasl_login_callback_handler_class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
-          oauth_jwks_endpoint_url: https://dev-13650048.okta.com/oauth2/default/v1/keys
+        sasl:
+          plaintext:
+            username: admin
+            password: admin-secret
+          oauth:
+            oauth_client_id: 0oa9wc21447Pc5vsV5d7
+            oauth_client_secret: aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPa
+            oauth_login_server: https://dev-13650048.okta.com
+            oauth_login_endpoint: /oauth2/default/v1/token
+            oauth_login_grant_type: refresh_token
+            oauth_login_scope: kafka
+            oauth_introspect_server: https://dev-13650048.okta.com
+            oauth_introspect_endpoint: /oauth2/default/v1/introspect
+            oauth_token_endpoint_url: https://dev-13650048.okta.com/oauth2/default/v1/token
+            oauth_sasl_mechanism: OAUTHBEARER
+            oauth_security_protocol: SASL_PLAINTEXT
+            oauth_sasl_login_callback_handler_class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
+            oauth_jwks_endpoint_url: https://dev-13650048.okta.com/oauth2/default/v1/keys
   sink:
     - stdout:

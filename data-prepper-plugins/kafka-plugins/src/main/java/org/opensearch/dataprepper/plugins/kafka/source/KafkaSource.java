@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
@@ -167,8 +168,25 @@ public class KafkaSource implements Source<Record<Event>> {
             schemaType = MessageFormat.PLAINTEXT.toString();
         }
         setPropertiesForSchemaType(properties, schemaType);
-        if (sourceConfig.getAuthConfig() != null && sourceConfig.getAuthConfig().getPlainTextAuthConfig() != null) {
-            setPropertiesForAuth(properties);
+        if (sourceConfig.getAuthConfig() != null) {
+            AuthConfig.SaslAuthConfig saslAuthConfig = sourceConfig.getAuthConfig().getSaslAuthConfig();
+            if (saslAuthConfig != null) {
+                if (saslAuthConfig.getPlainTextAuthConfig() != null) {
+                    setPlainTextAuthProperties(properties);
+                } else if (saslAuthConfig.getMskIamConfig() != null) {
+                    // We default to encryption config to be SSL when
+                    // MSK IAM is used. Since there is no SSL specific
+                    // configuration needed, we do not check for encryption
+                    // config for now. We may have to enforce the
+                    // following in future
+                    /*
+                    if (sourceConfig.getEncryptionConfig() == null || sourceConfig.getEncryptionConfig().getSslConfig() == null) {
+                        throw new RuntimeException("Encryption Config must be SSL to use IAM authentication mechanism");
+                    }
+                    */
+                    setMskIamAuthProperties(properties);
+                }
+            }
         }
         LOG.info("Starting consumer with the properties : {}", properties);
         return properties;
@@ -210,9 +228,19 @@ public class KafkaSource implements Source<Record<Event>> {
         return sourceConfig.getSchemaConfig().getRegistryURL();
     }
 
-    private void setPropertiesForAuth(Properties properties) {
-        String username = sourceConfig.getAuthConfig().getPlainTextAuthConfig().getUsername();
-        String password = sourceConfig.getAuthConfig().getPlainTextAuthConfig().getPassword();
+    private void setMskIamAuthProperties(Properties properties) {
+        properties.put("security.protocol", "SASL_SSL");
+        properties.put("sasl.mechanism", "AWS_MSK_IAM");
+        properties.put("sasl.client.callback.handler.class", "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
+        properties.put("sasl.jaas.config",
+            "software.amazon.msk.auth.iam.IAMLoginModule required " +
+            "awsRoleArn=\"" + sourceConfig.getAwsConfig().getStsRoleArn()+
+            "\" awsStsRegion=\""+ sourceConfig.getAwsConfig().getRegion()+"\";");
+    }
+
+    private void setPlainTextAuthProperties(Properties properties) {
+        String username = sourceConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig().getUsername();
+        String password = sourceConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig().getPassword();
         properties.put("sasl.mechanism", "PLAIN");
         properties.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
         properties.put("security.protocol", "SASL_PLAINTEXT");

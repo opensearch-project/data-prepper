@@ -10,10 +10,26 @@ import jakarta.validation.constraints.Size;
 
 public class AwsConfig {
     @JsonProperty("msk_arn")
-    @Size(min = 20, max = 2048, message = "mskArn length should be between 20 and 2048 characters")
-    private String awsMskArn;
+    @Size(min = 20, max = 2048, message = "msk_arn length should be between 20 and 2048 characters")
+    private String mskArn;
 
-    public String getAwsMskArn() {
-        return awsMskArn;
+    @Size(min = 1, message = "Region cannot be empty string")
+    @JsonProperty("region")
+    private String region;
+
+    @Size(min = 20, max = 2048, message = "sts_role_arn length should be between 20 and 2048 characters")
+    @JsonProperty("sts_role_arn")
+    private String stsRoleArn;
+
+    public String getMskArn() {
+        return mskArn;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public String getStsRoleArn() {
+        return stsRoleArn;
     }
 }
