@@ -95,7 +95,7 @@ public class GeoIPProcessorUrlServiceIT {
             geoData = geoIPProcessorService.getGeoData(inetAddress, null);
 
             assertThat(geoData.get("country_iso_code"), equalTo("US"));
-            assertThat(geoData.get("ip"), equalTo("/8.8.8.8"));
+            assertThat(geoData.get("ip"), equalTo("8.8.8.8"));
             assertThat(geoData.get("country_name"), equalTo("United States"));
             assertThat(geoData.get("organization_name"), equalTo("GOOGLE"));
         }
