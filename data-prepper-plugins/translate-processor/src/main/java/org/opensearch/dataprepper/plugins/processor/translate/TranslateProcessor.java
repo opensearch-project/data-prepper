@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.typeconverter.TypeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +31,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
@@ -40,15 +42,17 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     private static final Logger LOG = LoggerFactory.getLogger(TranslateProcessor.class);
     private final ExpressionEvaluator expressionEvaluator;
     private final TranslateProcessorConfig translateProcessorConfig;
-    private final LinkedHashMap<Range<Float>, String> rangeMappings;
-    private final Map<String, String> individualMappings;
-    private final Map<Pattern, String> compiledPatterns;
+    private final LinkedHashMap<Range<Float>, Object> rangeMappings;
+    private final Map<String, Object> individualMappings;
+    private final Map<Pattern, Object> compiledPatterns;
+    private final TypeConverter converter;
 
     @DataPrepperPluginConstructor
     public TranslateProcessor(PluginMetrics pluginMetrics, final TranslateProcessorConfig translateProcessorConfig, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.translateProcessorConfig = translateProcessorConfig;
         this.expressionEvaluator = expressionEvaluator;
+        this.converter = translateProcessorConfig.getTargetType().getTargetConverter();
         individualMappings = new HashMap<>();
         rangeMappings = new LinkedHashMap<>();
         compiledPatterns = new HashMap<>();
@@ -62,22 +66,22 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         checkOverlappingKeys();
     }
 
-    private void compilePatterns(Map<String, String> mappings) {
+    private void compilePatterns(Map<String, Object> mappings) {
         for (String pattern : mappings.keySet()) {
             Pattern compiledPattern = Pattern.compile(pattern);
             compiledPatterns.put(compiledPattern, mappings.get(pattern));
         }
     }
 
-    private void processMapField(Map<String, String> map) {
+    private void processMapField(Map<String, Object> map) {
         if (Objects.nonNull(map)) {
-            for (Map.Entry<String, String> mapEntry : map.entrySet()) {
+            for (Map.Entry<String, Object> mapEntry : map.entrySet()) {
                 parseIndividualKeys(mapEntry);
             }
         }
     }
 
-    private void parseIndividualKeys(Map.Entry<String, String>  mapEntry){
+    private void parseIndividualKeys(Map.Entry<String, Object>  mapEntry){
         String[] commaSeparatedKeys = mapEntry.getKey().split(",");
         for(String individualKey : commaSeparatedKeys){
             if(individualKey.contains("-")){
@@ -88,7 +92,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
     }
 
-    private void addRangeMapping(Map.Entry<String, String>  mapEntry){
+    private void addRangeMapping(Map.Entry<String, Object>  mapEntry){
         String[] rangeKeys = mapEntry.getKey().split("-");
         if(rangeKeys.length!=2 || !StringUtils.isNumericSpace(rangeKeys[0]) || !StringUtils.isNumericSpace(rangeKeys[1])){
             addIndividualMapping(mapEntry.getKey(), mapEntry.getValue());
@@ -105,7 +109,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
     }
 
-    private void addIndividualMapping(final String key, final String value){
+    private void addIndividualMapping(final String key, final Object value){
         if(individualMappings.containsKey(key)){
             String exceptionMsg = "map option contains duplicate entries of "+key;
             throw new InvalidPluginConfigurationException(exceptionMsg);
@@ -174,15 +178,15 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
     }
 
-    private Object getTargetValue(Object sourceObject, List<String> targetValues){
-        if(sourceObject instanceof String){
-            return targetValues.get(0);
+    private Object getTargetValue(Object sourceObject, List<Object> targetValues){
+        if(sourceObject instanceof String) {
+            return converter.convert(targetValues.get(0));
         }
-        return targetValues;
+        return targetValues.stream().map(converter::convert).collect(Collectors.toList());
     }
 
     private void performMappings(Object recordObject) {
-        List<String> targetValues = new ArrayList<>();
+        List<Object> targetValues = new ArrayList<>();
         Object sourceObject = translateProcessorConfig.getSource();
         List<String> sourceKeys;
         if (sourceObject instanceof List<?>) {
@@ -195,14 +199,14 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         }
         for (String sourceKey : sourceKeys) {
             String sourceValue = getSourceValue(recordObject, sourceKey);
-            Optional<String> targetValue = getTargetValueForSource(sourceValue);
+            Optional<Object> targetValue = getTargetValueForSource(sourceValue);
             targetValue.ifPresent(targetValues::add);
         }
         addTargetToRecords(sourceObject, targetValues, recordObject);
     }
 
-    private Optional<String> getTargetValueForSource(final String sourceValue) {
-        Optional<String> targetValue = Optional.empty();
+    private Optional<Object> getTargetValueForSource(final String sourceValue) {
+        Optional<Object> targetValue = Optional.empty();
         targetValue = targetValue
                 .or(() -> matchesIndividualEntry(sourceValue))
                 .or(() -> matchesRangeEntry(sourceValue))
@@ -211,19 +215,19 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return targetValue;
     }
 
-    private Optional<String> matchesIndividualEntry(final String sourceValue) {
+    private Optional<Object> matchesIndividualEntry(final String sourceValue) {
         if (individualMappings.containsKey(sourceValue)) {
             return Optional.of(individualMappings.get(sourceValue));
         }
         return Optional.empty();
     }
 
-    private Optional<String> matchesRangeEntry(final String sourceValue) {
+    private Optional<Object> matchesRangeEntry(final String sourceValue) {
         if (!NumberUtils.isParsable(sourceValue)) {
             return Optional.empty();
         }
         Float floatKey = Float.parseFloat(sourceValue);
-        for (Map.Entry<Range<Float>, String> rangeEntry : rangeMappings.entrySet()) {
+        for (Map.Entry<Range<Float>, Object> rangeEntry : rangeMappings.entrySet()) {
             Range<Float> range = rangeEntry.getKey();
             if (range.contains(floatKey)) {
                 return Optional.of(rangeEntry.getValue());
@@ -232,7 +236,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return Optional.empty();
     }
 
-    private Optional<String> matchesPatternEntry(final String sourceValue) {
+    private Optional<Object> matchesPatternEntry(final String sourceValue) {
         if (compiledPatterns.isEmpty()) {
             return Optional.empty();
         }
@@ -246,7 +250,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return Optional.empty();
     }
 
-    private void addTargetToRecords(Object sourceObject, List<String> targetValues, Object recordObject) {
+    private void addTargetToRecords(Object sourceObject, List<Object> targetValues, Object recordObject) {
         if (targetValues.isEmpty()) {
             return;
         }

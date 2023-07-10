@@ -22,6 +22,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_PREFIX = "";
     static final String DEFAULT_DELETE_KEY_REGEX = "";
     static final String DEFAULT_DELETE_VALUE_REGEX = "";
+    static final String DEFAULT_TRANSFORM_KEY = "";
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -59,6 +60,10 @@ public class KeyValueProcessorConfig {
     @JsonProperty("delete_value_regex")
     @NotNull
     private String deleteValueRegex = DEFAULT_DELETE_VALUE_REGEX;
+
+    @JsonProperty("transform_key")
+    @NotNull
+    private String transformKey = DEFAULT_TRANSFORM_KEY;
 
     public String getSource() {
         return source;
@@ -102,5 +107,9 @@ public class KeyValueProcessorConfig {
 
     public String getDeleteValueRegex() {
         return deleteValueRegex;
+    }
+
+    public String getTransformKey() {
+        return transformKey;
     }
 }
