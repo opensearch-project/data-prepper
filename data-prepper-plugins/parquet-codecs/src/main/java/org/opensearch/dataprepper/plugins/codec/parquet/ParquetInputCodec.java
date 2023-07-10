@@ -91,8 +91,9 @@ public class ParquetInputCodec implements InputCodec {
 
                 eventConsumer.accept(new Record<>(event));
             }
-        } catch (Exception parquetException){
-            LOG.error("An exception occurred while parsing parquet InputStream  ", parquetException);
+        } catch (Exception e){
+            LOG.error("An exception occurred while parsing parquet InputStream ", e);
+            throw new IOException(e);
         }
     }
 
