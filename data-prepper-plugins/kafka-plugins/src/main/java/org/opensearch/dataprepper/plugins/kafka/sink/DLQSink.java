@@ -18,20 +18,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-<<<<<<< HEAD
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.StringJoiner;
-=======
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.StringJoiner;
-
->>>>>>> 03504123 (Fixing import issues)
 
 import static java.util.UUID.randomUUID;
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
@@ -48,23 +39,23 @@ public class DLQSink {
     private final DlqProvider dlqProvider;
     private final PluginSetting pluginSetting;
 
-    public DLQSink(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig,final PluginSetting pluginSetting) {
-        this.pluginSetting=pluginSetting;
-         this.dlqProvider = getDlqProvider(pluginFactory, kafkaSinkConfig);
+    public DLQSink(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig, final PluginSetting pluginSetting) {
+        this.pluginSetting = pluginSetting;
+        this.dlqProvider = getDlqProvider(pluginFactory, kafkaSinkConfig);
     }
 
-    public  void perform(final Object failedData,final Exception e) {
-        final DlqWriter dlqWriter = getDlqWriter(pluginSetting.getPipelineName());
+    public void perform(final Object failedData, final Exception e) {
+        final DlqWriter dlqWriter = getDlqWriter();
         final DlqObject dlqObject = DlqObject.builder()
                 .withPluginId(randomUUID().toString())
                 .withPluginName(pluginSetting.getName())
                 .withPipelineName(pluginSetting.getPipelineName())
                 .withFailedData(failedData)
                 .build();
-        logFailureForDlqObjects(dlqWriter, List.of(dlqObject),e );
+        logFailureForDlqObjects(dlqWriter, List.of(dlqObject), e);
     }
 
-    private  DlqWriter getDlqWriter( final String writerPipelineName) {
+    private DlqWriter getDlqWriter() {
         final Optional<DlqWriter> potentialDlq = dlqProvider.getDlqWriter(new StringJoiner(MetricNames.DELIMITER)
                 .add(pluginSetting.getPipelineName())
                 .add(pluginSetting.getName()).toString());
@@ -72,11 +63,11 @@ public class DLQSink {
         return dlqWriter;
     }
 
-    private  DlqProvider getDlqProvider(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig) {
+    private DlqProvider getDlqProvider(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig) {
         final Map<String, Object> props = new HashMap<>();
         kafkaSinkConfig.setDlqConfig(pluginSetting);
         final Optional<PluginModel> dlq = kafkaSinkConfig.getDlq();
-        if(dlq.isPresent()){
+        if (dlq.isPresent()) {
             final PluginModel dlqPluginModel = dlq.get();
             final PluginSetting dlqPluginSetting = new PluginSetting(dlqPluginModel.getPluginName(), dlqPluginModel.getPluginSettings());
             dlqPluginSetting.setPipelineName(pluginSetting.getPipelineName());
@@ -86,7 +77,7 @@ public class DLQSink {
         return null;
     }
 
-    private void logFailureForDlqObjects(final DlqWriter dlqWriter,final List<DlqObject> dlqObjects, final Throwable failure) {
+    private void logFailureForDlqObjects(final DlqWriter dlqWriter, final List<DlqObject> dlqObjects, final Throwable failure) {
         try {
             dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
             dlqObjects.forEach((dlqObject) -> {

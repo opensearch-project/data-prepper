@@ -22,12 +22,12 @@ public class ProducerWorker implements Runnable {
     public ProducerWorker(final KafkaSinkProducer producer,
                           final Record<Event> record) {
         this.record = record;
-        this.producer=producer;
+        this.producer = producer;
     }
 
     @Override
     public void run() {
-            producer.produceRecords(record);
+        producer.produceRecords(record);
     }
 
- }
+}

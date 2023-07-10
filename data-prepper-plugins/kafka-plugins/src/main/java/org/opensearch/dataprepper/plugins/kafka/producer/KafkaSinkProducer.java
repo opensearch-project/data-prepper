@@ -69,7 +69,7 @@ public class KafkaSinkProducer<T> {
         kafkaSinkConfig.getTopics().forEach(topic -> {
             Object dataForDlq = null;
             try {
-               final String serdeFormat = kafkaSinkConfig.getSerdeFormat();
+                final String serdeFormat = kafkaSinkConfig.getSerdeFormat();
                 if (MessageFormat.JSON.toString().equalsIgnoreCase(serdeFormat)) {
                     final JsonNode dataNode = new ObjectMapper().convertValue(record.getData().toJsonString(), JsonNode.class);
                     dataForDlq = dataNode;

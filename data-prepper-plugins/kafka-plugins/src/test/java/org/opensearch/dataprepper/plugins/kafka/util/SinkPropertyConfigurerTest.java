@@ -33,7 +33,7 @@ public class SinkPropertyConfigurerTest {
         Yaml yaml = new Yaml();
         FileReader fileReader = new FileReader(getClass().getClassLoader().getResource("sample-pipelines-sink.yaml").getFile());
         Object data = yaml.load(fileReader);
-        if(data instanceof Map){
+        if (data instanceof Map) {
             Map<String, Object> propertyMap = (Map<String, Object>) data;
             Map<String, Object> logPipelineMap = (Map<String, Object>) propertyMap.get("log-pipeline");
             Map<String, Object> sinkeMap = (Map<String, Object>) logPipelineMap.get("sink");
@@ -47,32 +47,33 @@ public class SinkPropertyConfigurerTest {
     }
 
     @Test
-     public void testGetProducerPropertiesForJson(){
-        Properties props=SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
-        Assertions.assertEquals("30000",props.getProperty("session.timeout.ms"));
-     }
-
-    @Test
-    public void testGetProducerPropertiesForPlainText(){
-        ReflectionTestUtils.setField(kafkaSinkConfig,"serdeFormat","plaintext");
-        Assertions.assertThrows(RuntimeException.class,()->SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig));
-
+    public void testGetProducerPropertiesForJson() {
+        Properties props = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
+        Assertions.assertEquals("30000", props.getProperty("session.timeout.ms"));
     }
+
     @Test
-    public void testGetProducerPropertiesForAvro(){
-        ReflectionTestUtils.setField(kafkaSinkConfig,"serdeFormat","avro");
-        SchemaConfig schemaConfig=kafkaSinkConfig.getSchemaConfig();
-        ReflectionTestUtils.setField(kafkaSinkConfig,"schemaConfig",null);
-        Assertions.assertThrows(RuntimeException.class,()->SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig));
-        ReflectionTestUtils.setField(kafkaSinkConfig,"schemaConfig",schemaConfig);
-        Assertions.assertEquals("30000",SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig).getProperty("session.timeout.ms"));
+    public void testGetProducerPropertiesForPlainText() {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "serdeFormat", "plaintext");
+        Assertions.assertThrows(RuntimeException.class, () -> SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig));
 
     }
 
     @Test
-    public void testGetProducerPropertiesForNoSerde(){
-        ReflectionTestUtils.setField(kafkaSinkConfig,"serdeFormat",null);
-        Assertions.assertThrows(RuntimeException.class,()->SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig));
+    public void testGetProducerPropertiesForAvro() {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "serdeFormat", "avro");
+        SchemaConfig schemaConfig = kafkaSinkConfig.getSchemaConfig();
+        ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", null);
+        Assertions.assertThrows(RuntimeException.class, () -> SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig));
+        ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", schemaConfig);
+        Assertions.assertEquals("30000", SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig).getProperty("session.timeout.ms"));
+
+    }
+
+    @Test
+    public void testGetProducerPropertiesForNoSerde() {
+        ReflectionTestUtils.setField(kafkaSinkConfig, "serdeFormat", null);
+        Assertions.assertThrows(RuntimeException.class, () -> SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig));
 
     }
 
