@@ -5,11 +5,17 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringDeserializer;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,37 +24,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.consumer.MultithreadedConsumer;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.yaml.snakeyaml.Yaml;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import java.io.FileReader;
-import java.io.Reader;
-import java.io.StringReader;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.doCallRealMethod;
-import static org.mockito.Mockito.verify;
-
+import java.time.Duration;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class KafkaSourceTest {
-    @Mock
-    private KafkaSource source;
+    private KafkaSource kafkaSource;
 
     @Mock
     private KafkaSourceConfig sourceConfig;
@@ -57,73 +43,70 @@ class KafkaSourceTest {
     private PluginMetrics pluginMetrics;
 
     @Mock
-    private ExecutorService executorService;
+    private SchemaConfig schemaConfig;
 
     @Mock
-    private SchemaConfig schemaConfig;
+    private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
     private TopicConfig topicConfig;
     @Mock
     private PipelineDescription pipelineDescription;
     @Mock
-    OAuthConfig oAuthConfig;
-    @Mock
     PlainTextAuthConfig plainTextAuthConfig;
+    @Mock
+    TopicConfig topic1, topic2;
+    @Mock
+    private Buffer<Record<Event>> buffer;
+
     private static final String BOOTSTRAP_SERVERS = "localhost:9092";
     private static final String TOPIC = "my-topic";
+    private static final String TEST_GROUP_ID = "testGroupId";
+
+
+    public KafkaSource createObjectUnderTest() {
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
+    }
 
     @BeforeEach
     void setUp() throws Exception {
-        Yaml yaml = new Yaml();
-        FileReader fileReader = new FileReader(getClass().getClassLoader().getResource("sample-pipelines.yaml").getFile());
-        Object data = yaml.load(fileReader);
-        if (data instanceof Map) {
-            Map<String, Object> propertyMap = (Map<String, Object>) data;
-            Map<String, Object> logPipelineMap = (Map<String, Object>) propertyMap.get("log-pipeline");
-            Map<String, Object> sourceMap = (Map<String, Object>) logPipelineMap.get("source");
-            Map<String, Object> kafkaConfigMap = (Map<String, Object>) sourceMap.get("kafka");
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.registerModule(new JavaTimeModule());
-            String json = mapper.writeValueAsString(kafkaConfigMap);
-            Reader reader = new StringReader(json);
-            sourceConfig = mapper.readValue(reader, KafkaSourceConfig.class);
-            topicConfig = sourceConfig.getTopics().get(0);
-            oAuthConfig = sourceConfig.getAuthConfig().getoAuthConfig();
-            plainTextAuthConfig = sourceConfig.getAuthConfig().getPlainTextAuthConfig();
-            schemaConfig = sourceConfig.getSchemaConfig();
-        }
+        sourceConfig = mock(KafkaSourceConfig.class);
+        pipelineDescription = mock(PipelineDescription.class);
+        pluginMetrics = mock(PluginMetrics.class);
+        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
+        when(topic1.getName()).thenReturn("topic1");
+        when(topic2.getName()).thenReturn("topic2");
+        when(topic1.getWorkers()).thenReturn(2);
+        when(topic2.getWorkers()).thenReturn(3);
+        when(topic1.getAutoCommitInterval()).thenReturn(Duration.ofSeconds(1));
+        when(topic2.getAutoCommitInterval()).thenReturn(Duration.ofSeconds(1));
+        when(topic1.getAutoOffsetReset()).thenReturn("earliest");
+        when(topic2.getAutoOffsetReset()).thenReturn("earliest");
+        when(topic1.getConsumerMaxPollRecords()).thenReturn(1);
+        when(topic2.getConsumerMaxPollRecords()).thenReturn(1);
+        when(topic1.getGroupId()).thenReturn(TEST_GROUP_ID);
+        when(topic2.getGroupId()).thenReturn(TEST_GROUP_ID);
+        when(topic1.getAutoCommit()).thenReturn(false);
+        when(topic2.getAutoCommit()).thenReturn(false);
+        when(topic1.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
+        when(topic2.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
+        when(sourceConfig.getBootStrapServers()).thenReturn(List.of("http://localhost:1234"));
+        when(sourceConfig.getTopics()).thenReturn(Arrays.asList(topic1, topic2));
+    }
+
+    @Test
+    void test_kafkaSource_start_stop() {
+        kafkaSource = createObjectUnderTest();
+        kafkaSource.start(buffer);
+        try {
+            Thread.sleep(10);
+        } catch (Exception e){}
+        kafkaSource.stop();
     }
 
     @Test
     void test_kafkaSource_start_execution_catch_block() {
-        source = new KafkaSource(null, pluginMetrics, pipelineDescription);
-        KafkaSource spySource = spy(source);
-        Assertions.assertThrows(Exception.class, () -> spySource.start(any()));
-    }
-
-    @Test
-    void test_kafkaSource_stop_execution() throws Exception {
-        List<MultithreadedConsumer> consumers = buildKafkaSourceConsumer();
-        source = new KafkaSource(sourceConfig, pluginMetrics,pipelineDescription);
-        KafkaSource spySource = spy(source);
-        ReflectionTestUtils.setField(spySource, "executorService", executorService);
-        doCallRealMethod().when(spySource).stop();
-        spySource.stop();
-        verify(spySource).stop();
-    }
-
-    private List<MultithreadedConsumer> buildKafkaSourceConsumer() {
-        List<MultithreadedConsumer> consumers = new ArrayList<>();
-        Properties prop = new Properties();
-        prop.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        prop.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        prop.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        MultithreadedConsumer kafkaSourceConsumer = new MultithreadedConsumer(
-                topicConfig.getGroupId(),
-                topicConfig.getGroupId(),
-                prop, null,sourceConfig, null, pluginMetrics,null);
-        consumers.add(kafkaSourceConsumer);
-        return consumers;
+        kafkaSource = createObjectUnderTest();
+        Assertions.assertThrows(Exception.class, () -> kafkaSource.start(null));
     }
 }
