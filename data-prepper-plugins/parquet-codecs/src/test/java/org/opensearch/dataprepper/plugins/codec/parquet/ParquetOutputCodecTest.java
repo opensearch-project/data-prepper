@@ -68,6 +68,10 @@ public class ParquetOutputCodecTest {
 
             eventData.put("name", "Person" + rows);
             eventData.put("age", rows);
+            eventData.put("doubleType", Double.valueOf(rows));
+            eventData.put("floatType", Float.valueOf(rows));
+            eventData.put("longType", Long.valueOf(rows));
+            eventData.put("bytesType", ("Person"+rows).getBytes());
             recordList.add((eventData));
 
         }
@@ -79,6 +83,10 @@ public class ParquetOutputCodecTest {
                 .fields()
                 .name("name").type().stringType().noDefault()
                 .name("age").type().intType().noDefault()
+                .name("doubleType").type().doubleType().noDefault()
+                .name("floatType").type().floatType().noDefault()
+                .name("longType").type().longType().noDefault()
+                .name("bytesType").type().bytesType().noDefault()
                 .endRecord();
 
     }
@@ -120,6 +128,16 @@ public class ParquetOutputCodecTest {
         String extension = parquetOutputCodec.getExtension();
 
         assertThat(extension, equalTo("parquet"));
+    }
+    @Test
+    public void whenNoSchemaProvided_thenThrowsException() {
+        config = new ParquetOutputCodecConfig();
+        config.setSchema(null);
+        config.setFileLocation(null);
+        config.setSchemaRegistryUrl(null);
+        ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
+        assertThrows(IOException.class,()->
+                parquetOutputCodec.buildSchemaAndKey());
     }
 
     @Test

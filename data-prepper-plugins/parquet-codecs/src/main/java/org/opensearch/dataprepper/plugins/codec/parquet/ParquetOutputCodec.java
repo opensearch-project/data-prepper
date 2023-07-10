@@ -77,7 +77,7 @@ public class ParquetOutputCodec implements OutputCodec {
         buildWriter(localOutputFile);
     }
 
-    private void buildSchemaAndKey() throws IOException {
+    void buildSchemaAndKey() throws IOException {
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
         } else if(config.getFileLocation()!=null){

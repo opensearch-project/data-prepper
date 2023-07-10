@@ -122,5 +122,12 @@ public class ParquetOutputCodecConfig {
     public void setSchemaRegion(String schemaRegion) {
         this.schemaRegion = schemaRegion;
     }
+    public void setFileLocation(String fileLocation) {
+        this.fileLocation = fileLocation;
+    }
+
+    public void setSchemaRegistryUrl(String schemaRegistryUrl) {
+        this.schemaRegistryUrl = schemaRegistryUrl;
+    }
 }
 

@@ -87,6 +87,7 @@ class S3SinkServiceIT {
     private static final int numberOfRecords = 2;
     private S3Client s3Client;
     private String bucketName;
+    private String s3region;
     private ParquetOutputCodecConfig parquetOutputCodecConfig;
     private BufferFactory bufferFactory;
     private static final String FILE_NAME = "parquet-data";
@@ -117,7 +118,7 @@ class S3SinkServiceIT {
 
     @BeforeEach
     public void setUp() {
-        String s3region = System.getProperty("tests.s3ink.region");
+        s3region = System.getProperty("tests.s3ink.region");
 
         s3Client = S3Client.builder().region(Region.of(s3region)).build();
         bucketName = System.getProperty("tests.s3sink.bucket");
@@ -273,7 +274,7 @@ class S3SinkServiceIT {
         parquetOutputCodecConfig = new ParquetOutputCodecConfig();
         parquetOutputCodecConfig.setSchema(parseSchema().toString());
         parquetOutputCodecConfig.setBucket(bucketName);
-        parquetOutputCodecConfig.setRegion(System.getProperty("tests.s3ink.region"));
+        parquetOutputCodecConfig.setRegion(s3region);
         parquetOutputCodecConfig.setPathPrefix(PATH_PREFIX);
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
         when(parquetOutputCodecConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
