@@ -37,6 +37,18 @@ public class ThresholdCheckTest {
         assertFalse(isEventGreater);
     }
 
+//    @ParameterizedTest
+//    @ValueSource(ints = {10000, 250000, 500000})
+//    void check_max_request_size_invalid(final int request_size) {
+//        assertThat(thresholdCheck.checkGreaterThanMaxRequestSize(request_size), is(false));
+//    }
+
+//    @ParameterizedTest
+//    @ValueSource(ints = {550000, 750000, 1000000})
+//    void check_max_request_size_valid(final int request_size) {
+//        assertThat(thresholdCheck.checkGreaterThanMaxRequestSize(request_size), is(true));
+//    }
+
     @ParameterizedTest
     @ValueSource(ints = {60, 80, 100})
     void check_greater_than_threshold_conditions_time_true(final int send_interval) {
