@@ -91,7 +91,7 @@ public class GeoIPProcessorUrlServiceIT {
         String ipAddress = geoIPInputJson.getPeer().getIp();
         if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
             InetAddress inetAddress = InetAddress.getByName(ipAddress);
-            //All attributes are considered by default with null
+            //All attributes are considered by default with the null value
             geoData = geoIPProcessorService.getGeoData(inetAddress, null);
 
             assertThat(geoData.get("country_iso_code"), equalTo("US"));
