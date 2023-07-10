@@ -121,7 +121,7 @@ public class GetGeoIP2Data implements GetGeoData {
                 for (String attribute : attributes) {
                     switch (attribute) {
                         case IP:
-                            enrichData(geoData, IP, inetAddress.toString());
+                            enrichData(geoData, IP, inetAddress.getHostAddress());
                             break;
                         case COUNTRY_ISO_CODE:
                             enrichData(geoData, COUNTRY_ISO_CODE, country.getIsoCode());
@@ -156,7 +156,7 @@ public class GetGeoIP2Data implements GetGeoData {
                 }
             } else {
 
-                enrichData(geoData, IP, inetAddress.toString());
+                enrichData(geoData, IP, inetAddress.getHostAddress());
                 enrichData(geoData, COUNTRY_ISO_CODE, country.getIsoCode());
                 enrichData(geoData, COUNTRY_NAME, country.getName());
                 enrichData(geoData, CONTINENT_NAME, continent.getName());
