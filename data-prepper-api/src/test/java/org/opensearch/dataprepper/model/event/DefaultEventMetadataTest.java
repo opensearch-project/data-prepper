@@ -200,6 +200,18 @@ public class DefaultEventMetadataTest {
     }
 
     @Test
+    public void testEventMetadata_withNullTags() {
+        final String testEventType = UUID.randomUUID().toString();
+
+        final EventMetadata eventMetadata = DefaultEventMetadata.builder()
+                .withEventType(testEventType)
+                .build();
+        assertThat(eventMetadata, notNullValue());
+        eventMetadata.addTags(null);
+        assertThat(eventMetadata.getTags(), equalTo(Collections.emptySet()));
+    }
+
+    @Test
     public void testBuild_withTags() {
         final String testEventType = UUID.randomUUID().toString();
 
