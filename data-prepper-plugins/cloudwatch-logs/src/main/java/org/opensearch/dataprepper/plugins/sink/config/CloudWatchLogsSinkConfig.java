@@ -10,7 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
-public class CwlSinkConfig {
+public class CloudWatchLogsSinkConfig {
     public static final String DEFAULT_BUFFER_TYPE = "in_memory";
 
     @JsonProperty("aws")

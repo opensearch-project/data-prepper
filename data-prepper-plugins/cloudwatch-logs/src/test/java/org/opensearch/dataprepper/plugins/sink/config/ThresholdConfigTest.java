@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.configuration;
+package org.opensearch.dataprepper.plugins.sink.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;

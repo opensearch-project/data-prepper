@@ -18,6 +18,8 @@ import static org.hamcrest.Matchers.equalTo;
 
 public class InMemoryBufferTest {
     private static InMemoryBuffer inMemoryBuffer;
+    public static final String TEST_EVENT_MESSAGE = "testing";
+    public static final int TEST_COLLECTION_SIZE = 3;
 
     @BeforeEach
     void setUp() {
@@ -27,15 +29,19 @@ public class InMemoryBufferTest {
     ArrayList<Record<Event>> getTestCollection() {
         ArrayList<Record<Event>> testCollection = new ArrayList<>();
 
-        for (int i = 0; i < 3; i++) {
-            testCollection.add(new Record<>(JacksonEvent.fromMessage("testing")));
+        for (int i = 0; i < TEST_COLLECTION_SIZE; i++) {
+            testCollection.add(new Record<>(JacksonEvent.fromMessage(TEST_EVENT_MESSAGE)));
         }
 
         return testCollection;
     }
 
     String getStringJsonMessage() {
-        return JacksonEvent.fromMessage("testing").toJsonString();
+        return JacksonEvent.fromMessage(TEST_EVENT_MESSAGE).toJsonString();
+    }
+
+    int getStringJsonMessageSize() {
+        return JacksonEvent.fromMessage(TEST_EVENT_MESSAGE).toJsonString().length();
     }
 
     @Test
@@ -50,7 +56,7 @@ public class InMemoryBufferTest {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
 
-        assertThat(inMemoryBuffer.getEventCount(), equalTo(3));
+        assertThat(inMemoryBuffer.getEventCount(), equalTo(TEST_COLLECTION_SIZE));
     }
 
     @Test
@@ -61,7 +67,7 @@ public class InMemoryBufferTest {
 
         inMemoryBuffer.popEvent();
 
-        assertThat(inMemoryBuffer.getEventCount(), equalTo(2));
+        assertThat(inMemoryBuffer.getEventCount(), equalTo(TEST_COLLECTION_SIZE - 1));
     }
 
     @Test
@@ -72,7 +78,7 @@ public class InMemoryBufferTest {
 
         inMemoryBuffer.popEvent();
 
-        assertThat(inMemoryBuffer.getBufferSize(), equalTo(42));
+        assertThat(inMemoryBuffer.getBufferSize(), equalTo(getStringJsonMessageSize() * (TEST_COLLECTION_SIZE - 1)));
     }
 
     @Test
@@ -81,7 +87,7 @@ public class InMemoryBufferTest {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
 
-        assertThat(inMemoryBuffer.getBufferSize(), equalTo(63));
+        assertThat(inMemoryBuffer.getBufferSize(), equalTo(getStringJsonMessageSize() * TEST_COLLECTION_SIZE));
     }
 
     //TODO: Add tests for getting events.

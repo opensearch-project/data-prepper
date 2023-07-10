@@ -19,7 +19,7 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
  * client for interfacing with
  * CloudWatchLogs services.
  */
-public final class CwlClientFactory {
+public final class CloudWatchLogsClientFactory {
 
     /**
      * Generates a CloudWatchLogs Client based on STS role ARN system credentials.
@@ -32,10 +32,10 @@ public final class CwlClientFactory {
         return CloudWatchLogsClient.builder()
                 .region(awsConfig.getAwsRegion())
                 .credentialsProvider(awsCredentialsProvider)
-                .overrideConfiguration(createOverrideConfiguration(awsConfig)).build();
+                .overrideConfiguration(createOverrideConfiguration()).build();
     }
 
-    private static ClientOverrideConfiguration createOverrideConfiguration(final AwsConfig awsConfig) {
+    private static ClientOverrideConfiguration createOverrideConfiguration() {
         final RetryPolicy retryPolicy = RetryPolicy.builder().numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS).build();
 
         return ClientOverrideConfiguration.builder()
