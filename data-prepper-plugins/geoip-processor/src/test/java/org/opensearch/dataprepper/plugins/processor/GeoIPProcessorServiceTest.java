@@ -80,7 +80,7 @@ class GeoIPProcessorServiceTest {
                 geoIPProcessorService, "geoData", geoData);
         when(geoData.getGeoData(any(), any(), anyString())).thenReturn(prepareGeoData());
         Map<String, Object> geoData = geoIPProcessorService.getGeoData(inetAddress, attributes);
-        assertThat(geoData.get("country_IsoCode"), equalTo("US"));
+        assertThat(geoData.get("country_iso_code"), equalTo("US"));
         assertThat(geoData.get("continent_name"), equalTo("North America"));
     }
 
@@ -100,13 +100,13 @@ class GeoIPProcessorServiceTest {
                 geoIPProcessorService, "geoData", geoData);
         when(geoData.getGeoData(any(), any(), anyString())).thenReturn(prepareGeoData());
         Map<String, Object> geoData = geoIPProcessorService.getGeoData(inetAddress, attributes);
-        assertThat(geoData.get("country_IsoCode"), equalTo("US"));
+        assertThat(geoData.get("country_iso_code"), equalTo("US"));
         assertThat(geoData.get("continent_name"), equalTo("North America"));
     }
 
     private Map<String, Object> prepareGeoData() {
         Map<String, Object> geoDataMap = new HashMap<>();
-        geoDataMap.put("country_IsoCode", "US");
+        geoDataMap.put("country_iso_code", "US");
         geoDataMap.put("continent_name", "North America");
         geoDataMap.put("timezone", "America/Chicago");
         geoDataMap.put("country_name", "United States");

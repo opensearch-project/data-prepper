@@ -71,8 +71,8 @@ class GetGeoIP2DataTest {
         InetAddress inetAddress = InetAddress.getByName(IP);
         GeoIPProcessorService.downloadReady = false;
         Map<String, Object> geoData = getGeoIP2Data.getGeoData(inetAddress, attributes, PREFIX_DIR);
-        assertThat(geoData.get("country_isoCode"), equalTo("US"));
-        assertThat(geoData.get("ip"), equalTo("/2001:4860:4860:0:0:0:0:8888"));
+        assertThat(geoData.get("country_iso_code"), equalTo("US"));
+        assertThat(geoData.get("ip"), equalTo("2001:4860:4860:0:0:0:0:8888"));
     }
 
     @Test
