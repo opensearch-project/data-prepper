@@ -65,6 +65,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getFieldSplitCharacters());
             }
 
+            if (keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)) {
+                regex = whitespace(regex);
+            }
+
             fieldDelimiterPattern = Pattern.compile(regex);
         }
 
@@ -85,8 +89,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             } else {
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
             }
-
-            regex = whitespace(); // do i need to put this in the above if/else statements before the regex is built?
 
             keyValueDelimiterPattern = Pattern.compile(regex);
         }
@@ -142,6 +144,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return true;
     }
 
+    private String whitespace(String s) {
+        return s.strip();
+    }
+
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
@@ -191,10 +197,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         return records;
-    }
-
-    private String whitespace() {
-        return keyValueProcessorConfig.getValueSplitCharacters().strip();
     }
     
     private String transformKey(String key) {
