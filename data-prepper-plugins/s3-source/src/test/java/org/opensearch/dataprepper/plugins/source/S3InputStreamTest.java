@@ -7,8 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
 import software.amazon.awssdk.http.HttpStatusCode;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -21,8 +23,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -43,6 +51,8 @@ class S3InputStreamTest {
     private S3Client s3Client;
     @Mock(lenient = true)
     private S3ObjectReference s3ObjectReference;
+    @Mock
+    private BucketOwnerProvider bucketOwnerProvider;
     @Mock(lenient = true)
     private HeadObjectResponse metadata;
     @Mock(lenient = true)
@@ -50,8 +60,8 @@ class S3InputStreamTest {
     private DistributionSummary s3ObjectSizeProcessedSummary;
     private Counter s3ObjectsFailedNotFoundCounter;
     private Counter s3ObjectsFailedAccessDeniedCounter;
-
-    private S3InputStream s3InputStream;
+    private String bucketName;
+    private String key;
 
     @BeforeEach
     void setUp() {
@@ -59,22 +69,27 @@ class S3InputStreamTest {
         s3ObjectsFailedNotFoundCounter = mock(Counter.class);
         s3ObjectsFailedAccessDeniedCounter = mock(Counter.class);
 
-        when(s3ObjectReference.getBucketName()).thenReturn("test-bucket");
-        when(s3ObjectReference.getKey()).thenReturn("test-key");
+        bucketName = UUID.randomUUID().toString();
+        key = UUID.randomUUID().toString();
+        when(s3ObjectReference.getBucketName()).thenReturn(bucketName);
+        when(s3ObjectReference.getKey()).thenReturn(key);
         when(metadata.contentLength()).thenReturn(1000L);
         when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(s3ObjectSizeProcessedSummary);
         when(s3ObjectPluginMetrics.getS3ObjectsFailedNotFoundCounter()).thenReturn(s3ObjectsFailedNotFoundCounter);
         when(s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter()).thenReturn(s3ObjectsFailedAccessDeniedCounter);
+    }
 
-        s3InputStream = new S3InputStream(
-            s3Client, s3ObjectReference, metadata, s3ObjectPluginMetrics, RETRY_DELAY, RETRIES);
+    private S3InputStream createObjectUnderTest() {
+        return new S3InputStream(
+                s3Client, s3ObjectReference, bucketOwnerProvider, metadata, s3ObjectPluginMetrics, RETRY_DELAY, RETRIES);
     }
 
     @Test
     void testAvailable() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
-        s3InputStream.seek(0);
+        final S3InputStream s3InputStream = createObjectUnderTest();
+        createObjectUnderTest().seek(0);
 
         int availableBytes = s3InputStream.available();
         assertEquals(9, availableBytes);
@@ -82,6 +97,7 @@ class S3InputStreamTest {
 
     @Test
     void testClose() throws IOException {
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.close();
 
         assertThrows(IllegalStateException .class, () -> s3InputStream.read());
@@ -91,6 +107,7 @@ class S3InputStreamTest {
     void testMarkAndReset() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(5);
 
         s3InputStream.mark(5);
@@ -104,6 +121,7 @@ class S3InputStreamTest {
     void testRead() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         int firstByte = s3InputStream.read();
@@ -115,10 +133,55 @@ class S3InputStreamTest {
     }
 
     @Test
+    void read_will_read_from_S3_with_bucket_and_key_when_no_owner() throws IOException {
+        final InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
+        s3InputStream.seek(0); // Force opening the stream
+
+        s3InputStream.read();
+        s3InputStream.close();
+
+        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture(), any(ResponseTransformer.class));
+
+        final GetObjectRequest getObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        assertAll(
+                () -> assertThat(getObjectRequest.bucket(), equalTo(bucketName)),
+                () -> assertThat(getObjectRequest.key(), equalTo(key)),
+                () -> assertThat(getObjectRequest.expectedBucketOwner(), nullValue())
+        );
+    }
+
+    @Test
+    void read_will_read_from_S3_with_bucket_key_and_expected_owner_when_owner_defined() throws IOException {
+        final String owner = UUID.randomUUID().toString();
+        when(bucketOwnerProvider.getBucketOwner(bucketName)).thenReturn(Optional.of(owner));
+        final InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
+        when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
+        s3InputStream.seek(0); // Force opening the stream
+
+        s3InputStream.read();
+        s3InputStream.close();
+
+        final ArgumentCaptor<GetObjectRequest> getObjectRequestArgumentCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObject(getObjectRequestArgumentCaptor.capture(), any(ResponseTransformer.class));
+
+        final GetObjectRequest getObjectRequest = getObjectRequestArgumentCaptor.getValue();
+        assertAll(
+                () -> assertThat(getObjectRequest.bucket(), equalTo(bucketName)),
+                () -> assertThat(getObjectRequest.key(), equalTo(key)),
+                () -> assertThat(getObjectRequest.expectedBucketOwner(), equalTo(owner))
+        );
+    }
+
+    @Test
     void testReadEndOfFile() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
 
+        final S3InputStream s3InputStream = createObjectUnderTest();
         int firstByte = s3InputStream.read();
         assertEquals(-1, firstByte);
 
@@ -138,6 +201,7 @@ class S3InputStreamTest {
             .thenThrow(retryableExceptionClass)
             .thenReturn(1);
 
+        final S3InputStream s3InputStream = createObjectUnderTest();
         int firstByte = s3InputStream.read();
         assertEquals(1, firstByte);
 
@@ -160,6 +224,7 @@ class S3InputStreamTest {
 
         when(mockInputStream.read()).thenThrow(retryableExceptionClass);
 
+        final S3InputStream s3InputStream = createObjectUnderTest();
         assertThrows(IOException.class, () -> s3InputStream.read());
 
         s3InputStream.close();
@@ -174,6 +239,7 @@ class S3InputStreamTest {
     void testReadByteArray() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         byte[] buffer = new byte[4];
@@ -191,6 +257,7 @@ class S3InputStreamTest {
     void testReadAllBytes() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         final byte[] buffer = s3InputStream.readAllBytes();
@@ -214,6 +281,7 @@ class S3InputStreamTest {
             .thenThrow(retryableExceptionClass)
             .thenReturn("Test data".getBytes());
 
+        final S3InputStream s3InputStream = createObjectUnderTest();
         final byte[] buffer = s3InputStream.readAllBytes();
 
         assertArrayEquals("Test data".getBytes(), buffer);
@@ -238,6 +306,7 @@ class S3InputStreamTest {
 
         when(mockInputStream.readAllBytes()).thenThrow(retryableExceptionClass);
 
+        final S3InputStream s3InputStream = createObjectUnderTest();
         assertThrows(IOException.class, () -> s3InputStream.readAllBytes());
 
         s3InputStream.close();
@@ -252,6 +321,7 @@ class S3InputStreamTest {
     void testReadNBytes_intoArray() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         byte[] buffer = new byte[9];
@@ -270,6 +340,7 @@ class S3InputStreamTest {
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
 
         byte[] buffer = new byte[9];
+        final S3InputStream s3InputStream = createObjectUnderTest();
         int bytesRead = s3InputStream.readNBytes(buffer, 0, 4);
 
         assertEquals(0, bytesRead);
@@ -282,6 +353,7 @@ class S3InputStreamTest {
     void testReadNBytes_getArray() throws Exception {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         final byte[] buffer = s3InputStream.readNBytes(4);
@@ -296,6 +368,7 @@ class S3InputStreamTest {
     void testSkip() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         long skippedBytes = s3InputStream.skip(5);
@@ -311,6 +384,7 @@ class S3InputStreamTest {
     void testSeek() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.read();
 
         s3InputStream.seek(5);
@@ -328,6 +402,7 @@ class S3InputStreamTest {
     void testReadFullyByteArray() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         byte[] buffer = new byte[4];
@@ -343,6 +418,7 @@ class S3InputStreamTest {
     void testReadFullyByteArrayWithStartAndLength() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         byte[] buffer = new byte[6];
@@ -358,6 +434,7 @@ class S3InputStreamTest {
     void testReadFullyByteBuffer() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         ByteBuffer buffer = ByteBuffer.allocate(4);
@@ -374,6 +451,7 @@ class S3InputStreamTest {
     void testReadFullyByteBuffer_endOfFile() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         ByteBuffer buffer = ByteBuffer.allocate(4);
@@ -387,6 +465,7 @@ class S3InputStreamTest {
     void testReadFullyHeapBuffer() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         ByteBuffer buffer = ByteBuffer.allocate(4);
@@ -403,6 +482,7 @@ class S3InputStreamTest {
     void testReadFullyDirectBuffer() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         ByteBuffer buffer = ByteBuffer.allocateDirect(4);
@@ -421,6 +501,7 @@ class S3InputStreamTest {
     void testReadFromClosedFails() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(0); // Force opening the stream
 
         byte[] buffer = new byte[4];
@@ -436,6 +517,7 @@ class S3InputStreamTest {
     void testReadAfterSeekBackwardsWorks() throws IOException {
         InputStream inputStream = new ByteArrayInputStream("Test data".getBytes());
         when(s3Client.getObject(any(GetObjectRequest.class), any(ResponseTransformer.class))).thenReturn(inputStream);
+        final S3InputStream s3InputStream = createObjectUnderTest();
         s3InputStream.seek(5); // Force opening the stream
 
         byte[] buffer = new byte[4];
@@ -460,6 +542,7 @@ class S3InputStreamTest {
                 .statusCode(HttpStatusCode.NOT_FOUND)
                 .build());
 
+        final S3InputStream s3InputStream = createObjectUnderTest();
         assertThrows(IOException.class, () -> s3InputStream.read()); // Force opening the stream
 
         verify(s3ObjectsFailedNotFoundCounter).increment();
@@ -472,6 +555,7 @@ class S3InputStreamTest {
                 .statusCode(HttpStatusCode.FORBIDDEN)
                 .build());
 
+        final S3InputStream s3InputStream = createObjectUnderTest();
         assertThrows(IOException.class, () -> s3InputStream.read()); // Force opening the stream
 
         verify(s3ObjectsFailedAccessDeniedCounter).increment();
