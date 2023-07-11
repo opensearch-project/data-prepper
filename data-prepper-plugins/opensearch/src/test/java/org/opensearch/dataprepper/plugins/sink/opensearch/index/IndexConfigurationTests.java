@@ -42,6 +42,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_OPTION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.ES_6;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.TEMPLATE_TYPE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
@@ -372,6 +373,26 @@ public class IndexConfigurationTests {
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
         assertEquals(true, indexConfiguration.getServerless());
+    }
+
+    @Test
+    public void testReadIndexConfig_es6Default() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                null, "foo", null, null, null, null);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertFalse(indexConfiguration.isEs6());
+    }
+
+    @Test
+    public void testReadIndexConfig_es6Override() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                null, "foo", null, null, null, null);
+        metadata.put(ES_6, true);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertTrue(indexConfiguration.isEs6());
+        assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
     }
 
     @Test
