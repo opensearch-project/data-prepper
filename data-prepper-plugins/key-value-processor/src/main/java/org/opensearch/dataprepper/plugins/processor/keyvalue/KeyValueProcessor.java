@@ -177,13 +177,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
                 }
 
-                if(keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)) {
-                    String[] whitespace_arr = whitespace(key, value);
+                if (keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)) {
+                    String[] whitespace_arr = trimWhitespace(key, value);
                     key = whitespace_arr[0];
                     value = whitespace_arr[1];
                 }
 
-                if(keyValueProcessorConfig.getTransformKey() != null
+                if (keyValueProcessorConfig.getTransformKey() != null
                         && !keyValueProcessorConfig.getTransformKey().isEmpty()) {
                     key = transformKey(key);
                 }
@@ -197,7 +197,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return records;
     }
 
-    private String[] whitespace(String key, Object value) {
+    private String[] trimWhitespace(String key, Object value) {
         String[] arr = {key.stripTrailing(), value.toString().stripLeading()};
         return arr;
     }
