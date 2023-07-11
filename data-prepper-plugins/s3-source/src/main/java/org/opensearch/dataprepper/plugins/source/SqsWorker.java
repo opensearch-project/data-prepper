@@ -43,6 +43,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SqsWorker implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(SqsWorker.class);
@@ -226,14 +227,22 @@ public class SqsWorker implements Runnable {
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
+            AtomicBoolean acknowledgementSetReady = new AtomicBoolean(false);
             if (endToEndAcknowledgementsEnabled) {
                 // Acknowledgement Set timeout is slightly smaller than the visibility timeout;
                 int timeout = (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2;
                 acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                    acknowledgementSetCallbackCounter.increment();
-                    // Delete only if this is positive acknowledgement
-                    if (result == true) {
-                        deleteSqsMessages(waitingForAcknowledgements);
+                   synchronized (waitingForAcknowledgements) {
+                        while (!acknowledgementSetReady.get()) {
+                            try {
+                                waitingForAcknowledgements.wait();
+                            } catch (InterruptedException e){}
+                        }
+                        acknowledgementSetCallbackCounter.increment();
+                        // Delete only if this is positive acknowledgement
+                        if (result == true) {
+                            deleteSqsMessages(waitingForAcknowledgements);
+                        }
                     }
                 }, Duration.ofSeconds(timeout));
             }
@@ -241,6 +250,10 @@ public class SqsWorker implements Runnable {
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
             if (endToEndAcknowledgementsEnabled) {
                 deleteMessageBatchRequestEntry.ifPresent(waitingForAcknowledgements::add);
+                synchronized (waitingForAcknowledgements) {
+                    acknowledgementSetReady.set(true);
+                    waitingForAcknowledgements.notify();
+                }
             } else {
                 deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
             }
