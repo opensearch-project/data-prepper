@@ -58,7 +58,7 @@ pipeline:
 
   - `url` (Required) : Provide URL for all three S3, maxmind URL or local file path. 
 
-- `load_type` (Required) :  Load type used for better performance while enrich the data. There are two type load_type are present i.e "in_memory" or "cache".
+- `load_type` (Required) :  Load type used for better performance while enrich the data. There are two type load_type are present i.e "memory_map" or "cache".
 
 - `cache_size` (Optional) : Used to mention the cache size. Default cache size is 2MB. Cache size applicable when load_type is cache. 
 
