@@ -36,4 +36,15 @@ public class InMemoryBuffer implements Buffer {
         bufferSize -= eventsBuffered.get(0).length;
         return eventsBuffered.remove(0);
     }
+
+    @Override
+    public ArrayList<byte[]> getBufferedData() {
+        return eventsBuffered;
+    }
+
+    @Override
+    public void clearBuffer() {
+        bufferSize = 0;
+        eventsBuffered.clear();
+    }
 }

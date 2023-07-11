@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.buffer;
 
+import java.util.ArrayList;
+
 /**
  * Buffer that handles the temporary storage of
  * events. It isolates the implementation of system storage.
@@ -28,4 +30,8 @@ public interface Buffer {
     void writeEvent(byte[] event);
 
     byte[] popEvent();
+
+    ArrayList<byte[]> getBufferedData();
+
+    void clearBuffer();
 }
