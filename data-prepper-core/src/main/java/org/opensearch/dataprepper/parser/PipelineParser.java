@@ -16,11 +16,13 @@ import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.plugin.kafka.UsesKafkaClusterConfig;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.parser.model.KafkaClusterConfig;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
 import org.opensearch.dataprepper.parser.model.SinkContextPluginSetting;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
@@ -233,6 +235,8 @@ public class PipelineParser {
 
             final Router router = routerFactory.createRouter(pipelineConfiguration.getRoutes());
 
+            configPluginsUsesKafka(source, buffer, decoratedProcessorSets, sinks);
+
             final Pipeline pipeline = new Pipeline(pipelineName, source, buffer, decoratedProcessorSets, sinks, router,
                     eventFactory, acknowledgementSetManager, sourceCoordinatorFactory, processorThreads, readBatchDelay,
                     dataPrepperConfiguration.getProcessorShutdownTimeout(), dataPrepperConfiguration.getSinkShutdownTimeout(),
@@ -245,6 +249,20 @@ public class PipelineParser {
             processRemoveIfRequired(pipelineName, pipelineConfigurationMap, pipelineMap);
         }
 
+    }
+
+    private void configPluginsUsesKafka(final Source source,
+                                        final Buffer buffer,
+                                        final List<List<Processor>> decoratedProcessorSets,
+                                        final List<DataFlowComponent<Sink>> sinks) {
+        if (source instanceof UsesKafkaClusterConfig) {
+            final KafkaClusterConfig kafkaClusterConfig = dataPrepperConfiguration.getKafkaClusterConfig();
+            ((UsesKafkaClusterConfig) source).setBootstrapServers(kafkaClusterConfig.getBootStrapServers());
+            ((UsesKafkaClusterConfig) source).setKafkaClusterAuthConfig(
+                    kafkaClusterConfig.getAuthConfig(),
+                    kafkaClusterConfig.getAwsConfig(),
+                    kafkaClusterConfig.getEncryptionConfig());
+        }
     }
 
     private List<IdentifiedComponent<Processor>> newProcessor(final PluginSetting pluginSetting) {

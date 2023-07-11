@@ -22,10 +22,11 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionType;
+import org.opensearch.dataprepper.model.plugin.kafka.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
@@ -77,7 +78,7 @@ public class KafkaSourceMultipleAuthTypeIT {
     private PlainTextAuthConfig plainTextAuthConfig;
 
     @Mock
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+    private EncryptionConfig encryptionConfig;
 
     private TopicConfig jsonTopic;
     private TopicConfig avroTopic;
@@ -105,7 +106,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         pluginMetrics = mock(PluginMetrics.class);
         counter = mock(Counter.class);
         buffer = mock(Buffer.class);
-        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        encryptionConfig = mock(EncryptionConfig.class);
         receivedRecords = new ArrayList<>();
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);

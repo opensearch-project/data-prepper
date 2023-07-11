@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+package org.opensearch.dataprepper.model.plugin.kafka;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

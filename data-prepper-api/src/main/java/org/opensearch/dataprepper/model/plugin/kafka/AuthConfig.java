@@ -3,19 +3,41 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+package org.opensearch.dataprepper.model.plugin.kafka;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.AssertTrue;
-
-import java.util.stream.Stream;
 
 /**
  * A helper class that helps to read auth related configuration values from
  * pipelines.yaml
  */
 public class AuthConfig {
+
+    @JsonProperty("sasl")
+    private SaslAuthConfig saslAuthConfig;
+
+    /*
+     * TODO
+        public static class SslAuthConfig {
+            // TODO Add Support for SSL authentication types like
+            // one-way or two-way authentication
+
+            public SslAuthConfig() {
+            }
+        }
+
+        @JsonProperty("ssl")
+        private SslAuthConfig sslAuthConfig;
+
+        public SslAuthConfig getSslAuthConfig() {
+            return sslAuthConfig;
+        }
+
+    */
+
+    public SaslAuthConfig getSaslAuthConfig() {
+        return saslAuthConfig;
+    }
 
     public static class SaslAuthConfig {
         @JsonProperty("plaintext")
@@ -45,40 +67,6 @@ public class AuthConfig {
         public String getSslEndpointAlgorithm() {
             return sslEndpointAlgorithm;
         }
-
-        @AssertTrue(message = "Only one of AwsIam or oAuth or PlainText auth config must be specified")
-        public boolean hasOnlyOneConfig() {
-            return Stream.of(awsIamAuthConfig, plainTextAuthConfig, oAuthConfig).filter(n -> n != null).count() == 1;
-        }
-
-    }
-
-
-    /*
-     * TODO 
-        public static class SslAuthConfig {
-            // TODO Add Support for SSL authentication types like
-            // one-way or two-way authentication
-
-            public SslAuthConfig() {
-            }
-        }
-
-        @JsonProperty("ssl")
-        private SslAuthConfig sslAuthConfig;
-
-        public SslAuthConfig getSslAuthConfig() {
-            return sslAuthConfig;
-        }
-
-    */
-
-    @Valid
-    @JsonProperty("sasl")
-    private SaslAuthConfig saslAuthConfig;
-
-    public SaslAuthConfig getSaslAuthConfig() {
-        return saslAuthConfig;
     }
 
     /*

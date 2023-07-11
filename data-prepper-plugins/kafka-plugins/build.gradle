@@ -15,11 +15,13 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation libs.commons.lang3
-    implementation 'io.confluent:kafka-avro-serializer:7.3.3'
-    implementation 'io.confluent:kafka-schema-registry-client:7.3.3'
-    implementation 'io.confluent:kafka-avro-serializer:7.3.3'
-    implementation 'io.confluent:kafka-schema-registry-client:7.3.3'
-    implementation 'io.confluent:kafka-schema-registry:7.3.3:tests'
+    implementation 'io.confluent:kafka-avro-serializer:7.4.0'
+    implementation 'io.confluent:kafka-schema-registry-client:7.4.0'
+    implementation ('io.confluent:kafka-schema-registry:7.4.0:tests') {
+        exclude group: 'org.glassfish.jersey.containers', module: 'jersey-container-servlet'
+        exclude group: 'org.glassfish.jersey.inject', module: 'jersey-hk2'
+        exclude group: 'org.glassfish.jersey.ext', module: 'jersey-bean-validation'
+    }
     implementation 'software.amazon.msk:aws-msk-iam-auth:1.1.6'
     implementation 'software.amazon.awssdk:sts:2.20.103'
     implementation 'software.amazon.awssdk:auth:2.20.103'

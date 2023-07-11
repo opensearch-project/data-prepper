@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.kafka.configuration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
 
 import java.util.Arrays;
 import java.util.HashMap;

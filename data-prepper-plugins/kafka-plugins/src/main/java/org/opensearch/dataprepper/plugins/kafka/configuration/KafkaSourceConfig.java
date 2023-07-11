@@ -9,6 +9,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.KafkaClusterAuthConfig;
 
 import java.util.List;
 import java.util.Objects;
@@ -18,22 +22,7 @@ import java.util.Objects;
  * pipelines.yaml
  */
 
-public class KafkaSourceConfig {
-    public class EncryptionConfig {
-        @JsonProperty("type")
-        private EncryptionType type = EncryptionType.SSL;
-
-        @JsonProperty("insecure")
-        private boolean insecure = false;
-
-        public EncryptionType getType() {
-            return type;
-        }
-
-        public boolean getInsecure() {
-            return insecure;
-        }
-    }
+public class KafkaSourceConfig implements KafkaClusterAuthConfig {
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
@@ -110,6 +99,10 @@ public class KafkaSourceConfig {
         return encryptionConfig;
     }
 
+    public EncryptionConfig getEncryptionConfigRaw() {
+        return encryptionConfig;
+    }
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
@@ -117,4 +110,23 @@ public class KafkaSourceConfig {
     public void setAuthConfig(AuthConfig authConfig) {
         this.authConfig = authConfig;
     }
+
+    public void setAwsConfig(AwsConfig awsConfig) {
+        this.awsConfig = awsConfig;
+    }
+
+    public void setEncryptionConfig(EncryptionConfig encryptionConfig) {
+        this.encryptionConfig = encryptionConfig;
+    }
+
+//    @Override
+//    public void validate() {
+//        boolean saslConfigValid = Stream.of(
+//                authConfig.getSaslAuthConfig().getAwsIamAuthConfig(),
+//                authConfig.getSaslAuthConfig().getPlainTextAuthConfig(),
+//                authConfig.getSaslAuthConfig().getOAuthConfig()).filter(n -> n != null).count() == 1;
+//        if (!saslConfigValid) {
+//            throw new IllegalArgumentException("");
+//        }
+//    }
 }

@@ -4,7 +4,8 @@ log-pipeline:
       bootstrap_servers:
         - 127.0.0.1:9093
       client_dns_lookup: use_all_dns_ips
-      encryption: plaintext
+      encryption:
+        type: none
       topics:
         - name: my-topic-1
           group_id: my-test-group

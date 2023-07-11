@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.opensearch.dataprepper.model.plugin.kafka.MskBrokerConnectionType;
 
 
 import static org.hamcrest.CoreMatchers.is;

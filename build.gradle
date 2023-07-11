@@ -143,13 +143,13 @@ subprojects {
             }
             implementation('org.eclipse.jetty:jetty-http') {
                 version {
-                    require '11.0.15'
+                    require '9.4.48.v20220622'
                 }
                 because 'CVE from transitive dependencies'
             }
             implementation('org.eclipse.jetty:jetty-server') {
                 version {
-                    require '11.0.15'
+                    require '9.4.48.v20220622'
                 }
                 because 'CVE from transitive dependencies'
             }

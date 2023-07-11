@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+package org.opensearch.dataprepper.model.plugin.kafka;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import java.util.Map;
@@ -28,7 +28,7 @@ public enum AwsIamAuthConfig {
     }
 
     @JsonCreator
-    static AwsIamAuthConfig fromOptionValue(final String option) {
+    public static AwsIamAuthConfig fromOptionValue(final String option) {
         return OPTIONS_MAP.get(option.toLowerCase());
     }
 }

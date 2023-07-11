@@ -4,8 +4,8 @@
  */
 package org.opensearch.dataprepper.plugins.kafka.util;
 
-import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.OAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.PlainTextAuthConfig;
 
 import java.util.Base64;
 import java.util.Properties;

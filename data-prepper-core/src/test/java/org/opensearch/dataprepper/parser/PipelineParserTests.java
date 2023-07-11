@@ -22,8 +22,12 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
+import org.opensearch.dataprepper.parser.model.KafkaClusterConfig;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderReceiveBuffer;
@@ -36,6 +40,7 @@ import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -371,6 +376,28 @@ class PipelineParserTests {
         verify(dataPrepperConfiguration, times(3)).getProcessorShutdownTimeout();
         verify(dataPrepperConfiguration, times(3)).getSinkShutdownTimeout();
         verify(dataPrepperConfiguration, times(3)).getPeerForwarderConfiguration();
+    }
+
+    @Test
+    void parseSource_uses_kafka_cluster_config() {
+        final KafkaClusterConfig kafkaClusterConfig = mock(KafkaClusterConfig.class);
+        when(dataPrepperConfiguration.getKafkaClusterConfig()).thenReturn(kafkaClusterConfig);
+        when(kafkaClusterConfig.getBootStrapServers()).thenReturn(Collections.emptyList());
+        when(kafkaClusterConfig.getAwsConfig()).thenReturn(new AwsConfig());
+        when(kafkaClusterConfig.getAuthConfig()).thenReturn(new AuthConfig());
+        when(kafkaClusterConfig.getEncryptionConfig()).thenReturn(new EncryptionConfig());
+        final PipelineParser objectUnderTest =
+                createObjectUnderTest(TestDataProvider.VALID_PIPELINE_SOURCE_USES_KAFKA_CLUSTER_CONFIG_FILE);
+        final Map<String, Pipeline> pipelineMap = objectUnderTest.parseConfiguration();
+        assertThat(pipelineMap, hasKey("test-pipeline"));
+        verify(dataPrepperConfiguration, times(1)).getKafkaClusterConfig();
+        verify(kafkaClusterConfig, times(1)).getBootStrapServers();
+        verify(kafkaClusterConfig, times(1)).getAuthConfig();
+        verify(kafkaClusterConfig, times(1)).getAwsConfig();
+        verify(kafkaClusterConfig, times(1)).getEncryptionConfig();
+        verify(dataPrepperConfiguration, times(1)).getProcessorShutdownTimeout();
+        verify(dataPrepperConfiguration, times(1)).getSinkShutdownTimeout();
+        verify(dataPrepperConfiguration, times(1)).getPeerForwarderConfiguration();
     }
 
     private void mockDataPrepperConfigurationAccesses() {

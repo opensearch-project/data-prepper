@@ -41,6 +41,7 @@ public class DataPrepperConfiguration {
     private PluginModel authentication;
     private CircuitBreakerConfig circuitBreakerConfig;
     private SourceCoordinationConfig sourceCoordinationConfig;
+    private KafkaClusterConfig kafkaClusterConfig;
     private PipelineShutdownOption pipelineShutdown;
     private Map<String, String> metricTags = new HashMap<>();
     private List<MetricTagFilter> metricTagFilters = new LinkedList<>();
@@ -85,9 +86,11 @@ public class DataPrepperConfiguration {
             final Duration sinkShutdownTimeout,
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig,
             @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig,
+            @JsonProperty("kafka_cluster_config") final KafkaClusterConfig kafkaClusterConfig,
             @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown) {
         this.authentication = authentication;
         this.circuitBreakerConfig = circuitBreakerConfig;
+        this.kafkaClusterConfig = kafkaClusterConfig;
         this.sourceCoordinationConfig = Objects.isNull(sourceCoordinationConfig)
                 ? new SourceCoordinationConfig(new PluginModel(DEFAULT_SOURCE_COORDINATION_STORE, Collections.emptyMap()), null)
                 : sourceCoordinationConfig;
@@ -153,6 +156,10 @@ public class DataPrepperConfiguration {
 
     public PluginModel getAuthentication() {
         return authentication;
+    }
+
+    public KafkaClusterConfig getKafkaClusterConfig() {
+        return kafkaClusterConfig;
     }
 
     public PeerForwarderConfiguration getPeerForwarderConfiguration() {

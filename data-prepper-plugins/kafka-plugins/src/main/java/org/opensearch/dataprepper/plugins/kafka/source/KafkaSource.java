@@ -30,13 +30,16 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.UsesKafkaClusterConfig;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.OAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -82,7 +85,7 @@ import java.util.stream.IntStream;
 
 @SuppressWarnings("deprecation")
 @DataPrepperPlugin(name = "kafka", pluginType = Source.class, pluginConfigurationType = KafkaSourceConfig.class)
-public class KafkaSource implements Source<Record<Event>> {
+public class KafkaSource implements Source<Record<Event>>, UsesKafkaClusterConfig {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSource.class);
     private final KafkaSourceConfig sourceConfig;
     private AtomicBoolean shutdownInProgress;
@@ -482,5 +485,26 @@ public class KafkaSource implements Source<Record<Event>> {
             maskedString.append('*');
         }
         return maskedString.append(serverIP.substring(maskedLength)).toString();
+    }
+
+    @Override
+    public void setBootstrapServers(final List<String> bootstrapServers) {
+        if (sourceConfig.getBootStrapServers() != null) return;
+        sourceConfig.setBootStrapServers(bootstrapServers);
+    }
+
+    @Override
+    public void setKafkaClusterAuthConfig(final AuthConfig authConfig,
+                                          final AwsConfig awsConfig,
+                                          final EncryptionConfig encryptionConfig) {
+        if (sourceConfig.getAuthConfig() == null) {
+            sourceConfig.setAuthConfig(authConfig);
+        }
+        if (sourceConfig.getAwsConfig() == null) {
+            sourceConfig.setAwsConfig(awsConfig);
+        }
+        if (sourceConfig.getEncryptionConfigRaw() == null) {
+            sourceConfig.setEncryptionConfig(encryptionConfig);
+        }
     }
 }

@@ -24,7 +24,8 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionType;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -70,7 +71,7 @@ public class KafkaSourceJsonTypeIT {
     private List<TopicConfig> topicList;
 
     @Mock
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+    private EncryptionConfig encryptionConfig;
 
     @Mock
     private TopicConfig jsonTopic;
@@ -96,7 +97,7 @@ public class KafkaSourceJsonTypeIT {
         pluginMetrics = mock(PluginMetrics.class);
         counter = mock(Counter.class);
         buffer = mock(Buffer.class);
-        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        encryptionConfig = mock(EncryptionConfig.class);
         receivedRecords = new ArrayList<>();
         ExecutorService executor = Executors.newFixedThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);

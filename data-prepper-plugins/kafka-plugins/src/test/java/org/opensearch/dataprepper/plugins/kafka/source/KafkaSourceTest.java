@@ -5,18 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,44 +13,55 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionType;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-import java.util.Arrays;
-import java.util.Objects;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class KafkaSourceTest {
-    private KafkaSource kafkaSource;
-
-    @Mock
-    private KafkaSourceConfig sourceConfig;
-
-    @Mock
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
-
-    @Mock
-    private PluginMetrics pluginMetrics;
-
-    @Mock
-    private SchemaConfig schemaConfig;
-
-    @Mock
-    private AcknowledgementSetManager acknowledgementSetManager;
-
-    @Mock
-    private PipelineDescription pipelineDescription;
-
+    private static final String TEST_GROUP_ID = "testGroupId";
     @Mock
     TopicConfig topic1, topic2;
-
+    private KafkaSource kafkaSource;
+    @Mock
+    private KafkaSourceConfig sourceConfig;
+    @Mock
+    private EncryptionConfig encryptionConfig;
+    @Mock
+    private PluginMetrics pluginMetrics;
+    @Mock
+    private SchemaConfig schemaConfig;
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+    @Mock
+    private PipelineDescription pipelineDescription;
     @Mock
     private Buffer<Record<Event>> buffer;
-
-    private static final String TEST_GROUP_ID = "testGroupId";
 
     public KafkaSource createObjectUnderTest() {
         return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
@@ -71,7 +70,7 @@ class KafkaSourceTest {
     @BeforeEach
     void setUp() throws Exception {
         sourceConfig = mock(KafkaSourceConfig.class);
-        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        encryptionConfig = mock(EncryptionConfig.class);
         pipelineDescription = mock(PipelineDescription.class);
         pluginMetrics = mock(PluginMetrics.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
@@ -134,5 +133,47 @@ class KafkaSourceTest {
         assertTrue(Objects.nonNull(kafkaSource));
         kafkaSource.start(buffer);
         assertTrue(Objects.nonNull(kafkaSource.getConsumer()));
+    }
+
+    @Test
+    void test_setBootstrapServers() {
+        kafkaSource = createObjectUnderTest();
+        final List<String> bootstrapServers = List.of("localhost:9092");
+        doNothing().when(sourceConfig).setBootStrapServers(bootstrapServers);
+        // should not set bootstrap if has existing value
+        when(sourceConfig.getBootStrapServers()).thenReturn("existing:9092");
+        kafkaSource.setBootstrapServers(bootstrapServers);
+        verify(sourceConfig, never()).setBootStrapServers(bootstrapServers);
+        // should set bootstrap if no existing value
+        when(sourceConfig.getBootStrapServers()).thenReturn(null);
+        kafkaSource.setBootstrapServers(bootstrapServers);
+        verify(sourceConfig).setBootStrapServers(bootstrapServers);
+    }
+
+    @Test
+    void test_setKafkaClusterAuthConfig() {
+        kafkaSource = createObjectUnderTest();
+        AuthConfig authConfig = mock(AuthConfig.class);
+        AwsConfig awsConfig = mock(AwsConfig.class);
+        EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
+        doNothing().when(sourceConfig).setAuthConfig(any());
+        doNothing().when(sourceConfig).setAwsConfig(any());
+        doNothing().when(sourceConfig).setEncryptionConfig(any());
+        // should not set bootstrap if has existing value
+        when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
+        when(sourceConfig.getAwsConfig()).thenReturn(awsConfig);
+        when(sourceConfig.getEncryptionConfigRaw()).thenReturn(encryptionConfig);
+        kafkaSource.setKafkaClusterAuthConfig(authConfig, awsConfig, encryptionConfig);
+        verify(sourceConfig, never()).setAuthConfig(any());
+        verify(sourceConfig, never()).setAwsConfig(any());
+        verify(sourceConfig, never()).setEncryptionConfig(encryptionConfig);
+        // should set bootstrap if no existing value
+        when(sourceConfig.getAuthConfig()).thenReturn(null);
+        when(sourceConfig.getAwsConfig()).thenReturn(null);
+        when(sourceConfig.getEncryptionConfigRaw()).thenReturn(null);
+        kafkaSource.setKafkaClusterAuthConfig(authConfig, awsConfig, encryptionConfig);
+        verify(sourceConfig).setAuthConfig(any());
+        verify(sourceConfig).setAwsConfig(any());
+        verify(sourceConfig).setEncryptionConfig(encryptionConfig);
     }
 }

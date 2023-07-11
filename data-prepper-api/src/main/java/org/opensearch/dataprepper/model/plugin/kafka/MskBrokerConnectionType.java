@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+package org.opensearch.dataprepper.model.plugin.kafka;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
@@ -29,7 +29,7 @@ public enum MskBrokerConnectionType {
     }
 
     @JsonCreator
-    static MskBrokerConnectionType fromTypeValue(final String type) {
+    public static MskBrokerConnectionType fromTypeValue(final String type) {
         return OPTIONS_MAP.get(type.toLowerCase());
     }
 }

@@ -11,6 +11,10 @@ import static org.mockito.Mockito.when;
 import static org.hamcrest.Matchers.equalTo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsIamAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.OAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.PlainTextAuthConfig;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;

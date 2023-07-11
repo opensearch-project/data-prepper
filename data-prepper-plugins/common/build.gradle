@@ -17,7 +17,7 @@ dependencies {
     implementation libs.commons.lang3
     implementation "org.bouncycastle:bcprov-jdk15on:1.70"
     implementation "org.bouncycastle:bcpkix-jdk15on:1.70"
-    implementation 'org.reflections:reflections:0.10.2'
+    implementation libs.reflections.core
     implementation 'io.micrometer:micrometer-core'
     testImplementation testLibs.junit.vintage
     implementation 'org.apache.parquet:parquet-common:1.12.3'

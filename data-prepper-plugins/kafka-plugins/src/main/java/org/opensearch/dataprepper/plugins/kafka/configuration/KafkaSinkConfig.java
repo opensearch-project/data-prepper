@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Size;
 import org.apache.commons.lang3.ObjectUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
 
 import java.util.LinkedHashMap;
 import java.util.List;

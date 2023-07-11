@@ -1,0 +1,5 @@
+test-pipeline:
+  source:
+    test_source_uses_kafka_cluster_config:
+  sink:
+    - noop:

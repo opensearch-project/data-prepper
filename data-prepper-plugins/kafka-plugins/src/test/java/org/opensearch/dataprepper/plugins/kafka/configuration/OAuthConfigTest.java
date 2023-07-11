@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.plugin.kafka.OAuthConfig;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;

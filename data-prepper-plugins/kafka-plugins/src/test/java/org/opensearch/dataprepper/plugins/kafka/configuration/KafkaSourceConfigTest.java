@@ -5,6 +5,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionType;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
@@ -71,7 +73,7 @@ class KafkaSourceConfigTest {
 	@Test
 	void test_setters() throws NoSuchFieldException, IllegalAccessException {
 		kafkaSourceConfig = new KafkaSourceConfig();
-        KafkaSourceConfig.EncryptionConfig encryptionConfig = kafkaSourceConfig.getEncryptionConfig();
+        EncryptionConfig encryptionConfig = kafkaSourceConfig.getEncryptionConfig();
 		kafkaSourceConfig.setBootStrapServers(new ArrayList<>(Arrays.asList("127.0.0.1:9092")));
 		TopicConfig topicConfig = mock(TopicConfig.class);
 		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
@@ -81,9 +83,9 @@ class KafkaSourceConfigTest {
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsEnabled", true);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
 		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionConfig().getType());
-        setField(KafkaSourceConfig.EncryptionConfig.class, encryptionConfig, "type", EncryptionType.NONE);
+        setField(EncryptionConfig.class, encryptionConfig, "type", EncryptionType.NONE);
 		assertEquals(EncryptionType.NONE, encryptionConfig.getType());
-        setField(KafkaSourceConfig.EncryptionConfig.class, encryptionConfig, "type", EncryptionType.SSL);
+        setField(EncryptionConfig.class, encryptionConfig, "type", EncryptionType.SSL);
 		assertEquals(EncryptionType.SSL, encryptionConfig.getType());
 	}
 }

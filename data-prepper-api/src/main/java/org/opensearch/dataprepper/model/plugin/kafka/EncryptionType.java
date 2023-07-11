@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.configuration;
+package org.opensearch.dataprepper.model.plugin.kafka;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
@@ -28,7 +28,7 @@ public enum EncryptionType {
     }
 
     @JsonCreator
-    static EncryptionType fromTypeValue(final String type) {
+    public static EncryptionType fromTypeValue(final String type) {
         return OPTIONS_MAP.get(type.toLowerCase());
     }
 }

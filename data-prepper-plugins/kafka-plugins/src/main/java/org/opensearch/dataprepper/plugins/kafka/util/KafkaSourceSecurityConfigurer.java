@@ -4,14 +4,16 @@
  */
 package org.opensearch.dataprepper.plugins.kafka.util;
 
-import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsIamAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.KafkaClusterAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.OAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionType;
+import org.opensearch.dataprepper.model.plugin.kafka.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 
@@ -30,7 +32,6 @@ import software.amazon.awssdk.regions.Region;
 import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
 import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
 import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
-import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
 import software.amazon.awssdk.services.glue.model.Compatibility;
 
 import org.slf4j.Logger;
@@ -119,9 +120,9 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static void setOauthProperties(final KafkaSourceConfig kafkaSourConfig,
+    public static void setOauthProperties(final KafkaClusterAuthConfig kafkaClusterAuthConfig,
                                           final Properties properties) {
-        final OAuthConfig oAuthConfig = kafkaSourConfig.getAuthConfig().getSaslAuthConfig().getOAuthConfig();
+        final OAuthConfig oAuthConfig = kafkaClusterAuthConfig.getAuthConfig().getSaslAuthConfig().getOAuthConfig();
         final String oauthClientId = oAuthConfig.getOauthClientId();
         final String oauthClientSecret = oAuthConfig.getOauthClientSecret();
         final String oauthLoginServer = oAuthConfig.getOauthLoginServer();
@@ -156,9 +157,11 @@ public class KafkaSourceSecurityConfigurer {
         String jass_config = String.format(OAUTH_JAASCONFIG, oauthClientId, oauthClientSecret, oauthLoginScope, oauthLoginServer,
                 oauthLoginEndpoint, oauthLoginGrantType, oauthLoginScope, oauthAuthorizationToken, instrospect_properties);
 
-        if ("USER_INFO".equalsIgnoreCase(kafkaSourConfig.getSchemaConfig().getBasicAuthCredentialsSource())) {
-            final String apiKey = kafkaSourConfig.getSchemaConfig().getSchemaRegistryApiKey();
-            final String apiSecret = kafkaSourConfig.getSchemaConfig().getSchemaRegistryApiSecret();
+        if (kafkaClusterAuthConfig instanceof KafkaSourceConfig &&
+                "USER_INFO".equalsIgnoreCase(((KafkaSourceConfig) kafkaClusterAuthConfig).getSchemaConfig().getBasicAuthCredentialsSource())) {
+            final SchemaConfig schemaConfig = ((KafkaSourceConfig) kafkaClusterAuthConfig).getSchemaConfig();
+            final String apiKey = schemaConfig.getSchemaRegistryApiKey();
+            final String apiSecret = schemaConfig.getSchemaRegistryApiSecret();
             final String extensionLogicalCluster = oAuthConfig.getExtensionLogicalCluster();
             final String extensionIdentityPoolId = oAuthConfig.getExtensionIdentityPoolId();
             properties.put(REGISTRY_BASIC_AUTH_USER_INFO, apiKey + ":" + apiSecret);
@@ -247,15 +250,15 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static void setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
-        final AwsConfig awsConfig = sourceConfig.getAwsConfig();
-        final AuthConfig authConfig = sourceConfig.getAuthConfig();
-        final KafkaSourceConfig.EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
+    public static void setAuthProperties(Properties properties, final KafkaClusterAuthConfig kafkaClusterAuthConfig, final Logger LOG) {
+        final AwsConfig awsConfig = kafkaClusterAuthConfig.getAwsConfig();
+        final AuthConfig authConfig = kafkaClusterAuthConfig.getAuthConfig();
+        final EncryptionConfig encryptionConfig = kafkaClusterAuthConfig.getEncryptionConfig();
         final EncryptionType encryptionType = encryptionConfig.getType();
 
         credentialsProvider = DefaultCredentialsProvider.create();
 
-        String bootstrapServers = sourceConfig.getBootStrapServers();
+        String bootstrapServers = kafkaClusterAuthConfig.getBootStrapServers();
         AwsIamAuthConfig awsIamAuthConfig = null;
         if (Objects.nonNull(authConfig)) {
             AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();
@@ -273,7 +276,7 @@ public class KafkaSourceSecurityConfigurer {
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
                     bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig, LOG);
                 } else if (Objects.nonNull(saslAuthConfig.getOAuthConfig())) {
-                    setOauthProperties(sourceConfig, properties);
+                    setOauthProperties(kafkaClusterAuthConfig, properties);
                 } else if (Objects.nonNull(plainTextAuthConfig)) {
                     setPlainTextAuthProperties(properties, plainTextAuthConfig, encryptionType);
                 } else {

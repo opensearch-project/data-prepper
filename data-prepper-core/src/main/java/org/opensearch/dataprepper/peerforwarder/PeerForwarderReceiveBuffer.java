@@ -5,17 +5,17 @@
 
 package org.opensearch.dataprepper.peerforwarder;
 
+import com.google.common.base.Stopwatch;
 import com.google.common.util.concurrent.AtomicDouble;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.AbstractBuffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.record.Record;
-import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -43,8 +43,8 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> extends AbstractBuf
     private final int batchSize;
     private final Semaphore capacitySemaphore;
     private final LinkedBlockingQueue<T> blockingQueue;
-    private int recordsInFlight = 0;
     private final AtomicDouble bufferUsage;
+    private int recordsInFlight = 0;
 
     public PeerForwarderReceiveBuffer(final int bufferSize, final int batchSize, final String pipelineName, final String pluginId) {
         super(String.format(BUFFER_ID_FORMAT, pipelineName, pluginId), CORE_PEER_FORWARDER_COMPONENT);
@@ -81,15 +81,15 @@ public class PeerForwarderReceiveBuffer<T extends Record<?>> extends AbstractBuf
             if (!permitAcquired) {
                 throw new TimeoutException(
                         format("Peer forwarder buffer does not have enough capacity left for the number of records: %d, " +
-                                        "timed out waiting for slots.", size));
+                                "timed out waiting for slots.", size));
             }
             blockingQueue.addAll(records);
         } catch (InterruptedException ex) {
             LOG.error("Peer forwarder buffer does not have enough capacity left for the number of records: {}, " +
-                            "interrupted while waiting to write the records", size, ex);
+                    "interrupted while waiting to write the records", size, ex);
             throw new TimeoutException(
                     format("Peer forwarder buffer does not have enough capacity left for the number of records: %d, " +
-                                    "timed out waiting for slots.", size));
+                            "timed out waiting for slots.", size));
         }
     }
 

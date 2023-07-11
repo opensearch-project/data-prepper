@@ -13,6 +13,7 @@ import java.lang.reflect.Field;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsConfig;
 
 class AwsConfigTest {
 

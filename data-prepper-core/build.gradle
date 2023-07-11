@@ -20,7 +20,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:common').sourceSets.test.output
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation "org.reflections:reflections:0.10.2"
+    implementation libs.reflections.core
     implementation 'io.micrometer:micrometer-core'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-registry-cloudwatch2'

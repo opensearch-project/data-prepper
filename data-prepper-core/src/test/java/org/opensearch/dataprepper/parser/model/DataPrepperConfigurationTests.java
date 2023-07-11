@@ -6,6 +6,12 @@
 package org.opensearch.dataprepper.parser.model;
 
 import org.opensearch.dataprepper.TestDataProvider;
+import org.opensearch.dataprepper.model.plugin.kafka.AuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.AwsIamAuthConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionConfig;
+import org.opensearch.dataprepper.model.plugin.kafka.EncryptionType;
+import org.opensearch.dataprepper.model.plugin.kafka.MskBrokerConnectionType;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.parser.ByteCountDeserializer;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
@@ -26,6 +32,7 @@ import org.opensearch.dataprepper.pipeline.PipelineShutdownOption;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -261,5 +268,27 @@ public class DataPrepperConfigurationTests {
         final DataPrepperConfiguration config = makeConfig("src/test/resources/valid_data_prepper_config_with_pipeline_shutdown.yml");
         assertThat(config, notNullValue());
         assertThat(config.getPipelineShutdown(), equalTo(PipelineShutdownOption.ON_ALL_PIPELINE_FAILURES));
+    }
+
+    @Test
+    void testConfigWithKafkaClusterConfiguration() throws IOException {
+        final DataPrepperConfiguration config = makeConfig("src/test/resources/valid_data_prepper_config_with_kafka_cluster_config.yml");
+        assertThat(config, notNullValue());
+        KafkaClusterConfig kafkaClusterConfig = config.getKafkaClusterConfig();
+        assertThat(kafkaClusterConfig, notNullValue());
+        assertThat(kafkaClusterConfig.getBootStrapServers(), equalTo(Collections.singletonList("localhost:9092")));
+        AuthConfig authConfig = kafkaClusterConfig.getAuthConfig();
+        assertThat(authConfig, notNullValue());
+        assertThat(authConfig.getSaslAuthConfig().getAwsIamAuthConfig(), equalTo(AwsIamAuthConfig.DEFAULT));
+        EncryptionConfig encryptionConfig = kafkaClusterConfig.getEncryptionConfig();
+        assertThat(encryptionConfig, notNullValue());
+        assertThat(encryptionConfig.getType(), equalTo(EncryptionType.SSL));
+        assertThat(encryptionConfig.getInsecure(), equalTo(true));
+        AwsConfig awsConfig = kafkaClusterConfig.getAwsConfig();
+        assertThat(awsConfig, notNullValue());
+        assertThat(awsConfig.getRegion(), equalTo("us-east-1"));
+        assertThat(awsConfig.getStsRoleArn(), equalTo("test-sts"));
+        assertThat(awsConfig.getAwsMskConfig().getArn(), equalTo("test-arn"));
+        assertThat(awsConfig.getAwsMskConfig().getBrokerConnectionType(), equalTo(MskBrokerConnectionType.PUBLIC));
     }
 }

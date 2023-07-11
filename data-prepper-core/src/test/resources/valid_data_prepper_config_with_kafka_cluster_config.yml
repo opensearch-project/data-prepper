@@ -1,0 +1,16 @@
+ssl: false
+kafka_cluster_config:
+  bootstrap_servers:
+    - localhost:9092
+  encryption:
+    type: ssl
+    insecure: true
+  aws:
+    sts_role_arn: "test-sts"
+    region: "us-east-1"
+    msk:
+      broker_connection_type: public
+      arn: "test-arn"
+  authentication:
+    sasl:
+      aws_msk_iam: default
