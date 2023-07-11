@@ -149,7 +149,7 @@ class SqsWorkerIT {
 
     @ParameterizedTest
     @ValueSource(ints = {1})
-    void processSqsMessages_should_return_at_least_one_message_with_acks_with_callback_invoked_after_processS3Object_finishes(final int numberOfObjectsToWrite) throws IOException {
+    void processSqsMessages_should_return_at_least_one_message_with_acks_with_callback_invoked_after_processS3Object_finishes(final int numberOfObjectsToWrite) throws IOException, InterruptedException {
         writeToS3(numberOfObjectsToWrite);
 
         when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
@@ -205,9 +205,7 @@ class SqsWorkerIT {
             ready.set(true);
             this.notify();
         }
-        try {
-            Thread.sleep(10000);
-        } catch (Exception e){}
+        Thread.sleep(10000);
 
         assertThat(deletedCount, equalTo((double)1.0));
         assertThat(ackCallbackCount, equalTo((double)1.0));
@@ -215,7 +213,7 @@ class SqsWorkerIT {
 
     @ParameterizedTest
     @ValueSource(ints = {1})
-    void processSqsMessages_should_return_at_least_one_message_with_acks_with_callback_invoked_before_processS3Object_finishes(final int numberOfObjectsToWrite) throws IOException {
+    void processSqsMessages_should_return_at_least_one_message_with_acks_with_callback_invoked_before_processS3Object_finishes(final int numberOfObjectsToWrite) throws IOException, InterruptedException {
         writeToS3(numberOfObjectsToWrite);
 
         when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
@@ -277,10 +275,7 @@ class SqsWorkerIT {
         sinkThread.start();
         final int sqsMessagesProcessed = objectUnderTest.processSqsMessages();
 
-        try {
-            Thread.sleep(10000);
-        } catch (Exception e){}
-
+        Thread.sleep(10000);
 
         assertThat(deletedCount, equalTo((double)1.0));
         assertThat(ackCallbackCount, equalTo((double)1.0));
