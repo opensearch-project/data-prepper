@@ -34,6 +34,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private final Map<EventHandle, AtomicInteger> pendingAcknowledgments;
     private Future<?> callbackFuture;
     private final DefaultAcknowledgementSetMetrics metrics;
+    private boolean closed;
 
     public DefaultAcknowledgementSet(final ExecutorService executor, final Consumer<Boolean> callback, final Duration expiryTime, final DefaultAcknowledgementSetMetrics metrics) {
         this.callback = callback;
@@ -42,6 +43,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         this.expiryTime = Instant.now().plusMillis(expiryTime.toMillis());
         this.callbackFuture = null;
         this.metrics = metrics;
+        this.closed = false;
         pendingAcknowledgments = new HashMap<>();
         lock = new ReentrantLock(true);
     }
@@ -84,6 +86,8 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
             if (Instant.now().isAfter(expiryTime)) {
                 if (callbackFuture != null) {
                     callbackFuture.cancel(true);
+                    callbackFuture = null;
+                    LOG.warn("AcknowledgementSet expired");
                 }
                 metrics.increment(DefaultAcknowledgementSetMetrics.EXPIRED_METRIC_NAME);
                 return true;
@@ -96,6 +100,19 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
 
     public Instant getExpiryTime() {
         return expiryTime;
+    }
+
+    @Override
+    public void complete() {
+        lock.lock();
+        try {
+            closed = true;
+            if (pendingAcknowledgments.size() == 0) {
+                callbackFuture = executor.submit(() -> callback.accept(this.result));
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
@@ -114,9 +131,11 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
             }
             if (pendingAcknowledgments.get(eventHandle).decrementAndGet() == 0) {
                 pendingAcknowledgments.remove(eventHandle);
-                if (pendingAcknowledgments.size() == 0) {
+                if (closed && pendingAcknowledgments.size() == 0) {
                     callbackFuture = executor.submit(() -> callback.accept(this.result));
                     return true;
+                } else if (pendingAcknowledgments.size() == 0) {
+                    LOG.warn("Acknowledgement set is not closed. Delaying callback until it is closed");
                 }
             }
         } finally {

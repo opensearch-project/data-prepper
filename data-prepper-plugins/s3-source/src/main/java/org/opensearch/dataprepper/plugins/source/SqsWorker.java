@@ -232,17 +232,10 @@ public class SqsWorker implements Runnable {
                 // Acknowledgement Set timeout is slightly smaller than the visibility timeout;
                 int timeout = (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2;
                 acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                   synchronized (waitingForAcknowledgements) {
-                        while (!acknowledgementSetReady.get()) {
-                            try {
-                                waitingForAcknowledgements.wait();
-                            } catch (InterruptedException e){}
-                        }
-                        acknowledgementSetCallbackCounter.increment();
-                        // Delete only if this is positive acknowledgement
-                        if (result == true) {
-                            deleteSqsMessages(waitingForAcknowledgements);
-                        }
+                    acknowledgementSetCallbackCounter.increment();
+                    // Delete only if this is positive acknowledgement
+                    if (result == true) {
+                        deleteSqsMessages(waitingForAcknowledgements);
                     }
                 }, Duration.ofSeconds(timeout));
             }
@@ -250,10 +243,7 @@ public class SqsWorker implements Runnable {
             final Optional<DeleteMessageBatchRequestEntry> deleteMessageBatchRequestEntry = processS3Object(parsedMessage, s3ObjectReference, acknowledgementSet);
             if (endToEndAcknowledgementsEnabled) {
                 deleteMessageBatchRequestEntry.ifPresent(waitingForAcknowledgements::add);
-                synchronized (waitingForAcknowledgements) {
-                    acknowledgementSetReady.set(true);
-                    waitingForAcknowledgements.notify();
-                }
+                acknowledgementSet.complete();
             } else {
                 deleteMessageBatchRequestEntry.ifPresent(deleteMessageBatchRequestEntryCollection::add);
             }
