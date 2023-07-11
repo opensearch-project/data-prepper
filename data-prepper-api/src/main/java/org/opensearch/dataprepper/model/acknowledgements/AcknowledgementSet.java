@@ -50,4 +50,12 @@ public interface AcknowledgementSet {
      * @since 2.2
      */
     public boolean release(final EventHandle eventHandle, final boolean result);
+
+    /**
+      * Indicates that the addition of initial set of events to
+      * the acknowledgement set is completed.
+      * It is possible that more events are added to the set as the 
+      * initial events are going through the pipeline line.
+     */
+    public void complete();
 }
