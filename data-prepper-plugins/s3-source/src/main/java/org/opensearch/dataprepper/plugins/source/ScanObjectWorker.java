@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
+import org.opensearch.dataprepper.plugins.source.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,8 @@ public class ScanObjectWorker implements Runnable{
 
     private final Function<Map<String, Object>, List<PartitionIdentifier>> partitionCreationSupplier;
 
+    private final S3ScanSchedulingOptions s3ScanSchedulingOptions;
+
     // Should there be a duration or time that is configured in the source to stop processing? Otherwise will only stop when data prepper is stopped
     private final boolean shouldStopProcessing = false;
 
@@ -50,12 +53,14 @@ public class ScanObjectWorker implements Runnable{
                             final List<ScanOptions> scanOptionsBuilderList,
                             final S3ObjectHandler s3ObjectHandler,
                             final BucketOwnerProvider bucketOwnerProvider,
-                            final SourceCoordinator<S3SourceProgressState> sourceCoordinator){
+                            final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                            final S3ScanSchedulingOptions s3ScanSchedulingOptions){
         this.s3Client = s3Client;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
         this.s3ObjectHandler= s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.sourceCoordinator = sourceCoordinator;
+        this.s3ScanSchedulingOptions = s3ScanSchedulingOptions;
         this.sourceCoordinator.initialize();
 
         this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList);
@@ -92,7 +97,7 @@ public class ScanObjectWorker implements Runnable{
 
         try {
             processS3Object(S3ObjectReference.bucketAndKey(bucket, objectKey).build());
-            sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey());
+            sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
         } catch (final PartitionNotOwnedException | PartitionNotFoundException | PartitionUpdateException e) {
             LOG.warn("S3 scan object worker received an exception from the source coordinator. There is a potential for duplicate data from {}, giving up partition and getting next partition: {}", objectKey, e.getMessage());
             sourceCoordinator.giveUpPartitions();

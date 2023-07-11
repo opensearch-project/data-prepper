@@ -42,6 +42,9 @@ public class S3ScanScanOptions {
     @JsonProperty("buckets")
     private List<S3ScanBucketOptions> buckets;
 
+    @JsonProperty("scheduling")
+    private S3ScanSchedulingOptions schedulingOptions;
+
     @AssertTrue(message = "At most two options from start_time, end_time and range can be specified at the same time")
     public boolean hasValidTimeOptions() {
         return Stream.of(startTime, endTime, range).filter(Objects::nonNull).count() < 3;
@@ -59,5 +62,9 @@ public class S3ScanScanOptions {
 
     public List<S3ScanBucketOptions> getBuckets() {
         return buckets;
+    }
+
+    public S3ScanSchedulingOptions getSchedulingOptions() {
+        return schedulingOptions;
     }
 }

@@ -18,10 +18,12 @@ import org.opensearch.dataprepper.model.source.coordinator.SourcePartition;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotFoundException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionNotOwnedException;
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
+import org.opensearch.dataprepper.plugins.source.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,8 +33,7 @@ import java.util.stream.Stream;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
@@ -54,6 +55,9 @@ class S3ScanObjectWorkerTest {
     @Mock
     private SourceCoordinator<S3SourceProgressState> sourceCoordinator;
 
+    @Mock
+    private S3ScanSchedulingOptions s3ScanSchedulingOptions;
+
     private List<ScanOptions> scanOptionsList;
 
     @BeforeEach
@@ -62,7 +66,7 @@ class S3ScanObjectWorkerTest {
     }
 
     private ScanObjectWorker createObjectUnderTest() {
-        final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator);
+        final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, s3ScanSchedulingOptions);
         verify(sourceCoordinator).initialize();
         return objectUnderTest;
     }
@@ -101,7 +105,7 @@ class S3ScanObjectWorkerTest {
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
         doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null));
-        doNothing().when(sourceCoordinator).completePartition(partitionKey);
+        doNothing().when(sourceCoordinator).closePartition(anyString(), any(), anyInt());
 
         createObjectUnderTest().runWithoutInfiniteLoop();
 
