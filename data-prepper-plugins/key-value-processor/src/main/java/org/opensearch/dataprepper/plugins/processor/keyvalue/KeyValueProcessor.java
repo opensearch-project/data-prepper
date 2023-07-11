@@ -65,10 +65,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getFieldSplitCharacters());
             }
 
-            if (keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)) {
-                regex = whitespace(regex);
-            }
-
             fieldDelimiterPattern = Pattern.compile(regex);
         }
 
@@ -144,10 +140,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return true;
     }
 
-    private String whitespace(String s) {
-        return s.strip();
-    }
-
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
@@ -185,6 +177,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
                 }
 
+                if(keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)) {
+                    String[] whitespace_arr = whitespace(key, value);
+                    key = whitespace_arr[0];
+                    value = whitespace_arr[1];
+                }
+
                 if(keyValueProcessorConfig.getTransformKey() != null
                         && !keyValueProcessorConfig.getTransformKey().isEmpty()) {
                     key = transformKey(key);
@@ -197,6 +195,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         return records;
+    }
+
+    private String[] whitespace(String key, Object value) {
+        String[] arr = {key.stripTrailing(), value.toString().stripLeading()};
+        return arr;
     }
     
     private String transformKey(String key) {

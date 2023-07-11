@@ -409,6 +409,28 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testLenientWhitespaceKvProcessor() {
+        when(mockConfig.getWhitespace()).thenReturn("lenient");
+
+        final Record<Event> record = getMessage("key1 = value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+    }
+
+    @Test
+    void testStrictWhitespaceKvProcessor() {
+        when(mockConfig.getWhitespace()).thenReturn("strict");
+
+        final Record<Event> record = getMessage("key1 = value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+    }
+
+    @Test
     void testShutdownIsReady() {
         assertThat(keyValueProcessor.isReadyForShutdown(), is(true));
     }
