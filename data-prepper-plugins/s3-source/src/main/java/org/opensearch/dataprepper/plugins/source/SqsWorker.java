@@ -227,7 +227,6 @@ public class SqsWorker implements Runnable {
         for (ParsedMessage parsedMessage : parsedMessagesToRead) {
             List<DeleteMessageBatchRequestEntry> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
-            AtomicBoolean acknowledgementSetReady = new AtomicBoolean(false);
             if (endToEndAcknowledgementsEnabled) {
                 // Acknowledgement Set timeout is slightly smaller than the visibility timeout;
                 int timeout = (int) sqsOptions.getVisibilityTimeout().getSeconds() - 2;
