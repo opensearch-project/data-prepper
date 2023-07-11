@@ -34,7 +34,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     private final Map<EventHandle, AtomicInteger> pendingAcknowledgments;
     private Future<?> callbackFuture;
     private final DefaultAcknowledgementSetMetrics metrics;
-    private boolean closed;
+    private boolean completed;
 
     public DefaultAcknowledgementSet(final ExecutorService executor, final Consumer<Boolean> callback, final Duration expiryTime, final DefaultAcknowledgementSetMetrics metrics) {
         this.callback = callback;
@@ -43,7 +43,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
         this.expiryTime = Instant.now().plusMillis(expiryTime.toMillis());
         this.callbackFuture = null;
         this.metrics = metrics;
-        this.closed = false;
+        this.completed = false;
         pendingAcknowledgments = new HashMap<>();
         lock = new ReentrantLock(true);
     }
@@ -106,7 +106,7 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
     public void complete() {
         lock.lock();
         try {
-            closed = true;
+            completed = true;
             if (pendingAcknowledgments.size() == 0) {
                 callbackFuture = executor.submit(() -> callback.accept(this.result));
             }
@@ -131,11 +131,11 @@ public class DefaultAcknowledgementSet implements AcknowledgementSet {
             }
             if (pendingAcknowledgments.get(eventHandle).decrementAndGet() == 0) {
                 pendingAcknowledgments.remove(eventHandle);
-                if (closed && pendingAcknowledgments.size() == 0) {
+                if (completed && pendingAcknowledgments.size() == 0) {
                     callbackFuture = executor.submit(() -> callback.accept(this.result));
                     return true;
                 } else if (pendingAcknowledgments.size() == 0) {
-                    LOG.warn("Acknowledgement set is not closed. Delaying callback until it is closed");
+                    LOG.warn("Acknowledgement set is not completed. Delaying callback until it is completed");
                 }
             }
         } finally {
