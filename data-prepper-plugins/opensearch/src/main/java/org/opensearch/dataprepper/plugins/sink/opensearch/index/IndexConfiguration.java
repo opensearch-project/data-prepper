@@ -51,6 +51,7 @@ public class IndexConfiguration {
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
+    public static final String ES_6 = "es_6";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
@@ -71,6 +72,7 @@ public class IndexConfiguration {
     private final String s3AwsExternalId;
     private final S3Client s3Client;
     private final boolean serverless;
+    private final boolean es6;
     private final String documentRootKey;
 
     private static final String S3_PREFIX = "s3://";
@@ -79,6 +81,7 @@ public class IndexConfiguration {
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
         this.serverless = builder.serverless;
+        this.es6 = builder.es6;
         determineIndexType(builder);
 
         this.s3AwsRegion = builder.s3AwsRegion;
@@ -132,7 +135,7 @@ public class IndexConfiguration {
             indexType = mappedIndexType.orElseThrow(
                     () -> new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
                     + IndexType.getIndexTypeValues()));
-        } else if (builder.serverless) {
+        } else if (builder.serverless || builder.es6) {
             this.indexType = IndexType.MANAGEMENT_DISABLED;
         } else {
             this.indexType  = IndexType.CUSTOM;
@@ -206,6 +209,9 @@ public class IndexConfiguration {
         final String documentRootKey = pluginSetting.getStringOrDefault(DOCUMENT_ROOT_KEY, null);
         builder.withDocumentRootKey(documentRootKey);
 
+        final boolean isEs6 = pluginSetting.getBooleanOrDefault(ES_6, false);
+        builder.withEs6(isEs6);
+
         return builder.build();
     }
 
@@ -271,6 +277,10 @@ public class IndexConfiguration {
 
     public boolean getServerless() {
         return serverless;
+    }
+
+    public boolean isEs6() {
+        return es6;
     }
 
     public String getDocumentRootKey() {
@@ -343,6 +353,7 @@ public class IndexConfiguration {
         private String s3AwsStsExternalId;
         private S3Client s3Client;
         private boolean serverless;
+        private boolean es6;
         private String documentRootKey;
 
         public Builder withIndexAlias(final String indexAlias) {
@@ -457,6 +468,11 @@ public class IndexConfiguration {
 
         public Builder withServerless(final boolean serverless) {
             this.serverless = serverless;
+            return this;
+        }
+
+        public Builder withEs6(final boolean es6) {
+            this.es6 = es6;
             return this;
         }
 

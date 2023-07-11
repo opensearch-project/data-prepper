@@ -38,6 +38,7 @@ import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAPIWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingCompressedBulkRequest;
@@ -91,6 +92,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private IndexManager indexManager;
   private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
+  private BulkAPIWrapper bulkAPIWrapper;
   private final long bulkSize;
   private final long flushTimeout;
   private final IndexType indexType;
@@ -218,8 +220,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             TransportOptions.builder()
                     .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
                     .build());
+    bulkAPIWrapper = new BulkAPIWrapper(openSearchSinkConfig.getIndexConfiguration(), filteringOpenSearchClient);
     bulkRetryStrategy = new BulkRetryStrategy(
-            bulkRequest -> filteringOpenSearchClient.bulk(bulkRequest.getRequest()),
+            bulkRequest -> bulkAPIWrapper.bulk(bulkRequest.getRequest()),
             this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,

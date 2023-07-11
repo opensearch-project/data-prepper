@@ -95,7 +95,7 @@ Default is null.
 
 - `enable_request_compression` (optional): A boolean that enables or disables request compression when sending requests to OpenSearch. Default is true.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling. 
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling.
 
 ```
     APM trace analytics raw span data type example:
@@ -209,6 +209,7 @@ With the `document_root_key` set to `status`. The document structure would be `{
     duration: "15 ms"
 }
 ```
+- `es_6`: A boolean flag indicating whether the sink backend version is Elasticsearch 6 or above (i.e. Elasticsearch 7.x or OpenSearch). Default to `false`.
 
 ### <a name="aws_configuration">AWS Configuration</a>
 
