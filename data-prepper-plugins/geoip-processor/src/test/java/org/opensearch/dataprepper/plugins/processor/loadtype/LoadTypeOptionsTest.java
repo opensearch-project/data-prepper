@@ -23,7 +23,7 @@ class LoadTypeOptionsTest {
 
     @Test
     void fromOptionValue_test() {
-        LoadTypeOptions loadTypeOptions = LoadTypeOptions.fromOptionValue("in_memory");
+        LoadTypeOptions loadTypeOptions = LoadTypeOptions.fromOptionValue("memory_map");
         assertNotNull(loadTypeOptions);
         assertThat(loadTypeOptions.toString(), equalTo("INMEMORY"));
     }
