@@ -163,9 +163,8 @@ public class CloudWatchLogsService {
 
                 Thread.sleep(calculateBackOffTime(backOffTimeBase));
 
-                LOG.warn("Trying to retransmit request... {Attempt: " + retryCount + "}");
+                LOG.warn("Trying to retransmit request... {Attempt: " + (++failCounter) + "}");
                 requestFailCount.increment();
-                failCounter += 1;
             }
         }
 
