@@ -41,6 +41,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Set<String> validTransformOptionSet = Set.of("", LOWERCASE_KEY, UPPERCASE_KEY, CAPITALIZE_KEY);
     private final String WHITESPACE_STRICT = "strict";
     private final String WHITESPACE_LENIENT = "lenient";
+    private final Set<String> validWhitespaceSet = Set.of(WHITESPACE_LENIENT, WHITESPACE_STRICT);
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -105,8 +106,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
         }
 
-        if (!(keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)
-            || keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_LENIENT))) {
+        if (!(validWhitespaceSet.contains(keyValueProcessorConfig.getWhitespace()))) {
             throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
         }
     }
