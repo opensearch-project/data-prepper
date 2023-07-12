@@ -66,6 +66,10 @@ When run, the processor will parse the message into the following output:
   * Example: `transform_key` is `lowercase`. `{"Key1=value1"}` will parse into `{"key1": "value1"}`
   * Example: `transform_key` is `uppercase`. `{"key1=value1"}` will parse into `{"Key1": "value1"}`
   * Example: `transform_key` is `capitalize`. `{"key1=value1"}` will parse into `{"KEY1": "value1"}`
+* `whitespace` - Specify whether to be lenient or strict with the acceptance of unnecessary whitespace surrounding the configured value-split sequence.
+  * Default: `lenient`
+  * Example: `whitespace` is `"lenient"`. `{"key1  =  value1"}` will parse into `{"key1  ": "  value1"}`
+  * Example: `whitespace` is `"strict"`. `{"key1  =  value1"}` will parse into `{"key1": "value1"}`
 
 ## Developer Guide
 This plugin is compatible with Java 14. See
