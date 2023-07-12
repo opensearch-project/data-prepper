@@ -127,7 +127,7 @@ public class KeyValueProcessorConfig {
         return whitespace;
     }
 
-    public String getduplicateValues() {
+    public boolean getduplicateValues() {
         return duplicateValues;
     }
 }
