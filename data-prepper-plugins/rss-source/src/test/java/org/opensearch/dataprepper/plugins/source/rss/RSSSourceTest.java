@@ -20,6 +20,7 @@ import java.time.Duration;
 
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
@@ -42,12 +43,14 @@ class RSSSourceTest {
     private PluginMetrics pluginMetrics;
 
     private RSSSource rssSource;
+    private Duration pollingFrequency;
 
     @BeforeEach
     void setUp() {
         pluginMetrics = PluginMetrics.fromNames(PLUGIN_NAME, PIPELINE_NAME);
+        pollingFrequency = Duration.ofMillis(1800);
         lenient().when(rssSourceConfig.getUrl()).thenReturn(VALID_RSS_URL);
-        lenient().when(rssSourceConfig.getPollingFrequency()).thenReturn(Duration.ofSeconds(5));
+        lenient().when(rssSourceConfig.getPollingFrequency()).thenReturn(pollingFrequency);
         rssSource = new RSSSource(pluginMetrics, rssSourceConfig);
     }
 
@@ -59,9 +62,9 @@ class RSSSourceTest {
     @Test
     void test_ExecutorService_keep_writing_Events_to_Buffer() throws Exception {
         rssSource.start(buffer);
-        Thread.sleep(5000);
+        Thread.sleep(pollingFrequency.toMillis());
         verify(buffer, atLeastOnce()).writeAll(anyCollection(), anyInt());
-        Thread.sleep(5000);
-        verify(buffer, atLeastOnce()).writeAll(anyCollection(), anyInt());
+        Thread.sleep(pollingFrequency.toMillis());
+        verify(buffer, atLeast(2)).writeAll(anyCollection(), anyInt());
     }
 }
