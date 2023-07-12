@@ -25,7 +25,7 @@ public class ParquetOutputCodec implements OutputCodec {
 
 
     @Override
-    public void start(final OutputStream outputStream) throws IOException {
+    public void start(final OutputStream outputStream, Event event) throws IOException {
         // TODO: do the initial wrapping
     }
 

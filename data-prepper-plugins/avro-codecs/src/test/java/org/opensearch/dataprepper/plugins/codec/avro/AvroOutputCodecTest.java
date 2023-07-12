@@ -11,6 +11,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
@@ -30,6 +31,10 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class AvroOutputCodecTest {
+    private static String expectedSchemaString = "{\"type\":\"record\",\"name\":\"AvroRecords\",\"fields\":[{\"name\"" +
+            ":\"name\",\"type\":\"string\"},{\"name\":\"nestedRecord\",\"type\":{\"type\":\"record\",\"name\":" +
+            "\"NestedRecord1\",\"fields\":[{\"name\":\"secondFieldInNestedRecord\",\"type\":\"int\"},{\"name\":\"" +
+            "firstFieldInNestedRecord\",\"type\":\"string\"}]}},{\"name\":\"age\",\"type\":\"int\"}]}";
     private AvroOutputCodecConfig config;
 
     private ByteArrayOutputStream outputStream;
@@ -49,7 +54,7 @@ public class AvroOutputCodecTest {
         this.numberOfRecords = numberOfRecords;
         AvroOutputCodec avroOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        avroOutputCodec.start(outputStream);
+        avroOutputCodec.start(outputStream, null);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
             avroOutputCodec.writeEvent(event, outputStream, null);
@@ -78,9 +83,18 @@ public class AvroOutputCodecTest {
             index++;
         }
     }
+    @Test
+    public void testInlineSchemaBuilder() throws IOException {
+        Schema expectedSchema = new Schema.Parser().parse(expectedSchemaString);
+        AvroOutputCodec avroOutputCodec = createObjectUnderTest();
+        numberOfRecords = 1;
+        Event event = getRecord(0).getData();
+        Schema actualSchema = avroOutputCodec.buildInlineSchemaFromEvent(event);
+        assertThat(actualSchema, Matchers.equalTo(expectedSchema));
+    }
 
 
-    private static Record getRecord(int index) {
+    private static Record<Event> getRecord(int index) {
         List<HashMap> recordList = generateRecords(numberOfRecords);
         final Event event = JacksonLog.builder().withData(recordList.get(index)).build();
         return new Record<>(event);

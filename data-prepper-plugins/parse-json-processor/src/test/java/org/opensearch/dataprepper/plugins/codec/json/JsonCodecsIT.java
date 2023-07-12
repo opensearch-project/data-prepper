@@ -65,7 +65,7 @@ public class JsonCodecsIT {
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         JsonOutputCodec jsonOutputCodec = createJsonOutputCodecObjectUnderTest();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        jsonOutputCodec.start(outputStream);
+        jsonOutputCodec.start(outputStream, null);
 
         assertThat(actualRecords.size(), equalTo(numberOfObjects));
 

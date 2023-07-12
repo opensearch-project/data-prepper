@@ -78,7 +78,7 @@ public class CsvCodecsIT {
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         CsvOutputCodec csvOutputCodec = createOutputCodecObjectUnderTest();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        csvOutputCodec.start(outputStream);
+        csvOutputCodec.start(outputStream, null);
         for (Record<Event> record: actualRecords){
             csvOutputCodec.writeEvent(record.getData(),outputStream, null);
         }

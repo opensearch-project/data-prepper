@@ -37,6 +37,9 @@ public class AvroOutputCodec implements OutputCodec {
     private static final Logger LOG = LoggerFactory.getLogger(AvroOutputCodec.class);
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String AVRO = "avro";
+    private static final String BASE_SCHEMA_STRING = "{\"type\":\"record\",\"name\":\"AvroRecords\",\"fields\":[";
+    private static final String END_SCHEMA_STRING = "]}";
+
     private final AvroOutputCodecConfig config;
     private DataFileWriter<GenericRecord> dataFileWriter;
 
@@ -49,7 +52,7 @@ public class AvroOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream) throws IOException {
+    public void start(final OutputStream outputStream, final Event event) throws IOException {
         Objects.requireNonNull(outputStream);
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
@@ -59,13 +62,69 @@ public class AvroOutputCodec implements OutputCodec {
             schema = parseSchema(AvroSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
         } else if (checkS3SchemaValidity()) {
             schema = AvroSchemaParserFromS3.parseSchema(config);
-        } else {
-            LOG.error("Schema not provided.");
-            throw new IOException("Can't proceed without Schema.");
+        }else {
+            schema = buildInlineSchemaFromEvent(event);
         }
         final DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<GenericRecord>(schema);
         dataFileWriter = new DataFileWriter<>(datumWriter);
         dataFileWriter.create(schema, outputStream);
+    }
+
+    public Schema buildInlineSchemaFromEvent(final Event event) throws IOException {
+        return parseSchema(buildSchemaStringFromEventMap(event.toMap(), false));
+    }
+
+    private String buildSchemaStringFromEventMap(final Map<String, Object> eventData, boolean nestedRecordFlag) {
+        final StringBuilder builder = new StringBuilder();
+        int nestedRecordIndex=1;
+        if(nestedRecordFlag==false){
+            builder.append(BASE_SCHEMA_STRING);
+        }else{
+            builder.append("{\"type\":\"record\",\"name\":\""+"NestedRecord"+nestedRecordIndex+"\",\"fields\":[");
+            nestedRecordIndex++;
+        }
+        String fields;
+        int index = 0;
+        for(final String key: eventData.keySet()){
+            if(index == 0){
+                if(!(eventData.get(key) instanceof Map)){
+                    fields = "{\"name\":\""+key+"\",\"type\":\""+typeMapper(eventData.get(key))+"\"}";
+                }
+                else{
+                    fields = "{\"name\":\""+key+"\",\"type\":"+typeMapper(eventData.get(key))+"}";
+                }
+            }
+            else{
+                if(!(eventData.get(key) instanceof Map)){
+                    fields = ","+"{\"name\":\""+key+"\",\"type\":\""+typeMapper(eventData.get(key))+"\"}";
+                }else{
+                    fields = ","+"{\"name\":\""+key+"\",\"type\":"+typeMapper(eventData.get(key))+"}";
+                }
+            }
+            builder.append(fields);
+            index++;
+        }
+        builder.append(END_SCHEMA_STRING);
+        return builder.toString();
+    }
+
+    private String typeMapper(final Object value) {
+        if(value instanceof Integer || value.getClass().equals(int.class)){
+            return "int";
+        }else if(value instanceof Float || value.getClass().equals(float.class)){
+            return "float";
+        }else if(value instanceof Double || value.getClass().equals(double.class)){
+            return "double";
+        }else if(value instanceof Long || value.getClass().equals(long.class)){
+            return "long";
+        }else if(value instanceof Byte[]){
+            return "bytes";
+        }else if(value instanceof Map){
+            return buildSchemaStringFromEventMap((Map<String, Object>) value, true);
+        }
+        else{
+            return "string";
+        }
     }
 
     @Override

@@ -43,7 +43,7 @@ public class NewlineDelimitedOutputCodecTest {
         this.numberOfRecords = numberOfRecords;
         NewlineDelimitedOutputCodec newlineDelimitedOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        newlineDelimitedOutputCodec.start(outputStream);
+        newlineDelimitedOutputCodec.start(outputStream, null);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
             newlineDelimitedOutputCodec.writeEvent(event, outputStream, null);

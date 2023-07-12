@@ -71,7 +71,7 @@ public class CsvOutputCodecTest {
         CsvOutputCodecTest.numberOfRecords = numberOfRecords;
         CsvOutputCodec csvOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        csvOutputCodec.start(outputStream);
+        csvOutputCodec.start(outputStream, null);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
             csvOutputCodec.writeEvent(event, outputStream, null);

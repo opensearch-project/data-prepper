@@ -106,7 +106,7 @@ public class S3SinkService {
             for (Record<Event> record : records) {
 
                 if(currentBuffer.getEventCount() == 0) {
-                    codec.start(outputStream);
+                    codec.start(outputStream, record.getData());
                 }
 
                 final Event event = record.getData();

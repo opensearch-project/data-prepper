@@ -64,8 +64,7 @@ pipeline:
    "items": "string"
    }`
 3) If the user wants to input schema through a `schema.json` file kept in S3, the user must provide corresponding credentials i.e. region, bucket name and file key of the same.
-
-
+4) If the user doesn't provide any schema, the codec will auto-generate schema from the first event in the buffer.
 
 ## Developer Guide
 
