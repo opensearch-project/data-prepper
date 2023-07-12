@@ -106,7 +106,8 @@ public class S3SinkService {
             for (Record<Event> record : records) {
 
                 if(currentBuffer.getEventCount() == 0) {
-                    codec.start(outputStream, record.getData());
+                    final Event eventForSchemaAutoGenerate = record.getData();
+                    codec.start(outputStream,eventForSchemaAutoGenerate , tagsTargetKey);
                 }
 
                 final Event event = record.getData();

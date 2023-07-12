@@ -32,7 +32,7 @@ public class NewlineDelimitedOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream, Event event) throws IOException {
+    public void start(final OutputStream outputStream, Event event, String tagsTargetKey) throws IOException {
         Objects.requireNonNull(outputStream);
     }
 

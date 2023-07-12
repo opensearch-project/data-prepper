@@ -35,7 +35,7 @@ public class JsonOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream, Event event) throws IOException {
+    public void start(final OutputStream outputStream, Event event, String tagsTargetKey) throws IOException {
         Objects.requireNonNull(outputStream);
         generator = factory.createGenerator(outputStream, JsonEncoding.UTF8);
         generator.writeStartArray();

@@ -61,7 +61,7 @@ class JsonOutputCodecTest {
         JsonOutputCodecTest.numberOfRecords = numberOfRecords;
         JsonOutputCodec jsonOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        jsonOutputCodec.start(outputStream, null);
+        jsonOutputCodec.start(outputStream, null, null);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
             jsonOutputCodec.writeEvent(event, outputStream, null);

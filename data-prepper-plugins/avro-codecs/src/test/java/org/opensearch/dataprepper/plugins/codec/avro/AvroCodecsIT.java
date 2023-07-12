@@ -179,7 +179,7 @@ public class AvroCodecsIT {
         verify(eventConsumer, times(numberOfRecords)).accept(recordArgumentCaptor.capture());
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        avroOutputCodec.start(outputStream, null);
+        avroOutputCodec.start(outputStream, null, null);
         for (Record<Event> record : actualRecords) {
             avroOutputCodec.writeEvent(record.getData(), outputStream, null);
         }

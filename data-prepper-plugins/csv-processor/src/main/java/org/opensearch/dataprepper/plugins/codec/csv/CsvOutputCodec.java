@@ -40,7 +40,7 @@ public class CsvOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream, Event event) throws IOException {
+    public void start(final OutputStream outputStream, Event event, String tagsTargetKey) throws IOException {
         Objects.requireNonNull(outputStream);
         if (config.getHeader() != null) {
             headerList = config.getHeader();

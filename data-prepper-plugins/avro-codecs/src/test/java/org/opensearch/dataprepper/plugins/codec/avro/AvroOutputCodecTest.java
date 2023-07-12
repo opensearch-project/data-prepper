@@ -54,7 +54,7 @@ public class AvroOutputCodecTest {
         this.numberOfRecords = numberOfRecords;
         AvroOutputCodec avroOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        avroOutputCodec.start(outputStream, null);
+        avroOutputCodec.start(outputStream, null, null);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
             avroOutputCodec.writeEvent(event, outputStream, null);
@@ -89,7 +89,7 @@ public class AvroOutputCodecTest {
         AvroOutputCodec avroOutputCodec = createObjectUnderTest();
         numberOfRecords = 1;
         Event event = getRecord(0).getData();
-        Schema actualSchema = avroOutputCodec.buildInlineSchemaFromEvent(event);
+        Schema actualSchema = avroOutputCodec.buildInlineSchemaFromEvent(event, null);
         assertThat(actualSchema, Matchers.equalTo(expectedSchema));
     }
 

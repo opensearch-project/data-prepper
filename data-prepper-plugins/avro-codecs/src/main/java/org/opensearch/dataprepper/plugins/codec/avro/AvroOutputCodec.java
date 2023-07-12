@@ -52,7 +52,7 @@ public class AvroOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream, final Event event) throws IOException {
+    public void start(final OutputStream outputStream, final Event event, final String tagsTargetKey) throws IOException {
         Objects.requireNonNull(outputStream);
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
@@ -63,15 +63,19 @@ public class AvroOutputCodec implements OutputCodec {
         } else if (checkS3SchemaValidity()) {
             schema = AvroSchemaParserFromS3.parseSchema(config);
         }else {
-            schema = buildInlineSchemaFromEvent(event);
+            schema = buildInlineSchemaFromEvent(event, tagsTargetKey);
         }
         final DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<GenericRecord>(schema);
         dataFileWriter = new DataFileWriter<>(datumWriter);
         dataFileWriter.create(schema, outputStream);
     }
 
-    public Schema buildInlineSchemaFromEvent(final Event event) throws IOException {
-        return parseSchema(buildSchemaStringFromEventMap(event.toMap(), false));
+    public Schema buildInlineSchemaFromEvent(final Event event, final String tagsTargetKey) throws IOException {
+        if(tagsTargetKey!=null){
+            return parseSchema(buildSchemaStringFromEventMap(addTagsToEvent(event, tagsTargetKey).toMap(), false));
+        }else{
+            return parseSchema(buildSchemaStringFromEventMap(event.toMap(), false));
+        }
     }
 
     private String buildSchemaStringFromEventMap(final Map<String, Object> eventData, boolean nestedRecordFlag) {
