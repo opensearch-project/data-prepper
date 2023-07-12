@@ -23,7 +23,9 @@ public final class CloudWatchLogsClientFactory {
 
     /**
      * Generates a CloudWatchLogs Client based on STS role ARN system credentials.
-     * @return CloudWatchLogsClient -> used to interact with CloudWatch Logs services.
+     * @param awsConfig - AwsConfig specifying region, roles, and header overrides.
+     * @param awsCredentialsSupplier - AwsCredentialsSupplier Interface for which to create CredentialsProvider for Client config.
+     * @return CloudWatchLogsClient - used to interact with CloudWatch Logs services.
      */
     public static CloudWatchLogsClient createCwlClient(final AwsConfig awsConfig, final AwsCredentialsSupplier awsCredentialsSupplier) {
         final AwsCredentialsOptions awsCredentialsOptions = convertToCredentialOptions(awsConfig);
