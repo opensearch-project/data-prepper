@@ -147,6 +147,8 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             if (!acknowledgementsEnabled) {
                 offsets.forEach((partition, offsetRange) ->
                     updateOffsetsToCommit(partition, new OffsetAndMetadata(offsetRange.getMaximum() + 1)));
+            } else {
+                acknowledgementSet.complete();
             }
         }
     }
