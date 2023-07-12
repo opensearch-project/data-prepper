@@ -73,7 +73,7 @@ class S3ObjectWorker implements S3ObjectHandler {
 
         LOG.info("Read S3 object: {}", s3ObjectReference);
 
-        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, s3ObjectPluginMetrics);
+        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, bucketOwnerProvider, s3ObjectPluginMetrics);
 
         final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
                 compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
