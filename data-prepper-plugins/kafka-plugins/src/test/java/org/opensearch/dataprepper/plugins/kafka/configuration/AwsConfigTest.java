@@ -25,9 +25,9 @@ class AwsConfigTest {
 
     @Test
     void TestConfigOptions_notNull() throws NoSuchFieldException, IllegalAccessException {
-        final String testArn = RandomStringUtils.randomAlphabetic(10);
-        reflectivelySetField(awsConfig, "mskArn", testArn);
-        assertThat(awsConfig.getMskArn(), equalTo(testArn));
+        final AwsConfig.AwsMskConfig testMskConfig = new AwsConfig.AwsMskConfig();
+        reflectivelySetField(awsConfig, "awsMskConfig", testMskConfig);
+        assertThat(awsConfig.getAwsMskConfig(), equalTo(testMskConfig));
 
         final String testStsRoleArn = RandomStringUtils.randomAlphabetic(10);
         reflectivelySetField(awsConfig, "stsRoleArn", testStsRoleArn);
