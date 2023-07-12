@@ -306,6 +306,25 @@ class ParseJsonProcessorTest {
         assertTrue(parsedEvent.getMetadata().hasTags(testTags));
     }
 
+    @Test
+    void when_evaluate_conditional_throws_RuntimeException_events_are_not_dropped() {
+        final String source = "different_source";
+        final String destination = "destination_key";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(destination);
+        final String whenCondition = UUID.randomUUID().toString();
+        when(processorConfig.getParseWhen()).thenReturn(whenCondition);
+        final Map<String, Object> data = Collections.singletonMap("key", "value");
+        final String serializedMessage = convertMapToJSONString(data);
+        final Record<Event> testEvent = createMessageEvent(serializedMessage);
+        when(expressionEvaluator.evaluateConditional(whenCondition, testEvent.getData())).thenThrow(RuntimeException.class);
+        parseJsonProcessor = createObjectUnderTest();
+
+        final Event parsedEvent = createAndParseMessageEvent(testEvent);
+
+        assertThat(parsedEvent.toMap(), equalTo(testEvent.getData().toMap()));
+    }
+
     private String constructDeeplyNestedJsonPointer(final int numberOfLayers) {
         String pointer = "/" + DEEPLY_NESTED_KEY_NAME;
         for (int layer = 0; layer < numberOfLayers; layer++) {
