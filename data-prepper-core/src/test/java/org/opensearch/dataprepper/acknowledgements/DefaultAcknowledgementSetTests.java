@@ -89,6 +89,7 @@ class DefaultAcknowledgementSetTests {
     @Test
     void testDefaultAcknowledgementSetBasic() throws Exception {
         defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
@@ -97,6 +98,7 @@ class DefaultAcknowledgementSetTests {
     @Test
     void testDefaultAcknowledgementSetMultipleAcquireAndRelease() throws Exception {
         defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         defaultAcknowledgementSet.acquire(handle);
@@ -111,6 +113,7 @@ class DefaultAcknowledgementSetTests {
     @Test
     void testDefaultAcknowledgementInvalidAcquire() {
         defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
         DefaultAcknowledgementSet secondAcknowledgementSet = createObjectUnderTest();
         DefaultEventHandle handle2 = new DefaultEventHandle(secondAcknowledgementSet);
         defaultAcknowledgementSet.acquire(handle2);
@@ -120,6 +123,7 @@ class DefaultAcknowledgementSetTests {
     @Test
     void testDefaultAcknowledgementInvalidRelease() {
         defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
         DefaultAcknowledgementSet secondAcknowledgementSet = createObjectUnderTest();
         DefaultEventHandle handle2 = new DefaultEventHandle(secondAcknowledgementSet);
         assertThat(defaultAcknowledgementSet.release(handle2, true), equalTo(false));
@@ -129,6 +133,7 @@ class DefaultAcknowledgementSetTests {
     @Test
     void testDefaultAcknowledgementDuplicateReleaseError() throws Exception {
         defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
@@ -144,6 +149,7 @@ class DefaultAcknowledgementSetTests {
             }        
         );
         defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
@@ -162,6 +168,7 @@ class DefaultAcknowledgementSetTests {
             }        
         );
         defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         defaultAcknowledgementSet.acquire(handle);
@@ -190,6 +197,7 @@ class DefaultAcknowledgementSetTests {
             }        
         );
         defaultAcknowledgementSet.add(event);
+        defaultAcknowledgementSet.complete();
         assertThat(handle, not(equalTo(null)));
         assertThat(handle.getAcknowledgementSet(), equalTo(defaultAcknowledgementSet));
         assertThat(defaultAcknowledgementSet.release(handle, true), equalTo(true));
