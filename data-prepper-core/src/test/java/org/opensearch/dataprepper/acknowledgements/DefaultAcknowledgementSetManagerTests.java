@@ -64,6 +64,7 @@ class DefaultAcknowledgementSetManagerTests {
         AcknowledgementSet acknowledgementSet1 = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT_MS);
         acknowledgementSet1.add(event1);
         acknowledgementSet1.add(event2);
+        acknowledgementSet1.complete();
     }
 
     DefaultAcknowledgementSetManager createObjectUnderTest() {
@@ -98,6 +99,7 @@ class DefaultAcknowledgementSetManagerTests {
 
         AcknowledgementSet acknowledgementSet2 = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT_MS);
         acknowledgementSet2.add(event3);
+        acknowledgementSet2.complete();
 
         acknowledgementSetManager.releaseEventReference(eventHandle2, true);
         acknowledgementSetManager.releaseEventReference(eventHandle3, true);
