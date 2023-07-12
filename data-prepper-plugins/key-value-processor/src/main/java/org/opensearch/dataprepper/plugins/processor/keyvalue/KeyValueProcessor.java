@@ -35,13 +35,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
-    private static final String LOWERCASE_KEY = "lowercase";
-    private static final String UPPERCASE_KEY = "uppercase";
-    private static final String CAPITALIZE_KEY = "capitalize";
-    private final Set<String> validTransformOptionSet = Set.of("", LOWERCASE_KEY, UPPERCASE_KEY, CAPITALIZE_KEY);
-    private static final String WHITESPACE_STRICT = "strict";
-    private static final String WHITESPACE_LENIENT = "lenient";
-    private final Set<String> validWhitespaceSet = Set.of(WHITESPACE_LENIENT, WHITESPACE_STRICT);
+    private final String lowercaseKey = "lowercase";
+    private final String uppercaseKey = "uppercase";
+    private final String capitalizeKey = "capitalize";
+    private final Set<String> validTransformOptionSet = Set.of("", lowercaseKey, uppercaseKey, capitalizeKey);
+    private final String whitespaceStrict = "strict";
+    private final String whitespaceLenient = "lenient";
+    private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -177,7 +177,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
                 }
 
-                if (keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)) {
+                if (keyValueProcessorConfig.getWhitespace().equals(whitespaceStrict)) {
                     String[] whitespace_arr = trimWhitespace(key, value);
                     key = whitespace_arr[0];
                     value = whitespace_arr[1];
@@ -203,11 +203,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
     
     private String transformKey(String key) {
-        if (keyValueProcessorConfig.getTransformKey().equals(LOWERCASE_KEY)) {
+        if (keyValueProcessorConfig.getTransformKey().equals(lowercaseKey)) {
             key = key.toLowerCase();
-        } else if (keyValueProcessorConfig.getTransformKey().equals(UPPERCASE_KEY)) {
+        } else if (keyValueProcessorConfig.getTransformKey().equals(uppercaseKey)) {
             key = key.substring(0, 1).toUpperCase() + key.substring(1);
-        } else if (keyValueProcessorConfig.getTransformKey().equals(CAPITALIZE_KEY)) {
+        } else if (keyValueProcessorConfig.getTransformKey().equals(capitalizeKey)) {
             key = key.toUpperCase();
         }
         return key;
