@@ -19,21 +19,6 @@ import java.time.Duration;
  */
 
 public class KafkaSourceConfig {
-    public class SslConfig {
-        // TODO Add support for SSL Encryption by having
-        // path to certificates, etc
-    }
-
-    public class EncryptionConfig {
-        // Absence of ssl means no-encryption
-        @JsonProperty("ssl")
-        private SslConfig sslConfig;
-
-        public SslConfig getSslConfig() {
-            return sslConfig;
-        }
-    }
-
     public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
@@ -50,13 +35,15 @@ public class KafkaSourceConfig {
     @Valid
     private SchemaConfig schemaConfig;
 
+    @Valid
     @JsonProperty("authentication")
     private AuthConfig authConfig;
 
     @JsonProperty("encryption")
-    private EncryptionConfig encryptionConfig;
+    private EncryptionType encryptionType = EncryptionType.SSL;
 
     @JsonProperty("aws")
+    @Valid
     private AwsConfig awsConfig;
 
     @JsonProperty("acknowledgments")
@@ -101,8 +88,8 @@ public class KafkaSourceConfig {
         return authConfig;
     }
 
-    public EncryptionConfig getEncryptionConfig() {
-        return encryptionConfig;
+    public EncryptionType getEncryptionType() {
+        return encryptionType;
     }
 
     public AwsConfig getAwsConfig() {

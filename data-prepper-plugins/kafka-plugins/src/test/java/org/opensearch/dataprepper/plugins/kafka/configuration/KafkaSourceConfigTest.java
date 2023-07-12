@@ -82,7 +82,6 @@ class KafkaSourceConfigTest {
 		kafkaSourceConfig = new KafkaSourceConfig();
 		kafkaSourceConfig.setBootStrapServers(new ArrayList<>(Arrays.asList("127.0.0.1:9092")));
 		TopicConfig topicConfig = mock(TopicConfig.class);
-        KafkaSourceConfig.EncryptionConfig testEncryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
 		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
 
 		assertEquals(Arrays.asList("127.0.0.1:9092"), kafkaSourceConfig.getBootStrapServers());
@@ -92,8 +91,10 @@ class KafkaSourceConfigTest {
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsTimeout", testTimeout);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
 		assertEquals(testTimeout, kafkaSourceConfig.getAcknowledgementsTimeout());
-		assertEquals(null, kafkaSourceConfig.getEncryptionConfig());
-        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionConfig", testEncryptionConfig);
-		assertEquals(testEncryptionConfig, kafkaSourceConfig.getEncryptionConfig());
+		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionType());
+        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionType", EncryptionType.PLAINTEXT);
+		assertEquals(EncryptionType.PLAINTEXT, kafkaSourceConfig.getEncryptionType());
+        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionType", EncryptionType.SSL);
+		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionType());
 	}
 }

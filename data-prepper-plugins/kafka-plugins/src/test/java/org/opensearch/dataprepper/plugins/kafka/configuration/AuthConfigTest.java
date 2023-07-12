@@ -34,7 +34,7 @@ class AuthConfigTest {
     AuthConfig.SaslAuthConfig saslAuthConfig;
 
     @Mock
-    AuthConfig.MskIamConfig testMskIamConfig;
+    AwsIamAuthConfig testAwsIamAuthConfig;
 
     @Mock
     OAuthConfig testOAuthConfig;
@@ -85,11 +85,11 @@ class AuthConfigTest {
     @Test
     void testSaslAuthConfigWithMskIam() throws NoSuchFieldException, IllegalAccessException {
         saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
-        testMskIamConfig = mock(AuthConfig.MskIamConfig.class);
-        when(saslAuthConfig.getMskIamConfig()).thenReturn(testMskIamConfig);
+        AwsIamAuthConfig awsIamAuthConfig = AwsIamAuthConfig.ROLE;
+        when(saslAuthConfig.getAwsIamAuthConfig()).thenReturn(awsIamAuthConfig);
         setField(AuthConfig.class, authConfig, "saslAuthConfig", saslAuthConfig);
         assertThat(authConfig.getSaslAuthConfig(), equalTo(saslAuthConfig));
-        assertThat(authConfig.getSaslAuthConfig().getMskIamConfig(), equalTo(testMskIamConfig));
+        assertThat(authConfig.getSaslAuthConfig().getAwsIamAuthConfig(), equalTo(awsIamAuthConfig));
     }
 
     @Test
