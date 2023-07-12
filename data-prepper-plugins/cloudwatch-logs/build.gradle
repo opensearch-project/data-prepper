@@ -8,10 +8,9 @@ repositories {
 }
 
 dependencies {
-    api project(':data-prepper-api')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation project(path: ':data-prepper-plugins:common')
-    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
@@ -19,13 +18,14 @@ dependencies {
     implementation 'software.amazon.awssdk:cloudwatchlogs'
     implementation 'org.apache.commons:commons-lang3:3.12.0'
     testImplementation project(path: ':data-prepper-test-common')
-    testImplementation project(path: ':data-prepper-test-common')
+    testImplementation testLibs.mockito.inline
+    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
     violationRules {
-        rule { //in addition to core projects rule
+        rule {
             limit {
                 minimum = 0.90
             }

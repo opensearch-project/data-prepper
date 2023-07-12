@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.sink.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -5,7 +10,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
-public class CwlSinkConfig {
+public class CloudWatchLogsSinkConfig {
     public static final String DEFAULT_BUFFER_TYPE = "in_memory";
 
     @JsonProperty("aws")
@@ -14,8 +19,7 @@ public class CwlSinkConfig {
     private AwsConfig awsConfig;
 
     @JsonProperty("threshold")
-    @NotNull
-    private ThresholdConfig thresholdConfig;
+    private ThresholdConfig thresholdConfig = new ThresholdConfig();
 
     @JsonProperty("buffer_type")
     private String bufferType = DEFAULT_BUFFER_TYPE;
