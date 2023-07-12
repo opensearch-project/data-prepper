@@ -7,9 +7,6 @@ package org.opensearch.dataprepper.plugins.sink.config;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
-import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
-import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import static org.hamcrest.MatcherAssert.assertThat;
