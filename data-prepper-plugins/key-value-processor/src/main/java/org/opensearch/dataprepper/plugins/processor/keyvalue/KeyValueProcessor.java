@@ -35,12 +35,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
-    private final String LOWERCASE_KEY = "lowercase";
-    private final String UPPERCASE_KEY = "uppercase";
-    private final String CAPITALIZE_KEY = "capitalize";
+    private static final String LOWERCASE_KEY = "lowercase";
+    private static final String UPPERCASE_KEY = "uppercase";
+    private static final String CAPITALIZE_KEY = "capitalize";
     private final Set<String> validTransformOptionSet = Set.of("", LOWERCASE_KEY, UPPERCASE_KEY, CAPITALIZE_KEY);
-    private final String WHITESPACE_STRICT = "strict";
-    private final String WHITESPACE_LENIENT = "lenient";
+    private static final String WHITESPACE_STRICT = "strict";
+    private static final String WHITESPACE_LENIENT = "lenient";
     private final Set<String> validWhitespaceSet = Set.of(WHITESPACE_LENIENT, WHITESPACE_STRICT);
 
     @DataPrepperPluginConstructor
