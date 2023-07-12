@@ -151,7 +151,7 @@ class PeerForwarder_ClientServerIT {
         assertThat(pluginBufferMap, notNullValue());
         final PeerForwarderReceiveBuffer<Record<Event>> receiveBuffer = pluginBufferMap.get(pluginId);
 
-        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferEntry = receiveBuffer.read(1000);
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferEntry = receiveBuffer.read(400);
         return bufferEntry.getKey();
     }
 
