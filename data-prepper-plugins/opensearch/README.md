@@ -93,6 +93,8 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
+- `enable_request_compression` (optional): A boolean that enables or disables request compression when sending requests to OpenSearch. Default is true.
+
 - `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling. 
 
 ```
@@ -152,6 +154,14 @@ If not provided, the sink will try to push the data to OpenSearch server indefin
 - `bulk_size` (optional): A long of bulk size in bulk requests in MB. Default to 5 MB. If set to be less than 0,
 all the records received from the upstream prepper at a time will be sent as a single bulk request.
 If a single record turns out to be larger than the set bulk size, it will be sent as a bulk request of a single document.
+
+- `estimate_bulk_size_using_compression` (optional): A boolean dictating whether to compress the bulk requests when estimating
+the size. This option is ignored if request compression is not enabled for the OpenSearch client. This is an experimental 
+feature and makes no guarantees about the accuracy of the estimation. Default is false.
+
+- `max_local_compressions_for_estimation` (optional): An integer of the maximum number of times to compress a partially packed
+bulk request when estimating its size. Bulk size accuracy increases with this value but performance degrades. This setting is experimental
+and is ignored unless `estimate_bulk_size_using_compression` is enabled. Default is 2.
 
 - `flush_timeout` (optional): A long of the millisecond duration to try packing a bulk request up to the bulk_size before flushing.
 If this timeout expires before a bulk request has reached the bulk_size, the request will be flushed as-is. Set to -1 to disable
