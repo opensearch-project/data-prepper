@@ -1,11 +1,15 @@
-package org.opensearch.dataprepper.plugins.sink.configuration;
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+package org.opensearch.dataprepper.plugins.sink.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Collections;
