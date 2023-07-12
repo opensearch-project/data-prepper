@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.buffer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 
 /**
