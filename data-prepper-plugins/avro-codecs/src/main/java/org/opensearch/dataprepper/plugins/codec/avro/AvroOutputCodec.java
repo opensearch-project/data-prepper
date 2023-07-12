@@ -220,8 +220,7 @@ public class AvroOutputCodec implements OutputCodec {
         if (config.getBucketName() != null && config.getFileKey() != null && config.getRegion() != null) {
             return true;
         } else {
-            LOG.error("Invalid S3 credentials, can't reach the schema file.");
-            throw new IOException("Can't proceed without schema.");
+            return false;
         }
     }
 }
