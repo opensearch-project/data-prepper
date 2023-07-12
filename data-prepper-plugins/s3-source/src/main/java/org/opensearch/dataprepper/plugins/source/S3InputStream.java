@@ -1,14 +1,14 @@
 package org.opensearch.dataprepper.plugins.source;
 
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.LongAdder;
-
 import com.google.common.base.Preconditions;
 import com.google.common.io.ByteStreams;
+import dev.failsafe.Failsafe;
+import dev.failsafe.FailsafeException;
+import dev.failsafe.RetryPolicy;
+import dev.failsafe.function.CheckedSupplier;
+import org.apache.http.ConnectionClosedException;
 import org.apache.parquet.io.SeekableInputStream;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
@@ -19,7 +19,24 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.atomic.LongAdder;
+
 class S3InputStream extends SeekableInputStream {
+
+    static final List<Class<? extends Throwable>> RETRYABLE_EXCEPTIONS = List.of(
+        ConnectionClosedException.class,
+        EOFException.class,
+        SocketException.class,
+        SocketTimeoutException.class
+    );
 
     private static final int COPY_BUFFER_SIZE = 8192;
 
@@ -52,11 +69,18 @@ class S3InputStream extends SeekableInputStream {
 
     private boolean closed = false;
 
+    private RetryPolicy<byte[]> retryPolicyReturningByteArray;
+
+    private RetryPolicy<Integer> retryPolicyReturningInteger;
+
     public S3InputStream(
             final S3Client s3Client,
             final S3ObjectReference s3ObjectReference,
+            final BucketOwnerProvider bucketOwnerProvider,
             final HeadObjectResponse metadata,
-            final S3ObjectPluginMetrics s3ObjectPluginMetrics
+            final S3ObjectPluginMetrics s3ObjectPluginMetrics,
+            final Duration retryDelay,
+            final int retries
     ) {
         this.s3Client = s3Client;
         this.s3ObjectReference = s3ObjectReference;
@@ -65,9 +89,25 @@ class S3InputStream extends SeekableInputStream {
         this.bytesCounter = new LongAdder();
 
         this.getObjectRequestBuilder = GetObjectRequest.builder()
-                .bucket(this.s3ObjectReference.getBucketName())
-                .key(this.s3ObjectReference.getKey());
+            .bucket(this.s3ObjectReference.getBucketName())
+            .key(this.s3ObjectReference.getKey());
+
+        bucketOwnerProvider.getBucketOwner(this.s3ObjectReference.getBucketName())
+                .ifPresent(getObjectRequestBuilder::expectedBucketOwner);
+
+        this.retryPolicyReturningByteArray = RetryPolicy.<byte[]>builder()
+            .handle(RETRYABLE_EXCEPTIONS)
+            .withDelay(retryDelay)
+            .withMaxRetries(retries)
+            .build();
+
+        this.retryPolicyReturningInteger = RetryPolicy.<Integer>builder()
+            .handle(RETRYABLE_EXCEPTIONS)
+            .withDelay(retryDelay)
+            .withMaxRetries(retries)
+            .build();
     }
+
 
     // Implement all InputStream methods first:
 
@@ -129,7 +169,7 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        final int byteRead = stream.read();
+        final int byteRead = executeWithRetriesAndReturnInt(() -> stream.read());
 
         if (byteRead != -1) {
             pos += 1;
@@ -165,7 +205,7 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        final int bytesRead = stream.read(b, off, len);
+        final int bytesRead = executeWithRetriesAndReturnInt(() -> stream.read(b, off, len));
 
         if (bytesRead > 0) {
             pos += bytesRead;
@@ -186,7 +226,7 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        final byte[] bytesRead = stream.readAllBytes();
+        final byte[] bytesRead = executeWithRetriesAndReturnByteArray(() -> stream.readAllBytes());
 
         pos += bytesRead.length;
         next += bytesRead.length;
@@ -208,7 +248,7 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        final int bytesRead = stream.readNBytes(b, off, len);
+        final int bytesRead = executeWithRetriesAndReturnInt(() -> stream.readNBytes(b, off, len));
 
         if (bytesRead > 0) {
             pos += bytesRead;
@@ -229,7 +269,7 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        final byte[] bytesRead = stream.readNBytes(len);
+        final byte[] bytesRead = executeWithRetriesAndReturnByteArray(() -> stream.readNBytes(len));
 
         pos += bytesRead.length;
         next += bytesRead.length;
@@ -332,7 +372,7 @@ class S3InputStream extends SeekableInputStream {
         Preconditions.checkState(!closed, "Cannot read: already closed");
         positionStream();
 
-        int bytesRead = readFully(stream, bytes, start, len);
+        final int bytesRead = executeWithRetriesAndReturnInt(() -> readFully(stream, bytes, start, len));
 
         if (bytesRead > 0) {
             this.pos += bytesRead;
@@ -360,9 +400,9 @@ class S3InputStream extends SeekableInputStream {
 
         int bytesRead = 0;
         if (buf.hasArray()) {
-            bytesRead = readHeapBuffer(stream, buf);
+            bytesRead = executeWithRetriesAndReturnInt(() -> readHeapBuffer(stream, buf));
         } else {
-            bytesRead = readDirectBuffer(stream, buf, temp);
+            bytesRead = executeWithRetriesAndReturnInt(() -> readDirectBuffer(stream, buf, temp));
         }
 
         if (bytesRead > 0) {
@@ -393,9 +433,9 @@ class S3InputStream extends SeekableInputStream {
 
         int bytesRead = 0;
         if (buf.hasArray()) {
-            bytesRead = readFullyHeapBuffer(stream, buf);
+            bytesRead = executeWithRetriesAndReturnInt(() -> readFullyHeapBuffer(stream, buf));
         } else {
-            bytesRead = readFullyDirectBuffer(stream, buf, temp);
+            bytesRead = executeWithRetriesAndReturnInt(() -> readFullyDirectBuffer(stream, buf, temp));
         }
 
         if (bytesRead > 0) {
@@ -612,9 +652,7 @@ class S3InputStream extends SeekableInputStream {
         while (nextReadLength > 0 && (bytesRead = f.read(temp, 0, nextReadLength)) >= 0) {
             buf.put(temp, 0, bytesRead);
             nextReadLength = Math.min(buf.remaining(), temp.length);
-            if (bytesRead >= 0) {
-                totalBytesRead += bytesRead;
-            }
+            totalBytesRead += bytesRead;
         }
 
         if (bytesRead < 0 && buf.remaining() > 0) {
@@ -632,4 +670,32 @@ class S3InputStream extends SeekableInputStream {
             s3ObjectPluginMetrics.getS3ObjectsFailedAccessDeniedCounter().increment();
         }
     }
+
+    private int executeWithRetriesAndReturnInt(CheckedSupplier<Integer> supplier) throws IOException {
+        return executeWithRetries(retryPolicyReturningInteger, supplier);
+    }
+
+    private byte[] executeWithRetriesAndReturnByteArray(CheckedSupplier<byte[]> supplier) throws IOException {
+        return executeWithRetries(retryPolicyReturningByteArray, supplier);
+    }
+
+
+    private <T> T executeWithRetries(RetryPolicy<T> retryPolicy, CheckedSupplier<T> supplier) throws IOException {
+        try {
+            return Failsafe.with(retryPolicy).get(() -> {
+                try {
+                    return supplier.get();
+                } catch (ConnectionClosedException | EOFException | SocketException | SocketTimeoutException e) {
+                    LOG.warn("Resetting stream due to underlying socket exception", e);
+                    openStream();
+                    throw e;
+                }
+            });
+        } catch (FailsafeException e) {
+            LOG.error("Failed to read with Retries", e);
+            throw new IOException(e.getCause());
+        }
+
+    }
+
 }
