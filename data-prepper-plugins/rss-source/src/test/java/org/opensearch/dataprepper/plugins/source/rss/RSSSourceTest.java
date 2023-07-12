@@ -18,6 +18,7 @@ import org.opensearch.dataprepper.model.record.Record;
 
 import java.time.Duration;
 
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeast;
@@ -62,9 +63,15 @@ class RSSSourceTest {
     @Test
     void test_ExecutorService_keep_writing_Events_to_Buffer() throws Exception {
         rssSource.start(buffer);
-        Thread.sleep(pollingFrequency.toMillis());
+        await().atMost(pollingFrequency.multipliedBy(2))
+                        .untilAsserted(() -> {
+                            verify(buffer, atLeastOnce()).writeAll(anyCollection(), anyInt());
+                        });
         verify(buffer, atLeastOnce()).writeAll(anyCollection(), anyInt());
-        Thread.sleep(pollingFrequency.toMillis());
+        await().atMost(pollingFrequency.multipliedBy(2))
+                .untilAsserted(() -> {
+                    verify(buffer, atLeast(2)).writeAll(anyCollection(), anyInt());
+                });
         verify(buffer, atLeast(2)).writeAll(anyCollection(), anyInt());
     }
 }
