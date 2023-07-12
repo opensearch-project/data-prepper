@@ -31,7 +31,7 @@ public class ThresholdCheck {
      */
     public boolean isGreaterThanThresholdReached(final long currentTime, final int currentRequestSize, final int batchSize) {
         return ((isGreaterThanBatchSize(batchSize) || isGreaterEqualToLogSendInterval(currentTime)
-                || isGreaterThanMaxRequestSize(currentRequestSize)) && (batchSize > 0));
+                || isGreaterThanMaxRequestSize(currentRequestSize)));
     }
 
     /**
@@ -41,7 +41,7 @@ public class ThresholdCheck {
      * @return boolean - true if we equal the threshold events or false otherwise.
      */
     public boolean isEqualToThresholdReached(final int currentRequestSize, final int batchSize) {
-        return ((isEqualBatchSize(batchSize) || isEqualMaxRequestSize(currentRequestSize)) && (batchSize > 0));
+        return ((isEqualBatchSize(batchSize) || isEqualMaxRequestSize(currentRequestSize)));
     }
 
     /**

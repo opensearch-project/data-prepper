@@ -187,7 +187,7 @@ public class CloudWatchLogsService {
 
     private void runExitCheck() throws InterruptedException {
         int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * LOG_EVENT_OVERHEAD_SIZE));
-        if (thresholdCheck.isEqualToThresholdReached(bufferSizeWithOverHead, buffer.getEventCount())) {
+        if ((thresholdCheck.isEqualToThresholdReached(bufferSizeWithOverHead, buffer.getEventCount()) && (buffer.getEventCount() > 0))) {
             pushLogs();
         }
     }
