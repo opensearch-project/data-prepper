@@ -11,12 +11,12 @@ public class RegexParameterConfiguration {
     final boolean DEFAULT_EXACT = true;
     @NotNull
     @JsonProperty("patterns")
-    private Map<String, String> patterns;
+    private Map<String, Object> patterns;
 
     @JsonProperty("exact")
     private Boolean exact = DEFAULT_EXACT;
 
-    public Map<String, String> getPatterns() {
+    public Map<String, Object> getPatterns() {
         return patterns;
     }
 

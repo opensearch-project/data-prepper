@@ -5,9 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.databasedownload;
 
-import org.opensearch.dataprepper.plugins.processor.GeoIPProcessorConfig;
+import org.apache.commons.io.FileUtils;
 import org.opensearch.dataprepper.plugins.processor.configuration.DatabasePathURLConfig;
 
+import java.io.File;
 import java.util.List;
 
 
@@ -16,13 +17,18 @@ import java.util.List;
  */
 public class LocalDBDownloadService implements DBSource {
 
+    private String tempPath;
+    private final String prefixDir;
+
     /**
      * LocalDBDownloadService constructor for initialisation of attributes
-     * @param geoIPProcessorConfig geoIPProcessorConfig
      * @param tempPath tempPath
+     * @param prefixDir prefixDir
      */
-    public LocalDBDownloadService(GeoIPProcessorConfig geoIPProcessorConfig, String tempPath) {
-        //TODO
+    public LocalDBDownloadService(String tempPath, String prefixDir) {
+        this.tempPath = tempPath;
+        this.prefixDir = prefixDir;
+
     }
 
     /**
@@ -30,17 +36,11 @@ public class LocalDBDownloadService implements DBSource {
      * @param config config
      */
     @Override
-    public void initiateDownload(List<DatabasePathURLConfig> config) {
-        //TODO : Initialisation of Download from local file path
+    public void initiateDownload(List<DatabasePathURLConfig> config) throws Exception {
+        String destPath = tempPath + File.separator + prefixDir;
+        DBSource.createFolderIfNotExist(destPath);
+        File srcDatabaseConfigPath = new File(config.get(0).getUrl());
+        File destDatabaseConfigPath = new File(destPath);
+        FileUtils.copyDirectory(srcDatabaseConfigPath, destDatabaseConfigPath);
     }
-
-    /**
-     * Build Request And DownloadFile
-     * @param key key
-     */
-    @Override
-    public void buildRequestAndDownloadFile(String key) {
-        //TODO : Build Request And DownloadFile
-    }
-
 }

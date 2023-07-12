@@ -35,6 +35,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
+    private final String LOWERCASE_KEY = "lowercase";
+    private final String UPPERCASE_KEY = "uppercase";
+    private final String CAPITALIZE_KEY = "capitalize";
+    private final Set<String> validTransformOptionSet = Set.of("", LOWERCASE_KEY, UPPERCASE_KEY, CAPITALIZE_KEY);
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -93,6 +97,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         if(keyValueProcessorConfig.getIncludeKeys() != null) {
             includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
+        }
+
+        if(!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
+            throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
         }
     }
 
@@ -162,6 +170,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
                 }
 
+                if(keyValueProcessorConfig.getTransformKey() != null
+                        && !keyValueProcessorConfig.getTransformKey().isEmpty()) {
+                    key = transformKey(key);
+                }
+
                 addKeyValueToMap(parsedMap, key, value);
             }
 
@@ -169,6 +182,17 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         return records;
+    }
+
+    private String transformKey(String key) {
+        if(keyValueProcessorConfig.getTransformKey().equals(LOWERCASE_KEY)) {
+            key = key.toLowerCase();
+        } else if(keyValueProcessorConfig.getTransformKey().equals(UPPERCASE_KEY)) {
+            key = key.substring(0, 1).toUpperCase() + key.substring(1);
+        } else if(keyValueProcessorConfig.getTransformKey().equals(CAPITALIZE_KEY)) {
+            key = key.toUpperCase();
+        }
+        return key;
     }
 
     private void addKeyValueToMap(final Map<String, Object> parsedMap, final String key, final Object value) {

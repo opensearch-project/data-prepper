@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  */
 public enum LoadTypeOptions {
 
-    INMEMORY("in_memory"),
+    INMEMORY("memory_map"),
     CACHE("cache");
 
     private final String option;
