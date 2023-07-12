@@ -35,12 +35,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
-    private final String LOWERCASE_KEY = "lowercase";
-    private final String UPPERCASE_KEY = "uppercase";
-    private final String CAPITALIZE_KEY = "capitalize";
+    private static final String LOWERCASE_KEY = "lowercase";
+    private static final String UPPERCASE_KEY = "uppercase";
+    private static final String CAPITALIZE_KEY = "capitalize";
     private final Set<String> validTransformOptionSet = Set.of("", LOWERCASE_KEY, UPPERCASE_KEY, CAPITALIZE_KEY);
-    private final String WHITESPACE_STRICT = "strict";
-    private final String WHITESPACE_LENIENT = "lenient";
+    private static final String WHITESPACE_STRICT = "strict";
+    private static final String WHITESPACE_LENIENT = "lenient";
+    private final Set<String> validWhitespaceSet = Set.of(WHITESPACE_LENIENT, WHITESPACE_STRICT);
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -105,8 +106,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
         }
 
-        if (!(keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)
-            || keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_LENIENT))) {
+        if (!(validWhitespaceSet.contains(keyValueProcessorConfig.getWhitespace()))) {
             throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
         }
     }
@@ -177,13 +177,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
                 }
 
-                if(keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)) {
-                    String[] whitespace_arr = whitespace(key, value);
+                if (keyValueProcessorConfig.getWhitespace().equals(WHITESPACE_STRICT)) {
+                    String[] whitespace_arr = trimWhitespace(key, value);
                     key = whitespace_arr[0];
                     value = whitespace_arr[1];
                 }
 
-                if(keyValueProcessorConfig.getTransformKey() != null
+                if (keyValueProcessorConfig.getTransformKey() != null
                         && !keyValueProcessorConfig.getTransformKey().isEmpty()) {
                     key = transformKey(key);
                 }
@@ -197,7 +197,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return records;
     }
 
-    private String[] whitespace(String key, Object value) {
+    private String[] trimWhitespace(String key, Object value) {
         String[] arr = {key.stripTrailing(), value.toString().stripLeading()};
         return arr;
     }

@@ -8,6 +8,7 @@ import dev.failsafe.RetryPolicy;
 import dev.failsafe.function.CheckedSupplier;
 import org.apache.http.ConnectionClosedException;
 import org.apache.parquet.io.SeekableInputStream;
+import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
@@ -73,12 +74,13 @@ class S3InputStream extends SeekableInputStream {
     private RetryPolicy<Integer> retryPolicyReturningInteger;
 
     public S3InputStream(
-        final S3Client s3Client,
-        final S3ObjectReference s3ObjectReference,
-        final HeadObjectResponse metadata,
-        final S3ObjectPluginMetrics s3ObjectPluginMetrics,
-        final Duration retryDelay,
-        final int retries
+            final S3Client s3Client,
+            final S3ObjectReference s3ObjectReference,
+            final BucketOwnerProvider bucketOwnerProvider,
+            final HeadObjectResponse metadata,
+            final S3ObjectPluginMetrics s3ObjectPluginMetrics,
+            final Duration retryDelay,
+            final int retries
     ) {
         this.s3Client = s3Client;
         this.s3ObjectReference = s3ObjectReference;
@@ -89,6 +91,9 @@ class S3InputStream extends SeekableInputStream {
         this.getObjectRequestBuilder = GetObjectRequest.builder()
             .bucket(this.s3ObjectReference.getBucketName())
             .key(this.s3ObjectReference.getKey());
+
+        bucketOwnerProvider.getBucketOwner(this.s3ObjectReference.getBucketName())
+                .ifPresent(getObjectRequestBuilder::expectedBucketOwner);
 
         this.retryPolicyReturningByteArray = RetryPolicy.<byte[]>builder()
             .handle(RETRYABLE_EXCEPTIONS)
