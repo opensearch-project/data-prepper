@@ -14,6 +14,8 @@ import java.util.List;
 
 public class MaxMindServiceConfig {
 
+    private static final Duration DEFAULT_CACHE_REFRESH_SCHEDULE = Duration.parse("P15D");
+
     @JsonProperty("database_path")
     @NotNull
     List<DatabasePathURLConfig> databasePath;
@@ -27,7 +29,7 @@ public class MaxMindServiceConfig {
 
     @JsonProperty("cache_refresh_schedule")
     @NotNull
-    private Duration cacheRefreshSchedule;
+    private Duration cacheRefreshSchedule = DEFAULT_CACHE_REFRESH_SCHEDULE;
 
     /**
      * Get the list of Configured Database path options

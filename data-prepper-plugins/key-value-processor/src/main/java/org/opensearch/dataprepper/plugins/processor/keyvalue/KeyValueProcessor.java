@@ -35,10 +35,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
-    private final String LOWERCASE_KEY = "lowercase";
-    private final String UPPERCASE_KEY = "uppercase";
-    private final String CAPITALIZE_KEY = "capitalize";
-    private final Set<String> validTransformOptionSet = Set.of("", LOWERCASE_KEY, UPPERCASE_KEY, CAPITALIZE_KEY);
+    private final String lowercaseKey = "lowercase";
+    private final String uppercaseKey = "uppercase";
+    private final String capitalizeKey = "capitalize";
+    private final Set<String> validTransformOptionSet = Set.of("", lowercaseKey, uppercaseKey, capitalizeKey);
+    private final String whitespaceStrict = "strict";
+    private final String whitespaceLenient = "lenient";
+    private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -87,20 +90,24 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             keyValueDelimiterPattern = Pattern.compile(regex);
         }
 
-        if(!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
+        if (!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
             throw new PatternSyntaxException("delete_key_regex is not a valid regex string", keyValueProcessorConfig.getDeleteKeyRegex(), -1);
         }
 
-        if(!validateRegex(keyValueProcessorConfig.getDeleteValueRegex())) {
+        if (!validateRegex(keyValueProcessorConfig.getDeleteValueRegex())) {
             throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
         }
 
-        if(keyValueProcessorConfig.getIncludeKeys() != null) {
+        if (keyValueProcessorConfig.getIncludeKeys() != null) {
             includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         }
 
-        if(!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
+        if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
+        }
+
+        if (!(validWhitespaceSet.contains(keyValueProcessorConfig.getWhitespace()))) {
+            throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
         }
     }
 
@@ -170,7 +177,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     value = ((String)value).replaceAll(keyValueProcessorConfig.getDeleteValueRegex(), "");
                 }
 
-                if(keyValueProcessorConfig.getTransformKey() != null
+                if (keyValueProcessorConfig.getWhitespace().equals(whitespaceStrict)) {
+                    String[] whitespace_arr = trimWhitespace(key, value);
+                    key = whitespace_arr[0];
+                    value = whitespace_arr[1];
+                }
+
+                if (keyValueProcessorConfig.getTransformKey() != null
                         && !keyValueProcessorConfig.getTransformKey().isEmpty()) {
                     key = transformKey(key);
                 }
@@ -184,12 +197,17 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return records;
     }
 
+    private String[] trimWhitespace(String key, Object value) {
+        String[] arr = {key.stripTrailing(), value.toString().stripLeading()};
+        return arr;
+    }
+    
     private String transformKey(String key) {
-        if(keyValueProcessorConfig.getTransformKey().equals(LOWERCASE_KEY)) {
+        if (keyValueProcessorConfig.getTransformKey().equals(lowercaseKey)) {
             key = key.toLowerCase();
-        } else if(keyValueProcessorConfig.getTransformKey().equals(UPPERCASE_KEY)) {
+        } else if (keyValueProcessorConfig.getTransformKey().equals(uppercaseKey)) {
             key = key.substring(0, 1).toUpperCase() + key.substring(1);
-        } else if(keyValueProcessorConfig.getTransformKey().equals(CAPITALIZE_KEY)) {
+        } else if (keyValueProcessorConfig.getTransformKey().equals(capitalizeKey)) {
             key = key.toUpperCase();
         }
         return key;
