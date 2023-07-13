@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +91,9 @@ public class AvroOutputCodec implements OutputCodec {
         String fields;
         int index = 0;
         for(final String key: eventData.keySet()){
+            if(config.getExcludeKeys()==null){
+                config.setExcludeKeys(new ArrayList<>());
+            }
             if(config.getExcludeKeys().contains(key)){
                 continue;
             }

@@ -44,7 +44,6 @@ public class AvroOutputCodecTest {
     private AvroOutputCodec createObjectUnderTest() {
         config = new AvroOutputCodecConfig();
         config.setSchema(parseSchema().toString());
-        config.setExcludeKeys(new ArrayList<>());
         return new AvroOutputCodec(config);
     }
 
