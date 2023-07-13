@@ -423,6 +423,50 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testTrueDuplicateValuesKvProcessor() {
+        when(mockConfig.getduplicateValues()).thenReturn(true);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final ArrayList<Object> expectedValue = new ArrayList();
+        expectedValue.add("value1");
+        expectedValue.add("value1");
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", expectedValue);
+    }
+
+    @Test
+    void testFalseDuplicateValuesKvProcessor() {
+        when(mockConfig.getduplicateValues()).thenReturn(false);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
+    void testFalseThreeInputsDuplicateValuesKvProcessor() {
+        when(mockConfig.getduplicateValues()).thenReturn(false);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value2&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final ArrayList<Object> expectedValue = new ArrayList();
+        expectedValue.add("value1");
+        expectedValue.add("value2");
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", expectedValue);
+    }
+
+    @Test
     void testShutdownIsReady() {
         assertThat(keyValueProcessor.isReadyForShutdown(), is(true));
     }
