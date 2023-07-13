@@ -181,19 +181,6 @@ public class CsvCodecsIT {
         writer.flush();
         writer.close();
         outputStream.close();
-        //Object o=new String(outputStream.toByteArray());
         return new String(outputStream.toByteArray());
     }
-
-   /* private static void createTestFileFromStream(ByteArrayOutputStream outputStream) throws IOException {
-        String streamData = outputStream.toString();
-        System.out.println("Output stream: " + streamData);
-
-        File fout = new File("CSVFile.csv");
-        FileOutputStream fos = null;
-        fos = new FileOutputStream(fout);
-        BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
-        bw.write(new String(outputStream.toByteArray()));
-        bw.close();
-    }*/
 }
