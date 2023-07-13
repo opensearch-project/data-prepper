@@ -37,7 +37,7 @@ class PlainTextAuthConfigTest {
             String json = mapper.writeValueAsString(kafkaConfigMap);
             Reader reader = new StringReader(json);
             KafkaSourceConfig kafkaSourceConfig = mapper.readValue(reader, KafkaSourceConfig.class);
-            plainTextAuthConfig = kafkaSourceConfig.getAuthConfig().getPlainTextAuthConfig();
+            plainTextAuthConfig = kafkaSourceConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig();
             username = plainTextAuthConfig.getUsername();
             password = plainTextAuthConfig.getPassword();
         }
