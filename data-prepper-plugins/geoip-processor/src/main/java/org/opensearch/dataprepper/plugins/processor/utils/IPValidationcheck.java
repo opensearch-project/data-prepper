@@ -5,6 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.processor.utils;
 
+import java.net.Inet4Address;
+import java.net.Inet6Address;
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**
@@ -19,19 +22,12 @@ public class IPValidationcheck {
      * @return boolean
      * @throws  UnknownHostException UnknownHostException
      */
-    public static boolean ipValidationcheck(String input) throws UnknownHostException {
-       //TODO : call IP validation logic
-        return false;
-    }
-
-    /**
-     * Checking for the IP is valid or not if IP is not a private IPV4 and IPV6
-     * @param ipAddress ipAddress
-     * @return boolean
-     * @throws UnknownHostException UnknownHostException
-     */
-    public static boolean PrivateIPVersionCheck(String ipAddress) throws UnknownHostException {
-        //TODO : Checking for the IP is valid or not if IP is not a private IPV4 and IPV6
+    public static boolean isPublicIpAddress(String input) throws UnknownHostException {
+        String ipAddress = input;
+        InetAddress address = InetAddress.getByName(input);
+        if (address instanceof Inet6Address || address instanceof Inet4Address) {
+            return !address.isSiteLocalAddress() && !address.isLoopbackAddress();
+        }
         return false;
     }
 }

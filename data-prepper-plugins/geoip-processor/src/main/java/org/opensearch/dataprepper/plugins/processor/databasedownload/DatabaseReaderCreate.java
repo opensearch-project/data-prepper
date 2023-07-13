@@ -6,8 +6,13 @@
 
 package org.opensearch.dataprepper.plugins.processor.databasedownload;
 
+import com.maxmind.db.CHMCache;
+import com.maxmind.db.NoCache;
+import com.maxmind.db.Reader;
 import com.maxmind.geoip2.DatabaseReader;
 import org.opensearch.dataprepper.plugins.processor.loadtype.LoadTypeOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 
@@ -16,7 +21,7 @@ import java.nio.file.Path;
  */
 public class DatabaseReaderCreate {
 
-    private static String[] DEFAULT_DATABASE_FILENAMES = new String[] { "GeoLite2-ASN.mmdb", "GeoLite2-City.mmdb", "GeoLite2-Country.mmdb" };
+    private static final Logger LOG = LoggerFactory.getLogger(DatabaseReaderCreate.class);
 
     /**
      * Creates DatabaseReader instance based on in memory or cache type
@@ -27,9 +32,18 @@ public class DatabaseReaderCreate {
      */
     public static DatabaseReader.Builder createLoader(Path databasePath, LoadTypeOptions loadDatabaseType, int cacheSize) {
 
-        //TODO:  Create DatabaseReader based on in_memory enum
-        //TODO: Create DatabaseReader based on cache enum
-        return null;
+        DatabaseReader.Builder builder = null;
+
+        switch (loadDatabaseType) {
+            case INMEMORY:
+                builder = createDatabaseBuilder(databasePath).withCache(NoCache.getInstance());
+                builder.fileMode(Reader.FileMode.MEMORY_MAPPED);
+                break;
+            case CACHE:
+                builder = createDatabaseBuilder(databasePath).withCache(new CHMCache(cacheSize));
+                break;
+        }
+        return builder;
     }
 
     /**
@@ -38,7 +52,7 @@ public class DatabaseReaderCreate {
      * @return DatabaseReader instance
      */
     public static DatabaseReader.Builder createDatabaseBuilder(Path databasePath) {
-       //TODO: Creates DatabaseReader instance
-        return null;
+        LOG.info("DatabaseReader Created");
+        return new DatabaseReader.Builder(databasePath.toFile());
     }
 }
