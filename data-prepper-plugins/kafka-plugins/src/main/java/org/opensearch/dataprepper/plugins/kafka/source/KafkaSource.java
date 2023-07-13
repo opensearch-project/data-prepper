@@ -24,6 +24,10 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
@@ -68,6 +72,7 @@ public class KafkaSource implements Source<Record<Event>> {
     private String schemaType = MessageFormat.PLAINTEXT.toString();
     private static final String SCHEMA_TYPE= "schemaType";
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final EncryptionType encryptionType;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
@@ -80,6 +85,7 @@ public class KafkaSource implements Source<Record<Event>> {
         this.pipelineName = pipelineDescription.getPipelineName();
         this.kafkaWorkerThreadProcessingErrors = pluginMetrics.counter(KAFKA_WORKER_THREAD_PROCESSING_ERRORS);
         shutdownInProgress = new AtomicBoolean(false);
+        this.encryptionType = sourceConfig.getEncryptionType();
     }
 
     @Override
@@ -162,13 +168,26 @@ public class KafkaSource implements Source<Record<Event>> {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
         if (sourceConfig.getSchemaConfig() != null) {
             schemaType = getSchemaType(sourceConfig.getSchemaConfig().getRegistryURL(), topicConfig.getName(), sourceConfig.getSchemaConfig().getVersion());
-        }
+    }
         if (schemaType.isEmpty()) {
             schemaType = MessageFormat.PLAINTEXT.toString();
         }
         setPropertiesForSchemaType(properties, schemaType);
-        if (sourceConfig.getAuthConfig() != null && sourceConfig.getAuthConfig().getPlainTextAuthConfig() != null) {
-            setPropertiesForAuth(properties);
+        if (sourceConfig.getAuthConfig() != null) {
+            AuthConfig.SaslAuthConfig saslAuthConfig = sourceConfig.getAuthConfig().getSaslAuthConfig();
+            if (saslAuthConfig != null) {
+                if (saslAuthConfig.getPlainTextAuthConfig() != null) {
+                    setPlainTextAuthProperties(properties);
+                } else if (saslAuthConfig.getAwsIamAuthConfig() != null) {
+                    if (encryptionType == EncryptionType.PLAINTEXT) {
+                        throw new RuntimeException("Encryption Config must be SSL to use IAM authentication mechanism");
+                    }
+                    setAwsIamAuthProperties(properties, saslAuthConfig.getAwsIamAuthConfig(), sourceConfig.getAwsConfig());
+                } else if (saslAuthConfig.getOAuthConfig() != null) {
+                } else {
+                    throw new RuntimeException("No SASL auth config specified");
+                }
+            }
         }
         LOG.info("Starting consumer with the properties : {}", properties);
         return properties;
@@ -210,9 +229,28 @@ public class KafkaSource implements Source<Record<Event>> {
         return sourceConfig.getSchemaConfig().getRegistryURL();
     }
 
-    private void setPropertiesForAuth(Properties properties) {
-        String username = sourceConfig.getAuthConfig().getPlainTextAuthConfig().getUsername();
-        String password = sourceConfig.getAuthConfig().getPlainTextAuthConfig().getPassword();
+    private void setAwsIamAuthProperties(Properties properties, AwsIamAuthConfig awsIamAuthConfig, AwsConfig awsConfig) {
+        if (awsConfig == null) {
+            throw new RuntimeException("AWS Config is not specified");
+        }
+        properties.put("security.protocol", "SASL_SSL");
+        properties.put("sasl.mechanism", "AWS_MSK_IAM");
+        properties.put("sasl.client.callback.handler.class", "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
+        if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
+            properties.put("sasl.jaas.config",
+                "software.amazon.msk.auth.iam.IAMLoginModule required " +
+                "awsRoleArn=\"" + awsConfig.getStsRoleArn()+
+                "\" awsStsRegion=\""+ awsConfig.getRegion()+"\";");
+        } else if (awsIamAuthConfig == AwsIamAuthConfig.DEFAULT) {
+            properties.put("sasl.jaas.config",
+                "software.amazon.msk.auth.iam.IAMLoginModule required;");
+        }
+    }
+
+    private void setPlainTextAuthProperties(Properties properties) {
+
+        String username = sourceConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig().getUsername();
+        String password = sourceConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig().getPassword();
         properties.put("sasl.mechanism", "PLAIN");
         properties.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
         properties.put("security.protocol", "SASL_PLAINTEXT");
@@ -238,6 +276,8 @@ public class KafkaSource implements Source<Record<Event>> {
                 Object json = mapper.readValue(response.toString(), Object.class);
                 String indented = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json);
                 JsonNode rootNode = mapper.readTree(indented);
+                // If the entry exists but schema type doesn't exist then
+                // the schemaType defaults to AVRO
                 if (rootNode.has(SCHEMA_TYPE)) {
                     JsonNode node = rootNode.findValue(SCHEMA_TYPE);
                     schemaType = node.textValue();
@@ -247,7 +287,12 @@ public class KafkaSource implements Source<Record<Event>> {
             } else {
                 InputStream errorStream = connection.getErrorStream();
                 String errorMessage = readErrorMessage(errorStream);
-                LOG.error("GET request failed while fetching the schema registry details : {}", errorMessage);
+                // Plaintext is not a valid schematype in schema registry
+                // So, if it doesn't exist in schema regitry, default
+                // the schemaType to PLAINTEXT
+                LOG.error("GET request failed while fetching the schema registry. Defaulting to schema type PLAINTEXT");
+                return MessageFormat.PLAINTEXT.toString();
+
             }
         } catch (IOException e) {
             LOG.error("An error while fetching the schema registry details : ", e);
