@@ -1,10 +1,16 @@
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.equalTo;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
@@ -18,10 +24,23 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.notNullValue;
 
 
+@ExtendWith(MockitoExtension.class)
 class AuthConfigTest {
 
     @Mock
     AuthConfig authConfig;
+
+    @Mock
+    AuthConfig.SaslAuthConfig saslAuthConfig;
+
+    @Mock
+    AwsIamAuthConfig testAwsIamAuthConfig;
+
+    @Mock
+    OAuthConfig testOAuthConfig;
+
+    @Mock
+    PlainTextAuthConfig testPlainTextConfig;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -44,12 +63,43 @@ class AuthConfigTest {
     }
 
     @Test
-    void testConfig() {
+    void testPlainTextAuthConfig() {
         assertThat(authConfig, notNullValue());
-        assertThat(authConfig.getPlainTextAuthConfig(), notNullValue());
-        assertThat(authConfig.getPlainTextAuthConfig(), hasProperty("username"));
-        assertThat(authConfig.getPlainTextAuthConfig(), hasProperty("password"));
-        assertThat(authConfig.getoAuthConfig(), notNullValue());
+        assertThat(authConfig.getSaslAuthConfig(), notNullValue());
+        assertThat(authConfig.getSaslAuthConfig().getPlainTextAuthConfig(), notNullValue());
+        assertThat(authConfig.getSaslAuthConfig().getPlainTextAuthConfig(), hasProperty("username"));
+        assertThat(authConfig.getSaslAuthConfig().getPlainTextAuthConfig(), hasProperty("password"));
+        assertThat(authConfig.getSaslAuthConfig().getOAuthConfig(), notNullValue());
+    }
+
+    @Test
+    void testSaslAuthConfigWithPlainText() throws NoSuchFieldException, IllegalAccessException {
+        saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
+        testPlainTextConfig = mock(PlainTextAuthConfig.class);
+        when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(testPlainTextConfig);
+        setField(AuthConfig.class, authConfig, "saslAuthConfig", saslAuthConfig);
+        assertThat(authConfig.getSaslAuthConfig(), equalTo(saslAuthConfig));
+        assertThat(authConfig.getSaslAuthConfig().getPlainTextAuthConfig(), equalTo(testPlainTextConfig));
+    }
+
+    @Test
+    void testSaslAuthConfigWithMskIam() throws NoSuchFieldException, IllegalAccessException {
+        saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
+        AwsIamAuthConfig awsIamAuthConfig = AwsIamAuthConfig.ROLE;
+        when(saslAuthConfig.getAwsIamAuthConfig()).thenReturn(awsIamAuthConfig);
+        setField(AuthConfig.class, authConfig, "saslAuthConfig", saslAuthConfig);
+        assertThat(authConfig.getSaslAuthConfig(), equalTo(saslAuthConfig));
+        assertThat(authConfig.getSaslAuthConfig().getAwsIamAuthConfig(), equalTo(awsIamAuthConfig));
+    }
+
+    @Test
+    void testSaslAuthConfigWithOAuth() throws NoSuchFieldException, IllegalAccessException {
+        saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
+        testOAuthConfig = mock(OAuthConfig.class);
+        when(saslAuthConfig.getOAuthConfig()).thenReturn(testOAuthConfig);
+        setField(AuthConfig.class, authConfig, "saslAuthConfig", saslAuthConfig);
+        assertThat(authConfig.getSaslAuthConfig(), equalTo(saslAuthConfig));
+        assertThat(authConfig.getSaslAuthConfig().getOAuthConfig(), equalTo(testOAuthConfig));
     }
 
 }
