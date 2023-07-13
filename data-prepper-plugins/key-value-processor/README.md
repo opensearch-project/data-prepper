@@ -72,7 +72,7 @@ When run, the processor will parse the message into the following output:
   * Example: `whitespace` is `"strict"`. `{"key1  =  value1"}` will parse into `{"key1": "value1"}`
 * `allow_duplicate_values` - Specify whether to be lenient or strict with the acceptance of unnecessary whitespace surrounding the configured value-split sequence.
   * Default: `true`
-  * Example: `allow_duplicate_values` is `true`. `{"key1=value1&key1=value1"}` will parse into `{["key1"]: ["value1", "value1"]}`
+  * Example: `allow_duplicate_values` is `true`. `{"key1=value1&key1=value1"}` will parse into `{"key1": ["value1", "value1"]}`
   * Example: `allow_duplicate_values` is `false`. `{"key1=value1&key1=value1"}` will parse into `{"key1": "value1"}`
 
 ## Developer Guide

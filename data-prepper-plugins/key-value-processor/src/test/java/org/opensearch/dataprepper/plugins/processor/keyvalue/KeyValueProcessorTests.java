@@ -65,6 +65,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getDeleteValueRegex()).thenReturn(defaultConfig.getDeleteValueRegex());
         lenient().when(mockConfig.getTransformKey()).thenReturn(defaultConfig.getTransformKey());
         lenient().when(mockConfig.getWhitespace()).thenReturn(defaultConfig.getWhitespace());
+        lenient().when(mockConfig.getduplicateValues()).thenReturn(defaultConfig.getduplicateValues());
 
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
