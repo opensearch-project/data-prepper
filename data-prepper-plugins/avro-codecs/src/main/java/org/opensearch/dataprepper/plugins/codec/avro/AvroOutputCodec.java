@@ -90,6 +90,9 @@ public class AvroOutputCodec implements OutputCodec {
         String fields;
         int index = 0;
         for(final String key: eventData.keySet()){
+            if(config.getExcludeKeys().contains(key)){
+                continue;
+            }
             if(index == 0){
                 if(!(eventData.get(key) instanceof Map)){
                     fields = "{\"name\":\""+key+"\",\"type\":\""+typeMapper(eventData.get(key))+"\"}";
