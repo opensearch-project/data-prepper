@@ -78,8 +78,8 @@ class MaxMindServiceConfigTest {
     }
 
     @Test
-    void getCacheRefreshScheduleTestNegative() {
-        assertThat(new MaxMindServiceConfig().getCacheRefreshSchedule(), equalTo(null));
+    void getCacheRefreshScheduleTest() {
+        assertThat(new MaxMindServiceConfig().getCacheRefreshSchedule(), equalTo(Duration.parse("P15D")));
     }
 
     private List<DatabasePathURLConfig> setDatabasePath() throws NoSuchFieldException, IllegalAccessException {
