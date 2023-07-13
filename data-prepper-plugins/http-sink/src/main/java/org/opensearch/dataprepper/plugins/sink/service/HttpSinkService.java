@@ -108,27 +108,30 @@ public class HttpSinkService {
         if (currentBuffer == null) {
             this.currentBuffer = bufferFactory.getBuffer();
         }
-        records.forEach(record -> {
-            final Event event = record.getData();
-            try {
-                currentBuffer.writeEvent(event.toJsonString().getBytes());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            if(event.getEventHandle() != null) {
-                this.bufferedEventHandles.add(event.getEventHandle());
-            }
-            final List<HttpEndPointResponse> failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
-            if(!failedHttpEndPointResponses.isEmpty()) {
-               //TODO send to DLQ and webhook
-            } else {
-                LOG.info("data pushed to all the end points successfully");
-            }
-            currentBuffer = bufferFactory.getBuffer();
-            releaseEventHandles(Boolean.TRUE);
+        try {
+            records.forEach(record -> {
+                final Event event = record.getData();
+                try {
+                    currentBuffer.writeEvent(event.toJsonString().getBytes());
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                if (event.getEventHandle() != null) {
+                    this.bufferedEventHandles.add(event.getEventHandle());
+                }
+                final List<HttpEndPointResponse> failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
+                if (!failedHttpEndPointResponses.isEmpty()) {
+                    //TODO send to DLQ and webhook
+                } else {
+                    LOG.info("data pushed to all the end points successfully");
+                }
+                currentBuffer = bufferFactory.getBuffer();
+                releaseEventHandles(Boolean.TRUE);
 
-        });
-        reentrantLock.unlock();
+            });
+        }finally {
+            reentrantLock.unlock();
+        }
     }
 
     private byte[] getCurrentBufferData(final Buffer currentBuffer) {
