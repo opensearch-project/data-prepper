@@ -111,8 +111,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
         }
 
-        Pattern duplicateValueBoolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
-        Matcher duplicateValueBoolMatch = duplicateValueBoolCheck.matcher(String.valueOf(keyValueProcessorConfig.getduplicateValues()));
+        final Pattern duplicateValueBoolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
+        final Matcher duplicateValueBoolMatch = duplicateValueBoolCheck.matcher(String.valueOf(keyValueProcessorConfig.getduplicateValues()));
         if (!duplicateValueBoolMatch.matches()) {
             throw new IllegalArgumentException(String.format("The allow_duplicate_values value: %s is not a valid option", keyValueProcessorConfig.getduplicateValues()));
         }
