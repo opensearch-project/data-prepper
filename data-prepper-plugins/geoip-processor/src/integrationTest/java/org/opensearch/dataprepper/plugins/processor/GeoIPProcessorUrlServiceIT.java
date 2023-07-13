@@ -31,7 +31,6 @@ public class GeoIPProcessorUrlServiceIT {
     private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
     private String tempPath;
     private GeoIPProcessorConfig geoIPProcessorConfig;
-    private String ipAddress;
     private String  maxmindLicenseKey;
     private GeoIPProcessorService geoIPProcessorService;
     private GeoIPInputJson geoIPInputJson;
