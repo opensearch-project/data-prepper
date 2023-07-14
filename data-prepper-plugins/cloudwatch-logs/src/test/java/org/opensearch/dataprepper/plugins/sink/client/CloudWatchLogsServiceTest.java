@@ -22,9 +22,9 @@ import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.exception.RetransmissionLimitException;
 import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
-import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
+import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsException;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsResponse;
 
@@ -105,10 +105,10 @@ public class CloudWatchLogsServiceTest {
         when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
         when(awsConfig.getAwsStsExternalId()).thenReturn(externalId);
 
-        lenient().when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_SUCCESS)).thenReturn(successEventCounter);
-        lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
-        lenient().when(pluginMetrics.counter(CloudWatchLogsService.NUMBER_OF_RECORDS_PUSHED_TO_CWL_FAIL)).thenReturn(failedEventCounter);
-        lenient().when(pluginMetrics.counter(CloudWatchLogsService.REQUESTS_FAILED)).thenReturn(requestFailCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.CLOUDWATCH_LOGS_EVENTS_SUCCEEDED)).thenReturn(successEventCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.CLOUDWATCH_LOGS_REQUESTS_SUCCEEDED)).thenReturn(requestSuccessCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.CLOUDWATCH_LOGS_EVENTS_FAILED)).thenReturn(failedEventCounter);
+        lenient().when(pluginMetrics.counter(CloudWatchLogsService.CLOUDWATCH_LOGS_REQUESTS_FAILED)).thenReturn(requestFailCounter);
     }
 
     void setThresholdForTestingRequestSize(int size) {
@@ -133,7 +133,7 @@ public class CloudWatchLogsServiceTest {
 
     void setMockClientThrowCWLException() {
         mockClient = mock(CloudWatchLogsClient.class);
-        doThrow(AwsServiceException.class).when(mockClient).putLogEvents(any(PutLogEventsRequest.class));
+        doThrow(CloudWatchLogsException.class).when(mockClient).putLogEvents(any(PutLogEventsRequest.class));
     }
 
     Collection<Record<Event>> getSampleRecords(int numberOfRecords) {
@@ -270,7 +270,7 @@ public class CloudWatchLogsServiceTest {
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * convertToBytesFromKiloBytes - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE - messageKeyByteSize + 1);
+        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, ThresholdConfig.DEFAULT_EVENT_SIZE * convertToBytesFromKiloBytes - CloudWatchLogsService.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE - messageKeyByteSize + 1);
 
         cloudWatchLogsService.output(sampleEvents);
 
@@ -283,7 +283,7 @@ public class CloudWatchLogsServiceTest {
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, (ThresholdConfig.DEFAULT_EVENT_SIZE * convertToBytesFromKiloBytes - messageKeyByteSize) - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE);
+        final Collection<Record<Event>> sampleEvents = getSampleRecordsLarge(ThresholdConfig.DEFAULT_BATCH_SIZE, (ThresholdConfig.DEFAULT_EVENT_SIZE * convertToBytesFromKiloBytes - messageKeyByteSize) - CloudWatchLogsService.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE);
 
         cloudWatchLogsService.output(sampleEvents);
 
@@ -297,7 +297,7 @@ public class CloudWatchLogsServiceTest {
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        cloudWatchLogsService.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - messageKeyByteSize - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE + 1));
+        cloudWatchLogsService.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - messageKeyByteSize - CloudWatchLogsService.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE + 1));
 
         verify(requestSuccessCounter, never()).increment();
     }
@@ -308,7 +308,7 @@ public class CloudWatchLogsServiceTest {
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        cloudWatchLogsService.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - messageKeyByteSize - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE));
+        cloudWatchLogsService.output(getSampleRecordsLarge(1, ThresholdConfig.DEFAULT_SIZE_OF_REQUEST - messageKeyByteSize - CloudWatchLogsService.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
 
         verify(requestSuccessCounter, atLeast(1)).increment();
     }
@@ -319,7 +319,7 @@ public class CloudWatchLogsServiceTest {
         setMockClientNoErrors();
         CloudWatchLogsService cloudWatchLogsService = getCwlClientWithMemoryBuffer();
 
-        cloudWatchLogsService.output(getSampleRecordsLarge(1, (ThresholdConfig.DEFAULT_SIZE_OF_REQUEST * 2) - messageKeyByteSize - CloudWatchLogsService.LOG_EVENT_OVERHEAD_SIZE));
+        cloudWatchLogsService.output(getSampleRecordsLarge(1, (ThresholdConfig.DEFAULT_SIZE_OF_REQUEST * 2) - messageKeyByteSize - CloudWatchLogsService.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
 
         verify(requestSuccessCounter, atLeast(1)).increment();
     }

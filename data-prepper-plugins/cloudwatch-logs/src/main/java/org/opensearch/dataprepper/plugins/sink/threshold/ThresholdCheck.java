@@ -30,8 +30,8 @@ public class ThresholdCheck {
      * @return boolean - true if we exceed the threshold events or false otherwise.
      */
     public boolean isGreaterThanThresholdReached(final long currentTime, final int currentRequestSize, final int batchSize) {
-        return ((isGreaterThanBatchSize(batchSize) || isGreaterEqualToLogSendInterval(currentTime)
-                || isGreaterThanMaxRequestSize(currentRequestSize)));
+        return (isGreaterThanBatchSize(batchSize) || isGreaterEqualToLogSendInterval(currentTime)
+                || isGreaterThanMaxRequestSize(currentRequestSize));
     }
 
     /**
