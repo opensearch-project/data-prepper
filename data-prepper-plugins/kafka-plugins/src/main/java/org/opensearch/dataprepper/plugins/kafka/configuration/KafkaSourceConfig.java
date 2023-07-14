@@ -22,12 +22,11 @@ public class KafkaSourceConfig {
     public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
-    @NotNull
-    @Size(min = 1, message = "Bootstrap servers can't be empty")
     private List<String> bootStrapServers;
 
     @JsonProperty("topics")
     @NotNull
+    @Valid
     @Size(min = 1, max = 10, message = "The number of Topics should be between 1 and 10")
     private List<TopicConfig> topics;
 
