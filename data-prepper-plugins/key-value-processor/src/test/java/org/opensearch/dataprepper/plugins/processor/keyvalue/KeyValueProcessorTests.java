@@ -65,7 +65,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getDeleteValueRegex()).thenReturn(defaultConfig.getDeleteValueRegex());
         lenient().when(mockConfig.getTransformKey()).thenReturn(defaultConfig.getTransformKey());
         lenient().when(mockConfig.getWhitespace()).thenReturn(defaultConfig.getWhitespace());
-        lenient().when(mockConfig.getduplicateValues()).thenReturn(defaultConfig.getduplicateValues());
+        lenient().when(mockConfig.getAllowDuplicateValues()).thenReturn(defaultConfig.getAllowDuplicateValues());
 
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
@@ -424,7 +424,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testTrueDuplicateValuesKvProcessor() {
-        when(mockConfig.getduplicateValues()).thenReturn(true);
+        when(mockConfig.getAllowDuplicateValues()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1=value1&key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -440,7 +440,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testFalseDuplicateValuesKvProcessor() {
-        when(mockConfig.getduplicateValues()).thenReturn(false);
+        when(mockConfig.getAllowDuplicateValues()).thenReturn(false);
 
         final Record<Event> record = getMessage("key1=value1&key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -452,7 +452,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testFalseThreeInputsDuplicateValuesKvProcessor() {
-        when(mockConfig.getduplicateValues()).thenReturn(false);
+        when(mockConfig.getAllowDuplicateValues()).thenReturn(false);
 
         final Record<Event> record = getMessage("key1=value1&key1=value2&key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
