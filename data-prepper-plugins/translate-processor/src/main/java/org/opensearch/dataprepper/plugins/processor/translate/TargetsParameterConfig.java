@@ -33,7 +33,7 @@ public class TargetsParameterConfig {
     private RegexParameterConfiguration regexParameterConfig;
     @JsonProperty("default")
     private String defaultValue;
-    @JsonProperty("target_type")
+    @JsonProperty("type")
     private TargetType targetType = TargetType.STRING;
 
     public TargetsParameterConfig(Map<String, Object> map, String target, RegexParameterConfiguration regexParameterConfig, String translateWhen, String defaultValue, TargetType targetType) {
