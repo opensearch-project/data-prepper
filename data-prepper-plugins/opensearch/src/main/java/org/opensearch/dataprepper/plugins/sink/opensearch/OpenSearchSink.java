@@ -256,7 +256,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final Optional<String> routing = document.getRoutingField();
       String indexName = configuredIndexAlias;
       try {
-          indexName = indexManager.getIndexName(event.formatString(indexName));
+          indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
       } catch (IOException | EventKeyNotFoundException e) {
           LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
