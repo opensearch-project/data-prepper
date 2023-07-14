@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.codec.newline;
+package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -19,7 +19,7 @@ import java.util.Objects;
  * An implementation of {@link OutputCodec} which deserializes Data-Prepper events
  * and writes them to Output Stream as ND-JSON data
  */
-@DataPrepperPlugin(name = "newline", pluginType = OutputCodec.class, pluginConfigurationType = NewlineDelimitedOutputConfig.class)
+@DataPrepperPlugin(name = "ndjson", pluginType = OutputCodec.class, pluginConfigurationType = NewlineDelimitedOutputConfig.class)
 public class NewlineDelimitedOutputCodec implements OutputCodec {
     private static final String NDJSON = "ndjson";
     private static final ObjectMapper objectMapper = new ObjectMapper();
