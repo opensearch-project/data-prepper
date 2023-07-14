@@ -49,10 +49,10 @@ public class CloudWatchLogsService {
     private final String logStream;
     private final int retryCount;
     private final long backOffTimeBase;
-    private final Counter logEventSuccessCounter; //Counter to be used on the fly for counting successful transmissions. (Success per single event successfully published).
+    private final Counter logEventSuccessCounter;
     private final Counter requestSuccessCount;
     private final Counter logEventFailCounter;
-    private final Counter requestFailCount; //Counter to be used on the fly during error handling.
+    private final Counter requestFailCount;
     private final SinkStopWatch sinkStopWatch;
     private final ReentrantLock reentrantLock;
     private final LogPusher logPusher;
@@ -99,7 +99,6 @@ public class CloudWatchLogsService {
             if (processedLogsSuccessfully) {
                 threadRetries = RETRY_THREAD_ERROR_CAP;
             } else {
-                LOG.error("Thread threw InterruptedException!");
                 threadRetries++;
             }
         }
@@ -109,6 +108,7 @@ public class CloudWatchLogsService {
         } else {
             LOG.warn("Failed to process logs.");
             //TODO: Insert DLQ logic as a last resort if we cannot manage to process logs prior to this point.
+            buffer.clearBuffer();
         }
 
         reentrantLock.unlock();
@@ -148,7 +148,6 @@ public class CloudWatchLogsService {
     }
 
     private void pushLogs() throws InterruptedException {
-        LOG.info("Attempting to push logs! {Batch size: " + buffer.getEventCount() + "}");
         sinkStopWatch.stopAndResetStopWatch();
         sinkStopWatch.startStopWatch();
 
@@ -168,7 +167,7 @@ public class CloudWatchLogsService {
     }
 
     private void releaseEventHandles(final boolean result) {
-        if (bufferedEventHandles.size() == 0) {
+        if (bufferedEventHandles.isEmpty()) {
             return;
         }
 

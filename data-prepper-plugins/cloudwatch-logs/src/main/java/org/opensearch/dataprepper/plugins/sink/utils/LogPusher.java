@@ -19,9 +19,8 @@ public class LogPusher {
     private final Counter requestFailCount;
     final int retryCount;
     final long backOffTimeBase;
-
     static final Logger LOG = LoggerFactory.getLogger(LogPusher.class);
-    public LogPusher(Counter logEventSuccessCounter, Counter logEventFailCounter, Counter requestSuccessCount, Counter requestFailCount, final int retryCount, final long backOffTimeBase) {
+    public LogPusher(final Counter logEventSuccessCounter, final Counter logEventFailCounter, final Counter requestSuccessCount, final Counter requestFailCount, final int retryCount, final long backOffTimeBase) {
         this.logEventSuccessCounter = logEventSuccessCounter;
         this.logEventFailCounter = logEventFailCounter;
         this.requestSuccessCount = requestSuccessCount;
