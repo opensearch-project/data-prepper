@@ -423,8 +423,8 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testTrueDuplicateValuesKvProcessor() {
-        when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
+    void testFalseSkipDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(false);
 
         final Record<Event> record = getMessage("key1=value1&key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -439,8 +439,8 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testFalseDuplicateValuesKvProcessor() {
-        when(mockConfig.getSkipDuplicateValues()).thenReturn(false);
+    void testTrueSkipDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1=value1&key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -451,8 +451,8 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testFalseThreeInputsDuplicateValuesKvProcessor() {
-        when(mockConfig.getSkipDuplicateValues()).thenReturn(false);
+    void testTrueThreeInputsDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1=value1&key1=value2&key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
