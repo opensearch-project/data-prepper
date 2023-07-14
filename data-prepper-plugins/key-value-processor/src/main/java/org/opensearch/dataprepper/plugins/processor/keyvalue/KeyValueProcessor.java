@@ -112,9 +112,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         final Pattern duplicateValueBoolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
-        final Matcher duplicateValueBoolMatch = duplicateValueBoolCheck.matcher(String.valueOf(keyValueProcessorConfig.getAllowDuplicateValues()));
+        final Matcher duplicateValueBoolMatch = duplicateValueBoolCheck.matcher(String.valueOf(keyValueProcessorConfig.getSkipDuplicateValues()));
         if (!duplicateValueBoolMatch.matches()) {
-            throw new IllegalArgumentException(String.format("The allow_duplicate_values value: %s is not a valid option", keyValueProcessorConfig.getAllowDuplicateValues()));
+            throw new IllegalArgumentException(String.format("The skip_duplicate_values value: %s is not a valid option", keyValueProcessorConfig.getSkipDuplicateValues()));
         }
     }
 
@@ -227,7 +227,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         if (parsedMap.get(key) instanceof List) {
-            if (!keyValueProcessorConfig.getAllowDuplicateValues()) {
+            if (keyValueProcessorConfig.getSkipDuplicateValues()) {
                 if (((List<Object>) parsedMap.get(key)).contains(value)) {
                     return;
                 }
@@ -235,7 +235,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             ((List<Object>) parsedMap.get(key)).add(value);
         } else {
-            if (!keyValueProcessorConfig.getAllowDuplicateValues()) {
+            if (keyValueProcessorConfig.getSkipDuplicateValues()) {
                 if (parsedMap.containsValue(value)) {
                     return;
                 }

@@ -70,10 +70,10 @@ When run, the processor will parse the message into the following output:
   * Default: `lenient`
   * Example: `whitespace` is `"lenient"`. `{"key1  =  value1"}` will parse into `{"key1  ": "  value1"}`
   * Example: `whitespace` is `"strict"`. `{"key1  =  value1"}` will parse into `{"key1": "value1"}`
-* `allow_duplicate_values` - A boolean option for removing duplicate key/value pairs. When set to false, only one unique key/value pair will be preserved.
+* `skip_duplicate_values` - A boolean option for removing duplicate key/value pairs. When set to true, only one unique key/value pair will be preserved.
   * Default: `false`
-  * Example: `allow_duplicate_values` is `true`. `{"key1=value1&key1=value1"}` will parse into `{"key1": ["value1", "value1"]}`
-  * Example: `allow_duplicate_values` is `false`. `{"key1=value1&key1=value1"}` will parse into `{"key1": "value1"}`
+  * Example: `skip_duplicate_values` is `false`. `{"key1=value1&key1=value1"}` will parse into `{"key1": ["value1", "value1"]}`
+  * Example: `skip_duplicate_values` is `true`. `{"key1=value1&key1=value1"}` will parse into `{"key1": "value1"}`
 * `include_brackets` - Specify whether to treat square brackets, angle brackets, and parentheses as value "wrappers" that should be removed from the value.
   * Default: `true`
   * Example: `include_brackets` is `true`. `{"key1=(value1)"}` will parse into `{"key1": value1}`
