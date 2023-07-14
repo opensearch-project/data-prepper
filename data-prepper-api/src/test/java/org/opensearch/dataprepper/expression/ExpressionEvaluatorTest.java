@@ -18,6 +18,11 @@ public class ExpressionEvaluatorTest {
         public Object evaluate(final String statement, final Event event) {
             return event.get(statement, Object.class);
         }
+
+        @Override
+        public Boolean isValidExpressionStatement(final String statement) {
+            return true;
+        }
     }
 
     @Test
