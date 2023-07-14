@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.codec.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
@@ -16,10 +17,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 
@@ -34,6 +37,7 @@ public class NewlineDelimitedOutputCodecTest {
 
     private NewlineDelimitedOutputCodec createObjectUnderTest() {
         config = new NewlineDelimitedOutputConfig();
+        config.setExcludeKeys(Arrays.asList("S3"));
         return new NewlineDelimitedOutputCodec(config);
     }
 
@@ -83,5 +87,12 @@ public class NewlineDelimitedOutputCodecTest {
             recordList.add(eventData);
         }
         return recordList;
+    }
+
+    @Test
+    void testGetExtension() {
+        NewlineDelimitedOutputCodec newlineDelimitedOutputCodec = createObjectUnderTest();
+
+        assertThat("ndjson", equalTo(newlineDelimitedOutputCodec.getExtension()));
     }
 }

@@ -22,4 +22,8 @@ public class NewlineDelimitedOutputConfig {
     public List<String> getExcludeKeys() {
         return excludeKeys;
     }
+
+    public void setExcludeKeys(List<String> excludeKeys) {
+        this.excludeKeys = excludeKeys;
+    }
 }
