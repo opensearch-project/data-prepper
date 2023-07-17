@@ -41,6 +41,8 @@ import com.amazonaws.services.kafka.model.GetBootstrapBrokersResult;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
+import com.amazonaws.services.kafka.model.InternalServerErrorException;
+import com.amazonaws.services.kafka.model.ConflictException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,11 +74,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @SuppressWarnings("deprecation")
 @DataPrepperPlugin(name = "kafka", pluginType = Source.class, pluginConfigurationType = KafkaSourceConfig.class)
 public class KafkaSource implements Source<Record<Event>> {
+    private static final String KAFKA_WORKER_THREAD_PROCESSING_ERRORS = "kafkaWorkerThreadProcessingErrors";
+    private static final int MAX_KAFKA_CLIENT_RETRIES = 10;
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSource.class);
     private final KafkaSourceConfig sourceConfig;
     private AtomicBoolean shutdownInProgress;
     private ExecutorService executorService;
-    private static final String KAFKA_WORKER_THREAD_PROCESSING_ERRORS = "kafkaWorkerThreadProcessingErrors";
     private final Counter kafkaWorkerThreadProcessingErrors;
     private final PluginMetrics pluginMetrics;
     private KafkaSourceCustomConsumer consumer;
@@ -185,7 +188,23 @@ public class KafkaSource implements Source<Record<Event>> {
         GetBootstrapBrokersRequest request = new GetBootstrapBrokersRequest();
         String clusterArn = awsConfig.getAwsMskConfig().getArn();
         request.setClusterArn(clusterArn);
-        GetBootstrapBrokersResult result = kafkaClient.getBootstrapBrokers( request );
+        int numRetries = 0;
+        boolean retryable;
+        GetBootstrapBrokersResult result = null;
+        do {
+            retryable = false;
+            try {
+                result = kafkaClient.getBootstrapBrokers(request);
+            } catch (InternalServerErrorException | ConflictException e) {
+                retryable = true;
+            } catch (Exception e) {
+                break;
+            }
+        } while (retryable && numRetries++ < MAX_KAFKA_CLIENT_RETRIES);
+        if (Objects.isNull(result)) {
+            LOG.info("Failed to get bootstrap server information from MSK, using user configured bootstrap servers");
+            return sourceConfig.getBootStrapServers();
+        }
         // TODO return this based on the broker_connection_mode
         return result.getBootstrapBrokerStringSaslIam();
     }
@@ -215,11 +234,14 @@ public class KafkaSource implements Source<Record<Event>> {
                 topicConfig.getAutoCommitInterval().toSecondsPart());
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                 topicConfig.getAutoOffsetReset());
+        String bootstrapServers = sourceConfig.getBootStrapServers();
         if (Objects.nonNull(awsIamAuthConfig)) {
-            properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, getBootStrapServersForMsk(awsIamAuthConfig, awsConfig));
-        } else {
-            properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, sourceConfig.getBootStrapServers());
+            bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig);
         }
+        if (Objects.isNull(bootstrapServers) || bootstrapServers.isEmpty()) {
+            throw new RuntimeException("Bootstrap servers are not specified");
+        }
+        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
                 topicConfig.getAutoCommit());
         properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
