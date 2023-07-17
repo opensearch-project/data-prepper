@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Measurement;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.util.EntityUtils;
 import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
@@ -32,6 +33,7 @@ import org.opensearch.common.Strings;
 import org.opensearch.common.xcontent.XContentFactory;
 import org.opensearch.common.xcontent.XContentType;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -47,9 +49,6 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexMan
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
-import org.apache.commons.lang3.RandomStringUtils;
-
-import static org.mockito.Mockito.when;
 
 import javax.ws.rs.HttpMethod;
 import java.io.BufferedReader;
@@ -91,6 +90,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.getHosts;
@@ -121,8 +121,10 @@ public class OpenSearchSinkIT {
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
+    private ExpressionEvaluator expressionEvaluator;
+
     public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
-        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, null, awsCredentialsSupplier);
+        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, null, expressionEvaluator, awsCredentialsSupplier);
         if (doInitialize) {
             sink.doInitialize();
         }
@@ -133,7 +135,7 @@ public class OpenSearchSinkIT {
         sinkContext = mock(SinkContext.class);
         testTagsTargetKey = RandomStringUtils.randomAlphabetic(5);
         when(sinkContext.getTagsTargetKey()).thenReturn(testTagsTargetKey);
-        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, sinkContext, awsCredentialsSupplier);
+        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, sinkContext, expressionEvaluator, awsCredentialsSupplier);
         if (doInitialize) {
             sink.doInitialize();
         }
@@ -142,6 +144,10 @@ public class OpenSearchSinkIT {
 
     @BeforeEach
     public void setup() {
+
+        expressionEvaluator = mock(ExpressionEvaluator.class);
+        when(expressionEvaluator.isValidExpressionStatement(any(String.class))).thenReturn(false);
+
         eventHandle = mock(EventHandle.class);
         lenient().doAnswer(a -> {
             return null;

@@ -91,5 +91,10 @@ class KafkaSourceConfigTest {
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsTimeout", testTimeout);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
 		assertEquals(testTimeout, kafkaSourceConfig.getAcknowledgementsTimeout());
+		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionType());
+        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionType", EncryptionType.PLAINTEXT);
+		assertEquals(EncryptionType.PLAINTEXT, kafkaSourceConfig.getEncryptionType());
+        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionType", EncryptionType.SSL);
+		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionType());
 	}
 }

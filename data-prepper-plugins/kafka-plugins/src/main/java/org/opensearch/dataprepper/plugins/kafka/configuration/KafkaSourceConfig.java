@@ -35,10 +35,15 @@ public class KafkaSourceConfig {
     @Valid
     private SchemaConfig schemaConfig;
 
+    @Valid
     @JsonProperty("authentication")
     private AuthConfig authConfig;
 
+    @JsonProperty("encryption")
+    private EncryptionType encryptionType = EncryptionType.SSL;
+
     @JsonProperty("aws")
+    @Valid
     private AwsConfig awsConfig;
 
     @JsonProperty("acknowledgments")
@@ -81,6 +86,14 @@ public class KafkaSourceConfig {
 
     public AuthConfig getAuthConfig() {
         return authConfig;
+    }
+
+    public EncryptionType getEncryptionType() {
+        return encryptionType;
+    }
+
+    public AwsConfig getAwsConfig() {
+        return awsConfig;
     }
 
     public void setAuthConfig(AuthConfig authConfig) {
