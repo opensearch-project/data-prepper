@@ -111,10 +111,16 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
         }
 
-        final Pattern duplicateValueBoolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
-        final Matcher duplicateValueBoolMatch = duplicateValueBoolCheck.matcher(String.valueOf(keyValueProcessorConfig.getSkipDuplicateValues()));
+        final Pattern boolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
+        final Matcher duplicateValueBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getSkipDuplicateValues()));
+        final Matcher includeBracketsBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getIncludeBrackets()));
+
         if (!duplicateValueBoolMatch.matches()) {
-            throw new IllegalArgumentException(String.format("The skip_duplicate_values value: %s is not a valid option", keyValueProcessorConfig.getSkipDuplicateValues()));
+            throw new IllegalArgumentException(String.format("The skip_duplicate_values value must be either true or false", keyValueProcessorConfig.getSkipDuplicateValues()));
+        }
+
+        if (!includeBracketsBoolMatch.matches()) {
+            throw new IllegalArgumentException(String.format("The include_brackets value must be either true or false", keyValueProcessorConfig.getIncludeBrackets()));
         }
     }
 
