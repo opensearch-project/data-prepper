@@ -471,7 +471,7 @@ public class KeyValueProcessorTests {
     void testTrueRemoveBracketsKvProcessor() {
         when(mockConfig.getRemoveBrackets()).thenReturn(true);
 
-        final Record<Event> record = getMessage("key1=(value1)&key2=[value2]&key3={value3}");
+        final Record<Event> record = getMessage("key1=(value1)&key2=[value2]&key3=<value3>");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
