@@ -7,12 +7,16 @@ package org.opensearch.dataprepper.plugins.sink;
 import io.micrometer.core.instrument.Counter;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.sink.dlq.SNSSinkFailedDlqData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -22,8 +26,12 @@ import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -39,6 +47,10 @@ public class SNSSinkService {
 
     public static final String NUMBER_OF_RECORDS_FLUSHED_TO_SNS_FAILED = "snsSinkObjectsEventsFailed";
 
+    private static final String BUCKET = "bucket";
+
+    private static final String KEY_PATH = "key_path_prefix";
+
     private final SNSSinkConfig snsSinkConfig;
 
     private final Lock reentrantLock;
@@ -48,6 +60,10 @@ public class SNSSinkService {
     private final Collection<EventHandle> bufferedEventHandles;
 
     private final SnsClient snsClient;
+
+    private final DlqPushHandler dlqPushHandler;
+
+    private final PluginSetting pluginSetting;
 
     private Buffer currentBuffer;
 
@@ -66,15 +82,19 @@ public class SNSSinkService {
     private final Counter numberOfRecordsFailedCounter;
 
     /**
-     * @param snsSinkConfig  sns sink related configuration.
+     * @param snsSinkConfig sns sink related configuration.
      * @param bufferFactory factory of buffer.
      * @param snsClient
      * @param pluginMetrics metrics.
+     * @param pluginFactory
+     * @param pluginSetting
      */
     public SNSSinkService(final SNSSinkConfig snsSinkConfig,
                           final BufferFactory bufferFactory,
                           final SnsClient snsClient,
-                          final PluginMetrics pluginMetrics) {
+                          final PluginMetrics pluginMetrics,
+                          final PluginFactory pluginFactory,
+                          final PluginSetting pluginSetting) {
         this.snsSinkConfig = snsSinkConfig;
         this.bufferFactory = bufferFactory;
         this.snsClient = snsClient;
@@ -85,9 +105,19 @@ public class SNSSinkService {
         this.maxCollectionDuration = snsSinkConfig.getThresholdOptions().getEventCollectTimeOut().getSeconds();
         this.topicName = snsSinkConfig.getTopicArn();
         this.maxRetries = snsSinkConfig.getMaxUploadRetries();
+        this.pluginSetting = pluginSetting;
 
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_FAILED);
+
+        final Map<String, Object> pluginSettings = snsSinkConfig.getDlq()!= null ? snsSinkConfig.getDlq().getPluginSettings() : new HashMap<>();
+        String stsRoleARN = Objects.nonNull(pluginSettings.get("sts_role_arn")) ?  String.valueOf(pluginSettings.get("sts_role_arn")) : snsSinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn();
+        String region = Objects.nonNull(pluginSettings.get("sts_region")) ?  String.valueOf(pluginSettings.get("sts_region")) : snsSinkConfig.getAwsAuthenticationOptions().getAwsRegion().toString();
+
+        this.dlqPushHandler = new DlqPushHandler(snsSinkConfig.getDlqFile(), pluginFactory,
+                String.valueOf(pluginSettings.get(BUCKET)),stsRoleARN
+                , region,
+                String.valueOf(pluginSettings.get(KEY_PATH)));
     }
 
 
@@ -115,6 +145,8 @@ public class SNSSinkService {
                         numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
                     } else {
                         numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
+                        SNSSinkFailedDlqData sNSSinkFailedDlqData = SNSSinkFailedDlqData.builder().withBufferData(new String(currentBuffer.getSinkBufferData())).withTopic(topicName).setTimeStamp(LocalDateTime.now().toString()).build();
+                        dlqPushHandler.perform(pluginSetting,sNSSinkFailedDlqData);
                     }
                     releaseEventHandles(true);
                     currentBuffer = bufferFactory.getBuffer();

@@ -42,6 +42,12 @@ public class SNSSinkConfig {
     @NotNull
     private PluginModel codec;
 
+    @JsonProperty("dlq")
+    private PluginModel dlq;
+
+    @JsonProperty("dlq_file")
+    private String dlqFile;
+
     @JsonProperty("buffer_type")
     private BufferTypeOptions bufferType = BufferTypeOptions.IN_MEMORY;
 
@@ -49,6 +55,14 @@ public class SNSSinkConfig {
 
     @JsonProperty("max_retries")
     private int maxUploadRetries = DEFAULT_UPLOAD_RETRIES;
+
+    public PluginModel getDlq() {
+        return dlq;
+    }
+
+    public String getDlqFile() {
+        return dlqFile;
+    }
 
     /**
      * Aws Authentication configuration Options.

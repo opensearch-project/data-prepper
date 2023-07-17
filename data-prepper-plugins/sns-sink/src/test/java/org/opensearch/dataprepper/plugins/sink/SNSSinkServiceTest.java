@@ -9,9 +9,11 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
@@ -60,6 +62,11 @@ public class SNSSinkServiceTest {
             "        codec:\n" +
             "          ndjson:\n" +
             "        max_retries: 10\n" +
+            "        dlq_file: /test/dlq-file.log\n" +
+            "        dlq:\n" +
+            "          s3:\n" +
+            "            bucket: test\n" +
+            "            key_path_prefix: test\n" +
             "        threshold:\n" +
             "          event_count: 1\n" +
             "          maximum_size: 100mb\n" +
@@ -96,7 +103,7 @@ public class SNSSinkServiceTest {
         return new SNSSinkService(snsSinkConfig,
                 bufferFactory,
                 snsClient,
-                pluginMetrics);
+                pluginMetrics, mock(PluginFactory.class), mock(PluginSetting.class));
     }
 
     @Test

@@ -20,6 +20,8 @@ import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 import software.amazon.awssdk.regions.Region;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -44,6 +46,8 @@ class SNSSinkTest {
     private AwsCredentialsSupplier awsCredentialsSupplier;
     private SinkContext sinkContext;
 
+    private PluginModel pluginModel;
+
     @BeforeEach
     void setUp() {
 
@@ -55,7 +59,10 @@ class SNSSinkTest {
         PluginModel pluginModel = mock(PluginModel.class);
         pluginFactory = mock(PluginFactory.class);
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        Map<String,Object> dlqMap = mock(HashMap.class);
 
+        when(snsSinkConfig.getDlq()).thenReturn(pluginModel);
+        when(pluginModel.getPluginSettings()).thenReturn(dlqMap);
         when(snsSinkConfig.getBufferType()).thenReturn(BufferTypeOptions.IN_MEMORY);
         when(snsSinkConfig.getThresholdOptions()).thenReturn(thresholdOptions);
         when(snsSinkConfig.getThresholdOptions().getEventCount()).thenReturn(MAX_EVENTS);
