@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.regex.Matcher;
 
 @DataPrepperPlugin(name = "key_value", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -108,6 +109,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         if (!(validWhitespaceSet.contains(keyValueProcessorConfig.getWhitespace()))) {
             throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
+        }
+
+        final Pattern duplicateValueBoolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
+        final Matcher duplicateValueBoolMatch = duplicateValueBoolCheck.matcher(String.valueOf(keyValueProcessorConfig.getSkipDuplicateValues()));
+        if (!duplicateValueBoolMatch.matches()) {
+            throw new IllegalArgumentException(String.format("The skip_duplicate_values value: %s is not a valid option", keyValueProcessorConfig.getSkipDuplicateValues()));
         }
     }
 
@@ -224,8 +231,20 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         if (parsedMap.get(key) instanceof List) {
+            if (keyValueProcessorConfig.getSkipDuplicateValues()) {
+                if (((List<Object>) parsedMap.get(key)).contains(value)) {
+                    return;
+                }
+            }
+
             ((List<Object>) parsedMap.get(key)).add(value);
         } else {
+            if (keyValueProcessorConfig.getSkipDuplicateValues()) {
+                if (parsedMap.containsValue(value)) {
+                    return;
+                }
+            }
+
             final LinkedList<Object> combinedList = new LinkedList<>();
             combinedList.add(parsedMap.get(key));
             combinedList.add(value);
