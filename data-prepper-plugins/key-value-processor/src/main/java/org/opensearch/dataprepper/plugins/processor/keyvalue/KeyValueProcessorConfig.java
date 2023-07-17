@@ -24,6 +24,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_DELETE_VALUE_REGEX = "";
     static final String DEFAULT_TRANSFORM_KEY = "";
     static final String DEFAULT_WHITESPACE = "lenient";
+    static final boolean DEFAULT_INCLUDE_BRACKETS = false;
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -69,6 +70,10 @@ public class KeyValueProcessorConfig {
     @JsonProperty("whitespace")
     @NotNull
     private String whitespace = DEFAULT_WHITESPACE;
+
+    @JsonProperty("include_brackets")
+    @NotNull
+    private boolean includeBrackets = DEFAULT_INCLUDE_BRACKETS;
 
     public String getSource() {
         return source;
@@ -120,5 +125,9 @@ public class KeyValueProcessorConfig {
 
     public String getWhitespace() {
         return whitespace;
+    }
+
+    public boolean getIncludeBrackets() {
+        return includeBrackets;
     }
 }
