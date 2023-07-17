@@ -74,10 +74,10 @@ When run, the processor will parse the message into the following output:
   * Default: `false`
   * Example: `skip_duplicate_values` is `false`. `{"key1=value1&key1=value1"}` will parse into `{"key1": ["value1", "value1"]}`
   * Example: `skip_duplicate_values` is `true`. `{"key1=value1&key1=value1"}` will parse into `{"key1": "value1"}`
-* `include_brackets` - Specify whether to treat square brackets, angle brackets, and parentheses as value "wrappers" that should be removed from the value.
+* `remove_brackets` - Specify whether to treat square brackets, angle brackets, and parentheses as value "wrappers" that should be removed from the value.
   * Default: `false`
-  * Example: `include_brackets` is `true`. `{"key1=(value1)"}` will parse into `{"key1": value1}`
-  * Example: `include_brackets` is `false`. `{"key1=(value1)"}` will parse into `{"key1": "(value1)"}`
+  * Example: `remove_brackets` is `true`. `{"key1=(value1)"}` will parse into `{"key1": value1}`
+  * Example: `remove_brackets` is `false`. `{"key1=(value1)"}` will parse into `{"key1": "(value1)"}`
 
 ## Developer Guide
 This plugin is compatible with Java 14. See

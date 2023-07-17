@@ -65,11 +65,8 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getDeleteValueRegex()).thenReturn(defaultConfig.getDeleteValueRegex());
         lenient().when(mockConfig.getTransformKey()).thenReturn(defaultConfig.getTransformKey());
         lenient().when(mockConfig.getWhitespace()).thenReturn(defaultConfig.getWhitespace());
-<<<<<<< HEAD
-        lenient().when(mockConfig.getIncludeBrackets()).thenReturn(defaultConfig.getIncludeBrackets());
-=======
         lenient().when(mockConfig.getSkipDuplicateValues()).thenReturn(defaultConfig.getSkipDuplicateValues());
->>>>>>> 2476813f58c65713528a29e8326659dcab87b590
+        lenient().when(mockConfig.getRemoveBrackets()).thenReturn(defaultConfig.getRemoveBrackets());
 
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
@@ -471,8 +468,8 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testFalseIncludeKeysKvProcessor() {
-        when(mockConfig.getIncludeBrackets()).thenReturn(false);
+    void testTrueRemoveBracketsKvProcessor() {
+        when(mockConfig.getRemoveBrackets()).thenReturn(true);
 
         final Record<Event> record = getMessage("key1=(value1)&key2=[value2]&key3={value3}");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));

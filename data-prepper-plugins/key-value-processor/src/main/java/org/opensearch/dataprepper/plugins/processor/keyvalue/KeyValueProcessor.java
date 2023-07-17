@@ -113,14 +113,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         final Pattern boolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
         final Matcher duplicateValueBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getSkipDuplicateValues()));
-        final Matcher includeBracketsBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getIncludeBrackets()));
+        final Matcher removeBracketsBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getRemoveBrackets()));
 
         if (!duplicateValueBoolMatch.matches()) {
             throw new IllegalArgumentException(String.format("The skip_duplicate_values value must be either true or false", keyValueProcessorConfig.getSkipDuplicateValues()));
         }
 
-        if (!includeBracketsBoolMatch.matches()) {
-            throw new IllegalArgumentException(String.format("The include_brackets value must be either true or false", keyValueProcessorConfig.getIncludeBrackets()));
+        if (!removeBracketsBoolMatch.matches()) {
+            throw new IllegalArgumentException(String.format("The remove_brackets value must be either true or false", keyValueProcessorConfig.getRemoveBrackets()));
         }
     }
 
@@ -201,7 +201,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     key = transformKey(key);
                 }
 
-                if (keyValueProcessorConfig.getIncludeBrackets()) {
+                if (keyValueProcessorConfig.getRemoveBrackets()) {
                     value = value.toString().replaceAll("[\\[\\](){}]","");
                 }
 
