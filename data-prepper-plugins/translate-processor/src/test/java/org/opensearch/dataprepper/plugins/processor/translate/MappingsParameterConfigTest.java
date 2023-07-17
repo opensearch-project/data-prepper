@@ -34,6 +34,16 @@ class MappingsParameterConfigTest {
     }
 
     @Test
+    void test_source_present() {
+        assertTrue(mappingsParameterConfig.isSourcePresent());
+    }
+
+    @Test
+    void test_targets_present() {
+        assertFalse(mappingsParameterConfig.isTargetsPresent());
+    }
+
+    @Test
     void test_source_field_valid_types() throws NoSuchFieldException, IllegalAccessException{
         setField(MappingsParameterConfig.class, mappingsParameterConfig, "source", "key1");
         assertTrue(mappingsParameterConfig.isSourceFieldValid());
