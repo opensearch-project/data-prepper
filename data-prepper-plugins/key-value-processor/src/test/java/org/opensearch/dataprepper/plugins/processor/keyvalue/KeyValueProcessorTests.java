@@ -65,6 +65,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getDeleteValueRegex()).thenReturn(defaultConfig.getDeleteValueRegex());
         lenient().when(mockConfig.getTransformKey()).thenReturn(defaultConfig.getTransformKey());
         lenient().when(mockConfig.getWhitespace()).thenReturn(defaultConfig.getWhitespace());
+        lenient().when(mockConfig.getSkipDuplicateValues()).thenReturn(defaultConfig.getSkipDuplicateValues());
 
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
@@ -419,6 +420,50 @@ public class KeyValueProcessorTests {
 
         assertThat(parsed_message.size(), equalTo(1));
         assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
+    void testFalseSkipDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(false);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final ArrayList<Object> expectedValue = new ArrayList();
+        expectedValue.add("value1");
+        expectedValue.add("value1");
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", expectedValue);
+    }
+
+    @Test
+    void testTrueSkipDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
+    void testTrueThreeInputsDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value2&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final ArrayList<Object> expectedValue = new ArrayList();
+        expectedValue.add("value1");
+        expectedValue.add("value2");
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", expectedValue);
     }
 
     @Test
