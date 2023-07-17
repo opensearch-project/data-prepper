@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -50,6 +51,8 @@ public class SNSSinkService {
     private static final String BUCKET = "bucket";
 
     private static final String KEY_PATH = "key_path_prefix";
+
+    public static final String FIFO = ".fifo";
 
     private final SNSSinkConfig snsSinkConfig;
 
@@ -218,16 +221,21 @@ public class SNSSinkService {
     public void publishToTopic(SnsClient snsClient, String topicName,final byte[] sinkBufferData) {
         LOG.info("Trying to Push Msg to SNS: {}",topicName);
         try {
-            PublishRequest request = PublishRequest.builder()
-                    .message(new String(sinkBufferData))
-                    .topicArn(topicName)
-                    .subject(snsSinkConfig.getId())
-                    .build();
+            PublishRequest request = createPublicRequestByTopic(topicName, sinkBufferData);
             PublishResponse result = snsClient.publish(request);
             LOG.info(result.messageId() + " Message sent. Status is " + result.sdkHttpResponse().statusCode());
         }catch (Exception e) {
             throw e;
         }
+    }
+
+    private PublishRequest createPublicRequestByTopic(String topicName, byte[] sinkBufferData) {
+        PublishRequest.Builder request = PublishRequest.builder()
+                .message(new String(sinkBufferData))
+                .topicArn(topicName);
+        if(topicName.endsWith(FIFO))
+            request.messageGroupId(snsSinkConfig.getId()).messageDeduplicationId(UUID.randomUUID().toString());
+        return request.build();
     }
 
 }
