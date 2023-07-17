@@ -188,6 +188,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     key = transformKey(key);
                 }
 
+                if (keyValueProcessorConfig.getIncludeBrackets()) {
+                    value = value.toString().replaceAll("[\\[\\](){}]","");
+                }
+
                 addKeyValueToMap(parsedMap, key, value);
             }
 
