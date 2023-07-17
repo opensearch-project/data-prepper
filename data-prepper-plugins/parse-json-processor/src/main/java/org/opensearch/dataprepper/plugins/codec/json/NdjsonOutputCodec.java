@@ -19,14 +19,14 @@ import java.util.Objects;
  * An implementation of {@link OutputCodec} which deserializes Data-Prepper events
  * and writes them to Output Stream as ND-JSON data
  */
-@DataPrepperPlugin(name = "ndjson", pluginType = OutputCodec.class, pluginConfigurationType = NewlineDelimitedOutputConfig.class)
-public class NewlineDelimitedOutputCodec implements OutputCodec {
+@DataPrepperPlugin(name = "ndjson", pluginType = OutputCodec.class, pluginConfigurationType = NdjsonOutputConfig.class)
+public class NdjsonOutputCodec implements OutputCodec {
     private static final String NDJSON = "ndjson";
     private static final ObjectMapper objectMapper = new ObjectMapper();
-    private final NewlineDelimitedOutputConfig config;
+    private final NdjsonOutputConfig config;
 
     @DataPrepperPluginConstructor
-    public NewlineDelimitedOutputCodec(final NewlineDelimitedOutputConfig config) {
+    public NdjsonOutputCodec(final NdjsonOutputConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
     }

@@ -29,30 +29,30 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class NewlineDelimitedOutputCodecTest {
     private ByteArrayOutputStream outputStream;
 
-    private static NewlineDelimitedOutputConfig config;
+    private static NdjsonOutputConfig config;
 
     private static int numberOfRecords;
     private static final String REGEX = "\\r?\\n";
     private static ObjectMapper objectMapper = new ObjectMapper();
 
-    private NewlineDelimitedOutputCodec createObjectUnderTest() {
-        config = new NewlineDelimitedOutputConfig();
+    private NdjsonOutputCodec createObjectUnderTest() {
+        config = new NdjsonOutputConfig();
         config.setExcludeKeys(Arrays.asList("S3"));
-        return new NewlineDelimitedOutputCodec(config);
+        return new NdjsonOutputCodec(config);
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 3, 10, 100})
     void test_happy_case(final int numberOfRecords) throws IOException {
         this.numberOfRecords = numberOfRecords;
-        NewlineDelimitedOutputCodec newlineDelimitedOutputCodec = createObjectUnderTest();
+        NdjsonOutputCodec ndjsonOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        newlineDelimitedOutputCodec.start(outputStream);
+        ndjsonOutputCodec.start(outputStream);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            newlineDelimitedOutputCodec.writeEvent(event, outputStream, null);
+            ndjsonOutputCodec.writeEvent(event, outputStream, null);
         }
-        newlineDelimitedOutputCodec.complete(outputStream);
+        ndjsonOutputCodec.complete(outputStream);
         byte[] byteArray = outputStream.toByteArray();
         String jsonString = null;
         try {
@@ -91,8 +91,8 @@ public class NewlineDelimitedOutputCodecTest {
 
     @Test
     void testGetExtension() {
-        NewlineDelimitedOutputCodec newlineDelimitedOutputCodec = createObjectUnderTest();
+        NdjsonOutputCodec ndjsonOutputCodec = createObjectUnderTest();
 
-        assertThat("ndjson", equalTo(newlineDelimitedOutputCodec.getExtension()));
+        assertThat("ndjson", equalTo(ndjsonOutputCodec.getExtension()));
     }
 }
