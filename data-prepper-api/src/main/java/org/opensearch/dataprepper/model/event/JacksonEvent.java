@@ -339,7 +339,10 @@ public class JacksonEvent implements Event {
                 }
             }
 
-            result += val.toString();
+
+            if (Objects.nonNull(val)) {
+                result += val.toString();
+            }
             fromIndex = endPosition + 1;
         }
         if (fromIndex < format.length()) {
