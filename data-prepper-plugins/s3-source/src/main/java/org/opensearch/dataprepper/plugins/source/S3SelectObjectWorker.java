@@ -263,10 +263,14 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                     Record<Event> eventRecord = new Record<>(JacksonLog.builder().withData(optionalNode.get()).build());
                     try {
                         eventConsumer.accept(eventRecord.getData(), s3ObjectReference);
-                        bufferAccumulator.add(eventRecord);
+                        // Always add record to acknowledgementSet before adding to
+                        // buffer because another thread may take and process
+                        // buffer contents before the event record is added
+                        // to acknowledgement set
                         if (acknowledgementSet != null) {
                             acknowledgementSet.add(eventRecord.getData());
                         }
+                        bufferAccumulator.add(eventRecord);
                     } catch (final Exception ex) {
                         LOG.error("Failed writing S3 objects to buffer due to: {}", ex.getMessage());
                     }
