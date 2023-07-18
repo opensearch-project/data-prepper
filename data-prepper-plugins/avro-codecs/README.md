@@ -34,7 +34,6 @@ pipeline:
                 "     {\"name\": \"name\", \"type\": \"string\"}," +
                 "     {\"name\": \"age\", \"type\": \"int\"}]" +
                 "}";
-            schema_file_location: "C:\\Users\\OM20254233\\Downloads\\schema.json"
             schema_registry_url: https://your.schema.registry.url.com
             exclude_keys:
               - s3
@@ -46,12 +45,8 @@ pipeline:
 ### Codec Configuration:
 
 1) `schema`: A json string that user can provide in the yaml file itself. The codec parses schema object from this schema string. 
-2) `schema_file_location`: Path to the schema json file through which the user can provide schema.
-3) `exclude_keys`: Those keys of the events that the user wants to exclude while converting them to avro records.
-4) `schema_registry_url`: Another way of providing the schema through schema registry.
-5) `region`: AWS Region of the S3 bucket in which `schema.json` file is kept.
-6) `bucket_name`: Name of the S3 bucket in which `schema.json` file is kept.
-7) `file_key`: File key of `schema.json` file kept in S3 bucket.
+2) `exclude_keys`: Those keys of the events that the user wants to exclude while converting them to avro records.
+3) `schema_registry_url`: Another way of providing the schema through schema registry.
 
 ### Note:
 
@@ -63,8 +58,7 @@ pipeline:
    "type": { "type": "array",
    "items": "string"
    }`
-3) If the user wants to input schema through a `schema.json` file kept in S3, the user must provide corresponding credentials i.e. region, bucket name and file key of the same.
-4) If the user doesn't provide any schema, the codec will auto-generate schema from the first event in the buffer.
+3) If the user doesn't provide any schema, the codec will auto-generate schema from the first event in the buffer.
 
 ## Developer Guide
 

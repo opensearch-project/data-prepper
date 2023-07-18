@@ -132,7 +132,6 @@ pipeline:
               - count
             exclude_keys:
               - s3
-            header_file_location: "C:\\Users\\OM20254233\\Downloads\\header.csv"
         buffer_type: in_memory
 ```
 
@@ -159,7 +158,6 @@ pipeline:
 1) `exclude_keys`: Those keys of the events that the user wants to exclude while converting them to CSV Rows.
 2) `delimiter`: The user can provide the delimiter of choice.
 3) `header`: The user can provide the desired header for the resultant CSV file.
-4) `header_file_location`: Alternatively, the user can also provide header via a csv file instead of in the yaml.
 
 ## Developer Guide
 This plugin is compatible with Java 8 and up. See

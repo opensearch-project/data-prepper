@@ -5,6 +5,8 @@
 package org.opensearch.dataprepper.plugins.codec.csv;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -19,14 +21,21 @@ public class CsvOutputCodecConfig {
 
     @JsonProperty("exclude_keys")
     private List<String> excludeKeys;
-
+    @Valid
+    @Size(max = 0, message = "Header from file is not supported.")
     @JsonProperty("header_file_location")
     private String headerFileLocation;
 
+    @Valid
+    @Size(max = 0, message = "Header from file is not supported.")
     @JsonProperty("region")
     private String region;
+    @Valid
+    @Size(max = 0, message = "Header from file is not supported.")
     @JsonProperty("bucket_name")
     private String bucketName;
+    @Valid
+    @Size(max = 0, message = "Header from file is not supported.")
     @JsonProperty("fileKey")
     private String file_key;
 
