@@ -23,14 +23,8 @@ import static org.opensearch.dataprepper.plugins.sink.configuration.AuthTypeOpti
 
 public class HttpSinkConfigurationTest {
 
-    private static final String SINK_YAML = "        urls:\n" +
-            "        - url: \"https://httpbin.org/post\"\n" +
-            "          workers: 1\n" +
-            "          proxy: test\n" +
-            "          codec:\n" +
-            "            ndjson:\n" +
-            "          http_method: \"POST\"\n" +
-            "          auth_type: \"http_basic\"\n" +
+    private static final String SINK_YAML =
+            "        url: \"https://httpbin.org/post\"\n" +
             "        proxy: test-proxy\n" +
             "        codec:\n" +
             "          ndjson:\n" +
@@ -95,8 +89,8 @@ public class HttpSinkConfigurationTest {
     }
 
     @Test
-    void get_urls_test() {
-        assertThat(new HttpSinkConfiguration().getUrlConfigurationOptions(), equalTo(null));
+    void get_url_test() {
+        assertThat(new HttpSinkConfiguration().getUrl(), equalTo(null));
     }
 
     @Test
@@ -153,6 +147,7 @@ public class HttpSinkConfigurationTest {
     void http_sink_pipeline_test_with_provided_config_options() throws JsonProcessingException {
         final HttpSinkConfiguration httpSinkConfiguration = objectMapper.readValue(SINK_YAML, HttpSinkConfiguration.class);
 
+        assertThat(httpSinkConfiguration.getUrl(),equalTo("https://httpbin.org/post"));
         assertThat(httpSinkConfiguration.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
         assertThat(httpSinkConfiguration.getAuthType(),equalTo(HTTP_BASIC));
         assertThat(httpSinkConfiguration.getBufferType(),equalTo(BufferTypeOptions.INMEMORY));
@@ -162,12 +157,6 @@ public class HttpSinkConfigurationTest {
         assertThat(httpSinkConfiguration.getSslKeyFile(),equalTo("/full/path/to/keyfile.key"));
         assertThat(httpSinkConfiguration.getWorkers(),equalTo(1));
         assertThat(httpSinkConfiguration.getDlqFile(),equalTo("/your/local/dlq-file"));
-
-        final UrlConfigurationOption urlConfigurationOption = httpSinkConfiguration.getUrlConfigurationOptions().get(0);
-        assertThat(urlConfigurationOption.getUrl(),equalTo("https://httpbin.org/post"));
-        assertThat(urlConfigurationOption.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
-        assertThat(urlConfigurationOption.getProxy(),equalTo("test"));
-        assertThat(urlConfigurationOption.getAuthType(),equalTo(HTTP_BASIC));
 
         final CustomHeaderOptions customHeaderOptions = httpSinkConfiguration.getCustomHeaderOptions();
 
