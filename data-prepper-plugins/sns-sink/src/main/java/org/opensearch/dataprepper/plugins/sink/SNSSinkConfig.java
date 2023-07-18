@@ -13,6 +13,9 @@ import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOp
 import org.opensearch.dataprepper.plugins.sink.configuration.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 
+import java.util.Map;
+import java.util.Objects;
+
 /**
  * sns sink configuration class contains properties, used to read yaml configuration.
  */
@@ -20,6 +23,8 @@ public class SNSSinkConfig {
 
     private static final int DEFAULT_CONNECTION_RETRIES = 5;
     private static final int DEFAULT_UPLOAD_RETRIES = 5;
+    public static final String STS_REGION = "sts_region";
+    public static final String STS_ROLE_ARN = "sts_role_arn";
 
     @JsonProperty("aws")
     @NotNull
@@ -118,5 +123,21 @@ public class SNSSinkConfig {
      */
     public int getMaxUploadRetries() {
         return maxUploadRetries;
+    }
+
+    public String getDlqStsRoleARN(){
+        return Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
+                    String.valueOf(getDlqPluginSetting().get(STS_ROLE_ARN)) :
+                    awsAuthenticationOptions.getAwsStsRoleArn();
+    }
+
+    public String getDlqStsRegion(){
+        return Objects.nonNull(getDlqPluginSetting().get(STS_REGION)) ?
+                    String.valueOf(getDlqPluginSetting().get(STS_REGION)) :
+                    awsAuthenticationOptions.getAwsRegion().toString();
+    }
+
+    public  Map<String, Object> getDlqPluginSetting(){
+        return dlq != null ? dlq.getPluginSettings() : Map.of();
     }
 }

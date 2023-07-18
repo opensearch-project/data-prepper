@@ -113,16 +113,12 @@ public class SNSSinkService {
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_FAILED);
 
-        final Map<String, Object> pluginSettings = snsSinkConfig.getDlq()!= null ? snsSinkConfig.getDlq().getPluginSettings() : new HashMap<>();
-        String stsRoleARN = Objects.nonNull(pluginSettings.get("sts_role_arn")) ?  String.valueOf(pluginSettings.get("sts_role_arn")) : snsSinkConfig.getAwsAuthenticationOptions().getAwsStsRoleArn();
-        String region = Objects.nonNull(pluginSettings.get("sts_region")) ?  String.valueOf(pluginSettings.get("sts_region")) : snsSinkConfig.getAwsAuthenticationOptions().getAwsRegion().toString();
-
         this.dlqPushHandler = new DlqPushHandler(snsSinkConfig.getDlqFile(), pluginFactory,
-                String.valueOf(pluginSettings.get(BUCKET)),stsRoleARN
-                , region,
-                String.valueOf(pluginSettings.get(KEY_PATH)));
+                String.valueOf(snsSinkConfig.getDlqPluginSetting().get(BUCKET)),
+                snsSinkConfig.getDlqStsRoleARN()
+                ,snsSinkConfig.getDlqStsRoleARN(),
+                String.valueOf(snsSinkConfig.getDlqPluginSetting().get(KEY_PATH)));
     }
-
 
     /**
      * @param records received records and add into buffer.
@@ -141,7 +137,7 @@ public class SNSSinkService {
                     bufferedEventHandles.add(event.getEventHandle());
                 }
                 if (checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
-                    LOG.info("Writing {} to SNS with {} events and size of {} bytes.",
+                    LOG.debug("Writing {} to SNS with {} events and size of {} bytes.",
                             currentBuffer.getEventCount(), currentBuffer.getSize());
                     final boolean isFlushToSNS = retryFlushToSNS(currentBuffer, topicName);
                     if (isFlushToSNS) {
@@ -207,7 +203,6 @@ public class SNSSinkService {
             } catch (AwsServiceException | SdkClientException | IOException e) {
                 LOG.error("Exception occurred while uploading records to sns. Retry countdown  : {} | exception:",
                         retryCount, e);
-                LOG.info("Error Massage {}", e.getMessage());
                 --retryCount;
                 if (retryCount == 0) {
                     return isUploadedToSNS;
@@ -219,7 +214,7 @@ public class SNSSinkService {
     }
 
     public void publishToTopic(SnsClient snsClient, String topicName,final byte[] sinkBufferData) {
-        LOG.info("Trying to Push Msg to SNS: {}",topicName);
+        LOG.debug("Trying to Push Msg to SNS: {}",topicName);
         try {
             PublishRequest request = createPublicRequestByTopic(topicName, sinkBufferData);
             PublishResponse result = snsClient.publish(request);
