@@ -4,11 +4,16 @@
  */
 package org.opensearch.dataprepper.plugins.sink.handler;
 
-import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
-
-import java.util.Optional;
-
+/**
+ * An interface to handle multiple authentications
+ */
 public interface MultiAuthHttpSinkHandler {
-    Optional<HttpAuthOptions> authenticate(final HttpSinkConfiguration sinkConfiguration);
+
+    /**
+     * This method can be used to implement multiple authentication based on configuration
+     * @param httpAuthOptionsBuilder HttpAuthOptions.Builder
+     * @return HttpAuthOptions
+     */
+    HttpAuthOptions authenticate(final HttpAuthOptions.Builder  httpAuthOptionsBuilder);
 
 }

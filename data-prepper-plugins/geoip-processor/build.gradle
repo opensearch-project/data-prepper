@@ -66,6 +66,7 @@ task integrationTest(type: Test) {
     useJUnitPlatform()
 
     classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.geoipProcessor.maxmindLicenseKey', System.getProperty('tests.geoipProcessor.maxmindLicenseKey')
 
     filter {
         includeTestsMatching '*IT'
