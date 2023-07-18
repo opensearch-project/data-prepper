@@ -165,10 +165,13 @@ class ComposableIndexTemplateStrategyTest {
 
     @Test
     void createTemplate_throws_if_template_is_not_ComposableIndexTemplate() {
+        final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
         final IndexTemplate indexTemplate = mock(IndexTemplate.class);
+
         final ComposableIndexTemplateStrategy objectUnderTest = createObjectUnderTest();
 
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createTemplate(indexTemplate));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createTemplate(
+                indexConfiguration, indexTemplate));
     }
 
     @Nested
@@ -191,9 +194,10 @@ class ComposableIndexTemplateStrategyTest {
         void createTemplate_with_setTemplateName_performs_putIndexTemplate_request() throws IOException {
             final ComposableIndexTemplateStrategy objectUnderTest = createObjectUnderTest();
 
+            final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
             final IndexTemplate indexTemplate = objectUnderTest.createIndexTemplate(new HashMap<>());
             indexTemplate.setTemplateName(indexTemplateName);
-            objectUnderTest.createTemplate(indexTemplate);
+            objectUnderTest.createTemplate(indexConfiguration, indexTemplate);
 
             verify(openSearchIndicesClient).putIndexTemplate(putIndexTemplateRequestArgumentCaptor.capture());
 
@@ -216,10 +220,11 @@ class ComposableIndexTemplateStrategyTest {
 
             final List<String> indexPatterns = Collections.singletonList(UUID.randomUUID().toString());
 
+            final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
             final IndexTemplate indexTemplate = objectUnderTest.createIndexTemplate(new HashMap<>());
             indexTemplate.setTemplateName(indexTemplateName);
             indexTemplate.setIndexPatterns(indexPatterns);
-            objectUnderTest.createTemplate(indexTemplate);
+            objectUnderTest.createTemplate(indexConfiguration, indexTemplate);
 
             verify(openSearchIndicesClient).putIndexTemplate(putIndexTemplateRequestArgumentCaptor.capture());
 
@@ -244,6 +249,7 @@ class ComposableIndexTemplateStrategyTest {
             final String numberOfShards = Integer.toString(random.nextInt(1000) + 100);
             final List<String> composedOf = Collections.singletonList(UUID.randomUUID().toString());
 
+            final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
             final IndexTemplate indexTemplate = objectUnderTest.createIndexTemplate(
                     Map.of("version", version,
                             "priority", priority,
@@ -256,7 +262,7 @@ class ComposableIndexTemplateStrategyTest {
                     ));
             indexTemplate.setTemplateName(indexTemplateName);
             indexTemplate.setIndexPatterns(indexPatterns);
-            objectUnderTest.createTemplate(indexTemplate);
+            objectUnderTest.createTemplate(indexConfiguration, indexTemplate);
 
             verify(openSearchIndicesClient).putIndexTemplate(putIndexTemplateRequestArgumentCaptor.capture());
 

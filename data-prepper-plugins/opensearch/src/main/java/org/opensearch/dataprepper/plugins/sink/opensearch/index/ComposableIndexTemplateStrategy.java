@@ -52,7 +52,7 @@ class ComposableIndexTemplateStrategy implements TemplateStrategy {
     }
 
     @Override
-    public void createTemplate(final IndexTemplate indexTemplate) throws IOException {
+    public void createTemplate(final IndexConfiguration indexConfiguration, final IndexTemplate indexTemplate) throws IOException {
         if(!(indexTemplate instanceof ComposableIndexTemplate)) {
             throw new IllegalArgumentException("Unexpected indexTemplate provided to createTemplate.");
         }

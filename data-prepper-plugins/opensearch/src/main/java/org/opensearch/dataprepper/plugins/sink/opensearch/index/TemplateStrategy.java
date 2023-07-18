@@ -36,8 +36,9 @@ public interface TemplateStrategy {
     /**
      * Creates an index template on the OpenSeach cluster.
      *
+     * @param indexConfiguration The index configuration
      * @param indexTemplate The standard representation for a template
      * @throws IOException An exception writing to OpenSearch
      */
-    void createTemplate(IndexTemplate indexTemplate) throws IOException;
+    void createTemplate(IndexConfiguration indexConfiguration, IndexTemplate indexTemplate) throws IOException;
 }

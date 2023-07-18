@@ -391,13 +391,13 @@ public class DefaultIndexManagerTests {
                 .thenReturn(Optional.empty());
 
         defaultIndexManager.checkAndCreateIndexTemplate(false, null);
-        verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(4)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIsmPolicyFile();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIndexTemplate();
         verify(templateStrategy).getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME);
-        verify(templateStrategy).createTemplate(indexTemplateObject);
+        verify(templateStrategy).createTemplate(indexConfiguration, indexTemplateObject);
         verify(indexTemplateObject).setTemplateName(EXPECTED_TEMPLATE_NAME);
         verify(indexTemplateObject).setIndexPatterns(Collections.singletonList(INDEX_ALIAS));
         verify(indexTemplateObject, never()).putCustomSetting(eq(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING), anyString());
@@ -421,7 +421,7 @@ public class DefaultIndexManagerTests {
         verify(indexTemplateObject).putCustomSetting(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, INDEX_ALIAS);
         verify(indexTemplateObject, never()).putCustomSetting(eq(IndexConstants.ISM_POLICY_ID_SETTING), anyString());
         verify(templateStrategy).getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME);
-        verify(templateStrategy).createTemplate(indexTemplateObject);
+        verify(templateStrategy).createTemplate(indexConfiguration, indexTemplateObject);
     }
 
     @Test
@@ -441,7 +441,7 @@ public class DefaultIndexManagerTests {
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIndexTemplate();
         verify(templateStrategy).getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME);
-        verify(templateStrategy, never()).createTemplate(any());
+        verify(templateStrategy, never()).createTemplate(any(), any());
     }
 
     @Test
@@ -457,7 +457,7 @@ public class DefaultIndexManagerTests {
         verify(openSearchIndicesClient).exists(any(ExistsRequest.class));
         verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
-        verify(templateStrategy, never()).createTemplate(any());
+        verify(templateStrategy, never()).createTemplate(any(), any());
     }
 
     @Test

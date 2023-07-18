@@ -164,10 +164,12 @@ class V1TemplateStrategyTest {
 
     @Test
     void createTemplate_throws_if_template_is_not_LegacyIndexTemplate() {
+        final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
         final IndexTemplate indexTemplate = mock(IndexTemplate.class);
         final V1TemplateStrategy objectUnderTest = createObjectUnderTest();
 
-        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createTemplate(indexTemplate));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.createTemplate(indexConfiguration,
+                indexTemplate));
     }
 
     @Test
@@ -177,11 +179,12 @@ class V1TemplateStrategyTest {
         when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
         final V1TemplateStrategy objectUnderTest = createObjectUnderTest();
 
+        final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
         final List<String> indexPatterns = Collections.singletonList(UUID.randomUUID().toString());
         final IndexTemplate indexTemplate = objectUnderTest.createIndexTemplate(new HashMap<>());
         indexTemplate.setTemplateName(templateName);
         indexTemplate.setIndexPatterns(indexPatterns);
-        objectUnderTest.createTemplate(indexTemplate);
+        objectUnderTest.createTemplate(indexConfiguration, indexTemplate);
 
         final ArgumentCaptor<PutTemplateRequest> putTemplateRequestArgumentCaptor = ArgumentCaptor.forClass(PutTemplateRequest.class);
         verify(openSearchIndicesClient).putTemplate(putTemplateRequestArgumentCaptor.capture());
