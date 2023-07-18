@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.AwsRequestSigningApacheInterceptor;
 import org.opensearch.dataprepper.plugins.sink.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.HttpEndPointResponse;
-import org.opensearch.dataprepper.plugins.sink.ThresholdValidator;
+import org.opensearch.dataprepper.plugins.sink.ThresholdCheck;
 import org.opensearch.dataprepper.plugins.sink.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.sink.certificate.HttpClientSSLConnectionManager;
 import org.opensearch.dataprepper.plugins.sink.configuration.AuthTypeOptions;
@@ -178,7 +178,7 @@ public class HttpSinkService {
                 if (event.getEventHandle() != null) {
                     this.bufferedEventHandles.add(event.getEventHandle());
                 }
-                if (ThresholdValidator.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
+                if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                     final HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
                     if (failedHttpEndPointResponses != null) {
                         logFailedData(failedHttpEndPointResponses, getCurrentBufferData(currentBuffer));

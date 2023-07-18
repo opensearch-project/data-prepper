@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.accumulator;
 
 import org.apache.commons.lang3.time.StopWatch;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;

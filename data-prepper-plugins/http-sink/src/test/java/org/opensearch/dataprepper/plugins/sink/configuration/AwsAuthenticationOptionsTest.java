@@ -19,7 +19,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class AwsAuthenticationOptionsTest {
-
     private ObjectMapper objectMapper = new ObjectMapper();
     @ParameterizedTest
     @ValueSource(strings = {"us-east-1", "us-west-2", "eu-central-1"})
