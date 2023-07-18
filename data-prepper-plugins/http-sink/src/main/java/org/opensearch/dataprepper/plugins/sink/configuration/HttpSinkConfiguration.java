@@ -9,9 +9,11 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.util.HttpSinkUtil;
 
+import java.net.URL;
 import java.time.Duration;
-import java.util.List;
 
 public class HttpSinkConfiguration {
 
@@ -32,9 +34,16 @@ public class HttpSinkConfiguration {
     public static final String SSL_IS_ENABLED = "%s is enabled";
 
     public static final Duration DEFAULT_HTTP_RETRY_INTERVAL = Duration.ofSeconds(30);
+
+    private static final String HTTPS = "https";
+
+    private static final String AWS_HOST_AMAZONAWS_COM = "amazonaws.com";
+
+    private static final String AWS_HOST_API_AWS = "api.aws";
+
     @NotNull
-    @JsonProperty("urls")
-    private List<UrlConfigurationOption> urlConfigurationOptions;
+    @JsonProperty("url")
+    private String url;
 
     @JsonProperty("workers")
     private Integer workers = DEFAULT_WORKERS;
@@ -64,7 +73,7 @@ public class HttpSinkConfiguration {
     private boolean awsSigv4;
 
     @JsonProperty("buffer_type")
-    private BufferTypeOptions bufferType = BufferTypeOptions.IN_MEMORY;
+    private BufferTypeOptions bufferType = BufferTypeOptions.INMEMORY;
 
     @NotNull
     @JsonProperty("threshold")
@@ -109,6 +118,10 @@ public class HttpSinkConfiguration {
 
 
     private boolean sslCertAndKeyFileInS3;
+
+    public String getUrl() {
+        return url;
+    }
 
     public boolean isSsl() {
         return ssl;
@@ -170,10 +183,6 @@ public class HttpSinkConfiguration {
 
     public String getAcmCertificateArn() {
         return acmCertificateArn;
-    }
-
-    public List<UrlConfigurationOption> getUrlConfigurationOptions() {
-        return urlConfigurationOptions;
     }
 
     public PluginModel getCodec() {
@@ -238,5 +247,13 @@ public class HttpSinkConfiguration {
 
     public PluginModel getDlq() {
         return dlq;
+    }
+
+    public boolean isValidAWSUrl() {
+        URL parsedUrl = HttpSinkUtil.getURLByUrlString(url);
+        if(parsedUrl.getProtocol().equals(HTTPS) && (parsedUrl.getHost().contains(AWS_HOST_AMAZONAWS_COM) ||parsedUrl.getHost().contains(AWS_HOST_API_AWS))){
+            return true;
+        }
+        return false;
     }
 }

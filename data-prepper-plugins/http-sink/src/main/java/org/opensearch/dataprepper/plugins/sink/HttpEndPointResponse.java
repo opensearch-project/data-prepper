@@ -4,7 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.sink;
 
-public class HttpEndPointResponse{
+public class HttpEndPointResponse {
     private String url;
     private int statusCode;
     private String errMessage;

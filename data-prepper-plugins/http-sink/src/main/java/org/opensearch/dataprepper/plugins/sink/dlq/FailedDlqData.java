@@ -7,21 +7,19 @@ package org.opensearch.dataprepper.plugins.sink.dlq;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.opensearch.dataprepper.plugins.sink.HttpEndPointResponse;
 
-import java.util.List;
-
 public class FailedDlqData {
 
-    private final List<HttpEndPointResponse> endPointResponses;
+    private final HttpEndPointResponse endPointResponse;
     @JsonIgnore
     private final String bufferData;
 
     public FailedDlqData(final Builder builder) {
-        this.endPointResponses = builder.endPointResponses;
+        this.endPointResponse = builder.endPointResponse;
         this.bufferData = builder.bufferData;
     }
 
-    public List<HttpEndPointResponse> getEndPointResponses() {
-        return endPointResponses;
+    public HttpEndPointResponse getEndPointResponse() {
+        return endPointResponse;
     }
 
     public String getBufferData() {
@@ -34,19 +32,19 @@ public class FailedDlqData {
     @Override
     public String toString() {
         return "{" +
-                "endPointResponses=" + endPointResponses +
+                "endPointResponse=" + endPointResponse +
                 ", bufferData='" + bufferData + '\'' +
                 '}';
     }
 
     public static class Builder {
 
-        private List<HttpEndPointResponse> endPointResponses;
+        private HttpEndPointResponse endPointResponse;
 
         private String bufferData;
 
-        public Builder withEndPointResponses(List<HttpEndPointResponse> endPointResponses) {
-            this.endPointResponses = endPointResponses;
+        public Builder withEndPointResponses(HttpEndPointResponse endPointResponses) {
+            this.endPointResponse = endPointResponses;
             return this;
         }
 

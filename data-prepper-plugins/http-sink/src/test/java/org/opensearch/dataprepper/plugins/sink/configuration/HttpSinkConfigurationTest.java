@@ -11,23 +11,20 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
 import software.amazon.awssdk.regions.Region;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.opensearch.dataprepper.plugins.sink.configuration.AuthTypeOptions.HTTP_BASIC;
+import static org.opensearch.dataprepper.plugins.sink.configuration.AuthTypeOptions.UNAUTHENTICATED;
 
 public class HttpSinkConfigurationTest {
 
-    private static final String SINK_YAML = "        urls:\n" +
-            "        - url: \"https://httpbin.org/post\"\n" +
-            "          workers: 1\n" +
-            "          proxy: test\n" +
-            "          codec:\n" +
-            "            ndjson:\n" +
-            "          http_method: \"POST\"\n" +
-            "          auth_type: \"http_basic\"\n" +
+    private static final String SINK_YAML =
+            "        url: \"https://httpbin.org/post\"\n" +
             "        proxy: test-proxy\n" +
             "        codec:\n" +
             "          ndjson:\n" +
@@ -83,17 +80,17 @@ public class HttpSinkConfigurationTest {
 
     @Test
     void default_http_method_test() {
-        assertThat(new HttpSinkConfiguration().getHttpMethod(), equalTo(HTTPMethodOptions.POST));
+        assertThat(new HttpSinkConfiguration().getHttpMethod(), CoreMatchers.equalTo(HTTPMethodOptions.POST));
     }
 
     @Test
     void default_auth_type_test() {
-        assertThat(new HttpSinkConfiguration().getAuthType(),equalTo(AuthTypeOptions.UNAUTHENTICATED));
+        assertThat(new HttpSinkConfiguration().getAuthType(), equalTo(UNAUTHENTICATED));
     }
 
     @Test
-    void get_urls_test() {
-        assertThat(new HttpSinkConfiguration().getUrlConfigurationOptions(), equalTo(null));
+    void get_url_test() {
+        assertThat(new HttpSinkConfiguration().getUrl(), equalTo(null));
     }
 
     @Test
@@ -102,7 +99,7 @@ public class HttpSinkConfigurationTest {
     }
 
     @Test
-    void default_insecure_test() {
+    void default_ssl_test() {
         assertThat(new HttpSinkConfiguration().isSsl(), equalTo(false));
     }
 
@@ -123,7 +120,7 @@ public class HttpSinkConfigurationTest {
 
     @Test
     void default_buffer_type_test() {
-        assertThat(new HttpSinkConfiguration().getBufferType(), equalTo(BufferTypeOptions.IN_MEMORY));
+        assertThat(new HttpSinkConfiguration().getBufferType(), equalTo(BufferTypeOptions.INMEMORY));
     }
 
     @Test
@@ -150,21 +147,16 @@ public class HttpSinkConfigurationTest {
     void http_sink_pipeline_test_with_provided_config_options() throws JsonProcessingException {
         final HttpSinkConfiguration httpSinkConfiguration = objectMapper.readValue(SINK_YAML, HttpSinkConfiguration.class);
 
+        assertThat(httpSinkConfiguration.getUrl(),equalTo("https://httpbin.org/post"));
         assertThat(httpSinkConfiguration.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
-        assertThat(httpSinkConfiguration.getAuthType(),equalTo(AuthTypeOptions.HTTP_BASIC));
-        assertThat(httpSinkConfiguration.getBufferType(),equalTo(BufferTypeOptions.IN_MEMORY));
+        assertThat(httpSinkConfiguration.getAuthType(),equalTo(HTTP_BASIC));
+        assertThat(httpSinkConfiguration.getBufferType(),equalTo(BufferTypeOptions.INMEMORY));
         assertThat(httpSinkConfiguration.getMaxUploadRetries(),equalTo(5));
         assertThat(httpSinkConfiguration.getProxy(),equalTo("test-proxy"));
         assertThat(httpSinkConfiguration.getSslCertificateFile(),equalTo("/full/path/to/certfile.crt"));
         assertThat(httpSinkConfiguration.getSslKeyFile(),equalTo("/full/path/to/keyfile.key"));
         assertThat(httpSinkConfiguration.getWorkers(),equalTo(1));
         assertThat(httpSinkConfiguration.getDlqFile(),equalTo("/your/local/dlq-file"));
-
-        final UrlConfigurationOption urlConfigurationOption = httpSinkConfiguration.getUrlConfigurationOptions().get(0);
-        assertThat(urlConfigurationOption.getUrl(),equalTo("https://httpbin.org/post"));
-        assertThat(urlConfigurationOption.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
-        assertThat(urlConfigurationOption.getProxy(),equalTo("test"));
-        assertThat(urlConfigurationOption.getAuthType(),equalTo(AuthTypeOptions.HTTP_BASIC));
 
         final CustomHeaderOptions customHeaderOptions = httpSinkConfiguration.getCustomHeaderOptions();
 
