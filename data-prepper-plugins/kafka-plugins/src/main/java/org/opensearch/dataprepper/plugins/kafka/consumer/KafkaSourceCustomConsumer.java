@@ -224,10 +224,14 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 Record<Event> record = getRecord(consumerRecord);
                 if (record != null) {
-                    bufferAccumulator.add(record);
+                    // Always add record to acknowledgementSet before adding to
+                    // buffer because another thread may take and process
+                    // buffer contents before the event record is added
+                    // to acknowledgement set
                     if (acknowledgementSet != null) {
                         acknowledgementSet.add(record.getData());
                     }
+                    bufferAccumulator.add(record);
                 }
             }
             long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
