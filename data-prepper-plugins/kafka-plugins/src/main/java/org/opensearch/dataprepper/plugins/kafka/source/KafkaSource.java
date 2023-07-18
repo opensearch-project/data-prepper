@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.MskBrokerConnectionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
@@ -33,16 +34,17 @@ import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsum
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-import com.amazonaws.services.kafka.model.GetBootstrapBrokersRequest;
-import com.amazonaws.services.kafka.AWSKafka;
-import com.amazonaws.services.kafka.AWSKafkaClientBuilder;
-import com.amazonaws.ClientConfiguration;
-import com.amazonaws.services.kafka.model.GetBootstrapBrokersResult;
-import com.amazonaws.auth.AWSCredentialsProvider;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.auth.STSAssumeRoleSessionCredentialsProvider;
-import com.amazonaws.services.kafka.model.InternalServerErrorException;
-import com.amazonaws.services.kafka.model.ConflictException;
+import software.amazon.awssdk.services.kafka.KafkaClient;
+import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
+import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
+import software.amazon.awssdk.services.kafka.model.InternalServerErrorException;
+import software.amazon.awssdk.services.kafka.model.ConflictException;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.regions.Region;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -170,27 +172,40 @@ public class KafkaSource implements Source<Record<Event>> {
     }
 
     public String getBootStrapServersForMsk(final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig) {
-        ClientConfiguration clientConfiguration = new ClientConfiguration();
-        AWSCredentialsProvider credentialProvider;
-        if (awsIamAuthConfig == AwsIamAuthConfig.DEFAULT) {
-            credentialProvider = new DefaultAWSCredentialsProviderChain();
-        } else if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
+        AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
+        if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
             String sessionName = "data-prepper-kafka-session"+UUID.randomUUID();
-            credentialProvider = new STSAssumeRoleSessionCredentialsProvider.Builder(awsConfig.getStsRoleArn(), sessionName).build();
+            StsClient stsClient = StsClient.builder()
+                    .region(Region.of(awsConfig.getRegion()))
+                    .credentialsProvider(credentialsProvider)
+                    .build();
+            credentialsProvider = StsAssumeRoleCredentialsProvider
+                                 .builder()
+                                 .stsClient(stsClient)
+                                 .refreshRequest(
+                                     AssumeRoleRequest
+                                     .builder()
+                                     .roleArn(awsConfig.getStsRoleArn())
+                                     .roleSessionName(sessionName)
+                                     .build()
+                                 ).build();
         } else {
             throw new RuntimeException("Unknown AWS IAM auth mode");
         }
-        AWSKafka kafkaClient = AWSKafkaClientBuilder.standard()
-                .withClientConfiguration(clientConfiguration)
-                .withCredentials(credentialProvider)
-                .withRegion(awsConfig.getRegion())
+        final AwsConfig.AwsMskConfig awsMskConfig = awsConfig.getAwsMskConfig();
+        KafkaClient kafkaClient = KafkaClient.builder()
+                .credentialsProvider(credentialsProvider)
+                .region(Region.of(awsConfig.getRegion()))
                 .build();
-        GetBootstrapBrokersRequest request = new GetBootstrapBrokersRequest();
-        String clusterArn = awsConfig.getAwsMskConfig().getArn();
-        request.setClusterArn(clusterArn);
+        final GetBootstrapBrokersRequest request =
+                GetBootstrapBrokersRequest
+                .builder()
+                .clusterArn(awsMskConfig.getArn())
+                .build();
+
         int numRetries = 0;
         boolean retryable;
-        GetBootstrapBrokersResult result = null;
+        GetBootstrapBrokersResponse result = null;
         do {
             retryable = false;
             try {
@@ -205,8 +220,11 @@ public class KafkaSource implements Source<Record<Event>> {
             LOG.info("Failed to get bootstrap server information from MSK, using user configured bootstrap servers");
             return sourceConfig.getBootStrapServers();
         }
-        // TODO return this based on the broker_connection_mode
-        return result.getBootstrapBrokerStringSaslIam();
+        if (awsMskConfig.getBrokerConnectionType() == MskBrokerConnectionType.PUBLIC) {
+            return result.bootstrapBrokerStringPublicSaslIam();
+        } else {
+            return result.bootstrapBrokerStringVpcConnectivitySaslIam();
+        }
     }
 
     private Properties getConsumerProperties(final TopicConfig topicConfig) {

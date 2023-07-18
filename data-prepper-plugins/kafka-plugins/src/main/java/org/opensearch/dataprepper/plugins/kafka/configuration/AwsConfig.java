@@ -18,7 +18,7 @@ public class AwsConfig {
         private String arn;
     
         @JsonProperty("broker_connection_type")
-        private MskBrokerConnectionType brokerConnectionType;
+        private MskBrokerConnectionType brokerConnectionType = MskBrokerConnectionType.PUBLIC;
 
         public String getArn() {
             return arn;
