@@ -11,12 +11,15 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
 import software.amazon.awssdk.regions.Region;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.opensearch.dataprepper.plugins.sink.configuration.AuthTypeOptions.HTTP_BASIC;
+import static org.opensearch.dataprepper.plugins.sink.configuration.AuthTypeOptions.UNAUTHENTICATED;
 
 public class HttpSinkConfigurationTest {
 
@@ -39,7 +42,7 @@ public class HttpSinkConfigurationTest {
             "            password: \"vip\"\n" +
             "          bearer_token:\n" +
             "            token: \"\"\n" +
-            "        insecure: false\n" +
+            "        ssl: false\n" +
             "        dlq_file: \"/your/local/dlq-file\"\n" +
             "        dlq:\n" +
             "        ssl_certificate_file: \"/full/path/to/certfile.crt\"\n" +
@@ -83,12 +86,12 @@ public class HttpSinkConfigurationTest {
 
     @Test
     void default_http_method_test() {
-        assertThat(new HttpSinkConfiguration().getHttpMethod(), CoreMatchers.equalTo("POST"));
+        assertThat(new HttpSinkConfiguration().getHttpMethod(), CoreMatchers.equalTo(HTTPMethodOptions.POST));
     }
 
     @Test
     void default_auth_type_test() {
-        assertNull(new HttpSinkConfiguration().getAuthType());
+        assertThat(new HttpSinkConfiguration().getAuthType(), equalTo(UNAUTHENTICATED));
     }
 
     @Test
@@ -102,8 +105,8 @@ public class HttpSinkConfigurationTest {
     }
 
     @Test
-    void default_insecure_test() {
-        assertThat(new HttpSinkConfiguration().isInsecure(), equalTo(false));
+    void default_ssl_test() {
+        assertThat(new HttpSinkConfiguration().isSsl(), equalTo(false));
     }
 
     @Test
@@ -123,7 +126,7 @@ public class HttpSinkConfigurationTest {
 
     @Test
     void default_buffer_type_test() {
-        assertThat(new HttpSinkConfiguration().getBufferType(), equalTo("in_memory"));
+        assertThat(new HttpSinkConfiguration().getBufferType(), equalTo(BufferTypeOptions.INMEMORY));
     }
 
     @Test
@@ -150,9 +153,9 @@ public class HttpSinkConfigurationTest {
     void http_sink_pipeline_test_with_provided_config_options() throws JsonProcessingException {
         final HttpSinkConfiguration httpSinkConfiguration = objectMapper.readValue(SINK_YAML, HttpSinkConfiguration.class);
 
-        assertThat(httpSinkConfiguration.getHttpMethod(),equalTo("POST"));
-        assertThat(httpSinkConfiguration.getAuthType(),equalTo("http_basic"));
-        assertThat(httpSinkConfiguration.getBufferType(),equalTo("in_memory"));
+        assertThat(httpSinkConfiguration.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
+        assertThat(httpSinkConfiguration.getAuthType(),equalTo(HTTP_BASIC));
+        assertThat(httpSinkConfiguration.getBufferType(),equalTo(BufferTypeOptions.INMEMORY));
         assertThat(httpSinkConfiguration.getMaxUploadRetries(),equalTo(5));
         assertThat(httpSinkConfiguration.getProxy(),equalTo("test-proxy"));
         assertThat(httpSinkConfiguration.getSslCertificateFile(),equalTo("/full/path/to/certfile.crt"));
@@ -162,9 +165,9 @@ public class HttpSinkConfigurationTest {
 
         final UrlConfigurationOption urlConfigurationOption = httpSinkConfiguration.getUrlConfigurationOptions().get(0);
         assertThat(urlConfigurationOption.getUrl(),equalTo("https://httpbin.org/post"));
-        assertThat(urlConfigurationOption.getHttpMethod(),equalTo("POST"));
+        assertThat(urlConfigurationOption.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
         assertThat(urlConfigurationOption.getProxy(),equalTo("test"));
-        assertThat(urlConfigurationOption.getAuthType(),equalTo("http_basic"));
+        assertThat(urlConfigurationOption.getAuthType(),equalTo(HTTP_BASIC));
 
         final CustomHeaderOptions customHeaderOptions = httpSinkConfiguration.getCustomHeaderOptions();
 
