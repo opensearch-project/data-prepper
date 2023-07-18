@@ -79,6 +79,13 @@ class SNSSinkConfigTest {
                 "        codec:\n" +
                 "          ndjson:\n" +
                 "        max_retries: 10\n" +
+                "        dlq_file: /test/dlq-file.log\n" +
+                "        dlq:\n" +
+                "          s3:\n" +
+                "            bucket: test\n" +
+                "            key_path_prefix: test\n" +
+                "            region: ap-south-1\n" +
+                "            sts_role_arn: test-role-arn\n" +
                 "        threshold:\n" +
                 "          event_count: 2000\n" +
                 "          maximum_size: 100mb\n" +
@@ -93,5 +100,7 @@ class SNSSinkConfigTest {
         assertThat(snsSinkConfig.getThresholdOptions().getMaximumSize().getBytes(),equalTo(ByteCount.parse("100mb").getBytes()));
         assertThat(snsSinkConfig.getBufferType(),equalTo(BufferTypeOptions.LOCAL_FILE));
         assertThat(snsSinkConfig.getAwsAuthenticationOptions().getAwsStsHeaderOverrides().get("test"),equalTo("test"));
+        assertThat(snsSinkConfig.getDlqStsRegion(),equalTo("ap-south-1"));
+        assertThat(snsSinkConfig.getDlqStsRoleARN(),equalTo("test-role-arn"));
     }
 }
