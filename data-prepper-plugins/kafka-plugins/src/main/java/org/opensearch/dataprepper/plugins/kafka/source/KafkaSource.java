@@ -220,10 +220,14 @@ public class KafkaSource implements Source<Record<Event>> {
             LOG.info("Failed to get bootstrap server information from MSK, using user configured bootstrap servers");
             return sourceConfig.getBootStrapServers();
         }
-        if (awsMskConfig.getBrokerConnectionType() == MskBrokerConnectionType.PUBLIC) {
-            return result.bootstrapBrokerStringPublicSaslIam();
-        } else {
-            return result.bootstrapBrokerStringVpcConnectivitySaslIam();
+        switch (awsMskConfig.getBrokerConnectionType()) {
+            case PUBLIC:
+                return result.bootstrapBrokerStringPublicSaslIam();
+            case MULTI_VPC:
+                return result.bootstrapBrokerStringVpcConnectivitySaslIam();
+            default:
+            case SINGLE_VPC:
+                return result.bootstrapBrokerStringSaslIam();
         }
     }
 
