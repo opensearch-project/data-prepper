@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.processor.translate;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.Valid;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,11 +10,8 @@ import java.util.Optional;
 
 public class FilePathParser {
     @JsonProperty("mappings")
+    @Valid
     private List<MappingsParameterConfig> fileMappingConfigs;
-
-    public List<MappingsParameterConfig> getFileMappingConfigs(){
-        return fileMappingConfigs;
-    }
 
     public Optional<List<MappingsParameterConfig>> getCombinedMappings(List<MappingsParameterConfig> mappingConfigs) {
         if(Objects.isNull(mappingConfigs) || mappingConfigs.isEmpty()){

@@ -42,20 +42,23 @@ public class TranslateProcessorConfig {
     }
 
     public List<MappingsParameterConfig> getCombinedParameterConfigs() {
+        if(Objects.isNull(combinedParameterConfigs)){
+            combinedParameterConfigs = mappingsParameterConfigs;
+        }
         return combinedParameterConfigs;
     }
 
-    @AssertTrue(message = "Configure either the mappings or file_path option (Not both).")
+    @AssertTrue(message = "Please ensure that at least one of the options, either \"mappings\" or \"file_path\", is properly configured.")
     public boolean hasMappings() {
         return (Objects.nonNull(mappingsParameterConfigs) && !mappingsParameterConfigs.isEmpty()) || Objects.nonNull(filePath);
     }
 
-    @AssertTrue(message = "mappings option should not be empty.")
+    @AssertTrue(message = "\"mappings\" option should not be empty.")
     public boolean isMappingsValid() {
-        return Objects.nonNull(mappingsParameterConfigs) && !mappingsParameterConfigs.isEmpty();
+        return Objects.nonNull(mappingsParameterConfigs);
     }
 
-    @AssertTrue(message = "file_path option not configured properly")
+    @AssertTrue(message = "The file specified in the \"file_path\" option is not properly configured.")
     public boolean isFileValid() {
         return Objects.isNull(filePath) || readFileMappings(filePath);
     }
