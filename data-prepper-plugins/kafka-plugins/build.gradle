@@ -36,7 +36,7 @@ dependencies {
     testImplementation 'org.apache.kafka:kafka_2.13:3.4.0:test'
     testImplementation 'org.apache.curator:curator-test:5.5.0'
     testImplementation 'io.confluent:kafka-schema-registry:7.4.0'
-    testImplementation 'junit:junit:4.13.1'
+    testImplementation testLibs.junit.vintage
     testImplementation 'org.apache.kafka:kafka-clients:3.4.0:test'
     testImplementation 'org.apache.kafka:connect-json:3.4.0'
 }
@@ -52,7 +52,6 @@ sourceSets {
             runtimeClasspath += main.output + test.output
             srcDir file('src/integrationTest/java')
         }
-        //resources.srcDir file('src/integrationTest/resources')
     }
 }
 
@@ -66,6 +65,14 @@ task integrationTest(type: Test) {
     testClassesDirs = sourceSets.integrationTest.output.classesDirs
 
     useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.kafka.bootstrap_servers', System.getProperty('tests.kafka.bootstrap_servers')
+    systemProperty 'tests.kafka.saslssl_bootstrap_servers', System.getProperty('tests.kafka.saslssl_bootstrap_servers')
+    systemProperty 'tests.kafka.ssl_bootstrap_servers', System.getProperty('tests.kafka.ssl_bootstrap_servers')
+    systemProperty 'tests.kafka.saslplain_bootstrap_servers', System.getProperty('tests.kafka.saslplain_bootstrap_servers')
+    systemProperty 'tests.kafka.username', System.getProperty('tests.kafka.username')
+    systemProperty 'tests.kafka.password', System.getProperty('tests.kafka.password')
 
     filter {
         includeTestsMatching '*IT'
