@@ -44,18 +44,17 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     public TranslateProcessor(PluginMetrics pluginMetrics, final TranslateProcessorConfig translateProcessorConfig, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
-        mappingsConfig = translateProcessorConfig.getMappingsParameterConfigs();
-        mappingsConfig.forEach(MappingsParameterConfig::parseMappings);
-        parseFile(translateProcessorConfig.getFilePath());
-    }
-
-    private void parseFile(String filePath){
-        //todo
+        mappingsConfig = translateProcessorConfig.getCombinedParameterConfigs();
+        Optional.ofNullable(mappingsConfig)
+                .ifPresent(configs -> configs.forEach(MappingsParameterConfig::parseMappings));
     }
 
     @Override
     public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
         for (final Record<Event> record : records) {
+            if(Objects.isNull(mappingsConfig)){
+                continue;
+            }
             final Event recordEvent = record.getData();
             for (MappingsParameterConfig mappingConfig : mappingsConfig) {
                 try {

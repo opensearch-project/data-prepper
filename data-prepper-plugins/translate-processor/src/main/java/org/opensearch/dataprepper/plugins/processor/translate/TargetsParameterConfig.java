@@ -33,9 +33,12 @@ public class TargetsParameterConfig {
     private RegexParameterConfiguration regexParameterConfig;
     @JsonProperty("default")
     private String defaultValue;
-    @JsonProperty("target_type")
+    @JsonProperty("type")
     private TargetType targetType = TargetType.STRING;
 
+    public TargetsParameterConfig(){
+        converter = TargetType.STRING.getTargetConverter();
+    }
     public TargetsParameterConfig(Map<String, Object> map, String target, RegexParameterConfiguration regexParameterConfig, String translateWhen, String defaultValue, TargetType targetType) {
         this.targetType = Optional
                 .ofNullable(targetType)
@@ -102,6 +105,9 @@ public class TargetsParameterConfig {
 
     @AssertTrue(message = "The mapped values do not match the target type provided")
     public boolean isMapTypeValid() {
+        if(Objects.isNull(map)){
+            return true;
+        }
         return map.keySet().stream().allMatch(key -> checkTargetValueType(map.get(key)));
     }
 
