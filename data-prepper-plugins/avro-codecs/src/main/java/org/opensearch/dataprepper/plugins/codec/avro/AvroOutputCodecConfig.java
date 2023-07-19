@@ -25,6 +25,8 @@ public class AvroOutputCodecConfig {
 
     @JsonProperty("exclude_keys")
     private List<String> excludeKeys;
+    @Valid
+    @Size(max = 0, message = "Schema from schema registry is not supported.")
     @JsonProperty("schema_registry_url")
     private String schemaRegistryUrl;
 

@@ -34,7 +34,6 @@ pipeline:
                 "     {\"name\": \"name\", \"type\": \"string\"}," +
                 "     {\"name\": \"age\", \"type\": \"int\"}]" +
                 "}";
-            schema_registry_url: https://your.schema.registry.url.com
             exclude_keys:
               - s3
         buffer_type: in_memory
@@ -46,7 +45,6 @@ pipeline:
 
 1) `schema`: A json string that user can provide in the yaml file itself. The codec parses schema object from this schema string. 
 2) `exclude_keys`: Those keys of the events that the user wants to exclude while converting them to avro records.
-3) `schema_registry_url`: Another way of providing the schema through schema registry.
 
 ### Note:
 
