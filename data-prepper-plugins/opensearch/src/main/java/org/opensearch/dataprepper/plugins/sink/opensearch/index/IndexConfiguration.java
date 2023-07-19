@@ -57,7 +57,7 @@ public class IndexConfiguration {
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
     private IndexType indexType;
-    private TemplateType templateType;
+    private final TemplateType templateType;
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
@@ -90,8 +90,8 @@ public class IndexConfiguration {
         this.s3AwsExternalId = builder.s3AwsStsExternalId;
         this.s3Client = builder.s3Client;
 
-        determineTemplateType(builder);
-        this.indexTemplate = readIndexTemplate(builder.es6, builder.templateFile, indexType, templateType);
+        this.templateType = builder.templateType != null ? builder.templateType : TemplateType.V1;
+        this.indexTemplate = readIndexTemplate(builder.templateFile, indexType, templateType);
 
         if (builder.numReplicas > 0) {
             indexTemplate.putIfAbsent(SETTINGS, new HashMap<>());
@@ -141,11 +141,6 @@ public class IndexConfiguration {
         } else {
             this.indexType  = IndexType.CUSTOM;
         }
-    }
-
-    private void determineTemplateType(Builder builder) {
-        this.templateType = builder.es6 ? TemplateType.V1 :
-                (builder.templateType != null ? builder.templateType : TemplateType.V1);
     }
 
     public static IndexConfiguration readIndexConfig(final PluginSetting pluginSetting) {
@@ -303,7 +298,7 @@ public class IndexConfiguration {
      * @param templateType
      * @return
      */
-    private Map<String, Object> readIndexTemplate(final boolean es6, final String templateFile, final IndexType indexType, TemplateType templateType) {
+    private Map<String, Object> readIndexTemplate(final String templateFile, final IndexType indexType, TemplateType templateType) {
         try {
             URL templateURL = null;
             InputStream s3TemplateFile = null;

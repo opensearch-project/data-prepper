@@ -23,6 +23,7 @@ import org.opensearch.client.opensearch.indices.TemplateMapping;
 import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.client.transport.endpoints.SimpleEndpoint;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BackendVersion;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -76,7 +77,7 @@ class V1TemplateStrategy implements TemplateStrategy {
     private void putTemplate(final IndexConfiguration indexConfiguration,
                              final OpenSearchIndicesClient openSearchIndicesClient,
                              final PutTemplateRequest putTemplateRequest) throws IOException {
-        if (indexConfiguration.isEs6()) {
+        if (BackendVersion.ES6.equals(indexConfiguration.getBackendVersion())) {
             final JsonEndpoint<PutTemplateRequest, PutTemplateResponse, ErrorResponse> endpoint = es6PutTemplateEndpoint(putTemplateRequest);
             openSearchIndicesClient._transport().performRequest(putTemplateRequest, endpoint, openSearchIndicesClient._transportOptions());
         } else {
