@@ -6,9 +6,11 @@
 package org.opensearch.dataprepper.plugins.sink.buffer;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class InMemoryBuffer implements Buffer {
-    private final ArrayList<byte[]> eventsBuffered;
+    private final List<byte[]> eventsBuffered;
     private int bufferSize = 0;
 
     InMemoryBuffer() {
@@ -38,8 +40,9 @@ public class InMemoryBuffer implements Buffer {
     }
 
     @Override
-    public ArrayList<byte[]> getBufferedData() {
-        return eventsBuffered;
+    public List<byte[]> getBufferedData() {
+        Collections.unmodifiableList(eventsBuffered);
+        return Collections.unmodifiableList(eventsBuffered);
     }
 
     @Override

@@ -5,81 +5,51 @@
 
 package org.opensearch.dataprepper.plugins.sink.client;
 
-import io.micrometer.core.instrument.Counter;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
-import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
-import org.opensearch.dataprepper.plugins.sink.exception.RetransmissionLimitException;
-import org.opensearch.dataprepper.plugins.sink.threshold.ThresholdCheck;
-import org.opensearch.dataprepper.plugins.sink.utils.LogPusher;
-import org.opensearch.dataprepper.plugins.sink.utils.SinkStopWatch;
+import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
+import org.opensearch.dataprepper.plugins.sink.push_condition.CloudWatchLogsLimits;
+import org.opensearch.dataprepper.plugins.sink.time.SinkStopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
 import java.util.concurrent.locks.ReentrantLock;
 
-/*
-   TODO: Can add DLQ logic here for sending these logs to a particular DLQ for error checking. (Explicitly for bad formatted logs).
-    as currently the logs that are able to be published but rejected by CloudWatch Logs will simply be deleted if not deferred to
-    a backup storage.
-*/
-//TODO: Must also consider if the customer makes the logEvent size bigger than the send request size.
-//TODO: Can inject another class for the stopWatch functionality.
+import static java.util.concurrent.Executors.newCachedThreadPool; //TODO: Can implement a more strict pooling method if needed.
 
 public class CloudWatchLogsService {
-    public static final int APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE = 26; //Size of overhead for each log event message.
-    public static final String CLOUDWATCH_LOGS_EVENTS_SUCCEEDED = "cloudWatchLogsEventsSucceeded";
-    public static final String CLOUDWATCH_LOGS_EVENTS_FAILED = "cloudWatchLogsEventsFailed";
-    public static final String CLOUDWATCH_LOGS_REQUESTS_SUCCEEDED = "cloudWatchLogsRequestsSucceeded";
-    public static final String CLOUDWATCH_LOGS_REQUESTS_FAILED = "cloudWatchLogsRequestsFailed";
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsService.class);
-    private static final int RETRY_THREAD_ERROR_CAP = 3;
-    private final CloudWatchLogsClient cloudWatchLogsClient;
+    private static final int MAX_BLOCKING_QUEUE_SIZE = 10;
     private final Buffer buffer;
-    private final ThresholdCheck thresholdCheck;
-    private final List<EventHandle> bufferedEventHandles;
-    private final String logGroup;
-    private final String logStream;
-    private final int retryCount;
-    private final long backOffTimeBase;
-    private final Counter logEventSuccessCounter;
-    private final Counter requestSuccessCount;
-    private final Counter logEventFailCounter;
-    private final Counter requestFailCount;
+    private final CloudWatchLogsLimits cloudWatchLogsLimits;
+    private List<EventHandle> bufferedEventHandles;
+    private final BlockingQueue<ThreadTaskEvents> taskQueue;
     private final SinkStopWatch sinkStopWatch;
-    private final ReentrantLock reentrantLock;
-    private final LogPusher logPusher;
+    private final ReentrantLock bufferLock;
+    private final Executor sinkThreadManager;
+    private final CloudWatchLogsDispatcher dispatcher;
 
-    public CloudWatchLogsService(final CloudWatchLogsClient cloudWatchLogsClient, final CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig, final Buffer buffer,
-                                 final PluginMetrics pluginMetrics, final ThresholdCheck thresholdCheck, final int retryCount, final long backOffTimeBase) {
+    public CloudWatchLogsService(final Buffer buffer,
+                                 final CloudWatchLogsLimits cloudWatchLogsLimits,
+                                 final CloudWatchLogsDispatcher dispatcher) {
 
-        this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.buffer = buffer;
-        this.logGroup = cloudWatchLogsSinkConfig.getLogGroup();
-        this.logStream = cloudWatchLogsSinkConfig.getLogStream();
-        this.thresholdCheck = thresholdCheck;
-
-        this.retryCount = retryCount;
-        this.backOffTimeBase = backOffTimeBase;
-
+        this.dispatcher = dispatcher;
         this.bufferedEventHandles = new ArrayList<>();
-        this.logEventSuccessCounter = pluginMetrics.counter(CLOUDWATCH_LOGS_EVENTS_SUCCEEDED);
-        this.requestFailCount = pluginMetrics.counter(CLOUDWATCH_LOGS_REQUESTS_FAILED);
-        this.logEventFailCounter = pluginMetrics.counter(CLOUDWATCH_LOGS_EVENTS_FAILED);
-        this.requestSuccessCount = pluginMetrics.counter(CLOUDWATCH_LOGS_REQUESTS_SUCCEEDED);
+        this.cloudWatchLogsLimits = cloudWatchLogsLimits;
+        this.taskQueue = new ArrayBlockingQueue<>(MAX_BLOCKING_QUEUE_SIZE);
 
-        reentrantLock = new ReentrantLock();
-
+        bufferLock = new ReentrantLock();
         sinkStopWatch = new SinkStopWatch();
-
-        this.logPusher = new LogPusher(logEventSuccessCounter, logEventFailCounter, requestSuccessCount, requestFailCount, retryCount, backOffTimeBase);
+        sinkThreadManager = newCachedThreadPool();
     }
 
     /**
@@ -87,94 +57,55 @@ public class CloudWatchLogsService {
      * Implements simple conditional buffer. (Sends once batch size, request size in bytes, or time limit is reached)
      * @param logs - Collection of Record events which hold log data.
      */
-    public void output(final Collection<Record<Event>> logs) {
-        reentrantLock.lock();
+    public void processLogEvents(final Collection<Record<Event>> logs) {
+        sinkStopWatch.startIfNotRunning();
+        for (Record<Event> log: logs) {
+            int logLength = log.getData().toJsonString().length();
 
-        int threadRetries = 0;
-        boolean processedLogsSuccessfully = false;
+            if (cloudWatchLogsLimits.isGreaterThanMaxEventSize(logLength)) {
+                LOG.warn("Event blocked due to Max Size restriction! {Event Size: " + (logLength + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE) + " bytes}");
+                continue;
+            }
 
-        while (threadRetries < RETRY_THREAD_ERROR_CAP) {
-            processedLogsSuccessfully = processLogEvents(logs);
+            long time = sinkStopWatch.getStopWatchTimeSeconds();
 
-            if (processedLogsSuccessfully) {
-                threadRetries = RETRY_THREAD_ERROR_CAP;
+            bufferLock.lock();
+
+            int bufferSize = buffer.getBufferSize();
+            int bufferEventCount = buffer.getEventCount();
+            int bufferEventCountWithEvent = bufferEventCount + 1;
+            int bufferSizeWithAddedEvent = bufferSize + logLength;
+
+            if ((cloudWatchLogsLimits.isGreaterThanLimitReached(time, bufferSizeWithAddedEvent, bufferEventCountWithEvent) && (bufferEventCount > 0))) {
+                stageLogEvents();
+                addToBuffer(log);
+            } else if (cloudWatchLogsLimits.isEqualToLimitReached(bufferSizeWithAddedEvent, bufferEventCountWithEvent)) {
+                addToBuffer(log);
+                stageLogEvents();
             } else {
-                threadRetries++;
-            }
-        }
-
-        if (processedLogsSuccessfully) {
-            LOG.info("Successfully processed logs.");
-        } else {
-            LOG.warn("Failed to process logs.");
-            //TODO: Insert DLQ logic as a last resort if we cannot manage to process logs prior to this point.
-            buffer.clearBuffer();
-        }
-
-        reentrantLock.unlock();
-    }
-
-    private boolean processLogEvents(final Collection<Record<Event>> logs) {
-        try {
-            sinkStopWatch.startIfNotRunning();
-
-            for (Record<Event> log: logs) {
-                String logJsonString = log.getData().toJsonString();
-                int logLength = logJsonString.length();
-
-                if (thresholdCheck.isGreaterThanMaxEventSize(logLength + APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE)) {
-                    LOG.warn("Event blocked due to Max Size restriction! {Event Size: " + (logLength + APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE) + " bytes}");
-                    continue;
-                }
-
-                int bufferSizeWithOverhead = (buffer.getBufferSize() + (buffer.getEventCount() * APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
-                if ((thresholdCheck.isGreaterThanThresholdReached(sinkStopWatch.getStopWatchTimeSeconds(),  bufferSizeWithOverhead + logLength + APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE, buffer.getEventCount() + 1) && (buffer.getEventCount() > 0))) {
-                    pushLogs();
-                }
-
-                if (log.getData().getEventHandle() != null) {
-                    bufferedEventHandles.add(log.getData().getEventHandle());
-                }
-                buffer.writeEvent(logJsonString.getBytes());
+                addToBuffer(log);
             }
 
-            runExitCheck();
-
-            return true;
-        } catch (InterruptedException e) {
-            LOG.error("Caught InterruptedException while attempting to publish logs!");
-            return false;
+            bufferLock.unlock();
         }
     }
 
-    private void pushLogs() throws InterruptedException {
+    private void stageLogEvents() {
         sinkStopWatch.stopAndResetStopWatch();
-        sinkStopWatch.startStopWatch();
 
-        boolean succeededTransmission = logPusher.pushLogs(buffer, cloudWatchLogsClient, logGroup, logStream);
-        releaseEventHandles(succeededTransmission);
+        ThreadTaskEvents dataToPush = new ThreadTaskEvents(buffer.getBufferedData(), bufferedEventHandles);
+        taskQueue.add(dataToPush);
 
-        if (!succeededTransmission) {
-            throw new RetransmissionLimitException("Error, timed out trying to push logs! (Max retry_count reached: {" + retryCount + "})");
-        }
+        bufferedEventHandles = new ArrayList<>();
+        buffer.clearBuffer();
+
+        sinkThreadManager.execute(dispatcher);
     }
 
-    private void runExitCheck() throws InterruptedException {
-        int bufferSizeWithOverHead = (buffer.getBufferSize() + (buffer.getEventCount() * APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
-        if ((thresholdCheck.isEqualToThresholdReached(bufferSizeWithOverHead, buffer.getEventCount()) && (buffer.getEventCount() > 0))) {
-            pushLogs();
+    private void addToBuffer(final Record<Event> log) {
+        if (log.getData().getEventHandle() != null) {
+            bufferedEventHandles.add(log.getData().getEventHandle());
         }
-    }
-
-    private void releaseEventHandles(final boolean result) {
-        if (bufferedEventHandles.isEmpty()) {
-            return;
-        }
-
-        for (EventHandle eventHandle : bufferedEventHandles) {
-            eventHandle.release(result);
-        }
-
-        bufferedEventHandles.clear();
+        buffer.writeEvent(log.getData().toString().getBytes());
     }
 }

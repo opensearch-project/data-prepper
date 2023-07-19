@@ -20,6 +20,7 @@ public class ThresholdConfig {
     public static final int DEFAULT_RETRY_COUNT = 5;
     public static final int DEFAULT_LOG_SEND_INTERVAL_TIME = 60;
     public static final int DEFAULT_BACKOFF_TIME = 500;
+    public static final int CONVERT_TO_BYTES_FROM_KB = 1024;
 
     @JsonProperty("batch_size")
     @Size(min = 1, max = 10000, message = "batch_size amount should be between 1 to 10000")
@@ -49,8 +50,8 @@ public class ThresholdConfig {
         return batchSize;
     }
 
-    public int getMaxEventSize() {
-        return maxEventSize;
+    public int getMaxEventSizeBytes() {
+        return maxEventSize * CONVERT_TO_BYTES_FROM_KB;
     }
 
     public int getMaxRequestSize() {

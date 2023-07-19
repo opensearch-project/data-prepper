@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.buffer;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Buffer that handles the temporary storage of
@@ -31,7 +32,7 @@ public interface Buffer {
 
     byte[] popEvent();
 
-    ArrayList<byte[]> getBufferedData();
+    List<byte[]> getBufferedData();
 
     void clearBuffer();
 }
