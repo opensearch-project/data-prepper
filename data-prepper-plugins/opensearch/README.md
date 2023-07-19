@@ -93,7 +93,7 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if both `serverless` and `es_6` are `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling. 
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` and `backend_version` is `null`, otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling. 
 
 ```
     APM trace analytics raw span data type example:
@@ -197,7 +197,7 @@ With the `document_root_key` set to `status`. The document structure would be `{
     duration: "15 ms"
 }
 ```
-- `es_6`: A boolean flag indicating whether the sink backend version is Elasticsearch 6 or above (i.e. Elasticsearch 7.x or OpenSearch). Default to `false`.
+- `backend_version`: A String indicating whether the sink backend version is Elasticsearch 6 or above (i.e. Elasticsearch 7.x or OpenSearch). `es_6` represents Elasticsearch 6; `null` represents Elasticsearch 7.x or OpenSearch. Default to `null`.
 
 ### <a name="aws_configuration">AWS Configuration</a>
 

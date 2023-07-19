@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BackendVersion;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -35,14 +36,15 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_OPTION;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.BACKEND_VERSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.ES_6;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.TEMPLATE_TYPE;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConstants.RAW_DEFAULT_TEMPLATE_FILE;
@@ -376,22 +378,22 @@ public class IndexConfigurationTests {
     }
 
     @Test
-    public void testReadIndexConfig_es6Default() {
+    public void testReadIndexConfig_backendVersionDefault() {
         final Map<String, Object> metadata = initializeConfigMetaData(
                 null, "foo", null, null, null, null);
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
-        assertFalse(indexConfiguration.isEs6());
+        assertNull(indexConfiguration.getBackendVersion());
     }
 
     @Test
     public void testReadIndexConfig_es6Override() {
         final Map<String, Object> metadata = initializeConfigMetaData(
                 null, "foo", null, null, null, null);
-        metadata.put(ES_6, true);
+        metadata.put(BACKEND_VERSION, "es_6");
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
-        assertTrue(indexConfiguration.isEs6());
+        assertEquals(indexConfiguration.getBackendVersion(), BackendVersion.ES6);
         assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
     }
 

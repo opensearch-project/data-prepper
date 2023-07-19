@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BackendVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
@@ -47,7 +48,7 @@ public class IndexConfiguration {
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
-    public static final String ES_6 = "es_6";
+    public static final String BACKEND_VERSION = "backend_version";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
@@ -66,7 +67,7 @@ public class IndexConfiguration {
     private final String s3AwsExternalId;
     private final S3Client s3Client;
     private final boolean serverless;
-    private final boolean es6;
+    private final BackendVersion backendVersion;
     private final String documentRootKey;
 
     private static final String S3_PREFIX = "s3://";
@@ -75,7 +76,7 @@ public class IndexConfiguration {
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
         this.serverless = builder.serverless;
-        this.es6 = builder.es6;
+        this.backendVersion = builder.backendVersion;
         determineIndexType(builder);
 
         this.s3AwsRegion = builder.s3AwsRegion;
@@ -127,7 +128,7 @@ public class IndexConfiguration {
             indexType = mappedIndexType.orElseThrow(
                     () -> new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
                     + IndexType.getIndexTypeValues()));
-        } else if (builder.serverless || builder.es6) {
+        } else if (builder.serverless || BackendVersion.ES6.equals(builder.backendVersion)) {
             this.indexType = IndexType.MANAGEMENT_DISABLED;
         } else {
             this.indexType  = IndexType.CUSTOM;
@@ -193,8 +194,8 @@ public class IndexConfiguration {
         final String documentRootKey = pluginSetting.getStringOrDefault(DOCUMENT_ROOT_KEY, null);
         builder.withDocumentRootKey(documentRootKey);
 
-        final boolean isEs6 = pluginSetting.getBooleanOrDefault(ES_6, false);
-        builder.withEs6(isEs6);
+        final String backendVersion = pluginSetting.getStringOrDefault(BACKEND_VERSION, null);
+        builder.withBackendVersion(backendVersion);
 
         return builder.build();
     }
@@ -255,8 +256,8 @@ public class IndexConfiguration {
         return serverless;
     }
 
-    public boolean isEs6() {
-        return es6;
+    public BackendVersion getBackendVersion() {
+        return backendVersion;
     }
 
     public String getDocumentRootKey() {
@@ -327,7 +328,7 @@ public class IndexConfiguration {
         private String s3AwsStsExternalId;
         private S3Client s3Client;
         private boolean serverless;
-        private boolean es6;
+        private BackendVersion backendVersion;
         private String documentRootKey;
 
         public Builder withIndexAlias(final String indexAlias) {
@@ -435,8 +436,8 @@ public class IndexConfiguration {
             return this;
         }
 
-        public Builder withEs6(final boolean es6) {
-            this.es6 = es6;
+        public Builder withBackendVersion(final String backendVersion) {
+            this.backendVersion = backendVersion != null ? BackendVersion.fromTypeName(backendVersion) : null;
             return this;
         }
 
