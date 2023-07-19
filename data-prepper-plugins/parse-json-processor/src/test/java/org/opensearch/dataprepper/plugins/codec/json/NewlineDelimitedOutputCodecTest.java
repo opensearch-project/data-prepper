@@ -47,7 +47,7 @@ public class NewlineDelimitedOutputCodecTest {
         this.numberOfRecords = numberOfRecords;
         NdjsonOutputCodec ndjsonOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        ndjsonOutputCodec.start(outputStream);
+        ndjsonOutputCodec.start(outputStream, null, null);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
             ndjsonOutputCodec.writeEvent(event, outputStream, null);
