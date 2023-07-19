@@ -2,7 +2,6 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.dlq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
@@ -34,14 +33,13 @@ public class FailedBulkOperationConverter {
     public DlqObject convertToDlqObject(final FailedBulkOperation failedBulkOperation) {
 
         final BulkOperationWrapper bulkOperationWithHandle = failedBulkOperation.getBulkOperation();
-        final BulkOperation bulkOperation = bulkOperationWithHandle.getBulkOperation();
         final BulkResponseItem bulkResponseItem = failedBulkOperation.getBulkResponseItem();
 
-        final Object document = convertDocumentToGenericMap(bulkOperation);
+        final Object document = convertDocumentToGenericMap(bulkOperationWithHandle);
 
         final FailedDlqData.Builder failedDlqDataBuilder = FailedDlqData.builder()
-            .withIndex(bulkOperation.index().index())
-            .withIndexId(bulkOperation.index().id())
+            .withIndex(bulkOperationWithHandle.getIndex())
+            .withIndexId(bulkOperationWithHandle.getId())
             .withDocument(document);
 
         if (bulkResponseItem != null) {
@@ -61,8 +59,8 @@ public class FailedBulkOperationConverter {
             .build();
     }
 
-    private Object convertDocumentToGenericMap(final BulkOperation bulkOperation) {
-        final SerializedJson document = (SerializedJson) bulkOperation.index().document();
+    private Object convertDocumentToGenericMap(final BulkOperationWrapper bulkOperation) {
+        final SerializedJson document = (SerializedJson) bulkOperation.getDocument();
         final byte[] documentBytes = document.getSerializedJson();
         final String jsonString = new String(documentBytes, StandardCharsets.UTF_8);
 

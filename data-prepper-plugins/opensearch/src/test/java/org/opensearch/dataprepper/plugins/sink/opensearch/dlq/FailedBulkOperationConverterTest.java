@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.client.opensearch._types.ErrorCause;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
+import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.dataprepper.model.failures.DlqObject;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
@@ -52,11 +53,22 @@ public class FailedBulkOperationConverterTest {
         failureMessage = UUID.randomUUID().toString();
         failure = new Exception(failureMessage);
         bulkOperation = mock(BulkOperation.class);
+
         final IndexOperation indexOperation = mock(IndexOperation.class);
-        when(bulkOperation.index()).thenReturn(indexOperation);
         when(indexOperation.index()).thenReturn(testIndex);
         when(indexOperation.document()).thenReturn(document);
         when(indexOperation.id()).thenReturn(testId);
+
+        final CreateOperation createOperation = mock(CreateOperation.class);
+        when(createOperation.index()).thenReturn(testIndex);
+        when(createOperation.document()).thenReturn(document);
+        when(createOperation.id()).thenReturn(testId);
+
+        when(bulkOperation.isIndex()).thenReturn(true);
+        when(bulkOperation.index()).thenReturn(indexOperation);
+        when(bulkOperation.isCreate()).thenReturn(false);
+        when(bulkOperation.create()).thenReturn(createOperation);
+
         final ErrorCause errorCause = mock(ErrorCause.class);
         bulkResponseItem = mock(BulkResponseItem.class);
         when(bulkResponseItem.status()).thenReturn(RestStatus.INTERNAL_SERVER_ERROR.getStatus());
@@ -74,6 +86,22 @@ public class FailedBulkOperationConverterTest {
             .withBulkResponseItem(bulkResponseItem)
             .withFailure(failure)
             .build();
+
+        final DlqObject result = converter.convertToDlqObject(testData);
+
+        validateResponse(result, errorReason);
+    }
+
+    @Test
+    public void testConvertActionCreateToDlqObject() {
+        when(bulkOperation.isIndex()).thenReturn(false);
+        when(bulkOperation.isCreate()).thenReturn(true);
+
+        final FailedBulkOperation testData = FailedBulkOperation.builder()
+                .withBulkOperation(new BulkOperationWrapper(bulkOperation))
+                .withBulkResponseItem(bulkResponseItem)
+                .withFailure(failure)
+                .build();
 
         final DlqObject result = converter.convertToDlqObject(testData);
 
