@@ -34,7 +34,8 @@ class TranslateProcessorConfigTest {
     }
 
     @Test
-    void test_no_mappings_present(){
+    void test_no_mappings_present() throws NoSuchFieldException, IllegalAccessException {
+        setField(TranslateProcessorConfig.class, translateProcessorConfig, "mappingsParameterConfigs", null);
         assertFalse(translateProcessorConfig.isMappingsValid());
     }
 

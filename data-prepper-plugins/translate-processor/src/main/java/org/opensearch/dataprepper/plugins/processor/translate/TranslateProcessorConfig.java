@@ -12,6 +12,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -71,6 +73,8 @@ public class TranslateProcessorConfig {
             optionalCombinedConfigs.ifPresent(combinedConfigs -> combinedParameterConfigs = combinedConfigs);
             return Optional.ofNullable(combinedParameterConfigs).map(configs -> true).orElse(false);
         } catch (IOException ex) {
+            Logger LOG = LoggerFactory.getLogger(TranslateProcessor.class);
+            LOG.error("Unable to parse the mappings from file", ex);
             return false;
         }
     }
