@@ -391,7 +391,7 @@ class TranslateProcessorTest {
         when(mockRegexConfig.getExact()).thenReturn(false);
         when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(
                 createMapping("^(1[0-9]|20)$", "patternValue1"),
-                createMapping("foo", "bar2")));
+                createMapping("foo", "bar")));
         targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
 
@@ -400,7 +400,13 @@ class TranslateProcessorTest {
         final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
-        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("bar2"));
+        assertThat(translatedRecords.get(0).getData().get("targetField", String.class), is("barter"));
+
+        final Record<Event> replaceAllRecord = getEvent("foofoo");
+        final List<Record<Event>> translatedReplaceAllRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(replaceAllRecord));
+
+        assertTrue(translatedReplaceAllRecords.get(0).getData().containsKey("targetField"));
+        assertThat(translatedReplaceAllRecords.get(0).getData().get("targetField", String.class), is("barbar"));
 
         final Record<Event> regexRecord = getEvent("15");
         final List<Record<Event>> translatedRegexRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(regexRecord));

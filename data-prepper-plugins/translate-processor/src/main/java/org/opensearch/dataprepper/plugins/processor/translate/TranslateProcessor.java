@@ -164,8 +164,12 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         final boolean exact = targetConfig.getRegexParameterConfiguration().getExact();
         for (Pattern pattern : compiledPatterns.keySet()) {
             Matcher matcher = pattern.matcher(sourceValue);
-            if (matcher.matches() || (!exact && matcher.find())) {
+            if (matcher.matches()) {
                 return Optional.of(compiledPatterns.get(pattern));
+            }
+            if(!exact && matcher.find()) {
+                String targetValue = (String)compiledPatterns.get(pattern);
+                return Optional.of(matcher.replaceAll(targetValue));
             }
         }
         return Optional.empty();
