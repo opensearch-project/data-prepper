@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.codec.json;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 class JsonOutputCodecTest {
@@ -81,5 +83,11 @@ class JsonOutputCodecTest {
             index++;
 
         }
+    }
+    @Test
+    void testGetExtension() {
+        JsonOutputCodec jsonOutputCodec = createObjectUnderTest();
+
+        assertThat("json", equalTo(jsonOutputCodec.getExtension()));
     }
 }
