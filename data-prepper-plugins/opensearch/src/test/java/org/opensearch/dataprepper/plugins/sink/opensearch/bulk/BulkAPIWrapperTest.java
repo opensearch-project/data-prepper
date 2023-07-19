@@ -57,7 +57,6 @@ class BulkAPIWrapperTest {
 
     @BeforeEach
     void setUp() {
-        when(openSearchClient._transport()).thenReturn(openSearchTransport);
         objectUnderTest = new BulkAPIWrapper(indexConfiguration, openSearchClient);
     }
 
@@ -71,6 +70,7 @@ class BulkAPIWrapperTest {
     @ParameterizedTest
     @MethodSource("getIndexArguments")
     void testBulkForEs6(final String requestIndex, final String expectedURI) throws IOException {
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
         when(indexConfiguration.getBackendVersion()).thenReturn(BackendVersion.ES6);
         when(openSearchClient._transportOptions()).thenReturn(transportOptions);
         when(bulkRequest.index()).thenReturn(requestIndex);
