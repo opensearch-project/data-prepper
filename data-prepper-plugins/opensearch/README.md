@@ -209,7 +209,7 @@ With the `document_root_key` set to `status`. The document structure would be `{
     duration: "15 ms"
 }
 ```
-- `es_6`: A boolean flag indicating whether the sink backend version is Elasticsearch 6 or above (i.e. Elasticsearch 7.x or OpenSearch). Default to `false`.
+- `backend_version`: A String indicating whether the sink backend version is Elasticsearch 6 or above (i.e. Elasticsearch 7.x or OpenSearch). `es_6` represents Elasticsearch 6; `null` represents Elasticsearch 7.x or OpenSearch. Default to `null`.
 
 ### <a name="aws_configuration">AWS Configuration</a>
 

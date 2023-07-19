@@ -8,6 +8,7 @@ import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.endpoints.SimpleEndpoint;
 import org.opensearch.client.util.ApiTypeHelper;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BackendVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 
 import javax.ws.rs.HttpMethod;
@@ -28,7 +29,7 @@ public class BulkAPIWrapper {
     }
 
     public BulkResponse bulk(BulkRequest request) throws IOException, OpenSearchException {
-        if (indexConfiguration.isEs6()) {
+        if (BackendVersion.ES6.equals(indexConfiguration.getBackendVersion())) {
             final JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> endpoint = es6BulkEndpoint(request);
             return openSearchClient._transport().performRequest(request, endpoint, openSearchClient._transportOptions());
         } else {

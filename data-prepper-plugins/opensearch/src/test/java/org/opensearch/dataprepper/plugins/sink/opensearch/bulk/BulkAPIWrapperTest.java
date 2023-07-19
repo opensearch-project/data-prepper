@@ -17,6 +17,7 @@ import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.TransportOptions;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BackendVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 
 import java.io.IOException;
@@ -62,7 +63,7 @@ class BulkAPIWrapperTest {
 
     @Test
     void testBulkForNonEs6() throws IOException {
-        when(indexConfiguration.isEs6()).thenReturn(false);
+        when(indexConfiguration.getBackendVersion()).thenReturn(null);
         objectUnderTest.bulk(bulkRequest);
         verifyNoInteractions(openSearchTransport);
     }
@@ -70,7 +71,7 @@ class BulkAPIWrapperTest {
     @ParameterizedTest
     @MethodSource("getIndexArguments")
     void testBulkForEs6(final String requestIndex, final String expectedURI) throws IOException {
-        when(indexConfiguration.isEs6()).thenReturn(true);
+        when(indexConfiguration.getBackendVersion()).thenReturn(BackendVersion.ES6);
         when(openSearchClient._transportOptions()).thenReturn(transportOptions);
         when(bulkRequest.index()).thenReturn(requestIndex);
         objectUnderTest.bulk(bulkRequest);
