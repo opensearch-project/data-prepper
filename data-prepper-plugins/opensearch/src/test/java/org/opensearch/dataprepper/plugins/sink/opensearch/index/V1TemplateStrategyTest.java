@@ -12,17 +12,25 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.OpenSearchClient;
+import org.opensearch.client.opensearch._types.ErrorResponse;
+import org.opensearch.client.opensearch.core.BulkRequest;
+import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.opensearch.indices.ExistsTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetTemplateResponse;
 import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
 import org.opensearch.client.opensearch.indices.PutTemplateRequest;
+import org.opensearch.client.opensearch.indices.PutTemplateResponse;
 import org.opensearch.client.opensearch.indices.TemplateMapping;
+import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.OpenSearchTransport;
+import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BackendVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
 
 import java.io.IOException;
@@ -44,6 +52,7 @@ import static org.hamcrest.Matchers.hasKey;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -56,6 +65,9 @@ class V1TemplateStrategyTest {
 
     @Mock
     private OpenSearchIndicesClient openSearchIndicesClient;
+
+    @Captor
+    private ArgumentCaptor<JsonEndpoint<PutTemplateRequest, PutTemplateResponse, ErrorResponse>> jsonEndpointArgumentCaptor;
     private Random random;
     private String templateName;
 
@@ -193,6 +205,38 @@ class V1TemplateStrategyTest {
 
         assertThat(actualPutRequest.name(), equalTo(templateName));
         assertThat(actualPutRequest.indexPatterns(), equalTo(indexPatterns));
+    }
+
+    @Test
+    void createTemplate_es6() throws IOException {
+        final OpenSearchTransport openSearchTransport = mock(OpenSearchTransport.class);
+        when(openSearchClient._transport()).thenReturn(openSearchTransport);
+        when(openSearchTransport.jsonpMapper()).thenReturn(new PreSerializedJsonpMapper());
+        final OpenSearchTransport openSearchTransport1 = mock(OpenSearchTransport.class);
+        when(openSearchIndicesClient._transport()).thenReturn(openSearchTransport1);
+        final TransportOptions transportOptions = mock(TransportOptions.class);
+        when(openSearchIndicesClient._transportOptions()).thenReturn(transportOptions);
+        final V1TemplateStrategy objectUnderTest = createObjectUnderTest();
+
+        final IndexConfiguration indexConfiguration = mock(IndexConfiguration.class);
+        when(indexConfiguration.getBackendVersion()).thenReturn(BackendVersion.ES6);
+        final List<String> indexPatterns = Collections.singletonList(UUID.randomUUID().toString());
+        final IndexTemplate indexTemplate = objectUnderTest.createIndexTemplate(new HashMap<>());
+        indexTemplate.setTemplateName(templateName);
+        indexTemplate.setIndexPatterns(indexPatterns);
+        objectUnderTest.createTemplate(indexConfiguration, indexTemplate);
+
+        final ArgumentCaptor<PutTemplateRequest> putTemplateRequestArgumentCaptor = ArgumentCaptor.forClass(PutTemplateRequest.class);
+        verify(openSearchTransport1).performRequest(
+                putTemplateRequestArgumentCaptor.capture(), jsonEndpointArgumentCaptor.capture(), eq(transportOptions));
+
+        final PutTemplateRequest actualPutRequest = putTemplateRequestArgumentCaptor.getValue();
+
+        assertThat(actualPutRequest.name(), equalTo(templateName));
+        assertThat(actualPutRequest.indexPatterns(), equalTo(indexPatterns));
+        final JsonEndpoint<PutTemplateRequest, PutTemplateResponse, ErrorResponse> endpoint = jsonEndpointArgumentCaptor.getValue();
+        assertThat(endpoint.requestUrl(actualPutRequest), equalTo(
+                String.format("/_template/%s?include_type_name=false", templateName)));
     }
 
     @Nested
