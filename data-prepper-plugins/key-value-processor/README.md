@@ -74,6 +74,9 @@ When run, the processor will parse the message into the following output:
   * Default: `false`
   * Example: `skip_duplicate_values` is `false`. `{"key1=value1&key1=value1"}` will parse into `{"key1": ["value1", "value1"]}`
   * Example: `skip_duplicate_values` is `true`. `{"key1=value1&key1=value1"}` will parse into `{"key1": "value1"}`
+* `exclude_keys` - An array specifying the parsed keys which should not be added to the event. By default no keys will be excluded.
+  * Default: `[]`
+  * Example: `exclude_keys` is `["key2"]`. `key1=value1&key2=value2` will parse into `{"key1": "value1"}`
 
 ## Developer Guide
 This plugin is compatible with Java 14. See

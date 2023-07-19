@@ -25,6 +25,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_TRANSFORM_KEY = "";
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
+    static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -74,6 +75,10 @@ public class KeyValueProcessorConfig {
     @JsonProperty("skip_duplicate_values")
     @NotNull
     private boolean skipDuplicateValues = DEFAULT_SKIP_DUPLICATE_VALUES;
+
+    @JsonProperty("exclude_keys")
+    @NotNull
+    private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     public String getSource() {
         return source;
@@ -129,5 +134,9 @@ public class KeyValueProcessorConfig {
 
     public boolean getSkipDuplicateValues() {
         return skipDuplicateValues;
+    }
+
+    public List<String> getExcludeKeys() {
+        return excludeKeys;
     }
 }
