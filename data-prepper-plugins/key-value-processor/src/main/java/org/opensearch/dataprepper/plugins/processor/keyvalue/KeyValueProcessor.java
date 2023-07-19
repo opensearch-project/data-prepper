@@ -36,6 +36,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
+    private final Set<String> excludeKeysSet = new HashSet<String>();
     private final String lowercaseKey = "lowercase";
     private final String uppercaseKey = "uppercase";
     private final String capitalizeKey = "capitalize";
@@ -99,7 +100,17 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
         }
 
+        // check if include and exclude sets are the same or not
+
         if (keyValueProcessorConfig.getIncludeKeys() != null) {
+            if (keyValueProcessorConfig.getExcludeKeys() != null) {
+                if (keyValueProcessorConfig.getIncludeKeys().equals(keyValueProcessorConfig.getExcludeKeys())) {
+                    throw new IllegalStateException("Include keys and exclude keys set cannot be the same", null);
+                } else {
+                    excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
+                }
+            }
+
             includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         }
 

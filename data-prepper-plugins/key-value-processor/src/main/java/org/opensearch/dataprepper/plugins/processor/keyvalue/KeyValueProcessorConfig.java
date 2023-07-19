@@ -17,6 +17,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_DESTINATION = "parsed_message";
     public static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
     static final List<String> DEFAULT_INCLUDE_KEYS = new ArrayList<>();
+    static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
     public static final String DEFAULT_VALUE_SPLIT_CHARACTERS = "=";
     static final Object DEFAULT_NON_MATCH_VALUE = null;
     static final String DEFAULT_PREFIX = "";
@@ -25,7 +26,6 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_TRANSFORM_KEY = "";
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
-    static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -43,6 +43,10 @@ public class KeyValueProcessorConfig {
     @JsonProperty("include_keys")
     @NotNull
     private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
+
+    @JsonProperty("exclude_keys")
+    @NotNull
+    private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonProperty("key_value_delimiter_regex")
     private String keyValueDelimiterRegex;
@@ -76,10 +80,6 @@ public class KeyValueProcessorConfig {
     @NotNull
     private boolean skipDuplicateValues = DEFAULT_SKIP_DUPLICATE_VALUES;
 
-    @JsonProperty("exclude_keys")
-    @NotNull
-    private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
-
     public String getSource() {
         return source;
     }
@@ -98,6 +98,10 @@ public class KeyValueProcessorConfig {
 
     public List<String> getIncludeKeys() {
         return includeKeys;
+    }
+
+    public List<String> getExcludeKeys() {
+        return excludeKeys;
     }
 
     public String getKeyValueDelimiterRegex() {
@@ -134,9 +138,5 @@ public class KeyValueProcessorConfig {
 
     public boolean getSkipDuplicateValues() {
         return skipDuplicateValues;
-    }
-
-    public List<String> getExcludeKeys() {
-        return excludeKeys;
     }
 }
