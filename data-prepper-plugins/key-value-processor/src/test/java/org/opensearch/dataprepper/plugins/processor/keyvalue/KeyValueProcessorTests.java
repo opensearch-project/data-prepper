@@ -482,6 +482,19 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testTrueRemoveMultipleBracketsKvProcessor() {
+        when(mockConfig.getRemoveBrackets()).thenReturn(true);
+
+        final Record<Event> record = getMessage("key1=((value1)&key2=[value1][value2]");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value1value2");
+    }
+
+    @Test
     void testShutdownIsReady() {
         assertThat(keyValueProcessor.isReadyForShutdown(), is(true));
     }
