@@ -40,17 +40,22 @@ public class TopicConfig {
     private String name;
 
     @JsonProperty("group_id")
+    @Valid
+    @Size(min = 1, max = 255, message = "size of group id should be between 1 and 255")
     private String groupId;
 
     @JsonProperty("workers")
+    @Valid
     @Size(min = 1, max = 200, message = "Number of worker threads should lies between 1 and 200")
     private Integer workers = NUM_OF_WORKERS;
 
     @JsonProperty("max_retry_attempts")
+    @Valid
     @Size(min = 1, max = Integer.MAX_VALUE, message = " Max retry attempts should lies between 1 and Integer.MAX_VALUE")
     private Integer maxRetryAttempts = MAX_RETRY_ATTEMPT;
 
     @JsonProperty("max_retry_delay")
+    @Valid
     @Size(min = 1)
     private Duration maxRetryDelay = MAX_RETRY_DELAY;
 
@@ -58,10 +63,12 @@ public class TopicConfig {
     private Boolean autoCommit = false;
 
     @JsonProperty("auto_commit_interval")
+    @Valid
     @Size(min = 1)
     private Duration autoCommitInterval = AUTOCOMMIT_INTERVAL;
 
     @JsonProperty("session_timeout")
+    @Valid
     @Size(min = 1)
     private Duration sessionTimeOut = SESSION_TIMEOUT;
 
@@ -69,6 +76,8 @@ public class TopicConfig {
     private String autoOffsetReset = AUTO_OFFSET_RESET;
 
     @JsonProperty("group_name")
+    @Valid
+    @Size(min = 1, max = 255, message = "size of group name should be between 1 and 255")
     private String groupName;
 
     @JsonProperty("thread_waiting_time")
@@ -78,19 +87,23 @@ public class TopicConfig {
     private Duration maxRecordFetchTime = MAX_RECORD_FETCH_TIME;
 
     @JsonProperty("buffer_default_timeout")
+    @Valid
     @Size(min = 1)
     private Duration bufferDefaultTimeout = BUFFER_DEFAULT_TIMEOUT;
 
     @JsonProperty("fetch_max_bytes")
+    @Valid
     @Size(min = 1, max = 52428800)
     private Long fetchMaxBytes = FETCH_MAX_BYTES;
 
     @JsonProperty("fetch_max_wait")
+    @Valid
     @Size(min = 1)
     private Long fetchMaxWait = FETCH_MAX_WAIT;
 
     @JsonProperty("fetch_min_bytes")
     @Size(min = 1)
+    @Valid
     private Long fetchMinBytes = FETCH_MIN_BYTES;
 
     @JsonProperty("retry_backoff")
@@ -103,6 +116,7 @@ public class TopicConfig {
     private Integer consumerMaxPollRecords = CONSUMER_MAX_POLL_RECORDS;
 
     @JsonProperty("heart_beat_interval")
+    @Valid
     @Size(min = 1)
     private Duration heartBeatInterval= HEART_BEAT_INTERVAL_DURATION;
 

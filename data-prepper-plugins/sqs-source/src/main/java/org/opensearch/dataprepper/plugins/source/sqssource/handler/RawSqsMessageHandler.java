@@ -42,12 +42,19 @@ public class RawSqsMessageHandler implements SqsMessageHandler {
         messages.forEach(message -> {
             final Record<Event> eventRecord = new Record<Event>(JacksonEvent.fromMessage(message.body()));
             try {
+                // Always add record to acknowledgementSet before adding to
+                // buffer because another thread may take and process
+                // buffer contents before the event record is added
+                // to acknowledgement set
+                if(Objects.nonNull(acknowledgementSet)){
+                    acknowledgementSet.add(eventRecord.getData());
+                }
                 bufferAccumulator.add(eventRecord);
             } catch (Exception e) {
+                // Exception may occur when we failed to flush. In which
+                // case, not sending acknowledgement would be correct because
+                // we need to retry
                 throw new RuntimeException(e);
-            }
-            if(Objects.nonNull(acknowledgementSet)){
-                acknowledgementSet.add(eventRecord.getData());
             }
         });
         try {

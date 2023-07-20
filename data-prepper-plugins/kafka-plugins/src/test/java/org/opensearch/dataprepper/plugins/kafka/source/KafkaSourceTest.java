@@ -28,7 +28,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
-import java.util.List;
 import java.time.Duration;
 
 @ExtendWith(MockitoExtension.class)
@@ -90,7 +89,7 @@ class KafkaSourceTest {
         when(topic2.getAutoCommit()).thenReturn(false);
         when(topic1.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
         when(topic2.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
-        when(sourceConfig.getBootStrapServers()).thenReturn(List.of("http://localhost:1234"));
+        when(sourceConfig.getBootStrapServers()).thenReturn("http://localhost:1234");
         when(sourceConfig.getTopics()).thenReturn(Arrays.asList(topic1, topic2));
     }
 
