@@ -15,7 +15,7 @@ public class S3Service {
     }
 
     void addS3Object(final S3ObjectReference s3ObjectReference, AcknowledgementSet acknowledgementSet) throws IOException {
-        s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet);
+        s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
     }
 
 }

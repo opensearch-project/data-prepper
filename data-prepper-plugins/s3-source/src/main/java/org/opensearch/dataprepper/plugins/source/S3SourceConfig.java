@@ -79,6 +79,9 @@ public class S3SourceConfig {
     @Valid
     private S3ScanScanOptions s3ScanScanOptions;
 
+    @JsonProperty("delete_s3_objects")
+    private boolean deleteS3Objects = false;
+
     @AssertTrue(message = "A codec is required for reading objects.")
     boolean isCodecProvidedWhenNeeded() {
         if(s3SelectOptions == null)
@@ -140,6 +143,10 @@ public class S3SourceConfig {
 
     public S3ScanScanOptions getS3ScanScanOptions() {
         return s3ScanScanOptions;
+    }
+
+    public boolean isDeleteS3Objects() {
+        return deleteS3Objects;
     }
 
     public Map<String, String> getBucketOwners() {

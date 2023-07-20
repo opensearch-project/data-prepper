@@ -43,7 +43,7 @@ public class S3ScanScanOptions {
     private List<S3ScanBucketOptions> buckets;
 
     @JsonProperty("scheduling")
-    private S3ScanSchedulingOptions schedulingOptions;
+    private S3ScanSchedulingOptions schedulingOptions = new S3ScanSchedulingOptions();
 
     @AssertTrue(message = "At most two options from start_time, end_time and range can be specified at the same time")
     public boolean hasValidTimeOptions() {

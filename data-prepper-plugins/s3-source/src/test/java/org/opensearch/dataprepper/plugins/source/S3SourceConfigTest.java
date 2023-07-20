@@ -45,6 +45,11 @@ class S3SourceConfigTest {
     }
 
     @Test
+    void default_delete_s3_objects_test() {
+        assertThat(new S3SourceConfig().isDeleteS3Objects(), equalTo(false));
+    }
+
+    @Test
     void default_notification_source_test() {
         assertThat(new S3SourceConfig().getNotificationSource(), equalTo(NotificationSourceOption.S3));
     }

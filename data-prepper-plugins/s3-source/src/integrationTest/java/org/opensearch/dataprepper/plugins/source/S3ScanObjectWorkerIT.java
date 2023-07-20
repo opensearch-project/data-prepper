@@ -21,6 +21,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -31,7 +32,6 @@ import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.parser.model.SourceCoordinationConfig;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
-import org.opensearch.dataprepper.plugins.source.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
@@ -90,7 +90,11 @@ public class S3ScanObjectWorkerIT {
 
     private SourceCoordinator<S3SourceProgressState> sourceCoordinator;
     @Mock
-    private S3ScanSchedulingOptions s3ScanSchedulingOptions;
+    private S3SourceConfig s3SourceConfig;
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+    @Mock
+    private S3ObjectDeleteWorker s3ObjectDeleteWorker;
 
     private S3ObjectHandler createObjectUnderTest(final S3ObjectRequest s3ObjectRequest){
         if(Objects.nonNull(s3ObjectRequest.getExpression()))
@@ -177,7 +181,7 @@ public class S3ScanObjectWorkerIT {
                 .compressionType(shouldCompress ? CompressionType.GZIP : CompressionType.NONE)
                 .s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).build();
         return new ScanObjectWorker(s3Client,List.of(scanOptions),createObjectUnderTest(s3ObjectRequest)
-        ,bucketOwnerProvider, sourceCoordinator, s3ScanSchedulingOptions);
+        ,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker);
     }
 
     @ParameterizedTest

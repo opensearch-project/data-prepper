@@ -4,9 +4,9 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptions;
-import org.opensearch.dataprepper.plugins.source.configuration.S3ScanSchedulingOptions;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 
 import java.time.Duration;
@@ -19,8 +19,8 @@ import java.util.List;
  * objects and spawn a thread {@link S3SelectObjectWorker}
  */
 public class S3ScanService {
+    private final S3SourceConfig s3SourceConfig;
     private final List<S3ScanBucketOptions> s3ScanBucketOptions;
-    private final S3ScanSchedulingOptions s3ScanSchedulingOptions;
     private final S3ClientBuilderFactory s3ClientBuilderFactory;
     private final LocalDateTime endDateTime;
 
@@ -32,26 +32,32 @@ public class S3ScanService {
 
     private final BucketOwnerProvider bucketOwnerProvider;
     private final SourceCoordinator<S3SourceProgressState> sourceCoordinator;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
 
     public S3ScanService(final S3SourceConfig s3SourceConfig,
                          final S3ClientBuilderFactory s3ClientBuilderFactory,
                          final S3ObjectHandler s3ObjectHandler,
                          final BucketOwnerProvider bucketOwnerProvider,
-                         final SourceCoordinator<S3SourceProgressState> sourceCoordinator) {
+                         final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                         final AcknowledgementSetManager acknowledgementSetManager,
+                         final S3ObjectDeleteWorker s3ObjectDeleteWorker) {
+        this.s3SourceConfig = s3SourceConfig;
         this.s3ScanBucketOptions = s3SourceConfig.getS3ScanScanOptions().getBuckets();
         this.s3ClientBuilderFactory = s3ClientBuilderFactory;
         this.endDateTime = s3SourceConfig.getS3ScanScanOptions().getEndTime();
         this.startDateTime = s3SourceConfig.getS3ScanScanOptions().getStartTime();
         this.range = s3SourceConfig.getS3ScanScanOptions().getRange();
-        this.s3ScanSchedulingOptions = s3SourceConfig.getS3ScanScanOptions().getSchedulingOptions();
         this.s3ObjectHandler = s3ObjectHandler;
         this.bucketOwnerProvider = bucketOwnerProvider;
         this.sourceCoordinator = sourceCoordinator;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
     }
 
     public void start() {
         scanObjectWorkerThread = new Thread(new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
-                getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3ScanSchedulingOptions));
+                getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker));
         scanObjectWorkerThread.start();
     }
 
