@@ -27,8 +27,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-
-public class CloudWatchLogsDispatcherTest {
+ public class CloudWatchLogsDispatcherTest {
     private CloudWatchLogsDispatcher cloudWatchLogsDispatcher;
     private BlockingQueue<ThreadTaskEvents> mockTaskQueue;
     private  CloudWatchLogsClient cloudWatchLogsClient;

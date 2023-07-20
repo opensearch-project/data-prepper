@@ -61,7 +61,7 @@ public class CloudWatchLogsService {
             int logLength = log.getData().toJsonString().length();
 
             if (cloudWatchLogsLimits.isGreaterThanMaxEventSize(logLength)) {
-                LOG.warn("Event blocked due to Max Size restriction! {Event Size: " + (logLength + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE) + " bytes}");
+                LOG.warn("Event blocked due to Max Size restriction! {Event Size: {} bytes}", (logLength + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
                 continue;
             }
 
@@ -91,11 +91,14 @@ public class CloudWatchLogsService {
     private void stageLogEvents() {
         sinkStopWatch.stopAndResetStopWatch();
 
-        ThreadTaskEvents dataToPush = new ThreadTaskEvents(buffer.getBufferedData(), bufferedEventHandles);
+        ArrayList<byte[]> eventMessageCloneList = new ArrayList<>();
+        cloneLists(buffer.getBufferedData(), eventMessageCloneList);
+
+        ThreadTaskEvents dataToPush = new ThreadTaskEvents(eventMessageCloneList, bufferedEventHandles);
         taskQueue.add(dataToPush);
 
-        bufferedEventHandles = new ArrayList<>();
         buffer.clearBuffer();
+        bufferedEventHandles = new ArrayList<>();
 
         sinkThreadManager.execute(dispatcher);
     }
@@ -105,5 +108,11 @@ public class CloudWatchLogsService {
             bufferedEventHandles.add(log.getData().getEventHandle());
         }
         buffer.writeEvent(log.getData().toString().getBytes());
+    }
+
+    private void cloneLists(List<byte[]> listToCopy, List<byte[]> listToCopyInto) {
+        for (byte[] holder: listToCopy) {
+            listToCopyInto.add(holder.clone());
+        }
     }
 }

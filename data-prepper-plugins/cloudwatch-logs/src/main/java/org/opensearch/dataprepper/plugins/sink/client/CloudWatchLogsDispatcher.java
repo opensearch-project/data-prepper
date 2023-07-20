@@ -86,26 +86,25 @@ public class CloudWatchLogsDispatcher implements Runnable {
                     //TODO: When a log is rejected by the service, we cannot send it, can probably push to a DLQ here.
 
                 } catch (CloudWatchLogsException | SdkClientException e) {
-                    LOG.error("Failed to push logs with error: {}", e.getMessage());
+                    LOG.error("Service-Worker {} Failed to push logs with error: {}", Thread.currentThread().getName(), e.getMessage());
                     cloudWatchLogsMetrics.increaseRequestFailCounter(1);
                     Thread.sleep(calculateBackOffTime(backOffTimeBase, failCounter));
-                    LOG.warn("Trying to retransmit request... {Attempt: {} }", (++failCounter));
+                    LOG.warn("Service-Worker {} Trying to retransmit request... {Attempt: {} }", Thread.currentThread().getName(), (++failCounter));
                 }
             }
         } catch (InterruptedException e) {
             LOG.warn("Got interrupted while waiting!");
+            Thread.currentThread().interrupt();
             //TODO: Push to DLQ.
         }
 
 
         if (failedPost) {
             cloudWatchLogsMetrics.increaseLogEventFailCounter(inputLogEvents.size());
-            LOG.error("Error, timed out trying to push logs!");
             releaseEventHandles(false, eventHandles);
             return false;
         } else {
             cloudWatchLogsMetrics.increaseLogEventSuccessCounter(inputLogEvents.size());
-            LOG.info("Succeeded in publishing logs!");
             releaseEventHandles(true, eventHandles);
             return true;
         }

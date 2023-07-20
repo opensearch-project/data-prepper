@@ -20,6 +20,9 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
  * CloudWatchLogs services.
  */
 public final class CloudWatchLogsClientFactory {
+    private CloudWatchLogsClientFactory() {
+        throw new IllegalStateException("Static Factory Class!");
+    }
 
     /**
      * Generates a CloudWatchLogs Client based on STS role ARN system credentials.
