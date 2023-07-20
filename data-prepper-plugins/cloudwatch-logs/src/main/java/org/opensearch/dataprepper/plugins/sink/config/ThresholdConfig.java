@@ -15,8 +15,8 @@ import jakarta.validation.constraints.Size;
  */
 public class ThresholdConfig {
     public static final int DEFAULT_BATCH_SIZE = 25;
-    public static final int DEFAULT_EVENT_SIZE = 50;
-    public static final int DEFAULT_SIZE_OF_REQUEST = 524288;
+    public static final int DEFAULT_EVENT_SIZE = 256;
+    public static final int DEFAULT_SIZE_OF_REQUEST = 1048576;
     public static final int DEFAULT_RETRY_COUNT = 5;
     public static final int DEFAULT_LOG_SEND_INTERVAL_TIME = 60;
     public static final int DEFAULT_BACKOFF_TIME = 500;

@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -56,7 +61,6 @@ public class CloudWatchLogsDispatcher implements Runnable {
      * Flush function to handle the flushing of logs to CloudWatchLogs services;
      * @param inputLogEvents Collection of inputLogEvents to be flushed
      * @return true if successful, false otherwise
-     * @throws InterruptedException
      */
     public boolean dispatchLogs(List<InputLogEvent> inputLogEvents, Collection<EventHandle> eventHandles) {
         boolean failedPost = true;

@@ -27,7 +27,6 @@ import static java.util.concurrent.Executors.newCachedThreadPool; //TODO: Can im
 
 public class CloudWatchLogsService {
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsService.class);
-    private static final int MAX_BLOCKING_QUEUE_SIZE = 10;
     private final Buffer buffer;
     private final CloudWatchLogsLimits cloudWatchLogsLimits;
     private List<EventHandle> bufferedEventHandles;
@@ -39,13 +38,13 @@ public class CloudWatchLogsService {
 
     public CloudWatchLogsService(final Buffer buffer,
                                  final CloudWatchLogsLimits cloudWatchLogsLimits,
-                                 final CloudWatchLogsDispatcher dispatcher) {
+                                 final CloudWatchLogsDispatcher dispatcher, BlockingQueue<ThreadTaskEvents> blockingQueue) {
 
         this.buffer = buffer;
         this.dispatcher = dispatcher;
         this.bufferedEventHandles = new ArrayList<>();
         this.cloudWatchLogsLimits = cloudWatchLogsLimits;
-        this.taskQueue = new ArrayBlockingQueue<>(MAX_BLOCKING_QUEUE_SIZE);
+        this.taskQueue = blockingQueue;
 
         bufferLock = new ReentrantLock();
         sinkStopWatch = new SinkStopWatch();

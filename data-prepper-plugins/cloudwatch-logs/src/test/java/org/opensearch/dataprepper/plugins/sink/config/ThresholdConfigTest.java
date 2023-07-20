@@ -31,7 +31,7 @@ public class ThresholdConfigTest {
         assertThat(thresholdConfig.getBackOffTime(), equalTo(ThresholdConfig.DEFAULT_BACKOFF_TIME));
         assertThat(thresholdConfig.getRetryCount(), equalTo(ThresholdConfig.DEFAULT_RETRY_COUNT));
         assertThat(thresholdConfig.getBatchSize(), equalTo(ThresholdConfig.DEFAULT_BATCH_SIZE));
-        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ThresholdConfig.DEFAULT_EVENT_SIZE));
+        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ThresholdConfig.DEFAULT_EVENT_SIZE * ThresholdConfig.CONVERT_TO_BYTES_FROM_KB));
         assertThat(thresholdConfig.getMaxRequestSize(), equalTo(ThresholdConfig.DEFAULT_SIZE_OF_REQUEST));
         assertThat(thresholdConfig.getLogSendInterval(), equalTo(ThresholdConfig.DEFAULT_LOG_SEND_INTERVAL_TIME));
     }
@@ -49,7 +49,7 @@ public class ThresholdConfigTest {
     void check_valid_max_event_size(final int max_event_size) {
         final Map<String, Integer> jsonMap = Map.of("max_event_size", max_event_size);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
-        assertThat(thresholdConfigTest.getMaxEventSizeBytes(), equalTo(max_event_size));
+        assertThat(thresholdConfigTest.getMaxEventSizeBytes(), equalTo(max_event_size * ThresholdConfig.CONVERT_TO_BYTES_FROM_KB));
     }
 
     @ParameterizedTest

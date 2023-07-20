@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -10,14 +15,24 @@ import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
+import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
 import org.opensearch.dataprepper.plugins.sink.push_condition.CloudWatchLogsLimits;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.BlockingQueue;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.atLeast;
 
 public class CloudWatchLogsServiceTest {
+    private static final int NUMBER_THREADS_SMALL = 5;
+    private static final int NUMBER_THREADS_BIG = 10;
+    private static final int NUMBER_THREADS_LARGE = 20;
+    private BlockingQueue<ThreadTaskEvents> mockQueue;
     private CloudWatchLogsService cloudWatchLogsService;
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
     private ThresholdConfig thresholdConfig;
@@ -25,7 +40,6 @@ public class CloudWatchLogsServiceTest {
     private InMemoryBufferFactory inMemoryBufferFactory;
     private Buffer buffer;
     private CloudWatchLogsDispatcher dispatcher;
-    private static final int messageKeyByteSize = 14;
     private volatile int testCounter;
 
     @BeforeEach
@@ -39,8 +53,9 @@ public class CloudWatchLogsServiceTest {
         inMemoryBufferFactory = new InMemoryBufferFactory();
         buffer = inMemoryBufferFactory.getBuffer();
         dispatcher = mock(CloudWatchLogsDispatcher.class);
+        mockQueue = mock(BlockingQueue.class);
 
-        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsLimits, dispatcher);
+        cloudWatchLogsService = new CloudWatchLogsService(buffer, cloudWatchLogsLimits, dispatcher, mockQueue);
 
         testCounter = 0;
     }
@@ -100,4 +115,162 @@ public class CloudWatchLogsServiceTest {
     }
 
     //TODO: Add multithreaded testing to ensure that the proper methods (run) gets called.
+
+    @Test
+    void test_less_threads_normal_load() {
+        Collection<Thread> threadsToRun = new ArrayList<>();
+
+        for (int i = 0; i < NUMBER_THREADS_SMALL; i++) {
+            Thread testingThread = new Thread(new CloudWatchLogsServiceTester(getSampleRecords(), cloudWatchLogsService));
+            threadsToRun.add(testingThread);
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            serviceTester.start();
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            try {
+                serviceTester.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        verify(dispatcher, atLeast(NUMBER_THREADS_SMALL)).run();
+    }
+
+    @Test
+    void test_less_threads_heavy_load() {
+        Collection<Thread> threadsToRun = new ArrayList<>();
+
+        for (int i = 0; i < NUMBER_THREADS_SMALL; i++) {
+            Thread testingThread = new Thread(new CloudWatchLogsServiceTester(getSampleRecordsLarge(), cloudWatchLogsService));
+            threadsToRun.add(testingThread);
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            serviceTester.start();
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            try {
+                serviceTester.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        verify(dispatcher, atLeast(NUMBER_THREADS_SMALL * 4)).run();
+    }
+
+    @Test
+    void test_more_threads_normal_load() {
+        Collection<Thread> threadsToRun = new ArrayList<>();
+
+        for (int i = 0; i < NUMBER_THREADS_BIG; i++) {
+            Thread testingThread = new Thread(new CloudWatchLogsServiceTester(getSampleRecords(), cloudWatchLogsService));
+            threadsToRun.add(testingThread);
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            serviceTester.start();
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            try {
+                serviceTester.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        verify(dispatcher, atLeast(NUMBER_THREADS_BIG)).run();
+    }
+
+    @Test
+    void test_more_threads_heavy_load() {
+        Collection<Thread> threadsToRun = new ArrayList<>();
+
+        for (int i = 0; i < NUMBER_THREADS_BIG; i++) {
+            Thread testingThread = new Thread(new CloudWatchLogsServiceTester(getSampleRecordsLarge(), cloudWatchLogsService));
+            threadsToRun.add(testingThread);
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            serviceTester.start();
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            try {
+                serviceTester.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        verify(dispatcher, atLeast(NUMBER_THREADS_BIG * 4)).run();
+    }
+
+    @Test
+    void test_large_threads_normal_load() {
+        Collection<Thread> threadsToRun = new ArrayList<>();
+
+        for (int i = 0; i < NUMBER_THREADS_LARGE; i++) {
+            Thread testingThread = new Thread(new CloudWatchLogsServiceTester(getSampleRecords(), cloudWatchLogsService));
+            threadsToRun.add(testingThread);
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            serviceTester.start();
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            try {
+                serviceTester.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        verify(dispatcher, atLeast(NUMBER_THREADS_LARGE)).run();
+    }
+
+    @Test
+    void test_large_threads_heavy_load() {
+        Collection<Thread> threadsToRun = new ArrayList<>();
+
+        for (int i = 0; i < NUMBER_THREADS_LARGE; i++) {
+            Thread testingThread = new Thread(new CloudWatchLogsServiceTester(getSampleRecordsLarge(), cloudWatchLogsService));
+            threadsToRun.add(testingThread);
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            serviceTester.start();
+        }
+
+        for (Thread serviceTester: threadsToRun) {
+            try {
+                serviceTester.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        verify(dispatcher, atLeast(NUMBER_THREADS_LARGE * 4)).run();
+    }
+
+    static class CloudWatchLogsServiceTester implements Runnable {
+        Collection<Record<Event>> testEvents;
+        CloudWatchLogsService testCloudWatchLogsService;
+        CloudWatchLogsServiceTester(Collection<Record<Event>> events, CloudWatchLogsService cloudWatchLogsService) {
+            testEvents = events;
+            testCloudWatchLogsService = cloudWatchLogsService;
+        }
+
+        @Override
+        public void run() {
+            testCloudWatchLogsService.processLogEvents(testEvents);
+        }
+    }
 }
