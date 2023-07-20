@@ -23,11 +23,13 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
@@ -238,23 +240,26 @@ public class KafkaSource implements Source<Record<Event>> {
             AuthConfig.SaslAuthConfig saslAuthConfig = sourceConfig.getAuthConfig().getSaslAuthConfig();
             if (saslAuthConfig != null) {
                 awsIamAuthConfig = saslAuthConfig.getAwsIamAuthConfig();
+                PlainTextAuthConfig plainTextAuthConfig = saslAuthConfig.getPlainTextAuthConfig();
+
                 if (awsIamAuthConfig != null) {
                     if (encryptionType == EncryptionType.PLAINTEXT) {
                         throw new RuntimeException("Encryption Config must be SSL to use IAM authentication mechanism");
                     }
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
                 } else if (saslAuthConfig.getOAuthConfig() != null) {
-                } else if (saslAuthConfig.getPlainTextAuthConfig() != null) {
-                    setPlainTextAuthProperties(properties);
+                } else if (plainTextAuthConfig != null) {
+                    setPlainTextAuthProperties(properties, plainTextAuthConfig);
                 } else {
                     throw new RuntimeException("No SASL auth config specified");
                 }
+            } else if (encryptionType == EncryptionType.SSL) {
+                properties.put("security.protocol", "SSL");
+                if (sourceConfig.getAuthConfig().getInsecure()) {
+                    properties.put("ssl.engine.factory.class", InsecureSslEngineFactory.class);
+                }
             }
         }
-        properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                topicConfig.getAutoCommitInterval().toSecondsPart());
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-                topicConfig.getAutoOffsetReset());
         String bootstrapServers = sourceConfig.getBootStrapServers();
         if (Objects.nonNull(awsIamAuthConfig)) {
             bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig);
@@ -263,13 +268,19 @@ public class KafkaSource implements Source<Record<Event>> {
             throw new RuntimeException("Bootstrap servers are not specified");
         }
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
                 topicConfig.getAutoCommit());
+        properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
+                topicConfig.getAutoCommitInterval().toSecondsPart());
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                topicConfig.getAutoOffsetReset());
         properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
                 topicConfig.getConsumerMaxPollRecords());
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
-        if (sourceConfig.getSchemaConfig() != null) {
-            schemaType = getSchemaType(sourceConfig.getSchemaConfig().getRegistryURL(), topicConfig.getName(), sourceConfig.getSchemaConfig().getVersion());
+        SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
+        if (Objects.nonNull(schemaConfig)) {
+            schemaType = getSchemaType(schemaConfig.getRegistryURL(), topicConfig.getName(), schemaConfig.getVersion());
     }
         if (schemaType.isEmpty()) {
             schemaType = MessageFormat.PLAINTEXT.toString();
@@ -333,13 +344,19 @@ public class KafkaSource implements Source<Record<Event>> {
         }
     }
 
-    private void setPlainTextAuthProperties(Properties properties) {
-
-        String username = sourceConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig().getUsername();
-        String password = sourceConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig().getPassword();
+    private void setPlainTextAuthProperties(Properties properties, final PlainTextAuthConfig plainTextAuthConfig) {
+        String username = plainTextAuthConfig.getUsername();
+        String password = plainTextAuthConfig.getPassword();
         properties.put("sasl.mechanism", "PLAIN");
         properties.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
-        properties.put("security.protocol", "SASL_PLAINTEXT");
+        if (encryptionType == EncryptionType.PLAINTEXT) {
+            properties.put("security.protocol", "SASL_PLAINTEXT");
+        } else { // EncryptionType.SSL
+            properties.put("security.protocol", "SASL_SSL");
+        }
+        if (sourceConfig.getAuthConfig().getInsecure()) {
+            properties.put("ssl.engine.factory.class", InsecureSslEngineFactory.class);
+        }
     }
 
     private static String getSchemaType(final String registryUrl, final String topicName, final int schemaVersion) {
