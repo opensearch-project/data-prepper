@@ -8,8 +8,6 @@ import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.endpoints.SimpleEndpoint;
 import org.opensearch.client.util.ApiTypeHelper;
-import org.opensearch.dataprepper.plugins.sink.opensearch.BackendVersion;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;
@@ -17,24 +15,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class BulkAPIWrapper {
+public class Es6BulkApiWrapper implements BulkApiWrapper {
     static final String DUMMY_DEFAULT_INDEX = "dummy";
-    private final IndexConfiguration indexConfiguration;
     private final OpenSearchClient openSearchClient;
 
-    public BulkAPIWrapper(final IndexConfiguration indexConfiguration,
-                                final OpenSearchClient openSearchClient) {
-        this.indexConfiguration = indexConfiguration;
+    public Es6BulkApiWrapper(final OpenSearchClient openSearchClient) {
         this.openSearchClient = openSearchClient;
     }
 
+    @Override
     public BulkResponse bulk(BulkRequest request) throws IOException, OpenSearchException {
-        if (BackendVersion.ES6.equals(indexConfiguration.getBackendVersion())) {
-            final JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> endpoint = es6BulkEndpoint(request);
-            return openSearchClient._transport().performRequest(request, endpoint, openSearchClient._transportOptions());
-        } else {
-            return openSearchClient.bulk(request);
-        }
+        final JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> endpoint = es6BulkEndpoint(request);
+        return openSearchClient._transport().performRequest(request, endpoint, openSearchClient._transportOptions());
     }
 
     private JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> es6BulkEndpoint(BulkRequest bulkRequest) {

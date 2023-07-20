@@ -17,8 +17,6 @@ import org.opensearch.client.opensearch.core.BulkResponse;
 import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.TransportOptions;
-import org.opensearch.dataprepper.plugins.sink.opensearch.BackendVersion;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
 
 import java.io.IOException;
 import java.util.stream.Stream;
@@ -28,15 +26,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAPIWrapper.DUMMY_DEFAULT_INDEX;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.bulk.Es6BulkApiWrapper.DUMMY_DEFAULT_INDEX;
 
 @ExtendWith(MockitoExtension.class)
-class BulkAPIWrapperTest {
-    private static final String ES_6_URI_PATTERN = "/%s/_doc/_bulk";
-    @Mock
-    private IndexConfiguration indexConfiguration;
+class Es6BulkApiWrapperTest {
+    private static final String ES6_URI_PATTERN = "/%s/_doc/_bulk";
 
     @Mock
     private OpenSearchClient openSearchClient;
@@ -53,25 +48,17 @@ class BulkAPIWrapperTest {
     @Captor
     private ArgumentCaptor<JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse>> jsonEndpointArgumentCaptor;
 
-    private BulkAPIWrapper objectUnderTest;
+    private Es6BulkApiWrapper objectUnderTest;
 
     @BeforeEach
     void setUp() {
-        objectUnderTest = new BulkAPIWrapper(indexConfiguration, openSearchClient);
-    }
-
-    @Test
-    void testBulkForNonEs6() throws IOException {
-        when(indexConfiguration.getBackendVersion()).thenReturn(null);
-        objectUnderTest.bulk(bulkRequest);
-        verifyNoInteractions(openSearchTransport);
+        objectUnderTest = new Es6BulkApiWrapper(openSearchClient);
     }
 
     @ParameterizedTest
     @MethodSource("getIndexArguments")
     void testBulkForEs6(final String requestIndex, final String expectedURI) throws IOException {
         when(openSearchClient._transport()).thenReturn(openSearchTransport);
-        when(indexConfiguration.getBackendVersion()).thenReturn(BackendVersion.ES6);
         when(openSearchClient._transportOptions()).thenReturn(transportOptions);
         when(bulkRequest.index()).thenReturn(requestIndex);
         objectUnderTest.bulk(bulkRequest);
@@ -83,7 +70,7 @@ class BulkAPIWrapperTest {
 
     private static Stream<Arguments> getIndexArguments() {
         return Stream.of(
-                Arguments.of(null, String.format(ES_6_URI_PATTERN, DUMMY_DEFAULT_INDEX)),
-                Arguments.of("test-index", String.format(ES_6_URI_PATTERN, "test-index")));
+                Arguments.of(null, String.format(ES6_URI_PATTERN, DUMMY_DEFAULT_INDEX)),
+                Arguments.of("test-index", String.format(ES6_URI_PATTERN, "test-index")));
     }
 }
