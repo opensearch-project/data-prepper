@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 public class CloudWatchLogsDispatcher implements Runnable {
+    public static final long UPPER_RETRY_TIME_BOUND = 20000;
+    public static final float EXP_TIME_SCALER = 1.5F;
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsDispatcher.class);
     private final BlockingQueue<ThreadTaskEvents> taskQueue;
     private final CloudWatchLogsClient cloudWatchLogsClient;
@@ -111,7 +113,13 @@ public class CloudWatchLogsDispatcher implements Runnable {
 
     //TODO: Can abstract this if clients want more choice.
     private long calculateBackOffTime(final long backOffTimeBase, final int failCounter) {
-        return failCounter * backOffTimeBase;
+        long scale = (long)Math.pow(EXP_TIME_SCALER, failCounter);
+
+        if (scale >= UPPER_RETRY_TIME_BOUND) {
+            return UPPER_RETRY_TIME_BOUND;
+        }
+
+        return scale * backOffTimeBase;
     }
 
     @Override
