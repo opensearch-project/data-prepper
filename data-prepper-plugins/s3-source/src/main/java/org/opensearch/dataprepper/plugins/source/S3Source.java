@@ -124,7 +124,7 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
             sqsService.start();
         }
         if(s3ScanScanOptional.isPresent()) {
-            s3ScanService = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3Handler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker);
+            s3ScanService = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3Handler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
             s3ScanService.start();
         }
     }

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
@@ -42,6 +43,8 @@ class S3ScanServiceTest {
     private S3ObjectHandler s3ObjectHandler;
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
+    @Mock
+    private PluginMetrics pluginMetrics;
 
     @Test
     void scan_service_test_and_verify_thread_invoking() {
@@ -70,7 +73,7 @@ class S3ScanServiceTest {
         when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
         when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
-        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker);
+        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
         final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getkeyPrefix().getS3scanIncludeOptions(),sameInstance(includeKeyPathList));
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));
@@ -97,7 +100,7 @@ class S3ScanServiceTest {
         when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
         when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
-        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker);
+        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
         final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getkeyPrefix().getS3scanIncludeOptions(),sameInstance(includeKeyPathList));
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));
@@ -122,7 +125,7 @@ class S3ScanServiceTest {
         when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
         when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
-        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker);
+        S3ScanService service = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
         final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getkeyPrefix().getS3scanIncludeOptions(),sameInstance(includeKeyPathList));
         assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));

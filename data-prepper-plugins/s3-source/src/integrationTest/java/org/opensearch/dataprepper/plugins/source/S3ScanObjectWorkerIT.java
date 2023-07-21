@@ -95,6 +95,8 @@ public class S3ScanObjectWorkerIT {
     private AcknowledgementSetManager acknowledgementSetManager;
     @Mock
     private S3ObjectDeleteWorker s3ObjectDeleteWorker;
+    @Mock
+    private PluginMetrics pluginMetrics;
 
     private S3ObjectHandler createObjectUnderTest(final S3ObjectRequest s3ObjectRequest){
         if(Objects.nonNull(s3ObjectRequest.getExpression()))
@@ -181,7 +183,7 @@ public class S3ScanObjectWorkerIT {
                 .compressionType(shouldCompress ? CompressionType.GZIP : CompressionType.NONE)
                 .s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).build();
         return new ScanObjectWorker(s3Client,List.of(scanOptions),createObjectUnderTest(s3ObjectRequest)
-        ,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker);
+        ,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
     }
 
     @ParameterizedTest

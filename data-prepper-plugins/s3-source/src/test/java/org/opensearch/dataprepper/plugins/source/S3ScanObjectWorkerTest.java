@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -84,6 +85,9 @@ class S3ScanObjectWorkerTest {
     @Mock
     private S3ScanSchedulingOptions s3ScanSchedulingOptions;
 
+    @Mock
+    private PluginMetrics pluginMetrics;
+
     private List<ScanOptions> scanOptionsList;
 
     @BeforeEach
@@ -94,7 +98,8 @@ class S3ScanObjectWorkerTest {
     private ScanObjectWorker createObjectUnderTest() {
         when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
-        final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker);
+        final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider,
+                sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
         verify(sourceCoordinator).initialize();
         return objectUnderTest;
     }

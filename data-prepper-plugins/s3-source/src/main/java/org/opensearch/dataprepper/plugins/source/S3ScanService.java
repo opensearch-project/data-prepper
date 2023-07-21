@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptions;
@@ -34,6 +35,7 @@ public class S3ScanService {
     private final SourceCoordinator<S3SourceProgressState> sourceCoordinator;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
+    private final PluginMetrics pluginMetrics;
 
     public S3ScanService(final S3SourceConfig s3SourceConfig,
                          final S3ClientBuilderFactory s3ClientBuilderFactory,
@@ -41,7 +43,8 @@ public class S3ScanService {
                          final BucketOwnerProvider bucketOwnerProvider,
                          final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                          final AcknowledgementSetManager acknowledgementSetManager,
-                         final S3ObjectDeleteWorker s3ObjectDeleteWorker) {
+                         final S3ObjectDeleteWorker s3ObjectDeleteWorker,
+                         final PluginMetrics pluginMetrics) {
         this.s3SourceConfig = s3SourceConfig;
         this.s3ScanBucketOptions = s3SourceConfig.getS3ScanScanOptions().getBuckets();
         this.s3ClientBuilderFactory = s3ClientBuilderFactory;
@@ -53,11 +56,12 @@ public class S3ScanService {
         this.sourceCoordinator = sourceCoordinator;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
+        this.pluginMetrics = pluginMetrics;
     }
 
     public void start() {
         scanObjectWorkerThread = new Thread(new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
-                getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker));
+                getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics));
         scanObjectWorkerThread.start();
     }
 

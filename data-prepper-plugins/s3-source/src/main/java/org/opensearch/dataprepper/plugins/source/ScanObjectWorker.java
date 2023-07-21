@@ -4,6 +4,8 @@
  */
 package org.opensearch.dataprepper.plugins.source;
 
+import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
@@ -42,7 +44,8 @@ public class ScanObjectWorker implements Runnable{
     private static final int STANDARD_BACKOFF_MILLIS = 30_000;
 
     // Keeping this same as source coordinator ownership time
-    private static final int ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS = 10;
+    private static final int ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS = 10_000;
+    static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
 
     private final S3Client s3Client;
 
@@ -65,6 +68,8 @@ public class ScanObjectWorker implements Runnable{
     private final boolean shouldStopProcessing = false;
     private final boolean deleteS3Objects;
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
+    private final PluginMetrics pluginMetrics;
+    private final Counter acknowledgementSetCallbackCounter;
 
     public ScanObjectWorker(final S3Client s3Client,
                             final List<ScanOptions> scanOptionsBuilderList,
@@ -73,7 +78,8 @@ public class ScanObjectWorker implements Runnable{
                             final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
                             final S3SourceConfig s3SourceConfig,
                             final AcknowledgementSetManager acknowledgementSetManager,
-                            final S3ObjectDeleteWorker s3ObjectDeleteWorker){
+                            final S3ObjectDeleteWorker s3ObjectDeleteWorker,
+                            final PluginMetrics pluginMetrics){
         this.s3Client = s3Client;
         this.scanOptionsBuilderList = scanOptionsBuilderList;
         this.s3ObjectHandler= s3ObjectHandler;
@@ -84,6 +90,8 @@ public class ScanObjectWorker implements Runnable{
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.deleteS3Objects = s3SourceConfig.isDeleteS3Objects();
         this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
+        this.pluginMetrics = pluginMetrics;
+        acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
         this.sourceCoordinator.initialize();
 
         this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList);
@@ -124,12 +132,11 @@ public class ScanObjectWorker implements Runnable{
             CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
 
             acknowledgementSet = acknowledgementSetManager.create((result) -> {
+                acknowledgementSetCallbackCounter.increment();
                 // Delete only if this is positive acknowledgement
                 if (result == true) {
                     sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
-//                    if (objectToProcess.get().getPartitionClosedCount() + 1 >= s3ScanSchedulingOptions.getJobCount()) {
                     waitingForAcknowledgements.forEach(s3ObjectDeleteWorker::deleteS3Object);
-//                    }
                 }
                 completableFuture.complete(result);
             }, Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS));
@@ -144,7 +151,6 @@ public class ScanObjectWorker implements Runnable{
                 completableFuture.get(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } else {
                 sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
-//                if (objectToProcess.get().getPartitionClosedCount() + 1 >= s3ScanSchedulingOptions.getJobCount())
                 deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
             }
         } catch (final PartitionNotOwnedException | PartitionNotFoundException | PartitionUpdateException e) {
