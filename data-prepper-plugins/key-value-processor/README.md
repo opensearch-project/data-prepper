@@ -78,7 +78,7 @@ When run, the processor will parse the message into the following output:
   * Default: `false`
   * Example: `remove_brackets` is `true`. `{"key1=(value1)"}` will parse into `{"key1": value1}`
   * Example: `remove_brackets` is `false`. `{"key1=(value1)"}` will parse into `{"key1": "(value1)"}`
-  * In the case of a key-value pair with a brackets and a split character, the behavior when `remove_brackets` is `true` will look like the following: `{key1=(value1&value2)}` will parse into `{"key1":"value1","value2)":null}`
+  * In the case of a key-value pair with a brackets and a split character, the splitting will take priority over `remove_brackets=true`. `{key1=(value1&value2)}` will parse into `{"key1":"value1","value2)":null}`
 
 ## Developer Guide
 This plugin is compatible with Java 14. See
