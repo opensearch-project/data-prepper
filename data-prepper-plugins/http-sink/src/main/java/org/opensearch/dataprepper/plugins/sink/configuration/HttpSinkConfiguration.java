@@ -43,6 +43,8 @@ public class HttpSinkConfiguration {
 
     private static final String AWS_HOST_API_AWS = "api.aws";
 
+    private static final String AWS_HOST_ON_AWS = "on.aws";
+
     @NotNull
     @JsonProperty("url")
     private String url;
@@ -253,7 +255,7 @@ public class HttpSinkConfiguration {
 
     public boolean isValidAWSUrl() {
         URL parsedUrl = HttpSinkUtil.getURLByUrlString(url);
-        if(parsedUrl.getProtocol().equals(HTTPS) && (parsedUrl.getHost().contains(AWS_HOST_AMAZONAWS_COM) ||parsedUrl.getHost().contains(AWS_HOST_API_AWS))){
+        if(parsedUrl.getProtocol().equals(HTTPS) && (parsedUrl.getHost().contains(AWS_HOST_AMAZONAWS_COM) ||parsedUrl.getHost().contains(AWS_HOST_API_AWS) || parsedUrl.getHost().contains(AWS_HOST_ON_AWS))){
             return true;
         }
         return false;
