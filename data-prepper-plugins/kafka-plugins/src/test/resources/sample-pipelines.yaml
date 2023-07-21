@@ -3,37 +3,47 @@ log-pipeline:
     kafka:
       bootstrap_servers:
         - 127.0.0.1:9093
+      client_dns_lookup: use_all_dns_ips
+      ssl_endpoint_identification_algorithm: https
+      encryption: plaintext
       topics:
         - name: my-topic-1
-          group_name: kafka-consumer-group-2
-          group_id: DPKafkaProj-2
-          workers: 10 #optional and default is 10
-          auto_commit: false  #optional and dafault is false
-          auto_commit_interval: 5  #optional and dafault is 5s
-          session_timeout: 45  #optional and dafault is 45s
-          max_retry_attempts: 1000 #optional and dafault is 5
-          max_retry_delay: 1 #optional and dafault is 5
-          auto_offset_reset: earliest  #optional and dafault is earliest
-          thread_waiting_time: 1  #optional and dafault is 1s
-          max_record_fetch_time: 4 #optional and dafault is 4s
-          heart_beat_interval: 3  #optional and dafault is 3s
-          buffer_default_timeout: 5  #optional and dafault is 5s
-          fetch_max_bytes: 52428800  #optional and dafault is 52428800
-          fetch_max_wait: 500  #optional and dafault is 500
-          fetch_min_bytes: 1  #optional and dafault is 1
-          retry_backoff: 100  #optional and dafault is 10s
-          max_poll_interval: 300000  #optional and dafault is 300000s
-          consumer_max_poll_records: 500  #optional and dafault is 500
-        - name: my-topic-2
-          group_id: DPKafkaProj-1
+          workers: 5
+          auto_commit: false
+          auto_commit_interval: PT5S
+          session_timeout: 45000
+          max_retry_attempts: 1000
+          auto_offset_reset: earliest
+          thread_waiting_time: PT1S
+          max_record_fetch_time: PT4S
+          heart_beat_interval: PT3S
+          buffer_default_timeout: PT5S
+          fetch_max_bytes: 52428800
+          fetch_max_wait: 500
+          fetch_min_bytes: 1
+          retry_backoff: PT100S
+          consumer_max_poll_records: 500
       schema:
         registry_url: http://localhost:8081/
         version: 1
+        schema_registry_api_key: 7QV2UXHRVNOC6AJD
+        schema_registry_api_secret: 6M9xLZDIfmyBN9cqNm2n9GU23mleiaIHJWqQeA5P4JY/LyShaRqPuLJw0XhQQ1pD
+        basic_auth_credentials_source: USER_INFO
+        session_timeout_ms: 45000
+      aws:
+        msk:
+          arn: service Arn
+          broker_connection_type: public
+        region: us-east-2
+        sts_role_arn: sts_role_arn
       authentication:
         sasl:
+          aws_iam: role
           plaintext:
-            username: admin
-            password: admin-secret
+            sasl_mechanism: PLAIN
+            security_protocol: SASL_SSL
+            username: 5UH4NID4OENKDIBI
+            password: jCmncn77F9asfox3yhgZLCEwQ5fx8pKiXnszMqdt0y1GLrdZO1V1iz95aIe1UubX
           oauth:
             oauth_client_id: 0oa9wc21447Pc5vsV5d7
             oauth_client_secret: aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPa
@@ -44,9 +54,11 @@ log-pipeline:
             oauth_introspect_server: https://dev-13650048.okta.com
             oauth_introspect_endpoint: /oauth2/default/v1/introspect
             oauth_token_endpoint_url: https://dev-13650048.okta.com/oauth2/default/v1/token
+            oauth_security_protocol: SASL_SSL
             oauth_sasl_mechanism: OAUTHBEARER
-            oauth_security_protocol: SASL_PLAINTEXT
             oauth_sasl_login_callback_handler_class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
             oauth_jwks_endpoint_url: https://dev-13650048.okta.com/oauth2/default/v1/keys
+            extension_logicalCluster: lkc-yggz7j
+            extension_identityPoolId: pool-RXzn
   sink:
     - stdout:
