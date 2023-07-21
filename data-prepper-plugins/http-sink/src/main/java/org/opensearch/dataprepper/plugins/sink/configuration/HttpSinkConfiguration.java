@@ -14,6 +14,8 @@ import org.opensearch.dataprepper.plugins.sink.util.HttpSinkUtil;
 
 import java.net.URL;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 
 public class HttpSinkConfiguration {
 
@@ -87,7 +89,7 @@ public class HttpSinkConfiguration {
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
     @JsonProperty("custom_header")
-    private CustomHeaderOptions customHeaderOptions;
+    private Map<String, List<String>> customHeaderOptions;
 
     @JsonProperty("dlq_file")
     private String dlqFile;
@@ -229,7 +231,7 @@ public class HttpSinkConfiguration {
         return maxUploadRetries;
     }
 
-    public CustomHeaderOptions getCustomHeaderOptions() {
+    public Map<String, List<String>> getCustomHeaderOptions() {
         return customHeaderOptions;
     }
 

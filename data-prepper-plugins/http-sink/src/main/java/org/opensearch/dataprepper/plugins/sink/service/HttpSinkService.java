@@ -8,11 +8,8 @@ import io.micrometer.core.instrument.Counter;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
-import org.apache.hc.core5.http.HttpRequestInterceptor;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -22,14 +19,12 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 
 import org.opensearch.dataprepper.plugins.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
-import org.opensearch.dataprepper.plugins.sink.AwsRequestSigningApacheInterceptor;
 import org.opensearch.dataprepper.plugins.sink.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.HttpEndPointResponse;
-import org.opensearch.dataprepper.plugins.sink.ThresholdCheck;
+import org.opensearch.dataprepper.plugins.sink.ThresholdValidator;
 import org.opensearch.dataprepper.plugins.sink.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.sink.certificate.HttpClientSSLConnectionManager;
 import org.opensearch.dataprepper.plugins.sink.configuration.AuthTypeOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.CustomHeaderOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.HTTPMethodOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.dlq.DlqPushHandler;
@@ -41,14 +36,13 @@ import org.opensearch.dataprepper.plugins.sink.handler.MultiAuthHttpSinkHandler;
 import org.opensearch.dataprepper.plugins.sink.util.HttpSinkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.signer.Aws4Signer;
 
 import java.io.IOException;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
@@ -61,18 +55,6 @@ public class HttpSinkService {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpSinkService.class);
 
-    public static final String X_AMZN_SAGE_MAKER_CUSTOM_ATTRIBUTES = "X-Amzn-SageMaker-Custom-Attributes";
-
-    public static final String X_AMZN_SAGE_MAKER_INFERENCE_ID = "X-Amzn-SageMaker-Inference-Id";
-
-    public static final String X_AMZN_SAGE_MAKER_ENABLE_EXPLANATIONS = "X-Amzn-SageMaker-Enable-Explanations";
-
-    public static final String X_AMZN_SAGE_MAKER_TARGET_VARIANT = "X-Amzn-SageMaker-Target-Variant";
-
-    public static final String X_AMZN_SAGE_MAKER_TARGET_MODEL = "X-Amzn-SageMaker-Target-Model";
-
-    public static final String X_AMZN_SAGE_MAKER_TARGET_CONTAINER_HOSTNAME = "X-Amzn-SageMaker-Target-Container-Hostname";
-
     public static final String USERNAME = "username";
 
     public static final String PASSWORD = "password";
@@ -83,9 +65,6 @@ public class HttpSinkService {
 
     public static final String HTTP_SINK_RECORDS_SUCCESS_COUNTER = "httpSinkRecordsSuccessPushToEndPoint";
     public static final String HTTP_SINK_RECORDS_FAILED_COUNTER = "httpSinkRecordsFailedToPushEndPoint";
-
-    public static final String AWS_SIGV4 = "aws_sigv4";
-    private static final String AOS_SERVICE_NAME = "http-endpoint";
 
     private final Collection<EventHandle> bufferedEventHandles;
 
@@ -123,8 +102,6 @@ public class HttpSinkService {
 
     private final PluginSetting httpPluginSetting;
 
-    private final AwsCredentialsSupplier awsCredentialsSupplier;
-
     public HttpSinkService(final HttpSinkConfiguration httpSinkConfiguration,
                            final BufferFactory bufferFactory,
                            final DlqPushHandler dlqPushHandler,
@@ -132,9 +109,7 @@ public class HttpSinkService {
                            final WebhookService webhookService,
                            final HttpClientBuilder httpClientBuilder,
                            final PluginMetrics pluginMetrics,
-                           final AwsCredentialsSupplier awsCredentialsSupplier,
                            final PluginSetting httpPluginSetting){
-        this.awsCredentialsSupplier = awsCredentialsSupplier;
         this.httpSinkConfiguration = httpSinkConfiguration;
         this.bufferFactory = bufferFactory;
         this.dlqPushHandler = dlqPushHandler;
@@ -178,7 +153,7 @@ public class HttpSinkService {
                 if (event.getEventHandle() != null) {
                     this.bufferedEventHandles.add(event.getEventHandle());
                 }
-                if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
+                if (ThresholdValidator.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                     final HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
                     if (failedHttpEndPointResponses != null) {
                         logFailedData(failedHttpEndPointResponses, getCurrentBufferData(currentBuffer));
@@ -304,17 +279,10 @@ public class HttpSinkService {
         final String proxyUrlString =  httpSinkConfiguration.getProxy();
         final ClassicRequestBuilder classicRequestBuilder = buildRequestByHTTPMethodType(httpMethod).setUri(httpSinkConfiguration.getUrl());
 
-        if(httpSinkConfiguration.isAwsSigv4() && httpSinkConfiguration.isValidAWSUrl()){
-            HttpRequestInterceptor httpRequestInterceptor = attachSigV4(httpAuthOptions.get(httpSinkConfiguration.getUrl()).getHttpClientBuilder(),awsCredentialsSupplier);
-            httpAuthOptions.get(httpSinkConfiguration.getUrl()).getHttpClientBuilder()
-                    .addRequestInterceptorLast(httpRequestInterceptor);
-        }
+
 
         if(Objects.nonNull(httpSinkConfiguration.getCustomHeaderOptions()))
-            addSageMakerHeaders(classicRequestBuilder,httpSinkConfiguration.getCustomHeaderOptions());
-
-        if(Objects.nonNull(httpSinkConfiguration.getCustomHeaderOptions()))
-            addSageMakerHeaders(classicRequestBuilder,httpSinkConfiguration.getCustomHeaderOptions());
+            addCustomHeaders(classicRequestBuilder,httpSinkConfiguration.getCustomHeaderOptions());
 
         if(Objects.nonNull(proxyUrlString)) {
             httpClientBuilder.setProxy(HttpSinkUtil.getHttpHostByURL(HttpSinkUtil.getURLByUrlString(proxyUrlString)));
@@ -335,14 +303,10 @@ public class HttpSinkService {
      *  @param classicRequestBuilder ClassicRequestBuilder.
      *  @param customHeaderOptions CustomHeaderOptions .
      */
-    private void addSageMakerHeaders(final ClassicRequestBuilder classicRequestBuilder,
-                                     final CustomHeaderOptions customHeaderOptions) {
-        classicRequestBuilder.addHeader(X_AMZN_SAGE_MAKER_CUSTOM_ATTRIBUTES,customHeaderOptions.getCustomAttributes());
-        classicRequestBuilder.addHeader(X_AMZN_SAGE_MAKER_INFERENCE_ID,customHeaderOptions.getInferenceId());
-        classicRequestBuilder.addHeader(X_AMZN_SAGE_MAKER_ENABLE_EXPLANATIONS,customHeaderOptions.getEnableExplanations());
-        classicRequestBuilder.addHeader(X_AMZN_SAGE_MAKER_TARGET_VARIANT,customHeaderOptions.getTargetVariant());
-        classicRequestBuilder.addHeader(X_AMZN_SAGE_MAKER_TARGET_MODEL,customHeaderOptions.getTargetModel());
-        classicRequestBuilder.addHeader(X_AMZN_SAGE_MAKER_TARGET_CONTAINER_HOSTNAME,customHeaderOptions.getTargetContainerHostname());
+    private void addCustomHeaders(final ClassicRequestBuilder classicRequestBuilder,
+                                  final Map<String, List<String>> customHeaderOptions) {
+
+        customHeaderOptions.forEach((k, v) -> classicRequestBuilder.addHeader(k,v.toString()));
     }
 
     /**
@@ -363,23 +327,5 @@ public class HttpSinkService {
         return classicRequestBuilder;
     }
 
-    private HttpRequestInterceptor attachSigV4(final HttpClientBuilder httpClientBuilder,
-                                               final AwsCredentialsSupplier awsCredentialsSupplier) {
-        LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
-        final Aws4Signer aws4Signer = Aws4Signer.create();
-        final AwsCredentialsOptions awsCredentialsOptions = createAwsCredentialsOptions();
-        final AwsCredentialsProvider credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
-        return new AwsRequestSigningApacheInterceptor(AOS_SERVICE_NAME, aws4Signer,
-                credentialsProvider, httpSinkConfiguration.getAwsAuthenticationOptions().getAwsRegion());
-    }
 
-    private AwsCredentialsOptions createAwsCredentialsOptions() {
-        final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
-                .withStsRoleArn(httpSinkConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn())
-                .withStsExternalId(httpSinkConfiguration.getAwsAuthenticationOptions().getAwsStsExternalId())
-                .withRegion(httpSinkConfiguration.getAwsAuthenticationOptions().getAwsRegion())
-                .withStsHeaderOverrides(httpSinkConfiguration.getAwsAuthenticationOptions().getAwsStsHeaderOverrides())
-                .build();
-        return awsCredentialsOptions;
-    }
 }

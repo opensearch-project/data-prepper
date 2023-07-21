@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.LocalFileBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.sink.service.HttpSinkAwsService;
 import org.opensearch.dataprepper.plugins.sink.service.HttpSinkService;
 import org.opensearch.dataprepper.plugins.sink.service.WebhookService;
 
@@ -93,6 +94,9 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
             this.webhookService = new WebhookService(httpSinkConfiguration.getWebhookURL(),
                     httpClientBuilder,pluginMetrics,httpSinkConfiguration);
 
+        if(httpSinkConfiguration.isAwsSigv4() && httpSinkConfiguration.isValidAWSUrl()){
+            HttpSinkAwsService.attachSigV4(httpSinkConfiguration, httpClientBuilder, awsCredentialsSupplier);
+        }
         this.httpSinkService = new HttpSinkService(
                 httpSinkConfiguration,
                 bufferFactory,
@@ -101,7 +105,6 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
                 webhookService,
                 httpClientBuilder,
                 pluginMetrics,
-                awsCredentialsSupplier,
                 pluginSetting);
     }
 

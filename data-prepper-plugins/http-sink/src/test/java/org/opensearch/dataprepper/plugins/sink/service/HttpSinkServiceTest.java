@@ -29,7 +29,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.FailedHttpResponseInterceptor;
-import org.opensearch.dataprepper.plugins.sink.configuration.CustomHeaderOptions;
 import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.dlq.DlqPushHandler;
@@ -149,7 +148,6 @@ public class HttpSinkServiceTest {
                 webhookService,
                 httpClientBuilder,
                 pluginMetrics,
-                awsCredentialsSupplier,
                 pluginSetting);
     }
 
@@ -214,24 +212,6 @@ public class HttpSinkServiceTest {
 
     @Test
     void http_sink_service_test_output_with_single_record_ack_release() throws NoSuchFieldException, IllegalAccessException {
-        final HttpSinkService objectUnderTest = createObjectUnderTest(1,httpSinkConfiguration);
-        final Event event = mock(Event.class);
-        given(event.toJsonString()).willReturn("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}");
-        given(event.getEventHandle()).willReturn(mock(EventHandle.class));
-        objectUnderTest.output(List.of(new Record<>(event)));
-        verify(httpSinkRecordsSuccessCounter).increment(1);
-    }
-
-    @Test
-    void http_sink_service_test_output_with_sagemaker_headers() throws NoSuchFieldException, IllegalAccessException, JsonProcessingException {
-        final String sagemakerYaml = "          X-Amzn-SageMaker-Custom-Attributes: test-attribute\n" +
-                "          X-Amzn-SageMaker-Target-Model: test-target-model\n" +
-                "          X-Amzn-SageMaker-Target-Variant: test-target-variant\n" +
-                "          X-Amzn-SageMaker-Target-Container-Hostname: test-container-host\n" +
-                "          X-Amzn-SageMaker-Inference-Id: test-interface-id\n" +
-                "          X-Amzn-SageMaker-Enable-Explanations: test-explanation";
-        final CustomHeaderOptions customHeaderOptions = objectMapper.readValue(sagemakerYaml, CustomHeaderOptions.class);
-        ReflectivelySetField.setField(HttpSinkConfiguration.class,httpSinkConfiguration,"customHeaderOptions", customHeaderOptions);
         final HttpSinkService objectUnderTest = createObjectUnderTest(1,httpSinkConfiguration);
         final Event event = mock(Event.class);
         given(event.toJsonString()).willReturn("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}");
