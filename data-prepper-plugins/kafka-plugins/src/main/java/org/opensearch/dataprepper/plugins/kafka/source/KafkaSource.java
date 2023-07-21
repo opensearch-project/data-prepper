@@ -302,8 +302,6 @@ public class KafkaSource implements Source<Record<Event>> {
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
             if (isKafkaClusterExists(sourceConfig.getBootStrapServers())) {
                 throw new RuntimeException("Can't be able to connect to the given Kafka brokers... ");
-            } else {
-                isTopicExists(topicConfig.getName(), sourceConfig.getBootStrapServers(), properties);
             }
 
         if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
