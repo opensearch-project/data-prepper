@@ -61,12 +61,19 @@ public class AuthConfig {
     @JsonProperty("sasl")
     private SaslAuthConfig saslAuthConfig;
 
+    @JsonProperty("insecure")
+    private Boolean insecure = false;
+
     public SslAuthConfig getSslAuthConfig() {
         return sslAuthConfig;
     }
 
     public SaslAuthConfig getSaslAuthConfig() {
         return saslAuthConfig;
+    }
+
+    public Boolean getInsecure() {
+        return insecure;
     }
 
     @AssertTrue(message = "Only one of SSL or SASL auth config must be specified")

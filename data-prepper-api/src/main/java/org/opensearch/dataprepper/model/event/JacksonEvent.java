@@ -17,6 +17,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.lang3.StringUtils;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +30,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -298,6 +300,24 @@ public class JacksonEvent implements Event {
      */
     @Override
     public String formatString(final String format) {
+        return formatStringInternal(format, null);
+    }
+
+    /**
+     * returns a string with formatted parts replaced by their values. The input
+     * string may contain parts with format "${.../.../...}" which are replaced
+     * by their value in the event. The input string may also contain Data Prepper expressions
+     * such as "${getMetadata(\"some_metadata_key\")}
+     *
+     * @param format string with format
+     * @throws RuntimeException if the format is incorrect or the value is not a string
+     */
+    @Override
+    public String formatString(final String format, final ExpressionEvaluator expressionEvaluator) {
+        return formatStringInternal(format, expressionEvaluator);
+    }
+
+    private String formatStringInternal(final String format, final ExpressionEvaluator expressionEvaluator) {
         int fromIndex = 0;
         String result = "";
         int position = 0;
@@ -308,11 +328,21 @@ public class JacksonEvent implements Event {
             }
             result += format.substring(fromIndex, position);
             String name = format.substring(position + 2, endPosition);
-            Object val = this.get(name, Object.class);
-            if (val == null) {
-                throw new EventKeyNotFoundException(String.format("The key %s could not be found in the Event when formatting", name));
+
+            Object val;
+            if (Objects.nonNull(expressionEvaluator) && expressionEvaluator.isValidExpressionStatement(name)) {
+                val = expressionEvaluator.evaluate(name, this);
+            } else {
+                val = this.get(name, Object.class);
+                if (val == null) {
+                    throw new EventKeyNotFoundException(String.format("The key %s could not be found in the Event when formatting", name));
+                }
             }
-            result += val.toString();
+
+
+            if (Objects.nonNull(val)) {
+                result += val.toString();
+            }
             fromIndex = endPosition + 1;
         }
         if (fromIndex < format.length()) {

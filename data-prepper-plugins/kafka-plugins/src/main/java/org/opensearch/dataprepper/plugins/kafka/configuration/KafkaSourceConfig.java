@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.util.Objects;
 import java.time.Duration;
 
 /**
@@ -22,8 +23,6 @@ public class KafkaSourceConfig {
     public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
-    @NotNull
-    @Size(min = 1, message = "Bootstrap servers can't be empty")
     private List<String> bootStrapServers;
 
     @JsonProperty("topics")
@@ -68,8 +67,11 @@ public class KafkaSourceConfig {
         this.topics = topics;
     }
 
-    public List<String> getBootStrapServers() {
-        return bootStrapServers;
+    public String getBootStrapServers() {
+        if (Objects.nonNull(bootStrapServers)) {
+            return String.join(",", bootStrapServers);
+        }
+        return null;
     }
 
     public void setBootStrapServers(List<String> bootStrapServers) {
