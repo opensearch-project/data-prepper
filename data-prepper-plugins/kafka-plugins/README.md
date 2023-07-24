@@ -76,7 +76,7 @@ log-pipeline:
 
 - `session_timeout` (Optional) : The timeout used to detect client failures when using Kafka's group management. It is used for the rebalance.
 
-- `max_retry_delay` (Optional) : By default the Kafka source will retry for every 1 second when there is a buffer write error. Defaults to `1s`. 
+- `max_retry_delay` (Optional) : By default the Kafka source will retry for every 1 second when there is a buffer write error. Defaults to `1s`.
 
 - `auto_offset_reset` (Optional) : automatically reset the offset to the earliest or latest offset. Defaults to `earliest`.
 
@@ -89,7 +89,7 @@ Defaults to `4s`.
 
 - `buffer_default_timeout` (Optional) :  The maximum time to write data to the buffer. Defaults to `1s`.
 
-- `fetch_max_bytes` (Optional) : The maximum record batch size accepted by the broker. 
+- `fetch_max_bytes` (Optional) : The maximum record batch size accepted by the broker.
 Defaults to `52428800`.
 
 - `fetch_max_wait` (Optional) : The maximum amount of time the server will block before answering the fetch request if there isn't sufficient data to immediately satisfy the requirement. Defaults to `500`.
@@ -127,7 +127,7 @@ Defaults to `52428800`.
 - `oauth_login_grant_type` (Optional) : This grant type refers to the way an application gets an access token.
 
 - `oauth_login_scope` (Optional) : This scope limit an application's access to a user's account.
-  
+
 - `oauth_introspect_server` (Optional) : The URL of the introspect server. Most of the cases it should be similar to the oauth_login_server URL (Eg:https://dev.okta.com)
 
 - `oauth_introspect_endpoint` (Optional) : The end point of the introspect server URL.(Eg: /oauth2/default/v1/introspect)
@@ -140,9 +140,42 @@ Defaults to `52428800`.
 
 - `oauth_jwks_endpoint_url` (Optional) : The absolute URL for the oauth token refresh.
 
+## Integration Tests
+
+Before running the integration tests, make sure Kafka server is started
+1. Start Zookeeper
+```
+bin/zookeeper-server-start.sh config/zookeeper.properties
+```
+2. Start Kafka Server with the following configuration
+Configuration in config/server.properties
+```
+isteners=SASL_SSL://localhost:9093,PLAINTEXT://localhost:9092,SSL://localhost:9094,SASL_PLAINTEXT://localhost:9095
+security.inter.broker.protocol=SASL_SSL
+sasl.mechanism.inter.broker.protocol=PLAIN
+sasl.enabled.mechanisms=PLAIN
+ssl.truststore.location=<location of truststore>
+ssl.truststore.password=<password of truststore>
+ssl.keystore.location=<location of keystore>
+ssl.keystore.password=<password of keystore>
+```
+The truststore must have "localhost" certificates in them.
+
+Command to start kafka server
+```
+bin/kafka-server-start.sh config/server.properties
+```
+
+3. Command to run integration tests
+
+```
+./gradlew    data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers="localhost:9092" -Dtests.kafka.trust_store_location="/home/krishkdk/kafka/kafka-3.4.1-src/sec/client.truststore.jks" -Dtests.kafka.trust_store_password="kafkaks" -Dtests.kafka.saslssl_bootstrap_servers="localhost:9093" -Dtests.kafka.ssl_bootstrap_servers="localhost:9094" -Dtests.kafka.saslplain_bootstrap_servers="localhost:9095" -Dtests.kafka.username="admin" -Dtests.kafka.password="admin1" --tests "*KafkaSourceMultipleAuthTypeIT*"
+```
+
+
 ## Developer Guide
 
 This plugin is compatible with Java 11. See
 
-- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md) 
+- [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
