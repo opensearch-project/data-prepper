@@ -44,7 +44,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     public TranslateProcessor(PluginMetrics pluginMetrics, final TranslateProcessorConfig translateProcessorConfig, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
-        mappingsConfig = translateProcessorConfig.getCombinedParameterConfigs();
+        mappingsConfig = translateProcessorConfig.getCombinedMappingsConfigs();
         Optional.ofNullable(mappingsConfig)
                 .ifPresent(configs -> configs.forEach(MappingsParameterConfig::parseMappings));
     }
