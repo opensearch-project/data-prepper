@@ -180,6 +180,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     continue;
                 }
 
+                if (!excludeKeysSet.isEmpty() && excludeKeysSet.contains(key)) {
+                    LOG.debug(String.format("Key is being excluded: '%s'", key));
+                    continue;
+                }
+
                 if(keyValueProcessorConfig.getDeleteKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteKeyRegex(), "")) {
                     key = key.replaceAll(keyValueProcessorConfig.getDeleteKeyRegex(), "");
                 }
