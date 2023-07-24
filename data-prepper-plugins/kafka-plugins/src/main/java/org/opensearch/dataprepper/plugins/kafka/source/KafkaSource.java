@@ -5,13 +5,23 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
+import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.confluent.kafka.serializers.KafkaJsonDeserializer;
+import kafka.common.BrokerEndPointNotAvailableException;
 import org.apache.avro.generic.GenericRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.micrometer.core.instrument.Counter;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.errors.BrokerNotAvailableException;
+import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -23,6 +33,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
@@ -31,8 +42,11 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import software.amazon.awssdk.services.kafka.KafkaClient;
@@ -58,17 +72,24 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.Comparator;
-import java.util.Objects;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.util.Map;
 import java.util.List;
-import java.util.Properties;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
+import java.util.Objects;
+import java.util.Comparator;
+import java.util.Properties;
+import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.IntStream;
-
 import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * The starting point of the Kafka-source plugin and the Kafka consumer
  * properties and kafka multithreaded consumers are being handled here.
@@ -87,10 +108,12 @@ public class KafkaSource implements Source<Record<Event>> {
     private final PluginMetrics pluginMetrics;
     private KafkaSourceCustomConsumer consumer;
     private String pipelineName;
+    private String consumerGroupID;
     private String schemaType = MessageFormat.PLAINTEXT.toString();
-    private static final String SCHEMA_TYPE= "schemaType";
+    private static final String SCHEMA_TYPE = "schemaType";
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final EncryptionType encryptionType;
+    private static CachedSchemaRegistryClient schemaRegistryClient;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
@@ -109,9 +132,9 @@ public class KafkaSource implements Source<Record<Event>> {
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         sourceConfig.getTopics().forEach(topic -> {
+            consumerGroupID = getGroupId(topic.getName());
             Properties consumerProperties = getConsumerProperties(topic);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
-
             try {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
@@ -130,11 +153,15 @@ public class KafkaSource implements Source<Record<Event>> {
                             break;
                     }
                     consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, pluginMetrics);
-
                     executorService.submit(consumer);
                 });
             } catch (Exception e) {
-                LOG.error("Failed to setup the Kafka Source Plugin.", e);
+                if (e instanceof BrokerNotAvailableException ||
+                        e instanceof BrokerEndPointNotAvailableException || e instanceof TimeoutException) {
+                    LOG.error("The kafka broker is not available...");
+                } else {
+                    LOG.error("Failed to setup the Kafka Source Plugin.", e);
+                }
                 throw new RuntimeException();
             }
             LOG.info("Started Kafka source for topic " + topic.getName());
@@ -162,6 +189,10 @@ public class KafkaSource implements Source<Record<Event>> {
         LOG.info("Consumer shutdown successfully...");
     }
 
+    private String getGroupId(String name) {
+        return pipelineName + "::" + name;
+    }
+
     private long calculateLongestThreadWaitingTime() {
         List<TopicConfig> topicsList = sourceConfig.getTopics();
         return topicsList.stream().
@@ -175,21 +206,21 @@ public class KafkaSource implements Source<Record<Event>> {
     public String getBootStrapServersForMsk(final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig) {
         AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
         if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
-            String sessionName = "data-prepper-kafka-session"+UUID.randomUUID();
+            String sessionName = "data-prepper-kafka-session" + UUID.randomUUID();
             StsClient stsClient = StsClient.builder()
                     .region(Region.of(awsConfig.getRegion()))
                     .credentialsProvider(credentialsProvider)
                     .build();
             credentialsProvider = StsAssumeRoleCredentialsProvider
-                                 .builder()
-                                 .stsClient(stsClient)
-                                 .refreshRequest(
-                                     AssumeRoleRequest
-                                     .builder()
-                                     .roleArn(awsConfig.getStsRoleArn())
-                                     .roleSessionName(sessionName)
-                                     .build()
-                                 ).build();
+                    .builder()
+                    .stsClient(stsClient)
+                    .refreshRequest(
+                            AssumeRoleRequest
+                                    .builder()
+                                    .roleArn(awsConfig.getStsRoleArn())
+                                    .roleSessionName(sessionName)
+                                    .build()
+                    ).build();
         } else {
             throw new RuntimeException("Unknown AWS IAM auth mode");
         }
@@ -200,9 +231,9 @@ public class KafkaSource implements Source<Record<Event>> {
                 .build();
         final GetBootstrapBrokersRequest request =
                 GetBootstrapBrokersRequest
-                .builder()
-                .clusterArn(awsMskConfig.getArn())
-                .build();
+                        .builder()
+                        .clusterArn(awsMskConfig.getArn())
+                        .build();
 
         int numRetries = 0;
         boolean retryable;
@@ -248,6 +279,7 @@ public class KafkaSource implements Source<Record<Event>> {
                     }
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
                 } else if (saslAuthConfig.getOAuthConfig() != null) {
+                    KafkaSourceSecurityConfigurer.setOauthProperties(sourceConfig, properties);
                 } else if (plainTextAuthConfig != null) {
                     setPlainTextAuthProperties(properties, plainTextAuthConfig);
                 } else {
@@ -268,45 +300,27 @@ public class KafkaSource implements Source<Record<Event>> {
             throw new RuntimeException("Bootstrap servers are not specified");
         }
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-
-        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-                topicConfig.getAutoCommit());
-        properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                topicConfig.getAutoCommitInterval().toSecondsPart());
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-                topicConfig.getAutoOffsetReset());
-        properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
-                topicConfig.getConsumerMaxPollRecords());
-        properties.put(ConsumerConfig.GROUP_ID_CONFIG, topicConfig.getGroupId());
-        SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
-        if (Objects.nonNull(schemaConfig)) {
-            schemaType = getSchemaType(schemaConfig.getRegistryURL(), topicConfig.getName(), schemaConfig.getVersion());
-    }
-        if (schemaType.isEmpty()) {
-            schemaType = MessageFormat.PLAINTEXT.toString();
+           /* if (isKafkaClusterExists(sourceConfig.getBootStrapServers())) {
+                throw new RuntimeException("Can't be able to connect to the given Kafka brokers... ");
+            }*/
+        if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
+            ClientDNSLookupType dnsLookupType = ClientDNSLookupType.getDnsLookupType(sourceConfig.getClientDnsLookup());
+            switch (dnsLookupType) {
+                case USE_ALL_DNS_IPS:
+                    properties.put("client.dns.lookup", ClientDNSLookupType.USE_ALL_DNS_IPS.toString());
+                    break;
+                case CANONICAL_BOOTSTRAP:
+                    properties.put("client.dns.lookup", ClientDNSLookupType.CANONICAL_BOOTSTRAP.toString());
+                    break;
+                case DEFAULT:
+                    properties.put("client.dns.lookup", ClientDNSLookupType.DEFAULT.toString());
+                    break;
+            }
         }
-        setPropertiesForSchemaType(properties, schemaType);
+        setConsumerTopicProperties(properties, topicConfig);
+        setSchemaRegistryProperties(properties, topicConfig);
         LOG.info("Starting consumer with the properties : {}", properties);
         return properties;
-    }
-
-    private void setPropertiesForSchemaType(Properties properties, final String schemaType) {
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                StringDeserializer.class);
-        if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
-        } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                    KafkaAvroDeserializer.class);
-            if (validateURL(getSchemaRegistryUrl())) {
-                properties.put(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegistryUrl());
-            } else {
-                throw new RuntimeException("Invalid Schema Registry URI");
-            }
-        } else {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
-        }
     }
 
     private static boolean validateURL(String url) {
@@ -335,12 +349,12 @@ public class KafkaSource implements Source<Record<Event>> {
         properties.put("sasl.client.callback.handler.class", "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
         if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
             properties.put("sasl.jaas.config",
-                "software.amazon.msk.auth.iam.IAMLoginModule required " +
-                "awsRoleArn=\"" + awsConfig.getStsRoleArn()+
-                "\" awsStsRegion=\""+ awsConfig.getRegion()+"\";");
+                    "software.amazon.msk.auth.iam.IAMLoginModule required " +
+                            "awsRoleArn=\"" + awsConfig.getStsRoleArn() +
+                            "\" awsStsRegion=\"" + awsConfig.getRegion() + "\";");
         } else if (awsIamAuthConfig == AwsIamAuthConfig.DEFAULT) {
             properties.put("sasl.jaas.config",
-                "software.amazon.msk.auth.iam.IAMLoginModule required;");
+                    "software.amazon.msk.auth.iam.IAMLoginModule required;");
         }
     }
 
@@ -417,5 +431,171 @@ public class KafkaSource implements Source<Record<Event>> {
         reader.close();
         errorStream.close();
         return errorMessage.toString();
+    }
+
+    private void setSchemaRegistryProperties(Properties properties, TopicConfig topic) {
+        SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
+        if (schemaConfig != null && StringUtils.isNotEmpty(schemaConfig.getRegistryURL())) {
+            setPropertiesForSchemaRegistryConnectivity(properties);
+            setPropertiesForSchemaType(properties, topic);
+        } else if (schemaConfig == null) {
+            setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(properties);
+        }
+    }
+
+    private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties) {
+        MessageFormat dataFormat = MessageFormat.getByMessageFormatByName(sourceConfig.getSerdeFormat());
+        schemaType = dataFormat.toString();
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                StringDeserializer.class);
+        switch (dataFormat) {
+            case JSON:
+                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
+                break;
+            default:
+            case PLAINTEXT:
+                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                        StringDeserializer.class);
+                break;
+        }
+    }
+
+    private void setPropertiesForSchemaType(Properties properties, TopicConfig topic) {
+        Map prop = properties;
+        Map<String, String> propertyMap = (Map<String, String>) prop;
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG, getSchemaRegistryUrl());
+        properties.put(KafkaAvroDeserializerConfig.AUTO_REGISTER_SCHEMAS, false);
+        schemaRegistryClient = new CachedSchemaRegistryClient(properties.getProperty(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG),
+                100, propertyMap);
+        try {
+            schemaType = schemaRegistryClient.getSchemaMetadata(topic.getName() + "-value",
+                    sourceConfig.getSchemaConfig().getVersion()).getSchemaType();
+        } catch (IOException | RestClientException e) {
+            LOG.error("Failed to connect to the schema registry...");
+            throw new RuntimeException(e);
+        }
+        if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
+            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonDeserializer.class);
+        } else if (schemaType.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
+            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaAvroDeserializer.class);
+        } else {
+            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                    StringDeserializer.class);
+        }
+    }
+
+    private void setConsumerTopicProperties(Properties properties, TopicConfig topicConfig) {
+        properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupID);
+        properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
+                topicConfig.getAutoCommit());
+        properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
+                topicConfig.getAutoCommitInterval().toSecondsPart());
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                topicConfig.getAutoOffsetReset());
+        properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
+                topicConfig.getConsumerMaxPollRecords());
+        properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, topicConfig.getSessionTimeOut());
+        properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, topicConfig.getHeartBeatInterval().toSecondsPart());
+        properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, topicConfig.getFetchMaxBytes().intValue());
+        properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
+    }
+
+    private void setPropertiesForSchemaRegistryConnectivity(Properties properties) {
+        AuthConfig authConfig = sourceConfig.getAuthConfig();
+        String schemaRegistryApiKey = sourceConfig.getSchemaConfig().getSchemaRegistryApiKey();
+        String schemaRegistryApiSecret = sourceConfig.getSchemaConfig().getSchemaRegistryApiSecret();
+        //with plaintext authentication for schema registry
+        if ("USER_INFO".equalsIgnoreCase(sourceConfig.getSchemaConfig().getBasicAuthCredentialsSource())
+                && authConfig.getSaslAuthConfig().getPlainTextAuthConfig() != null) {
+            String schemaBasicAuthUserInfo = schemaRegistryApiKey.concat(":").concat(schemaRegistryApiSecret);
+            properties.put("schema.registry.basic.auth.user.info", schemaBasicAuthUserInfo);
+            properties.put("basic.auth.credentials.source", "USER_INFO");
+        }
+
+        if (authConfig != null && authConfig.getSaslAuthConfig() != null) {
+            PlainTextAuthConfig plainTextAuthConfig = authConfig.getSaslAuthConfig().getPlainTextAuthConfig();
+            OAuthConfig oAuthConfig = authConfig.getSaslAuthConfig().getOAuthConfig();
+            if (plainTextAuthConfig != null) {
+                properties.put("sasl.mechanism", "PLAIN");
+                properties.put("security.protocol", plainTextAuthConfig.getSecurityProtocol());
+            } else if (oAuthConfig != null) {
+                properties.put("sasl.mechanism", oAuthConfig.getOauthSaslMechanism());
+                properties.put("security.protocol", oAuthConfig.getOauthSecurityProtocol());
+            }
+        }
+    }
+
+    private void isTopicExists(String topicName, String bootStrapServer, Properties properties) {
+        List<String> bootStrapServers = new ArrayList<>();
+        String servers[];
+        if (bootStrapServer.contains(",")) {
+            servers = bootStrapServer.split(",");
+            bootStrapServers.addAll(Arrays.asList(servers));
+        } else {
+            bootStrapServers.add(bootStrapServer);
+        }
+        properties.put("connections.max.idle.ms", 5000);
+        properties.put("request.timeout.ms", 10000);
+        try (AdminClient client = KafkaAdminClient.create(properties)) {
+            boolean topicExists = client.listTopics().names().get().stream().anyMatch(name -> name.equalsIgnoreCase(topicName));
+        } catch (InterruptedException | ExecutionException e) {
+            if (e.getCause() instanceof UnknownTopicOrPartitionException) {
+                LOG.error("Topic does not exist: " + topicName);
+            }
+            throw new RuntimeException("Exception while checking the topics availability...");
+        }
+    }
+
+    private boolean isKafkaClusterExists(String bootStrapServers) {
+        Socket socket = null;
+        String[] serverDetails = new String[0];
+        String[] servers = new String[0];
+        int counter = 0;
+        try {
+            if (bootStrapServers.contains(",")) {
+                servers = bootStrapServers.split(",");
+            } else {
+                servers = new String[]{bootStrapServers};
+            }
+            if (CollectionUtils.isNotEmpty(Arrays.asList(servers))) {
+                for (String bootstrapServer : servers) {
+                    if (bootstrapServer.contains(":")) {
+                        serverDetails = bootstrapServer.split(":");
+                        if (StringUtils.isNotEmpty(serverDetails[0])) {
+                            InetAddress inetAddress = InetAddress.getByName(serverDetails[0]);
+                            socket = new Socket(inetAddress, Integer.parseInt(serverDetails[1]));
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            counter++;
+            LOG.error("Kafka broker : {} is not available...", getMaskedBootStrapDetails(serverDetails[0]));
+        } finally {
+            if (socket != null) {
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+        if (counter == servers.length) {
+            return true;
+        }
+        return false;
+    }
+
+    private String getMaskedBootStrapDetails(String serverIP) {
+        if (serverIP == null || serverIP.length() <= 4) {
+            return serverIP;
+        }
+        int maskedLength = serverIP.length() - 4;
+        StringBuilder maskedString = new StringBuilder(maskedLength);
+        for (int i = 0; i < maskedLength; i++) {
+            maskedString.append('*');
+        }
+        return maskedString.append(serverIP.substring(maskedLength)).toString();
     }
 }
