@@ -103,10 +103,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if (keyValueProcessorConfig.getIncludeKeys() != null) {
             if (keyValueProcessorConfig.getExcludeKeys() != null) {
                 if (keyValueProcessorConfig.getIncludeKeys().equals(keyValueProcessorConfig.getExcludeKeys())) {
-                    throw new IllegalStateException("Include keys and exclude keys set cannot be the same", null);
-                } else {
-                    excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
+                    if (!keyValueProcessorConfig.getIncludeKeys().isEmpty()) {
+                        throw new IllegalStateException("Include keys and exclude keys set cannot be the same", null);
+                    }
                 }
+
+                excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
             }
 
             includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
