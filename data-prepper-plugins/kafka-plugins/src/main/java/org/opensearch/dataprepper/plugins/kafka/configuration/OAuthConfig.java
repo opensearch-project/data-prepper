@@ -49,6 +49,28 @@ public class OAuthConfig {
     @JsonProperty("oauth_jwks_endpoint_url")
     private String oauthJwksEndpointURL = "";
 
+    @JsonProperty("extension_logicalCluster")
+    private String extensionLogicalCluster;
+
+    @JsonProperty("extension_identityPoolId")
+    private String extensionIdentityPoolId;
+
+    public String getOauthAuthorizationToken() {
+        return oauthAuthorizationToken;
+    }
+
+    public String getOauthIntrospectAuthorizationToken() {
+        return oauthIntrospectAuthorizationToken;
+    }
+
+    public String getExtensionLogicalCluster() {
+        return extensionLogicalCluster;
+    }
+
+    public String getExtensionIdentityPoolId() {
+        return extensionIdentityPoolId;
+    }
+
     public String getOauthJwksEndpointURL() {
         return oauthJwksEndpointURL;
     }

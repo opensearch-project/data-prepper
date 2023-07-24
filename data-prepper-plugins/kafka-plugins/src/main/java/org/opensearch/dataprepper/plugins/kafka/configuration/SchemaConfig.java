@@ -14,25 +14,47 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class SchemaConfig {
 
+  private static final int SESSION_TIME_OUT = 45000;
+
   @JsonProperty("registry_url")
   private String registryURL;
 
   @JsonProperty("version")
   private int version;
 
-  public String getRegistryURL() {
-    return registryURL;
+  @JsonProperty("schema_registry_api_key")
+  private String schemaRegistryApiKey;
+
+  @JsonProperty("schema_registry_api_secret")
+  private String schemaRegistryApiSecret;
+
+  @JsonProperty("session_timeout_ms")
+  private int sessionTimeoutms = SESSION_TIME_OUT;
+
+  @JsonProperty("basic_auth_credentials_source")
+  private String basicAuthCredentialsSource;
+
+  public int getSessionTimeoutms() {
+    return sessionTimeoutms;
   }
 
-  public void setRegistryURL(String registryURL) {
-    this.registryURL = registryURL;
+  public String getBasicAuthCredentialsSource() {
+    return basicAuthCredentialsSource;
+  }
+
+  public String getRegistryURL() {
+    return registryURL;
   }
 
   public int getVersion() {
     return version;
   }
 
-  public void setVersion(int version) {
-    this.version = version;
+  public String getSchemaRegistryApiKey() {
+    return schemaRegistryApiKey;
+  }
+
+  public String getSchemaRegistryApiSecret() {
+    return schemaRegistryApiSecret;
   }
 }
