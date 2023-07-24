@@ -25,6 +25,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_TRANSFORM_KEY = "";
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
+    static final boolean DEFAULT_REMOVE_BRACKETS = false;
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -74,6 +75,10 @@ public class KeyValueProcessorConfig {
     @JsonProperty("skip_duplicate_values")
     @NotNull
     private boolean skipDuplicateValues = DEFAULT_SKIP_DUPLICATE_VALUES;
+
+    @JsonProperty("remove_brackets")
+    @NotNull
+    private boolean removeBrackets = DEFAULT_REMOVE_BRACKETS;
 
     public String getSource() {
         return source;
@@ -129,5 +134,9 @@ public class KeyValueProcessorConfig {
 
     public boolean getSkipDuplicateValues() {
         return skipDuplicateValues;
+    }
+
+    public boolean getRemoveBrackets() {
+        return removeBrackets;
     }
 }
