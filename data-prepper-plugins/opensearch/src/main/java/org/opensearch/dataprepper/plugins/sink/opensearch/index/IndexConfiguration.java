@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
@@ -51,6 +52,7 @@ public class IndexConfiguration {
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
+    public static final String DISTRIBUTION_VERSION = "distribution_version";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
@@ -71,6 +73,7 @@ public class IndexConfiguration {
     private final String s3AwsExternalId;
     private final S3Client s3Client;
     private final boolean serverless;
+    private final DistributionVersion distributionVersion;
     private final String documentRootKey;
 
     private static final String S3_PREFIX = "s3://";
@@ -79,6 +82,7 @@ public class IndexConfiguration {
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
         this.serverless = builder.serverless;
+        this.distributionVersion = builder.distributionVersion;
         determineIndexType(builder);
 
         this.s3AwsRegion = builder.s3AwsRegion;
@@ -132,7 +136,7 @@ public class IndexConfiguration {
             indexType = mappedIndexType.orElseThrow(
                     () -> new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
                     + IndexType.getIndexTypeValues()));
-        } else if (builder.serverless) {
+        } else if (builder.serverless || DistributionVersion.ES6.equals(builder.distributionVersion)) {
             this.indexType = IndexType.MANAGEMENT_DISABLED;
         } else {
             this.indexType  = IndexType.CUSTOM;
@@ -206,6 +210,10 @@ public class IndexConfiguration {
         final String documentRootKey = pluginSetting.getStringOrDefault(DOCUMENT_ROOT_KEY, null);
         builder.withDocumentRootKey(documentRootKey);
 
+        final String distributionVersion = pluginSetting.getStringOrDefault(DISTRIBUTION_VERSION,
+                DistributionVersion.DEFAULT.getVersion());
+        builder.withDistributionVersion(distributionVersion);
+
         return builder.build();
     }
 
@@ -271,6 +279,10 @@ public class IndexConfiguration {
 
     public boolean getServerless() {
         return serverless;
+    }
+
+    public DistributionVersion getDistributionVersion() {
+        return distributionVersion;
     }
 
     public String getDocumentRootKey() {
@@ -343,6 +355,7 @@ public class IndexConfiguration {
         private String s3AwsStsExternalId;
         private S3Client s3Client;
         private boolean serverless;
+        private DistributionVersion distributionVersion;
         private String documentRootKey;
 
         public Builder withIndexAlias(final String indexAlias) {
@@ -457,6 +470,11 @@ public class IndexConfiguration {
 
         public Builder withServerless(final boolean serverless) {
             this.serverless = serverless;
+            return this;
+        }
+
+        public Builder withDistributionVersion(final String distributionVersion) {
+            this.distributionVersion = DistributionVersion.fromTypeName(distributionVersion);
             return this;
         }
 
