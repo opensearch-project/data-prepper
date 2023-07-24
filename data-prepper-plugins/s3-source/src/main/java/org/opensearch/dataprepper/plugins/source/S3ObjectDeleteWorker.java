@@ -29,6 +29,7 @@ public class S3ObjectDeleteWorker {
             final DeleteObjectResponse deleteObjectResponse = s3Client.deleteObject(deleteObjectRequest);
             if (deleteObjectResponse.sdkHttpResponse().isSuccessful()) {
                 LOG.info("Deleted object: {} in S3 bucket: {}. ", deleteObjectRequest.key(), deleteObjectRequest.bucket());
+                s3ObjectsDeletedCounter.increment();
             } else {
                 s3ObjectsDeleteFailedCounter.increment();
             }
