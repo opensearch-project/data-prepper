@@ -1,6 +1,8 @@
 package org.opensearch.dataprepper.plugins.processor.translate;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -13,6 +15,9 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 @ExtendWith(MockitoExtension.class)
 class TranslateProcessorTest {
@@ -62,6 +68,9 @@ class TranslateProcessorTest {
                 .thenReturn(mockRegexConfig.DEFAULT_EXACT);
         lenient()
                 .when(mockConfig.getMappingsParameterConfigs())
+                .thenReturn(List.of(mappingsParameterConfig));
+        lenient()
+                .when(mockConfig.getCombinedParameterConfigs())
                 .thenReturn(List.of(mappingsParameterConfig));
     }
 
@@ -529,6 +538,114 @@ class TranslateProcessorTest {
 
         assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
         assertThat(translatedRecords.get(0).getData().get("targetField", Double.class), is(20.3));
+    }
+    @Nested
+    class FilePathTests {
+        private File testMappingsFile;
+        private String filePath;
+        TranslateProcessorConfig fileTranslateConfig;
+
+        @BeforeEach
+        void setup() throws IOException, NoSuchFieldException, IllegalAccessException {
+            testMappingsFile = File.createTempFile("test", ".yaml");
+            String fileContent = "mappings:\n" +
+                                 "  - source: sourceField\n" +
+                                 "    targets:\n" +
+                                 "      - target: fileTarget\n" +
+                                 "        map:\n" +
+                                 "          key1: fileMappedValue";
+            Files.write(testMappingsFile.toPath(), fileContent.getBytes());
+            filePath = testMappingsFile.getAbsolutePath();
+            fileTranslateConfig = new TranslateProcessorConfig();
+            setField(TranslateProcessorConfig.class, fileTranslateConfig, "filePath", filePath);
+        }
+
+        @AfterEach
+        void cleanup() {
+            testMappingsFile.delete();
+        }
+
+        @Test
+        void test_only_file_path() throws NoSuchFieldException, IllegalAccessException {
+            parseMappings();
+
+            final TranslateProcessor processor = createObjectUnderTest();
+            final Record<Event> record = getEvent("key1");
+            final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+            assertTrue(translatedRecords.get(0).getData().containsKey("fileTarget"));
+            assertThat(translatedRecords.get(0).getData().get("fileTarget", String.class), is("fileMappedValue"));
+        }
+        @Test
+        void test_non_overlapping_sources() throws NoSuchFieldException, IllegalAccessException {
+            targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key2", "mappedValue2")),
+                                                                "targetField", null, null, null, null);
+            MappingsParameterConfig fileMappingConfig = createMappingConfig();
+            setField(TranslateProcessorConfig.class, fileTranslateConfig, "mappingsParameterConfigs", List.of(fileMappingConfig));
+            parseMappings();
+
+            final TranslateProcessor processor = createObjectUnderTest();
+            final Record<Event> record = getEvent("key1");
+            final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+            assertTrue(translatedRecords.get(0).getData().containsKey("fileTarget"));
+            assertThat(translatedRecords.get(0).getData().get("fileTarget", String.class), is("fileMappedValue"));
+
+            final Record<Event> mappingsRecord = getEvent("key2");
+            final List<Record<Event>> translatedMappingsRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(mappingsRecord));
+
+            assertTrue(translatedMappingsRecords.get(0).getData().containsKey("targetField"));
+            assertThat(translatedMappingsRecords.get(0).getData().get("targetField", String.class), is("mappedValue2"));
+        }
+        @Test
+        void test_overlapping_sources_different_targets() throws NoSuchFieldException, IllegalAccessException {
+            targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "mappedValue1")),
+                                                                "targetField", null, null, null, null);
+            MappingsParameterConfig fileMappingConfig = createMappingConfig();
+            setField(TranslateProcessorConfig.class, fileTranslateConfig, "mappingsParameterConfigs", List.of(fileMappingConfig));
+            parseMappings();
+
+            final TranslateProcessor processor = createObjectUnderTest();
+            final Record<Event> record = getEvent("key1");
+            final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+            assertTrue(translatedRecords.get(0).getData().containsKey("fileTarget"));
+            assertThat(translatedRecords.get(0).getData().get("fileTarget", String.class), is("fileMappedValue"));
+
+            final Record<Event> mappingsRecord = getEvent("key1");
+            final List<Record<Event>> translatedMappingsRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(mappingsRecord));
+
+            assertTrue(translatedMappingsRecords.get(0).getData().containsKey("targetField"));
+            assertThat(translatedMappingsRecords.get(0).getData().get("targetField", String.class), is("mappedValue1"));
+        }
+
+        @Test
+        void test_overlapping_sources_and_overlapping_targets() throws NoSuchFieldException, IllegalAccessException {
+            targetsParameterConfig = new TargetsParameterConfig(createMapEntries(createMapping("key1", "mappedValue1")),
+                                                                "fileTarget", null, null, null, null);
+            MappingsParameterConfig fileMappingConfig = createMappingConfig();
+            setField(TranslateProcessorConfig.class, fileTranslateConfig, "mappingsParameterConfigs", List.of(fileMappingConfig));
+            parseMappings();
+
+            final TranslateProcessor processor = createObjectUnderTest();
+            final Record<Event> record = getEvent("key1");
+            final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+            assertTrue(translatedRecords.get(0).getData().containsKey("fileTarget"));
+            assertThat(translatedRecords.get(0).getData().get("fileTarget", String.class), is("mappedValue1"));
+        }
+
+        void parseMappings(){
+            fileTranslateConfig.isFileValid();
+            fileTranslateConfig.getCombinedParameterConfigs().get(0).parseMappings();
+            when(mockConfig.getCombinedParameterConfigs()).thenReturn(fileTranslateConfig.getCombinedParameterConfigs());
+        }
+        MappingsParameterConfig createMappingConfig() throws NoSuchFieldException, IllegalAccessException {
+            MappingsParameterConfig fileMappingConfig = new MappingsParameterConfig();
+            setField(MappingsParameterConfig.class, fileMappingConfig, "source", "sourceField");
+            setField(MappingsParameterConfig.class, fileMappingConfig, "targetsParameterConfigs", List.of(targetsParameterConfig));
+            return fileMappingConfig;
+        }
     }
 
     private TranslateProcessor createObjectUnderTest() {

@@ -24,8 +24,8 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedOutputCodec;
-import org.opensearch.dataprepper.plugins.codec.newline.NewlineDelimitedOutputConfig;
+import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.ObjectKey;
@@ -90,7 +90,7 @@ class S3SinkServiceIT {
     private OutputCodec codec;
 
     @Mock
-    NewlineDelimitedOutputConfig newlineDelimitedOutputConfig;
+    NdjsonOutputConfig ndjsonOutputConfig;
 
 
     @BeforeEach
@@ -131,8 +131,8 @@ class S3SinkServiceIT {
     }
 
     void configureNewLineCodec() {
-        codec = new NewlineDelimitedOutputCodec(newlineDelimitedOutputConfig);
-        when(newlineDelimitedOutputConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
+        codec = new NdjsonOutputCodec(ndjsonOutputConfig);
+        when(ndjsonOutputConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
     }
 
     @Test

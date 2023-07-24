@@ -87,20 +87,13 @@ opensearch-source-pipeline:
       hosts: [ "https://source-cluster:9200" ]
       username: "username"
       password: "password"
-  processor:
-    - add_entries:
-        entries:
-          - key: "document_id"
-            value_expression: "getMetadata(\"document_id\")"
-          - key: "index"
-            value_expression: "getMetadata(\"index\")"
   sink:
     - opensearch:
         hosts: [ "https://sink-cluster:9200" ]
         username: "username"
         password: "password"
-        document_id_field: "document_id"
-        index: "copied-${index}"
+        document_id_field: "getMetadata(\"opensearch-document_id\")"
+        index: "${getMetadata(\"opensearch-index\"}"
 ```
 
 ## Configuration

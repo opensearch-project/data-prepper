@@ -126,15 +126,7 @@ public class JavaClientAccumulatingCompressedBulkRequest implements Accumulating
     }
 
     private Object mapBulkOperationToDocument(final BulkOperationWrapper bulkOperation) {
-        Object anyDocument;
-
-        if (bulkOperation.getBulkOperation().isIndex()) {
-            anyDocument = bulkOperation.getBulkOperation().index().document();
-        } else if (bulkOperation.getBulkOperation().isCreate()) {
-            anyDocument = bulkOperation.getBulkOperation().create().document();
-        } else {
-            throw new UnsupportedOperationException("Only index or create operations are supported currently. " + bulkOperation);
-        }
+        final Object anyDocument = bulkOperation.getDocument();
 
         if (anyDocument == null) {
             return new SerializedJsonImpl(null);
