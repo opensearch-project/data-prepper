@@ -181,11 +181,11 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
 
         traceAnalyticsServiceMapIndexManager.checkAndCreateIndexTemplate(false, null);
 
-        verify(openSearchSinkConfiguration, times(3)).getIndexConfiguration();
+        verify(openSearchSinkConfiguration, times(2)).getIndexConfiguration();
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIndexTemplate();
         verify(templateStrategy).getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME);
-        verify(templateStrategy).createTemplate(indexConfiguration, indexTemplateObject);
+        verify(templateStrategy).createTemplate(indexTemplateObject);
         verify(indexTemplateObject).setTemplateName(EXPECTED_TEMPLATE_NAME);
         verify(indexTemplateObject).setIndexPatterns(Collections.singletonList(INDEX_ALIAS));
         verify(indexTemplateObject, never()).putCustomSetting(eq(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING), anyString());
@@ -206,7 +206,7 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         verify(indexTemplateObject).putCustomSetting(IndexConstants.ISM_ROLLOVER_ALIAS_SETTING, INDEX_ALIAS);
         verify(indexTemplateObject, never()).putCustomSetting(eq(IndexConstants.ISM_POLICY_ID_SETTING), anyString());
         verify(templateStrategy).getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME);
-        verify(templateStrategy).createTemplate(indexConfiguration, indexTemplateObject);
+        verify(templateStrategy).createTemplate(indexTemplateObject);
     }
 
     @Test
@@ -221,7 +221,7 @@ public class TraceAnalyticsServiceMapIndexManagerTests {
         verify(indexConfiguration).getIndexAlias();
         verify(indexConfiguration).getIndexTemplate();
         verify(templateStrategy).getExistingTemplateVersion(EXPECTED_TEMPLATE_NAME);
-        verify(templateStrategy, never()).createTemplate(any(), any());
+        verify(templateStrategy, never()).createTemplate(any());
     }
 
     @Test

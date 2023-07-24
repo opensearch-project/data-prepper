@@ -27,24 +27,24 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.Mockito.mock;
 
 class TemplateTypeTest {
-    private OpenSearchClient openSearchClient;
+    private IndexTemplateAPIWrapper indexTemplateAPIWrapper;
 
     @BeforeEach
     void setUp() {
-        openSearchClient = mock(OpenSearchClient.class);
+        indexTemplateAPIWrapper = mock(IndexTemplateAPIWrapper.class);
     }
 
     @ParameterizedTest
     @ArgumentsSource(EnumToStrategyClass.class)
     void createTemplateStrategy_returns_instance_of_expected_type(final TemplateType objectUnderTest, final Class<?> expectedStrategyClass) {
-        assertThat(objectUnderTest.createTemplateStrategy(openSearchClient),
+        assertThat(objectUnderTest.createTemplateStrategy(indexTemplateAPIWrapper),
                 instanceOf(expectedStrategyClass));
     }
 
     @ParameterizedTest
     @EnumSource(TemplateType.class)
     void createTemplateStrategy_returns_for_all_enum_types(final TemplateType objectUnderTest) {
-        assertThat(objectUnderTest.createTemplateStrategy(openSearchClient), notNullValue());
+        assertThat(objectUnderTest.createTemplateStrategy(indexTemplateAPIWrapper), notNullValue());
     }
 
     @ParameterizedTest

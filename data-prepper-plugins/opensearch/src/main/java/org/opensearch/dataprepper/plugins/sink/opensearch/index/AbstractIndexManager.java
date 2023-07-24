@@ -231,7 +231,7 @@ public abstract class AbstractIndexManager implements IndexManager {
         indexTemplate.setTemplateName(indexTemplateName);
         indexTemplate.setIndexPatterns(indexPatterns);
 
-        templateStrategy.createTemplate(openSearchSinkConfiguration.getIndexConfiguration(), indexTemplate);
+        templateStrategy.createTemplate(indexTemplate);
     }
 
     final Optional<String> checkAndCreatePolicy() throws IOException {

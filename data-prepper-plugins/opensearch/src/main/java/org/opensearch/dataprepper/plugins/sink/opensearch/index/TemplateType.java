@@ -5,11 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import org.opensearch.client.opensearch.OpenSearchClient;
-
 import java.util.Arrays;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -34,9 +31,9 @@ public enum TemplateType {
             ));
 
     private final String name;
-    private final Function<OpenSearchClient, TemplateStrategy> factoryFunction;
+    private final Function<IndexTemplateAPIWrapper, TemplateStrategy> factoryFunction;
 
-    TemplateType(final String name, final Function<OpenSearchClient, TemplateStrategy> factoryFunction) {
+    TemplateType(final String name, final Function<IndexTemplateAPIWrapper, TemplateStrategy> factoryFunction) {
         this.name = name;
         this.factoryFunction = factoryFunction;
     }
@@ -45,8 +42,8 @@ public enum TemplateType {
         return TYPE_NAME_MAP.get(name);
     }
 
-    public TemplateStrategy createTemplateStrategy(final OpenSearchClient openSearchClient) {
-        return factoryFunction.apply(openSearchClient);
+    public TemplateStrategy createTemplateStrategy(final IndexTemplateAPIWrapper indexTemplateAPIWrapper) {
+        return factoryFunction.apply(indexTemplateAPIWrapper);
     }
 
     String getTypeName() {
