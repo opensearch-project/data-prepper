@@ -83,6 +83,7 @@ public class DlqPushHandler {
     }
 
     private void pushToS3(PluginSetting pluginSetting, Object failedData) {
+        LOG.info("s3 dlq - push to s3 method");
         DlqWriter dlqWriter = getDlqWriter(pluginSetting.getPipelineName());
         try {
             String pluginId = randomUUID().toString();
@@ -94,6 +95,7 @@ public class DlqPushHandler {
                     .build();
 
             dlqWriter.write(Arrays.asList(dlqObject), pluginSetting.getPipelineName(), pluginId);
+            LOG.info("s3 dlq write complete");
         } catch (final IOException e) {
             LOG.error("Exception while writing failed data to DLQ, Exception : ", e);
         }

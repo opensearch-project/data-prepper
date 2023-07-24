@@ -113,7 +113,7 @@ public class SNSSinkService {
         this.dlqPushHandler = new DlqPushHandler(snsSinkConfig.getDlqFile(), pluginFactory,
                 String.valueOf(snsSinkConfig.getDlqPluginSetting().get(BUCKET)),
                 snsSinkConfig.getDlqStsRoleARN()
-                ,snsSinkConfig.getDlqStsRoleARN(),
+                ,snsSinkConfig.getDlqStsRegion(),
                 String.valueOf(snsSinkConfig.getDlqPluginSetting().get(KEY_PATH)));
     }
 
@@ -136,12 +136,13 @@ public class SNSSinkService {
                 if (checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                     LOG.debug("Writing {} to SNS with {} events and size of {} bytes.",
                             currentBuffer.getEventCount(), currentBuffer.getSize());
-                    final boolean isFlushToSNS = retryFlushToSNS(currentBuffer, topicName);
+                    String errorMsg = "";
+                    final boolean isFlushToSNS = retryFlushToSNS(currentBuffer, topicName,errorMsg);
                     if (isFlushToSNS) {
                         numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
                     } else {
                         numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
-                        SNSSinkFailedDlqData sNSSinkFailedDlqData = SNSSinkFailedDlqData.builder().withBufferData(new String(currentBuffer.getSinkBufferData())).withTopic(topicName).setTimeStamp(LocalDateTime.now().toString()).build();
+                        SNSSinkFailedDlqData sNSSinkFailedDlqData = new SNSSinkFailedDlqData(topicName,errorMsg,new String(currentBuffer.getSinkBufferData()));
                         dlqPushHandler.perform(pluginSetting,sNSSinkFailedDlqData);
                     }
                     releaseEventHandles(true);
@@ -188,7 +189,7 @@ public class SNSSinkService {
      * @return boolean based on object upload status.
      * @throws InterruptedException interruption during sleep.
      */
-    protected boolean retryFlushToSNS(final Buffer currentBuffer, final String topicName) throws InterruptedException {
+    protected boolean retryFlushToSNS(final Buffer currentBuffer, final String topicName,String errorMsg) throws InterruptedException {
         boolean isUploadedToSNS = Boolean.FALSE;
         int retryCount = maxRetries;
         do {
@@ -198,6 +199,7 @@ public class SNSSinkService {
                 publishToTopic(snsClient, topicName,sinkBufferData);
                 isUploadedToSNS = Boolean.TRUE;
             } catch (AwsServiceException | SdkClientException | IOException e) {
+                errorMsg = e.getMessage();
                 LOG.error("Exception occurred while uploading records to sns. Retry countdown  : {} | exception:",
                         retryCount, e);
                 --retryCount;

@@ -72,7 +72,7 @@ public class DlqPushHandlerTest {
 
         when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
         doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
-        SNSSinkFailedDlqData failedDlqData = SNSSinkFailedDlqData.builder().build();
+        SNSSinkFailedDlqData failedDlqData = new SNSSinkFailedDlqData(null,null,null);
         dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE);
 
         PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
@@ -85,7 +85,7 @@ public class DlqPushHandlerTest {
     @Test
     public void perform_for_dlq_local_file_success(){
 
-        SNSSinkFailedDlqData failedDlqData = SNSSinkFailedDlqData.builder().build();
+        SNSSinkFailedDlqData failedDlqData = new SNSSinkFailedDlqData(null,null,null);
         dlqPushHandler = new DlqPushHandler(DLQ_FILE,pluginFactory,null, ROLE, REGION,null);
 
         PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, null);
