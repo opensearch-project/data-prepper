@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import static org.mockito.Mockito.when;
 import org.mockito.Mock;
@@ -112,6 +113,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
+        when(sourceConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
         when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
         try {
@@ -128,6 +130,8 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(plainTextTopic.getName()).thenReturn(testTopic);
         when(plainTextTopic.getGroupId()).thenReturn(testGroup);
         when(plainTextTopic.getWorkers()).thenReturn(1);
+        when(plainTextTopic.getSessionTimeOut()).thenReturn(15000);
+        when(plainTextTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(plainTextTopic.getAutoCommit()).thenReturn(false);
         when(plainTextTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(plainTextTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));

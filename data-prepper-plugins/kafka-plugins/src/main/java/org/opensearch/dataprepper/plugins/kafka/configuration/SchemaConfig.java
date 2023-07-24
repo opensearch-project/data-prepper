@@ -16,6 +16,9 @@ public class SchemaConfig {
 
   private static final int SESSION_TIME_OUT = 45000;
 
+  @JsonProperty("type")
+  private SchemaRegistryType type;
+
   @JsonProperty("registry_url")
   private String registryURL;
 
@@ -48,6 +51,10 @@ public class SchemaConfig {
 
   public int getVersion() {
     return version;
+  }
+
+  public SchemaRegistryType getType() {
+    return type;
   }
 
   public String getSchemaRegistryApiKey() {

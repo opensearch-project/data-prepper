@@ -53,7 +53,7 @@ public class KafkaSourceConfig {
     private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
 
     @JsonProperty("serde_format")
-    private String serdeFormat= MessageFormat.PLAINTEXT.toString();
+    private MessageFormat serdeFormat= MessageFormat.PLAINTEXT;
 
     @JsonProperty("client_dns_lookup")
     private String clientDnsLookup;
@@ -62,7 +62,7 @@ public class KafkaSourceConfig {
         return clientDnsLookup;
     }
 
-    public String getSerdeFormat() {
+    public MessageFormat getSerdeFormat() {
         return serdeFormat;
     }
     public Boolean getAcknowledgementsEnabled() {

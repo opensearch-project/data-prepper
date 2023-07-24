@@ -35,31 +35,22 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-import software.amazon.awssdk.services.kafka.KafkaClient;
-import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
-import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
-import software.amazon.awssdk.services.kafka.model.InternalServerErrorException;
-import software.amazon.awssdk.services.kafka.model.ConflictException;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.regions.Region;
+import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
+import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
+import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,7 +67,6 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.Map;
 import java.util.List;
-import java.util.UUID;
 import java.util.Objects;
 import java.util.Comparator;
 import java.util.Properties;
@@ -99,7 +89,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @DataPrepperPlugin(name = "kafka", pluginType = Source.class, pluginConfigurationType = KafkaSourceConfig.class)
 public class KafkaSource implements Source<Record<Event>> {
     private static final String KAFKA_WORKER_THREAD_PROCESSING_ERRORS = "kafkaWorkerThreadProcessingErrors";
-    private static final int MAX_KAFKA_CLIENT_RETRIES = 10;
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSource.class);
     private final KafkaSourceConfig sourceConfig;
     private AtomicBoolean shutdownInProgress;
@@ -162,7 +151,7 @@ public class KafkaSource implements Source<Record<Event>> {
                 } else {
                     LOG.error("Failed to setup the Kafka Source Plugin.", e);
                 }
-                throw new RuntimeException();
+                throw new RuntimeException(e);
             }
             LOG.info("Started Kafka source for topic " + topic.getName());
         });
@@ -181,7 +170,7 @@ public class KafkaSource implements Source<Record<Event>> {
             }
         } catch (InterruptedException e) {
             if (e.getCause() instanceof InterruptedException) {
-                LOG.error("Interrupted during consumer shutdown, exiting uncleanly...");
+                LOG.error("Interrupted during consumer shutdown, exiting uncleanly...", e);
                 executorService.shutdownNow();
                 Thread.currentThread().interrupt();
             }
@@ -203,106 +192,13 @@ public class KafkaSource implements Source<Record<Event>> {
                 orElse(1L);
     }
 
-    public String getBootStrapServersForMsk(final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig) {
-        AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
-        if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
-            String sessionName = "data-prepper-kafka-session" + UUID.randomUUID();
-            StsClient stsClient = StsClient.builder()
-                    .region(Region.of(awsConfig.getRegion()))
-                    .credentialsProvider(credentialsProvider)
-                    .build();
-            credentialsProvider = StsAssumeRoleCredentialsProvider
-                    .builder()
-                    .stsClient(stsClient)
-                    .refreshRequest(
-                            AssumeRoleRequest
-                                    .builder()
-                                    .roleArn(awsConfig.getStsRoleArn())
-                                    .roleSessionName(sessionName)
-                                    .build()
-                    ).build();
-        } else {
-            throw new RuntimeException("Unknown AWS IAM auth mode");
-        }
-        final AwsConfig.AwsMskConfig awsMskConfig = awsConfig.getAwsMskConfig();
-        KafkaClient kafkaClient = KafkaClient.builder()
-                .credentialsProvider(credentialsProvider)
-                .region(Region.of(awsConfig.getRegion()))
-                .build();
-        final GetBootstrapBrokersRequest request =
-                GetBootstrapBrokersRequest
-                        .builder()
-                        .clusterArn(awsMskConfig.getArn())
-                        .build();
-
-        int numRetries = 0;
-        boolean retryable;
-        GetBootstrapBrokersResponse result = null;
-        do {
-            retryable = false;
-            try {
-                result = kafkaClient.getBootstrapBrokers(request);
-            } catch (InternalServerErrorException | ConflictException e) {
-                retryable = true;
-            } catch (Exception e) {
-                break;
-            }
-        } while (retryable && numRetries++ < MAX_KAFKA_CLIENT_RETRIES);
-        if (Objects.isNull(result)) {
-            LOG.info("Failed to get bootstrap server information from MSK, using user configured bootstrap servers");
-            return sourceConfig.getBootStrapServers();
-        }
-        switch (awsMskConfig.getBrokerConnectionType()) {
-            case PUBLIC:
-                return result.bootstrapBrokerStringPublicSaslIam();
-            case MULTI_VPC:
-                return result.bootstrapBrokerStringVpcConnectivitySaslIam();
-            default:
-            case SINGLE_VPC:
-                return result.bootstrapBrokerStringSaslIam();
-        }
-    }
 
     private Properties getConsumerProperties(final TopicConfig topicConfig) {
         Properties properties = new Properties();
-        AwsIamAuthConfig awsIamAuthConfig = null;
-        AwsConfig awsConfig = sourceConfig.getAwsConfig();
-        if (sourceConfig.getAuthConfig() != null) {
-            AuthConfig.SaslAuthConfig saslAuthConfig = sourceConfig.getAuthConfig().getSaslAuthConfig();
-            if (saslAuthConfig != null) {
-                awsIamAuthConfig = saslAuthConfig.getAwsIamAuthConfig();
-                PlainTextAuthConfig plainTextAuthConfig = saslAuthConfig.getPlainTextAuthConfig();
-
-                if (awsIamAuthConfig != null) {
-                    if (encryptionType == EncryptionType.PLAINTEXT) {
-                        throw new RuntimeException("Encryption Config must be SSL to use IAM authentication mechanism");
-                    }
-                    setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
-                } else if (saslAuthConfig.getOAuthConfig() != null) {
-                    KafkaSourceSecurityConfigurer.setOauthProperties(sourceConfig, properties);
-                } else if (plainTextAuthConfig != null) {
-                    setPlainTextAuthProperties(properties, plainTextAuthConfig);
-                } else {
-                    throw new RuntimeException("No SASL auth config specified");
-                }
-            } else if (encryptionType == EncryptionType.SSL) {
-                properties.put("security.protocol", "SSL");
-                if (sourceConfig.getAuthConfig().getInsecure()) {
-                    properties.put("ssl.engine.factory.class", InsecureSslEngineFactory.class);
-                }
-            }
-        }
-        String bootstrapServers = sourceConfig.getBootStrapServers();
-        if (Objects.nonNull(awsIamAuthConfig)) {
-            bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig);
-        }
-        if (Objects.isNull(bootstrapServers) || bootstrapServers.isEmpty()) {
-            throw new RuntimeException("Bootstrap servers are not specified");
-        }
-        properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-           /* if (isKafkaClusterExists(sourceConfig.getBootStrapServers())) {
-                throw new RuntimeException("Can't be able to connect to the given Kafka brokers... ");
-            }*/
+        KafkaSourceSecurityConfigurer.setAuthProperties(properties, sourceConfig);
+       /* if (isKafkaClusterExists(sourceConfig.getBootStrapServers())) {
+            throw new RuntimeException("Can't be able to connect to the given Kafka brokers... ");
+        }*/
         if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
             ClientDNSLookupType dnsLookupType = ClientDNSLookupType.getDnsLookupType(sourceConfig.getClientDnsLookup());
             switch (dnsLookupType) {
@@ -338,39 +234,6 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private String getSchemaRegistryUrl() {
         return sourceConfig.getSchemaConfig().getRegistryURL();
-    }
-
-    private void setAwsIamAuthProperties(Properties properties, final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig) {
-        if (awsConfig == null) {
-            throw new RuntimeException("AWS Config is not specified");
-        }
-        properties.put("security.protocol", "SASL_SSL");
-        properties.put("sasl.mechanism", "AWS_MSK_IAM");
-        properties.put("sasl.client.callback.handler.class", "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
-        if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
-            properties.put("sasl.jaas.config",
-                    "software.amazon.msk.auth.iam.IAMLoginModule required " +
-                            "awsRoleArn=\"" + awsConfig.getStsRoleArn() +
-                            "\" awsStsRegion=\"" + awsConfig.getRegion() + "\";");
-        } else if (awsIamAuthConfig == AwsIamAuthConfig.DEFAULT) {
-            properties.put("sasl.jaas.config",
-                    "software.amazon.msk.auth.iam.IAMLoginModule required;");
-        }
-    }
-
-    private void setPlainTextAuthProperties(Properties properties, final PlainTextAuthConfig plainTextAuthConfig) {
-        String username = plainTextAuthConfig.getUsername();
-        String password = plainTextAuthConfig.getPassword();
-        properties.put("sasl.mechanism", "PLAIN");
-        properties.put("sasl.jaas.config", "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
-        if (encryptionType == EncryptionType.PLAINTEXT) {
-            properties.put("security.protocol", "SASL_PLAINTEXT");
-        } else { // EncryptionType.SSL
-            properties.put("security.protocol", "SASL_SSL");
-        }
-        if (sourceConfig.getAuthConfig().getInsecure()) {
-            properties.put("ssl.engine.factory.class", InsecureSslEngineFactory.class);
-        }
     }
 
     private static String getSchemaType(final String registryUrl, final String topicName, final int schemaVersion) {
@@ -435,16 +298,34 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private void setSchemaRegistryProperties(Properties properties, TopicConfig topic) {
         SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
-        if (schemaConfig != null && StringUtils.isNotEmpty(schemaConfig.getRegistryURL())) {
+        if (Objects.isNull(schemaConfig)) {
+            setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(properties);
+            return;
+        }
+
+        if (schemaConfig.getType() == SchemaRegistryType.GLUE) {
+            setPropertiesForGlueSchemaRegistry(properties);
+            return;
+        }
+
+        /* else schema registry type is Confluent */
+        if (StringUtils.isNotEmpty(schemaConfig.getRegistryURL())) {
             setPropertiesForSchemaRegistryConnectivity(properties);
             setPropertiesForSchemaType(properties, topic);
-        } else if (schemaConfig == null) {
-            setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(properties);
+        } else {
+            throw new RuntimeException("RegistryURL must be specified for confluent schema registry");
         }
     }
 
+    private void setPropertiesForGlueSchemaRegistry(Properties properties) {
+        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, GlueSchemaRegistryKafkaDeserializer.class.getName());
+        properties.put(AWSSchemaRegistryConstants.AWS_REGION, sourceConfig.getAwsConfig().getRegion());
+        properties.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
+    }
+
     private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties) {
-        MessageFormat dataFormat = MessageFormat.getByMessageFormatByName(sourceConfig.getSerdeFormat());
+        MessageFormat dataFormat = sourceConfig.getSerdeFormat();
         schemaType = dataFormat.toString();
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                 StringDeserializer.class);
@@ -516,10 +397,7 @@ public class KafkaSource implements Source<Record<Event>> {
         if (authConfig != null && authConfig.getSaslAuthConfig() != null) {
             PlainTextAuthConfig plainTextAuthConfig = authConfig.getSaslAuthConfig().getPlainTextAuthConfig();
             OAuthConfig oAuthConfig = authConfig.getSaslAuthConfig().getOAuthConfig();
-            if (plainTextAuthConfig != null) {
-                properties.put("sasl.mechanism", "PLAIN");
-                properties.put("security.protocol", plainTextAuthConfig.getSecurityProtocol());
-            } else if (oAuthConfig != null) {
+            if (oAuthConfig != null) {
                 properties.put("sasl.mechanism", oAuthConfig.getOauthSaslMechanism());
                 properties.put("security.protocol", oAuthConfig.getOauthSecurityProtocol());
             }
