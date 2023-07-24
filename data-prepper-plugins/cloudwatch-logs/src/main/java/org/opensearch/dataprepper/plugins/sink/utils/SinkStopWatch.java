@@ -3,13 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.time;
+package org.opensearch.dataprepper.plugins.sink.utils;
 
 import org.apache.commons.lang3.time.StopWatch;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * A synchronized watch for accessing time
+ * related data. (Wrapper around StopWatch class
+ * from "commons.apache.lang3")
+ */
 public class SinkStopWatch {
     private final StopWatch stopWatch;
     private final ReentrantLock stopWatchLock;

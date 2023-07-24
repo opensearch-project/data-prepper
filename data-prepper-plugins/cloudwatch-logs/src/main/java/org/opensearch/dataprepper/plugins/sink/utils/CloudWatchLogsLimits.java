@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink.push_condition;
+package org.opensearch.dataprepper.plugins.sink.utils;
 /**
  * ThresholdCheck receives parameters for which to reference the
  * limits of a buffer and CloudWatchLogsClient before making a
@@ -11,13 +11,13 @@ package org.opensearch.dataprepper.plugins.sink.push_condition;
  */
 public class CloudWatchLogsLimits {
     public static final int APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE = 26; //Size of overhead for each log event message.
-    private final int batchSize;
+    private final int maxBatchSize;
     private final int maxEventSizeBytes;
     private final int maxRequestSizeBytes;
     private final long logSendInterval;
 
-    public CloudWatchLogsLimits(final int batchSize, final int maxEventSizeBytes, final int maxRequestSizeBytes, final int logSendInterval) {
-        this.batchSize = batchSize;
+    public CloudWatchLogsLimits(final int maxBatchSize, final int maxEventSizeBytes, final int maxRequestSizeBytes, final int logSendInterval) {
+        this.maxBatchSize = maxBatchSize;
         this.maxEventSizeBytes = maxEventSizeBytes;
         this.maxRequestSizeBytes = maxRequestSizeBytes;
         this.logSendInterval = logSendInterval;
@@ -82,7 +82,7 @@ public class CloudWatchLogsLimits {
      * @return boolean - true if greater, false otherwise.
      */
     private boolean isGreaterThanBatchSize(final int batchSize) {
-        return batchSize > this.batchSize;
+        return batchSize > this.maxBatchSize;
     }
 
     /**
@@ -95,6 +95,6 @@ public class CloudWatchLogsLimits {
     }
 
     private boolean isEqualBatchSize(final int batchSize) {
-        return batchSize == this.batchSize;
+        return batchSize == this.maxBatchSize;
     }
 }

@@ -41,7 +41,6 @@ public class InMemoryBuffer implements Buffer {
 
     @Override
     public List<byte[]> getBufferedData() {
-        Collections.unmodifiableList(eventsBuffered);
         return Collections.unmodifiableList(eventsBuffered);
     }
 

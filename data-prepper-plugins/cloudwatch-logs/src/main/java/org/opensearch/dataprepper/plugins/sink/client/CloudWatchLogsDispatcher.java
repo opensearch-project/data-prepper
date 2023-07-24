@@ -5,7 +5,9 @@
 
 package org.opensearch.dataprepper.plugins.sink.client;
 
+import lombok.Builder;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,22 +22,23 @@ import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
+@Builder
 public class CloudWatchLogsDispatcher implements Runnable {
-    public static final long UPPER_RETRY_TIME_BOUND = 20000;
-    public static final float EXP_TIME_SCALER = 1.5F;
+    private static final long UPPER_RETRY_TIME_BOUND_MILLISECONDS = 5000;
+    private static final float EXP_TIME_SCALE = 1.5F;
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsDispatcher.class);
-    private final BlockingQueue<ThreadTaskEvents> taskQueue;
-    private final CloudWatchLogsClient cloudWatchLogsClient;
-    private final CloudWatchLogsMetrics cloudWatchLogsMetrics;
-    private final String logGroup;
-    private final String logStream;
-    final int retryCount;
-    final long backOffTimeBase;
+    private BlockingQueue<ThreadTaskEvents> taskQueue;
+    private CloudWatchLogsClient cloudWatchLogsClient;
+    private CloudWatchLogsMetrics cloudWatchLogsMetrics;
+    private String logGroup;
+    private String logStream;
+    private int retryCount;
+    private long backOffTimeBase;
     public CloudWatchLogsDispatcher(final BlockingQueue<ThreadTaskEvents> taskQueue,
                                     final CloudWatchLogsClient cloudWatchLogsClient,
                                     final CloudWatchLogsMetrics cloudWatchLogsMetrics,
                                     final String logGroup, final String logStream,
-                                    final int retryCount, final int backOffTimeBase) {
+                                    final int retryCount, final long backOffTimeBase) {
         this.taskQueue = taskQueue;
         this.cloudWatchLogsClient = cloudWatchLogsClient;
         this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
@@ -64,7 +67,7 @@ public class CloudWatchLogsDispatcher implements Runnable {
      * @param inputLogEvents Collection of inputLogEvents to be flushed
      * @return true if successful, false otherwise
      */
-    public boolean dispatchLogs(List<InputLogEvent> inputLogEvents, Collection<EventHandle> eventHandles) {
+    public void dispatchLogs(List<InputLogEvent> inputLogEvents, Collection<EventHandle> eventHandles) {
         boolean failedPost = true;
         int failCounter = 0;
 
@@ -74,7 +77,6 @@ public class CloudWatchLogsDispatcher implements Runnable {
                 .logStreamName(logStream)
                 .build();
 
-        //TODO: Could also continue to retry even with InterruptedException instead of directly pushing to DLQ.
         try {
             while (failedPost && (failCounter < retryCount)) {
                 try {
@@ -94,28 +96,26 @@ public class CloudWatchLogsDispatcher implements Runnable {
             }
         } catch (InterruptedException e) {
             LOG.warn("Got interrupted while waiting!");
-            Thread.currentThread().interrupt();
             //TODO: Push to DLQ.
+            Thread.currentThread().interrupt();
         }
 
 
         if (failedPost) {
             cloudWatchLogsMetrics.increaseLogEventFailCounter(inputLogEvents.size());
             releaseEventHandles(false, eventHandles);
-            return false;
         } else {
             cloudWatchLogsMetrics.increaseLogEventSuccessCounter(inputLogEvents.size());
             releaseEventHandles(true, eventHandles);
-            return true;
         }
     }
 
     //TODO: Can abstract this if clients want more choice.
     private long calculateBackOffTime(final long backOffTimeBase, final int failCounter) {
-        long scale = (long)Math.pow(EXP_TIME_SCALER, failCounter);
+        long scale = (long)Math.pow(EXP_TIME_SCALE, failCounter);
 
-        if (scale >= UPPER_RETRY_TIME_BOUND) {
-            return UPPER_RETRY_TIME_BOUND;
+        if (scale >= UPPER_RETRY_TIME_BOUND_MILLISECONDS) {
+            return UPPER_RETRY_TIME_BOUND_MILLISECONDS;
         }
 
         return scale * backOffTimeBase;

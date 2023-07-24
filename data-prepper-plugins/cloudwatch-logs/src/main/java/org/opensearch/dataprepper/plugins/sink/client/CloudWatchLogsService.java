@@ -10,10 +10,11 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
-import org.opensearch.dataprepper.plugins.sink.push_condition.CloudWatchLogsLimits;
-import org.opensearch.dataprepper.plugins.sink.time.SinkStopWatch;
+import org.opensearch.dataprepper.plugins.sink.utils.CloudWatchLogsLimits;
+import org.opensearch.dataprepper.plugins.sink.utils.SinkStopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,28 +27,43 @@ import static java.util.concurrent.Executors.newCachedThreadPool; //TODO: Can im
 
 public class CloudWatchLogsService {
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsService.class);
+    private final CloudWatchLogsClient cloudWatchLogsClient;
+    private final CloudWatchLogsMetrics cloudWatchLogsMetrics;
     private final Buffer buffer;
     private final CloudWatchLogsLimits cloudWatchLogsLimits;
     private List<EventHandle> bufferedEventHandles;
     private final BlockingQueue<ThreadTaskEvents> taskQueue;
     private final SinkStopWatch sinkStopWatch;
     private final ReentrantLock bufferLock;
-    private final Executor sinkThreadManager;
-    private final CloudWatchLogsDispatcher dispatcher;
+    private final Executor asyncExecutor;
+    private final String logGroup;
+    private final String logStream;
+    private final int retryCount;
+    private final long backOffTimeBase;
 
     public CloudWatchLogsService(final Buffer buffer,
+                                 final CloudWatchLogsClient cloudWatchLogsClient,
+                                 final CloudWatchLogsMetrics cloudWatchLogsMetrics,
                                  final CloudWatchLogsLimits cloudWatchLogsLimits,
-                                 final CloudWatchLogsDispatcher dispatcher, BlockingQueue<ThreadTaskEvents> blockingQueue) {
+                                 final BlockingQueue<ThreadTaskEvents> blockingQueue,
+                                 final String logGroup, final String logStream,
+                                 final int retryCount, final long backOffTimeBase) {
 
         this.buffer = buffer;
-        this.dispatcher = dispatcher;
-        this.bufferedEventHandles = new ArrayList<>();
+        this.cloudWatchLogsClient = cloudWatchLogsClient;
+        this.cloudWatchLogsMetrics = cloudWatchLogsMetrics;
         this.cloudWatchLogsLimits = cloudWatchLogsLimits;
         this.taskQueue = blockingQueue;
+        this.logGroup = logGroup;
+        this.logStream = logStream;
+        this.retryCount = retryCount;
+        this.backOffTimeBase = backOffTimeBase;
+
+        this.bufferedEventHandles = new ArrayList<>();
 
         bufferLock = new ReentrantLock();
         sinkStopWatch = new SinkStopWatch();
-        sinkThreadManager = newCachedThreadPool();
+        asyncExecutor = newCachedThreadPool();
     }
 
     /**
@@ -91,16 +107,26 @@ public class CloudWatchLogsService {
     private void stageLogEvents() {
         sinkStopWatch.stopAndResetStopWatch();
 
-        ArrayList<byte[]> eventMessageCloneList = new ArrayList<>();
-        cloneLists(buffer.getBufferedData(), eventMessageCloneList);
+        ArrayList<byte[]> eventMessageClone = new ArrayList<>();
+        cloneLists(buffer.getBufferedData(), eventMessageClone);
 
-        ThreadTaskEvents dataToPush = new ThreadTaskEvents(eventMessageCloneList, bufferedEventHandles);
+        ThreadTaskEvents dataToPush = new ThreadTaskEvents(eventMessageClone, bufferedEventHandles);
         taskQueue.add(dataToPush);
 
         buffer.clearBuffer();
         bufferedEventHandles = new ArrayList<>();
 
-        sinkThreadManager.execute(dispatcher);
+        CloudWatchLogsDispatcher newTaskDispatcher = CloudWatchLogsDispatcher.builder()
+                .taskQueue(taskQueue)
+                .cloudWatchLogsClient(cloudWatchLogsClient)
+                .cloudWatchLogsMetrics(cloudWatchLogsMetrics)
+                .logGroup(logGroup)
+                .logStream(logStream)
+                .retryCount(retryCount)
+                .backOffTimeBase(backOffTimeBase)
+                .build();
+
+        asyncExecutor.execute(newTaskDispatcher);
     }
 
     private void addToBuffer(final Record<Event> log) {

@@ -41,10 +41,8 @@ public final class CloudWatchLogsClientFactory {
     }
 
     private static ClientOverrideConfiguration createOverrideConfiguration() {
-        final RetryPolicy retryPolicy = RetryPolicy.builder().numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS).build();
-
         return ClientOverrideConfiguration.builder()
-                .retryPolicy(retryPolicy)
+                .retryPolicy(r -> r.numRetries(AwsConfig.DEFAULT_CONNECTION_ATTEMPTS))
                 .build();
     }
 
