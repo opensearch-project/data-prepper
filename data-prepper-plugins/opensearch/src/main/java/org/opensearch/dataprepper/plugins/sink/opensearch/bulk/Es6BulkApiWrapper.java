@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Es6BulkApiWrapper implements BulkApiWrapper {
-    static final String DUMMY_DEFAULT_INDEX = "dummy";
     private final OpenSearchClient openSearchClient;
 
     public Es6BulkApiWrapper(final OpenSearchClient openSearchClient) {
@@ -36,7 +35,10 @@ public class Es6BulkApiWrapper implements BulkApiWrapper {
 
                 // Request path
                 request -> {
-                    final String index = request.index() == null ? DUMMY_DEFAULT_INDEX : request.index();
+                    final String index = request.index();
+                    if (index == null) {
+                        throw new IllegalArgumentException("Bulk request index cannot be missing");
+                    }
                     StringBuilder buf = new StringBuilder();
                     buf.append("/");
                     SimpleEndpoint.pathEncode(index, buf);
