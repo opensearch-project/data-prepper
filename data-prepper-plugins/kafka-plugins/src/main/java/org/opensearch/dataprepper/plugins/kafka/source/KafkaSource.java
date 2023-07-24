@@ -44,6 +44,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -79,7 +80,6 @@ import java.util.UUID;
 import java.util.Objects;
 import java.util.Comparator;
 import java.util.Properties;
-import java.util.Optional;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -300,15 +300,22 @@ public class KafkaSource implements Source<Record<Event>> {
             throw new RuntimeException("Bootstrap servers are not specified");
         }
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-            if (isKafkaClusterExists(sourceConfig.getBootStrapServers())) {
+           /* if (isKafkaClusterExists(sourceConfig.getBootStrapServers())) {
                 throw new RuntimeException("Can't be able to connect to the given Kafka brokers... ");
-            }
-
+            }*/
         if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
-            properties.put("client.dns.lookup", sourceConfig.getClientDnsLookup());
-        }
-        if (StringUtils.isNotEmpty(sourceConfig.getSslEndpointIdentificationAlgorithm())) {
-            properties.put("ssl.endpoint.identification.algorithm", sourceConfig.getSslEndpointIdentificationAlgorithm());
+            ClientDNSLookupType dnsLookupType = ClientDNSLookupType.getDnsLookupType(sourceConfig.getClientDnsLookup());
+            switch (dnsLookupType) {
+                case USE_ALL_DNS_IPS:
+                    properties.put("client.dns.lookup", ClientDNSLookupType.USE_ALL_DNS_IPS.toString());
+                    break;
+                case CANONICAL_BOOTSTRAP:
+                    properties.put("client.dns.lookup", ClientDNSLookupType.CANONICAL_BOOTSTRAP.toString());
+                    break;
+                case DEFAULT:
+                    properties.put("client.dns.lookup", ClientDNSLookupType.DEFAULT.toString());
+                    break;
+            }
         }
         setConsumerTopicProperties(properties, topicConfig);
         setSchemaRegistryProperties(properties, topicConfig);
@@ -437,15 +444,19 @@ public class KafkaSource implements Source<Record<Event>> {
     }
 
     private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties) {
-        Optional<String> schema = Optional.of(Optional.ofNullable(sourceConfig.getSerdeFormat()).orElse(MessageFormat.PLAINTEXT.toString()));
-        schemaType = schema.get();
+        MessageFormat dataFormat = MessageFormat.getByMessageFormatByName(sourceConfig.getSerdeFormat());
+        schemaType = dataFormat.toString();
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                 StringDeserializer.class);
-        if (schemaType.equalsIgnoreCase(MessageFormat.JSON.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
-        } else if (schemaType.equalsIgnoreCase(MessageFormat.PLAINTEXT.toString())) {
-            properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                    StringDeserializer.class);
+        switch (dataFormat) {
+            case JSON:
+                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaSourceJsonDeserializer.class);
+                break;
+            default:
+            case PLAINTEXT:
+                properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                        StringDeserializer.class);
+                break;
         }
     }
 
@@ -506,10 +517,8 @@ public class KafkaSource implements Source<Record<Event>> {
             PlainTextAuthConfig plainTextAuthConfig = authConfig.getSaslAuthConfig().getPlainTextAuthConfig();
             OAuthConfig oAuthConfig = authConfig.getSaslAuthConfig().getOAuthConfig();
             if (plainTextAuthConfig != null) {
-                String sasl_mechanism = plainTextAuthConfig.getSaslMechanism();
-                String protocol = plainTextAuthConfig.getSecurityProtocol();
-                properties.put("sasl.mechanism", sasl_mechanism);
-                properties.put("security.protocol", protocol);
+                properties.put("sasl.mechanism", "PLAIN");
+                properties.put("security.protocol", plainTextAuthConfig.getSecurityProtocol());
             } else if (oAuthConfig != null) {
                 properties.put("sasl.mechanism", oAuthConfig.getOauthSaslMechanism());
                 properties.put("security.protocol", oAuthConfig.getOauthSecurityProtocol());

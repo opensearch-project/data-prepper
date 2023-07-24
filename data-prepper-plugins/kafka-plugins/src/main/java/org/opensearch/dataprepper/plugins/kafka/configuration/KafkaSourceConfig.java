@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.util.List;
 import java.util.Objects;
@@ -52,17 +53,10 @@ public class KafkaSourceConfig {
     private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
 
     @JsonProperty("serde_format")
-    private String serdeFormat;
+    private String serdeFormat= MessageFormat.PLAINTEXT.toString();
 
     @JsonProperty("client_dns_lookup")
     private String clientDnsLookup;
-
-    @JsonProperty("ssl_endpoint_identification_algorithm")
-    private String sslEndpointIdentificationAlgorithm;
-
-    public String getSslEndpointIdentificationAlgorithm() {
-        return sslEndpointIdentificationAlgorithm;
-    }
 
     public String getClientDnsLookup() {
         return clientDnsLookup;

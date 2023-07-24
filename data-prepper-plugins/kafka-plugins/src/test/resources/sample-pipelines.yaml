@@ -4,7 +4,6 @@ log-pipeline:
       bootstrap_servers:
         - 127.0.0.1:9093
       client_dns_lookup: use_all_dns_ips
-      ssl_endpoint_identification_algorithm: https
       encryption: plaintext
       topics:
         - name: my-topic-1
@@ -40,7 +39,6 @@ log-pipeline:
         sasl:
           aws_iam: role
           plaintext:
-            sasl_mechanism: PLAIN
             security_protocol: SASL_SSL
             username: 5UH4NID4OENKDIBI
             password: jCmncn77F9asfox3yhgZLCEwQ5fx8pKiXnszMqdt0y1GLrdZO1V1iz95aIe1UubX
