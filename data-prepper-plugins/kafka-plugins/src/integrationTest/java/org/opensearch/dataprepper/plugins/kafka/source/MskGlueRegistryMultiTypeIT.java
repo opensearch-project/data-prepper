@@ -104,7 +104,13 @@ public class MskGlueRegistryMultiTypeIT {
 
     private String testRegistryName;
 
-    private String testSchemaName;
+    private String testAvroSchemaName;
+
+    private String testJsonSchemaName;
+
+    private String testMskArn;
+
+    private String testMskRegion;
 
     @Mock
     SchemaConfig schemaConfig;
@@ -126,21 +132,19 @@ public class MskGlueRegistryMultiTypeIT {
         saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
         schemaConfig = mock(SchemaConfig.class);
         receivedRecords = new ArrayList<>();
-        testRegistryName = "krishkdk-schreg-1";
-        testSchemaName = "testSchema1";
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
         when(sourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
-        when(schemaConfig.getRegistryType()).thenReturn(RegistryType.GLUE);
+        when(schemaConfig.getType()).thenReturn(SchemaRegistryType.GLUE);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
         when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
         try {
             doAnswer(args -> {
                 Collection<Record<Event>> bufferedRecords = (Collection<Record<Event>>)args.getArgument(0);
                 receivedRecords.addAll(bufferedRecords);
-		Record<Event> r = receivedRecords.get(0);
+                Record<Event> r = receivedRecords.get(0);
                 return null;
             }).when(buffer).writeAll(any(Collection.class), any(Integer.class));
         } catch (Exception e){}
@@ -162,14 +166,11 @@ public class MskGlueRegistryMultiTypeIT {
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        /*
-        saslsslBootstrapServers = System.getProperty("tests.kafka.saslssl_bootstrap_servers");
-        saslplainBootstrapServers = System.getProperty("tests.kafka.saslplain_bootstrap_servers");
-        sslBootstrapServers = System.getProperty("tests.kafka.ssl_bootstrap_servers");
-
-        kafkaUsername = System.getProperty("tests.kafka.username");
-        kafkaPassword = System.getProperty("tests.kafka.password");
-        */
+        testRegistryName = System.getProperty("tests.kafka.glue_registry_name");
+        testJsonSchemaName = System.getProperty("tests.kafka.glue_json_schema_name");
+        testAvroSchemaName = System.getProperty("tests.kafka.glue_avro_schema_name");
+        testMskArn = System.getProperty("tests.msk.arn");
+        testMskRegion = System.getProperty("tests.msk.region");
         when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
     }
 
@@ -184,10 +185,10 @@ public class MskGlueRegistryMultiTypeIT {
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getAwsIamAuthConfig()).thenReturn(AwsIamAuthConfig.DEFAULT);
         when(sourceConfig.getAwsConfig()).thenReturn(awsConfig);
-        when(awsConfig.getRegion()).thenReturn("us-west-2");
-	when(awsConfig.getAwsMskConfig()).thenReturn(awsMskConfig);
-	when(awsMskConfig.getArn()).thenReturn("arn:aws:kafka:us-west-2:578844260082:cluster/krishkdk-msk-prov-1/fa11470a-d8bb-4b8f-a53a-26bbbee75198-12");
-	when(awsMskConfig.getBrokerConnectionType()).thenReturn(MskBrokerConnectionType.PUBLIC);
+        when(awsConfig.getRegion()).thenReturn(testMskRegion);
+        when(awsConfig.getAwsMskConfig()).thenReturn(awsMskConfig);
+        when(awsMskConfig.getArn()).thenReturn(testMskArn);
+        when(awsMskConfig.getBrokerConnectionType()).thenReturn(MskBrokerConnectionType.PUBLIC);
         kafkaSource = createObjectUnderTest();
 
         Properties props = new Properties();
@@ -252,10 +253,10 @@ public class MskGlueRegistryMultiTypeIT {
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getAwsIamAuthConfig()).thenReturn(AwsIamAuthConfig.DEFAULT);
         when(sourceConfig.getAwsConfig()).thenReturn(awsConfig);
-        when(awsConfig.getRegion()).thenReturn("us-west-2");
-	when(awsConfig.getAwsMskConfig()).thenReturn(awsMskConfig);
-	when(awsMskConfig.getArn()).thenReturn("arn:aws:kafka:us-west-2:578844260082:cluster/krishkdk-msk-prov-1/fa11470a-d8bb-4b8f-a53a-26bbbee75198-12");
-	when(awsMskConfig.getBrokerConnectionType()).thenReturn(MskBrokerConnectionType.PUBLIC);
+        when(awsConfig.getRegion()).thenReturn(testMskRegion);
+        when(awsConfig.getAwsMskConfig()).thenReturn(awsMskConfig);
+        when(awsMskConfig.getArn()).thenReturn(testMskArn);
+        when(awsMskConfig.getBrokerConnectionType()).thenReturn(MskBrokerConnectionType.PUBLIC);
         kafkaSource = createObjectUnderTest();
 
         Properties props = new Properties();
@@ -314,16 +315,14 @@ public class MskGlueRegistryMultiTypeIT {
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         properties.put("security.protocol", "SASL_SSL");
         properties.put("sasl.mechanism", "AWS_MSK_IAM");
-        properties.put("region", "us-west-2");
+        properties.put("region", testMskRegion);
         properties.put("sasl.jaas.config", "software.amazon.msk.auth.iam.IAMLoginModule required;");
         properties.put("sasl.client.callback.handler.class", "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, GlueSchemaRegistryKafkaSerializer.class.getName());
-        //properties.put(AWSSchemaRegistryConstants.DATA_FORMAT, DataFormat.JSON.name());
         properties.put(AWSSchemaRegistryConstants.DATA_FORMAT, "json");
         properties.put(AWSSchemaRegistryConstants.AWS_REGION, awsConfig.getRegion());
         properties.put(AWSSchemaRegistryConstants.REGISTRY_NAME, testRegistryName);
-	final String testJsonSchemaName="test-json-schema1";
         properties.put(AWSSchemaRegistryConstants.SCHEMA_NAME, testJsonSchemaName);
         properties.put(AWSSchemaRegistryConstants.SCHEMA_AUTO_REGISTRATION_SETTING, true); // If not passed, defaults to false
 
@@ -345,27 +344,8 @@ public class MskGlueRegistryMultiTypeIT {
                 "}\n"+
 	    "}\n"+
         "}";
-	/*
-	String jsonSchema = "{\n" + "        \"$schema\": \"http://json-schema.org/draft-04/schema#\",\n"
-                                                + "        \"type\": \"object\",\n" + "        \"properties\": {\n" + "          \"employee\": {\n"
-                                                + "            \"type\": \"object\",\n" + "            \"properties\": {\n"
-                                                + "              \"name\": {\n" + "                \"type\": \"string\"\n" + "              },\n"
-                                                + "              \"age\": {\n" + "                \"type\": \"integer\"\n" + "              },\n"
-                                                + "              \"city\": {\n" + "                \"type\": \"string\"\n" + "              }\n"
-                                                + "            },\n" + "            \"required\": [\n" + "              \"name\",\n"
-                                                + "              \"age\",\n" + "              \"city\"\n" + "            ]\n" + "          }\n"
-                                                + "        },\n" + "        \"required\": [\n" + "          \"employee\"\n" + "        ]\n"
-                                                + "      }";
-	*/
-        
-	
-	//List<JsonDataWithSchema> testRecords = new ArrayList<>();
 	try (KafkaProducer<String, JsonDataWithSchema> producer = new KafkaProducer<String, JsonDataWithSchema>(properties)) {
 		for (int i = 0; i < numRecords; i++) {
-			/*
-		    String jsonPayLoad = "{\n" + "        \"employee\": {\n" + "          \"name\": \"John\",\n" + "          \"age\": 30,\n"
-                                                 + "          \"city\": \"New York\"\n" + "        }\n" + "      }";
-			*/
 		    String jsonPayLoad = "{\n" +
 				     "    \"username\": \""+TEST_USER+i+"\",\n" +
 				     "    \"message\": \""+TEST_MESSAGE+i+"\",\n"+
@@ -377,7 +357,6 @@ public class MskGlueRegistryMultiTypeIT {
                     record = new ProducerRecord<String, JsonDataWithSchema>(topic, topicKey, testRecord);
                     producer.send(record);
                     Thread.sleep(1000L);
-		    //testRecords.add(testRecord);
 		}
 	        producer.flush();
         } catch (final InterruptedException | SerializationException e) {
@@ -392,16 +371,15 @@ public class MskGlueRegistryMultiTypeIT {
         properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         properties.put("security.protocol", "SASL_SSL");
         properties.put("sasl.mechanism", "AWS_MSK_IAM");
-        properties.put("region", "us-west-2");
+        properties.put("region", testMskRegion);
         properties.put("sasl.jaas.config", "software.amazon.msk.auth.iam.IAMLoginModule required;");
         properties.put("sasl.client.callback.handler.class", "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
         properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, GlueSchemaRegistryKafkaSerializer.class.getName());
-        //properties.put(AWSSchemaRegistryConstants.DATA_FORMAT, DataFormat.AVRO.name());
         properties.put(AWSSchemaRegistryConstants.DATA_FORMAT, "avro");
         properties.put(AWSSchemaRegistryConstants.AWS_REGION, awsConfig.getRegion());
         properties.put(AWSSchemaRegistryConstants.REGISTRY_NAME, testRegistryName);
-        properties.put(AWSSchemaRegistryConstants.SCHEMA_NAME, testSchemaName);
+        properties.put(AWSSchemaRegistryConstants.SCHEMA_NAME, testAvroSchemaName);
 
         Schema testSchema = null;
         Schema.Parser parser = new Schema.Parser();
