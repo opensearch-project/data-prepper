@@ -77,6 +77,11 @@ task integrationTest(type: Test) {
     systemProperty 'tests.kafka.saslplain_bootstrap_servers', System.getProperty('tests.kafka.saslplain_bootstrap_servers')
     systemProperty 'tests.kafka.username', System.getProperty('tests.kafka.username')
     systemProperty 'tests.kafka.password', System.getProperty('tests.kafka.password')
+    systemProperty 'tests.kafka.glue_registry_name', System.getProperty('tests.kafka.glue_registry_name')
+    systemProperty 'tests.kafka.glue_json_schema_name', System.getProperty('tests.kafka.glue_json_schema_name')
+    systemProperty 'tests.kafka.glue_avro_schema_name', System.getProperty('tests.kafka.glue_avro_schema_name')
+    systemProperty 'tests.msk.region', System.getProperty('tests.msk.region')
+    systemProperty 'tests.msk.arn', System.getProperty('tests.msk.arn')
 
     filter {
         includeTestsMatching '*IT'

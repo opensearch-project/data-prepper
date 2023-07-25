@@ -159,12 +159,16 @@ public class MskGlueRegistryMultiTypeIT {
         when(avroTopic.getAutoCommit()).thenReturn(false);
         when(avroTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(avroTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(avroTopic.getSessionTimeOut()).thenReturn(15000);
+        when(avroTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(jsonTopic.getName()).thenReturn(testTopic);
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
         when(jsonTopic.getWorkers()).thenReturn(1);
         when(jsonTopic.getAutoCommit()).thenReturn(false);
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(jsonTopic.getSessionTimeOut()).thenReturn(15000);
+        when(jsonTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         testRegistryName = System.getProperty("tests.kafka.glue_registry_name");
         testJsonSchemaName = System.getProperty("tests.kafka.glue_json_schema_name");
@@ -172,6 +176,7 @@ public class MskGlueRegistryMultiTypeIT {
         testMskArn = System.getProperty("tests.msk.arn");
         testMskRegion = System.getProperty("tests.msk.region");
         when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
+        System.setProperty("software.amazon.awssdk.http.service.impl", "software.amazon.awssdk.http.urlconnection.UrlConnectionSdkHttpService");
     }
 
     @Test

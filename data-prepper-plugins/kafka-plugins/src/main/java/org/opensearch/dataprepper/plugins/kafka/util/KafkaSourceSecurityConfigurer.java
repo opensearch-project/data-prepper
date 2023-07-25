@@ -46,6 +46,7 @@ public class KafkaSourceSecurityConfigurer {
     private static final String SASL_JAAS_CONFIG = "sasl.jaas.config";
 
     private static final String SASL_CALLBACK_HANDLER_CLASS = "sasl.login.callback.handler.class";
+    private static final String SASL_CLIENT_CALLBACK_HANDLER_CLASS = "sasl.client.callback.handler.class";
 
     private static final String SASL_JWKS_ENDPOINT_URL = "sasl.oauthbearer.jwks.endpoint.url";
 
@@ -160,7 +161,7 @@ public class KafkaSourceSecurityConfigurer {
     public static void setAwsIamAuthProperties(Properties properties, final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig) {
         properties.put(SECURITY_PROTOCOL, "SASL_SSL");
         properties.put(SASL_MECHANISM, "AWS_MSK_IAM");
-        properties.put(SASL_CALLBACK_HANDLER_CLASS, "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
+        properties.put(SASL_CLIENT_CALLBACK_HANDLER_CLASS, "software.amazon.msk.auth.iam.IAMClientCallbackHandler");
         if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
             properties.put(SASL_JAAS_CONFIG,
                 "software.amazon.msk.auth.iam.IAMLoginModule required " +

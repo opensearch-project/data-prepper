@@ -16,6 +16,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.avro.generic.GenericRecord;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -202,33 +203,26 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private <T> Record<Event> getRecord(ConsumerRecord<String, T> consumerRecord) {
         Map<String, Object> data = new HashMap<>();
         Event event;
-        Object value;
+        Object value = consumerRecord.value();
         String key = (String)consumerRecord.key();
         if (Objects.isNull(key)) {
             key = DEFAULT_KEY;
         }
-        if (schema == MessageFormat.JSON || schema == MessageFormat.AVRO) {
-            value = new HashMap<>();
-            try {
-                if (consumerRecord.value() instanceof JsonDataWithSchema) {
-                        JsonDataWithSchema j = (JsonDataWithSchema)consumerRecord.value();
-                        value = objectMapper.readValue(j.getPayload(), Map.class);
-                } else {
-                    if(schema == MessageFormat.JSON){
-                        value = consumerRecord.value();
-                    }else if(schema == MessageFormat.AVRO) {
-                        final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
-                        value = objectMapper.readValue(jsonParser, Map.class);
-                    }
-                }
-            } catch (Exception e){
-                LOG.error("Failed to parse JSON or AVRO record", e);
-                data.put(key, value);
+        try {
+            if (value instanceof JsonDataWithSchema) {
+                JsonDataWithSchema j = (JsonDataWithSchema)consumerRecord.value();
+                value = objectMapper.readValue(j.getPayload(), Map.class);
+            } else if (schema == MessageFormat.AVRO || value instanceof GenericRecord) {
+                final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
+                value = objectMapper.readValue(jsonParser, Map.class);
+            } else if (schema == MessageFormat.PLAINTEXT) {
+                value = (String)consumerRecord.value();
             }
-        } else {
-            value = (String)consumerRecord.value();
+        } catch (Exception e){
+            LOG.error("Failed to parse JSON or AVRO record", e);
         }
         data.put(key, value);
+
         event = JacksonLog.builder().withData(data).build();
         return new Record<Event>(event);
     }
