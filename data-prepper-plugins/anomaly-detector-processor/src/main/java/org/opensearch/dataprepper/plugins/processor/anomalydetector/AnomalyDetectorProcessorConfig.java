@@ -21,6 +21,9 @@ public class AnomalyDetectorProcessorConfig {
     @NotEmpty
     private List<String> keys;
 
+    @JsonProperty("identification_keys")
+    private List<String> identificationKeys;
+
     public PluginModel getDetectorMode() { 
         return detectorMode;
     }
@@ -32,6 +35,10 @@ public class AnomalyDetectorProcessorConfig {
             }
         });
         return keys;
+    }
+
+    public List<String> getIdentificationKeys() {
+        return identificationKeys;
     }
 
 }

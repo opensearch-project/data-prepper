@@ -12,13 +12,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-class AggregateIdentificationKeysHasher {
+public class AggregateIdentificationKeysHasher {
     private final List<String> identificationKeys;
-    AggregateIdentificationKeysHasher(final List<String> identificationKeys) {
+    public AggregateIdentificationKeysHasher(final List<String> identificationKeys) {
         this.identificationKeys = identificationKeys;
     }
 
-    IdentificationKeysMap createIdentificationKeysMapFromEvent(final Event event) {
+    public IdentificationKeysMap createIdentificationKeysMapFromEvent(final Event event) {
         final Map<Object, Object> identificationKeysMap = new HashMap<>();
         for (final String identificationKey : identificationKeys) {
             identificationKeysMap.put(identificationKey, event.get(identificationKey, Object.class));

@@ -10,6 +10,7 @@ plugins {
 dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-test-common')
+    implementation project(':data-prepper-plugins:aggregate-processor')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.randomcutforest:randomcutforest-testutils:3.7.0'
