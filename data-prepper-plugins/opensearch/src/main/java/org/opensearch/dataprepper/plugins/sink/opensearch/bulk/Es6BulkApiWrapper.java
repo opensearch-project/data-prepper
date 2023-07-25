@@ -5,6 +5,7 @@ import org.opensearch.client.opensearch._types.ErrorResponse;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.BulkResponse;
+import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.endpoints.SimpleEndpoint;
 import org.opensearch.client.util.ApiTypeHelper;
@@ -28,17 +29,14 @@ public class Es6BulkApiWrapper implements BulkApiWrapper {
         return openSearchClient._transport().performRequest(request, endpoint, openSearchClient._transportOptions());
     }
 
-    private JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> es6BulkEndpoint(BulkRequest bulkRequest) {
+    private JsonEndpoint<BulkRequest, BulkResponse, ErrorResponse> es6BulkEndpoint(final BulkRequest bulkRequest) {
         return new SimpleEndpoint<>(
                 // Request method
                 request -> HttpMethod.POST,
 
                 // Request path
                 request -> {
-                    final String index = request.index();
-                    if (index == null) {
-                        throw new IllegalArgumentException("Bulk request index cannot be missing");
-                    }
+                    final String index = request.index() == null ? getFirstOperationIndex(request) : request.index();
                     StringBuilder buf = new StringBuilder();
                     buf.append("/");
                     SimpleEndpoint.pathEncode(index, buf);
@@ -82,5 +80,20 @@ public class Es6BulkApiWrapper implements BulkApiWrapper {
                     return params;
 
                 }, SimpleEndpoint.emptyMap(), true, BulkResponse._DESERIALIZER);
+    }
+
+    private String getFirstOperationIndex(final BulkRequest bulkRequest) {
+        final BulkOperation firstBulkOperation = bulkRequest.operations().get(0);
+        if (firstBulkOperation.isIndex()) {
+            return firstBulkOperation.index().index();
+        } else if (firstBulkOperation.isCreate()) {
+            return firstBulkOperation.create().index();
+        } else if (firstBulkOperation.isUpdate()) {
+            return firstBulkOperation.update().index();
+        } else if (firstBulkOperation.isDelete()) {
+            return firstBulkOperation.delete().index();
+        }
+        throw new IllegalArgumentException(String.format("Unsupported bulk operation kind: %s",
+                firstBulkOperation._kind()));
     }
 }
