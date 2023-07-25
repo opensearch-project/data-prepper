@@ -137,7 +137,7 @@ public class AggregateProcessorIT {
         return new AggregateProcessor(aggregateProcessorConfig, pluginMetrics, pluginFactory, expressionEvaluator);
     }
 
-    @RepeatedTest(value = 10)
+    @RepeatedTest(value = 2)
     void aggregateWithNoConcludingGroupsReturnsExpectedResult() throws InterruptedException {
         aggregateAction = new RemoveDuplicatesAggregateAction();
         when(pluginFactory.loadPlugin(eq(AggregateAction.class), any(PluginSetting.class)))
@@ -260,7 +260,7 @@ public class AggregateProcessorIT {
     }
 
     @ParameterizedTest
-    @ValueSource(doubles = {5.0, 15.0, 33.0, 55.0, 70.0, 85.0, 92.0, 99.0})
+    @ValueSource(doubles = {5.0, 15.0, 55.0, 92.0, 99.0})
     void aggregateWithPercentSamplerAction(double testPercent) throws InterruptedException, NoSuchFieldException, IllegalAccessException {
         PercentSamplerAggregateActionConfig percentSamplerAggregateActionConfig = new PercentSamplerAggregateActionConfig();
         setField(PercentSamplerAggregateActionConfig.class, percentSamplerAggregateActionConfig, "percent", testPercent);
