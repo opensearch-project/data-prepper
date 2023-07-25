@@ -128,18 +128,20 @@ public class ScanObjectWorker implements Runnable{
 
         try {
             List<DeleteObjectRequest> waitingForAcknowledgements = new ArrayList<>();
-            AcknowledgementSet acknowledgementSet;
+            AcknowledgementSet acknowledgementSet = null;
             CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
 
-            acknowledgementSet = acknowledgementSetManager.create((result) -> {
-                acknowledgementSetCallbackCounter.increment();
-                // Delete only if this is positive acknowledgement
-                if (result == true) {
-                    sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
-                    waitingForAcknowledgements.forEach(s3ObjectDeleteWorker::deleteS3Object);
-                }
-                completableFuture.complete(result);
-            }, Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS));
+            if (endToEndAcknowledgementsEnabled) {
+                acknowledgementSet = acknowledgementSetManager.create((result) -> {
+                    acknowledgementSetCallbackCounter.increment();
+                    // Delete only if this is positive acknowledgement
+                    if (result == true) {
+                        sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
+                        waitingForAcknowledgements.forEach(s3ObjectDeleteWorker::deleteS3Object);
+                    }
+                    completableFuture.complete(result);
+                }, Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS));
+            }
 
 
             final Optional<DeleteObjectRequest> deleteObjectRequest = processS3Object(S3ObjectReference.bucketAndKey(bucket, objectKey).build(),
