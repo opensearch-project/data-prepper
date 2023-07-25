@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper;
 
 import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.server.RequestTimeoutException;
 import com.linecorp.armeria.server.ServiceRequestContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -27,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.HttpRequestExceptionHandler.ARMERIA_REQUEST_TIMEOUT_MESSAGE;
+import static org.opensearch.dataprepper.HttpRequestExceptionHandler.DEFAULT_MESSAGE;
 
 @ExtendWith(MockitoExtension.class)
 class HttpRequestExceptionHandlerTest {
@@ -76,6 +79,7 @@ class HttpRequestExceptionHandlerTest {
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
+        assertEquals(DEFAULT_MESSAGE, aggregatedHttpResponse.contentUtf8());
 
         // When
         httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
@@ -85,15 +89,8 @@ class HttpRequestExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
 
-        // When
-        httpResponse = httpRequestExceptionHandler.handleException(testExceptionNullMessage, testMessage);
-
-        // Then
-        aggregatedHttpResponse = httpResponse.aggregate().get();
-        assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
-        assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
         // verify metrics
-        verify(badRequestsCounter, times(3)).increment();
+        verify(badRequestsCounter, times(2)).increment();
     }
 
     @Test
@@ -109,6 +106,7 @@ class HttpRequestExceptionHandlerTest {
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_TIMEOUT, aggregatedHttpResponse.status());
+        assertEquals(DEFAULT_MESSAGE, aggregatedHttpResponse.contentUtf8());
 
         // When
         httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
@@ -118,15 +116,25 @@ class HttpRequestExceptionHandlerTest {
         assertEquals(HttpStatus.REQUEST_TIMEOUT, aggregatedHttpResponse.status());
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
 
+        // verify metrics
+        verify(requestTimeoutsCounter, times(2)).increment();
+    }
+
+    @Test
+    public void testHandleArmeriaTimeoutException() throws ExecutionException, InterruptedException {
+        // Prepare
+        final RequestTimeoutException testExceptionNullMessage = RequestTimeoutException.get();
+
         // When
-        httpResponse = httpRequestExceptionHandler.handleException(testExceptionNullMessage, testMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionNullMessage);
 
         // Then
-        aggregatedHttpResponse = httpResponse.aggregate().get();
+        AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_TIMEOUT, aggregatedHttpResponse.status());
-        assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
+        assertEquals(ARMERIA_REQUEST_TIMEOUT_MESSAGE, aggregatedHttpResponse.contentUtf8());
+
         // verify metrics
-        verify(requestTimeoutsCounter, times(3)).increment();
+        verify(requestTimeoutsCounter, times(1)).increment();
     }
 
     @Test
@@ -142,6 +150,7 @@ class HttpRequestExceptionHandlerTest {
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, aggregatedHttpResponse.status());
+        assertEquals(DEFAULT_MESSAGE, aggregatedHttpResponse.contentUtf8());
 
         // When
         httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
@@ -151,15 +160,8 @@ class HttpRequestExceptionHandlerTest {
         assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, aggregatedHttpResponse.status());
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
 
-        // When
-        httpResponse = httpRequestExceptionHandler.handleException(testExceptionEmptyMessage, testMessage);
-
-        // Then
-        aggregatedHttpResponse = httpResponse.aggregate().get();
-        assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, aggregatedHttpResponse.status());
-        assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
         // verify metrics
-        verify(requestsTooLargeCounter, times(3)).increment();
+        verify(requestsTooLargeCounter, times(2)).increment();
     }
 
     @Test
@@ -175,6 +177,7 @@ class HttpRequestExceptionHandlerTest {
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, aggregatedHttpResponse.status());
+        assertEquals(DEFAULT_MESSAGE, aggregatedHttpResponse.contentUtf8());
 
         // When
         httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
@@ -184,15 +187,8 @@ class HttpRequestExceptionHandlerTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, aggregatedHttpResponse.status());
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
 
-        // When
-        httpResponse = httpRequestExceptionHandler.handleException(testExceptionEmptyMessage, testMessage);
-
-        // Then
-        aggregatedHttpResponse = httpResponse.aggregate().get();
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, aggregatedHttpResponse.status());
-        assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
         // verify metrics
-        verify(internalServerErrorCounter, times(3)).increment();
+        verify(internalServerErrorCounter, times(2)).increment();
     }
 
     static class UnknownException extends Exception {

@@ -21,6 +21,9 @@ import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import java.util.concurrent.TimeoutException;
 
 public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
+    static final String ARMERIA_REQUEST_TIMEOUT_MESSAGE = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
+    static final String DEFAULT_MESSAGE = "";
+
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String BAD_REQUESTS = "badRequests";
     public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
@@ -67,9 +70,9 @@ public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
     private Status createStatus(final Throwable e, final Status status) {
         final String message;
         if (e instanceof RequestTimeoutException) {
-            message = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
+            message = ARMERIA_REQUEST_TIMEOUT_MESSAGE;
         } else {
-            message = e.getMessage() == null ? "" : e.getMessage();
+            message = e.getMessage() == null ? DEFAULT_MESSAGE : e.getMessage();
         }
 
         return status.withDescription(message);

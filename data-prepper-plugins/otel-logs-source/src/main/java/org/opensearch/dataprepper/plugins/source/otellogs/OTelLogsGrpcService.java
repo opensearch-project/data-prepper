@@ -66,8 +66,6 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
 
     @Override
     public void export(ExportLogsServiceRequest request, StreamObserver<ExportLogsServiceResponse> responseObserver) {
-        LOG.error("Got here");
-
         requestsReceivedCounter.increment();
         payloadSizeSummary.record(request.getSerializedSize());
 
@@ -94,7 +92,6 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
 
         final List<Record<Object>> records = logs.stream().map(log -> new Record<Object>(log)).collect(Collectors.toList());
         try {
-            LOG.error("Got here with records: {}", records);
             buffer.writeAll(records, bufferWriteTimeoutInMillis);
         } catch (Exception e) {
             if (ServiceRequestContext.current().isTimedOut()) {
