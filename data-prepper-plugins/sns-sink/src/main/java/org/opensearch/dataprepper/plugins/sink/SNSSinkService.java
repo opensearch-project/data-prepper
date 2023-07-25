@@ -26,7 +26,6 @@ import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.UUID;
