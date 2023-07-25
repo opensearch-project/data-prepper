@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.stream.JsonParser;
 import org.opensearch.client.json.JsonpDeserializer;
