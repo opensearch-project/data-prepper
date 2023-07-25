@@ -25,6 +25,14 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.concurrent.Executors.newCachedThreadPool; //TODO: Can implement a more strict pooling method if needed.
 
+/**
+ * CloudWatchLogs Service encapsulates the log processing step.
+ * It accomplishes this by:
+ * 1. Reading in log events.
+ * 2. Buffering data.
+ * 3. Checking for limit conditions.
+ * 4. Making PLE calls to CloudWatchLogs.
+ */
 public class CloudWatchLogsService {
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsService.class);
     private final CloudWatchLogsClient cloudWatchLogsClient;

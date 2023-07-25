@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.sink.client;
 
 import lombok.Builder;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,7 +64,7 @@ public class CloudWatchLogsDispatcher implements Runnable {
     /**
      * Flush function to handle the flushing of logs to CloudWatchLogs services;
      * @param inputLogEvents Collection of inputLogEvents to be flushed
-     * @return true if successful, false otherwise
+     * @param eventHandles Collection of EventHandles for events
      */
     public void dispatchLogs(List<InputLogEvent> inputLogEvents, Collection<EventHandle> eventHandles) {
         boolean failedPost = true;

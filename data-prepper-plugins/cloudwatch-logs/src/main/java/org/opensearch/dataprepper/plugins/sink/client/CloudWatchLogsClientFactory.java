@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.plugins.sink.config.AwsConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
-import software.amazon.awssdk.core.retry.RetryPolicy;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 /**

@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.sink.client;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
