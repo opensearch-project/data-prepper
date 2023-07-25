@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -57,6 +58,18 @@ class CsvProcessorTest {
 
     private CsvProcessor createObjectUnderTest() {
         return new CsvProcessor(pluginMetrics, processorConfig);
+    }
+
+    @Test
+    void do_nothing_when_source_is_null_value_or_does_not_exist_in_the_Event() {
+        final Record<Event> eventUnderTest = createMessageEvent("");
+        when(processorConfig.getSource()).thenReturn(UUID.randomUUID().toString());
+
+
+        final List<Record<Event>> editedEvents = (List<Record<Event>>) csvProcessor.doExecute(Collections.singletonList(eventUnderTest));
+        final Event parsedEvent = getSingleEvent(editedEvents);
+
+        assertThat(parsedEvent, equalTo(eventUnderTest.getData()));
     }
 
     @Test
