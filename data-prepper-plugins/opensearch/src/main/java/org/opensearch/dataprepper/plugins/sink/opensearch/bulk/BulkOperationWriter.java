@@ -34,9 +34,9 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.bulk;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.common.unit.ByteSizeValue;
 import org.opensearch.dataprepper.model.failures.DlqObject;
+import org.opensearch.dataprepper.plugins.sink.opensearch.BulkOperationWrapper;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedDlqData;
 
 /**
@@ -47,10 +47,10 @@ public class BulkOperationWriter {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    public static String bulkOperationToString(BulkOperation bulkOperation) {
-        String index = bulkOperation.index().index();
+    public static String bulkOperationToString(BulkOperationWrapper bulkOperation) {
+        String index = bulkOperation.getIndex();
         String source = extractDocumentSource(bulkOperation);
-        String id = bulkOperation.index().id();
+        String id = bulkOperation.getId();
 
         String sSource = "_na_";
         try {
@@ -86,8 +86,8 @@ public class BulkOperationWriter {
         }
     }
 
-    private static String extractDocumentSource(BulkOperation bulkOperation) {
-        final SerializedJson document = (SerializedJson) bulkOperation.index().document();
+    private static String extractDocumentSource(BulkOperationWrapper bulkOperation) {
+        final SerializedJson document = (SerializedJson) bulkOperation.getDocument();
 
         return new String(document.getSerializedJson());
     }

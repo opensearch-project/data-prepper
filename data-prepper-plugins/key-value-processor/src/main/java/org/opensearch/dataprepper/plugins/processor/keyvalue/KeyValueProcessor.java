@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.regex.Matcher;
 
 @DataPrepperPlugin(name = "key_value", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -109,6 +110,18 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if (!(validWhitespaceSet.contains(keyValueProcessorConfig.getWhitespace()))) {
             throw new IllegalArgumentException(String.format("The whitespace value: %s is not a valid option", keyValueProcessorConfig.getWhitespace()));
         }
+
+        final Pattern boolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
+        final Matcher duplicateValueBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getSkipDuplicateValues()));
+        final Matcher removeBracketsBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getRemoveBrackets()));
+
+        if (!duplicateValueBoolMatch.matches()) {
+            throw new IllegalArgumentException(String.format("The skip_duplicate_values value must be either true or false", keyValueProcessorConfig.getSkipDuplicateValues()));
+        }
+
+        if (!removeBracketsBoolMatch.matches()) {
+            throw new IllegalArgumentException(String.format("The remove_brackets value must be either true or false", keyValueProcessorConfig.getRemoveBrackets()));
+        }
     }
 
     private String buildRegexFromCharacters(String s) {
@@ -188,6 +201,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     key = transformKey(key);
                 }
 
+                if (keyValueProcessorConfig.getRemoveBrackets()) {
+                    final String bracketRegex = "[\\[\\]()<>]";
+                    if (value != null) {
+                        value = value.toString().replaceAll(bracketRegex,"");
+                    }
+                }
+
                 addKeyValueToMap(parsedMap, key, value);
             }
 
@@ -220,8 +240,20 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         if (parsedMap.get(key) instanceof List) {
+            if (keyValueProcessorConfig.getSkipDuplicateValues()) {
+                if (((List<Object>) parsedMap.get(key)).contains(value)) {
+                    return;
+                }
+            }
+
             ((List<Object>) parsedMap.get(key)).add(value);
         } else {
+            if (keyValueProcessorConfig.getSkipDuplicateValues()) {
+                if (parsedMap.containsValue(value)) {
+                    return;
+                }
+            }
+
             final LinkedList<Object> combinedList = new LinkedList<>();
             combinedList.add(parsedMap.get(key));
             combinedList.add(value);

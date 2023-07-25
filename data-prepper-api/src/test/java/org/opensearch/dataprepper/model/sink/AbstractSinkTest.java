@@ -14,12 +14,15 @@ import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.record.Record;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringJoiner;
 import java.util.UUID;
+
+import static org.awaitility.Awaitility.await;
 
 public class AbstractSinkTest {
     @Test
@@ -51,8 +54,8 @@ public class AbstractSinkTest {
         Assert.assertEquals(1.0, MetricsTestUtil.getMeasurementFromList(elapsedTimeMeasurements, Statistic.COUNT).getValue(), 0);
         Assert.assertTrue(MetricsTestUtil.isBetween(
                 MetricsTestUtil.getMeasurementFromList(elapsedTimeMeasurements, Statistic.TOTAL_TIME).getValue(),
-                0.5,
-                0.6));
+                0.2,
+                0.3));
         Assert.assertEquals(abstractSink.getRetryThreadState(), null);
         abstractSink.shutdown();
     }
@@ -71,14 +74,8 @@ public class AbstractSinkTest {
         // Do another intialize to make sure the sink is still not ready
         abstractSink.initialize();
         Assert.assertEquals(abstractSink.isReady(), false);
-        while (!abstractSink.isReady()) {
-            try {
-                Thread.sleep(1000);
-            } catch (Exception e) {}
-        }
-        try {
-            Thread.sleep(2000);
-        } catch (Exception e) {}
+        await().atMost(Duration.ofSeconds(5))
+                .until(abstractSink::isReady);
         Assert.assertEquals(abstractSink.getRetryThreadState(), Thread.State.TERMINATED);
         abstractSink.shutdown();
     }
@@ -92,7 +89,7 @@ public class AbstractSinkTest {
         @Override
         public void doOutput(Collection<Record<String>> records) {
             try {
-                Thread.sleep(500);
+                Thread.sleep(200);
             } catch (InterruptedException e) {
 
             }
@@ -126,7 +123,7 @@ public class AbstractSinkTest {
         @Override
         public void doOutput(Collection<Record<String>> records) {
             try {
-                Thread.sleep(500);
+                Thread.sleep(100);
             } catch (InterruptedException e) {
 
             }

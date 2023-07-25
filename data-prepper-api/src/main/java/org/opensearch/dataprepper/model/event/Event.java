@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +114,16 @@ public interface Event extends Serializable {
      * @since 2.1
      */
     String formatString(final String format);
+
+    /**
+     * Returns formatted parts of the input string replaced by their values in the event or the values from the result
+     * of a Data Prepper expression
+     * @param format input format
+     * @return returns a string with no formatted parts, returns null if no value is found
+     * @throws RuntimeException if the input string is not properly formatted
+     * @since 2.1
+     */
+    String formatString(String format, ExpressionEvaluator expressionEvaluator);
 
     /**
      * Returns event handle

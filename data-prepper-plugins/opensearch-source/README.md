@@ -73,8 +73,8 @@ opensearch-source-pipeline:
 ### Using Metadata
 
 When the OpenSearch source constructs Data Prepper Events from documents in the cluster, the 
-document index is stored in the `EventMetadata` with an `index` key, and the document_id is 
-stored in the `EventMetadata` with a `document_id` key. This allows conditional routing based on the index or document_id, 
+document index is stored in the `EventMetadata` with an `opensearch-index` key, and the document_id is 
+stored in the `EventMetadata` with a `opensearch-document_id` key. This allows conditional routing based on the index or document_id, 
 among other things. For example, one could send to an OpenSearch sink and use the same index and document_id from the source cluster in 
 the destination cluster. A full config example for this use case is below
 
@@ -87,20 +87,13 @@ opensearch-source-pipeline:
       hosts: [ "https://source-cluster:9200" ]
       username: "username"
       password: "password"
-  processor:
-    - add_entries:
-        entries:
-          - key: "document_id"
-            value_expression: "getMetadata(\"document_id\")"
-          - key: "index"
-            value_expression: "getMetadata(\"index\")"
   sink:
     - opensearch:
         hosts: [ "https://sink-cluster:9200" ]
         username: "username"
         password: "password"
-        document_id_field: "document_id"
-        index: "copied-${index}"
+        document_id_field: "getMetadata(\"opensearch-document_id\")"
+        index: "${getMetadata(\"opensearch-index\"}"
 ```
 
 ## Configuration

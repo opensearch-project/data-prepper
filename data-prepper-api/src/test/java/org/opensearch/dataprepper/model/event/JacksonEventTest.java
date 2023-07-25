@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 
 import java.time.Instant;
@@ -526,6 +527,31 @@ public class JacksonEventTest {
                 .build();
 
         assertThat(event.formatString(formattedString), is(equalTo(finalString)));
+    }
+
+    @Test
+    public void testBuild_withFormatStringWithExpressionEvaluator() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        final String expressionStatement = UUID.randomUUID().toString();
+        final String expressionEvaluationResult = UUID.randomUUID().toString();
+
+        final String formatString = "${foo}-${" + expressionStatement + "}-test-string";
+        final String finalString = "bar-" + expressionEvaluationResult + "-test-string";
+
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+
+        when(expressionEvaluator.isValidExpressionStatement("foo")).thenReturn(false);
+        when(expressionEvaluator.isValidExpressionStatement(expressionStatement)).thenReturn(true);
+        when(expressionEvaluator.evaluate(expressionStatement, event)).thenReturn(expressionEvaluationResult);
+
+        assertThat(event.formatString(formatString, expressionEvaluator), is(equalTo(finalString)));
     }
 
     @ParameterizedTest

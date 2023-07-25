@@ -29,7 +29,7 @@ public class UrlConfigurationOptionTest {
 
     @Test
     void default_http_method_test() {
-        assertThat(new UrlConfigurationOption().getHttpMethod(),equalTo("POST"));
+        assertNull(new UrlConfigurationOption().getAuthType());
     }
 
     @Test

@@ -16,14 +16,12 @@ import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.time.Duration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
@@ -61,13 +59,8 @@ class KafkaSourceConfigTest {
 	@Test
 	void test_bootStrapServers_not_null(){
 		assertThat(kafkaSourceConfig.getBootStrapServers(), notNullValue());
-		List<String> servers = kafkaSourceConfig.getBootStrapServers();
-		bootstrapServers = servers.stream().
-				flatMap(str -> Arrays.stream(str.split(","))).
-				map(String::trim).
-				collect(Collectors.toList());
-		assertThat(bootstrapServers.size(), equalTo(1));
-		assertThat(bootstrapServers, hasItem("127.0.0.1:9093"));
+		String bootstrapServers = kafkaSourceConfig.getBootStrapServers();
+		assertTrue(bootstrapServers.contains("127.0.0.1:9093"));
 	}
 
 	@Test
@@ -84,12 +77,17 @@ class KafkaSourceConfigTest {
 		TopicConfig topicConfig = mock(TopicConfig.class);
 		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
 
-		assertEquals(Arrays.asList("127.0.0.1:9092"), kafkaSourceConfig.getBootStrapServers());
+		assertEquals("127.0.0.1:9092", kafkaSourceConfig.getBootStrapServers());
 		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsEnabled", true);
         Duration testTimeout = Duration.ofSeconds(10);
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsTimeout", testTimeout);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
 		assertEquals(testTimeout, kafkaSourceConfig.getAcknowledgementsTimeout());
+		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionType());
+        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionType", EncryptionType.PLAINTEXT);
+		assertEquals(EncryptionType.PLAINTEXT, kafkaSourceConfig.getEncryptionType());
+        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionType", EncryptionType.SSL);
+		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionType());
 	}
 }

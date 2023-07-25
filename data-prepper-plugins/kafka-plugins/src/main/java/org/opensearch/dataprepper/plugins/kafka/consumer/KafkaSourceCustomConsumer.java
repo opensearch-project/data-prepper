@@ -203,11 +203,15 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         if (schema == MessageFormat.JSON || schema == MessageFormat.AVRO) {
             value = new HashMap<>();
             try {
-                final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
-                value = objectMapper.readValue(jsonParser, Map.class);
+                if(schema == MessageFormat.JSON){
+                    value = consumerRecord.value();
+                }else if(schema == MessageFormat.AVRO) {
+                    final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
+                    value = objectMapper.readValue(jsonParser, Map.class);
+                }
             } catch (Exception e){
                 LOG.error("Failed to parse JSON or AVRO record");
-                return null;
+                data.put(key, value);
             }
         } else {
             value = (String)consumerRecord.value();
@@ -224,10 +228,14 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 Record<Event> record = getRecord(consumerRecord);
                 if (record != null) {
-                    bufferAccumulator.add(record);
+                    // Always add record to acknowledgementSet before adding to
+                    // buffer because another thread may take and process
+                    // buffer contents before the event record is added
+                    // to acknowledgement set
                     if (acknowledgementSet != null) {
                         acknowledgementSet.add(record.getData());
                     }
+                    bufferAccumulator.add(record);
                 }
             }
             long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();

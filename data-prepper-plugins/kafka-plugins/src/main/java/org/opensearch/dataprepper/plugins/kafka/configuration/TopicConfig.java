@@ -18,20 +18,20 @@ import java.time.Duration;
 public class TopicConfig {
     private static final String AUTO_COMMIT = "false";
     private static final Duration AUTOCOMMIT_INTERVAL = Duration.ofSeconds(5);
-    private static final Duration SESSION_TIMEOUT = Duration.ofSeconds(45);
+    private static final Integer SESSION_TIMEOUT = 45000;
     private static final int MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
     private static final String AUTO_OFFSET_RESET = "earliest";
     static final Duration THREAD_WAITING_TIME = Duration.ofSeconds(5);
     private static final Duration MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
     private static final Duration BUFFER_DEFAULT_TIMEOUT = Duration.ofSeconds(5);
     private static final Duration MAX_RETRY_DELAY = Duration.ofSeconds(1);
-    private static final Long FETCH_MAX_BYTES = 52428800L;
-    private static final Long FETCH_MAX_WAIT = 500L;
-    private static final Long FETCH_MIN_BYTES = 1L;
+    private static final Integer FETCH_MAX_BYTES = 52428800;
+    private static final Integer FETCH_MAX_WAIT = 500;
+    private static final Integer FETCH_MIN_BYTES = 1;
     private static final Duration RETRY_BACKOFF = Duration.ofSeconds(100);
     private static final Duration MAX_POLL_INTERVAL = Duration.ofSeconds(300000);
     private static final Integer CONSUMER_MAX_POLL_RECORDS = 500;
-    private static final Integer NUM_OF_WORKERS = 10;
+    private static final Integer NUM_OF_WORKERS = 5;
     private static final Duration HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(3);
 
     @JsonProperty("name")
@@ -40,17 +40,22 @@ public class TopicConfig {
     private String name;
 
     @JsonProperty("group_id")
+    @Valid
+    @Size(min = 1, max = 255, message = "size of group id should be between 1 and 255")
     private String groupId;
 
     @JsonProperty("workers")
+    @Valid
     @Size(min = 1, max = 200, message = "Number of worker threads should lies between 1 and 200")
     private Integer workers = NUM_OF_WORKERS;
 
     @JsonProperty("max_retry_attempts")
+    @Valid
     @Size(min = 1, max = Integer.MAX_VALUE, message = " Max retry attempts should lies between 1 and Integer.MAX_VALUE")
     private Integer maxRetryAttempts = MAX_RETRY_ATTEMPT;
 
     @JsonProperty("max_retry_delay")
+    @Valid
     @Size(min = 1)
     private Duration maxRetryDelay = MAX_RETRY_DELAY;
 
@@ -58,17 +63,21 @@ public class TopicConfig {
     private Boolean autoCommit = false;
 
     @JsonProperty("auto_commit_interval")
+    @Valid
     @Size(min = 1)
     private Duration autoCommitInterval = AUTOCOMMIT_INTERVAL;
 
     @JsonProperty("session_timeout")
+    @Valid
     @Size(min = 1)
-    private Duration sessionTimeOut = SESSION_TIMEOUT;
+    private Integer sessionTimeOut = SESSION_TIMEOUT;
 
     @JsonProperty("auto_offset_reset")
     private String autoOffsetReset = AUTO_OFFSET_RESET;
 
     @JsonProperty("group_name")
+    @Valid
+    @Size(min = 1, max = 255, message = "size of group name should be between 1 and 255")
     private String groupName;
 
     @JsonProperty("thread_waiting_time")
@@ -78,20 +87,24 @@ public class TopicConfig {
     private Duration maxRecordFetchTime = MAX_RECORD_FETCH_TIME;
 
     @JsonProperty("buffer_default_timeout")
+    @Valid
     @Size(min = 1)
     private Duration bufferDefaultTimeout = BUFFER_DEFAULT_TIMEOUT;
 
     @JsonProperty("fetch_max_bytes")
+    @Valid
     @Size(min = 1, max = 52428800)
-    private Long fetchMaxBytes = FETCH_MAX_BYTES;
+    private Integer fetchMaxBytes = FETCH_MAX_BYTES;
 
     @JsonProperty("fetch_max_wait")
+    @Valid
     @Size(min = 1)
-    private Long fetchMaxWait = FETCH_MAX_WAIT;
+    private Integer fetchMaxWait = FETCH_MAX_WAIT;
 
     @JsonProperty("fetch_min_bytes")
     @Size(min = 1)
-    private Long fetchMinBytes = FETCH_MIN_BYTES;
+    @Valid
+    private Integer fetchMinBytes = FETCH_MIN_BYTES;
 
     @JsonProperty("retry_backoff")
     private Duration retryBackoff = RETRY_BACKOFF;
@@ -103,6 +116,7 @@ public class TopicConfig {
     private Integer consumerMaxPollRecords = CONSUMER_MAX_POLL_RECORDS;
 
     @JsonProperty("heart_beat_interval")
+    @Valid
     @Size(min = 1)
     private Duration heartBeatInterval= HEART_BEAT_INTERVAL_DURATION;
 
@@ -130,12 +144,8 @@ public class TopicConfig {
         this.autoCommitInterval = autoCommitInterval;
     }
 
-    public Duration getSessionTimeOut() {
+    public Integer getSessionTimeOut() {
         return sessionTimeOut;
-    }
-
-    public void setSessionTimeOut(Duration sessionTimeOut) {
-        this.sessionTimeOut = sessionTimeOut;
     }
 
     public String getAutoOffsetReset() {
@@ -178,32 +188,20 @@ public class TopicConfig {
         this.bufferDefaultTimeout = bufferDefaultTimeout;
     }
 
-    public Long getFetchMaxBytes() {
+    public Integer getFetchMaxBytes() {
         return fetchMaxBytes;
-    }
-
-    public void setFetchMaxBytes(Long fetchMaxBytes) {
-        this.fetchMaxBytes = fetchMaxBytes;
     }
 
     public void setAutoCommit(Boolean autoCommit) {
         this.autoCommit = autoCommit;
     }
 
-    public Long getFetchMaxWait() {
+    public Integer getFetchMaxWait() {
         return fetchMaxWait;
     }
 
-    public void setFetchMaxWait(Long fetchMaxWait) {
-        this.fetchMaxWait = fetchMaxWait;
-    }
-
-    public Long getFetchMinBytes() {
+    public Integer getFetchMinBytes() {
         return fetchMinBytes;
-    }
-
-    public void setFetchMinBytes(Long fetchMinBytes) {
-        this.fetchMinBytes = fetchMinBytes;
     }
 
     public Duration getRetryBackoff() {

@@ -19,6 +19,8 @@ import org.opensearch.client.opensearch.core.bulk.IndexOperation;
 import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.common.unit.ByteSizeUnit;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluationException;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -36,6 +38,8 @@ import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapper;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingCompressedBulkRequest;
@@ -89,6 +93,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private IndexManager indexManager;
   private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
+  private BulkApiWrapper bulkApiWrapper;
   private final long bulkSize;
   private final long flushTimeout;
   private final IndexType indexType;
@@ -108,6 +113,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private volatile boolean initialized;
   private PluginSetting pluginSetting;
   private final SinkContext sinkContext;
+  private final ExpressionEvaluator expressionEvaluator;
+  private final boolean isDocumentIdAnExpression;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
 
@@ -119,10 +126,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   public OpenSearchSink(final PluginSetting pluginSetting,
                         final PluginFactory pluginFactory,
                         final SinkContext sinkContext,
+                        final ExpressionEvaluator expressionEvaluator,
                         final AwsCredentialsSupplier awsCredentialsSupplier) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
     this.sinkContext = sinkContext;
+    this.expressionEvaluator = expressionEvaluator;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
@@ -133,6 +142,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
+    this.isDocumentIdAnExpression = expressionEvaluator.isValidExpressionStatement(documentIdField);
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
@@ -211,8 +221,9 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
             TransportOptions.builder()
                     .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
                     .build());
+    bulkApiWrapper = BulkApiWrapperFactory.getWrapper(openSearchSinkConfig.getIndexConfiguration(), filteringOpenSearchClient);
     bulkRetryStrategy = new BulkRetryStrategy(
-            bulkRequest -> filteringOpenSearchClient.bulk(bulkRequest.getRequest()),
+            bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
             this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,
@@ -249,7 +260,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final Optional<String> routing = document.getRoutingField();
       String indexName = configuredIndexAlias;
       try {
-          indexName = indexManager.getIndexName(event.formatString(indexName));
+          indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
       } catch (IOException | EventKeyNotFoundException e) {
           LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
@@ -317,7 +328,19 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   }
 
   private SerializedJson getDocument(final Event event) {
-    String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
+
+    String docId = null;
+
+    if (isDocumentIdAnExpression) {
+      try {
+        docId = (String) expressionEvaluator.evaluate(documentIdField, event);
+      } catch (final ExpressionEvaluationException e) {
+        LOG.error("Unable to construct document_id_field from expression {}, the document_id will be generated by OpenSearch", documentIdField);
+      }
+    } else if (Objects.nonNull(documentIdField)) {
+      docId = event.get(documentIdField, String.class);
+    }
+
     String routing = (routingField != null) ? event.get(routingField, String.class) : null;
 
     final String document = DocumentBuilder.build(event, documentRootKey, Objects.nonNull(sinkContext)?sinkContext.getTagsTargetKey():null);
