@@ -15,15 +15,12 @@ import com.linecorp.armeria.common.HttpResponse;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import io.micrometer.core.instrument.Counter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 
 public class HttpRequestExceptionHandler implements ExceptionHandlerFunction {
-    private static final Logger LOG = LoggerFactory.getLogger(HttpRequestExceptionHandler.class);
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String BAD_REQUESTS = "badRequests";
     public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";

@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper;
 
+import com.linecorp.armeria.common.HttpRequest;
+import com.linecorp.armeria.server.ServiceRequestContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
@@ -43,6 +45,12 @@ class HttpRequestExceptionHandlerTest {
     @Mock
     private Counter internalServerErrorCounter;
 
+    @Mock
+    private ServiceRequestContext serviceRequestContext;
+
+    @Mock
+    private HttpRequest httpRequest;
+
     private HttpRequestExceptionHandler httpRequestExceptionHandler;
 
     @BeforeEach
@@ -63,14 +71,14 @@ class HttpRequestExceptionHandlerTest {
         final IOException testExceptionWithMessage = new IOException(testMessage);
 
         // When
-        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(testExceptionNullMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionNullMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
 
         // When
-        httpResponse = httpRequestExceptionHandler.handleException(testExceptionWithMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -96,14 +104,14 @@ class HttpRequestExceptionHandlerTest {
         final TimeoutException testExceptionWithMessage = new TimeoutException(testMessage);
 
         // When
-        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(testExceptionNullMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionNullMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_TIMEOUT, aggregatedHttpResponse.status());
 
         // When
-        httpResponse = httpRequestExceptionHandler.handleException(testExceptionWithMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -129,14 +137,14 @@ class HttpRequestExceptionHandlerTest {
         final SizeOverflowException testExceptionWithMessage = new SizeOverflowException(testMessage);
 
         // When
-        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(testExceptionEmptyMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionEmptyMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, aggregatedHttpResponse.status());
 
         // When
-        httpResponse = httpRequestExceptionHandler.handleException(testExceptionWithMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -162,14 +170,14 @@ class HttpRequestExceptionHandlerTest {
         final UnknownException testExceptionWithMessage = new UnknownException(testMessage);
 
         // When
-        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(testExceptionEmptyMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionEmptyMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, aggregatedHttpResponse.status());
 
         // When
-        httpResponse = httpRequestExceptionHandler.handleException(testExceptionWithMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();

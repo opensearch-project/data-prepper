@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.linecorp.armeria.server.ServiceRequestContext;
 import io.grpc.Context;
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -15,13 +14,11 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
 import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
-import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import org.opensearch.dataprepper.exceptions.BadRequestException;
 import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.log.OpenTelemetryLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
@@ -29,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
