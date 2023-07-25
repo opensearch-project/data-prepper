@@ -35,7 +35,6 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
@@ -101,7 +100,6 @@ public class KafkaSource implements Source<Record<Event>> {
     private String schemaType = MessageFormat.PLAINTEXT.toString();
     private static final String SCHEMA_TYPE = "schemaType";
     private final AcknowledgementSetManager acknowledgementSetManager;
-    private final EncryptionType encryptionType;
     private static CachedSchemaRegistryClient schemaRegistryClient;
 
     @DataPrepperPluginConstructor
@@ -115,7 +113,6 @@ public class KafkaSource implements Source<Record<Event>> {
         this.pipelineName = pipelineDescription.getPipelineName();
         this.kafkaWorkerThreadProcessingErrors = pluginMetrics.counter(KAFKA_WORKER_THREAD_PROCESSING_ERRORS);
         shutdownInProgress = new AtomicBoolean(false);
-        this.encryptionType = sourceConfig.getEncryptionType();
     }
 
     @Override

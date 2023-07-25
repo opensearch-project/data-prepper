@@ -100,7 +100,7 @@ public class KafkaSourceSecurityConfigurer {
         String password = plainTextAuthConfig.getPassword();
         properties.put(SASL_MECHANISM, "PLAIN");
         properties.put(SASL_JAAS_CONFIG, "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"" + username + "\" password=\"" + password + "\";");
-        if (encryptionType == EncryptionType.PLAINTEXT) {
+        if (encryptionType == EncryptionType.NONE) {
             properties.put(SECURITY_PROTOCOL, "SASL_PLAINTEXT");
         } else { // EncryptionType.SSL
             properties.put(SECURITY_PROTOCOL, "SASL_SSL");
@@ -250,7 +250,7 @@ public class KafkaSourceSecurityConfigurer {
                 PlainTextAuthConfig plainTextAuthConfig = saslAuthConfig.getPlainTextAuthConfig();
 
                 if (Objects.nonNull(awsIamAuthConfig)) {
-                    if (encryptionType == EncryptionType.PLAINTEXT) {
+                    if (encryptionType == EncryptionType.NONE) {
                         throw new RuntimeException("Encryption Config must be SSL to use IAM authentication mechanism");
                     }
                     if (Objects.isNull(awsConfig)) {
