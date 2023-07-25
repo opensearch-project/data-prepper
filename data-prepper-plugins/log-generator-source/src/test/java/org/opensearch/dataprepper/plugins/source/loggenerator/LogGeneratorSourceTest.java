@@ -84,14 +84,15 @@ public class LogGeneratorSourceTest {
 
         BlockingBuffer<Record<Event>> spyBuffer = spy(new BlockingBuffer<Record<Event>>("SamplePipeline"));
 
-        lenient().when(sourceConfig.getInterval()).thenReturn(Duration.ofSeconds(1)); // interval of 1 second
+        Duration interval = Duration.ofMillis(100);
+
+        lenient().when(sourceConfig.getInterval()).thenReturn(interval);
         lenient().when(sourceConfig.getCount()).thenReturn(INFINITE_LOG_COUNT); // no limit to log count
 
         logGeneratorSource.start(spyBuffer);
-        Thread.sleep(1500);
-
+        Thread.sleep((long) (interval.toMillis() * 1.5));
         verify(spyBuffer, atLeast(1)).write(any(Record.class), anyInt());
-        Thread.sleep(700);
+        Thread.sleep((long) (interval.toMillis() * 0.7));
         verify(spyBuffer, atLeast(2)).write(any(Record.class), anyInt());
     }
 
@@ -102,16 +103,18 @@ public class LogGeneratorSourceTest {
 
         BlockingBuffer<Record<Event>> spyBuffer = spy(new BlockingBuffer<Record<Event>>("SamplePipeline"));
 
-        lenient().when(sourceConfig.getInterval()).thenReturn(Duration.ofSeconds(1)); // interval of 1 second
+        Duration interval = Duration.ofMillis(100);
+
+        lenient().when(sourceConfig.getInterval()).thenReturn(interval);
         lenient().when(sourceConfig.getCount()).thenReturn(1); // max log count of 1 in logGeneratorSource
 
         assertEquals(spyBuffer.isEmpty(), true);
         logGeneratorSource.start(spyBuffer);
-        Thread.sleep(1100);
+        Thread.sleep((long) (interval.toMillis() * 1.1));
 
         verify(spyBuffer, times(1)).write(any(Record.class), anyInt());
 
-        Thread.sleep(1000);
+        Thread.sleep(interval.toMillis());
         verify(spyBuffer, times(1)).write(any(Record.class), anyInt());
     }
 }
