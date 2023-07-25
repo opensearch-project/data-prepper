@@ -54,7 +54,6 @@ import java.time.Duration;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericData;
 import org.apache.kafka.common.errors.SerializationException;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 public class MskGlueRegistryMultiTypeIT {
     private static final String TEST_USER = "user";
@@ -182,7 +181,6 @@ public class MskGlueRegistryMultiTypeIT {
     @Test
     public void TestJsonRecordConsumer() throws Exception {
         final int numRecords = 1;
-        when(sourceConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON);
         when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.SSL);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
@@ -250,7 +248,6 @@ public class MskGlueRegistryMultiTypeIT {
     @Test
     public void TestAvroRecordConsumer() throws Exception {
         final int numRecords = 1;
-        when(sourceConfig.getSerdeFormat()).thenReturn(MessageFormat.AVRO);
         when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.SSL);
         when(avroTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getTopics()).thenReturn(List.of(avroTopic));

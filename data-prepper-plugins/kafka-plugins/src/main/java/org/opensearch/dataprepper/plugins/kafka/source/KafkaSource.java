@@ -293,10 +293,10 @@ public class KafkaSource implements Source<Record<Event>> {
         return errorMessage.toString();
     }
 
-    private void setSchemaRegistryProperties(Properties properties, TopicConfig topic) {
+    private void setSchemaRegistryProperties(Properties properties, TopicConfig topicConfig) {
         SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
         if (Objects.isNull(schemaConfig)) {
-            setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(properties);
+            setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(properties, topicConfig);
             return;
         }
 
@@ -308,7 +308,7 @@ public class KafkaSource implements Source<Record<Event>> {
         /* else schema registry type is Confluent */
         if (StringUtils.isNotEmpty(schemaConfig.getRegistryURL())) {
             setPropertiesForSchemaRegistryConnectivity(properties);
-            setPropertiesForSchemaType(properties, topic);
+            setPropertiesForSchemaType(properties, topicConfig);
         } else {
             throw new RuntimeException("RegistryURL must be specified for confluent schema registry");
         }
@@ -321,8 +321,8 @@ public class KafkaSource implements Source<Record<Event>> {
         properties.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
     }
 
-    private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties) {
-        MessageFormat dataFormat = sourceConfig.getSerdeFormat();
+    private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties, final TopicConfig topicConfig) {
+        MessageFormat dataFormat = topicConfig.getSerdeFormat();
         schemaType = dataFormat.toString();
         properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
                 StringDeserializer.class);

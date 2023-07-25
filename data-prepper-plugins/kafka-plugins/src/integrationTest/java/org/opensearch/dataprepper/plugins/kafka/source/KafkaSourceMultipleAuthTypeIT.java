@@ -110,7 +110,6 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
-        when(sourceConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
         when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
         try {
@@ -130,6 +129,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(plainTextTopic.getSessionTimeOut()).thenReturn(15000);
         when(plainTextTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(plainTextTopic.getAutoCommit()).thenReturn(false);
+        when(plainTextTopic.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(plainTextTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(plainTextTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
