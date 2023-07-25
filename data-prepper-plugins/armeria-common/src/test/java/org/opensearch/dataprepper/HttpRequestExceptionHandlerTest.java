@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.source.loghttp;
+package org.opensearch.dataprepper;
 
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class RequestExceptionHandlerTest {
+class HttpRequestExceptionHandlerTest {
     @Mock
     private PluginMetrics pluginMetrics;
 
@@ -43,16 +43,16 @@ class RequestExceptionHandlerTest {
     @Mock
     private Counter internalServerErrorCounter;
 
-    private RequestExceptionHandler requestExceptionHandler;
+    private HttpRequestExceptionHandler httpRequestExceptionHandler;
 
     @BeforeEach
     public void setUp() {
-        when(pluginMetrics.counter(RequestExceptionHandler.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
-        when(pluginMetrics.counter(RequestExceptionHandler.BAD_REQUESTS)).thenReturn(badRequestsCounter);
-        when(pluginMetrics.counter(RequestExceptionHandler.REQUESTS_TOO_LARGE)).thenReturn(requestsTooLargeCounter);
-        when(pluginMetrics.counter(RequestExceptionHandler.INTERNAL_SERVER_ERROR)).thenReturn(internalServerErrorCounter);
+        when(pluginMetrics.counter(HttpRequestExceptionHandler.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
+        when(pluginMetrics.counter(HttpRequestExceptionHandler.BAD_REQUESTS)).thenReturn(badRequestsCounter);
+        when(pluginMetrics.counter(HttpRequestExceptionHandler.REQUESTS_TOO_LARGE)).thenReturn(requestsTooLargeCounter);
+        when(pluginMetrics.counter(HttpRequestExceptionHandler.INTERNAL_SERVER_ERROR)).thenReturn(internalServerErrorCounter);
 
-        requestExceptionHandler = new RequestExceptionHandler(pluginMetrics);
+        httpRequestExceptionHandler = new HttpRequestExceptionHandler(pluginMetrics);
     }
 
     @Test
@@ -63,14 +63,14 @@ class RequestExceptionHandlerTest {
         final IOException testExceptionWithMessage = new IOException(testMessage);
 
         // When
-        HttpResponse httpResponse = requestExceptionHandler.handleException(testExceptionNullMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(testExceptionNullMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
 
         // When
-        httpResponse = requestExceptionHandler.handleException(testExceptionWithMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(testExceptionWithMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -78,7 +78,7 @@ class RequestExceptionHandlerTest {
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
 
         // When
-        httpResponse = requestExceptionHandler.handleException(testExceptionNullMessage, testMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(testExceptionNullMessage, testMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -96,14 +96,14 @@ class RequestExceptionHandlerTest {
         final TimeoutException testExceptionWithMessage = new TimeoutException(testMessage);
 
         // When
-        HttpResponse httpResponse = requestExceptionHandler.handleException(testExceptionNullMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(testExceptionNullMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_TIMEOUT, aggregatedHttpResponse.status());
 
         // When
-        httpResponse = requestExceptionHandler.handleException(testExceptionWithMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(testExceptionWithMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -111,7 +111,7 @@ class RequestExceptionHandlerTest {
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
 
         // When
-        httpResponse = requestExceptionHandler.handleException(testExceptionNullMessage, testMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(testExceptionNullMessage, testMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -129,14 +129,14 @@ class RequestExceptionHandlerTest {
         final SizeOverflowException testExceptionWithMessage = new SizeOverflowException(testMessage);
 
         // When
-        HttpResponse httpResponse = requestExceptionHandler.handleException(testExceptionEmptyMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(testExceptionEmptyMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, aggregatedHttpResponse.status());
 
         // When
-        httpResponse = requestExceptionHandler.handleException(testExceptionWithMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(testExceptionWithMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -144,7 +144,7 @@ class RequestExceptionHandlerTest {
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
 
         // When
-        httpResponse = requestExceptionHandler.handleException(testExceptionEmptyMessage, testMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(testExceptionEmptyMessage, testMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -162,14 +162,14 @@ class RequestExceptionHandlerTest {
         final UnknownException testExceptionWithMessage = new UnknownException(testMessage);
 
         // When
-        HttpResponse httpResponse = requestExceptionHandler.handleException(testExceptionEmptyMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(testExceptionEmptyMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, aggregatedHttpResponse.status());
 
         // When
-        httpResponse = requestExceptionHandler.handleException(testExceptionWithMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(testExceptionWithMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();
@@ -177,7 +177,7 @@ class RequestExceptionHandlerTest {
         assertEquals(testMessage, aggregatedHttpResponse.contentUtf8());
 
         // When
-        httpResponse = requestExceptionHandler.handleException(testExceptionEmptyMessage, testMessage);
+        httpResponse = httpRequestExceptionHandler.handleException(testExceptionEmptyMessage, testMessage);
 
         // Then
         aggregatedHttpResponse = httpResponse.aggregate().get();

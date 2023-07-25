@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import com.linecorp.armeria.server.ServiceRequestContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.log.JacksonLog;
@@ -43,7 +44,6 @@ public class LogHTTPService {
     private final JsonCodec jsonCodec = new JsonCodec();
     private final Buffer<Record<Log>> buffer;
     private final int bufferWriteTimeoutInMillis;
-    private final RequestExceptionHandler requestExceptionHandler;
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
@@ -55,7 +55,6 @@ public class LogHTTPService {
         this.buffer = buffer;
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
 
-        requestExceptionHandler = new RequestExceptionHandler(pluginMetrics);
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
@@ -63,21 +62,26 @@ public class LogHTTPService {
     }
 
     @Post
-    public HttpResponse doPost(final AggregatedHttpRequest aggregatedHttpRequest) {
-        return requestProcessDuration.record(() -> processRequest(aggregatedHttpRequest));
+    public HttpResponse doPost(final ServiceRequestContext serviceRequestContext, final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
+        requestsReceivedCounter.increment();
+        payloadSizeSummary.record(aggregatedHttpRequest.content().length());
+
+        if(serviceRequestContext.isTimedOut()) {
+            return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT);
+        }
+
+        return requestProcessDuration.recordCallable(() -> processRequest(aggregatedHttpRequest));
     }
 
-    private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) {
-        requestsReceivedCounter.increment();
-
+    private HttpResponse processRequest(final AggregatedHttpRequest aggregatedHttpRequest) throws Exception {
         List<String> jsonList;
         final HttpData content = aggregatedHttpRequest.content();
-        payloadSizeSummary.record(content.length());
+
         try {
             jsonList = jsonCodec.parse(content);
         } catch (IOException e) {
             LOG.error("Failed to write the request of size {} due to: {}", content.length(), e.getMessage());
-            return requestExceptionHandler.handleException(e, "Bad request data format. Needs to be json array.");
+            throw new IOException("Bad request data format. Needs to be json array.", e.getCause());
         }
         final List<Record<Log>> records = jsonList.stream()
                 .map(this::buildRecordLog)
@@ -86,7 +90,7 @@ public class LogHTTPService {
             buffer.writeAll(records, bufferWriteTimeoutInMillis);
         } catch (Exception e) {
             LOG.error("Failed to write the request of size {} due to: {}", content.length(), e.getMessage());
-            return requestExceptionHandler.handleException(e);
+            throw e;
         }
         successRequestsCounter.increment();
         return HttpResponse.of(HttpStatus.OK);

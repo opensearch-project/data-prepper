@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.linecorp.armeria.server.encoding.DecodingService;
+import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
@@ -55,6 +56,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
+    private final GrpcRequestExceptionHandler requestExceptionHandler;
     private Server server;
 
     @DataPrepperPluginConstructor
@@ -74,6 +76,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+        this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics);
     }
 
     @Override
@@ -85,7 +88,7 @@ public class OTelLogsSource implements Source<Record<Object>> {
         if (server == null) {
 
             final OTelLogsGrpcService oTelLogsGrpcService = new OTelLogsGrpcService(
-                    oTelLogsSourceConfig.getRequestTimeoutInMillis(),
+                    (int) (oTelLogsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics
@@ -96,7 +99,8 @@ public class OTelLogsSource implements Source<Record<Object>> {
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
                     .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true);
+                    .useBlockingTaskExecutor(true)
+                    .exceptionMapping(requestExceptionHandler);
 
             final MethodDescriptor<ExportLogsServiceRequest, ExportLogsServiceResponse> methodDescriptor = LogsServiceGrpc.getExportMethod();
             final String oTelLogsSourcePath = oTelLogsSourceConfig.getPath();

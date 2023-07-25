@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
+import com.linecorp.armeria.server.ServiceRequestContext;
 import io.grpc.Context;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -14,6 +15,10 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceRequest;
 import io.opentelemetry.proto.collector.logs.v1.ExportLogsServiceResponse;
 import io.opentelemetry.proto.collector.logs.v1.LogsServiceGrpc;
+import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
+import org.opensearch.dataprepper.exceptions.BadRequestException;
+import org.opensearch.dataprepper.exceptions.BufferWriteException;
+import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -30,11 +35,7 @@ import java.util.stream.Collectors;
 public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
     private static final Logger LOG = LoggerFactory.getLogger(OTelLogsGrpcService.class);
 
-    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
-    public static final String BAD_REQUESTS = "badRequests";
-    public static final String REQUESTS_TOO_LARGE = "requestsTooLarge";
-    public static final String INTERNAL_SERVER_ERROR = "internalServerError";
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
     public static final String REQUEST_PROCESS_DURATION = "requestProcessDuration";
@@ -45,13 +46,9 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
 
     private final Buffer<Record<Object>> buffer;
 
-    private final Counter requestTimeoutCounter;
     private final Counter requestsReceivedCounter;
 
     private final Counter successRequestsCounter;
-    private final Counter badRequestsCounter;
-    private final Counter requestsTooLargeCounter;
-    private final Counter internalServerErrorCounter;
     private final DistributionSummary payloadSizeSummary;
     private final Timer requestProcessDuration;
 
@@ -64,11 +61,7 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
         this.buffer = buffer;
         this.oTelProtoDecoder = oTelProtoDecoder;
 
-        requestTimeoutCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
-        badRequestsCounter = pluginMetrics.counter(BAD_REQUESTS);
-        requestsTooLargeCounter = pluginMetrics.counter(REQUESTS_TOO_LARGE);
-        internalServerErrorCounter = pluginMetrics.counter(INTERNAL_SERVER_ERROR);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
         requestProcessDuration = pluginMetrics.timer(REQUEST_PROCESS_DURATION);
@@ -77,54 +70,53 @@ public class OTelLogsGrpcService extends LogsServiceGrpc.LogsServiceImplBase {
 
     @Override
     public void export(ExportLogsServiceRequest request, StreamObserver<ExportLogsServiceResponse> responseObserver) {
-        requestProcessDuration.record(() -> processRequest(request, responseObserver));
-    }
+        LOG.error("Got here");
 
-    private void processRequest(
-            final ExportLogsServiceRequest request, final StreamObserver<ExportLogsServiceResponse> responseObserver) {
         requestsReceivedCounter.increment();
         payloadSizeSummary.record(request.getSerializedSize());
 
-        if (Context.current().isCancelled()) {
-            requestTimeoutCounter.increment();
-            responseObserver.onError(Status.CANCELLED.withDescription("Cancelled by client").asRuntimeException());
+        if (ServiceRequestContext.current().isTimedOut()) {
             return;
         }
-        List<OpenTelemetryLog> logs;
+
+        if (Context.current().isCancelled()) {
+            throw new RequestCancelledException("Cancelled by client");
+        }
+
+        requestProcessDuration.record(() -> processRequest(request, responseObserver));
+    }
+
+    private void processRequest(final ExportLogsServiceRequest request, final StreamObserver<ExportLogsServiceResponse> responseObserver) {
+        final List<OpenTelemetryLog> logs;
 
         try {
             logs = oTelProtoDecoder.parseExportLogsServiceRequest(request);
         } catch (Exception e) {
             LOG.error("Failed to parse the request {} due to:", request, e);
-            badRequestsCounter.increment();
-            responseObserver.onError(Status.INVALID_ARGUMENT.withDescription(e.getMessage()).asException());
-            return;
+            throw new BadRequestException(e.getMessage(), e);
         }
 
         final List<Record<Object>> records = logs.stream().map(log -> new Record<Object>(log)).collect(Collectors.toList());
         try {
+            LOG.error("Got here with records: {}", records);
             buffer.writeAll(records, bufferWriteTimeoutInMillis);
-            successRequestsCounter.increment();
-            responseObserver.onNext(ExportLogsServiceResponse.newBuilder().build());
-            responseObserver.onCompleted();
         } catch (Exception e) {
-            LOG.error("Failed to write the request of size {} due to:", request.toString().length(), e);
-            if (e instanceof TimeoutException) {
-                requestTimeoutCounter.increment();
-                responseObserver
-                        .onError(Status.RESOURCE_EXHAUSTED.withDescription(e.getMessage())
-                                .asException());
-            } else if (e instanceof SizeOverflowException) {
-                requestsTooLargeCounter.increment();
-                responseObserver
-                        .onError(Status.RESOURCE_EXHAUSTED.withDescription(e.getMessage())
-                                .asException());
-            } else {
-                internalServerErrorCounter.increment();
-                responseObserver
-                        .onError(Status.INTERNAL.withDescription(e.getMessage())
-                                .asException());
+            if (ServiceRequestContext.current().isTimedOut()) {
+                LOG.warn("Exception writing to buffer but request already timed out.", e);
+                return;
             }
+
+            LOG.error("Failed to write the request of size {} due to:", request.toString().length(), e);
+            throw new BufferWriteException(e.getMessage(), e);
         }
+
+        if (ServiceRequestContext.current().isTimedOut()) {
+            LOG.warn("Buffer write completed successfully but request already timed out.");
+            return;
+        }
+
+        successRequestsCounter.increment();
+        responseObserver.onNext(ExportLogsServiceResponse.newBuilder().build());
+        responseObserver.onCompleted();
     }
 }
