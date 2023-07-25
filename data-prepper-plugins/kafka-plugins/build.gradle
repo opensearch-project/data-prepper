@@ -24,6 +24,7 @@ dependencies {
     implementation 'software.amazon.awssdk:sts:2.20.103'
     implementation 'software.amazon.awssdk:auth:2.20.103'
     implementation 'software.amazon.awssdk:kafka:2.20.103'
+    implementation 'io.confluent:kafka-json-schema-serializer:7.4.0'
     testImplementation 'org.mockito:mockito-inline:4.1.0'
     testImplementation 'org.yaml:snakeyaml:2.0'
     testImplementation testLibs.spring.test

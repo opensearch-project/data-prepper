@@ -203,11 +203,15 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         if (schema == MessageFormat.JSON || schema == MessageFormat.AVRO) {
             value = new HashMap<>();
             try {
-                final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
-                value = objectMapper.readValue(jsonParser, Map.class);
+                if(schema == MessageFormat.JSON){
+                    value = consumerRecord.value();
+                }else if(schema == MessageFormat.AVRO) {
+                    final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
+                    value = objectMapper.readValue(jsonParser, Map.class);
+                }
             } catch (Exception e){
                 LOG.error("Failed to parse JSON or AVRO record");
-                return null;
+                data.put(key, value);
             }
         } else {
             value = (String)consumerRecord.value();
