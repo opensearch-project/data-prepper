@@ -82,7 +82,8 @@ public class CloudWatchLogsService {
     public void processLogEvents(final Collection<Record<Event>> logs) {
         sinkStopWatch.startIfNotRunning();
         for (Record<Event> log: logs) {
-            int logLength = log.getData().toJsonString().length();
+            String logString = log.getData().toJsonString();
+            int logLength = logString.length();
 
             if (cloudWatchLogsLimits.isGreaterThanMaxEventSize(logLength)) {
                 LOG.warn("Event blocked due to Max Size restriction! {Event Size: {} bytes}", (logLength + CloudWatchLogsLimits.APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
@@ -100,12 +101,12 @@ public class CloudWatchLogsService {
 
             if ((cloudWatchLogsLimits.isGreaterThanLimitReached(time, bufferSizeWithAddedEvent, bufferEventCountWithEvent) && (bufferEventCount > 0))) {
                 stageLogEvents();
-                addToBuffer(log);
+                addToBuffer(log, logString);
             } else if (cloudWatchLogsLimits.isEqualToLimitReached(bufferSizeWithAddedEvent, bufferEventCountWithEvent)) {
-                addToBuffer(log);
+                addToBuffer(log, logString);
                 stageLogEvents();
             } else {
-                addToBuffer(log);
+                addToBuffer(log, logString);
             }
 
             bufferLock.unlock();
@@ -115,13 +116,12 @@ public class CloudWatchLogsService {
     private void stageLogEvents() {
         sinkStopWatch.stopAndResetStopWatch();
 
-        ArrayList<byte[]> eventMessageClone = new ArrayList<>();
-        cloneLists(buffer.getBufferedData(), eventMessageClone);
+        List<byte[]> eventMessageClone = buffer.getBufferedData();
 
         ThreadTaskEvents dataToPush = new ThreadTaskEvents(eventMessageClone, bufferedEventHandles);
         taskQueue.add(dataToPush);
 
-        buffer.clearBuffer();
+        buffer.resetBuffer();
         bufferedEventHandles = new ArrayList<>();
 
         CloudWatchLogsDispatcher newTaskDispatcher = CloudWatchLogsDispatcher.builder()
@@ -137,11 +137,11 @@ public class CloudWatchLogsService {
         asyncExecutor.execute(newTaskDispatcher);
     }
 
-    private void addToBuffer(final Record<Event> log) {
+    private void addToBuffer(final Record<Event> log, final String logString) {
         if (log.getData().getEventHandle() != null) {
             bufferedEventHandles.add(log.getData().getEventHandle());
         }
-        buffer.writeEvent(log.getData().toString().getBytes());
+        buffer.writeEvent(logString.getBytes());
     }
 
     private void cloneLists(List<byte[]> listToCopy, List<byte[]> listToCopyInto) {

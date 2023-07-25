@@ -34,4 +34,6 @@ public interface Buffer {
     List<byte[]> getBufferedData();
 
     void clearBuffer();
+
+    void resetBuffer();
 }

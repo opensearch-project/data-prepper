@@ -10,7 +10,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class InMemoryBuffer implements Buffer {
-    private final List<byte[]> eventsBuffered;
+    private List<byte[]> eventsBuffered;
     private int bufferSize = 0;
 
     InMemoryBuffer() {
@@ -48,5 +48,11 @@ public class InMemoryBuffer implements Buffer {
     public void clearBuffer() {
         bufferSize = 0;
         eventsBuffered.clear();
+    }
+
+    @Override
+    public void resetBuffer() {
+        bufferSize = 0;
+        eventsBuffered = new ArrayList<>();
     }
 }
