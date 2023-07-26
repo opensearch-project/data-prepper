@@ -103,15 +103,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
 
-        if (includeKeysSet.equals(excludeKeysSet) && !includeKeysSet.isEmpty()) {
-            throw new IllegalArgumentException("Include keys and exclude keys set cannot be the same", null);
-        }
-
-        Set<String> intersectionSet = new HashSet<String>(includeKeysSet);
-        intersectionSet.retainAll(excludeKeysSet);
-        if (!intersectionSet.isEmpty()) {
-            throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
-        }
+        validateKeySets(includeKeysSet, excludeKeysSet);
 
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
@@ -161,6 +153,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         return true;
+    }
+
+    private void validateKeySets(final Set<String> includeSet, final Set<String> excludeSet) {
+        Set<String> intersectionSet = new HashSet<String>(includeSet);
+        intersectionSet.retainAll(excludeSet);
+        if (!intersectionSet.isEmpty()) {
+            throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
+        }
     }
 
     @Override
