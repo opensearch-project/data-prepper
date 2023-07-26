@@ -100,12 +100,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
         }
 
-        if (keyValueProcessorConfig.getIncludeKeys().equals(keyValueProcessorConfig.getExcludeKeys())) {
-            if (!keyValueProcessorConfig.getIncludeKeys().isEmpty()) {
-                throw new IllegalArgumentException("Include keys and exclude keys set cannot be the same", null);
-            }
-        }
-
         includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
 
