@@ -20,8 +20,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 @ExtendWith(MockitoExtension.class)
 class KeyConfigTest {
 
-    public static final String SOURCE = "/peer/ip";
-    public static final String TARGET = "location";
+    public static final List<String> SOURCE = List.of("/peer/ip");
+    public static final List<String> TARGET = List.of("location");
     private KeyConfig keyConfig;
 
     @BeforeEach

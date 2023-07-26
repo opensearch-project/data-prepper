@@ -21,11 +21,11 @@ pipeline:
           sts_role_arn: arn:aws:iam::123456789012:role/Data-Prepper                  
         keys:
           - key:
-              source: "/peer/ip"
-              target: "target1"
+              source: ["/peer/ips/src_ip1""/peer/ips/dst_ip1"]
+              target: ["target1","target2"]
           - key:
-              source: "/peer/ip2"
-              target: "target2"
+              source: [ "/peer/ips/src_ip2"]
+              target: [ "target3"]
               attributes: ["city_name","country_name"]
         service_type:
           maxmind:
@@ -33,7 +33,7 @@ pipeline:
               - url: 
             load_type: "in_memory"
             cache_size: 4096
-            cache_refresh_schedule: P30D
+            cache_refresh_schedule: P15D
 ```
 
 ## AWS Configuration
@@ -46,9 +46,9 @@ pipeline:
 
 - `keys` (Required) : List of properties like source, target and attributes can be specified where the location fields are written
 
-  - `source` (Required) : source IP for which enrichment will be done. Public IP can be either IPV4 or IPV6.
+  - `source` (Required) : source  and destination IP's for which enrichment will be done. Public IP's can be either IPV4 or IPV6.
 
-  - `target` (Optional) : Property used to specify the key for the enriched fields. 
+  - `target` (Required) : Properties used to specify the key for the enriched fields. 
 
   - `attributes` (Optional) : Used to specify the properties which are included in the enrichment of data. By default all attributes are considered.  
 
@@ -68,27 +68,11 @@ pipeline:
 
 ## Sample JSON input:
 
-"peer" : {
-"ip" : "1.2.3.4"
-"host" : "example.org"
-}
-"status" : "success"
+{"peer": { "ips":{ "src_ip1" : "8.8.8.8", "dst_ip1": "8.8.8.9" }, "host": "example.org" }, "status": "success"}
 
 ## Sample JSON Output:
 
-"peer" : {
-"ip" : "1.2.3.4"
-"host" : "example.org"
-}
-"location" : {
-"status" : "success"
-"country" : "United States"
-"city_name" : "Seattle"
-"latitude" : "47.64097"
-"longitude" : "122.25894"
-"zip_code" : "98115"
-}
-
+{"peer":{"ips":{"src_ip":"8.8.8.8","dst_ip":"8.8.8.9"},"host":"example.org"},"status":"success","target1":{"continent_name":"North America","country_iso_code":"US","timezone":"America/Chicago","ip":"8.8.8.8","country_name":"United States","location":{"lon":-97.822,"lat":37.751},"organization_name":"GOOGLE","asn":15169,"network":"8.8.8.0/24"},"target2":{"continent_name":"North America","country_iso_code":"US","timezone":"America/Chicago","ip":"8.8.8.9","country_name":"United States","location":{"lon":-97.822,"lat":37.751},"organization_name":"GOOGLE","asn":15169,"network":"8.8.8.0/24"}}
 
 
 

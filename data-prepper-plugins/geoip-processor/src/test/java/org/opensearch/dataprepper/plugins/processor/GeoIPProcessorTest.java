@@ -48,8 +48,8 @@ import static org.mockito.Mockito.when;
 class GeoIPProcessorTest {
 
     public static final int REFRESH_SCHEDULE = 10;
-    public static final String SOURCE = "/peer/ip";
-    public static final String TARGET = "location";
+    public static final List<String> SOURCE = List.of("/peer/ips/src_ip1");
+    public static final List<String> TARGET = List.of("location");
     public static final String PROCESSOR_PLUGIN_NAME = "geoip";
     public static final String PROCESSOR_PIPELINE_NAME = "geoIP-processor-pipeline";
     @Mock
@@ -99,7 +99,6 @@ class GeoIPProcessorTest {
         when(geoCodingProcessorConfig.getKeysConfig()).thenReturn(configs);
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
 
-        when(geoIPProcessorService.getGeoData(any(), any())).thenReturn(prepareGeoData());
         ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
                 "geoIPProcessorService", geoIPProcessorService);
         Collection<Record<Event>> records = geoIPProcessor.doExecute(setEventQueue());
@@ -130,8 +129,6 @@ class GeoIPProcessorTest {
         configs.add(keysConfig1);
         when(geoCodingProcessorConfig.getKeysConfig()).thenReturn(configs);
         GeoIPProcessor geoIPProcessor = createObjectUnderTest();
-
-        doThrow(EnrichFailedException.class).when(geoIPProcessorService).getGeoData(any(), any());
 
         ReflectivelySetField.setField(GeoIPProcessor.class, geoIPProcessor,
                 "geoIPProcessorService", geoIPProcessorService);

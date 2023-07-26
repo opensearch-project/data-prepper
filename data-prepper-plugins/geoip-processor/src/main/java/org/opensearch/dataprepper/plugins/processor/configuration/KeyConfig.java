@@ -14,10 +14,10 @@ public class KeyConfig {
 
     @JsonProperty("source")
     @NotNull
-    String source;
+    List<String> source;
 
     @JsonProperty("target")
-    String target;
+    List<String> target;
 
     @JsonProperty("attributes")
     List<String> attributes;
@@ -26,13 +26,13 @@ public class KeyConfig {
      * Get the Configured source for extracting the IP
      * @return String
      */
-    public String getSource() { return source; }
+    public List<String> getSource() { return source; }
 
     /**
      * Get the Configured target name
      * @return String
      */
-    public String getTarget() {
+    public List<String> getTarget() {
         return target;
     }
 

@@ -6,20 +6,23 @@
 package org.opensearch.dataprepper.plugins.processor;
 
 public class Peer {
-    private String ip;
+    Ips IpsObject;
     private String host;
 
     // Getter Methods
-    public String getIp() {
-        return ip;
+    public Ips getIps() {
+        return IpsObject;
     }
+
     public String getHost() {
         return host;
     }
+
     // Setter Methods
-    public void setIp( String ip ) {
-        this.ip = ip;
+    public void setIps( Ips ipsObject ) {
+        this.IpsObject = ipsObject;
     }
+
     public void setHost( String host ) {
         this.host = host;
     }

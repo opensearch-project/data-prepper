@@ -21,7 +21,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
-
+import java.util.List;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -42,9 +42,9 @@ public class GeoIPProcessorUrlServiceIT {
     @BeforeEach
     public void setUp() throws JsonProcessingException {
 
-        maxmindLicenseKey = System.getProperty("tests.geoipProcessor.maxmindLicenseKey");
+        maxmindLicenseKey = "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";
 
-        jsonInput = "{\"peer\": {\"ip\": \"8.8.8.8\", \"host\": \"example.org\" }, \"status\": \"success\"}";
+        jsonInput = "{\"peer\": { \"ips\":{ \"src_ip1\" : \"8.8.8.8\", \"dst_ip1\": \"8.8.8.9\" }, \"host\": \"example.org\" }, \"status\": \"success\"}";
 
         geoIPInputJson = objectMapper.readValue(jsonInput, GeoIPInputJson.class);
         tempPath = System.getProperty("java.io.tmpdir")+ File.separator + TEMP_PATH_FOLDER;
@@ -58,11 +58,11 @@ public class GeoIPProcessorUrlServiceIT {
                 "          sts_role_arn: \"arn:aws:iam::123456789:role/data-prepper-execution-role\"\n" +
                 "        keys:\n" +
                 "          - key:\n" +
-                "              source: \"/peer/ip\"\n" +
-                "              target: \"target1\"\n" +
+                "              source: [ \"/peer/ips/src_ip1\",\"/peer/ips/dst_ip1\" ]\n" +
+                "              target: [ \"target1\",\"target2\" ]\n" +
                 "          - key:\n" +
-                "              source: \"/peer/ip2\"\n" +
-                "              target: \"target2\"\n" +
+                "              source: [\"/peer/ips/src_ip2\"]\n" +
+                "              target: [\"target2\"]\n" +
                 "              attributes: [\"city_name\",\"country_name\"]\n" +
                 "        service_type:\n" +
                 "          maxmind:\n" +
@@ -87,14 +87,27 @@ public class GeoIPProcessorUrlServiceIT {
 
         Map<String, Object> geoData = new HashMap<>();
         this.geoIPProcessorService = createObjectUnderTest();
-        String ipAddress = geoIPInputJson.getPeer().getIp();
-        if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
-            InetAddress inetAddress = InetAddress.getByName(ipAddress);
-            //All attributes are considered by default with the null value
-            geoData = geoIPProcessorService.getGeoData(inetAddress, null);
+
+        String src_IpAddress = geoIPInputJson.getPeer().getIps().getSrc_ip1();
+        if (IPValidationcheck.isPublicIpAddress(src_IpAddress)) {
+            InetAddress src_InetAddress = InetAddress.getByName(src_IpAddress);
+            //All attributes are considered by default with null
+            geoData = geoIPProcessorService.getGeoData(src_InetAddress, null);
 
             assertThat(geoData.get("country_iso_code"), equalTo("US"));
             assertThat(geoData.get("ip"), equalTo("8.8.8.8"));
+            assertThat(geoData.get("country_name"), equalTo("United States"));
+            assertThat(geoData.get("organization_name"), equalTo("GOOGLE"));
+        }
+
+        String dest_IpAddress = geoIPInputJson.getPeer().getIps().getDst_ip1();
+        if (IPValidationcheck.isPublicIpAddress(dest_IpAddress)) {
+            InetAddress dest_InetAddress = InetAddress.getByName(dest_IpAddress);
+            //All attributes are considered by default with null
+            geoData = geoIPProcessorService.getGeoData(dest_InetAddress, null);
+
+            assertThat(geoData.get("country_iso_code"), equalTo("US"));
+            assertThat(geoData.get("ip"), equalTo("8.8.8.9"));
             assertThat(geoData.get("country_name"), equalTo("United States"));
             assertThat(geoData.get("organization_name"), equalTo("GOOGLE"));
         }

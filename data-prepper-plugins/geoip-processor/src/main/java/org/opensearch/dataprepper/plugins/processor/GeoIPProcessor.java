@@ -71,30 +71,37 @@ public class GeoIPProcessor extends AbstractProcessor<Record<Event>, Record<Even
   public Collection<Record<Event>> doExecute(Collection<Record<Event>> records) {
 
     Map<String, Object> geoData;
+    String ipAddress = null;
+    Integer target;
 
     for (final Record<Event> eventRecord : records) {
       Event event = eventRecord.getData();
       for (KeysConfig key : geoIPProcessorConfig.getKeysConfig()) {
-        String source = key.getKeyConfig().getSource();
+        List<String> sources = key.getKeyConfig().getSource();
         List<String> attributes = key.getKeyConfig().getAttributes();
-        String ipAddress = event.get(source, String.class);
-
-        //Lookup from DB
-        if (ipAddress != null && (!(ipAddress.isEmpty()))) {
-          try {
-            if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
-              geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
-              eventRecord.getData().put(key.getKeyConfig().getTarget(), geoData);
-              geoIpProcessingMatchCounter.increment();
+        List<String> targets = key.getKeyConfig().getTarget();
+        target = 0;
+        if(targets.size() == sources.size()) {
+          for (String source : sources) {
+            ipAddress = event.get(source, String.class);
+            //Lookup from DB
+            if (ipAddress != null && (!(ipAddress.isEmpty()))) {
+              try {
+                if (IPValidationcheck.isPublicIpAddress(ipAddress)) {
+                  geoData = geoIPProcessorService.getGeoData(InetAddress.getByName(ipAddress), attributes);
+                  eventRecord.getData().put(targets.get(target++), geoData);
+                  geoIpProcessingMatchCounter.increment();
+                }
+              } catch (IOException | EnrichFailedException ex) {
+                geoIpProcessingMismatchCounter.increment();
+                event.getMetadata().addTags(tagsOnSourceNotFoundFailure);
+                LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]", event, ipAddress, ex);
+              }
+            } else {
+              //No Enrichment.
+              event.getMetadata().addTags(tagsOnSourceNotFoundFailure);
             }
-          } catch (IOException | EnrichFailedException ex) {
-            geoIpProcessingMismatchCounter.increment();
-            event.getMetadata().addTags(tagsOnSourceNotFoundFailure);
-            LOG.error(DataPrepperMarkers.EVENT, "Failed to get Geo data for event: [{}] for the IP address [{}]",  event, ipAddress, ex);
           }
-        } else {
-          //No Enrichment.
-          event.getMetadata().addTags(tagsOnSourceNotFoundFailure);
         }
       }
     }
