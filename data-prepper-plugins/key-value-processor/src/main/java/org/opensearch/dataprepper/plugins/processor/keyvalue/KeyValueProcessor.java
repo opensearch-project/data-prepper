@@ -103,11 +103,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
 
+        if (includeKeysSet.equals(excludeKeysSet) && !includeKeysSet.isEmpty()) {
+            throw new IllegalArgumentException("Include keys and exclude keys set cannot be the same", null);
+        }
+
         Set<String> intersectionSet = new HashSet<String>(includeKeysSet);
-        if (intersectionSet.retainAll(excludeKeysSet)) {
-            if (!intersectionSet.isEmpty()) {
-                throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
-            }
+        intersectionSet.retainAll(excludeKeysSet);
+        if (!intersectionSet.isEmpty()) {
+            throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
         }
 
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
