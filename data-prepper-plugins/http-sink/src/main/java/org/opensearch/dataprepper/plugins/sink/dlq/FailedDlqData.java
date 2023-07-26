@@ -4,27 +4,22 @@
  */
 package org.opensearch.dataprepper.plugins.sink.dlq;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.opensearch.dataprepper.model.event.EventHandle;
-
-import java.util.Objects;
-
 public class FailedDlqData {
 
-    private final int status;
+    private String url;
 
-    private final String message;
+    private int status;
 
-    @JsonIgnore
-    private final EventHandle eventHandle;
+    private String message;
 
-    private FailedDlqData(final int status,
-                          final String message,
-                          final EventHandle eventHandle) {
-        this.status = status;
-        Objects.requireNonNull(message);
-        this.message = message;
-        this.eventHandle = eventHandle;
+    public FailedDlqData(final Builder builder) {
+        this.status = builder.status;
+        this.message = builder.message;
+        this.url = builder.url;
+    }
+
+    public String getUrl() {
+        return url;
     }
 
     public int getStatus() {
@@ -34,10 +29,6 @@ public class FailedDlqData {
     public String getMessage() {
         return message;
     }
-    public EventHandle getEventHandle() {
-        return eventHandle;
-    }
-
 
     public static Builder builder() {
         return new Builder();
@@ -45,14 +36,30 @@ public class FailedDlqData {
 
     public static class Builder {
 
-        private EventHandle eventHandle;
+        private String url;
 
-        private int status = 0;
+        private int status;
 
         private String message;
 
+
+        public Builder withUrl(String url) {
+            this.url = url;
+            return this;
+        }
+
+        public Builder withStatus(int status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder withMessage(String message) {
+            this.message = message;
+            return this;
+        }
+
         public FailedDlqData build() {
-            return new FailedDlqData(status, message, eventHandle);
+            return new FailedDlqData(this);
         }
     }
 }

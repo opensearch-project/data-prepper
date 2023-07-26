@@ -10,9 +10,13 @@ import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.util.HttpSinkUtil;
 
+import java.net.URL;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class HttpSinkConfiguration {
 
@@ -28,14 +32,28 @@ public class HttpSinkConfiguration {
     static final String SSL_KEY_FILE = "sslKeyFile";
     static final String SSL = "ssl";
     static final String AWS_REGION = "awsRegion";
+
+
+    public static final String STS_REGION = "sts_region";
+
+    public static final String STS_ROLE_ARN = "sts_role_arn";
     static final boolean DEFAULT_USE_ACM_CERT_FOR_SSL = false;
     static final int DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS = 120000;
     public static final String SSL_IS_ENABLED = "%s is enabled";
 
     public static final Duration DEFAULT_HTTP_RETRY_INTERVAL = Duration.ofSeconds(30);
+
+    private static final String HTTPS = "https";
+
+    private static final String AWS_HOST_AMAZONAWS_COM = "amazonaws.com";
+
+    private static final String AWS_HOST_API_AWS = "api.aws";
+
+    private static final String AWS_HOST_ON_AWS = "on.aws";
+
     @NotNull
-    @JsonProperty("urls")
-    private List<UrlConfigurationOption> urlConfigurationOptions;
+    @JsonProperty("url")
+    private String url;
 
     @JsonProperty("workers")
     private Integer workers = DEFAULT_WORKERS;
@@ -53,7 +71,7 @@ public class HttpSinkConfiguration {
     private AuthTypeOptions authType = AuthTypeOptions.UNAUTHENTICATED;
 
     @JsonProperty("authentication")
-    private PluginModel authentication;
+    private AuthenticationOptions authentication;
 
     @JsonProperty("ssl_certificate_file")
     private String sslCertificateFile;
@@ -79,7 +97,7 @@ public class HttpSinkConfiguration {
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
     @JsonProperty("custom_header")
-    private CustomHeaderOptions customHeaderOptions;
+    private Map<String, List<String>> customHeaderOptions;
 
     @JsonProperty("dlq_file")
     private String dlqFile;
@@ -110,6 +128,10 @@ public class HttpSinkConfiguration {
 
 
     private boolean sslCertAndKeyFileInS3;
+
+    public String getUrl() {
+        return url;
+    }
 
     public boolean isSsl() {
         return ssl;
@@ -173,10 +195,6 @@ public class HttpSinkConfiguration {
         return acmCertificateArn;
     }
 
-    public List<UrlConfigurationOption> getUrlConfigurationOptions() {
-        return urlConfigurationOptions;
-    }
-
     public PluginModel getCodec() {
         return codec;
     }
@@ -193,7 +211,7 @@ public class HttpSinkConfiguration {
         return authType;
     }
 
-    public PluginModel getAuthentication() {
+    public AuthenticationOptions getAuthentication() {
         return authentication;
     }
 
@@ -221,7 +239,7 @@ public class HttpSinkConfiguration {
         return maxUploadRetries;
     }
 
-    public CustomHeaderOptions getCustomHeaderOptions() {
+    public Map<String, List<String>> getCustomHeaderOptions() {
         return customHeaderOptions;
     }
 
@@ -239,5 +257,29 @@ public class HttpSinkConfiguration {
 
     public PluginModel getDlq() {
         return dlq;
+    }
+
+    public boolean isValidAWSUrl() {
+        URL parsedUrl = HttpSinkUtil.getURLByUrlString(url);
+        if(parsedUrl.getProtocol().equals(HTTPS) && (parsedUrl.getHost().contains(AWS_HOST_AMAZONAWS_COM) ||parsedUrl.getHost().contains(AWS_HOST_API_AWS) || parsedUrl.getHost().contains(AWS_HOST_ON_AWS))){
+            return true;
+        }
+        return false;
+    }
+
+    public String getDlqStsRoleARN(){
+        return Objects.nonNull(getDlqPluginSetting().get(STS_ROLE_ARN)) ?
+                String.valueOf(getDlqPluginSetting().get(STS_ROLE_ARN)) :
+                awsAuthenticationOptions.getAwsStsRoleArn();
+    }
+
+    public String getDlqStsRegion(){
+        return Objects.nonNull(getDlqPluginSetting().get(STS_REGION)) ?
+                String.valueOf(getDlqPluginSetting().get(STS_REGION)) :
+                awsAuthenticationOptions.getAwsRegion().toString();
+    }
+
+    public  Map<String, Object> getDlqPluginSetting(){
+        return dlq != null ? dlq.getPluginSettings() : Map.of();
     }
 }

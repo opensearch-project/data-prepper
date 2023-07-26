@@ -16,7 +16,7 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ThresholdCheckTest {
+class ThresholdValidatorTest {
 
     private Buffer inMemoryBuffer;
 
@@ -34,7 +34,7 @@ class ThresholdCheckTest {
         final int maxEvents = 95;
         final ByteCount maxBytes = ByteCount.parse("50kb");
         final long maxCollectionDuration = 15;
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(inMemoryBuffer, maxEvents,
+        boolean isThresholdExceed = ThresholdValidator.checkThresholdExceed(inMemoryBuffer, maxEvents,
                 maxBytes, maxCollectionDuration);
         assertTrue(isThresholdExceed, "Threshold not exceeded");
     }
@@ -44,7 +44,7 @@ class ThresholdCheckTest {
         final int maxEvents = 105;
         final ByteCount maxBytes = ByteCount.parse("50mb");
         final long maxCollectionDuration = 50;
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(inMemoryBuffer, maxEvents, maxBytes,
+        boolean isThresholdExceed = ThresholdValidator.checkThresholdExceed(inMemoryBuffer, maxEvents, maxBytes,
                 maxCollectionDuration);
         assertFalse(isThresholdExceed, "Threshold exceeded");
     }
@@ -54,7 +54,7 @@ class ThresholdCheckTest {
         final int maxEvents = 500;
         final ByteCount maxBytes = ByteCount.parse("1b");
         final long maxCollectionDuration = 15;
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(inMemoryBuffer, maxEvents, maxBytes,
+        boolean isThresholdExceed = ThresholdValidator.checkThresholdExceed(inMemoryBuffer, maxEvents, maxBytes,
                 maxCollectionDuration);
         assertTrue(isThresholdExceed, "Threshold not exceeded");
     }
@@ -64,7 +64,7 @@ class ThresholdCheckTest {
         final int maxEvents = 500;
         final ByteCount maxBytes = ByteCount.parse("8mb");
         final long maxCollectionDuration = 15;
-        boolean isThresholdExceed = ThresholdCheck.checkThresholdExceed(inMemoryBuffer, maxEvents,
+        boolean isThresholdExceed = ThresholdValidator.checkThresholdExceed(inMemoryBuffer, maxEvents,
                 maxBytes, maxCollectionDuration);
         assertFalse(isThresholdExceed, "Threshold exceeded");
     }
@@ -81,7 +81,7 @@ class ThresholdCheckTest {
         synchronized (this) {
             while (inMemoryBuffer.getEventCount() < 100) {
                 inMemoryBuffer.writeEvent(generateByteArray());
-                isThresholdExceed = ThresholdCheck.checkThresholdExceed(inMemoryBuffer, maxEvents,
+                isThresholdExceed = ThresholdValidator.checkThresholdExceed(inMemoryBuffer, maxEvents,
                         maxBytes, maxCollectionDuration);
                 if (isThresholdExceed) {
                     break;
@@ -105,7 +105,7 @@ class ThresholdCheckTest {
         synchronized (this) {
             while (inMemoryBuffer.getEventCount() < 100) {
                 inMemoryBuffer.writeEvent(generateByteArray());
-                isThresholdExceed = ThresholdCheck.checkThresholdExceed(inMemoryBuffer,
+                isThresholdExceed = ThresholdValidator.checkThresholdExceed(inMemoryBuffer,
                         maxEvents, maxBytes, maxCollectionDuration);
                 if (isThresholdExceed) {
                     break;
