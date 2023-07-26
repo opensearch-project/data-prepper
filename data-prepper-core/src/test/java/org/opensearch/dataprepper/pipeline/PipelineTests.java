@@ -46,6 +46,7 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -67,7 +68,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class PipelineTests {
-    private static final int TEST_READ_BATCH_TIMEOUT = 3000;
+    private static final int TEST_READ_BATCH_TIMEOUT = 500;
     private static final int TEST_PROCESSOR_THREADS = 1;
     private static final String TEST_PIPELINE_NAME = "test-pipeline";
 
@@ -168,9 +169,9 @@ class PipelineTests {
 
     @Test
     void testPipelineDelayedReady() throws InterruptedException {
-        final int delayTimeSeconds = 10;
+        final Duration delayTime = Duration.ofMillis(2000);
         final Source<Record<String>> testSource = new TestSource();
-        final TestSink testSink = new TestSink(delayTimeSeconds);
+        final TestSink testSink = new TestSink(delayTime);
         final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
         final TestProcessor testProcessor = new TestProcessor(new PluginSetting("test_processor", new HashMap<>()));
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);
@@ -182,11 +183,11 @@ class PipelineTests {
         Instant startTime = Instant.now();
         testPipeline.execute();
         assertFalse(testPipeline.isReady());
-        for (int i = 0; i < delayTimeSeconds + 2; i++) {
-            Thread.sleep(1000);
-        }
+        await().atMost(Duration.ofSeconds(2).plus(delayTime))
+                .pollInterval(Duration.ofMillis(200))
+                .until(testPipeline::isReady);
         assertTrue(testPipeline.isReady());
-        assertThat(Duration.between(startTime, Instant.now()), greaterThanOrEqualTo(Duration.ofSeconds(delayTimeSeconds)));
+        assertThat(Duration.between(startTime, Instant.now()), greaterThanOrEqualTo(delayTime));
         assertThat("Pipeline isStopRequested is expected to be false", testPipeline.isStopRequested(), is(false));
         testPipeline.shutdown();
         assertThat("Pipeline isStopRequested is expected to be true", testPipeline.isStopRequested(), is(true));
@@ -196,9 +197,9 @@ class PipelineTests {
 
     @Test
     void testPipelineDelayedReadyShutdownBeforeReady() throws InterruptedException {
-        final int delayTimeSeconds = 10;
+        final Duration delayTime = Duration.ofSeconds(2);
         final Source<Record<String>> testSource = new TestSource();
-        final TestSink testSink = new TestSink(delayTimeSeconds);
+        final TestSink testSink = new TestSink(delayTime);
         final DataFlowComponent<Sink> sinkDataFlowComponent = mock(DataFlowComponent.class);
         final TestProcessor testProcessor = new TestProcessor(new PluginSetting("test_processor", new HashMap<>()));
         when(sinkDataFlowComponent.getComponent()).thenReturn(testSink);

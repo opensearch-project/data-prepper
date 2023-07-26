@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafka.source;
+package org.opensearch.dataprepper.plugins.kafka.util;
 
 import org.apache.kafka.common.security.auth.SslEngineFactory;
 import javax.net.ssl.SSLContext;

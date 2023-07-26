@@ -166,12 +166,18 @@ Command to start kafka server
 bin/kafka-server-start.sh config/server.properties
 ```
 
-3. Command to run integration tests
+3. Command to run multi auth type integration tests
 
 ```
-./gradlew    data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers="localhost:9092" -Dtests.kafka.trust_store_location="/home/krishkdk/kafka/kafka-3.4.1-src/sec/client.truststore.jks" -Dtests.kafka.trust_store_password="kafkaks" -Dtests.kafka.saslssl_bootstrap_servers="localhost:9093" -Dtests.kafka.ssl_bootstrap_servers="localhost:9094" -Dtests.kafka.saslplain_bootstrap_servers="localhost:9095" -Dtests.kafka.username="admin" -Dtests.kafka.password="admin1" --tests "*KafkaSourceMultipleAuthTypeIT*"
+./gradlew    data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<bootstrap-servers> -Dtests.kafka.trust_store_location=</path/to/client.truststore.jks> -Dtests.kafka.trust_store_password=<password> -Dtests.kafka.saslssl_bootstrap_servers=<sasl-bootstrap-server> -Dtests.kafka.ssl_bootstrap_servers=<ssl-bootstrap-servers> -Dtests.kafka.saslplain_bootstrap_servers=<plain-bootstrap-servers> -Dtests.kafka.username=<username> -Dtests.kafka.password=<password> --tests "*KafkaSourceMultipleAuthTypeIT*"
 ```
 
+4. Command to run msk glue integration tests
+
+```
+./gradlew     data-prepper-plugins:kafka-plugins:integrationTest -Dtests.kafka.bootstrap_servers=<msk-bootstrap-servers> -Dtests.kafka.glue_registry_name=<glue-registry-name> -Dtests.kafka.glue_avro_schema_name=<glue-registry-avro-schema-name> -Dtests.kafka.glue_json_schema_name=<glue-registry-json-schema-name> -Dtests.msk.region=<msk-region> -Dtests.msk.arn=<msk-arn>  --tests "*TestAvroRecordConsumer*" 
+
+```
 
 ## Developer Guide
 

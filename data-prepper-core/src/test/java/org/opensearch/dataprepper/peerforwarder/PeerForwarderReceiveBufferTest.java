@@ -32,7 +32,7 @@ class PeerForwarderReceiveBufferTest {
     private static final int TEST_BATCH_SIZE = 3;
     private static final int TEST_BUFFER_SIZE = 13;
     private static final int TEST_WRITE_TIMEOUT = 100;
-    private static final int TEST_BATCH_READ_TIMEOUT = 5_000;
+    private static final int TEST_BATCH_READ_TIMEOUT = 200;
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
     private static final String PIPELINE_NAME = UUID.randomUUID().toString();
     private static final String PLUGIN_ID = UUID.randomUUID().toString();
@@ -204,7 +204,7 @@ class PeerForwarderReceiveBufferTest {
         final Collection<Record<String>> testRecords2 = generateBatchRecords(1);
         EXECUTOR.submit(() -> {
             try {
-                Thread.sleep(1000);
+                Thread.sleep(TEST_BATCH_READ_TIMEOUT / 5);
                 peerForwarderReceiveBuffer.writeAll(testRecords2, TEST_WRITE_TIMEOUT);
             } catch (final Exception e) {
                 throw new RuntimeException(e);
@@ -229,7 +229,7 @@ class PeerForwarderReceiveBufferTest {
         final Collection<Record<String>> testRecords2 = generateBatchRecords(1);
         EXECUTOR.submit(() -> {
             try {
-                Thread.sleep(1000);
+                Thread.sleep(TEST_BATCH_READ_TIMEOUT / 5);
                 peerForwarderReceiveBuffer.writeAll(testRecords2, TEST_WRITE_TIMEOUT);
             } catch (final Exception e) {
                 throw new RuntimeException(e);
