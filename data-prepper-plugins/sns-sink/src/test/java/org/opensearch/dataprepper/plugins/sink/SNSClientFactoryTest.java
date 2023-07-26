@@ -1,7 +1,8 @@
-package org.opensearch.dataprepper.plugins.sink;/*
+/*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
+package org.opensearch.dataprepper.plugins.sink;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

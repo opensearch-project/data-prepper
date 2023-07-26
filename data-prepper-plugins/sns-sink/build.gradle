@@ -27,34 +27,3 @@ dependencies {
 test {
     useJUnitPlatform()
 }
-
-sourceSets {
-    integrationTest {
-        java {
-            compileClasspath += main.output + test.output
-            runtimeClasspath += main.output + test.output
-            srcDir file('src/integrationTest/java')
-        }
-        resources.srcDir file('src/integrationTest/resources')
-    }
-}
-
-configurations {
-    integrationTestImplementation.extendsFrom testImplementation
-    integrationTestRuntime.extendsFrom testRuntime
-}
-
-task integrationTest(type: Test) {
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-
-    useJUnitPlatform()
-
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    systemProperty 'tests.s3sink.bucket', System.getProperty('tests.s3sink.bucket')
-    systemProperty 'tests.s3ink.region', System.getProperty('tests.s3sink.region')
-
-    filter {
-        includeTestsMatching '*IT'
-    }
-}

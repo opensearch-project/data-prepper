@@ -12,9 +12,6 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.accumulator.Buffer;
-import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.dlq.SNSSinkFailedDlqData;
 import org.slf4j.Logger;
@@ -22,13 +19,17 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.PublishRequest;
-import software.amazon.awssdk.services.sns.model.PublishResponse;
+import software.amazon.awssdk.services.sns.model.PublishBatchRequest;
+import software.amazon.awssdk.services.sns.model.PublishBatchRequestEntry;
+import software.amazon.awssdk.services.sns.model.PublishBatchResponse;
 
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -54,8 +55,6 @@ public class SNSSinkService {
 
     private final Lock reentrantLock;
 
-    private final BufferFactory bufferFactory;
-
     private final Collection<EventHandle> bufferedEventHandles;
 
     private final SnsClient snsClient;
@@ -64,13 +63,7 @@ public class SNSSinkService {
 
     private final PluginSetting pluginSetting;
 
-    private Buffer currentBuffer;
-
-    private final int maxEvents;
-
-    private final ByteCount maxBytes;
-
-    private final long maxCollectionDuration;
+    private final List<String> processRecordsList;
 
     private final String topicName;
 
@@ -82,29 +75,26 @@ public class SNSSinkService {
 
     /**
      * @param snsSinkConfig sns sink related configuration.
-     * @param bufferFactory factory of buffer.
      * @param snsClient
      * @param pluginMetrics metrics.
      * @param pluginFactory
      * @param pluginSetting
      */
     public SNSSinkService(final SNSSinkConfig snsSinkConfig,
-                          final BufferFactory bufferFactory,
                           final SnsClient snsClient,
                           final PluginMetrics pluginMetrics,
                           final PluginFactory pluginFactory,
                           final PluginSetting pluginSetting) {
         this.snsSinkConfig = snsSinkConfig;
-        this.bufferFactory = bufferFactory;
         this.snsClient = snsClient;
         this.reentrantLock = new ReentrantLock();
         this.bufferedEventHandles = new LinkedList<>();
-        this.maxEvents = snsSinkConfig.getThresholdOptions().getEventCount();
-        this.maxBytes = snsSinkConfig.getThresholdOptions().getMaximumSize();
-        this.maxCollectionDuration = snsSinkConfig.getThresholdOptions().getEventCollectTimeOut().getSeconds();
         this.topicName = snsSinkConfig.getTopicArn();
         this.maxRetries = snsSinkConfig.getMaxUploadRetries();
         this.pluginSetting = pluginSetting;
+
+        this.processRecordsList = new ArrayList();
+
 
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_FAILED);
@@ -121,84 +111,67 @@ public class SNSSinkService {
      */
     void output(Collection<Record<Event>> records) {
         reentrantLock.lock();
-        if (currentBuffer == null) {
-            currentBuffer = bufferFactory.getBuffer();
-        }
         try {
             for (Record<Event> record : records) {
                 final Event event = record.getData();
-                final byte[] encodedBytes = event.toJsonString().getBytes();
-                currentBuffer.writeEvent(encodedBytes);
+                processRecordsList.add(event.toJsonString());
                 if (event.getEventHandle() != null) {
                     bufferedEventHandles.add(event.getEventHandle());
                 }
-                if (checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
-                    LOG.debug("Writing {} to SNS with {} events and size of {} bytes.",
-                            currentBuffer.getEventCount(), currentBuffer.getSize());
-                    String errorMsg = "";
-                    final boolean isFlushToSNS = retryFlushToSNS(currentBuffer, topicName,errorMsg);
-                    if (isFlushToSNS) {
-                        numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
-                    } else {
-                        numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
-                        SNSSinkFailedDlqData sNSSinkFailedDlqData = new SNSSinkFailedDlqData(topicName,errorMsg,new String(currentBuffer.getSinkBufferData()));
-                        dlqPushHandler.perform(pluginSetting,sNSSinkFailedDlqData);
-                    }
-                    releaseEventHandles(true);
-                    currentBuffer = bufferFactory.getBuffer();
+                if (snsSinkConfig.getBatchSize() == processRecordsList.size()) {
+                    processRecords();
+                    processRecordsList.clear();
                 }
             }
-        } catch (IOException | InterruptedException e) {
+            // This block will process the last set of events below batch size
+            if(!processRecordsList.isEmpty()) {
+                processRecords();
+                processRecordsList.clear();
+            }
+        } catch (InterruptedException e) {
             LOG.error("Exception while write event into buffer :", e);
         }
         reentrantLock.unlock();
     }
 
-    /**
-     * Check threshold exceeds.
-     * @param currentBuffer current buffer.
-     * @param maxEvents maximum event provided by user as threshold.
-     * @param maxBytes maximum bytes provided by user as threshold.
-     * @param maxCollectionDuration maximum event collection duration provided by user as threshold.
-     * @return boolean value whether the threshold are met.
-     */
-    public static boolean checkThresholdExceed(final Buffer currentBuffer, final int maxEvents, final ByteCount maxBytes, final long maxCollectionDuration) {
-        if (maxEvents > 0) {
-            return currentBuffer.getEventCount() + 1 > maxEvents ||
-                    currentBuffer.getDuration() > maxCollectionDuration ||
-                    currentBuffer.getSize() > maxBytes.getBytes();
+    private void processRecords() throws InterruptedException {
+        final AtomicReference<String> errorMsgObj = new AtomicReference<>();
+        final boolean isFlushToSNS = retryFlushToSNS(processRecordsList, topicName,errorMsgObj);
+        if (isFlushToSNS) {
+            numberOfRecordsSuccessCounter.increment(processRecordsList.size());
         } else {
-            return currentBuffer.getDuration() > maxCollectionDuration ||
-                    currentBuffer.getSize() > maxBytes.getBytes();
+            numberOfRecordsFailedCounter.increment(processRecordsList.size());
+            dlqPushHandler.perform(pluginSetting,new SNSSinkFailedDlqData(topicName,errorMsgObj.get(),0));
         }
+        releaseEventHandles(true);
     }
 
     private void releaseEventHandles(final boolean result) {
         for (EventHandle eventHandle : bufferedEventHandles) {
             eventHandle.release(result);
         }
-
         bufferedEventHandles.clear();
     }
 
     /**
      * perform retry in-case any issue occurred, based on max_upload_retries configuration.
      *
-     * @param currentBuffer current buffer.
+     * @param processRecordsList records to be process
+     * @param errorMsgObj pass the error message
      * @return boolean based on object upload status.
      * @throws InterruptedException interruption during sleep.
      */
-    protected boolean retryFlushToSNS(final Buffer currentBuffer, final String topicName,String errorMsg) throws InterruptedException {
+    protected boolean retryFlushToSNS(final List<String> processRecordsList,
+                                      final String topicName,
+                                      final AtomicReference<String> errorMsgObj) throws InterruptedException {
         boolean isUploadedToSNS = Boolean.FALSE;
         int retryCount = maxRetries;
         do {
             try {
-                LOG.info("Trying to Push Msg to SNS");
-                final byte[] sinkBufferData = currentBuffer.getSinkBufferData();
-                publishToTopic(snsClient, topicName,sinkBufferData);
+                publishToTopic(snsClient, topicName,processRecordsList);
                 isUploadedToSNS = Boolean.TRUE;
-            } catch (AwsServiceException | SdkClientException | IOException e) {
-                errorMsg = e.getMessage();
+            } catch (AwsServiceException | SdkClientException e) {
+                errorMsgObj.set(e.getMessage());
                 LOG.error("Exception occurred while uploading records to sns. Retry countdown  : {} | exception:",
                         retryCount, e);
                 --retryCount;
@@ -211,24 +184,35 @@ public class SNSSinkService {
         return isUploadedToSNS;
     }
 
-    public void publishToTopic(SnsClient snsClient, String topicName,final byte[] sinkBufferData) {
+    public void publishToTopic(SnsClient snsClient, String topicName,final List<String> processRecordsList) {
         LOG.debug("Trying to Push Msg to SNS: {}",topicName);
         try {
-            PublishRequest request = createPublicRequestByTopic(topicName, sinkBufferData);
-            PublishResponse result = snsClient.publish(request);
-            LOG.info(result.messageId() + " Message sent. Status is " + result.sdkHttpResponse().statusCode());
+            final PublishBatchRequest request = createPublicRequestByTopic(topicName, processRecordsList);
+            final PublishBatchResponse publishBatchResponse = snsClient.publishBatch(request);
+            LOG.info(" Message sent. Status is " + publishBatchResponse.sdkHttpResponse().statusCode());
         }catch (Exception e) {
             throw e;
         }
     }
 
-    private PublishRequest createPublicRequestByTopic(String topicName, byte[] sinkBufferData) {
-        PublishRequest.Builder request = PublishRequest.builder()
-                .message(new String(sinkBufferData))
-                .topicArn(topicName);
-        if(topicName.endsWith(FIFO))
-            request.messageGroupId(snsSinkConfig.getId()).messageDeduplicationId(UUID.randomUUID().toString());
-        return request.build();
+    private PublishBatchRequest createPublicRequestByTopic(final String topicName, final List<String>  processRecordsList) {
+        final PublishBatchRequest.Builder requestBatch = PublishBatchRequest.builder().topicArn(topicName);
+        final List<PublishBatchRequestEntry> batchRequestEntries = new ArrayList<PublishBatchRequestEntry>();
+        final String defaultRandomGroupId = UUID.randomUUID().toString();
+        if(processRecordsList.isEmpty()){
+            System.out.println(processRecordsList.size());
+        }
+        for (String message : processRecordsList) {
+            final PublishBatchRequestEntry.Builder entry = PublishBatchRequestEntry.builder().id(String.valueOf(new Random().nextInt())).message(message);
+            if(topicName.endsWith(FIFO))
+                batchRequestEntries.add(entry
+                    .messageGroupId(snsSinkConfig.getMessageGroupId() != null ? snsSinkConfig.getMessageGroupId() : defaultRandomGroupId)
+                    .messageDeduplicationId(snsSinkConfig.getMessageDeduplicationId() != null ? snsSinkConfig.getMessageDeduplicationId() : UUID.randomUUID().toString()).build());
+            else
+                batchRequestEntries.add(entry.build());
+        }
+        requestBatch.publishBatchRequestEntries(batchRequestEntries);
+        return requestBatch.build();
     }
 
 }

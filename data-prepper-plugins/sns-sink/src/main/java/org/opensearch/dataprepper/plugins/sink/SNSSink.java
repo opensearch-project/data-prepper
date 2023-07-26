@@ -16,10 +16,6 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
-import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
-import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.accumulator.LocalFileBufferFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sns.SnsClient;
@@ -34,10 +30,10 @@ import java.util.Collection;
 public class SNSSink extends AbstractSink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(SNSSink.class);
-    private final SNSSinkConfig snsSinkConfig;
+
     private volatile boolean sinkInitialized;
+
     private final SNSSinkService snsSinkService;
-    private final BufferFactory bufferFactory;
 
     /**
      * @param pluginSetting dp plugin settings.
@@ -51,22 +47,15 @@ public class SNSSink extends AbstractSink<Record<Event>> {
                    final SinkContext sinkContext,
                   final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
-        this.snsSinkConfig = snsSinkConfig;
         final PluginModel codecConfiguration = snsSinkConfig.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
         // TODO: Sink codec changes are pending
-//        codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
+        // codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
         sinkInitialized = Boolean.FALSE;
 
-        if (snsSinkConfig.getBufferType().equals(BufferTypeOptions.LOCALFILE)) {
-            bufferFactory = new LocalFileBufferFactory();
-        } else {
-            bufferFactory = new InMemoryBufferFactory();
-        }
         final SnsClient snsClient = SNSClientFactory.createSNSClient(snsSinkConfig, awsCredentialsSupplier);
-        snsSinkService = new SNSSinkService(snsSinkConfig, bufferFactory,snsClient,pluginMetrics,pluginFactory,pluginSetting);
-
+        snsSinkService = new SNSSinkService(snsSinkConfig,snsClient,pluginMetrics,pluginFactory,pluginSetting);
     }
 
     @Override

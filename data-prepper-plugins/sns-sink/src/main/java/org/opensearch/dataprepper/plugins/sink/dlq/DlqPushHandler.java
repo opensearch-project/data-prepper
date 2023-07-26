@@ -4,6 +4,8 @@
  */
 package org.opensearch.dataprepper.plugins.sink.dlq;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import io.micrometer.core.instrument.util.StringUtils;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -21,6 +23,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.StringJoiner;
@@ -52,6 +55,8 @@ public class DlqPushHandler {
 
     private DlqProvider dlqProvider;
 
+    private ObjectWriter objectWriter;
+
     public DlqPushHandler(final String dlqFile,
                           final PluginFactory pluginFactory,
                           final String bucket,
@@ -60,6 +65,7 @@ public class DlqPushHandler {
                           final String dlqPathPrefix) {
         if(dlqFile != null) {
             this.dlqFile = dlqFile;
+            this.objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
         }else{
             this.dlqProvider = getDlqProvider(pluginFactory,bucket,stsRoleArn,awsRegion,dlqPathPrefix);
         }
@@ -76,14 +82,13 @@ public class DlqPushHandler {
     private void writeToFile(Object failedData) {
         try(BufferedWriter dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile),
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
-            dlqFileWriter.write(failedData.toString());
+            dlqFileWriter.write(objectWriter.writeValueAsString(failedData)+"\n");
         } catch (IOException e) {
             LOG.error("Exception while writing failed data to DLQ file Exception: ",e);
         }
     }
 
     private void pushToS3(PluginSetting pluginSetting, Object failedData) {
-        LOG.info("s3 dlq - push to s3 method");
         DlqWriter dlqWriter = getDlqWriter(pluginSetting.getPipelineName());
         try {
             String pluginId = randomUUID().toString();
@@ -93,9 +98,9 @@ public class DlqPushHandler {
                     .withPipelineName(pluginSetting.getPipelineName())
                     .withFailedData(failedData)
                     .build();
-
-            dlqWriter.write(Arrays.asList(dlqObject), pluginSetting.getPipelineName(), pluginId);
-            LOG.info("s3 dlq write complete");
+            final List<DlqObject> dlqObjects = Arrays.asList(dlqObject);
+            dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginId);
+            LOG.info("wrote {} events to DLQ",dlqObjects.size());
         } catch (final IOException e) {
             LOG.error("Exception while writing failed data to DLQ, Exception : ", e);
         }

@@ -8,14 +8,14 @@ public class SNSSinkFailedDlqData {
 
     private String topic;
 
-    private String errorMsg;
+    private String message;
 
-    private String bufferData;
+    private int status;
 
-    public SNSSinkFailedDlqData(String topic, String errorMsg, String bufferData) {
+    public SNSSinkFailedDlqData(String topic, String message, int status) {
         this.topic = topic;
-        this.errorMsg = errorMsg;
-        this.bufferData = bufferData;
+        this.message = message;
+        this.status = status;
     }
 
     public String getTopic() {
@@ -27,30 +27,29 @@ public class SNSSinkFailedDlqData {
         return this;
     }
 
-    public String getErrorMsg() {
-        return errorMsg;
+    public String getMessage() {
+        return message;
     }
 
-    public SNSSinkFailedDlqData setErrorMsg(String errorMsg) {
-        this.errorMsg = errorMsg;
+    public SNSSinkFailedDlqData setMessage(String message) {
+        this.message = message;
         return this;
     }
 
-    public String getBufferData() {
-        return bufferData;
+    public int getStatus() {
+        return status;
     }
 
-    public SNSSinkFailedDlqData setBufferData(String bufferData) {
-        this.bufferData = bufferData;
+    public SNSSinkFailedDlqData setStatus(int status) {
+        this.status = status;
         return this;
     }
 
     @Override
     public String toString() {
-        return "{" +
-                "topic='" + topic + '\'' +
-                ", errorMsg='" + errorMsg + '\'' +
-                ", bufferData='" + bufferData + '\'' +
-                '}';
+        return "failedData\n" +
+                "topic    \"" + topic + "\"\n" +
+                "message    \"" + message + "\"\n" +
+                "status    \"" + status +"\n";
     }
 }

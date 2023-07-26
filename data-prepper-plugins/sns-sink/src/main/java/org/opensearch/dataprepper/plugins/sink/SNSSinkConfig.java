@@ -10,8 +10,6 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.BufferTypeOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 
 import java.util.Map;
 import java.util.Objects;
@@ -22,8 +20,13 @@ import java.util.Objects;
 public class SNSSinkConfig {
 
     private static final int DEFAULT_CONNECTION_RETRIES = 5;
+
+    private static final int DEFAULT_BATCH_SIZE = 10;
+
     private static final int DEFAULT_UPLOAD_RETRIES = 5;
-    public static final String STS_REGION = "sts_region";
+
+    public static final String STS_REGION = "region";
+
     public static final String STS_ROLE_ARN = "sts_role_arn";
 
     @JsonProperty("aws")
@@ -36,12 +39,8 @@ public class SNSSinkConfig {
     @NotEmpty
     private String topicArn;
 
-    @JsonProperty("id")
-    private String id;
-
-    @JsonProperty("threshold")
-    @NotNull
-    private ThresholdOptions thresholdOptions;
+    @JsonProperty("message_group_id")
+    private String messageGroupId;
 
     @JsonProperty("codec")
     @NotNull
@@ -53,13 +52,24 @@ public class SNSSinkConfig {
     @JsonProperty("dlq_file")
     private String dlqFile;
 
-    @JsonProperty("buffer_type")
-    private BufferTypeOptions bufferType = BufferTypeOptions.IN_MEMORY;
+    @JsonProperty("batch_size")
+    private int batchSize = DEFAULT_BATCH_SIZE;
+
+    @JsonProperty("message_deduplication_id")
+    private String messageDeduplicationId;
 
     private int maxConnectionRetries = DEFAULT_CONNECTION_RETRIES;
 
     @JsonProperty("max_retries")
     private int maxUploadRetries = DEFAULT_UPLOAD_RETRIES;
+
+    public String getMessageDeduplicationId() {
+        return messageDeduplicationId;
+    }
+
+    public int getBatchSize() {
+        return batchSize;
+    }
 
     public PluginModel getDlq() {
         return dlq;
@@ -77,20 +87,12 @@ public class SNSSinkConfig {
         return awsAuthenticationOptions;
     }
 
-    /**
-     * Threshold configuration Options.
-     * @return threshold option object.
-     */
-    public ThresholdOptions getThresholdOptions() {
-        return thresholdOptions;
-    }
-
     public String getTopicArn() {
         return topicArn;
     }
 
-    public String getId() {
-        return id;
+    public String getMessageGroupId() {
+        return messageGroupId;
     }
 
     /**
@@ -99,14 +101,6 @@ public class SNSSinkConfig {
      */
     public PluginModel getCodec() {
         return codec;
-    }
-
-    /**
-     * Buffer type configuration Options.
-     * @return buffer type option object.
-     */
-    public BufferTypeOptions getBufferType() {
-        return bufferType;
     }
 
     /**

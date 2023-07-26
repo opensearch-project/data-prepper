@@ -13,13 +13,9 @@ import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.BufferTypeOptions;
-import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 import software.amazon.awssdk.regions.Region;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -53,7 +49,6 @@ class SNSSinkTest {
 
         snsSinkConfig = mock(SNSSinkConfig.class);
         sinkContext = mock(SinkContext.class);
-        ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         pluginSetting = mock(PluginSetting.class);
         PluginModel pluginModel = mock(PluginModel.class);
@@ -63,11 +58,6 @@ class SNSSinkTest {
 
         when(snsSinkConfig.getDlq()).thenReturn(pluginModel);
         when(pluginModel.getPluginSettings()).thenReturn(dlqMap);
-        when(snsSinkConfig.getBufferType()).thenReturn(BufferTypeOptions.IN_MEMORY);
-        when(snsSinkConfig.getThresholdOptions()).thenReturn(thresholdOptions);
-        when(snsSinkConfig.getThresholdOptions().getEventCount()).thenReturn(MAX_EVENTS);
-        when(snsSinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse(MAXIMUM_SIZE));
-        when(snsSinkConfig.getThresholdOptions().getEventCollectTimeOut()).thenReturn(Duration.ofSeconds(MAX_RETRIES));
         when(snsSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of(S3_REGION));
         when(snsSinkConfig.getCodec()).thenReturn(pluginModel);
