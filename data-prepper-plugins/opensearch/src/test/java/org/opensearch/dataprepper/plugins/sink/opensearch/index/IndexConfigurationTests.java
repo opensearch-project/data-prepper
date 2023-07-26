@@ -365,6 +365,7 @@ public class IndexConfigurationTests {
         final Map<String, Object> metadata = initializeConfigMetaData(
                 null, testIndexAlias, null, null, null, null);
         metadata.put(AWS_OPTION, Map.of(SERVERLESS, true));
+        metadata.put(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
@@ -377,10 +378,12 @@ public class IndexConfigurationTests {
         final Map<String, Object> metadata = initializeConfigMetaData(
                 IndexType.CUSTOM.getValue(), testIndexAlias, null, null, null, null);
         metadata.put(AWS_OPTION, Map.of(SERVERLESS, true));
+        metadata.put(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
+        assertEquals(TemplateType.INDEX_TEMPLATE, indexConfiguration.getTemplateType());
         assertEquals(true, indexConfiguration.getServerless());
     }
 
