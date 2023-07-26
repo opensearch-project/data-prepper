@@ -264,8 +264,8 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testIncludeKeysAsNullKeyValueProcessor() {
-        when(mockConfig.getIncludeKeys()).thenReturn(null);
+    void testIncludeKeysAsDefaultKeyValueProcessor() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of());
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key1=value1&key2=value2");
@@ -292,8 +292,8 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testExcludeKeysAsNullKeyValueProcessor() {
-        when(mockConfig.getExcludeKeys()).thenReturn(null);
+    void testExcludeKeysAsDefaultKeyValueProcessor() {
+        when(mockConfig.getExcludeKeys()).thenReturn(List.of());
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key1=value1&key2=value2");
@@ -303,6 +303,16 @@ public class KeyValueProcessorTests {
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
         assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testIncludeExcludeKeysOverlapKeyValueProcessor() {
+        final List<String> includeKeys = List.of("key1", "key3");
+        final List<String> excludeKeys = List.of("key3");
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
+
+        assertThrows(IllegalArgumentException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
     }
 
     @Test

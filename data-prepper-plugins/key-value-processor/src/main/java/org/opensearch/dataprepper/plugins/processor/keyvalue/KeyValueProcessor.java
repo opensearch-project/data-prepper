@@ -100,18 +100,20 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
         }
 
-        if (keyValueProcessorConfig.getIncludeKeys() != null) {
-            if (keyValueProcessorConfig.getExcludeKeys() != null) {
-                if (keyValueProcessorConfig.getIncludeKeys().equals(keyValueProcessorConfig.getExcludeKeys())) {
-                    if (!keyValueProcessorConfig.getIncludeKeys().isEmpty()) {
-                        throw new IllegalStateException("Include keys and exclude keys set cannot be the same", null);
-                    }
-                }
-
-                excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
+        if (keyValueProcessorConfig.getIncludeKeys().equals(keyValueProcessorConfig.getExcludeKeys())) {
+            if (!keyValueProcessorConfig.getIncludeKeys().isEmpty()) {
+                throw new IllegalArgumentException("Include keys and exclude keys set cannot be the same", null);
             }
+        }
 
-            includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
+        includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
+        excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
+
+        Set<String> intersectionSet = new HashSet<String>(includeKeysSet);
+        if (intersectionSet.retainAll(excludeKeysSet)) {
+            if (!intersectionSet.isEmpty()) {
+                throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
+            }
         }
 
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
