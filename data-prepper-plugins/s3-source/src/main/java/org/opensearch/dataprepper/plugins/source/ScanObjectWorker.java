@@ -43,9 +43,8 @@ public class ScanObjectWorker implements Runnable{
 
     private static final int STANDARD_BACKOFF_MILLIS = 30_000;
 
-    // Keeping this same as source coordinator ownership time
-    private static final int ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS = 10_000;
-    static final String ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
+    private static final int ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS = Integer.MAX_VALUE;
+    static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
 
     private final S3Client s3Client;
 
@@ -91,7 +90,7 @@ public class ScanObjectWorker implements Runnable{
         this.deleteS3Objects = s3SourceConfig.isDeleteS3Objects();
         this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
         this.pluginMetrics = pluginMetrics;
-        acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME);
+        acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME);
         this.sourceCoordinator.initialize();
 
         this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList);

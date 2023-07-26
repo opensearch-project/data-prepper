@@ -80,7 +80,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.S3ObjectDeleteWorker.S3_OBJECTS_DELETED_METRIC_NAME;
 import static org.opensearch.dataprepper.plugins.source.S3ObjectDeleteWorker.S3_OBJECTS_DELETE_FAILED_METRIC_NAME;
-import static org.opensearch.dataprepper.plugins.source.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.source.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
 
 @ExtendWith(MockitoExtension.class)
 public class S3ScanObjectWorkerIT {
@@ -123,20 +123,13 @@ public class S3ScanObjectWorkerIT {
 
     @BeforeEach
     void setUp() {
-//        s3Client = S3Client.builder()
-//                .region(Region.of(System.getProperty("tests.s3source.region")))
-//                .build();
-//        s3AsyncClient = S3AsyncClient.builder()
-//                .region(Region.of(System.getProperty("tests.s3source.region")))
-//                .build();
-//        bucket = System.getProperty("tests.s3source.bucket");
         s3Client = S3Client.builder()
-                .region(Region.US_EAST_1)
+                .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
         s3AsyncClient = S3AsyncClient.builder()
-                .region(Region.US_EAST_1)
+                .region(Region.of(System.getProperty("tests.s3source.region")))
                 .build();
-        bucket = "s3-logs-nsifmoh";
+        bucket = System.getProperty("tests.s3source.bucket");
         s3ObjectGenerator = new S3ObjectGenerator(s3Client, bucket);
         eventMetadataModifier = new EventMetadataModifier(S3SourceConfig.DEFAULT_METADATA_ROOT_KEY);
 
@@ -206,7 +199,7 @@ public class S3ScanObjectWorkerIT {
                 .compressionType(shouldCompress ? CompressionType.GZIP : CompressionType.NONE)
                 .s3SelectResponseHandlerFactory(new S3SelectResponseHandlerFactory()).build();
 
-        when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLACK_METRIC_NAME)).thenReturn(acknowledgementCounter);
+        when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(acknowledgementCounter);
         when(pluginMetrics.counter(S3_OBJECTS_DELETED_METRIC_NAME)).thenReturn(s3DeletedCounter);
         when(pluginMetrics.counter(S3_OBJECTS_DELETE_FAILED_METRIC_NAME)).thenReturn(s3DeleteFailedCounter);
         S3ObjectDeleteWorker s3ObjectDeleteWorker = new S3ObjectDeleteWorker(s3Client, pluginMetrics);

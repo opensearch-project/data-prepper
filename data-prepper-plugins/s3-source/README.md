@@ -117,7 +117,7 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `disable_bucket_ownership_validation` (Optional) : Boolean - If set to true, then the S3 Source will not attempt to validate that the bucket is owned by the expected account. The only expected account is the same account which owns the SQS queue. Defaults to `false`.
 
-* `delete_s3_objects` (Optional) : Boolean - If set to true, then the S3 Source will attempt to delete S3 objects after processing. If `acknowledgments` is enabled, S3 objects will be delete only if positive acknowledgment is received by S3 source. Defaults to `false`.
+* `delete_s3_objects` (Optional) : Boolean - If set to true, then the S3 Source will attempt to delete S3 objects after processing. If `acknowledgments` is enabled, S3 objects will be deleted only if positive acknowledgment is received by S3 source. Defaults to `false`.
 
 ### <a name="s3_select_configuration">S3 Select Configuration</a>
 
@@ -171,10 +171,10 @@ Schedule frequency and amount of times an object should be processed when using 
 a `rate` of `PT1H` and a `job_count` of 3 would result in each object getting processed 3 times, starting after source is ready
 and then every hour after the first time the object is processed.
 
-* `rate` (Optional) : A String that indicates the rate to process an index based on the `job_count`.
+* `rate` (Optional) : A String that indicates the rate to process an S3 object based on the `job_count`.
   Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms").
   Defaults to 8 hours, and is only applicable when `job_count` is greater than 1.
-* `job_count` (Optional) : An Integer that specifies how many times each index should be processed. Defaults to 1.
+* `job_count` (Optional) : An Integer that specifies how many times each S3 object should be processed. Defaults to 1.
 
 
 ### <a name="aws_configuration">AWS Configuration</a>
