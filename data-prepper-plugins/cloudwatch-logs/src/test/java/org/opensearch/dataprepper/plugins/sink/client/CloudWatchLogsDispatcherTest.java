@@ -18,7 +18,6 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsExcept
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 
 import java.util.ArrayList;
-import java.util.concurrent.BlockingQueue;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -29,7 +28,6 @@ import static org.mockito.Mockito.when;
 
  public class CloudWatchLogsDispatcherTest {
     private CloudWatchLogsDispatcher cloudWatchLogsDispatcher;
-    private BlockingQueue<ThreadTaskEvents> mockTaskQueue;
     private  CloudWatchLogsClient cloudWatchLogsClient;
     private  CloudWatchLogsMetrics cloudWatchLogsMetrics;
     private PluginMetrics pluginMetrics;
@@ -43,7 +41,6 @@ import static org.mockito.Mockito.when;
 
     @BeforeEach
     void setUp() throws InterruptedException {
-        mockTaskQueue = mock(BlockingQueue.class);
         cloudWatchLogsClient = mock(CloudWatchLogsClient.class);
 
         pluginMetrics = mock(PluginMetrics.class);
@@ -51,8 +48,6 @@ import static org.mockito.Mockito.when;
         requestFailCounter = mock(Counter.class);
         successEventCounter = mock(Counter.class);
         failedEventCounter = mock(Counter.class);
-
-        when(mockTaskQueue.take()).thenReturn(getSampleBufferedData());
 
         cloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
 
@@ -76,7 +71,7 @@ import static org.mockito.Mockito.when;
     }
 
     CloudWatchLogsDispatcher getCloudWatchLogsDispatcher() {
-        return new CloudWatchLogsDispatcher(mockTaskQueue, cloudWatchLogsClient,
+        return new CloudWatchLogsDispatcher(cloudWatchLogsClient,
                 cloudWatchLogsMetrics, LOG_GROUP, LOG_STREAM, ThresholdConfig.DEFAULT_RETRY_COUNT,
                 ThresholdConfig.DEFAULT_BACKOFF_TIME);
     }
@@ -90,13 +85,14 @@ import static org.mockito.Mockito.when;
     }
 
     void setUpInterruptedQueueException() throws InterruptedException {
-        when(mockTaskQueue.take()).thenThrow(InterruptedException.class);
+//        when(mockTaskQueue.take()).thenThrow(InterruptedException.class);
     }
 
     @Test
     void check_successful_transmission_test() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
-        cloudWatchLogsDispatcher.run();
+        cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
+        cloudWatchLogsDispatcher.dispatchLogs();
 
         verify(cloudWatchLogsMetrics, atLeastOnce()).increaseRequestSuccessCounter(1);
         verify(cloudWatchLogsMetrics, atLeastOnce()).increaseLogEventSuccessCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);

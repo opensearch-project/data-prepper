@@ -13,7 +13,6 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.sink.buffer.Buffer;
 import org.opensearch.dataprepper.plugins.sink.buffer.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.client.CloudWatchLogsDispatcher.CloudWatchLogsDispatcherBuilder;
 import org.opensearch.dataprepper.plugins.sink.config.CloudWatchLogsSinkConfig;
 import org.opensearch.dataprepper.plugins.sink.config.ThresholdConfig;
 import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
@@ -44,7 +43,6 @@ public class CloudWatchLogsServiceTest {
     private CloudWatchLogsMetrics mockMetrics;
     private BlockingQueue<ThreadTaskEvents> testQueue;
     private CloudWatchLogsService cloudWatchLogsService;
-    private CloudWatchLogsDispatcherBuilder mockDispatchBuilder;
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
     private ThresholdConfig thresholdConfig;
     private CloudWatchLogsLimits cloudWatchLogsLimits;
@@ -69,24 +67,8 @@ public class CloudWatchLogsServiceTest {
         testDispatcher = mock(CloudWatchLogsDispatcher.class);
         testQueue = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
 
-        mockDispatchBuilder = mock(CloudWatchLogsDispatcherBuilder.class, RETURNS_DEEP_STUBS);
-        when(mockDispatchBuilder.taskQueue(any(BlockingQueue.class))).thenReturn(mockDispatchBuilder);
-        when(mockDispatchBuilder.cloudWatchLogsClient(any(CloudWatchLogsClient.class))).thenReturn(mockDispatchBuilder);
-        when(mockDispatchBuilder.cloudWatchLogsMetrics(any(CloudWatchLogsMetrics.class))).thenReturn(mockDispatchBuilder);
-        when(mockDispatchBuilder.logGroup(anyString())).thenReturn(mockDispatchBuilder);
-        when(mockDispatchBuilder.logStream(anyString())).thenReturn(mockDispatchBuilder);
-        when(mockDispatchBuilder.retryCount(anyInt())).thenReturn(mockDispatchBuilder);
-        when(mockDispatchBuilder.backOffTimeBase(anyInt())).thenReturn(mockDispatchBuilder);
-        when(mockDispatchBuilder.taskQueue(any(BlockingQueue.class))
-                .cloudWatchLogsClient(any(CloudWatchLogsClient.class))
-                .cloudWatchLogsMetrics(any(CloudWatchLogsMetrics.class)).logGroup(logGroup)
-                .logStream(anyString())
-                .retryCount(anyInt())
-                .backOffTimeBase(anyLong())
-                .build()).thenReturn(testDispatcher);
-
         cloudWatchLogsService = new CloudWatchLogsService(buffer, mockClient, mockMetrics,
-                cloudWatchLogsLimits, testQueue,
+                cloudWatchLogsLimits,
                 logGroup, logStream,
                 thresholdConfig.getRetryCount(), thresholdConfig.getBackOffTime());
     }
