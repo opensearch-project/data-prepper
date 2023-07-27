@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.accumulator;
 
 import software.amazon.awssdk.services.s3.S3Client;
+import java.io.IOException;
 import java.io.OutputStream;
 
 /**
@@ -21,9 +22,11 @@ public interface Buffer {
     int getEventCount();
 
     long getDuration();
+    boolean isCodecStarted();
+    void setCodecStarted(boolean codecStarted);
 
     void flushToS3(S3Client s3Client, String bucket, String key) ;
-
+    void writeEvent(byte[] bytes) throws IOException;
     OutputStream getOutputStream();
 
     void setEventCount(int eventCount);

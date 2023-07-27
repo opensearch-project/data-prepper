@@ -36,7 +36,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
-
+    private final Set<String> excludeKeysSet = new HashSet<String>();
     private final HashMap<String, Object> defaultKeysMap = new HashMap<>();
     private final Set<String> defaultKeysSet = new HashSet<String>();
     private final String lowercaseKey = "lowercase";
@@ -102,9 +102,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             throw new PatternSyntaxException("delete_value_regex is not a valid regex string", keyValueProcessorConfig.getDeleteValueRegex(), -1);
         }
 
-        if (keyValueProcessorConfig.getIncludeKeys() != null) {
-            includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
-        }
+        includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
+        excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
+
+        validateKeySets(includeKeysSet, excludeKeysSet);
 
         // default key check here
         defaultKeysMap.putAll(keyValueProcessorConfig.getDefaultKeys());
@@ -166,6 +167,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return true;
     }
 
+    private void validateKeySets(final Set<String> includeSet, final Set<String> excludeSet) {
+        Set<String> intersectionSet = new HashSet<String>(includeSet);
+        intersectionSet.retainAll(excludeSet);
+        if (!intersectionSet.isEmpty()) {
+            throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
+        }
+    }
+
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
@@ -184,6 +193,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
                 if (!includeKeysSet.isEmpty() && !includeKeysSet.contains(key)) {
                     LOG.debug(String.format("Skipping not included key: '%s'", key));
+                    continue;
+                }
+
+                if (!excludeKeysSet.isEmpty() && excludeKeysSet.contains(key)) {
+                    LOG.debug(String.format("Key is being excluded: '%s'", key));
                     continue;
                 }
 

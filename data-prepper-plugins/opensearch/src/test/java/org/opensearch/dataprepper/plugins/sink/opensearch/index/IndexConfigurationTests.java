@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.http.AbortableInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -41,6 +42,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.AWS_OPTION;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DOCUMENT_ROOT_KEY;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.SERVERLESS;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.TEMPLATE_TYPE;
@@ -380,6 +382,26 @@ public class IndexConfigurationTests {
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
         assertEquals(testIndexAlias, indexConfiguration.getIndexAlias());
         assertEquals(true, indexConfiguration.getServerless());
+    }
+
+    @Test
+    public void testReadIndexConfig_distributionVersionDefault() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                null, "foo", null, null, null, null);
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertEquals(indexConfiguration.getDistributionVersion(), DistributionVersion.DEFAULT);
+    }
+
+    @Test
+    public void testReadIndexConfig_es6Override() {
+        final Map<String, Object> metadata = initializeConfigMetaData(
+                null, "foo", null, null, null, null);
+        metadata.put(DISTRIBUTION_VERSION, "es6");
+        final PluginSetting pluginSetting = getPluginSetting(metadata);
+        final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
+        assertEquals(indexConfiguration.getDistributionVersion(), DistributionVersion.ES6);
+        assertEquals(IndexType.MANAGEMENT_DISABLED, indexConfiguration.getIndexType());
     }
 
     @Test

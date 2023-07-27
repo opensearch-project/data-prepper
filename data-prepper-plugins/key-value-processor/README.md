@@ -42,7 +42,9 @@ When run, the processor will parse the message into the following output:
 * `include_keys` - An array specifying the keys which should be added to parse. By default, all keys will be added.
   * Default: `[]`
   * Example: `include_keys` is `["key2"]`. `key1=value1&key2=value2` will parse into `{"key2": "value2"}`
-
+* `exclude_keys` - An array specifying the parsed keys which should not be added to the event. By default no keys will be excluded.
+  * Default: `[]`
+  * Example: `exclude_keys` is `["key2"]`. `key1=value1&key2=value2` will parse into `{"key1": "value1"}`
 * `default_keys` - A hash specifying the default keys and their values which should be added to the event in case these keys do not exist in the source field being parsed.
   * Default: `{}`
   * Example: `default_keys` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"defaultkey": "defaultvalue", "key1": "value1"}`

@@ -20,7 +20,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 public class AcknowledgementSetMonitorTests {
-    private static final int DEFAULT_WAIT_TIME_MS = 2000;
+    private static final int DEFAULT_WAIT_TIME_MS = 500;
     @Mock
     DefaultAcknowledgementSet acknowledgementSet1;
     @Mock

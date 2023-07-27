@@ -17,7 +17,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_DESTINATION = "parsed_message";
     public static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
     static final List<String> DEFAULT_INCLUDE_KEYS = new ArrayList<>();
-
+    static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
     static final Map<String, Object> DEFAULT_DEFAULT_KEYS = Collections.emptyMap();
     public static final String DEFAULT_VALUE_SPLIT_CHARACTERS = "=";
     static final Object DEFAULT_NON_MATCH_VALUE = null;
@@ -46,6 +46,9 @@ public class KeyValueProcessorConfig {
     @NotNull
     private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
 
+    @JsonProperty("exclude_keys")
+    @NotNull
+    private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonProperty("default_keys")
     @NotNull
@@ -107,6 +110,9 @@ public class KeyValueProcessorConfig {
         return includeKeys;
     }
 
+    public List<String> getExcludeKeys() {
+        return excludeKeys;
+    }
 
     public Map<String, String> getDefaultKeys() {
         return defaultKeys;
