@@ -36,6 +36,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern fieldDelimiterPattern;
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
+
+    private final HashMap<String, Object> defaultKeysMap = new HashMap<>();
+    private final Set<String> defaultKeysSet = new HashSet<String>();
     private final String lowercaseKey = "lowercase";
     private final String uppercaseKey = "uppercase";
     private final String capitalizeKey = "capitalize";
@@ -103,6 +106,16 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         }
 
+        // default key check here
+        defaultKeysMap.putAll(keyValueProcessorConfig.getDefaultKeys());
+        defaultKeysSet = defaultKeysMap.keySet();
+
+        // if default and exclude keys have overlap, throw error - "cannot exclude a default key"
+        
+
+        // if include and default keys have overlap, make sure it is added only once
+        
+
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
         }
@@ -161,6 +174,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
+
+            // parsedMap.putAll(defaultKeysMap); (add this when default check is impl)
+
             for(final String group : groups) {
                 final String[] terms = keyValueDelimiterPattern.split(group, 2);
                 String key = terms[0];
