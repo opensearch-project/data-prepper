@@ -199,9 +199,6 @@ public class SNSSinkService {
         final PublishBatchRequest.Builder requestBatch = PublishBatchRequest.builder().topicArn(topicName);
         final List<PublishBatchRequestEntry> batchRequestEntries = new ArrayList<PublishBatchRequestEntry>();
         final String defaultRandomGroupId = UUID.randomUUID().toString();
-        if(processRecordsList.isEmpty()){
-            System.out.println(processRecordsList.size());
-        }
         for (String message : processRecordsList) {
             final PublishBatchRequestEntry.Builder entry = PublishBatchRequestEntry.builder().id(String.valueOf(new Random().nextInt())).message(message);
             if(topicName.endsWith(FIFO))
