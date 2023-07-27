@@ -8,8 +8,6 @@ package org.opensearch.dataprepper.plugins.processor.translate;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-
-import java.io.File;
 import java.util.List;
 
 public class FileParameterConfig {
@@ -35,11 +33,9 @@ public class FileParameterConfig {
 
         if (this.awsConfig != null) {
             return handler.getS3FileMappings(this.awsConfig, this.fileName);
-        } else {
-            File localFile = new File(this.fileName);
-            return handler.getFileMappings(localFile);
+        } else{
+            return handler.getMappingsFromFilePath(this.fileName);
         }
     }
-
 
 }

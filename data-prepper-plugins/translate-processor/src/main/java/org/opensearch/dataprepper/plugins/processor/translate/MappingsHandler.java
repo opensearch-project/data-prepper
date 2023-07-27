@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.processor.translate;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -68,22 +70,18 @@ public class MappingsHandler {
                 S3Object s3Object = s3Client.getObject(bucketName, key);
                 S3ObjectInputStream inputStream = s3Object.getObjectContent();
 
-                // Creating a temporary file
-                File tempFile = File.createTempFile("temp", null);
-
-                FileOutputStream outputStream = new FileOutputStream(tempFile);
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 byte[] read_buf = new byte[1024];
                 int read_len = 0;
                 while ((read_len = inputStream.read(read_buf)) > 0) {
-                    outputStream.write(read_buf, 0, read_len);
+                    byteArrayOutputStream.write(read_buf, 0, read_len);
                 }
                 inputStream.close();
-                outputStream.close();
 
-                // Extracting mappings from the temporary file.
-                s3FileMappings =  getFileMappings(tempFile);
+                byte[] fileData = byteArrayOutputStream.toByteArray();
+                s3FileMappings = getMappingsFromByteArray(fileData);
 
-                tempFile.delete();
+                byteArrayOutputStream.close();
             } catch (IOException | AmazonServiceException e) {
                 LOG.error("Error while retrieving mappings from S3 Object");
                 e.printStackTrace();
@@ -96,7 +94,18 @@ public class MappingsHandler {
         return s3FileMappings;
     }
 
-    public List<MappingsParameterConfig> getFileMappings(File file){
+    public List<MappingsParameterConfig> getMappingsFromFilePath(String fileName){
+        try{
+            Path filePath = Paths.get(fileName);
+            byte[] fileData = Files.readAllBytes(filePath);
+            return getMappingsFromByteArray(fileData);
+        }catch (IOException ex){
+            LOG.error("Unable to parse the mappings from file", ex);
+            return null;
+        }
+    }
+
+    private List<MappingsParameterConfig> getMappingsFromByteArray(byte[] file){
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
         try {
             FileMappingsRef fileParser = mapper.readValue(file, FileMappingsRef.class);
