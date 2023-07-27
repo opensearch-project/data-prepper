@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -29,11 +30,11 @@ public class TestSink implements Sink<Record<String>> {
         this.ready = true;
     }
 
-    public TestSink(int readyAfterSecs) {
+    public TestSink(Duration readyAfter) {
         this.ready = false;
         this.failSinkForTest = false;
         this.collectedRecords = new ArrayList<>();
-        this.readyTime = Instant.now().plusSeconds(readyAfterSecs);
+        this.readyTime = Instant.now().plus(readyAfter);
     }
 
     public TestSink(boolean failSinkForTest) {

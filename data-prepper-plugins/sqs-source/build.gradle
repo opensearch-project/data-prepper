@@ -1,13 +1,49 @@
 dependencies {
     implementation project(':data-prepper-api')
+    implementation libs.armeria.core
+    implementation project(':data-prepper-plugins:aws-sqs-common')
+    implementation project(':data-prepper-plugins:buffer-common')
     implementation project(':data-prepper-plugins:aws-plugin-api')
     implementation 'software.amazon.awssdk:sqs'
     implementation 'software.amazon.awssdk:arns'
     implementation 'software.amazon.awssdk:sts'
+    implementation 'io.micrometer:micrometer-core'
     implementation 'com.fasterxml.jackson.core:jackson-annotations'
-    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.14.2'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    testImplementation project(':data-prepper-plugins:blocking-buffer')
 }
 test {
     useJUnitPlatform()
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.sqs.source.aws.region', System.getProperty('tests.sqs.source.aws.region')
+    systemProperty 'tests.sqs.source.queue.url', System.getProperty('tests.sqs.source.queue.url')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
 }

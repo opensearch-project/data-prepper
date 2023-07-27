@@ -19,9 +19,10 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.source.Source;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
-import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
+import org.opensearch.dataprepper.parser.model.SinkContextPluginSetting;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.peerforwarder.PeerForwardingProcessorDecorator;
@@ -292,13 +293,13 @@ public class PipelineParser {
         return Optional.empty();
     }
 
-    private DataFlowComponent<Sink> buildRoutedSinkOrConnector(final RoutedPluginSetting pluginSetting) {
-        final Sink sink = buildSinkOrConnector(pluginSetting);
+    private DataFlowComponent<Sink> buildRoutedSinkOrConnector(final SinkContextPluginSetting pluginSetting) {
+        final Sink sink = buildSinkOrConnector(pluginSetting, pluginSetting.getSinkContext());
 
-        return new DataFlowComponent<>(sink, pluginSetting.getRoutes());
+        return new DataFlowComponent<>(sink, pluginSetting.getSinkContext().getRoutes());
     }
 
-    private Sink buildSinkOrConnector(final PluginSetting pluginSetting) {
+    private Sink buildSinkOrConnector(final PluginSetting pluginSetting, final SinkContext sinkContext) {
         LOG.info("Building [{}] as sink component", pluginSetting.getName());
         final Optional<String> pipelineNameOptional = getPipelineNameIfPipelineType(pluginSetting);
         if (pipelineNameOptional.isPresent()) { //update to ifPresentOrElse when using JDK9
@@ -307,7 +308,7 @@ public class PipelineParser {
             sourceConnectorMap.put(pipelineName, pipelineConnector); //TODO retrieve from parent Pipeline using name
             return pipelineConnector;
         } else {
-            return pluginFactory.loadPlugin(Sink.class, pluginSetting);
+            return pluginFactory.loadPlugin(Sink.class, pluginSetting, sinkContext);
         }
     }
 
@@ -337,7 +338,7 @@ public class PipelineParser {
                 sourcePipeline, pipelineConfigurationMap, pipelineMap));
 
         //remove sink connected pipelines
-        final List<RoutedPluginSetting> sinkPluginSettings = failedPipelineConfiguration.getSinkPluginSettings();
+        final List<SinkContextPluginSetting> sinkPluginSettings = failedPipelineConfiguration.getSinkPluginSettings();
         sinkPluginSettings.forEach(sinkPluginSetting -> {
             getPipelineNameIfPipelineType(sinkPluginSetting).ifPresent(sinkPipeline -> processRemoveIfRequired(
                     sinkPipeline, pipelineConfigurationMap, pipelineMap));

@@ -13,6 +13,9 @@ import org.opensearch.client.opensearch._types.SortOrder;
 import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch._types.query_dsl.MatchAllQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
+import org.opensearch.client.opensearch.core.ClearScrollRequest;
+import org.opensearch.client.opensearch.core.ClearScrollResponse;
+import org.opensearch.client.opensearch.core.ScrollRequest;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.opensearch.core.pit.CreatePitRequest;
@@ -33,13 +36,14 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.NoSearchContextSearchRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
-import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollResponse;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +58,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAccessor.class);
 
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
+    static final String SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE = "Trying to create too many scroll contexts";
 
     private final OpenSearchClient openSearchClient;
     private final SearchContextType searchContextType;
@@ -128,19 +133,66 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
 
     @Override
     public CreateScrollResponse createScroll(final CreateScrollRequest createScrollRequest) {
-        //todo: implement
-        return null;
+
+        SearchResponse<ObjectNode> searchResponse;
+        try {
+            searchResponse = openSearchClient.search(SearchRequest.of(request -> request
+                    .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
+                    .size(createScrollRequest.getSize())
+                    .index(createScrollRequest.getIndex())), ObjectNode.class);
+        } catch (final OpenSearchException e) {
+            LOG.error("There was an error creating a scroll context for OpenSearch: ", e);
+            throw e;
+        } catch (final IOException e) {
+            LOG.error("There was an error creating a scroll context for OpenSearch: ", e);
+            if (isDueToScrollLimitExceeded(e)) {
+                throw new SearchContextLimitException(String.format("There was an error creating a new scroll context for index '%s': %s",
+                        createScrollRequest.getIndex(), e.getMessage()));
+            }
+
+            throw new RuntimeException(e);
+        }
+
+        return CreateScrollResponse.builder()
+                .withCreationTime(Instant.now().toEpochMilli())
+                .withScrollId(searchResponse.scrollId())
+                .withDocuments(getDocumentsFromResponse(searchResponse))
+                .build();
     }
 
     @Override
     public SearchScrollResponse searchWithScroll(final SearchScrollRequest searchScrollRequest) {
-        //todo: implement
-        return null;
+        SearchResponse<ObjectNode> searchResponse;
+        try {
+            searchResponse = openSearchClient.scroll(ScrollRequest.of(request -> request
+                    .scrollId(searchScrollRequest.getScrollId())
+                    .scroll(Time.of(time -> time.time(searchScrollRequest.getScrollTime())))), ObjectNode.class);
+        } catch (final OpenSearchException e) {
+            LOG.error("There was an error searching with a scroll context for OpenSearch: ", e);
+            throw e;
+        } catch (final IOException e) {
+            LOG.error("There was an error searching with a scroll context for OpenSearch: ", e);
+            throw new RuntimeException(e);
+        }
+
+        return SearchScrollResponse.builder()
+                .withScrollId(searchResponse.scrollId())
+                .withDocuments(getDocumentsFromResponse(searchResponse))
+                .build();
     }
 
     @Override
     public void deleteScroll(final DeleteScrollRequest deleteScrollRequest) {
-        //todo: implement
+        try {
+            final ClearScrollResponse clearScrollResponse = openSearchClient.clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
+            if (clearScrollResponse.succeeded()) {
+                LOG.debug("Successfully deleted scroll context with id {}", deleteScrollRequest.getScrollId());
+            } else {
+                LOG.warn("Scroll context with id {} was not deleted successfully. It will expire from timing out on its own", deleteScrollRequest.getScrollId());
+            }
+        } catch (final IOException | RuntimeException e) {
+            LOG.error("There was an error deleting the scroll context with id {} for OpenSearch. It will expire from timing out : ", deleteScrollRequest.getScrollId(), e);
+        }
     }
 
     @Override
@@ -177,16 +229,15 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
                 && PIT_RESOURCE_LIMIT_ERROR_TYPE.equals(e.error().causedBy().type());
     }
 
+    private boolean isDueToScrollLimitExceeded(final IOException e) {
+        return e.getMessage().contains(SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE);
+    }
+
     private SearchWithSearchAfterResults searchWithSearchAfter(final SearchRequest searchRequest) {
         try {
             final SearchResponse<ObjectNode> searchResponse = openSearchClient.search(searchRequest, ObjectNode.class);
 
-            final List<Event> documents = searchResponse.hits().hits().stream()
-                    .map(hit -> JacksonEvent.builder()
-                            .withData(hit.source())
-                            .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
-                            .withEventType(EventType.DOCUMENT.toString()).build())
-                    .collect(Collectors.toList());
+            final List<Event> documents = getDocumentsFromResponse(searchResponse);
 
             final List<String> nextSearchAfter = Objects.nonNull(searchResponse.hits().hits()) && !searchResponse.hits().hits().isEmpty() ?
                     searchResponse.hits().hits().get(searchResponse.hits().hits().size() - 1).sort() :
@@ -199,5 +250,14 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private List<Event> getDocumentsFromResponse(final SearchResponse<ObjectNode> searchResponse) {
+        return searchResponse.hits().hits().stream()
+                .map(hit -> JacksonEvent.builder()
+                        .withData(hit.source())
+                        .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
+                        .withEventType(EventType.DOCUMENT.toString()).build())
+                .collect(Collectors.toList());
     }
 }

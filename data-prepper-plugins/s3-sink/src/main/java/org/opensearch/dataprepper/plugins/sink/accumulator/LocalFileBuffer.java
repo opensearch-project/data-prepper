@@ -31,7 +31,6 @@ public class LocalFileBuffer implements Buffer {
     private int eventCount;
     private final StopWatch watch;
     private final File localFile;
-    private boolean isCodecStarted;
 
     LocalFileBuffer(File tempFile) throws FileNotFoundException {
         localFile = tempFile;
@@ -39,7 +38,6 @@ public class LocalFileBuffer implements Buffer {
         eventCount = 0;
         watch = new StopWatch();
         watch.start();
-        isCodecStarted = false;
     }
 
     @Override
@@ -78,18 +76,6 @@ public class LocalFileBuffer implements Buffer {
     }
 
     /**
-     * write byte array to output stream.
-     * @param bytes byte array.
-     * @throws IOException while writing to output stream fails.
-     */
-    @Override
-    public void writeEvent(byte[] bytes) throws IOException {
-        outputStream.write(bytes);
-        outputStream.write(System.lineSeparator().getBytes());
-        eventCount++;
-    }
-
-    /**
      * Flushing the buffered data into the output stream.
      */
     protected void flushAndCloseStream(){
@@ -113,15 +99,8 @@ public class LocalFileBuffer implements Buffer {
             }
         }
     }
-    @Override
-    public boolean isCodecStarted() {
-        return isCodecStarted;
-    }
 
-    @Override
-    public void setCodecStarted(boolean codecStarted) {
-        isCodecStarted = codecStarted;
-    }
+
     @Override
     public void setEventCount(int eventCount) {
         this.eventCount = eventCount;
@@ -131,5 +110,4 @@ public class LocalFileBuffer implements Buffer {
     public OutputStream getOutputStream() {
         return outputStream;
     }
-
 }

@@ -12,10 +12,13 @@ import co.elastic.clients.elasticsearch._types.SortOrder;
 import co.elastic.clients.elasticsearch._types.Time;
 import co.elastic.clients.elasticsearch._types.query_dsl.MatchAllQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch.core.ClearScrollRequest;
+import co.elastic.clients.elasticsearch.core.ClearScrollResponse;
 import co.elastic.clients.elasticsearch.core.ClosePointInTimeRequest;
 import co.elastic.clients.elasticsearch.core.ClosePointInTimeResponse;
 import co.elastic.clients.elasticsearch.core.OpenPointInTimeRequest;
 import co.elastic.clients.elasticsearch.core.OpenPointInTimeResponse;
+import co.elastic.clients.elasticsearch.core.ScrollRequest;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.PointInTimeReference;
@@ -46,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
@@ -130,20 +134,68 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     }
 
     @Override
-    public CreateScrollResponse createScroll(CreateScrollRequest createScrollRequest) {
-        //todo: implement
-        return null;
+    public CreateScrollResponse createScroll(final CreateScrollRequest createScrollRequest) {
+
+        SearchResponse<ObjectNode> searchResponse;
+
+        try {
+            searchResponse = elasticsearchClient.search(SearchRequest.of(request -> request
+                    .scroll(Time.of(time -> time.time(createScrollRequest.getScrollTime())))
+                    .size(createScrollRequest.getSize())
+                    .index(createScrollRequest.getIndex())), ObjectNode.class);
+        } catch (final ElasticsearchException e) {
+            LOG.error("There was an error creating a scroll context for Elasticsearch: ", e);
+            throw e;
+        } catch (final IOException e) {
+            LOG.error("There was an error creating a scroll context for Elasticsearch: ", e);
+            if (isDueToScrollLimitExceeded(e)) {
+                throw new SearchContextLimitException(String.format("There was an error creating a new scroll context for index '%s': %s",
+                        createScrollRequest.getIndex(), e.getMessage()));
+            }
+
+            throw new RuntimeException(e);
+        }
+
+        return CreateScrollResponse.builder()
+                .withCreationTime(Instant.now().toEpochMilli())
+                .withScrollId(searchResponse.scrollId())
+                .withDocuments(getDocumentsFromResponse(searchResponse))
+                .build();
     }
 
     @Override
-    public SearchScrollResponse searchWithScroll(SearchScrollRequest searchScrollRequest) {
-        //todo: implement
-        return null;
+    public SearchScrollResponse searchWithScroll(final SearchScrollRequest searchScrollRequest) {
+        SearchResponse<ObjectNode> searchResponse;
+        try {
+            searchResponse = elasticsearchClient.scroll(ScrollRequest.of(request -> request
+                    .scrollId(searchScrollRequest.getScrollId())
+                    .scroll(Time.of(time -> time.time(searchScrollRequest.getScrollTime())))), ObjectNode.class);
+        } catch (final ElasticsearchException e) {
+            LOG.error("There was an error searching with a scroll context for Elasticsearch: ", e);
+            throw e;
+        } catch (final IOException e) {
+            LOG.error("There was an error searching with a scroll context for Elasticsearch: ", e);
+            throw new RuntimeException(e);
+        }
+
+        return SearchScrollResponse.builder()
+                .withScrollId(searchResponse.scrollId())
+                .withDocuments(getDocumentsFromResponse(searchResponse))
+                .build();
     }
 
     @Override
     public void deleteScroll(DeleteScrollRequest deleteScrollRequest) {
-        //todo: implement
+        try {
+            final ClearScrollResponse clearScrollResponse = elasticsearchClient.clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
+            if (clearScrollResponse.succeeded()) {
+                LOG.debug("Successfully deleted scroll context with id {}", deleteScrollRequest.getScrollId());
+            } else {
+                LOG.warn("Scroll context with id {} was not deleted successfully. It will expire from timing out on its own", deleteScrollRequest.getScrollId());
+            }
+        } catch (final IOException | RuntimeException e) {
+            LOG.error("There was an error deleting the scroll context with id {} for OpenSearch. It will expire from timing out : ", deleteScrollRequest.getScrollId(), e);
+        }
     }
 
     @Override
@@ -175,12 +227,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
         try {
             final SearchResponse<ObjectNode> searchResponse = elasticsearchClient.search(searchRequest, ObjectNode.class);
 
-            final List<Event> documents = searchResponse.hits().hits().stream()
-                    .map(hit -> JacksonEvent.builder()
-                            .withData(hit.source())
-                            .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
-                            .withEventType(EventType.DOCUMENT.toString()).build())
-                    .collect(Collectors.toList());
+            final List<Event> documents = getDocumentsFromResponse(searchResponse);
 
             final List<String> nextSearchAfter = Objects.nonNull(searchResponse.hits().hits()) && !searchResponse.hits().hits().isEmpty() ?
                     searchResponse.hits().hits().get(searchResponse.hits().hits().size() - 1).sort() :
@@ -198,5 +245,18 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     private boolean isDueToPitLimitExceeded(final ElasticsearchException e) {
         return Objects.nonNull(e.error()) && Objects.nonNull(e.error().causedBy()) && Objects.nonNull(e.error().causedBy().type())
                 && PIT_RESOURCE_LIMIT_ERROR_TYPE.equals(e.error().causedBy().type());
+    }
+
+    private boolean isDueToScrollLimitExceeded(final IOException e) {
+        return e.getMessage().contains(SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE);
+    }
+
+    private List<Event> getDocumentsFromResponse(final SearchResponse<ObjectNode> searchResponse) {
+        return searchResponse.hits().hits().stream()
+                .map(hit -> JacksonEvent.builder()
+                        .withData(hit.source())
+                        .withEventMetadataAttributes(Map.of(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME, hit.id(), INDEX_METADATA_ATTRIBUTE_NAME, hit.index()))
+                        .withEventType(EventType.DOCUMENT.toString()).build())
+                .collect(Collectors.toList());
     }
 }

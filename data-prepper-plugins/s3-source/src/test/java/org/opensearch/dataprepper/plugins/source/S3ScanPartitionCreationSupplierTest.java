@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.source.coordinator.PartitionIdentifier;
+import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanKeyPathOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -71,21 +72,25 @@ public class S3ScanPartitionCreationSupplierTest {
 
 
         final ScanOptions firstBucketScanOptions = mock(ScanOptions.class);
-        given(firstBucketScanOptions.getBucket()).willReturn(firstBucket);
+        final S3ScanBucketOption firstBucketScanBucketOption = mock(S3ScanBucketOption.class);
+        given(firstBucketScanOptions.getBucketOption()).willReturn(firstBucketScanBucketOption);
+        given(firstBucketScanBucketOption.getName()).willReturn(firstBucket);
         given(firstBucketScanOptions.getUseStartDateTime()).willReturn(LocalDateTime.ofInstant(startTime, ZoneId.systemDefault()));
         given(firstBucketScanOptions.getUseEndDateTime()).willReturn(LocalDateTime.ofInstant(endTime, ZoneId.systemDefault()));
         final S3ScanKeyPathOption firstBucketScanKeyPath = mock(S3ScanKeyPathOption.class);
-        given(firstBucketScanOptions.getS3ScanKeyPathOption()).willReturn(firstBucketScanKeyPath);
+        given(firstBucketScanBucketOption.getkeyPrefix()).willReturn(firstBucketScanKeyPath);
         given(firstBucketScanKeyPath.getS3scanIncludeOptions()).willReturn(List.of(UUID.randomUUID().toString()));
         given(firstBucketScanKeyPath.getS3ScanExcludeSuffixOptions()).willReturn(List.of(".invalid"));
         scanOptionsList.add(firstBucketScanOptions);
 
         final ScanOptions secondBucketScanOptions = mock(ScanOptions.class);
-        given(secondBucketScanOptions.getBucket()).willReturn(secondBucket);
+        final S3ScanBucketOption secondBucketScanBucketOption = mock(S3ScanBucketOption.class);
+        given(secondBucketScanOptions.getBucketOption()).willReturn(secondBucketScanBucketOption);
+        given(secondBucketScanBucketOption.getName()).willReturn(secondBucket);
         given(secondBucketScanOptions.getUseStartDateTime()).willReturn(LocalDateTime.ofInstant(startTime, ZoneId.systemDefault()));
         given(secondBucketScanOptions.getUseEndDateTime()).willReturn(LocalDateTime.ofInstant(endTime, ZoneId.systemDefault()));
         final S3ScanKeyPathOption secondBucketScanKeyPath = mock(S3ScanKeyPathOption.class);
-        given(secondBucketScanOptions.getS3ScanKeyPathOption()).willReturn(secondBucketScanKeyPath);
+        given(secondBucketScanBucketOption.getkeyPrefix()).willReturn(secondBucketScanKeyPath);
         given(secondBucketScanKeyPath.getS3scanIncludeOptions()).willReturn(null);
         given(secondBucketScanKeyPath.getS3ScanExcludeSuffixOptions()).willReturn(null);
         scanOptionsList.add(secondBucketScanOptions);

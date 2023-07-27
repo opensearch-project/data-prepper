@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
@@ -36,17 +37,22 @@ public class IndexConfiguration {
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
+    public static final String ESTIMATE_BULK_SIZE_USING_COMPRESSION = "estimate_bulk_size_using_compression";
+    public static final String MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = "max_local_compressions_for_estimation";
     public static final String FLUSH_TIMEOUT = "flush_timeout";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
     public static final String ROUTING_FIELD = "routing_field";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
+    public static final boolean DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION = false;
+    public static final int DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = 2;
     public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
     public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
+    public static final String DISTRIBUTION_VERSION = "distribution_version";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
@@ -57,6 +63,8 @@ public class IndexConfiguration {
     private final String documentIdField;
     private final String routingField;
     private final long bulkSize;
+    private final boolean estimateBulkSizeUsingCompression;
+    private int maxLocalCompressionsForEstimation;
     private final long flushTimeout;
     private final Optional<String> ismPolicyFile;
     private final String action;
@@ -65,6 +73,7 @@ public class IndexConfiguration {
     private final String s3AwsExternalId;
     private final S3Client s3Client;
     private final boolean serverless;
+    private final DistributionVersion distributionVersion;
     private final String documentRootKey;
 
     private static final String S3_PREFIX = "s3://";
@@ -73,6 +82,7 @@ public class IndexConfiguration {
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
         this.serverless = builder.serverless;
+        this.distributionVersion = builder.distributionVersion;
         determineIndexType(builder);
 
         this.s3AwsRegion = builder.s3AwsRegion;
@@ -103,6 +113,8 @@ public class IndexConfiguration {
         }
         this.indexAlias = indexAlias;
         this.bulkSize = builder.bulkSize;
+        this.estimateBulkSizeUsingCompression = builder.estimateBulkSizeUsingCompression;
+        this.maxLocalCompressionsForEstimation = builder.maxLocalCompressionsForEstimation;
         this.flushTimeout = builder.flushTimeout;
         this.routingField = builder.routingField;
 
@@ -124,7 +136,7 @@ public class IndexConfiguration {
             indexType = mappedIndexType.orElseThrow(
                     () -> new IllegalArgumentException("Value of the parameter, index_type, must be from the list: "
                     + IndexType.getIndexTypeValues()));
-        } else if (builder.serverless) {
+        } else if (builder.serverless || DistributionVersion.ES6.equals(builder.distributionVersion)) {
             this.indexType = IndexType.MANAGEMENT_DISABLED;
         } else {
             this.indexType  = IndexType.CUSTOM;
@@ -153,6 +165,14 @@ public class IndexConfiguration {
         builder = builder.withNumReplicas(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
         final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
         builder = builder.withBulkSize(batchSize);
+        final boolean estimateBulkSizeUsingCompression =
+                pluginSetting.getBooleanOrDefault(ESTIMATE_BULK_SIZE_USING_COMPRESSION, DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION);
+        builder = builder.withEstimateBulkSizeUsingCompression(estimateBulkSizeUsingCompression);
+
+        final int maxLocalCompressionsForEstimation =
+                pluginSetting.getIntegerOrDefault(MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION, DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION);
+        builder = builder.withMaxLocalCompressionsForEstimation(maxLocalCompressionsForEstimation);
+
         final long flushTimeout = pluginSetting.getLongOrDefault(FLUSH_TIMEOUT, DEFAULT_FLUSH_TIMEOUT);
         builder = builder.withFlushTimeout(flushTimeout);
         final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
@@ -190,6 +210,10 @@ public class IndexConfiguration {
         final String documentRootKey = pluginSetting.getStringOrDefault(DOCUMENT_ROOT_KEY, null);
         builder.withDocumentRootKey(documentRootKey);
 
+        final String distributionVersion = pluginSetting.getStringOrDefault(DISTRIBUTION_VERSION,
+                DistributionVersion.DEFAULT.getVersion());
+        builder.withDistributionVersion(distributionVersion);
+
         return builder.build();
     }
 
@@ -221,6 +245,14 @@ public class IndexConfiguration {
         return bulkSize;
     }
 
+    public boolean isEstimateBulkSizeUsingCompression() {
+        return estimateBulkSizeUsingCompression;
+    }
+
+    public int getMaxLocalCompressionsForEstimation() {
+        return maxLocalCompressionsForEstimation;
+    }
+
     public long getFlushTimeout() {
         return flushTimeout;
     }
@@ -247,6 +279,10 @@ public class IndexConfiguration {
 
     public boolean getServerless() {
         return serverless;
+    }
+
+    public DistributionVersion getDistributionVersion() {
+        return distributionVersion;
     }
 
     public String getDocumentRootKey() {
@@ -309,6 +345,8 @@ public class IndexConfiguration {
         private String routingField;
         private String documentIdField;
         private long bulkSize = DEFAULT_BULK_SIZE;
+        private boolean estimateBulkSizeUsingCompression = DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION;
+        private int maxLocalCompressionsForEstimation = DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION;
         private long flushTimeout = DEFAULT_FLUSH_TIMEOUT;
         private Optional<String> ismPolicyFile;
         private String action;
@@ -317,6 +355,7 @@ public class IndexConfiguration {
         private String s3AwsStsExternalId;
         private S3Client s3Client;
         private boolean serverless;
+        private DistributionVersion distributionVersion;
         private String documentRootKey;
 
         public Builder withIndexAlias(final String indexAlias) {
@@ -359,6 +398,16 @@ public class IndexConfiguration {
 
         public Builder withBulkSize(final long bulkSize) {
             this.bulkSize = bulkSize;
+            return this;
+        }
+
+        public Builder withEstimateBulkSizeUsingCompression(final boolean estimateBulkSizeUsingCompression) {
+            this.estimateBulkSizeUsingCompression = estimateBulkSizeUsingCompression;
+            return this;
+        }
+
+        public Builder withMaxLocalCompressionsForEstimation(final int maxLocalCompressionsForEstimation) {
+            this.maxLocalCompressionsForEstimation = maxLocalCompressionsForEstimation;
             return this;
         }
 
@@ -421,6 +470,11 @@ public class IndexConfiguration {
 
         public Builder withServerless(final boolean serverless) {
             this.serverless = serverless;
+            return this;
+        }
+
+        public Builder withDistributionVersion(final String distributionVersion) {
+            this.distributionVersion = DistributionVersion.fromTypeName(distributionVersion);
             return this;
         }
 

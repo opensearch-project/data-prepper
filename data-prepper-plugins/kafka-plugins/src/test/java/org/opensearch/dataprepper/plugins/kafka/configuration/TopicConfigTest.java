@@ -67,13 +67,11 @@ class TopicConfigTest {
     @Tag(YAML_FILE_WITH_MISSING_CONSUMER_CONFIG)
     void testConfigValues_default() {
         assertEquals("my-topic-2", topicConfig.getName());
-        assertEquals("DPKafkaProj-2", topicConfig.getGroupId());
-        assertEquals("kafka-consumer-group-2", topicConfig.getGroupName());
-        assertEquals("false", topicConfig.getAutoCommit());
+        assertEquals(false, topicConfig.getAutoCommit());
         assertEquals(Duration.ofSeconds(5), topicConfig.getAutoCommitInterval());
-        assertEquals(Duration.ofSeconds(45), topicConfig.getSessionTimeOut());
+        assertEquals(45000, topicConfig.getSessionTimeOut());
         assertEquals("earliest", topicConfig.getAutoOffsetReset());
-        assertEquals(Duration.ofSeconds(1), topicConfig.getThreadWaitingTime());
+        assertEquals(TopicConfig.THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
         assertEquals(Duration.ofSeconds(4), topicConfig.getMaxRecordFetchTime());
         assertEquals(Duration.ofSeconds(5), topicConfig.getBufferDefaultTimeout());
         assertEquals(52428800L, topicConfig.getFetchMaxBytes().longValue());
@@ -82,41 +80,35 @@ class TopicConfigTest {
         assertEquals(Duration.ofSeconds(100), topicConfig.getRetryBackoff());
         assertEquals(Duration.ofSeconds(300000), topicConfig.getMaxPollInterval());
         assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
-        assertEquals(10, topicConfig.getWorkers().intValue());
+        assertEquals(5, topicConfig.getWorkers().intValue());
         assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
     }
 
     @Test
     @Tag(YAML_FILE_WITH_CONSUMER_CONFIG)
     void testConfigValues_from_yaml() {
-
         assertEquals("my-topic-1", topicConfig.getName());
-        assertEquals("DPKafkaProj-2", topicConfig.getGroupId());
-        assertEquals("kafka-consumer-group-2", topicConfig.getGroupName());
-        assertEquals("false", topicConfig.getAutoCommit());
+        assertEquals(false, topicConfig.getAutoCommit());
         assertEquals(Duration.ofSeconds(5), topicConfig.getAutoCommitInterval());
-        assertEquals(Duration.ofSeconds(45), topicConfig.getSessionTimeOut());
+        assertEquals(45000, topicConfig.getSessionTimeOut());
         assertEquals("earliest", topicConfig.getAutoOffsetReset());
         assertEquals(Duration.ofSeconds(1), topicConfig.getThreadWaitingTime());
         assertEquals(Duration.ofSeconds(4), topicConfig.getMaxRecordFetchTime());
         assertEquals(Duration.ofSeconds(5), topicConfig.getBufferDefaultTimeout());
-        assertEquals(52428800L, topicConfig.getFetchMaxBytes().longValue());
+        assertEquals(52428800, topicConfig.getFetchMaxBytes().longValue());
         assertEquals(500L, topicConfig.getFetchMaxWait().longValue());
         assertEquals(1L, topicConfig.getFetchMinBytes().longValue());
         assertEquals(Duration.ofSeconds(100), topicConfig.getRetryBackoff());
         assertEquals(Duration.ofSeconds(300000), topicConfig.getMaxPollInterval());
         assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
-        assertEquals(10, topicConfig.getWorkers().intValue());
+        assertEquals(5, topicConfig.getWorkers().intValue());
         assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
     }
 
     @Test
     @Tag(YAML_FILE_WITH_CONSUMER_CONFIG)
     void testConfigValues_from_yaml_not_null() {
-
         assertNotNull(topicConfig.getName());
-        assertNotNull(topicConfig.getGroupId());
-        assertNotNull(topicConfig.getGroupName());
         assertNotNull(topicConfig.getAutoCommit());
         assertNotNull(topicConfig.getAutoCommitInterval());
         assertNotNull(topicConfig.getSessionTimeOut());

@@ -38,6 +38,8 @@ public class S3ObjectIndexUtility {
 
     /**
      * Create Object Name with date,time and UniqueID prepended.
+     * @param indexAlias index alias
+     * @return returns string of object name with date time
      */
     public static String getObjectNameWithDateTimeId(final String indexAlias) {
         DateTimeFormatter dateFormatter = validateAndGetDateTimeFormatter(indexAlias);
@@ -48,6 +50,8 @@ public class S3ObjectIndexUtility {
 
     /**
      * Create Object path prefix.
+     * @param indexAlias index alias
+     * @return returns string of object path prefix
      */
     public static String getObjectPathPrefix(final String indexAlias) {
         DateTimeFormatter dateFormatter = validateAndGetDateTimeFormatter(indexAlias);
@@ -57,6 +61,7 @@ public class S3ObjectIndexUtility {
 
     /**
      * Creates epoch seconds.
+     * @return returns time since epoch in nanoseconds
      */
     public static long getTimeNanos() {
         Instant time = Instant.now();
@@ -67,6 +72,8 @@ public class S3ObjectIndexUtility {
 
     /**
      * Validate the index with the regular expression pattern. Throws exception if validation fails
+     * @param indexAlias index alias
+     * @return returns date time formatter
      */
     public static DateTimeFormatter validateAndGetDateTimeFormatter(final String indexAlias) {
         final Pattern pattern = Pattern.compile(TIME_PATTERN_INTERNAL_EXTRACTOR_REGULAR_EXPRESSION);
@@ -128,6 +135,7 @@ public class S3ObjectIndexUtility {
 
     /**
      * Returns the current UTC Date and Time
+     * @return returns current UTC time
      */
     public static ZonedDateTime getCurrentUtcTime() {
         return LocalDateTime.now().atZone(ZoneId.systemDefault()).withZoneSameInstant(UTC_ZONE_ID);

@@ -58,6 +58,7 @@ public class S3SinkService {
     private final Counter numberOfRecordsSuccessCounter;
     private final Counter numberOfRecordsFailedCounter;
     private final DistributionSummary s3ObjectSizeSummary;
+    private final String tagsTargetKey;
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
@@ -67,11 +68,12 @@ public class S3SinkService {
      * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
-                         final OutputCodec codec, final S3Client s3Client, final PluginMetrics pluginMetrics) {
+                         final OutputCodec codec, final S3Client s3Client, final String tagsTargetKey, final PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
         this.s3Client = s3Client;
+        this.tagsTargetKey = tagsTargetKey;
         reentrantLock = new ReentrantLock();
 
         bufferedEventHandles = new LinkedList<>();
@@ -103,13 +105,13 @@ public class S3SinkService {
 
             for (Record<Event> record : records) {
 
-                if (!currentBuffer.isCodecStarted()) {
-                    codec.start(outputStream);
-                    currentBuffer.setCodecStarted(true);
+                if(currentBuffer.getEventCount() == 0) {
+                    final Event eventForSchemaAutoGenerate = record.getData();
+                    codec.start(outputStream,eventForSchemaAutoGenerate , tagsTargetKey);
                 }
 
                 final Event event = record.getData();
-                codec.writeEvent(event, outputStream, null);
+                codec.writeEvent(event, outputStream, tagsTargetKey);
                 int count = currentBuffer.getEventCount() +1;
                 currentBuffer.setEventCount(count);
 

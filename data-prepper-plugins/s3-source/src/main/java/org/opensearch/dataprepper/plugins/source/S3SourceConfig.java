@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.Duration;
+import java.util.Map;
 
 public class S3SourceConfig {
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
@@ -39,6 +40,7 @@ public class S3SourceConfig {
     private PluginModel codec;
 
     @JsonProperty("sqs")
+    @Valid
     private SqsOptions sqsOptions;
 
     @JsonProperty("aws")
@@ -61,12 +63,20 @@ public class S3SourceConfig {
     @JsonProperty("disable_bucket_ownership_validation")
     private boolean disableBucketOwnershipValidation = false;
 
+    @JsonProperty("bucket_owners")
+    private Map<String, String> bucketOwners;
+
+    @JsonProperty("default_bucket_owner")
+    private String defaultBucketOwner;
+
     @JsonProperty("metadata_root_key")
     private String metadataRootKey = DEFAULT_METADATA_ROOT_KEY;
     @JsonProperty("s3_select")
+    @Valid
     private S3SelectOptions s3SelectOptions;
 
     @JsonProperty("scan")
+    @Valid
     private S3ScanScanOptions s3ScanScanOptions;
 
     @AssertTrue(message = "A codec is required for reading objects.")
@@ -132,4 +142,11 @@ public class S3SourceConfig {
         return s3ScanScanOptions;
     }
 
+    public Map<String, String> getBucketOwners() {
+        return bucketOwners;
+    }
+
+    public String getDefaultBucketOwner() {
+        return defaultBucketOwner;
+    }
 }

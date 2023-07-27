@@ -8,7 +8,7 @@ package org.opensearch.dataprepper.parser;
 import org.apache.commons.collections.CollectionUtils;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.parser.model.PipelineConfiguration;
-import org.opensearch.dataprepper.parser.model.RoutedPluginSetting;
+import org.opensearch.dataprepper.parser.model.SinkContextPluginSetting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +82,7 @@ public class PipelineConfigurationValidator {
             final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(pipeline);
             touchedPipelineSet.add(pipeline);
             //if validation is successful, then there is definitely sink
-            final List<RoutedPluginSetting> connectedPipelinesSettings = pipelineConfiguration.getSinkPluginSettings();
+            final List<SinkContextPluginSetting> connectedPipelinesSettings = pipelineConfiguration.getSinkPluginSettings();
             //Recursively check connected pipelines
             for (PluginSetting pluginSetting : connectedPipelinesSettings) {
                 //Further process only if the sink is of pipeline type
@@ -159,7 +159,7 @@ public class PipelineConfigurationValidator {
                 throw new RuntimeException("Invalid configuration, cannot proceed with ambiguous configuration");
             }
             final PipelineConfiguration pipelineConfiguration = pipelineConfigurationMap.get(currentPipelineName);
-            final List<RoutedPluginSetting> pluginSettings = pipelineConfiguration.getSinkPluginSettings();
+            final List<SinkContextPluginSetting> pluginSettings = pipelineConfiguration.getSinkPluginSettings();
             for (PluginSetting pluginSetting : pluginSettings) {
                 if (PIPELINE_TYPE.equals(pluginSetting.getName()) &&
                         pluginSetting.getAttributeFromSettings(PIPELINE_ATTRIBUTE_NAME) != null) {

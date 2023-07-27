@@ -114,6 +114,10 @@ public class InMemorySource implements Source<Record<Event>> {
             while (!isStopped) {
                 try {
                     final List<Record<Event>> records = inMemorySourceAccessor.read(testingKey);
+                    if (records.size() == 0) {
+                        Thread.sleep(1000);
+                        continue;
+                    }
                     AcknowledgementSet ackSet =
                             acknowledgementSetManager.create((result) ->
                                 {
@@ -121,6 +125,7 @@ public class InMemorySource implements Source<Record<Event>> {
                                 },
                                 Duration.ofSeconds(15));
                     records.stream().forEach((record) -> { ackSet.add(record.getData()); });
+                    ackSet.complete();
                     writeToBuffer(records);
                 } catch (final Exception ex) {
                     LOG.error("Error during source loop.", ex);

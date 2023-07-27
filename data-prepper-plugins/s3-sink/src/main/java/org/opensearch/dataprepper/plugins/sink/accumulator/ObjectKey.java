@@ -50,6 +50,7 @@ public class ObjectKey {
      *Get the object file name with the extension
      *
      * @param s3SinkConfig s3 sink configuration
+     * @param codecExtension extension
      * @return s3 object name with prefix
      */
     public static String objectFileName(S3SinkConfig s3SinkConfig, String codecExtension) {

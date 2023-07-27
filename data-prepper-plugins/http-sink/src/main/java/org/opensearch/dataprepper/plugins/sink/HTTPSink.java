@@ -4,9 +4,15 @@
  */
 package org.opensearch.dataprepper.plugins.sink;
 
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.apache.hc.client5.http.HttpRequestRetryStrategy;
+import org.apache.hc.client5.http.impl.DefaultHttpRequestRetryStrategy;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.util.TimeValue;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -14,7 +20,13 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
+import org.opensearch.dataprepper.plugins.accumulator.LocalFileBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
+import org.opensearch.dataprepper.plugins.sink.service.HttpSinkService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,18 +37,40 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(HTTPSink.class);
 
-    private final HttpSinkConfiguration httpSinkConfiguration;
-
     private volatile boolean sinkInitialized;
+
+    private final BufferFactory bufferFactory;
+
+    private final HttpSinkService httpSinkService;
 
     @DataPrepperPluginConstructor
     public HTTPSink(final PluginSetting pluginSetting,
                     final HttpSinkConfiguration httpSinkConfiguration,
                     final PluginFactory pluginFactory,
-                    final AwsCredentialsSupplier awsCredentialsSupplier) {
+                    final PipelineDescription pipelineDescription) {
         super(pluginSetting);
-        this.httpSinkConfiguration = httpSinkConfiguration;
-        sinkInitialized = Boolean.FALSE;
+        final PluginModel codecConfiguration = httpSinkConfiguration.getCodec();
+        final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
+                codecConfiguration.getPluginSettings());
+        codecPluginSettings.setPipelineName(pipelineDescription.getPipelineName());
+        this.sinkInitialized = Boolean.FALSE;
+        if (httpSinkConfiguration.getBufferType().equals(BufferTypeOptions.LOCALFILE)) {
+            this.bufferFactory = new LocalFileBufferFactory();
+        } else {
+            this.bufferFactory = new InMemoryBufferFactory();
+        }
+        final HttpRequestRetryStrategy httpRequestRetryStrategy = new DefaultHttpRequestRetryStrategy(httpSinkConfiguration.getMaxUploadRetries(),
+                TimeValue.of(httpSinkConfiguration.getHttpRetryInterval()));
+
+        final HttpClientBuilder httpClientBuilder = HttpClients.custom()
+                .setRetryStrategy(httpRequestRetryStrategy);
+
+        this.httpSinkService = new HttpSinkService(
+                httpSinkConfiguration,
+                bufferFactory,
+                codecPluginSettings,
+                httpClientBuilder,
+                pluginMetrics);
     }
 
     @Override
@@ -71,6 +105,6 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
         if (records.isEmpty()) {
             return;
         }
-        //TODO:  call Service call method
+        httpSinkService.output(records);
     }
 }

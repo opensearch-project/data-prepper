@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.accumulator.BufferTypeOptions;
@@ -26,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.Collection;
+import java.util.Objects;
 
 /**
  * Implementation class of s3-sink plugin. It is responsible for receive the collection of
@@ -40,6 +42,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
     private volatile boolean sinkInitialized;
     private final S3SinkService s3SinkService;
     private final BufferFactory bufferFactory;
+    private final SinkContext sinkContext;
 
     /**
      * @param pluginSetting dp plugin settings.
@@ -50,9 +53,11 @@ public class S3Sink extends AbstractSink<Record<Event>> {
     public S3Sink(final PluginSetting pluginSetting,
                   final S3SinkConfig s3SinkConfig,
                   final PluginFactory pluginFactory,
+                  final SinkContext sinkContext,
                   final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         this.s3SinkConfig = s3SinkConfig;
+        this.sinkContext = sinkContext;
         final PluginModel codecConfiguration = s3SinkConfig.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
@@ -65,7 +70,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
             bufferFactory = new InMemoryBufferFactory();
         }
         final S3Client s3Client = ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
-        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, pluginMetrics);
+        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, pluginMetrics);
     }
 
     @Override

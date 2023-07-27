@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doAnswer;
@@ -27,7 +29,7 @@ import java.util.concurrent.Executors;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultAcknowledgementSetManagerTests {
-    private static final Duration TEST_TIMEOUT_MS = Duration.ofMillis(1000);
+    private static final Duration TEST_TIMEOUT = Duration.ofMillis(400);
     DefaultAcknowledgementSetManager acknowledgementSetManager;
     private ExecutorService callbackExecutor;
 
@@ -61,20 +63,25 @@ class DefaultAcknowledgementSetManagerTests {
         lenient().when(event2.getEventHandle()).thenReturn(eventHandle2);
 
         acknowledgementSetManager = createObjectUnderTest();
-        AcknowledgementSet acknowledgementSet1 = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT_MS);
+        AcknowledgementSet acknowledgementSet1 = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT);
         acknowledgementSet1.add(event1);
         acknowledgementSet1.add(event2);
+        acknowledgementSet1.complete();
     }
 
     DefaultAcknowledgementSetManager createObjectUnderTest() {
-        return new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(TEST_TIMEOUT_MS.toMillis() * 2));
+        return new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(TEST_TIMEOUT.toMillis() * 2));
     }
 
     @Test
-    void testBasic() throws InterruptedException {
+    void testBasic() {
         acknowledgementSetManager.releaseEventReference(eventHandle2, true);
         acknowledgementSetManager.releaseEventReference(eventHandle1, true);
-        Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
+        await().atMost(TEST_TIMEOUT.multipliedBy(5))
+                .untilAsserted(() -> {
+                    assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
+                    assertThat(result, equalTo(true));
+                });
         assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
         assertThat(result, equalTo(true));
     }
@@ -82,13 +89,13 @@ class DefaultAcknowledgementSetManagerTests {
     @Test
     void testExpirations() throws InterruptedException {
         acknowledgementSetManager.releaseEventReference(eventHandle2, true);
-        Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
+        Thread.sleep(TEST_TIMEOUT.multipliedBy(5).toMillis());
         assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
         assertThat(result, equalTo(null));
     }
 
     @Test
-    void testMultipleAcknowledgementSets() throws InterruptedException {
+    void testMultipleAcknowledgementSets() {
         event3 = mock(JacksonEvent.class);
         doAnswer((i) -> {
             eventHandle3 = i.getArgument(0);
@@ -96,12 +103,17 @@ class DefaultAcknowledgementSetManagerTests {
         }).when(event3).setEventHandle(any());
         lenient().when(event3.getEventHandle()).thenReturn(eventHandle3);
 
-        AcknowledgementSet acknowledgementSet2 = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT_MS);
+        AcknowledgementSet acknowledgementSet2 = acknowledgementSetManager.create((flag) -> { result = flag; }, TEST_TIMEOUT);
         acknowledgementSet2.add(event3);
+        acknowledgementSet2.complete();
 
         acknowledgementSetManager.releaseEventReference(eventHandle2, true);
         acknowledgementSetManager.releaseEventReference(eventHandle3, true);
-        Thread.sleep(TEST_TIMEOUT_MS.toMillis() * 5);
+        await().atMost(TEST_TIMEOUT.multipliedBy(5))
+                        .untilAsserted(() -> {
+                            assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
+                            assertThat(result, equalTo(true));
+                        });
         assertThat(acknowledgementSetManager.getAcknowledgementSetMonitor().getSize(), equalTo(0));
         assertThat(result, equalTo(true));
     }

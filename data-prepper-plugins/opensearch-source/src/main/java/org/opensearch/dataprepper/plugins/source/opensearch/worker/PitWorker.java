@@ -167,7 +167,7 @@ public class PitWorker implements SearchWorker, Runnable {
         try {
             bufferAccumulator.flush();
         } catch (final Exception e) {
-            LOG.error("Failed writing remaining OpenSearch documents to buffer due to: {}", e.getMessage());
+            LOG.error("Failed flushing remaining OpenSearch documents to buffer due to: {}", e.getMessage());
         }
 
         // todo: This API call is failing with sigv4 enabled due to a mismatch in the signature. Tracking issue (https://github.com/opensearch-project/opensearch-java/issues/521)

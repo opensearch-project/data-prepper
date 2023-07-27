@@ -74,7 +74,7 @@ class S3ObjectWorker implements S3ObjectHandler {
 
         LOG.info("Read S3 object: {}", s3ObjectReference);
 
-        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, s3ObjectPluginMetrics);
+        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference, bucketOwnerProvider, s3ObjectPluginMetrics);
 
         final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
                 compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
@@ -85,10 +85,14 @@ class S3ObjectWorker implements S3ObjectHandler {
             codec.parse(inputFile, fileCompressionOption.getDecompressionEngine(), record -> {
                 try {
                     eventConsumer.accept(record.getData(), s3ObjectReference);
-                    bufferAccumulator.add(record);
+                    // Always add record to acknowledgementSet before adding to
+                    // buffer because another thread may take and process
+                    // buffer contents before the event record is added
+                    // to acknowledgement set
                     if (acknowledgementSet != null) {
                         acknowledgementSet.add(record.getData());
                     }
+                    bufferAccumulator.add(record);
                 } catch (final Exception e) {
                     LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }

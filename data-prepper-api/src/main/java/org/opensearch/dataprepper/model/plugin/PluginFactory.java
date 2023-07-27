@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.model.plugin;
 
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
 import java.util.List;
@@ -26,6 +27,18 @@ public interface PluginFactory {
      * @since 1.2
      */
     <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting);
+
+    /**
+     * Loads a new instance of a plugin with SinkContext.
+     *
+     * @param baseClass The class type that the plugin is supporting.
+     * @param pluginSetting The {@link PluginSetting} to configure this plugin
+     * @param sinkContext The {@link SinkContext} to configure this plugin
+     * @param <T> The type
+     * @return A new instance of your plugin, configured
+     * @since 1.2
+     */
+    <T> T loadPlugin(final Class<T> baseClass, final PluginSetting pluginSetting, final SinkContext sinkContext);
 
     /**
      * Loads a specified number of plugin instances. The total number of instances is provided

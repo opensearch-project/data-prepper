@@ -47,10 +47,10 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
         for (final ScanOptions scanOptions : scanOptionsList) {
             final List<String> excludeItems = new ArrayList<>();
-            final S3ScanKeyPathOption s3ScanKeyPathOption = scanOptions.getS3ScanKeyPathOption();
+            final S3ScanKeyPathOption s3ScanKeyPathOption = scanOptions.getBucketOption().getkeyPrefix();
             final ListObjectsV2Request.Builder listObjectsV2Request = ListObjectsV2Request.builder()
-                    .bucket(scanOptions.getBucket());
-            bucketOwnerProvider.getBucketOwner(scanOptions.getBucket())
+                    .bucket(scanOptions.getBucketOption().getName());
+            bucketOwnerProvider.getBucketOwner(scanOptions.getBucketOption().getName())
                     .ifPresent(listObjectsV2Request::expectedBucketOwner);
 
             if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions()))
@@ -59,12 +59,12 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
             if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3scanIncludeOptions()))
                 s3ScanKeyPathOption.getS3scanIncludeOptions().forEach(includePath -> {
                     listObjectsV2Request.prefix(includePath);
-                    objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request, scanOptions.getBucket(),
-                            scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime()));
+                    objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request,
+                            scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime()));
                 });
             else
-                objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request, scanOptions.getBucket(),
-                        scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime()));
+                objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request,
+                        scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime()));
         }
 
         return objectsToProcess;
@@ -106,6 +106,9 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
     private boolean isKeyMatchedBetweenTimeRange(final LocalDateTime lastModifiedTime,
                                                  final LocalDateTime startDateTime,
                                                  final LocalDateTime endDateTime){
+        if (Objects.isNull(startDateTime) || Objects.isNull(endDateTime)) {
+            return true;
+        }
         return lastModifiedTime.isAfter(startDateTime) && lastModifiedTime.isBefore(endDateTime);
     }
 }

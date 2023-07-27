@@ -16,12 +16,13 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.typeconverter.TypeConverter;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 @DataPrepperPlugin(name = "convert_entry_type", pluginType = Processor.class, pluginConfigurationType = ConvertEntryTypeProcessorConfig.class)
 public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final String key;
+    private final List<String> convertEntryKeys;
     private final TypeConverter converter;
     private final String convertWhen;
     private final List<String> nullValues;
@@ -33,7 +34,7 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                                      final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig,
                                      final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
-        this.key = convertEntryTypeProcessorConfig.getKey();
+        this.convertEntryKeys = getKeysToConvert(convertEntryTypeProcessorConfig);
         this.converter = convertEntryTypeProcessorConfig.getType().getTargetConverter();
         this.convertWhen = convertEntryTypeProcessorConfig.getConvertWhen();
         this.nullValues = convertEntryTypeProcessorConfig.getNullValues()
@@ -50,11 +51,13 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                 continue;
             }
 
-            Object keyVal = recordEvent.get(key, Object.class);
-            if (keyVal != null) {
-                recordEvent.delete(key);
-                if (!nullValues.contains(keyVal.toString())){
-                    recordEvent.put(key, this.converter.convert(keyVal));
+            for(final String key : convertEntryKeys) {
+                Object keyVal = recordEvent.get(key, Object.class);
+                if (keyVal != null) {
+                    recordEvent.delete(key);
+                    if (!nullValues.contains(keyVal.toString())) {
+                        recordEvent.put(key, this.converter.convert(keyVal));
+                    }
                 }
             }
         }
@@ -72,6 +75,25 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
 
     @Override
     public void shutdown() {
+    }
+
+    private List<String> getKeysToConvert(final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig) {
+        final String key = convertEntryTypeProcessorConfig.getKey();
+        final List<String> keys = convertEntryTypeProcessorConfig.getKeys();
+        if (key == null && keys == null) {
+            throw new IllegalArgumentException("key and keys cannot both be null. One must be provided.");
+        }
+        if (key != null && keys != null) {
+            throw new IllegalArgumentException("key and keys cannot both be defined.");
+        }
+        if (key != null) {
+            if (key.isEmpty()) {
+                throw new IllegalArgumentException("key cannot be empty.");
+            } else {
+                return Collections.singletonList(key);
+            }
+        }
+        return keys;
     }
 }
 

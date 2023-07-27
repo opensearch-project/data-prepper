@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Measurement;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.util.EntityUtils;
 import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
@@ -32,6 +33,7 @@ import org.opensearch.common.Strings;
 import org.opensearch.common.xcontent.XContentFactory;
 import org.opensearch.common.xcontent.XContentType;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -41,6 +43,7 @@ import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.AbstractIndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration;
@@ -87,6 +90,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createContentParser;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.createOpenSearchClient;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIntegrationHelper.getHosts;
@@ -108,23 +112,42 @@ public class OpenSearchSinkIT {
 
     private RestClient client;
     private EventHandle eventHandle;
+    private SinkContext sinkContext;
+    private String testTagsTargetKey;
 
     @Mock
     private PluginFactory pluginFactory;
 
-  @Mock
-  private AwsCredentialsSupplier awsCredentialsSupplier;
+    @Mock
+    private AwsCredentialsSupplier awsCredentialsSupplier;
 
-  public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
-    OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, awsCredentialsSupplier);
-    if (doInitialize) {
-        sink.doInitialize();
+    private ExpressionEvaluator expressionEvaluator;
+
+    public OpenSearchSink createObjectUnderTest(PluginSetting pluginSetting, boolean doInitialize) {
+        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, null, expressionEvaluator, awsCredentialsSupplier);
+        if (doInitialize) {
+            sink.doInitialize();
+        }
+        return sink;
     }
-    return sink;
-  }
+
+    public OpenSearchSink createObjectUnderTestWithSinkContext(PluginSetting pluginSetting, boolean doInitialize) {
+        sinkContext = mock(SinkContext.class);
+        testTagsTargetKey = RandomStringUtils.randomAlphabetic(5);
+        when(sinkContext.getTagsTargetKey()).thenReturn(testTagsTargetKey);
+        OpenSearchSink sink = new OpenSearchSink(pluginSetting, pluginFactory, sinkContext, expressionEvaluator, awsCredentialsSupplier);
+        if (doInitialize) {
+            sink.doInitialize();
+        }
+        return sink;
+    }
 
     @BeforeEach
     public void setup() {
+
+        expressionEvaluator = mock(ExpressionEvaluator.class);
+        when(expressionEvaluator.isValidExpressionStatement(any(String.class))).thenReturn(false);
+
         eventHandle = mock(EventHandle.class);
         lenient().doAnswer(a -> {
             return null;
@@ -199,8 +222,10 @@ public class OpenSearchSinkIT {
                 RuntimeException.class, () -> sink.doInitialize());
     }
 
-    @Test
-    public void testOutputRawSpanDefault() throws IOException, InterruptedException {
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+    public void testOutputRawSpanDefault(final boolean estimateBulkSizeUsingCompression,
+                                         final boolean isRequestCompressionEnabled) throws IOException, InterruptedException {
         final String testDoc1 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
         final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_2);
         final ObjectMapper mapper = new ObjectMapper();
@@ -208,7 +233,8 @@ public class OpenSearchSinkIT {
         @SuppressWarnings("unchecked") final Map<String, Object> expData2 = mapper.readValue(testDoc2, Map.class);
 
         final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
-        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null,
+                estimateBulkSizeUsingCompression, isRequestCompressionEnabled);
         final OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
 
@@ -259,12 +285,15 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(773.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(773.0, 0));
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 773.0 : 2058.0;
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
     }
 
-    @Test
-    public void testOutputRawSpanWithDLQ() throws IOException, InterruptedException {
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+    public void testOutputRawSpanWithDLQ(final boolean estimateBulkSizeUsingCompression,
+                                         final boolean isRequestCompressionEnabled) throws IOException, InterruptedException {
         // TODO: write test case
         final String testDoc1 = readDocFromFile("raw-span-error.json");
         final String testDoc2 = readDocFromFile(DEFAULT_RAW_SPAN_FILE_1);
@@ -272,7 +301,8 @@ public class OpenSearchSinkIT {
         @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc2, Map.class);
 
         final List<Record<Event>> testRecords = Arrays.asList(jsonStringToRecord(testDoc1), jsonStringToRecord(testDoc2));
-        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null,
+                estimateBulkSizeUsingCompression, isRequestCompressionEnabled);
         // generate temporary directory for dlq file
         final File tempDirectory = Files.createTempDirectory("").toFile();
         // add dlq file path into setting
@@ -315,8 +345,9 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(1066.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(1066.0, 0));
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 1066.0 : 2072.0;
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
 
     }
 
@@ -339,14 +370,17 @@ public class OpenSearchSinkIT {
         }
     }
 
-    @Test
-    public void testOutputServiceMapDefault() throws IOException, InterruptedException {
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+    public void testOutputServiceMapDefault(final boolean estimateBulkSizeUsingCompression,
+                                            final boolean isRequestCompressionEnabled) throws IOException, InterruptedException {
         final String testDoc = readDocFromFile(DEFAULT_SERVICE_MAP_FILE);
         final ObjectMapper mapper = new ObjectMapper();
         @SuppressWarnings("unchecked") final Map<String, Object> expData = mapper.readValue(testDoc, Map.class);
 
         final List<Record<Event>> testRecords = Collections.singletonList(jsonStringToRecord(testDoc));
-        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null);
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_SERVICE_MAP.getValue(), null, null,
+                estimateBulkSizeUsingCompression, isRequestCompressionEnabled);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         sink.output(testRecords);
         final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_SERVICE_MAP);
@@ -372,8 +406,9 @@ public class OpenSearchSinkIT {
                         .add(OpenSearchSink.BULKREQUEST_SIZE_BYTES).toString());
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.size(), equalTo(3));
         MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(0).getValue(), closeTo(1.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(366.0, 0));
-        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(366.0, 0));
+        final double expectedBulkRequestSizeBytes = isRequestCompressionEnabled && estimateBulkSizeUsingCompression ? 366.0 : 265.0;
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(1).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
+        MatcherAssert.assertThat(bulkRequestSizeBytesMetrics.get(2).getValue(), closeTo(expectedBulkRequestSizeBytes, 0));
 
         // Check restart for index already exists
         sink = createObjectUnderTest(pluginSetting, true);
@@ -585,6 +620,34 @@ public class OpenSearchSinkIT {
         MatcherAssert.assertThat(bulkRequestLatencies.size(), equalTo(3));
         // COUNT
         Assert.assertEquals(1.0, bulkRequestLatencies.get(0).getValue(), 0);
+    }
+
+    @Test
+    public void testEventOutputWithTags() throws IOException, InterruptedException {
+        final Event testEvent = JacksonEvent.builder()
+                .withData("{\"log\": \"foobar\"}")
+                .withEventType("event")
+                .build();
+        ((JacksonEvent)testEvent).setEventHandle(eventHandle);
+        List<String> tagsList = List.of("tag1", "tag2");
+        testEvent.getMetadata().addTags(tagsList);
+
+        final List<Record<Event>> testRecords = Collections.singletonList(new Record<>(testEvent));
+
+        final PluginSetting pluginSetting = generatePluginSetting(IndexType.TRACE_ANALYTICS_RAW.getValue(), null, null);
+        final OpenSearchSink sink = createObjectUnderTestWithSinkContext(pluginSetting, true);
+        sink.output(testRecords);
+
+        final String expIndexAlias = IndexConstants.TYPE_TO_DEFAULT_ALIAS.get(IndexType.TRACE_ANALYTICS_RAW);
+        final List<Map<String, Object>> retSources = getSearchResponseDocSources(expIndexAlias);
+        final Map<String, Object> expectedContent = new HashMap<>();
+        expectedContent.put("log", "foobar");
+        expectedContent.put(testTagsTargetKey, tagsList);
+
+        MatcherAssert.assertThat(retSources.size(), equalTo(1));
+        MatcherAssert.assertThat(retSources.containsAll(Arrays.asList(expectedContent)), equalTo(true));
+        MatcherAssert.assertThat(getDocumentCount(expIndexAlias, "log", "foobar"), equalTo(Integer.valueOf(1)));
+        sink.shutdown();
     }
 
     @Test
@@ -837,6 +900,15 @@ public class OpenSearchSinkIT {
     private PluginSetting generatePluginSetting(final String indexType, final String indexAlias,
                                                 final String templateFilePath) {
         final Map<String, Object> metadata = initializeConfigurationMetadata(indexType, indexAlias, templateFilePath);
+        return generatePluginSettingByMetadata(metadata);
+    }
+
+    private PluginSetting generatePluginSetting(final String indexType, final String indexAlias,
+                                                final String templateFilePath, final boolean estimateBulkSizeUsingCompression,
+                                                final boolean requestCompressionEnabled) {
+        final Map<String, Object> metadata = initializeConfigurationMetadata(indexType, indexAlias, templateFilePath);
+        metadata.put(IndexConfiguration.ESTIMATE_BULK_SIZE_USING_COMPRESSION, estimateBulkSizeUsingCompression);
+        metadata.put(ConnectionConfiguration.REQUEST_COMPRESSION_ENABLED, requestCompressionEnabled);
         return generatePluginSettingByMetadata(metadata);
     }
 

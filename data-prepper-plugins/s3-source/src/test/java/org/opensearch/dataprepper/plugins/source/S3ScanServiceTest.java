@@ -35,7 +35,7 @@ public class S3ScanServiceTest {
     }
 
     @Test
-    public void scan_service_with_s3_select_Configuration_test_and_verify() {
+    public void scan_service_with_valid_s3_scan_configuration_test_and_verify() {
         final String bucketName="my-bucket-5";
         final LocalDateTime startDateTime = LocalDateTime.parse("2023-03-07T10:00:00");
         final Duration range = Duration.parse("P2DT1H");
@@ -49,16 +49,71 @@ public class S3ScanServiceTest {
         when(s3ScanBucketOption.getName()).thenReturn(bucketName);
         S3ScanKeyPathOption s3ScanKeyPathOption = mock(S3ScanKeyPathOption.class);
         when(s3ScanKeyPathOption.getS3scanIncludeOptions()).thenReturn(includeKeyPathList);
+        when(s3ScanBucketOption.getRange()).thenReturn(null);
         when(s3ScanBucketOption.getkeyPrefix()).thenReturn(s3ScanKeyPathOption);
         when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
-        when(s3ScanScanOptions.getBuckets()).thenReturn( List.of(bucket));
+        when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         S3ScanService service = new S3ScanService(s3SourceConfig,mock(S3ClientBuilderFactory.class),
                 mock(S3ObjectHandler.class),mock(BucketOwnerProvider.class), mock(SourceCoordinator.class));
         final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
-        assertThat(scanOptionsBuilder.get(0).getS3ScanKeyPathOption().getS3scanIncludeOptions(),sameInstance(includeKeyPathList));
-        assertThat(scanOptionsBuilder.get(0).getBucket(),sameInstance(bucketName));
-        assertThat(scanOptionsBuilder.get(0).getRange(),equalTo(range));
+        assertThat(scanOptionsBuilder.get(0).getBucketOption().getkeyPrefix().getS3scanIncludeOptions(),sameInstance(includeKeyPathList));
+        assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));
         assertThat(scanOptionsBuilder.get(0).getUseStartDateTime(),equalTo(startDateTime));
+        assertThat(scanOptionsBuilder.get(0).getUseEndDateTime(),equalTo(startDateTime.plus(range)));
+    }
+
+    @Test
+    public void scan_service_with_valid_bucket_time_range_configuration_test_and_verify() {
+        final String bucketName="my-bucket-5";
+        final LocalDateTime startDateTime = LocalDateTime.parse("2023-03-07T10:00:00");
+        final Duration range = Duration.parse("P2DT1H");
+        final List<String> includeKeyPathList = List.of("file1.csv","file2.csv");
+        final S3SourceConfig s3SourceConfig = mock(S3SourceConfig.class);
+        final S3ScanScanOptions s3ScanScanOptions = mock(S3ScanScanOptions.class);
+        S3ScanBucketOptions bucket = mock(S3ScanBucketOptions.class);
+        final S3ScanBucketOption s3ScanBucketOption = mock(S3ScanBucketOption.class);
+        when(s3ScanBucketOption.getName()).thenReturn(bucketName);
+        S3ScanKeyPathOption s3ScanKeyPathOption = mock(S3ScanKeyPathOption.class);
+        when(s3ScanKeyPathOption.getS3scanIncludeOptions()).thenReturn(includeKeyPathList);
+        when(s3ScanBucketOption.getStartTime()).thenReturn(startDateTime);
+        when(s3ScanBucketOption.getRange()).thenReturn(range);
+        when(s3ScanBucketOption.getkeyPrefix()).thenReturn(s3ScanKeyPathOption);
+        when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
+        when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
+        when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
+        S3ScanService service = new S3ScanService(s3SourceConfig,mock(S3ClientBuilderFactory.class),
+                mock(S3ObjectHandler.class),mock(BucketOwnerProvider.class), mock(SourceCoordinator.class));
+        final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
+        assertThat(scanOptionsBuilder.get(0).getBucketOption().getkeyPrefix().getS3scanIncludeOptions(),sameInstance(includeKeyPathList));
+        assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));
+        assertThat(scanOptionsBuilder.get(0).getUseStartDateTime(),equalTo(startDateTime));
+        assertThat(scanOptionsBuilder.get(0).getUseEndDateTime(),equalTo(startDateTime.plus(range)));
+    }
+
+    @Test
+    public void scan_service_with_no_time_range_configuration_test_and_verify() {
+        final String bucketName="my-bucket-5";
+        final List<String> includeKeyPathList = List.of("file1.csv","file2.csv");
+        final S3SourceConfig s3SourceConfig = mock(S3SourceConfig.class);
+        final S3ScanScanOptions s3ScanScanOptions = mock(S3ScanScanOptions.class);
+        when(s3ScanScanOptions.getRange()).thenReturn(null);
+        S3ScanBucketOptions bucket = mock(S3ScanBucketOptions.class);
+        final S3ScanBucketOption s3ScanBucketOption = mock(S3ScanBucketOption.class);
+        when(s3ScanBucketOption.getName()).thenReturn(bucketName);
+        when(s3ScanBucketOption.getRange()).thenReturn(null);
+        S3ScanKeyPathOption s3ScanKeyPathOption = mock(S3ScanKeyPathOption.class);
+        when(s3ScanKeyPathOption.getS3scanIncludeOptions()).thenReturn(includeKeyPathList);
+        when(s3ScanBucketOption.getkeyPrefix()).thenReturn(s3ScanKeyPathOption);
+        when(bucket.getS3ScanBucketOption()).thenReturn(s3ScanBucketOption);
+        when(s3ScanScanOptions.getBuckets()).thenReturn(List.of(bucket));
+        when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
+        S3ScanService service = new S3ScanService(s3SourceConfig,mock(S3ClientBuilderFactory.class),
+                mock(S3ObjectHandler.class),mock(BucketOwnerProvider.class), mock(SourceCoordinator.class));
+        final List<ScanOptions> scanOptionsBuilder = service.getScanOptions();
+        assertThat(scanOptionsBuilder.get(0).getBucketOption().getkeyPrefix().getS3scanIncludeOptions(),sameInstance(includeKeyPathList));
+        assertThat(scanOptionsBuilder.get(0).getBucketOption().getName(),sameInstance(bucketName));
+        assertThat(scanOptionsBuilder.get(0).getUseStartDateTime(),equalTo(null));
+        assertThat(scanOptionsBuilder.get(0).getUseEndDateTime(),equalTo(null));
     }
 }

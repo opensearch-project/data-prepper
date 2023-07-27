@@ -5,33 +5,84 @@
 
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
-
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.Valid;
+
+import java.util.stream.Stream;
 
 /**
- * * A helper class that helps to read auth related configuration values from
+ * A helper class that helps to read auth related configuration values from
  * pipelines.yaml
  */
 public class AuthConfig {
-    @JsonProperty("sasl_plaintext")
-    private PlainTextAuthConfig plainTextAuthConfig;
 
-    @JsonProperty("sasl_oauth")
-    private OAuthConfig oAuthConfig;
+    public static class SaslAuthConfig {
+        @JsonProperty("plaintext")
+        private PlainTextAuthConfig plainTextAuthConfig;
 
-    public OAuthConfig getoAuthConfig() {
-        return oAuthConfig;
+        @JsonProperty("oauth")
+        private OAuthConfig oAuthConfig;
+
+        @JsonProperty("aws_iam")
+        private AwsIamAuthConfig awsIamAuthConfig;
+
+        public AwsIamAuthConfig getAwsIamAuthConfig() {
+            return awsIamAuthConfig;
+        }
+
+        public PlainTextAuthConfig getPlainTextAuthConfig() {
+            return plainTextAuthConfig;
+        }
+
+        public OAuthConfig getOAuthConfig() {
+            return oAuthConfig;
+        }
+
+        @AssertTrue(message = "Only one of AwsIam or oAuth or PlainText auth config must be specified")
+        public boolean hasOnlyOneConfig() {
+            return Stream.of(awsIamAuthConfig, plainTextAuthConfig, oAuthConfig).filter(n -> n!=null).count() == 1;
+        }
+
     }
 
-    public void setoAuthConfig(OAuthConfig oAuthConfig) {
-        this.oAuthConfig = oAuthConfig;
+    public static  class SslAuthConfig {
+        // TODO Add Support for SSL authentication types like
+        // one-way or two-way authentication
+
+        public SslAuthConfig() {
+        }
     }
 
-    public void setPlainTextAuthConfig(PlainTextAuthConfig plainTextAuthConfig) {
-        this.plainTextAuthConfig = plainTextAuthConfig;
+    @JsonProperty("ssl")
+    private SslAuthConfig sslAuthConfig;
+
+    @Valid
+    @JsonProperty("sasl")
+    private SaslAuthConfig saslAuthConfig;
+
+    @JsonProperty("insecure")
+    private Boolean insecure = false;
+
+    public SslAuthConfig getSslAuthConfig() {
+        return sslAuthConfig;
     }
 
-    public PlainTextAuthConfig getPlainTextAuthConfig() {
-        return plainTextAuthConfig;
+    public SaslAuthConfig getSaslAuthConfig() {
+        return saslAuthConfig;
     }
+
+    public Boolean getInsecure() {
+        return insecure;
+    }
+
+    /*
+     * Currently SSL config is not supported. Commenting this for future use
+     *
+    @AssertTrue(message = "Only one of SSL or SASL auth config must be specified")
+    public boolean hasSaslOrSslConfig() {
+        return Stream.of(sslAuthConfig, saslAuthConfig).filter(n -> n!=null).count() == 1;
+    }
+    */
+
 }

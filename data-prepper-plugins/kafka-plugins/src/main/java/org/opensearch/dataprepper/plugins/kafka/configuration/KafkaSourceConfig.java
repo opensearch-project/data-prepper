@@ -11,6 +11,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
+import java.util.Objects;
+import java.time.Duration;
 
 /**
  * * A helper class that helps to read user configuration values from
@@ -18,10 +20,9 @@ import java.util.List;
  */
 
 public class KafkaSourceConfig {
+    public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
-    @NotNull
-    @Size(min = 1, message = "Bootstrap servers can't be empty")
     private List<String> bootStrapServers;
 
     @JsonProperty("topics")
@@ -33,8 +34,37 @@ public class KafkaSourceConfig {
     @Valid
     private SchemaConfig schemaConfig;
 
+    @Valid
     @JsonProperty("authentication")
     private AuthConfig authConfig;
+
+    @JsonProperty("encryption")
+    private EncryptionType encryptionType = EncryptionType.SSL;
+
+    @JsonProperty("aws")
+    @Valid
+    private AwsConfig awsConfig;
+
+    @JsonProperty("acknowledgments")
+    private Boolean acknowledgementsEnabled = false;
+
+    @JsonProperty("acknowledgments_timeout")
+    private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
+
+    @JsonProperty("client_dns_lookup")
+    private String clientDnsLookup;
+
+    public String getClientDnsLookup() {
+        return clientDnsLookup;
+    }
+
+    public Boolean getAcknowledgementsEnabled() {
+        return acknowledgementsEnabled;
+    }
+
+    public Duration getAcknowledgementsTimeout() {
+        return acknowledgementsTimeout;
+    }
 
     public List<TopicConfig> getTopics() {
         return topics;
@@ -44,8 +74,11 @@ public class KafkaSourceConfig {
         this.topics = topics;
     }
 
-    public List<String> getBootStrapServers() {
-        return bootStrapServers;
+    public String getBootStrapServers() {
+        if (Objects.nonNull(bootStrapServers)) {
+            return String.join(",", bootStrapServers);
+        }
+        return null;
     }
 
     public void setBootStrapServers(List<String> bootStrapServers) {
@@ -62,6 +95,14 @@ public class KafkaSourceConfig {
 
     public AuthConfig getAuthConfig() {
         return authConfig;
+    }
+
+    public EncryptionType getEncryptionType() {
+        return encryptionType;
+    }
+
+    public AwsConfig getAwsConfig() {
+        return awsConfig;
     }
 
     public void setAuthConfig(AuthConfig authConfig) {

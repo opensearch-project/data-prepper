@@ -1,0 +1,38 @@
+plugins {
+    id 'java'
+    id 'java-library'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation project(path: ':data-prepper-plugins:common')
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'software.amazon.awssdk:cloudwatch'
+    implementation 'software.amazon.awssdk:cloudwatchlogs'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    testImplementation project(path: ':data-prepper-test-common')
+    testImplementation testLibs.mockito.inline
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.90
+            }
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}

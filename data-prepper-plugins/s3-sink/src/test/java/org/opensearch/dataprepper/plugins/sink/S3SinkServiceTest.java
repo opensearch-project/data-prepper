@@ -30,6 +30,7 @@ import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import org.apache.commons.lang3.RandomStringUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -83,11 +84,13 @@ class S3SinkServiceTest {
     private Counter snapshotSuccessCounter;
     private DistributionSummary s3ObjectSizeSummary;
     private Random random;
+    private String tagsTargetKey;
 
     @BeforeEach
     void setUp() {
 
         random = new Random();
+        tagsTargetKey = RandomStringUtils.randomAlphabetic(5);
         s3SinkConfig = mock(S3SinkConfig.class);
         s3Client = mock(S3Client.class);
         ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
@@ -132,7 +135,7 @@ class S3SinkServiceTest {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, tagsTargetKey, pluginMetrics);
     }
 
     @Test

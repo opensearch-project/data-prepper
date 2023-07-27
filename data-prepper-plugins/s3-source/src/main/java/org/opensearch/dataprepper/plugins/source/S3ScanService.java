@@ -5,7 +5,6 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
-import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOptions;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 
@@ -67,12 +66,11 @@ public class S3ScanService {
     }
 
     private void buildScanOptions(final List<ScanOptions> scanOptionsList, final S3ScanBucketOptions scanBucketOptions) {
-        final S3ScanBucketOption s3ScanBucketOption = scanBucketOptions.getS3ScanBucketOption();
-        scanOptionsList.add(new ScanOptions.Builder()
+        scanOptionsList.add(ScanOptions.builder()
                 .setStartDateTime(startDateTime)
                 .setEndDateTime(endDateTime)
                 .setRange(range)
-                .setBucket(s3ScanBucketOption.getName())
-                .setS3ScanKeyPathOption(s3ScanBucketOption.getkeyPrefix()).build());
+                .setBucketOption(scanBucketOptions.getS3ScanBucketOption())
+                .build());
     }
 }
