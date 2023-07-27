@@ -66,12 +66,12 @@ import org.apache.commons.lang3.RandomStringUtils;
 class RemotePeerForwarderTest {
     private static final int TEST_BUFFER_CAPACITY = 20;
     private static final int TEST_BATCH_SIZE = 20;
-    private static final int TEST_BATCH_DELAY = 3_000;
-    private static final int TEST_LOCAL_WRITE_TIMEOUT = 500;
-    private static final int TEST_TIMEOUT_IN_MILLIS = 500;
+    private static final int TEST_BATCH_DELAY = 800;
+    private static final int TEST_LOCAL_WRITE_TIMEOUT = 400;
+    private static final int TEST_TIMEOUT_IN_MILLIS = 400;
     private static final int FORWARDING_BATCH_SIZE = 5;
     private static final int FORWARDING_BATCH_QUEUE_DEPTH = 1;
-    private static final Duration FORWARDING_BATCH_TIMEOUT = Duration.of(3, ChronoUnit.SECONDS);
+    private static final Duration FORWARDING_BATCH_TIMEOUT = Duration.of(800, ChronoUnit.MILLIS);
     private static final int PIPELINE_WORKER_THREADS = 3;
     private static final String PIPELINE_NAME = UUID.randomUUID().toString();
     private static final String PLUGIN_ID = UUID.randomUUID().toString();

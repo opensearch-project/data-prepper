@@ -25,6 +25,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import static org.mockito.Mockito.when;
 import org.mockito.Mock;
@@ -73,9 +74,6 @@ public class KafkaSourceMultipleAuthTypeIT {
 
     @Mock
     private AuthConfig.SaslAuthConfig saslAuthConfig;
-
-    @Mock
-    private AuthConfig.SslAuthConfig sslAuthConfig;
 
     @Mock
     private PlainTextAuthConfig plainTextAuthConfig;
@@ -128,7 +126,10 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(plainTextTopic.getName()).thenReturn(testTopic);
         when(plainTextTopic.getGroupId()).thenReturn(testGroup);
         when(plainTextTopic.getWorkers()).thenReturn(1);
+        when(plainTextTopic.getSessionTimeOut()).thenReturn(15000);
+        when(plainTextTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(plainTextTopic.getAutoCommit()).thenReturn(false);
+        when(plainTextTopic.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(plainTextTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(plainTextTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
@@ -143,7 +144,7 @@ public class KafkaSourceMultipleAuthTypeIT {
     @Test
     public void TestPlainTextWithNoAuthKafkaNoEncryptionWithNoAuthSchemaRegistry() throws Exception {
         final int numRecords = 1;
-        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.PLAINTEXT);
+        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.NONE);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
@@ -193,7 +194,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         authConfig = mock(AuthConfig.class);
         saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
         plainTextAuthConfig = mock(PlainTextAuthConfig.class);
-        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.PLAINTEXT);
+        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.NONE);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
         plainTextAuthConfig = mock(PlainTextAuthConfig.class);
@@ -204,7 +205,6 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(authConfig.getInsecure()).thenReturn(true);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
         when(sourceConfig.getBootStrapServers()).thenReturn(saslplainBootstrapServers);
-        when(authConfig.getSslAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
         
         Properties props = new Properties();
@@ -250,14 +250,9 @@ public class KafkaSourceMultipleAuthTypeIT {
         final int numRecords = 1;
         authConfig = mock(AuthConfig.class);
         saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
-        sslAuthConfig = mock(AuthConfig.SslAuthConfig.class);
-        plainTextAuthConfig = mock(PlainTextAuthConfig.class);
-        when(plainTextAuthConfig.getUsername()).thenReturn(kafkaUsername);
-        when(plainTextAuthConfig.getPassword()).thenReturn(kafkaPassword);
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getSaslAuthConfig()).thenReturn(null);
         when(authConfig.getInsecure()).thenReturn(true);
-        when(authConfig.getSslAuthConfig()).thenReturn(sslAuthConfig);
         when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.SSL);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getBootStrapServers()).thenReturn(sslBootstrapServers);
@@ -307,14 +302,12 @@ public class KafkaSourceMultipleAuthTypeIT {
         final int numRecords = 1;
         authConfig = mock(AuthConfig.class);
         saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
-        sslAuthConfig = mock(AuthConfig.SslAuthConfig.class);
         plainTextAuthConfig = mock(PlainTextAuthConfig.class);
         when(plainTextAuthConfig.getUsername()).thenReturn(kafkaUsername);
         when(plainTextAuthConfig.getPassword()).thenReturn(kafkaPassword);
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getInsecure()).thenReturn(true);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
-        when(authConfig.getSslAuthConfig()).thenReturn(sslAuthConfig);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
         when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.SSL);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);

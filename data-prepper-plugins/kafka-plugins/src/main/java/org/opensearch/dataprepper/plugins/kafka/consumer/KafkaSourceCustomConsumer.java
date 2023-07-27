@@ -14,7 +14,9 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.CommitFailedException;
+import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.avro.generic.GenericRecord;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
 import org.apache.commons.lang3.Range;
 
 /**
@@ -108,7 +111,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     }
 
     private AcknowledgementSet createAcknowledgementSet(Map<TopicPartition, Range<Long>> offsets) {
-        AcknowledgementSet acknowledgementSet = 
+        AcknowledgementSet acknowledgementSet =
             acknowledgementSetManager.create((result) -> {
                 if (result == true) {
                     positiveAcknowledgementSetCounter.increment();
@@ -117,7 +120,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                         if (!partitionCommitTrackerMap.containsKey(partitionId)) {
                             OffsetAndMetadata committedOffsetAndMetadata = consumer.committed(partition);
                             Long committedOffset = Objects.nonNull(committedOffsetAndMetadata) ? committedOffsetAndMetadata.offset() : null;
-                    
+
                             partitionCommitTrackerMap.put(partitionId, new TopicPartitionCommitTracker(partition, committedOffset));
                         }
                         OffsetAndMetadata offsetAndMetadata = partitionCommitTrackerMap.get(partitionId).addCompletedOffsets(offsetRange);
@@ -128,28 +131,33 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                 }
             }, acknowledgementsTimeout);
         return acknowledgementSet;
-    }     
+    }
 
     double getPositiveAcknowledgementsCount() {
         return positiveAcknowledgementSetCounter.count();
     }
 
     public <T> void consumeRecords() throws Exception {
-        ConsumerRecords<String, T> records =
-            consumer.poll(topicConfig.getThreadWaitingTime().toMillis()/2);
-        if (!records.isEmpty() && records.count() > 0) {
-            Map<TopicPartition, Range<Long>> offsets = new HashMap<>();
-            AcknowledgementSet acknowledgementSet = null;
-            if (acknowledgementsEnabled) {
-                acknowledgementSet = createAcknowledgementSet(offsets);
+        try {
+            ConsumerRecords<String, T> records =
+                consumer.poll(topicConfig.getThreadWaitingTime().toMillis()/2);
+            if (!records.isEmpty() && records.count() > 0) {
+                Map<TopicPartition, Range<Long>> offsets = new HashMap<>();
+                AcknowledgementSet acknowledgementSet = null;
+                if (acknowledgementsEnabled) {
+                    acknowledgementSet = createAcknowledgementSet(offsets);
+                }
+                iterateRecordPartitions(records, acknowledgementSet, offsets);
+                if (!acknowledgementsEnabled) {
+                    offsets.forEach((partition, offsetRange) ->
+                        updateOffsetsToCommit(partition, new OffsetAndMetadata(offsetRange.getMaximum() + 1)));
+                } else {
+                    acknowledgementSet.complete();
+                }
             }
-            iterateRecordPartitions(records, acknowledgementSet, offsets);
-            if (!acknowledgementsEnabled) {
-                offsets.forEach((partition, offsetRange) ->
-                    updateOffsetsToCommit(partition, new OffsetAndMetadata(offsetRange.getMaximum() + 1)));
-            } else {
-                acknowledgementSet.complete();
-            }
+        } catch (AuthenticationException e) {
+            LOG.warn("Authentication Error while doing poll(). Will retry after 10 seconds", e);
+            Thread.sleep(10000);
         }
     }
 
@@ -170,7 +178,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                 offsetsToCommit.clear();
                 lastCommitTime = currentTimeMillis;
             } catch (CommitFailedException e) {
-                LOG.error("Failed to commit offsets in topic "+topicName);
+                LOG.error("Failed to commit offsets in topic "+topicName, e);
             }
         }
     }
@@ -195,28 +203,26 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private <T> Record<Event> getRecord(ConsumerRecord<String, T> consumerRecord) {
         Map<String, Object> data = new HashMap<>();
         Event event;
-        Object value;
+        Object value = consumerRecord.value();
         String key = (String)consumerRecord.key();
         if (Objects.isNull(key)) {
             key = DEFAULT_KEY;
         }
-        if (schema == MessageFormat.JSON || schema == MessageFormat.AVRO) {
-            value = new HashMap<>();
-            try {
-                if(schema == MessageFormat.JSON){
-                    value = consumerRecord.value();
-                }else if(schema == MessageFormat.AVRO) {
-                    final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
-                    value = objectMapper.readValue(jsonParser, Map.class);
-                }
-            } catch (Exception e){
-                LOG.error("Failed to parse JSON or AVRO record");
-                data.put(key, value);
+        try {
+            if (value instanceof JsonDataWithSchema) {
+                JsonDataWithSchema j = (JsonDataWithSchema)consumerRecord.value();
+                value = objectMapper.readValue(j.getPayload(), Map.class);
+            } else if (schema == MessageFormat.AVRO || value instanceof GenericRecord) {
+                final JsonParser jsonParser = jsonFactory.createParser((String)consumerRecord.value().toString());
+                value = objectMapper.readValue(jsonParser, Map.class);
+            } else if (schema == MessageFormat.PLAINTEXT) {
+                value = (String)consumerRecord.value();
             }
-        } else {
-            value = (String)consumerRecord.value();
+        } catch (Exception e){
+            LOG.error("Failed to parse JSON or AVRO record", e);
         }
         data.put(key, value);
+
         event = JacksonLog.builder().withData(data).build();
         return new Record<Event>(event);
     }

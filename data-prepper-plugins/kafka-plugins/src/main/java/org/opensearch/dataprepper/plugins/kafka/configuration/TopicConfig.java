@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+
 import java.time.Duration;
 /**
  * * A helper class that helps to read consumer configuration values from
@@ -58,6 +60,9 @@ public class TopicConfig {
     @Valid
     @Size(min = 1)
     private Duration maxRetryDelay = MAX_RETRY_DELAY;
+
+    @JsonProperty("serde_format")
+    private MessageFormat serdeFormat= MessageFormat.PLAINTEXT;
 
     @JsonProperty("auto_commit")
     private Boolean autoCommit = false;
@@ -130,6 +135,10 @@ public class TopicConfig {
 
     public void setMaxRetryAttempts(Integer maxRetryAttempts) {
         this.maxRetryAttempts = maxRetryAttempts;
+    }
+
+    public MessageFormat getSerdeFormat() {
+        return serdeFormat;
     }
 
     public Boolean getAutoCommit() {

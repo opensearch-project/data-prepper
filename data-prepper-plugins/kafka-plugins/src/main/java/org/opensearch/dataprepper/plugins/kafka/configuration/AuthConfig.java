@@ -76,9 +76,13 @@ public class AuthConfig {
         return insecure;
     }
 
+    /*
+     * Currently SSL config is not supported. Commenting this for future use
+     *
     @AssertTrue(message = "Only one of SSL or SASL auth config must be specified")
     public boolean hasSaslOrSslConfig() {
         return Stream.of(sslAuthConfig, saslAuthConfig).filter(n -> n!=null).count() == 1;
     }
+    */
 
 }
