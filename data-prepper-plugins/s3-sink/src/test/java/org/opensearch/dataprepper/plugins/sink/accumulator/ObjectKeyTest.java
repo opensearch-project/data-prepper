@@ -53,7 +53,7 @@ class ObjectKeyTest {
 
     @Test
     void test_objectFileName() {
-        
+
         when(objectKeyOptions.getNamePattern()).thenReturn("my-elb-%{yyyy-MM-dd'T'hh-mm-ss}");
         String objectFileName = ObjectKey.objectFileName(s3SinkConfig, null);
         Assertions.assertNotNull(objectFileName);
