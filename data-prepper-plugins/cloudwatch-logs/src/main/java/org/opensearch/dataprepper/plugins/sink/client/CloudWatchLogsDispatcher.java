@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.sink.client;
 
 import lombok.Builder;
 import org.opensearch.dataprepper.model.event.EventHandle;
-import org.opensearch.dataprepper.plugins.sink.packaging.ThreadTaskEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
@@ -16,13 +15,13 @@ import software.amazon.awssdk.services.cloudwatchlogs.model.CloudWatchLogsExcept
 import software.amazon.awssdk.services.cloudwatchlogs.model.InputLogEvent;
 import software.amazon.awssdk.services.cloudwatchlogs.model.PutLogEventsRequest;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-import static java.util.concurrent.Executors.newCachedThreadPool;
-
+@Builder
 public class CloudWatchLogsDispatcher {
     private static final long UPPER_RETRY_TIME_BOUND_MILLISECONDS = 5000;
     private static final float EXP_TIME_SCALE = 1.5F;
@@ -36,6 +35,7 @@ public class CloudWatchLogsDispatcher {
     private long backOffTimeBase;
     public CloudWatchLogsDispatcher(final CloudWatchLogsClient cloudWatchLogsClient,
                                     final CloudWatchLogsMetrics cloudWatchLogsMetrics,
+                                    Executor asyncExecutor,
                                     final String logGroup, final String logStream,
                                     final int retryCount, final long backOffTimeBase) {
         this.cloudWatchLogsClient = cloudWatchLogsClient;
@@ -45,15 +45,15 @@ public class CloudWatchLogsDispatcher {
         this.retryCount = retryCount;
         this.backOffTimeBase = backOffTimeBase;
 
-        asyncExecutor = newCachedThreadPool();
+        this.asyncExecutor = asyncExecutor;
     }
 
-    public List<InputLogEvent> prepareInputLogEvents(final ThreadTaskEvents eventData) {
+    public List<InputLogEvent> prepareInputLogEvents(final Collection<byte[]> eventMessageBytes) {
         List<InputLogEvent> logEventList = new ArrayList<>();
 
-        for (byte[] data: eventData.getEventMessages()) {
+        for (byte[] data : eventMessageBytes) {
             InputLogEvent tempLogEvent = InputLogEvent.builder()
-                    .message(new String(data))
+                    .message(new String(data, StandardCharsets.UTF_8))
                     .timestamp(System.currentTimeMillis())
                     .build();
             logEventList.add(tempLogEvent);
@@ -84,7 +84,7 @@ public class CloudWatchLogsDispatcher {
     }
 
     @Builder
-    private static class Uploader implements Runnable {
+    protected static class Uploader implements Runnable {
         private CloudWatchLogsClient cloudWatchLogsClient;
         private CloudWatchLogsMetrics cloudWatchLogsMetrics;
         private PutLogEventsRequest putLogEventsRequest;

@@ -14,6 +14,13 @@ import java.util.List;
  * 2. Transforms to Byte type.
  * 3. Returns a Byte type.
  */
+
+/*
+    TODO:
+     Need to add PriorityQueue for extracting timestamp, this will need the timestamp and the actual string message itself.
+     Can refactor the buffer to contain
+ */
+
 public interface Buffer {
     /**
      * Size of buffer in events.
