@@ -7,6 +7,8 @@ dependencies {
     implementation project(path: ':data-prepper-api')
     implementation 'org.apache.avro:avro:1.11.1'
     implementation 'org.apache.parquet:parquet-common:1.12.3'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:apache-client'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.2'
     testImplementation 'org.json:json:20230227'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.2'
