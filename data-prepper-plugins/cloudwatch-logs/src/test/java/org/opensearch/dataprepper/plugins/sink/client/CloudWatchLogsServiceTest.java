@@ -165,4 +165,40 @@ public class CloudWatchLogsServiceTest {
 
         verify(buffer, atLeast(LARGE_THREAD_COUNT)).getBufferedData();
     }
+
+    @Test
+    void test_dispatcher_access_with_small_thread_count_test() throws InterruptedException {
+        setUpSpyBuffer();
+        cloudWatchLogsService = getSampleService();
+        testThreadsProcessingLogsWithNormalSample(SMALL_THREAD_COUNT);
+
+        verify(testDispatcher, atLeast(SMALL_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
+    }
+
+    @Test
+    void test_dispatcher_access_with_medium_thread_count_test() throws InterruptedException {
+        setUpSpyBuffer();
+        cloudWatchLogsService = getSampleService();
+        testThreadsProcessingLogsWithNormalSample(MEDIUM_THREAD_COUNT);
+
+        verify(testDispatcher, atLeast(MEDIUM_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
+    }
+
+    @Test
+    void test_dispatcher_access_with_high_thread_count_test() throws InterruptedException {
+        setUpSpyBuffer();
+        cloudWatchLogsService = getSampleService();
+        testThreadsProcessingLogsWithNormalSample(HIGH_THREAD_COUNT);
+
+        verify(testDispatcher, atLeast(HIGH_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
+    }
+
+    @Test
+    void test_dispatcher_access_with_large_thread_count_test() throws InterruptedException {
+        setUpSpyBuffer();
+        cloudWatchLogsService = getSampleService();
+        testThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
+
+        verify(testDispatcher, atLeast(LARGE_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
+    }
 }

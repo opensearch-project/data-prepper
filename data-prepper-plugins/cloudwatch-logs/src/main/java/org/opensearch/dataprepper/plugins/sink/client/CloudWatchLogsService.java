@@ -57,7 +57,6 @@ public class CloudWatchLogsService {
      * @param logs - Collection of Record events which hold log data.
      */
     public void processLogEvents(final Collection<Record<Event>> logs) {
-        try {
             sinkStopWatch.startIfNotRunning();
             for (Record<Event> log : logs) {
                 String logString = log.getData().toJsonString();
@@ -71,24 +70,25 @@ public class CloudWatchLogsService {
                 long time = sinkStopWatch.getStopWatchTimeSeconds();
 
                 processLock.lock();
-                int bufferSize = buffer.getBufferSize();
-                int bufferEventCount = buffer.getEventCount();
-                int bufferEventCountWithEvent = bufferEventCount + 1;
-                int bufferSizeWithAddedEvent = bufferSize + logLength;
+                try {
+                    int bufferSize = buffer.getBufferSize();
+                    int bufferEventCount = buffer.getEventCount();
+                    int bufferEventCountWithEvent = bufferEventCount + 1;
+                    int bufferSizeWithAddedEvent = bufferSize + logLength;
 
-                if ((cloudWatchLogsLimits.isGreaterThanLimitReached(time, bufferSizeWithAddedEvent, bufferEventCountWithEvent) && (bufferEventCount > 0))) {
-                    stageLogEvents();
-                    addToBuffer(log, logString);
-                } else if (cloudWatchLogsLimits.isEqualToLimitReached(bufferSizeWithAddedEvent, bufferEventCountWithEvent)) {
-                    addToBuffer(log, logString);
-                    stageLogEvents();
-                } else {
-                    addToBuffer(log, logString);
+                    if ((cloudWatchLogsLimits.isGreaterThanLimitReached(time, bufferSizeWithAddedEvent, bufferEventCountWithEvent) && (bufferEventCount > 0))) {
+                        stageLogEvents();
+                        addToBuffer(log, logString);
+                    } else if (cloudWatchLogsLimits.isEqualToLimitReached(bufferSizeWithAddedEvent, bufferEventCountWithEvent)) {
+                        addToBuffer(log, logString);
+                        stageLogEvents();
+                    } else {
+                        addToBuffer(log, logString);
+                    }
+                } finally {
+                    processLock.unlock();
                 }
             }
-        } finally {
-            processLock.unlock();
-        }
     }
 
     private void stageLogEvents() {
