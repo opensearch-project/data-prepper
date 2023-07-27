@@ -137,7 +137,7 @@ public class ParquetOutputCodecTest {
         config.setSchemaRegistryUrl(null);
         ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
         assertThrows(IOException.class,()->
-                parquetOutputCodec.buildSchemaAndKey());
+                parquetOutputCodec.buildSchemaAndKey(null, null));
     }
 
     @Test

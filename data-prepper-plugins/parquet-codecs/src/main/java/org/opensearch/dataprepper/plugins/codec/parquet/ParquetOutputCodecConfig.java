@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.codec.parquet;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,13 +20,23 @@ public class ParquetOutputCodecConfig {
     @JsonProperty("schema")
     private String schema;
 
+    @Valid
+    @Size(max = 0, message = "Schema from file is not supported.")
     @JsonProperty("schema_file_location")
     private String fileLocation;
 
+    @Valid
+    @Size(max = 0, message = "Schema from file is not supported.")
     @JsonProperty("schema_bucket")
     private String schemaBucket;
+
+    @Valid
+    @Size(max = 0, message = "Schema from file is not supported.")
     @JsonProperty("file_key")
     private String fileKey;
+
+    @Valid
+    @Size(max = 0, message = "Schema from file is not supported.")
     @JsonProperty("schema_region")
     private String schemaRegion;
 
@@ -46,6 +57,8 @@ public class ParquetOutputCodecConfig {
     @JsonProperty("exclude_keys")
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
+    @Valid
+    @Size(max = 0, message = "Schema from Schema Registry is not supported.")
     @JsonProperty("schema_registry_url")
     private String schemaRegistryUrl;
 
@@ -128,6 +141,9 @@ public class ParquetOutputCodecConfig {
 
     public void setSchemaRegistryUrl(String schemaRegistryUrl) {
         this.schemaRegistryUrl = schemaRegistryUrl;
+    }
+    public void setExcludeKeys(List<String> excludeKeys) {
+        this.excludeKeys = excludeKeys;
     }
 }
 
