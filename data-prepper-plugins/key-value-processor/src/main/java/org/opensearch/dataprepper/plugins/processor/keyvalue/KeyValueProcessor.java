@@ -104,19 +104,19 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
-
-        validateKeySets(includeKeysSet, excludeKeysSet);
-
-        // default key check here
         defaultKeysMap.putAll(keyValueProcessorConfig.getDefaultKeys());
-        defaultKeysSet = defaultKeysMap.keySet();
+        if (!defaultKeysMap.isEmpty()) {
+            defaultKeysSet.addAll(defaultKeysMap.keySet());
+        }
 
-        // if default and exclude keys have overlap, throw error - "cannot exclude a default key"
+        validateKeySets(includeKeysSet, excludeKeysSet, defaultKeysSet);
+
+        final Set<String> includeDefaultCheckSet = new HashSet<String>(includeKeysSet);
+        includeDefaultCheckSet.retainAll(defaultKeysSet);
+        if (!includeDefaultCheckSet.isEmpty()) {
+            includeKeysSet.removeAll(defaultKeysSet);
+        }
         
-
-        // if include and default keys have overlap, make sure it is added only once
-        
-
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
         }
@@ -167,11 +167,18 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return true;
     }
 
-    private void validateKeySets(final Set<String> includeSet, final Set<String> excludeSet) {
-        Set<String> intersectionSet = new HashSet<String>(includeSet);
-        intersectionSet.retainAll(excludeSet);
-        if (!intersectionSet.isEmpty()) {
+    private void validateKeySets(final Set<String> includeSet, final Set<String> excludeSet, final Set<String> defaultSet) {
+        final Set<String> includeIntersectionSet = new HashSet<String>(includeSet);
+        final Set<String> defaultIntersectionSet = new HashSet<String>(defaultSet);
+
+        includeIntersectionSet.retainAll(excludeSet);
+        if (!includeIntersectionSet.isEmpty()) {
             throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
+        }
+
+        defaultIntersectionSet.retainAll(excludeSet);
+        if (!defaultIntersectionSet.isEmpty()) {
+            throw new IllegalArgumentException("Cannot exclude a default key!", null);
         }
     }
 
@@ -184,7 +191,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
-            // parsedMap.putAll(defaultKeysMap); (add this when default check is impl)
+            parsedMap.putAll(defaultKeysMap);
 
             for(final String group : groups) {
                 final String[] terms = keyValueDelimiterPattern.split(group, 2);
@@ -198,6 +205,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
                 if (!excludeKeysSet.isEmpty() && excludeKeysSet.contains(key)) {
                     LOG.debug(String.format("Key is being excluded: '%s'", key));
+                    continue;
+                }
+
+                if (!defaultKeysSet.isEmpty() && defaultKeysSet.contains(key)) {
+                    LOG.debug(String.format("Skipping already included default key: '%s'", key));
                     continue;
                 }
 

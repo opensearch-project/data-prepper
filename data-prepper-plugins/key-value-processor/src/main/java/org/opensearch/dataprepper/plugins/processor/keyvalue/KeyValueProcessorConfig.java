@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class KeyValueProcessorConfig {
     static final String DEFAULT_SOURCE = "message";
@@ -18,7 +19,7 @@ public class KeyValueProcessorConfig {
     public static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
     static final List<String> DEFAULT_INCLUDE_KEYS = new ArrayList<>();
     static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
-    static final Map<String, Object> DEFAULT_DEFAULT_KEYS = Collections.emptyMap();
+    static final Map<String, Object> DEFAULT_DEFAULT_KEYS = Map.of();
     public static final String DEFAULT_VALUE_SPLIT_CHARACTERS = "=";
     static final Object DEFAULT_NON_MATCH_VALUE = null;
     static final String DEFAULT_PREFIX = "";
@@ -52,7 +53,7 @@ public class KeyValueProcessorConfig {
 
     @JsonProperty("default_keys")
     @NotNull
-    private Map<String, String> defaultKeys = DEFAULT_DEFAULT_KEYS;
+    private Map<String, Object> defaultKeys = DEFAULT_DEFAULT_KEYS;
 
     @JsonProperty("key_value_delimiter_regex")
     private String keyValueDelimiterRegex;
@@ -114,7 +115,7 @@ public class KeyValueProcessorConfig {
         return excludeKeys;
     }
 
-    public Map<String, String> getDefaultKeys() {
+    public Map<String, Object> getDefaultKeys() {
         return defaultKeys;
     }
 

@@ -58,6 +58,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(defaultConfig.getFieldSplitCharacters());
         lenient().when(mockConfig.getIncludeKeys()).thenReturn(defaultConfig.getIncludeKeys());
         lenient().when(mockConfig.getExcludeKeys()).thenReturn(defaultConfig.getExcludeKeys());
+        lenient().when(mockConfig.getDefaultKeys()).thenReturn(defaultConfig.getDefaultKeys());
         lenient().when(mockConfig.getKeyValueDelimiterRegex()).thenReturn(defaultConfig.getKeyValueDelimiterRegex());
         lenient().when(mockConfig.getValueSplitCharacters()).thenReturn(defaultConfig.getValueSplitCharacters());
         lenient().when(mockConfig.getNonMatchValue()).thenReturn(defaultConfig.getNonMatchValue());
@@ -313,6 +314,60 @@ public class KeyValueProcessorTests {
         when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
 
         assertThrows(IllegalArgumentException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+    }
+
+    @Test
+    void testDefaultKeysKeyValueProcessor() {
+        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
+        when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
+
+        final Record<Event> record = getMessage("key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "dKey", "dValue");
+    }
+
+    @Test
+    void testDefaultKeysAlreadyInMessageKeyValueProcessor() {
+        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
+        when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
+
+        final Record<Event> record = getMessage("key1=value1&dKey=dValue");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "dKey", "dValue");
+    }
+
+    @Test
+    void testDefaultExcludeKeysOverlapKeyValueProcessor() {
+        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
+        final List<String> excludeKeys = List.of("dKey");
+        when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
+        when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
+
+        assertThrows(IllegalArgumentException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+    }
+
+    @Test
+    void testDefaultIncludeKeysOverlapKeyValueProcessor() {
+        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
+        final List<String> includeKeys = List.of("dKey");
+        when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+
+        final Record<Event> record = getMessage("key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "dKey", "dValue");
     }
 
     @Test

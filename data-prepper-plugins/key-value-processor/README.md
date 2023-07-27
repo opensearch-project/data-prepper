@@ -47,7 +47,7 @@ When run, the processor will parse the message into the following output:
   * Example: `exclude_keys` is `["key2"]`. `key1=value1&key2=value2` will parse into `{"key1": "value1"}`
 * `default_keys` - A hash specifying the default keys and their values which should be added to the event in case these keys do not exist in the source field being parsed.
   * Default: `{}`
-  * Example: `default_keys` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"defaultkey": "defaultvalue", "key1": "value1"}`
+  * Example: `default_keys` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"key1": "value1", "defaultkey": "defaultvalue"}`
 * `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default.
   * Note: This cannot be defined at the same time as `value_split_characters`
