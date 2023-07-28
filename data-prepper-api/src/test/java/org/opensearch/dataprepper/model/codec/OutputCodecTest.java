@@ -30,7 +30,7 @@ public class OutputCodecTest {
     public void testWriteMetrics() throws JsonProcessingException {
         OutputCodec outputCodec = new OutputCodec() {
             @Override
-            public void start(OutputStream outputStream) throws IOException {
+            public void start(OutputStream outputStream, Event event, String tagsTargetKey) throws IOException {
             }
 
             @Override

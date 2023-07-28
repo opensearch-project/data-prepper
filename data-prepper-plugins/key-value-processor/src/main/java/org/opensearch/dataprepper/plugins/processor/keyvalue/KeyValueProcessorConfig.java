@@ -17,6 +17,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_DESTINATION = "parsed_message";
     public static final String DEFAULT_FIELD_SPLIT_CHARACTERS = "&";
     static final List<String> DEFAULT_INCLUDE_KEYS = new ArrayList<>();
+    static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
     public static final String DEFAULT_VALUE_SPLIT_CHARACTERS = "=";
     static final Object DEFAULT_NON_MATCH_VALUE = null;
     static final String DEFAULT_PREFIX = "";
@@ -43,6 +44,10 @@ public class KeyValueProcessorConfig {
     @JsonProperty("include_keys")
     @NotNull
     private List<String> includeKeys = DEFAULT_INCLUDE_KEYS;
+
+    @JsonProperty("exclude_keys")
+    @NotNull
+    private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @JsonProperty("key_value_delimiter_regex")
     private String keyValueDelimiterRegex;
@@ -98,6 +103,10 @@ public class KeyValueProcessorConfig {
 
     public List<String> getIncludeKeys() {
         return includeKeys;
+    }
+
+    public List<String> getExcludeKeys() {
+        return excludeKeys;
     }
 
     public String getKeyValueDelimiterRegex() {

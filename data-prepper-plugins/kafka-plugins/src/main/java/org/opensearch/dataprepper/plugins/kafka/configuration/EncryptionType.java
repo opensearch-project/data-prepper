@@ -12,8 +12,8 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public enum EncryptionType {
-    SSL("ssl"),
-    PLAINTEXT("plaintext");
+    NONE("none"),
+    SSL("ssl");
 
     private static final Map<String, EncryptionType> OPTIONS_MAP = Arrays.stream(EncryptionType.values())
             .collect(Collectors.toMap(
