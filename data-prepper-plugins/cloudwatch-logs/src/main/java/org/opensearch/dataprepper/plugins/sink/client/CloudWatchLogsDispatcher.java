@@ -125,7 +125,7 @@ public class CloudWatchLogsDispatcher {
                     }
                 }
             } catch (InterruptedException e) {
-                LOG.warn("Got interrupted while waiting!");
+                LOG.warn("Uploader Thread got interrupted during retransmission with exception: {}", e.getMessage());
                 //TODO: Push to DLQ.
                 Thread.currentThread().interrupt();
             }
