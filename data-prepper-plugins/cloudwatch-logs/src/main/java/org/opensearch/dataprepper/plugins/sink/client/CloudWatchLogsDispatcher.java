@@ -50,8 +50,8 @@ public class CloudWatchLogsDispatcher {
 
     /**
      * Will read in a collection of log messages in byte form and transform them into a collection of InputLogEvents.
-     * @param eventMessageBytes
-     * @return
+     * @param eventMessageBytes Collection of byte arrays holding event messages.
+     * @return List of InputLogEvents holding the wrapped event messages.
      */
     public List<InputLogEvent> prepareInputLogEvents(final Collection<byte[]> eventMessageBytes) {
         List<InputLogEvent> logEventList = new ArrayList<>();

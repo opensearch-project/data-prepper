@@ -56,7 +56,7 @@ public class CloudWatchLogsService {
 
     /**
      * Function handles the packaging of events into log events before sending a bulk request to CloudWatchLogs.
-     * @param logs Collection of Record events which hold {@link Record<Event>}
+     * @param logs Collection of Record events.
      */
     public void processLogEvents(final Collection<Record<Event>> logs) {
             sinkStopWatch.startIfNotRunning();
