@@ -16,7 +16,7 @@ import java.util.Map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-public class ThresholdConfigTest {
+class ThresholdConfigTest {
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -25,20 +25,20 @@ public class ThresholdConfigTest {
     }
 
     @Test
-    void check_default_values() {
+    void GIVEN_new_threshold_config_SHOULD_return_valid_default_values() {
         final ThresholdConfig thresholdConfig = new ThresholdConfig();
 
         assertThat(thresholdConfig.getBackOffTime(), equalTo(ThresholdConfig.DEFAULT_BACKOFF_TIME));
         assertThat(thresholdConfig.getRetryCount(), equalTo(ThresholdConfig.DEFAULT_RETRY_COUNT));
         assertThat(thresholdConfig.getBatchSize(), equalTo(ThresholdConfig.DEFAULT_BATCH_SIZE));
-        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ThresholdConfig.DEFAULT_EVENT_SIZE * ThresholdConfig.CONVERT_TO_BYTES_FROM_KB));
+        assertThat(thresholdConfig.getMaxEventSizeBytes(), equalTo(ThresholdConfig.DEFAULT_EVENT_SIZE * ThresholdConfig.BYTE_TO_KB_FACTOR));
         assertThat(thresholdConfig.getMaxRequestSize(), equalTo(ThresholdConfig.DEFAULT_SIZE_OF_REQUEST));
         assertThat(thresholdConfig.getLogSendInterval(), equalTo(ThresholdConfig.DEFAULT_LOG_SEND_INTERVAL_TIME));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 10000})
-    void check_valid_batch_size(final int batchSize) {
+    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_batch_size(final int batchSize) {
         final Map<String, Integer> jsonMap = Map.of("batch_size", batchSize);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
         assertThat(thresholdConfigTest.getBatchSize(), equalTo(batchSize));
@@ -46,15 +46,15 @@ public class ThresholdConfigTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 256})
-    void check_valid_max_event_size(final int max_event_size) {
+    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_event_size(final int max_event_size) {
         final Map<String, Integer> jsonMap = Map.of("max_event_size", max_event_size);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
-        assertThat(thresholdConfigTest.getMaxEventSizeBytes(), equalTo(max_event_size * ThresholdConfig.CONVERT_TO_BYTES_FROM_KB));
+        assertThat(thresholdConfigTest.getMaxEventSizeBytes(), equalTo(max_event_size * ThresholdConfig.BYTE_TO_KB_FACTOR));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 100, 1048576})
-    void check_valid_request_size(final int max_batch_request_size) {
+    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_request_size(final int max_batch_request_size) {
         final Map<String, Integer> jsonMap = Map.of("max_request_size", max_batch_request_size);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
         assertThat(thresholdConfigTest.getMaxRequestSize(), equalTo(max_batch_request_size));
@@ -62,7 +62,7 @@ public class ThresholdConfigTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 10, 15})
-    void check_valid_retry_count(final int retry_count) {
+    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_retry_count(final int retry_count) {
         final Map<String, Integer> jsonMap = Map.of("retry_count", retry_count);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
         assertThat(thresholdConfigTest.getRetryCount(), equalTo(retry_count));
@@ -70,7 +70,7 @@ public class ThresholdConfigTest {
 
     @ParameterizedTest
     @ValueSource(ints = {5, 10, 300})
-    void check_valid_log_send_interval(final int log_send_interval) {
+    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_max_log_send_interval(final int log_send_interval) {
         final Map<String, Integer> jsonMap = Map.of("log_send_interval", log_send_interval);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
         assertThat(thresholdConfigTest.getLogSendInterval(), equalTo(log_send_interval));
@@ -78,7 +78,7 @@ public class ThresholdConfigTest {
 
     @ParameterizedTest
     @ValueSource(ints = {0, 100, 5000})
-    void check_valid_back_off_time(final int back_off_time) {
+    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_back_off_time(final int back_off_time) {
         final Map<String, Integer> jsonMap = Map.of("back_off_time", back_off_time);
         final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
         assertThat(thresholdConfigTest.getBackOffTime(), equalTo(back_off_time));

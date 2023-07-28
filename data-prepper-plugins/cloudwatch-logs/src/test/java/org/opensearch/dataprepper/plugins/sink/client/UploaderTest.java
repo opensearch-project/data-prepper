@@ -20,13 +20,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UploaderTest {
-    private CloudWatchLogsClient cloudWatchLogsClient;
-    private  CloudWatchLogsMetrics cloudWatchLogsMetrics;
+    private CloudWatchLogsClient mockCloudWatchLogsClient;
+    private  CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
 
     @BeforeEach
     void setUp() {
-        cloudWatchLogsClient = mock(CloudWatchLogsClient.class);
-        cloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
+        mockCloudWatchLogsClient = mock(CloudWatchLogsClient.class);
+        mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
     }
 
     Collection<EventHandle> getTestEventHandles() {
@@ -45,8 +45,8 @@ class UploaderTest {
 
     CloudWatchLogsDispatcher.Uploader getUploader() {
         return CloudWatchLogsDispatcher.Uploader.builder()
-                .cloudWatchLogsClient(cloudWatchLogsClient)
-                .cloudWatchLogsMetrics(cloudWatchLogsMetrics)
+                .cloudWatchLogsClient(mockCloudWatchLogsClient)
+                .cloudWatchLogsMetrics(mockCloudWatchLogsMetrics)
                 .putLogEventsRequest(getMockPutLogEventsRequest())
                 .eventHandles(getTestEventHandles())
                 .retryCount(ThresholdConfig.DEFAULT_RETRY_COUNT)
@@ -55,39 +55,39 @@ class UploaderTest {
     }
 
     void establishFailingClientWithCloudWatchLogsExcept() {
-        when(cloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(CloudWatchLogsException.class);
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(CloudWatchLogsException.class);
     }
 
     void establishFailingClientWithSdkClientExcept() {
-        when(cloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(SdkClientException.class);
+        when(mockCloudWatchLogsClient.putLogEvents(any(PutLogEventsRequest.class))).thenThrow(SdkClientException.class);
     }
 
     @Test
-    void check_successful_transmission_test() throws InterruptedException {
+    void GIVEN_valid_uploader_SHOULD_update_cloud_watch_logs_metrics() {
         CloudWatchLogsDispatcher.Uploader testUploader = getUploader();
         testUploader.run();
 
-        verify(cloudWatchLogsMetrics, atLeastOnce()).increaseRequestSuccessCounter(1);
-        verify(cloudWatchLogsMetrics, atLeastOnce()).increaseLogEventSuccessCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
+        verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseRequestSuccessCounter(1);
+        verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseLogEventSuccessCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
     }
 
     @Test
-    void check_unsuccesful_transmission_with_cloudwatchlogsexcept_test() throws InterruptedException {
+    void GIVEN_valid_uploader_WHEN_run_throws_cloud_watch_logs_exception_SHOULD_update_fail_counters() {
         establishFailingClientWithCloudWatchLogsExcept();
         CloudWatchLogsDispatcher.Uploader testUploader = getUploader();
         testUploader.run();
 
-        verify(cloudWatchLogsMetrics, times(ThresholdConfig.DEFAULT_RETRY_COUNT)).increaseRequestFailCounter(1);
-        verify(cloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
+        verify(mockCloudWatchLogsMetrics, times(ThresholdConfig.DEFAULT_RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
     }
 
     @Test
-    void check_unsuccesful_transmission_with_sdkexcept_test() {
+    void GIVEN_valid_uploader_WHEN_run_throws_sdk_client_except_SHOULD_update_fail_counters() {
         establishFailingClientWithSdkClientExcept();
         CloudWatchLogsDispatcher.Uploader testUploader = getUploader();
         testUploader.run();
 
-        verify(cloudWatchLogsMetrics, times(ThresholdConfig.DEFAULT_RETRY_COUNT)).increaseRequestFailCounter(1);
-        verify(cloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
+        verify(mockCloudWatchLogsMetrics, times(ThresholdConfig.DEFAULT_RETRY_COUNT)).increaseRequestFailCounter(1);
+        verify(mockCloudWatchLogsMetrics, atLeastOnce()).increaseLogEventFailCounter(ThresholdConfig.DEFAULT_BATCH_SIZE);
     }
 }

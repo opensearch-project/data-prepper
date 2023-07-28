@@ -24,18 +24,18 @@ import static org.mockito.Mockito.verify;
 
 class CloudWatchLogsDispatcherTest {
     private CloudWatchLogsDispatcher cloudWatchLogsDispatcher;
-    private  CloudWatchLogsClient cloudWatchLogsClient;
-    private  CloudWatchLogsMetrics cloudWatchLogsMetrics;
-    private Executor asyncExecutor;
+    private  CloudWatchLogsClient mockCloudWatchLogsClient;
+    private  CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
+    private Executor mockExecutor;
     private static final String LOG_GROUP = "testGroup";
     private static final String LOG_STREAM = "testStream";
     private static final String TEST_STRING = "testMessage";
 
     @BeforeEach
-    void setUp() throws InterruptedException {
-        cloudWatchLogsClient = mock(CloudWatchLogsClient.class);
-        cloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
-        asyncExecutor = mock(Executor.class);
+    void setUp() {
+        mockCloudWatchLogsClient = mock(CloudWatchLogsClient.class);
+        mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
+        mockExecutor = mock(Executor.class);
     }
 
     Collection<byte[]> getSampleBufferedData() {
@@ -60,9 +60,10 @@ class CloudWatchLogsDispatcherTest {
     }
 
     CloudWatchLogsDispatcher getCloudWatchLogsDispatcher() {
-        return CloudWatchLogsDispatcher.builder().cloudWatchLogsClient(cloudWatchLogsClient)
-                .cloudWatchLogsMetrics(cloudWatchLogsMetrics)
-                .asyncExecutor(asyncExecutor)
+        return CloudWatchLogsDispatcher.builder()
+                .cloudWatchLogsClient(mockCloudWatchLogsClient)
+                .cloudWatchLogsMetrics(mockCloudWatchLogsMetrics)
+                .executor(mockExecutor)
                 .logGroup(LOG_GROUP)
                 .logStream(LOG_STREAM)
                 .retryCount(ThresholdConfig.DEFAULT_RETRY_COUNT)
@@ -71,11 +72,11 @@ class CloudWatchLogsDispatcherTest {
     }
 
     @Test
-    void check_execute_called_test() {
+    void GIVEN_valid_input_log_events_SHOULD_call_executor() {
         cloudWatchLogsDispatcher = getCloudWatchLogsDispatcher();
         List<InputLogEvent> inputLogEventList = cloudWatchLogsDispatcher.prepareInputLogEvents(getSampleBufferedData());
         cloudWatchLogsDispatcher.dispatchLogs(inputLogEventList, getSampleEventHandles());
 
-        verify(asyncExecutor, atMostOnce()).execute(any(CloudWatchLogsDispatcher.Uploader.class));
+        verify(mockExecutor, atMostOnce()).execute(any(CloudWatchLogsDispatcher.Uploader.class));
     }
 }

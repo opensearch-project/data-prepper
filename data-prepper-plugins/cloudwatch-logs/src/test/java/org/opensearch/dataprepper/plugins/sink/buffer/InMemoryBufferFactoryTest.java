@@ -11,7 +11,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.typeCompatibleWith;
 
-public class InMemoryBufferFactoryTest {
+class InMemoryBufferFactoryTest {
     @Test
     void check_buffer_not_null() {
         Buffer buffer = new InMemoryBufferFactory().getBuffer();

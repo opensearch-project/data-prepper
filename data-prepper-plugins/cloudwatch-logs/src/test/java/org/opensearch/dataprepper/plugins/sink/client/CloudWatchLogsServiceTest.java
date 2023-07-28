@@ -30,38 +30,35 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 
-public class CloudWatchLogsServiceTest {
-    private static int SMALL_THREAD_COUNT = 50;
-    private static int MEDIUM_THREAD_COUNT = 100;
-    private static int HIGH_THREAD_COUNT = 500;
-    private static int LARGE_THREAD_COUNT = 1000;
+class CloudWatchLogsServiceTest {
+    private static final int LARGE_THREAD_COUNT = 1000;
     private CloudWatchLogsClient mockClient;
     private CloudWatchLogsMetrics mockMetrics;
     private CloudWatchLogsService cloudWatchLogsService;
-    private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
+    private CloudWatchLogsSinkConfig mockCloudWatchLogsSinkConfig;
     private ThresholdConfig thresholdConfig;
     private CloudWatchLogsLimits cloudWatchLogsLimits;
     private InMemoryBufferFactory inMemoryBufferFactory;
     private Buffer buffer;
-    private CloudWatchLogsDispatcher testDispatcher;
+    private CloudWatchLogsDispatcher mockDispatcher;
 
     @BeforeEach
     void setUp() {
-        cloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
+        mockCloudWatchLogsSinkConfig = mock(CloudWatchLogsSinkConfig.class);
 
-        thresholdConfig = new ThresholdConfig(); //Class can stay as is.
+        thresholdConfig = new ThresholdConfig();
         cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSizeBytes(),
                 thresholdConfig.getMaxRequestSize(), thresholdConfig.getLogSendInterval());
 
         mockClient = mock(CloudWatchLogsClient.class);
         mockMetrics = mock(CloudWatchLogsMetrics.class);
         inMemoryBufferFactory = new InMemoryBufferFactory();
-        testDispatcher = mock(CloudWatchLogsDispatcher.class);
+        mockDispatcher = mock(CloudWatchLogsDispatcher.class);
         cloudWatchLogsService = new CloudWatchLogsService(buffer,
-                cloudWatchLogsLimits, testDispatcher);
+                cloudWatchLogsLimits, mockDispatcher);
     }
 
-    Collection<Record<Event>> getSampleRecordsLess() {
+    Collection<Record<Event>> getSampleRecordsCollectionSmall() {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
             JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage");
@@ -73,10 +70,34 @@ public class CloudWatchLogsServiceTest {
         return returnCollection;
     }
 
-    Collection<Record<Event>> getSampleRecords() {
+    Collection<Record<Event>> getSampleRecordsCollection() {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
             JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage");
+            final EventHandle mockEventHandle = mock(EventHandle.class);
+            mockJacksonEvent.setEventHandle(mockEventHandle);
+            returnCollection.add(new Record<>(mockJacksonEvent));
+        }
+
+        return returnCollection;
+    }
+
+    Collection<Record<Event>> getSampleRecordsOfLargerSize() {
+        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
+        for (int i = 0; i < thresholdConfig.getBatchSize() * 2; i++) {
+            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("a".repeat((ThresholdConfig.DEFAULT_SIZE_OF_REQUEST/24)));
+            final EventHandle mockEventHandle = mock(EventHandle.class);
+            mockJacksonEvent.setEventHandle(mockEventHandle);
+            returnCollection.add(new Record<>(mockJacksonEvent));
+        }
+
+        return returnCollection;
+    }
+
+    Collection<Record<Event>> getSampleRecordsOfLimitSize() {
+        final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
+        for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
+            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage".repeat(ThresholdConfig.DEFAULT_EVENT_SIZE * ThresholdConfig.BYTE_TO_KB_FACTOR));
             final EventHandle mockEventHandle = mock(EventHandle.class);
             mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
@@ -94,29 +115,45 @@ public class CloudWatchLogsServiceTest {
     }
 
     CloudWatchLogsService getSampleService() {
-        return new CloudWatchLogsService(buffer, cloudWatchLogsLimits, testDispatcher);
+        return new CloudWatchLogsService(buffer, cloudWatchLogsLimits, mockDispatcher);
     }
 
     @Test
-    void check_dispatcher_run_was_not_called() {
+    void SHOULD_not_call_dispatcher_WHEN_process_log_events_called_with_small_collection() {
         setUpRealBuffer();
         cloudWatchLogsService = getSampleService();
-        cloudWatchLogsService.processLogEvents(getSampleRecordsLess());
-        verify(testDispatcher, never()).dispatchLogs(any(List.class), any(Collection.class));
+        cloudWatchLogsService.processLogEvents(getSampleRecordsCollectionSmall());
+        verify(mockDispatcher, never()).dispatchLogs(any(List.class), any(Collection.class));
     }
 
     @Test
-    void check_dispatcher_run_was_called_test() throws InterruptedException {
+    void SHOULD_call_dispatcher_WHEN_process_log_events_called_with_limit_sized_collection() {
         setUpRealBuffer();
         cloudWatchLogsService = getSampleService();
-        cloudWatchLogsService.processLogEvents(getSampleRecords());
-        verify(testDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(Collection.class));
+        cloudWatchLogsService.processLogEvents(getSampleRecordsCollection());
+        verify(mockDispatcher, atLeast(1)).dispatchLogs(any(List.class), any(Collection.class));
+    }
+
+    @Test
+    void SHOULD_not_call_buffer_WHEN_process_log_events_called_with_limit_sized_records() {
+        setUpSpyBuffer();
+        cloudWatchLogsService = getSampleService();
+        cloudWatchLogsService.processLogEvents(getSampleRecordsOfLimitSize());
+        verify(buffer, never()).writeEvent(any(byte[].class));
+    }
+    
+    @Test
+    void SHOULD_call_buffer_WHEN_process_log_events_called_with_larger_sized_records() {
+        setUpSpyBuffer();
+        cloudWatchLogsService = getSampleService();
+        cloudWatchLogsService.processLogEvents(getSampleRecordsOfLargerSize());
+        verify(buffer, atLeast(1)).writeEvent(any(byte[].class));
     }
 
     //Multithreaded tests:
-    void testThreadsProcessingLogsWithNormalSample(final int numberOfThreads) throws InterruptedException {
+    void setUpThreadsProcessingLogsWithNormalSample(final int numberOfThreads) throws InterruptedException {
         Thread[] threads = new Thread[numberOfThreads];
-        Collection<Record<Event>> sampleEvents = getSampleRecords();
+        Collection<Record<Event>> sampleEvents = getSampleRecordsCollection();
 
         for (int i = 0; i < numberOfThreads; i++) {
             threads[i] = new Thread(() -> {
@@ -131,74 +168,20 @@ public class CloudWatchLogsServiceTest {
     }
 
     @Test
-    void test_buffer_access_with_small_thread_count_test() throws InterruptedException {
+    void GIVEN_large_thread_count_WHEN_processing_log_events_THEN_buffer_should_be_called_large_thread_count_times() throws InterruptedException {
         setUpSpyBuffer();
         cloudWatchLogsService = getSampleService();
-        testThreadsProcessingLogsWithNormalSample(SMALL_THREAD_COUNT);
-
-        verify(buffer, atLeast(SMALL_THREAD_COUNT)).getBufferedData();
-    }
-
-    @Test
-    void test_buffer_access_with_medium_thread_count_test() throws InterruptedException {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        testThreadsProcessingLogsWithNormalSample(MEDIUM_THREAD_COUNT);
-
-        verify(buffer, atLeast(MEDIUM_THREAD_COUNT)).getBufferedData();
-    }
-
-    @Test
-    void test_buffer_access_with_high_thread_count_test() throws InterruptedException {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        testThreadsProcessingLogsWithNormalSample(HIGH_THREAD_COUNT);
-
-        verify(buffer, atLeast(HIGH_THREAD_COUNT)).getBufferedData();
-    }
-
-    @Test
-    void test_buffer_access_with_large_thread_count_test() throws InterruptedException {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        testThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
+        setUpThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
 
         verify(buffer, atLeast(LARGE_THREAD_COUNT)).getBufferedData();
     }
 
     @Test
-    void test_dispatcher_access_with_small_thread_count_test() throws InterruptedException {
+    void GIVEN_large_thread_count_WHEN_processing_log_events_THEN_dispatcher_should_be_called_large_thread_count_times() throws InterruptedException {
         setUpSpyBuffer();
         cloudWatchLogsService = getSampleService();
-        testThreadsProcessingLogsWithNormalSample(SMALL_THREAD_COUNT);
+        setUpThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
 
-        verify(testDispatcher, atLeast(SMALL_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
-    }
-
-    @Test
-    void test_dispatcher_access_with_medium_thread_count_test() throws InterruptedException {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        testThreadsProcessingLogsWithNormalSample(MEDIUM_THREAD_COUNT);
-
-        verify(testDispatcher, atLeast(MEDIUM_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
-    }
-
-    @Test
-    void test_dispatcher_access_with_high_thread_count_test() throws InterruptedException {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        testThreadsProcessingLogsWithNormalSample(HIGH_THREAD_COUNT);
-
-        verify(testDispatcher, atLeast(HIGH_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
-    }
-
-    @Test
-    void test_dispatcher_access_with_large_thread_count_test() throws InterruptedException {
-        setUpSpyBuffer();
-        cloudWatchLogsService = getSampleService();
-        testThreadsProcessingLogsWithNormalSample(LARGE_THREAD_COUNT);
-
-        verify(testDispatcher, atLeast(LARGE_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
+        verify(mockDispatcher, atLeast(LARGE_THREAD_COUNT)).dispatchLogs(any(List.class), any(Collection.class));
     }
 }

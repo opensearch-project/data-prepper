@@ -24,21 +24,24 @@ public class SinkStopWatch {
         stopWatchLock = new ReentrantLock();
     }
 
+    /**
+     * Starts the stopwatch timer if not already running.
+     */
     public void startIfNotRunning() {
         stopWatchLock.lock();
         if (!stopWatch.isStarted()) {
-            startStopWatch();
+            start();
         }
         stopWatchLock.unlock();
     }
 
-    public void startStopWatch() {
+    private void start() {
         stopWatchLock.lock();
         stopWatch.start();
         stopWatchLock.unlock();
     }
 
-    public void stopAndResetStopWatch() {
+    public void stopAndReset() {
         stopWatchLock.lock();
         stopWatch.stop();
         stopWatch.reset();
@@ -46,7 +49,7 @@ public class SinkStopWatch {
         stopWatchLock.unlock();
     }
 
-    public long getStopWatchTimeSeconds() {
+    public long getElapsedTimeInSeconds() {
         stopWatchLock.lock();
         long time = stopWatch.getTime(TimeUnit.SECONDS);
         stopWatchLock.unlock();

@@ -24,10 +24,12 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * CloudWatchLogs Service encapsulates the log processing step.
  * It accomplishes this by:
- * 1. Reading in log events.
- * 2. Buffering data.
- * 3. Checking for limit conditions.
- * 4. Making PLE calls to CloudWatchLogs.
+ * <ol>
+ *   <li>Reading in log events.</li>
+ *   <li>Buffering data.</li>
+ *   <li>Checking for limit conditions.</li>
+ *   <li>Making PLE calls to CloudWatchLogs.</li>
+ * </ol>
  */
 public class CloudWatchLogsService {
     private static final Logger LOG = LoggerFactory.getLogger(CloudWatchLogsService.class);
@@ -43,7 +45,8 @@ public class CloudWatchLogsService {
 
         this.buffer = buffer;
         this.cloudWatchLogsLimits = cloudWatchLogsLimits;
-        this.bufferedEventHandles = new ArrayList<>();
+
+        bufferedEventHandles = new ArrayList<>();
 
         processLock = new ReentrantLock();
         sinkStopWatch = new SinkStopWatch();
@@ -53,8 +56,7 @@ public class CloudWatchLogsService {
 
     /**
      * Function handles the packaging of events into log events before sending a bulk request to CloudWatchLogs.
-     * Implements simple conditional buffer. (Sends once batch size, request size in bytes, or time limit is reached)
-     * @param logs - Collection of Record events which hold log data.
+     * @param logs Collection of Record events which hold {@link Record<Event>}
      */
     public void processLogEvents(final Collection<Record<Event>> logs) {
             sinkStopWatch.startIfNotRunning();
@@ -67,19 +69,19 @@ public class CloudWatchLogsService {
                     continue;
                 }
 
-                long time = sinkStopWatch.getStopWatchTimeSeconds();
+                long time = sinkStopWatch.getElapsedTimeInSeconds();
 
                 processLock.lock();
                 try {
                     int bufferSize = buffer.getBufferSize();
                     int bufferEventCount = buffer.getEventCount();
-                    int bufferEventCountWithEvent = bufferEventCount + 1;
-                    int bufferSizeWithAddedEvent = bufferSize + logLength;
+                    int newBufferEventCount = bufferEventCount + 1;
+                    int newBufferSizeCount = bufferSize + logLength;
 
-                    if ((cloudWatchLogsLimits.isGreaterThanLimitReached(time, bufferSizeWithAddedEvent, bufferEventCountWithEvent) && (bufferEventCount > 0))) {
+                    if ((cloudWatchLogsLimits.isGreaterThanLimitReached(time, newBufferSizeCount, newBufferEventCount) && (bufferEventCount > 0))) {
                         stageLogEvents();
                         addToBuffer(log, logString);
-                    } else if (cloudWatchLogsLimits.isEqualToLimitReached(bufferSizeWithAddedEvent, bufferEventCountWithEvent)) {
+                    } else if (cloudWatchLogsLimits.isEqualToLimitReached(newBufferSizeCount, newBufferEventCount)) {
                         addToBuffer(log, logString);
                         stageLogEvents();
                     } else {
@@ -92,7 +94,7 @@ public class CloudWatchLogsService {
     }
 
     private void stageLogEvents() {
-        sinkStopWatch.stopAndResetStopWatch();
+        sinkStopWatch.stopAndReset();
 
         List<InputLogEvent> inputLogEvents = cloudWatchLogsDispatcher.prepareInputLogEvents(buffer.getBufferedData());
         cloudWatchLogsDispatcher.dispatchLogs(inputLogEvents, bufferedEventHandles);
