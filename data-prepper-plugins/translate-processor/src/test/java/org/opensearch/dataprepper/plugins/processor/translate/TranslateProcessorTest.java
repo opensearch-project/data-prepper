@@ -70,7 +70,7 @@ class TranslateProcessorTest {
                 .when(mockConfig.getMappingsParameterConfigs())
                 .thenReturn(List.of(mappingsParameterConfig));
         lenient()
-                .when(mockConfig.getCombinedParameterConfigs())
+                .when(mockConfig.getCombinedMappingsConfigs())
                 .thenReturn(List.of(mappingsParameterConfig));
     }
 
@@ -544,6 +544,7 @@ class TranslateProcessorTest {
         private File testMappingsFile;
         private String filePath;
         TranslateProcessorConfig fileTranslateConfig;
+        FileParameterConfig fileParameterConfig;
 
         @BeforeEach
         void setup() throws IOException, NoSuchFieldException, IllegalAccessException {
@@ -557,7 +558,9 @@ class TranslateProcessorTest {
             Files.write(testMappingsFile.toPath(), fileContent.getBytes());
             filePath = testMappingsFile.getAbsolutePath();
             fileTranslateConfig = new TranslateProcessorConfig();
-            setField(TranslateProcessorConfig.class, fileTranslateConfig, "filePath", filePath);
+            fileParameterConfig = new FileParameterConfig();
+            setField(FileParameterConfig.class, fileParameterConfig, "fileName", filePath);
+            setField(TranslateProcessorConfig.class, fileTranslateConfig, "fileParameterConfig", fileParameterConfig);
         }
 
         @AfterEach
@@ -636,9 +639,9 @@ class TranslateProcessorTest {
         }
 
         void parseMappings(){
-            fileTranslateConfig.isFileValid();
-            fileTranslateConfig.getCombinedParameterConfigs().get(0).parseMappings();
-            when(mockConfig.getCombinedParameterConfigs()).thenReturn(fileTranslateConfig.getCombinedParameterConfigs());
+            fileTranslateConfig.hasMappings();
+            fileTranslateConfig.getCombinedMappingsConfigs().get(0).parseMappings();
+            when(mockConfig.getCombinedMappingsConfigs()).thenReturn(fileTranslateConfig.getCombinedMappingsConfigs());
         }
         MappingsParameterConfig createMappingConfig() throws NoSuchFieldException, IllegalAccessException {
             MappingsParameterConfig fileMappingConfig = new MappingsParameterConfig();
