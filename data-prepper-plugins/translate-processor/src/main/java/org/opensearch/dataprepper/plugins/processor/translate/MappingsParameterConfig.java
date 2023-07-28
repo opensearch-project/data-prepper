@@ -15,19 +15,12 @@ public class MappingsParameterConfig {
     @NotNull
     private Object source;
 
-    @JsonProperty("iterate_on")
-    private String iterateOn;
-
     @JsonProperty("targets")
     @Valid
     private List<TargetsParameterConfig> targetsParameterConfigs = new ArrayList<>();
 
     public Object getSource() {
         return source;
-    }
-
-    public String getIterateOn() {
-        return iterateOn;
     }
 
     public List<TargetsParameterConfig> getTargetsParameterConfigs() {
@@ -44,7 +37,7 @@ public class MappingsParameterConfig {
         return Objects.nonNull(targetsParameterConfigs) && !targetsParameterConfigs.isEmpty();
     }
 
-    @AssertTrue(message = "source field must be a string or list of strings")
+    @AssertTrue(message = "The \"source\" field should either be a string or a list of strings sharing the same parent path.")
     public boolean isSourceFieldValid() {
         if(Objects.isNull(source)){
             return true;
@@ -54,9 +47,27 @@ public class MappingsParameterConfig {
         }
         if (source instanceof List<?>) {
             List<?> sourceList = (List<?>) source;
-            return sourceList.stream().allMatch(sourceItem -> sourceItem instanceof String);
+            if(sourceList.isEmpty()){
+                return false;
+            }
+            return sourceList.stream().allMatch(sourceItem -> sourceItem instanceof String)
+                   && commonRootPath(sourceList);
         }
         return false;
+    }
+
+    public boolean commonRootPath(List<?> sourceList){
+        List<String> sources = (List<String>) sourceList;
+
+        JsonExtractor jsonExtractor = new JsonExtractor();
+        String firstSource = sources.get(0);
+        String parentPath = jsonExtractor.getParentPath(firstSource);
+        for (String source : sources) {
+            if (!jsonExtractor.getParentPath(source).equals(parentPath)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public void parseMappings(){

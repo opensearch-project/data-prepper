@@ -434,7 +434,7 @@ class TranslateProcessorTest {
         when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(
                 createMapping("key1", "mappedValue1"),
                 createMapping("key2", "mappedValue2")));
-        when(mappingsParameterConfig.getIterateOn()).thenReturn("collection");
+        when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField");
         targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, "No Match",
                                                             null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
@@ -460,7 +460,7 @@ class TranslateProcessorTest {
         when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(
                 createMapping("key1", "mappedValue1"),
                 createMapping("key2", "mappedValue2")));
-        when(mappingsParameterConfig.getIterateOn()).thenReturn("collection");
+        when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField");
         targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
 
@@ -483,7 +483,83 @@ class TranslateProcessorTest {
                 Map.of("sourceField", "key3"));
 
         when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("key4", "mappedValue1")));
-        when(mappingsParameterConfig.getIterateOn()).thenReturn("collection");
+        when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField");
+        targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, null, null);
+        when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
+
+        final TranslateProcessor processor = createObjectUnderTest();
+        final Record<Event> record = buildRecordWithEvent(testJson);
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(translatedRecords.get(0).getData().get("collection", ArrayList.class), is(outputJson));
+    }
+
+    @Test
+    void test_nested_multiple_levels() {
+        final Map<String, Object> testJson = Map.of("collection", List.of(
+                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1")))));
+        final List<Map<String, Object>> outputJson = List.of(
+                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1", "targetField","mappedValue1"))));
+
+        when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("key1", "mappedValue1")));
+        when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField1/sourceField2");
+        targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, null, null);
+        when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
+
+        final TranslateProcessor processor = createObjectUnderTest();
+        final Record<Event> record = buildRecordWithEvent(testJson);
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(translatedRecords.get(0).getData().get("collection", ArrayList.class), is(outputJson));
+    }
+
+    @Test
+    void test_no_path_found_with_wrong_field() {
+        final Map<String, Object> testJson = Map.of("collection", List.of(
+                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1")))));
+        final List<Map<String, Object>> outputJson = List.of(
+                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1"))));
+
+        when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("key1", "mappedValue1")));
+        when(mappingsParameterConfig.getSource()).thenReturn("collection/noSource/sourceField2");
+        targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, null, null);
+        when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
+
+        final TranslateProcessor processor = createObjectUnderTest();
+        final Record<Event> record = buildRecordWithEvent(testJson);
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(translatedRecords.get(0).getData().get("collection", ArrayList.class), is(outputJson));
+    }
+
+    @Test
+    void test_no_path_found_with_no_list() {
+        final Map<String, Object> testJson = Map.of("collection", List.of(
+                Map.of("sourceField1", "key1","sourceField2", "key1")));
+        final List<Map<String, Object>> outputJson = List.of(
+                Map.of("sourceField1", "key1","sourceField2", "key1"));
+
+        when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("key1", "mappedValue1")));
+        when(mappingsParameterConfig.getSource()).thenReturn("collection/sourceField1/sourceField2");
+        targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, null, null);
+        when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
+
+        final TranslateProcessor processor = createObjectUnderTest();
+        final Record<Event> record = buildRecordWithEvent(testJson);
+        final List<Record<Event>> translatedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
+
+        assertThat(translatedRecords.get(0).getData().get("collection", ArrayList.class), is(outputJson));
+    }
+
+    @Test
+    void test_path_with_whitespaces() {
+        final Map<String, Object> testJson = Map.of("collection", List.of(
+                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1")))));
+        final List<Map<String, Object>> outputJson = List.of(
+                Map.of("sourceField1", List.of(Map.of("sourceField2", "key1", "targetField","mappedValue1"))));
+
+        when(mockRegexConfig.getPatterns()).thenReturn(createMapEntries(createMapping("key1", "mappedValue1")));
+        when(mappingsParameterConfig.getSource()).thenReturn(" collection/sourceField1/sourceField2  ");
         targetsParameterConfig = new TargetsParameterConfig(null, "targetField", mockRegexConfig, null, null, null);
         when(mappingsParameterConfig.getTargetsParameterConfigs()).thenReturn(List.of(targetsParameterConfig));
 
@@ -545,6 +621,7 @@ class TranslateProcessorTest {
         assertTrue(translatedRecords.get(0).getData().containsKey("targetField"));
         assertThat(translatedRecords.get(0).getData().get("targetField", Double.class), is(20.3));
     }
+
     @Nested
     class FilePathTests {
         private File testMappingsFile;
