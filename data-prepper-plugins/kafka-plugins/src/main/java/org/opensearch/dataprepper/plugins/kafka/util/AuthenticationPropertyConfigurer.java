@@ -5,7 +5,6 @@
 package org.opensearch.dataprepper.plugins.kafka.util;
 
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
 
 import java.util.Base64;
@@ -130,11 +129,11 @@ public class AuthenticationPropertyConfigurer {
         return jass_config;
     }
 
-    public static void setSaslPlainProperties(final PlainConfig sslAuthConfig,
+    public static void setSaslPlainProperties(final PlainTextAuthConfig plainTextAuthConfig,
                                               final Properties properties) {
 
-        String username = sslAuthConfig.getUserName();
-        String password = sslAuthConfig.getPassword();
+        String username = plainTextAuthConfig.getUsername();
+        String password = plainTextAuthConfig.getPassword();
         properties.put(SASL_MECHANISM, PLAIN_MECHANISM);
         properties.put(SASL_JAS_CONFIG, String.format(PLAINTEXT_JAASCONFIG, username, password));
         properties.put(SASL_SECURITY_PROTOCOL, SASL_SSL_PROTOCOL);

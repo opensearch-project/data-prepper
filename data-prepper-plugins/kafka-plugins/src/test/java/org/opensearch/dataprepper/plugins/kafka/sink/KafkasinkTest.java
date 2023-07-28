@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -85,6 +86,9 @@ public class KafkasinkTest {
 
     Properties props;
 
+    @Mock
+    SinkContext sinkContext;
+
 
     @BeforeEach
     void setUp() throws Exception {
@@ -105,7 +109,8 @@ public class KafkasinkTest {
         executorService = mock(ExecutorService.class);
         when(pluginSetting.getPipelineName()).thenReturn("Kafka-sink");
         event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        kafkaSink = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, mock(ExpressionEvaluator.class));
+        when(sinkContext.getTagsTargetKey()).thenReturn("tag");
+        kafkaSink = new KafkaSink(pluginSetting, kafkaSinkConfig, pluginFactoryMock, mock(ExpressionEvaluator.class), sinkContext);
         spySink = spy(kafkaSink);
         executorsMockedStatic = mockStatic(Executors.class);
         props = new Properties();

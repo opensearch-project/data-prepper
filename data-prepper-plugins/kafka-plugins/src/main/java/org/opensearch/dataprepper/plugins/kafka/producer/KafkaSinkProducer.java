@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.kafka.producer;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.jsonschema.core.exceptions.ProcessingException;
@@ -22,6 +24,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
+import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -33,6 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.Map;
 
 
 /**
@@ -54,19 +58,25 @@ public class KafkaSinkProducer<T> {
 
     private final Collection<EventHandle> bufferedEventHandles;
 
-    final ExpressionEvaluator expressionEvaluator;
+    private final ExpressionEvaluator expressionEvaluator;
+
+    private final String tagTargetKey;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public KafkaSinkProducer(final Producer producer,
                              final KafkaSinkConfig kafkaSinkConfig,
                              final DLQSink dlqSink,
                              final CachedSchemaRegistryClient schemaRegistryClient,
-                             final ExpressionEvaluator expressionEvaluator) {
+                             final ExpressionEvaluator expressionEvaluator,
+                             final String tagTargetKey) {
         this.producer = producer;
         this.kafkaSinkConfig = kafkaSinkConfig;
         this.dlqSink = dlqSink;
         this.schemaRegistryClient = schemaRegistryClient;
         bufferedEventHandles = new LinkedList<>();
         this.expressionEvaluator = expressionEvaluator;
+        this.tagTargetKey = tagTargetKey;
 
     }
 
@@ -75,7 +85,7 @@ public class KafkaSinkProducer<T> {
             bufferedEventHandles.add(record.getData().getEventHandle());
         }
         TopicConfig topic = kafkaSinkConfig.getTopic();
-        final Event event = record.getData();
+        Event event = getEvent(record);
         final String key = event.formatString(kafkaSinkConfig.getPartitionKey(), expressionEvaluator);
         Object dataForDlq = event.toJsonString();
         LOG.info("Producing record " + dataForDlq);
@@ -92,7 +102,16 @@ public class KafkaSinkProducer<T> {
             releaseEventHandles(false);
         }
 
+    }
 
+    private Event getEvent(Record<Event> record) {
+        Event event = record.getData();
+        try {
+            event = addTagsToEvent(event, tagTargetKey);
+        } catch (JsonProcessingException e) {
+            LOG.error("error occured while processing tag target key");
+        }
+        return event;
     }
 
     private void publishPlaintextMessage(Record<Event> record, TopicConfig topic, String key, Object dataForDlq) {
@@ -152,7 +171,7 @@ public class KafkaSinkProducer<T> {
     }
 
 
-    private GenericRecord getGenericRecord(final Event event,final Schema schema) {
+    private GenericRecord getGenericRecord(final Event event, final Schema schema) {
         final GenericRecord record = new GenericData.Record(schema);
         for (final String key : event.toMap().keySet()) {
             record.put(key, event.toMap().get(key));
@@ -167,5 +186,11 @@ public class KafkaSinkProducer<T> {
         bufferedEventHandles.clear();
     }
 
+    private Event addTagsToEvent(Event event, String tagsTargetKey) throws JsonProcessingException {
+        String eventJsonString = event.jsonBuilder().includeTags(tagsTargetKey).toJsonString();
+        Map<String, Object> eventData = objectMapper.readValue(eventJsonString, new TypeReference<>() {
+        });
+        return JacksonLog.builder().withData(eventData).build();
+    }
 
 }

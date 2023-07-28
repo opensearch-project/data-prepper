@@ -50,7 +50,7 @@ log-pipeline :
         authentication:
           sasl:
             ssl_endpoint_identification_algorithm: https
-            plain_config:
+            plaintext:
               username: 2BRMRAPEMGRJ25AY
               password: C6vLQcD0bmTcDBkzvkUMxPFEsJB2XocSg8aJaLOZQT3PN28WrbR8a0+bRRjYyyei
 

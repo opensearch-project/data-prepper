@@ -69,7 +69,7 @@ public class AuthenticationPropertyConfigurerTest {
     public void testSetSaslSslProperties() throws IOException {
         Properties props = new Properties();
         kafkaSinkConfig = createKafkaSinkConfig("sample-pipelines-sink-ssl.yaml");
-        AuthenticationPropertyConfigurer.setSaslPlainProperties(kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlain(), props);
+        AuthenticationPropertyConfigurer.setSaslPlainProperties(kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig(), props);
         Assertions.assertEquals("PLAIN", props.getProperty("sasl.mechanism"));
     }
 }

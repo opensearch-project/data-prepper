@@ -30,9 +30,6 @@ public class AuthConfig {
         @JsonProperty("ssl_endpoint_identification_algorithm")
         private String sslEndpointAlgorithm;
 
-        @JsonProperty("plain_config")
-        private PlainConfig plain;
-
         public AwsIamAuthConfig getAwsIamAuthConfig() {
             return awsIamAuthConfig;
         }
@@ -45,16 +42,13 @@ public class AuthConfig {
             return oAuthConfig;
         }
 
-        public PlainConfig getPlain() {
-            return plain;
-        }
         public String getSslEndpointAlgorithm() {
             return sslEndpointAlgorithm;
         }
 
         @AssertTrue(message = "Only one of AwsIam or oAuth or PlainText auth config must be specified")
         public boolean hasOnlyOneConfig() {
-            return Stream.of(awsIamAuthConfig, plainTextAuthConfig, oAuthConfig, plain).filter(n -> n != null).count() == 1;
+            return Stream.of(awsIamAuthConfig, plainTextAuthConfig, oAuthConfig).filter(n -> n != null).count() == 1;
         }
 
     }

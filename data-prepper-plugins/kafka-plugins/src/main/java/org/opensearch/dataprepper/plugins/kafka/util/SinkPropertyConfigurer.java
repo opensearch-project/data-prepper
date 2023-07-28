@@ -120,17 +120,27 @@ public class SinkPropertyConfigurer {
             setPropertiesProviderByKafkaProducer(kafkaSinkConfig.getKafkaProducerProperties(), properties);
         }
 
+        setAuthProperties(kafkaSinkConfig, properties);
+
+        return properties;
+    }
+
+    private static void setAuthProperties(final KafkaSinkConfig kafkaSinkConfig, final Properties properties) {
         if (kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig() != null) {
-            AuthenticationPropertyConfigurer.setSaslPlainTextProperties(kafkaSinkConfig.getAuthConfig()
-                    .getSaslAuthConfig().getPlainTextAuthConfig(), properties);
+            final String sslEndpointAlgorithm = kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getSslEndpointAlgorithm();
+            if (null != sslEndpointAlgorithm && !sslEndpointAlgorithm.isEmpty() && sslEndpointAlgorithm.equalsIgnoreCase("https")) {
+                AuthenticationPropertyConfigurer.setSaslPlainProperties(kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig(), properties);
+            } else {
+                AuthenticationPropertyConfigurer.setSaslPlainTextProperties(kafkaSinkConfig.getAuthConfig()
+                        .getSaslAuthConfig().getPlainTextAuthConfig(), properties);
+            }
+
         } else if (kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getOAuthConfig() != null) {
             AuthenticationPropertyConfigurer.setOauthProperties(kafkaSinkConfig.getAuthConfig().getSaslAuthConfig()
                     .getOAuthConfig(), properties);
-        } else if (kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlain() != null) {
-            AuthenticationPropertyConfigurer.setSaslPlainProperties(kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlain(), properties);
         }
 
-        return properties;
+
     }
 
     private static void setCommonServerProperties(final Properties properties, final KafkaSinkConfig kafkaSinkConfig) {

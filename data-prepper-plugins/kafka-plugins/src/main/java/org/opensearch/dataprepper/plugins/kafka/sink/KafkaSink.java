@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.KafkaSinkProducer;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
@@ -57,15 +58,19 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
 
     private final ExpressionEvaluator expressionEvaluator;
 
+    private final SinkContext sinkContext;
+
 
     @DataPrepperPluginConstructor
     public KafkaSink(final PluginSetting pluginSetting, final KafkaSinkConfig kafkaSinkConfig, final PluginFactory pluginFactory,
-                     final ExpressionEvaluator expressionEvaluator) {
+                     final ExpressionEvaluator expressionEvaluator, final SinkContext sinkContext) {
         super(pluginSetting);
         this.pluginSetting = pluginSetting;
         this.kafkaSinkConfig = kafkaSinkConfig;
         this.pluginFactory = pluginFactory;
         this.expressionEvaluator = expressionEvaluator;
+        this.sinkContext = sinkContext;
+
 
     }
 
@@ -112,7 +117,8 @@ public class KafkaSink extends AbstractSink<Record<Event>> {
         Properties properties = SinkPropertyConfigurer.getProducerProperties(kafkaSinkConfig);
         properties = Objects.requireNonNull(properties);
         return new KafkaSinkProducer(new KafkaProducer<>(properties),
-                kafkaSinkConfig, new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting), getSchemaRegistryClient(), expressionEvaluator);
+                kafkaSinkConfig, new DLQSink(pluginFactory, kafkaSinkConfig, pluginSetting), getSchemaRegistryClient(), expressionEvaluator
+                , Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
     }
 
     private CachedSchemaRegistryClient getSchemaRegistryClient() {
