@@ -111,10 +111,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         validateKeySets(includeKeysSet, excludeKeysSet, defaultKeysSet);
 
-        final Set<String> includeDefaultCheckSet = new HashSet<String>(includeKeysSet);
-        includeDefaultCheckSet.retainAll(defaultKeysSet);
+        final Set<String> includeDefaultCheckSet = new HashSet<String>(defaultKeysSet);
+        includeDefaultCheckSet.retainAll(includeKeysSet);
         if (!includeDefaultCheckSet.isEmpty()) {
-            includeKeysSet.removeAll(defaultKeysSet);
+            for (final String overlap_key : includeDefaultCheckSet) {
+                defaultKeysMap.remove(overlap_key);
+                defaultKeysSet.remove(overlap_key);
+            }
         }
         
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
@@ -203,12 +206,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     continue;
                 }
 
-                if (!excludeKeysSet.isEmpty() && excludeKeysSet.contains(key)) {
+                if (excludeKeysSet.contains(key)) {
                     LOG.debug(String.format("Key is being excluded: '%s'", key));
                     continue;
                 }
 
-                if (!defaultKeysSet.isEmpty() && defaultKeysSet.contains(key)) {
+                if (defaultKeysSet.contains(key)) {
                     LOG.debug(String.format("Skipping already included default key: '%s'", key));
                     continue;
                 }
