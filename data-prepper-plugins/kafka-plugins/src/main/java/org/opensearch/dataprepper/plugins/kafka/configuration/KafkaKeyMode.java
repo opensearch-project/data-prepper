@@ -11,11 +11,12 @@ import java.util.Map;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
-public enum SchemaRegistryType {
-    AWS_GLUE("aws_glue"),
-    CONFLUENT("confluent");
+public enum KafkaKeyMode {
+    DISCARD("discard"),
+    INCLUDE_AS_FIELD("include_as_field"),
+    INCLUDE_AS_METADATA("include_as_metadata");
 
-    private static final Map<String, SchemaRegistryType> OPTIONS_MAP = Arrays.stream(SchemaRegistryType.values())
+    private static final Map<String, KafkaKeyMode> OPTIONS_MAP = Arrays.stream(KafkaKeyMode.values())
             .collect(Collectors.toMap(
                     value -> value.type,
                     value -> value
@@ -23,12 +24,13 @@ public enum SchemaRegistryType {
 
     private final String type;
 
-    SchemaRegistryType(final String type) {
+    KafkaKeyMode(final String type) {
         this.type = type;
     }
 
     @JsonCreator
-    static SchemaRegistryType fromTypeValue(final String type) {
+    static KafkaKeyMode fromTypeValue(final String type) {
         return OPTIONS_MAP.get(type.toLowerCase());
     }
 }
+
