@@ -320,6 +320,24 @@ public class KeyValueProcessorTests {
     void testDefaultKeysKeyValueProcessor() {
         final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
         when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "dKey", "dValue");
+    }
+
+    @Test
+    void testDefaultIncludeKeysOverlapKeyValueProcessor() {
+        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
+        final List<String> includeKeys = List.of("dKey");
+        when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -334,6 +352,7 @@ public class KeyValueProcessorTests {
     void testDefaultKeysAlreadyInMessageKeyValueProcessor() {
         final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
         when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key1=value1&dKey=dValue");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
@@ -344,6 +363,8 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "dKey", "dValue");
     }
 
+
+
     @Test
     void testDefaultExcludeKeysOverlapKeyValueProcessor() {
         final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
@@ -352,22 +373,6 @@ public class KeyValueProcessorTests {
         when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
 
         assertThrows(IllegalArgumentException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
-    }
-
-    @Test
-    void testDefaultIncludeKeysOverlapKeyValueProcessor() {
-        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
-        final List<String> includeKeys = List.of("dKey");
-        when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
-        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
-
-        final Record<Event> record = getMessage("key1=value1");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
-
-        assertThat(parsed_message.size(), equalTo(2));
-        assertThatKeyEquals(parsed_message, "key1", "value1");
-        assertThatKeyEquals(parsed_message, "dKey", "dValue");
     }
 
     @Test
