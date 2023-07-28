@@ -12,7 +12,7 @@ import org.apache.hc.core5.http.ClassicHttpResponse;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.opensearch.dataprepper.plugins.sink.configuration.BearerTokenOptions;
+import org.opensearch.dataprepper.plugins.sink.http.configuration.BearerTokenOptions;
 
 import java.io.IOException;
 import java.time.Instant;

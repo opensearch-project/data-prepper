@@ -25,12 +25,12 @@ import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.LocalFileBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.dlq.DlqPushHandler;
-import org.opensearch.dataprepper.plugins.sink.service.HttpSinkAwsService;
-import org.opensearch.dataprepper.plugins.sink.service.HttpSinkService;
-import org.opensearch.dataprepper.plugins.sink.service.WebhookService;
+import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
+import org.opensearch.dataprepper.plugins.sink.http.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.sink.http.service.HttpSinkAwsService;
+import org.opensearch.dataprepper.plugins.sink.http.service.HttpSinkService;
 
+import org.opensearch.dataprepper.plugins.sink.http.service.WebhookService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

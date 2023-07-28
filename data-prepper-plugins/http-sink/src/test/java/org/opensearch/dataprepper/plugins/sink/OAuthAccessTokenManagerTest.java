@@ -14,7 +14,7 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
-import org.opensearch.dataprepper.plugins.sink.configuration.BearerTokenOptions;
+import org.opensearch.dataprepper.plugins.sink.http.configuration.BearerTokenOptions;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
