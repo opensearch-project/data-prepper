@@ -57,6 +57,7 @@ public class HttpSinkTest {
 
     private HttpAuthOptions httpAuthOptions;
 
+
     @BeforeEach
     void setUp() {
         pluginSetting = mock(PluginSetting.class);
@@ -87,10 +88,12 @@ public class HttpSinkTest {
         when(httpSinkConfiguration.getThresholdOptions()).thenReturn(thresholdOptions);
         when(thresholdOptions.getEventCount()).thenReturn(10);
         when(httpSinkConfiguration.getDlqFile()).thenReturn("\\dlq");
+        when(sinkContext.getIncludeKeys()).thenReturn(new ArrayList<>());
+        when(sinkContext.getExcludeKeys()).thenReturn(new ArrayList<>());
     }
 
     private HTTPSink createObjectUnderTest() {
-        return new HTTPSink(pluginSetting, httpSinkConfiguration, pluginFactory, pipelineDescription,
+        return new HTTPSink(pluginSetting, httpSinkConfiguration, pluginFactory, pipelineDescription, sinkContext,
                 awsCredentialsSupplier);
     }
     @Test

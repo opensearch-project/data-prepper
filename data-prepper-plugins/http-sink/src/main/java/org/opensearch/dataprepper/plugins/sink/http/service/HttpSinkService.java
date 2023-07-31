@@ -11,6 +11,7 @@ import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
@@ -40,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+import java.io.OutputStream;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -100,6 +102,15 @@ public class HttpSinkService {
 
     private MultiAuthHttpSinkHandler multiAuthHttpSinkHandler;
 
+    private final OutputCodec codec;
+
+    private final String tagsTargetKey;
+
+    private final List<String> includeKeys;
+
+    private final List<String> excludeKeys;
+
+
     public HttpSinkService(final HttpSinkConfiguration httpSinkConfiguration,
                            final BufferFactory bufferFactory,
                            final DlqPushHandler dlqPushHandler,
@@ -107,7 +118,11 @@ public class HttpSinkService {
                            final WebhookService webhookService,
                            final HttpClientBuilder httpClientBuilder,
                            final PluginMetrics pluginMetrics,
-                           final PluginSetting httpPluginSetting){
+                           final PluginSetting httpPluginSetting,
+                           final OutputCodec codec,
+                           final String tagsTargetKey,
+                           final List<String> includeKeys,
+                           final List<String> excludeKeys) {
         this.httpSinkConfiguration = httpSinkConfiguration;
         this.bufferFactory = bufferFactory;
         this.dlqPushHandler = dlqPushHandler;
@@ -130,6 +145,10 @@ public class HttpSinkService {
         this.httpAuthOptions = buildAuthHttpSinkObjectsByConfig(httpSinkConfiguration);
         this.httpSinkRecordsSuccessCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_SUCCESS_COUNTER);
         this.httpSinkRecordsFailedCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_FAILED_COUNTER);
+        this.codec= codec;
+        this.tagsTargetKey = tagsTargetKey;
+        this.includeKeys = includeKeys;
+        this.excludeKeys = excludeKeys;
     }
 
     /**
@@ -142,28 +161,37 @@ public class HttpSinkService {
             this.currentBuffer = bufferFactory.getBuffer();
         }
         try {
+            OutputStream outputStream = currentBuffer.getOutputStream();
             records.forEach(record -> {
-                final Event event = record.getData();
                 try {
-                    currentBuffer.writeEvent(event.toJsonString().getBytes());
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                if (event.getEventHandle() != null) {
-                    this.bufferedEventHandles.add(event.getEventHandle());
-                }
-                if (ThresholdValidator.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
-                    final HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
-                    if (failedHttpEndPointResponses != null) {
-                        logFailedData(failedHttpEndPointResponses);
-                    } else {
-                        LOG.info("data pushed to the end point successfully");
+                    final Event event = record.getData();
+                    event.jsonBuilder().includeKeys(includeKeys);
+                    event.jsonBuilder().excludeKeys(excludeKeys);
+                    if(currentBuffer.getEventCount() == 0) {
+                        codec.start(outputStream,event , tagsTargetKey);
                     }
-                    currentBuffer = bufferFactory.getBuffer();
-                    releaseEventHandles(Boolean.TRUE);
+                    codec.writeEvent(event, outputStream, tagsTargetKey);
+                    int count = currentBuffer.getEventCount() +1;
+                    currentBuffer.setEventCount(count);
 
+                    if(event.getEventHandle() != null) {
+                        bufferedEventHandles.add(event.getEventHandle());
+                    }
+                    if (ThresholdValidator.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
+                        codec.complete(outputStream);
+                        final HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
+                        if (failedHttpEndPointResponses != null) {
+                            logFailedData(failedHttpEndPointResponses);
+                        } else {
+                            LOG.info("data pushed to the end point successfully");
+                        }
+                        currentBuffer = bufferFactory.getBuffer();
+                        releaseEventHandles(Boolean.TRUE);
+
+                    }}
+                catch (IOException e) {
+                    throw new RuntimeException(e);
                 }});
-
         }finally {
             reentrantLock.unlock();
         }

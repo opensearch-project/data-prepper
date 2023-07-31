@@ -151,7 +151,11 @@ public class HttpSinkServiceTest {
                 webhookService,
                 httpClientBuilder,
                 pluginMetrics,
-                pluginSetting);
+                pluginSetting,
+                codec,
+                null,
+                new ArrayList<>(),
+                new ArrayList<>());
     }
 
     @Test
@@ -229,6 +233,9 @@ public class HttpSinkServiceTest {
         final Event event = mock(Event.class);
         given(event.toJsonString()).willReturn("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}");
         given(event.getEventHandle()).willReturn(mock(EventHandle.class));
+        given(event.jsonBuilder()).willReturn(mock(Event.JsonStringBuilder.class));
+        given(event.jsonBuilder().getIncludeKeys()).willReturn(new ArrayList<>());
+        given(event.jsonBuilder().getExcludeKeys()).willReturn(new ArrayList<>());
         objectUnderTest.output(List.of(new Record<>(event)));
         verify(httpSinkRecordsSuccessCounter).increment(1);
     }

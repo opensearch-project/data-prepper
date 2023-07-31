@@ -12,6 +12,7 @@ import org.apache.hc.core5.util.TimeValue;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -21,6 +22,7 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
@@ -35,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Objects;
 
 @DataPrepperPlugin(name = "http", pluginType = Sink.class, pluginConfigurationType = HttpSinkConfiguration.class)
@@ -55,13 +58,19 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
 
     private DlqPushHandler dlqPushHandler;
 
+    private final OutputCodec codec;
+
+    private final SinkContext sinkContext;
+
     @DataPrepperPluginConstructor
     public HTTPSink(final PluginSetting pluginSetting,
                     final HttpSinkConfiguration httpSinkConfiguration,
                     final PluginFactory pluginFactory,
                     final PipelineDescription pipelineDescription,
+                    final SinkContext sinkContext,
                     final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
+        this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         final PluginModel codecConfiguration = httpSinkConfiguration.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
@@ -92,6 +101,7 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
         if(httpSinkConfiguration.isAwsSigv4() && httpSinkConfiguration.isValidAWSUrl()){
             HttpSinkAwsService.attachSigV4(httpSinkConfiguration, httpClientBuilder, awsCredentialsSupplier);
         }
+        this.codec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
         this.httpSinkService = new HttpSinkService(
                 httpSinkConfiguration,
                 bufferFactory,
@@ -100,7 +110,11 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
                 webhookService,
                 httpClientBuilder,
                 pluginMetrics,
-                pluginSetting);
+                pluginSetting,
+                codec,
+                Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null,
+                Objects.nonNull(sinkContext) ? sinkContext.getIncludeKeys() : null,
+                Objects.nonNull(sinkContext) ? sinkContext.getExcludeKeys() : null);
     }
 
     @Override
