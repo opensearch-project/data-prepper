@@ -5,6 +5,7 @@
 package org.opensearch.dataprepper.plugins.source;
 
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,10 +29,12 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -42,12 +45,14 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
 
 @ExtendWith(MockitoExtension.class)
 class S3ScanObjectWorkerTest {
@@ -88,6 +93,9 @@ class S3ScanObjectWorkerTest {
     @Mock
     private PluginMetrics pluginMetrics;
 
+    @Mock
+    private Counter counter;
+
     private List<ScanOptions> scanOptionsList;
 
     @BeforeEach
@@ -98,6 +106,7 @@ class S3ScanObjectWorkerTest {
     private ScanObjectWorker createObjectUnderTest() {
         when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
+        when(pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME)).thenReturn(counter);
         final ScanObjectWorker objectUnderTest = new ScanObjectWorker(s3Client, scanOptionsList, s3ObjectHandler, bucketOwnerProvider,
                 sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
         verify(sourceCoordinator).initialize();
@@ -151,15 +160,57 @@ class S3ScanObjectWorkerTest {
     }
 
     @Test
-    void deleteS3Object_should_be_invoked_after_processing_when_deleteS3Objects_is_true() throws IOException {
+    void buildDeleteObjectRequest_should_be_invoked_after_processing_when_deleteS3Objects_and_acknowledgements_is_true() throws IOException {
+        final String bucket = UUID.randomUUID().toString();
+        final String objectKey = UUID.randomUUID().toString();
+        final String partitionKey = bucket + "|" + objectKey;
+
+
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
+        when(s3SourceConfig.isDeleteOnRead()).thenReturn(true);
+        when(s3ObjectDeleteWorker.buildDeleteObjectRequest(bucket, objectKey)).thenReturn(deleteObjectRequest);
+        when(s3ScanSchedulingOptions.getJobCount()).thenReturn(1);
+
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class)
+                .withPartitionKey(partitionKey)
+                .withPartitionClosedCount(0L)
+                .build();
+
+        given(sourceCoordinator.getNextPartition(any(Function.class))).willReturn(Optional.of(partitionToProcess));
+
+        final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
+        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(acknowledgementSet), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(sourceCoordinator).closePartition(anyString(), any(), anyInt());
+
+        final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
+
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(true);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), any(Duration.class));
+
+        scanObjectWorker.runWithoutInfiniteLoop();
+
+        verify(sourceCoordinator).closePartition(partitionKey, s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
+        verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
+        verify(acknowledgementSet).complete();
+        verify(counter).increment();
+
+        final S3ObjectReference processedObject = objectReferenceArgumentCaptor.getValue();
+        assertThat(processedObject.getBucketName(), equalTo(bucket));
+        assertThat(processedObject.getKey(), equalTo(objectKey));
+    }
+
+    @Test
+    void buildDeleteObjectRequest_should_not_be_invoked_after_processing_when_deleteS3Objects_is_true_acknowledgements_is_false() throws IOException {
         final String bucket = UUID.randomUUID().toString();
         final String objectKey = UUID.randomUUID().toString();
         final String partitionKey = bucket + "|" + objectKey;
 
 
         when(s3SourceConfig.getAcknowledgements()).thenReturn(false);
-        when(s3SourceConfig.isDeleteS3Objects()).thenReturn(true);
-        when(s3ObjectDeleteWorker.buildDeleteObjectRequest(bucket, objectKey)).thenReturn(deleteObjectRequest);
+        when(s3SourceConfig.isDeleteOnRead()).thenReturn(true);
         when(s3ScanSchedulingOptions.getJobCount()).thenReturn(1);
 
         final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class)
@@ -177,10 +228,9 @@ class S3ScanObjectWorkerTest {
 
         scanObjectWorker.runWithoutInfiniteLoop();
 
-        verifyNoInteractions(acknowledgementSetManager);
         verify(sourceCoordinator).closePartition(partitionKey, s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
-        verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
-        verify(s3ObjectDeleteWorker).deleteS3Object(deleteObjectRequest);
+        verifyNoInteractions(s3ObjectDeleteWorker);
+        verifyNoInteractions(acknowledgementSetManager);
 
         final S3ObjectReference processedObject = objectReferenceArgumentCaptor.getValue();
         assertThat(processedObject.getBucketName(), equalTo(bucket));
@@ -195,7 +245,7 @@ class S3ScanObjectWorkerTest {
 
 
         when(s3SourceConfig.getAcknowledgements()).thenReturn(false);
-        when(s3SourceConfig.isDeleteS3Objects()).thenReturn(false);
+        when(s3SourceConfig.isDeleteOnRead()).thenReturn(false);
         when(s3ScanSchedulingOptions.getJobCount()).thenReturn(1);
 
         final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class)
@@ -223,12 +273,13 @@ class S3ScanObjectWorkerTest {
     }
 
     @Test
-    void deleteS3Object_should_be_invoked_after_closed_count_greater_than_or_equal_to_job_count() throws IOException {
+    void buildDeleteObjectRequest_should_be_invoked_after_closed_count_greater_than_or_equal_to_job_count() throws IOException {
         final String bucket = UUID.randomUUID().toString();
         final String objectKey = UUID.randomUUID().toString();
         final String partitionKey = bucket + "|" + objectKey;
 
-        when(s3SourceConfig.isDeleteS3Objects()).thenReturn(true);
+        when(s3SourceConfig.isDeleteOnRead()).thenReturn(true);
+        when(s3SourceConfig.getAcknowledgements()).thenReturn(true);
         when(s3ObjectDeleteWorker.buildDeleteObjectRequest(bucket, objectKey)).thenReturn(deleteObjectRequest);
         when(s3ScanSchedulingOptions.getJobCount()).thenReturn(2);
 
@@ -240,14 +291,20 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(Function.class))).willReturn(Optional.of(partitionToProcess));
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
-        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(acknowledgementSet), eq(sourceCoordinator), eq(partitionKey));
         doNothing().when(sourceCoordinator).closePartition(anyString(), any(), anyInt());
+        doNothing().when(acknowledgementSet).complete();
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
 
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(true);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), any(Duration.class));
+
         scanObjectWorker.runWithoutInfiniteLoop();
 
-        verifyNoInteractions(acknowledgementSetManager);
         verify(sourceCoordinator).closePartition(partitionKey, s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
         // no interactions when closed count < job count
         verifyNoInteractions(s3ObjectDeleteWorker);
@@ -265,7 +322,6 @@ class S3ScanObjectWorkerTest {
         scanObjectWorker.runWithoutInfiniteLoop();
 
         verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
-        verify(s3ObjectDeleteWorker).deleteS3Object(deleteObjectRequest);
     }
 
     @Test

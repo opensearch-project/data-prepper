@@ -46,7 +46,7 @@ class S3SourceConfigTest {
 
     @Test
     void default_delete_s3_objects_test() {
-        assertThat(new S3SourceConfig().isDeleteS3Objects(), equalTo(false));
+        assertThat(new S3SourceConfig().isDeleteOnRead(), equalTo(false));
     }
 
     @Test

@@ -117,7 +117,7 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `disable_bucket_ownership_validation` (Optional) : Boolean - If set to true, then the S3 Source will not attempt to validate that the bucket is owned by the expected account. The only expected account is the same account which owns the SQS queue. Defaults to `false`.
 
-* `delete_s3_objects` (Optional) : Boolean - If set to true, then the S3 Source will attempt to delete S3 objects after processing. If `acknowledgments` is enabled, S3 objects will be deleted only if positive acknowledgment is received by S3 source. Defaults to `false`.
+* `delete_on_read` (Optional) : Boolean - If set to true, then the S3 Source will attempt to delete S3 objects after all the events from the S3 object are successfully acknowledged by all sinks. `acknowledgments` should be enabled for deleting S3 objects. Defaults to `false`.
 
 ### <a name="s3_select_configuration">S3 Select Configuration</a>
 

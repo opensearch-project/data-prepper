@@ -318,7 +318,7 @@ public class S3ScanObjectWorkerIT {
         final int numberOfRecords = 100;
         final int numberOfRecordsToAccumulate = 50;
 
-        when(s3SourceConfig.isDeleteS3Objects()).thenReturn(deleteS3Objects);
+        when(s3SourceConfig.isDeleteOnRead()).thenReturn(deleteS3Objects);
         String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
         final String key = getKeyString(keyPrefix,recordsGenerator, shouldCompress);
         final String buketOptionYaml = "name: " + bucket + "\n" +
