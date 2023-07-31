@@ -27,6 +27,11 @@ pipeline:
           event_collect_timeout: 15s
        codec:
           parquet:
+           tabular_schema: |
+              TABLE Person (colname1 datatype,
+                            colname2 datatype,
+              			    colname3 datatype,
+              			    colname4 datatype)
            schema: "{\"namespace\": \"org.example.test\"," +
                 " \"type\": \"record\"," +
                 " \"name\": \"TestMessage\"," +
@@ -58,7 +63,7 @@ pipeline:
 8) `schema_bucket`: Name of the S3 bucket in which `schema.json` file is kept.
 9) `file_key`: File key of `schema.json` file kept in S3 bucket.
 10) `schema_region`: AWS Region of the S3 bucket in which `schema.json` file is kept.
-
+11) `tabular_schema`: A multiline schema string like glue schema string that user can provide in the yaml file itself. The codec build schema object from this schema string.
 ### Note:
 
 1) User can provide only one schema at a time i.e. through either of the ways provided in codec config.

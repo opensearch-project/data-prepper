@@ -44,10 +44,19 @@ import java.util.Map;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ParquetOutputCodecTest {
     private static final String FILE_NAME = "parquet-data";
+    private static final String expectedSchemaString = "{\"type\":\"record\",\"name\":\"sesblog\",\"fields\":[{\"name\":" +
+            "\"eventType\",\"type\":\"string\"},{\"name\":\"event_date\",\"type\":{\"type\":\"int\",\"logicalType\":" +
+            "\"date\",\"precision\":\"10\",\"scale\":\"2\"}},{\"name\":\"col2\",\"type\":\"string\"},{\"name\":\"tags\"," +
+            "\"type\":{\"type\":\"array\",\"items\":\"string\"}},{\"name\":\"col3\",\"type\":\"string\"}]}";
+    private static final String inputString = "TABLE sesblog (\n" +
+            "  eventType string,\n" +
+            "  event_date <type:int,logicalType:date,precision:10,scale:2>,\n" +
+            "  col2 string,\n" +
+            "  tags array<string>,\n" +
+            "  col3 string) ";
     private static final String FILE_SUFFIX = ".parquet";
     private static int numberOfRecords;
     private ParquetOutputCodecConfig config;
@@ -129,6 +138,13 @@ public class ParquetOutputCodecTest {
 
         assertThat(extension, equalTo("parquet"));
     }
+
+    @Test
+    public void testSchemaGenerationFromTabular() throws IOException {
+        Schema expectedSchema = new Schema.Parser().parse(expectedSchemaString);
+        Schema actualSchema = ParquetSchemaParserFromTabularFormat.generateSchemaFromTabularString(inputString);
+        assertThat(actualSchema, Matchers.equalTo(expectedSchema));
+    }
     @Test
     public void whenNoSchemaProvided_thenThrowsException() {
         config = new ParquetOutputCodecConfig();
@@ -136,12 +152,11 @@ public class ParquetOutputCodecTest {
         config.setFileLocation(null);
         config.setSchemaRegistryUrl(null);
         ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
-        assertThrows(IOException.class,()->
-                parquetOutputCodec.buildSchemaAndKey(null, null));
+        assertThat(parquetOutputCodec.checkS3SchemaValidity(), equalTo(Boolean.FALSE));
     }
 
     @Test
-    public void test_s3SchemaValidity() throws IOException {
+    public void test_s3SchemaValidity() {
         config = new ParquetOutputCodecConfig();
         config.setSchema(parseSchema().toString());
         config.setSchemaBucket("test");
@@ -150,8 +165,7 @@ public class ParquetOutputCodecTest {
         ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
         assertThat(parquetOutputCodec.checkS3SchemaValidity(), equalTo(Boolean.TRUE));
         ParquetOutputCodec parquetOutputCodecFalse = createObjectUnderTest();
-        assertThrows(IOException.class,()->
-                parquetOutputCodecFalse.checkS3SchemaValidity());
+        assertThat(parquetOutputCodecFalse.checkS3SchemaValidity(), equalTo(Boolean.FALSE));
     }
 
     private List<HashMap<String, Object>> createParquetRecordsList(final InputStream inputStream) throws IOException {

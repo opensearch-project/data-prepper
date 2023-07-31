@@ -57,6 +57,9 @@ public class ParquetOutputCodecConfig {
     @JsonProperty("exclude_keys")
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
+    @JsonProperty("tabular_schema")
+    private String tabularSchema;
+
     @Valid
     @Size(max = 0, message = "Schema from Schema Registry is not supported.")
     @JsonProperty("schema_registry_url")
@@ -144,6 +147,9 @@ public class ParquetOutputCodecConfig {
     }
     public void setExcludeKeys(List<String> excludeKeys) {
         this.excludeKeys = excludeKeys;
+    }
+    public String getTabularSchema() {
+        return tabularSchema;
     }
 }
 

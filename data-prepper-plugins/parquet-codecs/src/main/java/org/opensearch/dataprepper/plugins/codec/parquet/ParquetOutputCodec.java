@@ -84,6 +84,8 @@ public class ParquetOutputCodec implements OutputCodec {
     void buildSchemaAndKey(final Event event, final String tagsTargetKey) throws IOException {
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
+        } else if(config.getTabularSchema() != null){
+            schema = ParquetSchemaParserFromTabularFormat.generateSchemaFromTabularString(config.getTabularSchema());
         } else if(config.getFileLocation()!=null){
             schema = ParquetSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
         }else if(config.getSchemaRegistryUrl()!=null){
@@ -284,7 +286,7 @@ public class ParquetOutputCodec implements OutputCodec {
                     LOG.error("Unrecognised Field name : '{}' & type : '{}'", field.name(), fieldType);
                     break;
             }
-        }else{
+        }else if(field.schema().getLogicalType() != null) {
             final String logicalTypeName = field.schema().getLogicalType().getName();
             switch (logicalTypeName){
                 case "date":
@@ -309,12 +311,11 @@ public class ParquetOutputCodec implements OutputCodec {
         }
         return  finalValue;
     }
-    boolean checkS3SchemaValidity() throws IOException {
+    boolean checkS3SchemaValidity() {
         if (config.getSchemaBucket() != null && config.getFileKey() != null && config.getSchemaRegion() != null) {
             return true;
         } else {
-            LOG.error("Invalid S3 credentials, can't reach the schema file.");
-            throw new IOException("Can't proceed without schema.");
+            return false;
         }
     }
 }

@@ -57,6 +57,8 @@ public class AvroOutputCodec implements OutputCodec {
         Objects.requireNonNull(outputStream);
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
+        } else if(config.getTabularSchemaString() != null){
+            schema = AvroSchemaParserFromTabularFormat.generateSchemaFromTabularString(config.getTabularSchemaString());
         } else if (config.getFileLocation() != null) {
             schema = AvroSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
         } else if (config.getSchemaRegistryUrl() != null) {

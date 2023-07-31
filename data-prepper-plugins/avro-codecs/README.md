@@ -34,6 +34,11 @@ pipeline:
                 "     {\"name\": \"name\", \"type\": \"string\"}," +
                 "     {\"name\": \"age\", \"type\": \"int\"}]" +
                 "}";
+            tabular_schema: |
+              TABLE Person (colname datatype,
+                            colname2 datatype,
+              			    colname3 datatype,
+              			    colname4 datatype)
             exclude_keys:
               - s3
         buffer_type: in_memory
@@ -45,6 +50,7 @@ pipeline:
 
 1) `schema`: A json string that user can provide in the yaml file itself. The codec parses schema object from this schema string. 
 2) `exclude_keys`: Those keys of the events that the user wants to exclude while converting them to avro records.
+3) `tabular_schema`: A multiline schema string like glue schema string that user can provide in the yaml file itself. The codec build schema object from this schema string.
 
 ### Note:
 
