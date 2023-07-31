@@ -27,6 +27,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
     static final boolean DEFAULT_REMOVE_BRACKETS = false;
+    static final boolean DEFAULT_RECURSIVE = false;
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -84,6 +85,10 @@ public class KeyValueProcessorConfig {
     @JsonProperty("remove_brackets")
     @NotNull
     private boolean removeBrackets = DEFAULT_REMOVE_BRACKETS;
+
+    @JsonProperty("recursive")
+    @NotNull
+    private boolean recursive = DEFAULT_RECURSIVE;
 
     public String getSource() {
         return source;
@@ -147,5 +152,9 @@ public class KeyValueProcessorConfig {
 
     public boolean getRemoveBrackets() {
         return removeBrackets;
+    }
+
+    public boolean getRecursive() {
+        return recursive;
     }
 }
