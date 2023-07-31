@@ -2,8 +2,8 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.kafka.configuration;
 
+package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
@@ -110,6 +110,9 @@ public class TopicConfig {
     @Size(min = 1)
     @Valid
     private Integer fetchMinBytes = FETCH_MIN_BYTES;
+
+    @JsonProperty("key_mode")
+    private KafkaKeyMode kafkaKeyMode = KafkaKeyMode.INCLUDE_AS_FIELD;
 
     @JsonProperty("retry_backoff")
     private Duration retryBackoff = RETRY_BACKOFF;
@@ -268,4 +271,9 @@ public class TopicConfig {
     public void setName(String name) {
         this.name = name;
     }
+
+    public KafkaKeyMode getKafkaKeyMode() {
+        return kafkaKeyMode;
+    }
+
 }

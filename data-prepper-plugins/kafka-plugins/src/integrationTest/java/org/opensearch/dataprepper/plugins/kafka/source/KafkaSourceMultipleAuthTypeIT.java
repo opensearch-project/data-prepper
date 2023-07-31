@@ -78,6 +78,9 @@ public class KafkaSourceMultipleAuthTypeIT {
     @Mock
     private PlainTextAuthConfig plainTextAuthConfig;
 
+    @Mock
+    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+
     private TopicConfig jsonTopic;
     private TopicConfig avroTopic;
 
@@ -104,6 +107,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         pluginMetrics = mock(PluginMetrics.class);
         counter = mock(Counter.class);
         buffer = mock(Buffer.class);
+        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
         receivedRecords = new ArrayList<>();
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
@@ -139,12 +143,13 @@ public class KafkaSourceMultipleAuthTypeIT {
         kafkaUsername = System.getProperty("tests.kafka.username");
         kafkaPassword = System.getProperty("tests.kafka.password");
         when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
+        when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
     }
 
     @Test
     public void TestPlainTextWithNoAuthKafkaNoEncryptionWithNoAuthSchemaRegistry() throws Exception {
         final int numRecords = 1;
-        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.NONE);
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
@@ -193,8 +198,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         final int numRecords = 1;
         authConfig = mock(AuthConfig.class);
         saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
-        plainTextAuthConfig = mock(PlainTextAuthConfig.class);
-        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.NONE);
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
         plainTextAuthConfig = mock(PlainTextAuthConfig.class);
@@ -202,7 +206,6 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(plainTextAuthConfig.getPassword()).thenReturn(kafkaPassword);
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
-        when(authConfig.getInsecure()).thenReturn(true);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
         when(sourceConfig.getBootStrapServers()).thenReturn(saslplainBootstrapServers);
         kafkaSource = createObjectUnderTest();
@@ -252,8 +255,8 @@ public class KafkaSourceMultipleAuthTypeIT {
         saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
         when(authConfig.getSaslAuthConfig()).thenReturn(null);
-        when(authConfig.getInsecure()).thenReturn(true);
-        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.SSL);
+        when(encryptionConfig.getInsecure()).thenReturn(true);
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getBootStrapServers()).thenReturn(sslBootstrapServers);
         when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
@@ -306,10 +309,10 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(plainTextAuthConfig.getUsername()).thenReturn(kafkaUsername);
         when(plainTextAuthConfig.getPassword()).thenReturn(kafkaPassword);
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
-        when(authConfig.getInsecure()).thenReturn(true);
         when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
         when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
-        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.SSL);
+        when(encryptionConfig.getInsecure()).thenReturn(true);
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getBootStrapServers()).thenReturn(saslsslBootstrapServers);
         when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
