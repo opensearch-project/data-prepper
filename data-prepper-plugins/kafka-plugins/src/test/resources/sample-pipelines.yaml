@@ -9,8 +9,8 @@ log-pipeline:
         - name: my-topic-1
           workers: 5
           auto_commit: false
-          auto_commit_interval: PT5S
-          session_timeout: 45000
+          commit_interval: PT5S
+          session_timeout: PT45S
           max_retry_attempts: 1000
           auto_offset_reset: earliest
           thread_waiting_time: PT1S

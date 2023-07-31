@@ -19,10 +19,10 @@ import java.time.Duration;
  */
 public class TopicConfig {
     private static final String AUTO_COMMIT = "false";
-    private static final Duration AUTOCOMMIT_INTERVAL = Duration.ofSeconds(5);
-    private static final Integer SESSION_TIMEOUT = 45000;
+    private static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
+    private static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
     private static final int MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
-    private static final String AUTO_OFFSET_RESET = "earliest";
+    static final String DEFAULT_AUTO_OFFSET_RESET = "latest";
     static final Duration THREAD_WAITING_TIME = Duration.ofSeconds(5);
     private static final Duration MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
     private static final Duration BUFFER_DEFAULT_TIMEOUT = Duration.ofSeconds(5);
@@ -33,8 +33,8 @@ public class TopicConfig {
     private static final Duration RETRY_BACKOFF = Duration.ofSeconds(100);
     private static final Duration MAX_POLL_INTERVAL = Duration.ofSeconds(300000);
     private static final Integer CONSUMER_MAX_POLL_RECORDS = 500;
-    private static final Integer NUM_OF_WORKERS = 5;
-    private static final Duration HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(3);
+    static final Integer DEFAULT_NUM_OF_WORKERS = 2;
+    static final Duration HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
 
     @JsonProperty("name")
     @NotNull
@@ -49,7 +49,7 @@ public class TopicConfig {
     @JsonProperty("workers")
     @Valid
     @Size(min = 1, max = 200, message = "Number of worker threads should lies between 1 and 200")
-    private Integer workers = NUM_OF_WORKERS;
+    private Integer workers = DEFAULT_NUM_OF_WORKERS;
 
     @JsonProperty("max_retry_attempts")
     @Valid
@@ -67,18 +67,18 @@ public class TopicConfig {
     @JsonProperty("auto_commit")
     private Boolean autoCommit = false;
 
-    @JsonProperty("auto_commit_interval")
+    @JsonProperty("commit_interval")
     @Valid
     @Size(min = 1)
-    private Duration autoCommitInterval = AUTOCOMMIT_INTERVAL;
+    private Duration commitInterval = DEFAULT_COMMIT_INTERVAL;
 
     @JsonProperty("session_timeout")
     @Valid
     @Size(min = 1)
-    private Integer sessionTimeOut = SESSION_TIMEOUT;
+    private Duration sessionTimeOut = DEFAULT_SESSION_TIMEOUT;
 
     @JsonProperty("auto_offset_reset")
-    private String autoOffsetReset = AUTO_OFFSET_RESET;
+    private String autoOffsetReset = DEFAULT_AUTO_OFFSET_RESET;
 
     @JsonProperty("group_name")
     @Valid
@@ -148,15 +148,15 @@ public class TopicConfig {
         return autoCommit;
     }
 
-    public Duration getAutoCommitInterval() {
-        return autoCommitInterval;
+    public Duration getCommitInterval() {
+        return commitInterval;
     }
 
-    public void setAutoCommitInterval(Duration autoCommitInterval) {
-        this.autoCommitInterval = autoCommitInterval;
+    public void setCommitInterval(Duration commitInterval) {
+        this.commitInterval = commitInterval;
     }
 
-    public Integer getSessionTimeOut() {
+    public Duration getSessionTimeOut() {
         return sessionTimeOut;
     }
 
