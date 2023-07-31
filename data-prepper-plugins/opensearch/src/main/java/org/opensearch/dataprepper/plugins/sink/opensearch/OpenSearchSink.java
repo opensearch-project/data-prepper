@@ -63,6 +63,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -130,7 +131,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
                         final AwsCredentialsSupplier awsCredentialsSupplier) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
-    this.sinkContext = sinkContext;
+    this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
     this.expressionEvaluator = expressionEvaluator;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
@@ -343,7 +344,7 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     String routing = (routingField != null) ? event.get(routingField, String.class) : null;
 
-    final String document = DocumentBuilder.build(event, documentRootKey, Objects.nonNull(sinkContext)?sinkContext.getTagsTargetKey():null);
+    final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
     return SerializedJson.fromStringAndOptionals(document, docId, routing);
   }

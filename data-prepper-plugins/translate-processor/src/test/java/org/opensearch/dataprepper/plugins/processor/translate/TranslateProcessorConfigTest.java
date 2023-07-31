@@ -19,6 +19,7 @@ import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setFie
 
 class TranslateProcessorConfigTest {
     private TranslateProcessorConfig translateProcessorConfig;
+    private FileParameterConfig fileParameterConfig = new FileParameterConfig();
     private TranslateProcessorConfig createObjectUnderTest() {
         return new TranslateProcessorConfig();
     }
@@ -46,19 +47,6 @@ class TranslateProcessorConfigTest {
     }
 
     @Test
-    void test_only_filepath_option_present() throws NoSuchFieldException, IllegalAccessException{
-        setField(TranslateProcessorConfig.class, translateProcessorConfig, "filePath", "/path/to/file.yaml");
-        assertTrue(translateProcessorConfig.hasMappings());
-    }
-
-    @Test
-    void test_get_file_path()  throws NoSuchFieldException, IllegalAccessException{
-        String filePath = "/path/to/file.yaml";
-        setField(TranslateProcessorConfig.class, translateProcessorConfig, "filePath", filePath);
-        assertThat(translateProcessorConfig.getFilePath(), is(filePath));
-    }
-
-    @Test
     void test_get_mappings()  throws NoSuchFieldException, IllegalAccessException{
         List<MappingsParameterConfig> mappingsParameterConfigs = List.of(new MappingsParameterConfig());
         setField(TranslateProcessorConfig.class, translateProcessorConfig, "mappingsParameterConfigs", mappingsParameterConfigs);
@@ -80,6 +68,28 @@ class TranslateProcessorConfigTest {
         }
 
         @Test
+        void test_get_file_parameter()  throws NoSuchFieldException, IllegalAccessException{
+            setField(TranslateProcessorConfig.class, translateProcessorConfig, "fileParameterConfig", fileParameterConfig);
+            assertThat(translateProcessorConfig.getFileParameterConfig(), is(fileParameterConfig));
+        }
+
+        @Test
+        void test_only_filepath_option_present() throws NoSuchFieldException, IllegalAccessException, IOException {
+            String fileContent = "mappings:\n" +
+                                 "  - source: status\n" +
+                                 "    targets:\n" +
+                                 "      - target: test\n" +
+                                 "        map:\n" +
+                                 "          120: success";
+            Files.write(testMappingsFile.toPath(), fileContent.getBytes());
+
+            String filePath = testMappingsFile.getAbsolutePath();
+            setField(FileParameterConfig.class, fileParameterConfig, "fileName", filePath);
+            setField(TranslateProcessorConfig.class, translateProcessorConfig, "fileParameterConfig", fileParameterConfig);
+            assertTrue(translateProcessorConfig.hasMappings());
+        }
+
+        @Test
         void test_is_file_valid_with_valid_file() throws NoSuchFieldException, IllegalAccessException, IOException {
             String fileContent = "mappings:\n" +
                                  "  - source: status\n" +
@@ -90,7 +100,8 @@ class TranslateProcessorConfigTest {
             Files.write(testMappingsFile.toPath(), fileContent.getBytes());
 
             String filePath = testMappingsFile.getAbsolutePath();
-            setField(TranslateProcessorConfig.class, translateProcessorConfig, "filePath", filePath);
+            setField(FileParameterConfig.class, fileParameterConfig, "fileName", filePath);
+            setField(TranslateProcessorConfig.class, translateProcessorConfig, "fileParameterConfig", fileParameterConfig);
 
             assertTrue(translateProcessorConfig.isFileValid());
         }
@@ -101,7 +112,8 @@ class TranslateProcessorConfigTest {
             Files.write(testMappingsFile.toPath(), fileContent.getBytes());
 
             String filePath = testMappingsFile.getAbsolutePath();
-            setField(TranslateProcessorConfig.class, translateProcessorConfig, "filePath", filePath);
+            setField(FileParameterConfig.class, fileParameterConfig, "fileName", filePath);
+            setField(TranslateProcessorConfig.class, translateProcessorConfig, "fileParameterConfig", fileParameterConfig);
 
             assertFalse(translateProcessorConfig.isFileValid());
         }
@@ -109,7 +121,8 @@ class TranslateProcessorConfigTest {
         @Test
         void test_is_file_invalid_with_invalid_file_path() throws NoSuchFieldException, IllegalAccessException {
             String filePath = "/invalid/file/nofile.yaml";
-            setField(TranslateProcessorConfig.class, translateProcessorConfig, "filePath", filePath);
+            setField(FileParameterConfig.class, fileParameterConfig, "fileName", filePath);
+            setField(TranslateProcessorConfig.class, translateProcessorConfig, "fileParameterConfig", fileParameterConfig);
 
             assertFalse(translateProcessorConfig.isFileValid());
         }
