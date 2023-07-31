@@ -18,9 +18,9 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -39,6 +39,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 import io.micrometer.core.instrument.Counter;
 import java.util.List;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -48,7 +49,8 @@ import java.util.concurrent.TimeUnit;
 
 import java.time.Duration;
 
-public class KafkaSourceMultipleAuthTypeIT {
+public class KafkaSourceJsonTypeIT {
+    private static final int TEST_ID = 123456;
     @Mock
     private KafkaSourceConfig sourceConfig;
 
@@ -67,22 +69,10 @@ public class KafkaSourceMultipleAuthTypeIT {
     private List<TopicConfig> topicList;
 
     @Mock
-    private TopicConfig plainTextTopic;
-
-    @Mock
-    private AuthConfig authConfig;
-
-    @Mock
-    private AuthConfig.SaslAuthConfig saslAuthConfig;
-
-    @Mock
-    private PlainTextAuthConfig plainTextAuthConfig;
-
-    @Mock
     private KafkaSourceConfig.EncryptionConfig encryptionConfig;
 
+    @Mock
     private TopicConfig jsonTopic;
-    private TopicConfig avroTopic;
 
     private KafkaSource kafkaSource;
 
@@ -91,11 +81,8 @@ public class KafkaSourceMultipleAuthTypeIT {
     private List<Record> receivedRecords;
 
     private String bootstrapServers;
-    private String saslsslBootstrapServers;
-    private String saslplainBootstrapServers;
-    private String sslBootstrapServers;
-    private String kafkaUsername;
-    private String kafkaPassword;
+    private String testKey;
+    private String testTopic;
 
     public KafkaSource createObjectUnderTest() {
         return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
@@ -124,41 +111,38 @@ public class KafkaSourceMultipleAuthTypeIT {
             }).when(buffer).writeAll(any(Collection.class), any(Integer.class));
         } catch (Exception e){}
 
+        testKey = RandomStringUtils.randomAlphabetic(5);
         final String testGroup = "TestGroup_"+RandomStringUtils.randomAlphabetic(6);
-        final String testTopic = "TestTopic_"+RandomStringUtils.randomAlphabetic(5);
-        plainTextTopic = mock(TopicConfig.class);
-        when(plainTextTopic.getName()).thenReturn(testTopic);
-        when(plainTextTopic.getGroupId()).thenReturn(testGroup);
-        when(plainTextTopic.getWorkers()).thenReturn(1);
-        when(plainTextTopic.getSessionTimeOut()).thenReturn(15000);
-        when(plainTextTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
-        when(plainTextTopic.getAutoCommit()).thenReturn(false);
-        when(plainTextTopic.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
-        when(plainTextTopic.getAutoOffsetReset()).thenReturn("earliest");
-        when(plainTextTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        testTopic = "TestJsonTopic_"+RandomStringUtils.randomAlphabetic(5);
+        jsonTopic = mock(TopicConfig.class);
+        when(jsonTopic.getName()).thenReturn(testTopic);
+        when(jsonTopic.getGroupId()).thenReturn(testGroup);
+        when(jsonTopic.getWorkers()).thenReturn(1);
+        when(jsonTopic.getSessionTimeOut()).thenReturn(15000);
+        when(jsonTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
+        when(jsonTopic.getAutoCommit()).thenReturn(false);
+        when(jsonTopic.getSerdeFormat()).thenReturn(MessageFormat.JSON);
+        when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
+        when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
-        saslsslBootstrapServers = System.getProperty("tests.kafka.saslssl_bootstrap_servers");
-        saslplainBootstrapServers = System.getProperty("tests.kafka.saslplain_bootstrap_servers");
-        sslBootstrapServers = System.getProperty("tests.kafka.ssl_bootstrap_servers");
-        kafkaUsername = System.getProperty("tests.kafka.username");
-        kafkaPassword = System.getProperty("tests.kafka.password");
         when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
     }
 
     @Test
-    public void TestPlainTextWithNoAuthKafkaNoEncryptionWithNoAuthSchemaRegistry() throws Exception {
+    public void TestJsonRecordsWithNullKey() throws Exception {
         final int numRecords = 1;
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
-        when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
+        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
+        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
+        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
         
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
-        final String topicName = plainTextTopic.getName();
+        final String topicName = jsonTopic.getName();
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.createTopics(
@@ -173,12 +157,25 @@ public class KafkaSourceMultipleAuthTypeIT {
             Thread.sleep(1000);
         }
         kafkaSource.start(buffer);
-        produceKafkaRecords(bootstrapServers, topicName, numRecords);
+        testKey = null;
+        produceJsonRecords(bootstrapServers, topicName, numRecords);
         int numRetries = 0;
         while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
             Thread.sleep(1000);
         }
         assertThat(receivedRecords.size(), equalTo(numRecords));
+        for (int i = 0; i < numRecords; i++) {
+            Record<Event> record = receivedRecords.get(i);
+            Event event = (Event)record.getData();
+            EventMetadata metadata = event.getMetadata();
+            Map<String, Object> map = event.toMap();
+            assertThat(map.get("name"), equalTo("testName"+i));
+            assertThat(map.get("id"), equalTo(TEST_ID+i));
+            assertThat(map.get("status"), equalTo(true));
+            assertThat(map.get("kafka_key"), equalTo(null));
+            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+        }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.deleteTopics(Collections.singleton(topicName))
@@ -194,26 +191,19 @@ public class KafkaSourceMultipleAuthTypeIT {
     }
 
     @Test
-    public void TestPlainTextWithAuthKafkaNoEncryptionWithNoAuthSchemaRegistry() throws Exception {
+    public void TestJsonRecordsWithKafkaKeyModeDiscard() throws Exception {
         final int numRecords = 1;
-        authConfig = mock(AuthConfig.class);
-        saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
-        when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
-        plainTextAuthConfig = mock(PlainTextAuthConfig.class);
-        when(plainTextAuthConfig.getUsername()).thenReturn(kafkaUsername);
-        when(plainTextAuthConfig.getPassword()).thenReturn(kafkaPassword);
-        when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
-        when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
-        when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
-        when(sourceConfig.getBootStrapServers()).thenReturn(saslplainBootstrapServers);
+        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
+        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.DISCARD);
+        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
         
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
-        final String topicName = plainTextTopic.getName();
+        final String topicName = jsonTopic.getName();
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.createTopics(
@@ -228,12 +218,23 @@ public class KafkaSourceMultipleAuthTypeIT {
             Thread.sleep(1000);
         }
         kafkaSource.start(buffer);
-        produceKafkaRecords(bootstrapServers, topicName, numRecords);
+        produceJsonRecords(bootstrapServers, topicName, numRecords);
         int numRetries = 0;
         while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
             Thread.sleep(1000);
         }
         assertThat(receivedRecords.size(), equalTo(numRecords));
+        for (int i = 0; i < numRecords; i++) {
+            Record<Event> record = receivedRecords.get(i);
+            Event event = (Event)record.getData();
+            EventMetadata metadata = event.getMetadata();
+            Map<String, Object> map = event.toMap();
+            assertThat(map.get("name"), equalTo("testName"+i));
+            assertThat(map.get("id"), equalTo(TEST_ID+i));
+            assertThat(map.get("status"), equalTo(true));
+            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+        }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.deleteTopics(Collections.singleton(topicName))
@@ -249,23 +250,19 @@ public class KafkaSourceMultipleAuthTypeIT {
     }
 
     @Test
-    public void TestPlainTextWithNoAuthKafkaEncryptionWithNoAuthSchemaRegistry() throws Exception {
+    public void TestJsonRecordsWithKafkaKeyModeAsField() throws Exception {
         final int numRecords = 1;
-        authConfig = mock(AuthConfig.class);
-        saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
-        when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
-        when(authConfig.getSaslAuthConfig()).thenReturn(null);
-        when(encryptionConfig.getInsecure()).thenReturn(true);
-        when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
-        when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getBootStrapServers()).thenReturn(sslBootstrapServers);
-        when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
+        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
+        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
+        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
         
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
-        final String topicName = plainTextTopic.getName();
+        final String topicName = jsonTopic.getName();
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.createTopics(
@@ -280,12 +277,24 @@ public class KafkaSourceMultipleAuthTypeIT {
             Thread.sleep(1000);
         }
         kafkaSource.start(buffer);
-        produceKafkaRecords(bootstrapServers, topicName, numRecords);
+        produceJsonRecords(bootstrapServers, topicName, numRecords);
         int numRetries = 0;
         while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
             Thread.sleep(1000);
         }
         assertThat(receivedRecords.size(), equalTo(numRecords));
+        for (int i = 0; i < numRecords; i++) {
+            Record<Event> record = receivedRecords.get(i);
+            Event event = (Event)record.getData();
+            EventMetadata metadata = event.getMetadata();
+            Map<String, Object> map = event.toMap();
+            assertThat(map.get("name"), equalTo("testName"+i));
+            assertThat(map.get("id"), equalTo(TEST_ID+i));
+            assertThat(map.get("status"), equalTo(true));
+            assertThat(map.get("kafka_key"), equalTo(testKey));
+            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+        }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.deleteTopics(Collections.singleton(topicName))
@@ -301,27 +310,19 @@ public class KafkaSourceMultipleAuthTypeIT {
     }
 
     @Test
-    public void TestPlainTextWithAuthKafkaEncryptionWithNoAuthSchemaRegistry() throws Exception {
+    public void TestJsonRecordsWithKafkaKeyModeAsMetadata() throws Exception {
         final int numRecords = 1;
-        authConfig = mock(AuthConfig.class);
-        saslAuthConfig = mock(AuthConfig.SaslAuthConfig.class);
-        plainTextAuthConfig = mock(PlainTextAuthConfig.class);
-        when(plainTextAuthConfig.getUsername()).thenReturn(kafkaUsername);
-        when(plainTextAuthConfig.getPassword()).thenReturn(kafkaPassword);
-        when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
-        when(authConfig.getSaslAuthConfig()).thenReturn(saslAuthConfig);
-        when(saslAuthConfig.getPlainTextAuthConfig()).thenReturn(plainTextAuthConfig);
-        when(encryptionConfig.getInsecure()).thenReturn(true);
-        when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
-        when(plainTextTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
-        when(sourceConfig.getBootStrapServers()).thenReturn(saslsslBootstrapServers);
-        when(sourceConfig.getTopics()).thenReturn(List.of(plainTextTopic));
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
+        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
+        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_METADATA);
+        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
         
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
-        final String topicName = plainTextTopic.getName();
+        final String topicName = jsonTopic.getName();
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.createTopics(
@@ -336,12 +337,24 @@ public class KafkaSourceMultipleAuthTypeIT {
             Thread.sleep(1000);
         }
         kafkaSource.start(buffer);
-        produceKafkaRecords(bootstrapServers, topicName, numRecords);
+        produceJsonRecords(bootstrapServers, topicName, numRecords);
         int numRetries = 0;
         while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
             Thread.sleep(1000);
         }
         assertThat(receivedRecords.size(), equalTo(numRecords));
+        for (int i = 0; i < numRecords; i++) {
+            Record<Event> record = receivedRecords.get(i);
+            Event event = (Event)record.getData();
+            EventMetadata metadata = event.getMetadata();
+            Map<String, Object> map = event.toMap();
+            assertThat(map.get("name"), equalTo("testName"+i));
+            assertThat(map.get("id"), equalTo(TEST_ID+i));
+            assertThat(map.get("status"), equalTo(true));
+            assertThat(metadata.getAttributes().get("kafka_key"), equalTo(testKey));
+            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+        }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
                 adminClient.deleteTopics(Collections.singleton(topicName))
@@ -356,7 +369,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         }
     }
 
-    public void produceKafkaRecords(final String servers, final String topicName, final int numRecords) {
+    public void produceJsonRecords(final String servers, final String topicName, final int numRecords) {
         Properties props = new Properties();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
@@ -365,10 +378,9 @@ public class KafkaSourceMultipleAuthTypeIT {
           org.apache.kafka.common.serialization.StringSerializer.class);
         KafkaProducer producer = new KafkaProducer(props);
         for (int i = 0; i < numRecords; i++) {
-            String key = RandomStringUtils.randomAlphabetic(5);
-            String value = RandomStringUtils.randomAlphabetic(10);
+            String value = "{\"name\":\"testName"+i+"\", \"id\":"+(TEST_ID+i)+", \"status\":true}";
             ProducerRecord<String, String> record = 
-                new ProducerRecord<>(topicName, key, value);
+                new ProducerRecord<>(topicName, testKey, value);
             producer.send(record);
             try {
                 Thread.sleep(100);
