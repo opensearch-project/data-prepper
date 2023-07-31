@@ -49,6 +49,7 @@ When run, the processor will parse the message into the following output:
   * Default: `{}`
   * Example: `default_keys` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"key1": "value1", "defaultkey": "defaultvalue"}`
   * It should be noted that the include_keys filter will be applied to the message first, and then default keys.
+  * Example: `include_keys` is `["key1"]`, and `default_keys` is `{"key2": "value2"}`. `key1=value1&key2=abc` will parse into `{"key1": "value1", "key2": "value2"}`
 * `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default.
   * Note: This cannot be defined at the same time as `value_split_characters`

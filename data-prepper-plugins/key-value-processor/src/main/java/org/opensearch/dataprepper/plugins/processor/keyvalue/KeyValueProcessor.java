@@ -110,15 +110,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         validateKeySets(includeKeysSet, excludeKeysSet, defaultKeysSet);
-
-        final Set<String> includeDefaultCheckSet = new HashSet<String>(defaultKeysSet);
-        includeDefaultCheckSet.retainAll(includeKeysSet);
-        if (!includeDefaultCheckSet.isEmpty()) {
-            for (final String overlap_key : includeDefaultCheckSet) {
-                defaultKeysMap.remove(overlap_key);
-                defaultKeysSet.remove(overlap_key);
-            }
-        }
         
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
@@ -212,7 +203,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
 
                 if (defaultKeysSet.contains(key)) {
-                    LOG.debug(String.format("Skipping already included default key: '%s'", key));
+                    LOG.debug(String.format("Skipping already included default key-value pair: '%s'", key));
                     continue;
                 }
 
