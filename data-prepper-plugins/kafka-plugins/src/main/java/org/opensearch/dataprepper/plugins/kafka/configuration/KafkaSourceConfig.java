@@ -20,6 +20,22 @@ import java.time.Duration;
  */
 
 public class KafkaSourceConfig {
+    public class EncryptionConfig {
+        @JsonProperty("type")
+        private EncryptionType type = EncryptionType.SSL;
+
+        @JsonProperty("insecure")
+        private boolean insecure = false;
+
+        public EncryptionType getType() {
+            return type;
+        }
+
+        public boolean getInsecure() {
+            return insecure;
+        }
+    }
+
     public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
@@ -39,7 +55,7 @@ public class KafkaSourceConfig {
     private AuthConfig authConfig;
 
     @JsonProperty("encryption")
-    private EncryptionType encryptionType = EncryptionType.SSL;
+    private EncryptionConfig encryptionConfig;
 
     @JsonProperty("aws")
     @Valid
@@ -97,8 +113,11 @@ public class KafkaSourceConfig {
         return authConfig;
     }
 
-    public EncryptionType getEncryptionType() {
-        return encryptionType;
+    public EncryptionConfig getEncryptionConfig() {
+        if (Objects.isNull(encryptionConfig)) {
+            return new EncryptionConfig();
+        }
+        return encryptionConfig;
     }
 
     public AwsConfig getAwsConfig() {

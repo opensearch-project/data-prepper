@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,6 +32,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -538,21 +540,109 @@ public class JacksonEvent implements Event {
     }
 
     public class JsonStringBuilder extends Event.JsonStringBuilder {
-        private Event event;
 
-        private JsonStringBuilder(final Event event) {
+        private final boolean RETAIN_ALL = true;
+
+        private final boolean EXCLUDE_ALL = false;
+
+
+        private final JacksonEvent event;
+
+        private JsonStringBuilder(final JacksonEvent event) {
             checkNotNull(event, "event cannot be null");
             this.event = event;
         }
 
+        private JsonNode getBaseNode() {
+            // Get root node.
+            if (getRootKey() != null && !getRootKey().isEmpty() && event.containsKey(getRootKey())) {
+                return event.getNode(getRootKey());
+            }
+            return event.getJsonNode();
+        }
+
+
         public String toJsonString() {
-            final String jsonString = event.toJsonString().trim();
+
+            String jsonString;
+            if (getIncludeKeys() != null && !getIncludeKeys().isEmpty()) {
+                jsonString = searchAndFilter(getBaseNode(), "", getIncludeKeys(), RETAIN_ALL);
+            } else if (getExcludeKeys() != null && !getExcludeKeys().isEmpty()) {
+                jsonString = searchAndFilter(getBaseNode(), "", getExcludeKeys(), EXCLUDE_ALL);
+            } else if (getBaseNode() !=event.getJsonNode()) {
+                jsonString = event.getAsJsonString(getRootKey());
+            } else {
+                // Some successors have its own implementation of toJsonString, such as JacksonSpan.
+                // In such case, it's only used when the root key is not provided.
+                // TODO: Need to check if such behaviour is expected.
+                jsonString = event.toJsonString();
+            }
+
             final String tagsKey = getTagsKey();
-            if(tagsKey != null) {
+            if (tagsKey != null) {
                 final JsonNode tagsNode = mapper.valueToTree(event.getMetadata().getTags());
-                return jsonString.substring(0, jsonString.length()-1) + ",\""+tagsKey+"\":" + tagsNode.toString()+"}";
+                return jsonString.substring(0, jsonString.length() - 1) + ",\"" + tagsKey + "\":" + tagsNode.toString() + "}";
             }
             return jsonString;
         }
+
+        /**
+         * Perform DFS(Depth-first search) like traversing using recursion on the Json Tree and return the json string.
+         * This supports filtering (to include or exclude) from a list of keys.
+         *
+         * @param node         Root node to start traversing
+         * @param path         Json path, e.g. /foo/bar
+         * @param filterKeys   A list of filtered keys
+         * @param filterAction Either to include (RETAIN_ALL or true) or to exclude (EXCLUDE_ALL or false)
+         * @return a json string with filtered keys
+         */
+        String searchAndFilter(JsonNode node, String path, final List<String> filterKeys, boolean filterAction) {
+
+            if (node.isArray()) { // for array node.
+                StringJoiner sj = new StringJoiner(",", "[", "]");
+                node.forEach(childNode -> sj.add(searchAndFilter(childNode, path, filterKeys, filterAction)));
+                return sj.toString();
+            } else {
+                StringJoiner sj = new StringJoiner(",", "{", "}");
+                List<String> valueList = new ArrayList<>();
+
+                node.properties().forEach(entry -> {
+                    String keyPath = path + SEPARATOR + entry.getKey();
+                    // Track whether the key is found in the filter list.
+                    // Different behaviours between include and exclude action.
+                    boolean found = false;
+                    for (String key : filterKeys) {
+                        if (keyPath.equals(key)) {
+                            found = true;
+                            // To keep the order.
+                            if (filterAction == RETAIN_ALL) {
+                                valueList.add("\"" + entry.getKey() + "\":" + entry.getValue().toString());
+                            }
+                            break;
+                        } else if (key.startsWith(keyPath)) {
+                            found = true;
+                            valueList.add("\"" + entry.getKey() + "\":" + searchAndFilter(entry.getValue(), keyPath, filterKeys, filterAction));
+                            break;
+                        }
+                        if (key.compareTo(keyPath) > 0) {
+                            // To save the comparing.
+                            // This requires the filter keys to be sorted first.
+                            // This is done in SinkModel.
+                            break;
+                        }
+                    }
+
+                    if (!found && filterAction == EXCLUDE_ALL) {
+                        valueList.add("\"" + entry.getKey() + "\":" + entry.getValue().toString());
+                    }
+                });
+
+                valueList.forEach(value -> sj.add(value));
+                return sj.toString();
+
+            }
+        }
+
+
     }
 }

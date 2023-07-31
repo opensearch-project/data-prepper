@@ -30,53 +30,46 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 
-public class CloudWatchLogsClientFactoryTest {
-    private AwsConfig awsConfig;
-    private AwsCredentialsSupplier awsCredentialsSupplier;
-    private AwsCredentialsOptions awsCredentialsOptions;
+class CloudWatchLogsClientFactoryTest {
+    private AwsConfig mockAwsConfig;
+    private AwsCredentialsSupplier mockAwsCredentialsSupplier;
+    private AwsCredentialsOptions mockAwsCredentialsOptions;
 
     @BeforeEach
     void setUp() {
-        awsConfig = mock(AwsConfig.class);
-        awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
-        awsCredentialsOptions = mock(AwsCredentialsOptions.class);
-        when(awsConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
+        mockAwsConfig = mock(AwsConfig.class);
+        mockAwsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
+        mockAwsCredentialsOptions = mock(AwsCredentialsOptions.class);
+        when(mockAwsConfig.getAwsRegion()).thenReturn(Region.US_EAST_1);
     }
 
     @Test
-    void check_created_real_default_client_test() {
-        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+    void GIVEN_default_credentials_SHOULD_return_non_null_client() {
+        final CloudWatchLogsClient cloudWatchLogsClientToTest = CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
 
         assertNotNull(cloudWatchLogsClientToTest);
     }
 
     @Test
-    void check_created_client_with_no_params() {
-        final CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
-
-        assertNotNull(cloudWatchLogsClient);
-    }
-
-    @Test
-    void check_CwlClient_with_correct_inputs() {
+    void GIVEN_valid_credential_and_aws_parameters_SHOULD_generate_valid_provider_and_options() {
         final String stsRoleArn = UUID.randomUUID().toString();
         final String externalId = UUID.randomUUID().toString();
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
-        when(awsConfig.getAwsStsRoleArn()).thenReturn(stsRoleArn);
-        when(awsConfig.getAwsStsExternalId()).thenReturn(externalId);
-        when(awsConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
+        when(mockAwsConfig.getAwsStsRoleArn()).thenReturn(stsRoleArn);
+        when(mockAwsConfig.getAwsStsExternalId()).thenReturn(externalId);
+        when(mockAwsConfig.getAwsStsHeaderOverrides()).thenReturn(stsHeaderOverrides);
 
         final AwsCredentialsProvider expectedCredentialsProvider = mock(AwsCredentialsProvider.class);
-        when(awsCredentialsSupplier.getProvider(ArgumentMatchers.any())).thenReturn(expectedCredentialsProvider);
+        when(mockAwsCredentialsSupplier.getProvider(ArgumentMatchers.any())).thenReturn(expectedCredentialsProvider);
 
         final CloudWatchLogsClientBuilder cloudWatchLogsClientBuilder = mock(CloudWatchLogsClientBuilder.class);
-        when(cloudWatchLogsClientBuilder.region(awsConfig.getAwsRegion())).thenReturn(cloudWatchLogsClientBuilder);
+        when(cloudWatchLogsClientBuilder.region(mockAwsConfig.getAwsRegion())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.credentialsProvider(ArgumentMatchers.any())).thenReturn(cloudWatchLogsClientBuilder);
         when(cloudWatchLogsClientBuilder.overrideConfiguration(ArgumentMatchers.any(ClientOverrideConfiguration.class))).thenReturn(cloudWatchLogsClientBuilder);
         try(final MockedStatic<CloudWatchLogsClient> cloudWatchLogsClientMockedStatic = mockStatic(CloudWatchLogsClient.class)) {
             cloudWatchLogsClientMockedStatic.when(CloudWatchLogsClient::builder)
                     .thenReturn(cloudWatchLogsClientBuilder);
-            CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
+            CloudWatchLogsClientFactory.createCwlClient(mockAwsConfig, mockAwsCredentialsSupplier);
         }
 
         final ArgumentCaptor<AwsCredentialsProvider> credentialsProviderArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);
@@ -87,12 +80,12 @@ public class CloudWatchLogsClientFactoryTest {
         assertThat(actualProvider, equalTo(expectedCredentialsProvider));
 
         final ArgumentCaptor<AwsCredentialsOptions> credentialsOptionsArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsOptions.class);
-        verify(awsCredentialsSupplier).getProvider(credentialsOptionsArgumentCaptor.capture());
+        verify(mockAwsCredentialsSupplier).getProvider(credentialsOptionsArgumentCaptor.capture());
 
         final AwsCredentialsOptions actualOptions = credentialsOptionsArgumentCaptor.getValue();
-        assertThat(actualOptions.getRegion(), equalTo(awsConfig.getAwsRegion()));
-        assertThat(actualOptions.getStsRoleArn(), equalTo(awsConfig.getAwsStsRoleArn()));
-        assertThat(actualOptions.getStsExternalId(), equalTo(awsConfig.getAwsStsExternalId()));
-        assertThat(actualOptions.getStsHeaderOverrides(), equalTo(awsConfig.getAwsStsHeaderOverrides()));
+        assertThat(actualOptions.getRegion(), equalTo(mockAwsConfig.getAwsRegion()));
+        assertThat(actualOptions.getStsRoleArn(), equalTo(mockAwsConfig.getAwsStsRoleArn()));
+        assertThat(actualOptions.getStsExternalId(), equalTo(mockAwsConfig.getAwsStsExternalId()));
+        assertThat(actualOptions.getStsHeaderOverrides(), equalTo(mockAwsConfig.getAwsStsHeaderOverrides()));
     }
 }
