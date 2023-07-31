@@ -365,7 +365,7 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testDefaultIncludeKeysNotInKeyValueProcessor() {
+    void testIncludeKeysNotInRecordMessageKeyValueProcessor() {
         final Map<String, Object> defaultMap = Map.of("key1", "value1");
         final List<String> includeKeys = List.of("key1");
         when(mockConfig.getDefaultKeys()).thenReturn(defaultMap);
