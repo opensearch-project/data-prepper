@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.core.Is.is;
 import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -19,13 +18,6 @@ class MappingsParameterConfigTest {
     void setup() throws NoSuchFieldException, IllegalAccessException{
         mappingsParameterConfig = new MappingsParameterConfig();
         setField(MappingsParameterConfig.class, mappingsParameterConfig, "source", "sourceKey");
-    }
-
-    @Test
-    void test_get_iterate_on() throws NoSuchFieldException, IllegalAccessException{
-        assertNull(mappingsParameterConfig.getIterateOn());
-        setField(MappingsParameterConfig.class, mappingsParameterConfig, "iterateOn", "iteratorField");
-        assertThat(mappingsParameterConfig.getIterateOn(),is("iteratorField"));
     }
 
     @Test
@@ -62,6 +54,33 @@ class MappingsParameterConfigTest {
         setField(MappingsParameterConfig.class, mappingsParameterConfig, "source", 20.1);
         assertFalse(mappingsParameterConfig.isSourceFieldValid());
         setField(MappingsParameterConfig.class, mappingsParameterConfig, "source", List.of("key1", 200));
+        assertFalse(mappingsParameterConfig.isSourceFieldValid());
+    }
+
+    @Test
+    void test_valid_source_array() throws NoSuchFieldException, IllegalAccessException {
+        List<String> sourceList = List.of("sourceField1", "sourceField2");
+        setField(MappingsParameterConfig.class, mappingsParameterConfig, "source", sourceList);
+        assertTrue(mappingsParameterConfig.isSourceFieldValid());
+    }
+
+    @Test
+    void test_invalid_source_array_not_string_type() throws NoSuchFieldException, IllegalAccessException {
+        List<Object> sourceList = List.of("sourceField1", 1);
+        setField(MappingsParameterConfig.class, mappingsParameterConfig, "source", sourceList);
+        assertFalse(mappingsParameterConfig.isSourceFieldValid());
+    }
+
+    @Test
+    void test_valid_source_array_valid_common_path() throws NoSuchFieldException, IllegalAccessException {
+        List<String> sourceList = List.of("field1/field2/sourceField1", "field1/field2/sourceField2");
+        setField(MappingsParameterConfig.class, mappingsParameterConfig, "source", sourceList);
+        assertTrue(mappingsParameterConfig.isSourceFieldValid());
+    }
+    @Test
+    void test_invalid_source_array_invalid_common_path() throws NoSuchFieldException, IllegalAccessException {
+        List<String> sourceList = List.of("field1/field2/sourceField1", "field1/sourceField2");
+        setField(MappingsParameterConfig.class, mappingsParameterConfig, "source", sourceList);
         assertFalse(mappingsParameterConfig.isSourceFieldValid());
     }
 

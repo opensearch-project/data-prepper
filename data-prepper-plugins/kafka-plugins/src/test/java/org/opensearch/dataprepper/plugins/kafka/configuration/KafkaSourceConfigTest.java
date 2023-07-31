@@ -73,6 +73,7 @@ class KafkaSourceConfigTest {
 	@Test
 	void test_setters() throws NoSuchFieldException, IllegalAccessException {
 		kafkaSourceConfig = new KafkaSourceConfig();
+        KafkaSourceConfig.EncryptionConfig encryptionConfig = kafkaSourceConfig.getEncryptionConfig();
 		kafkaSourceConfig.setBootStrapServers(new ArrayList<>(Arrays.asList("127.0.0.1:9092")));
 		TopicConfig topicConfig = mock(TopicConfig.class);
 		kafkaSourceConfig.setTopics(Collections.singletonList(topicConfig));
@@ -84,10 +85,10 @@ class KafkaSourceConfigTest {
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsTimeout", testTimeout);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
 		assertEquals(testTimeout, kafkaSourceConfig.getAcknowledgementsTimeout());
-		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionType());
-        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionType", EncryptionType.NONE);
-		assertEquals(EncryptionType.NONE, kafkaSourceConfig.getEncryptionType());
-        setField(KafkaSourceConfig.class, kafkaSourceConfig, "encryptionType", EncryptionType.SSL);
-		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionType());
+		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionConfig().getType());
+        setField(KafkaSourceConfig.EncryptionConfig.class, encryptionConfig, "type", EncryptionType.NONE);
+		assertEquals(EncryptionType.NONE, encryptionConfig.getType());
+        setField(KafkaSourceConfig.EncryptionConfig.class, encryptionConfig, "type", EncryptionType.SSL);
+		assertEquals(EncryptionType.SSL, encryptionConfig.getType());
 	}
 }

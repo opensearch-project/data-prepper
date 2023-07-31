@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
@@ -39,12 +40,14 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     private static final Logger LOG = LoggerFactory.getLogger(TranslateProcessor.class);
     private final ExpressionEvaluator expressionEvaluator;
     private final List<MappingsParameterConfig> mappingsConfig;
+    private final JacksonEvent.Builder eventBuilder= JacksonEvent.builder();
+    private final JsonExtractor jsonExtractor = new JsonExtractor();
 
     @DataPrepperPluginConstructor
     public TranslateProcessor(PluginMetrics pluginMetrics, final TranslateProcessorConfig translateProcessorConfig, final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
         this.expressionEvaluator = expressionEvaluator;
-        mappingsConfig = translateProcessorConfig.getCombinedParameterConfigs();
+        mappingsConfig = translateProcessorConfig.getCombinedMappingsConfigs();
         Optional.ofNullable(mappingsConfig)
                 .ifPresent(configs -> configs.forEach(MappingsParameterConfig::parseMappings));
     }
@@ -58,21 +61,10 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
             final Event recordEvent = record.getData();
             for (MappingsParameterConfig mappingConfig : mappingsConfig) {
                 try {
-                    String iterateOn = mappingConfig.getIterateOn();
                     List<TargetsParameterConfig> targetsConfig = mappingConfig.getTargetsParameterConfigs();
                     for (TargetsParameterConfig targetConfig : targetsConfig) {
-                        String translateWhen = targetConfig.getTranslateWhen();
                         Object sourceObject = mappingConfig.getSource();
-                        if (Objects.nonNull(translateWhen) && !expressionEvaluator.evaluateConditional(translateWhen, recordEvent)) {
-                            continue;
-                        }
-                        if (Objects.nonNull(iterateOn)) {
-                            List<Map<String, Object>> objectsToIterate = recordEvent.get(iterateOn, List.class);
-                            objectsToIterate.forEach(recordObject -> performMappings(recordObject, sourceObject, targetConfig));
-                            recordEvent.put(iterateOn, objectsToIterate);
-                        } else {
-                            performMappings(recordEvent, sourceObject, targetConfig);
-                        }
+                        translateSource(sourceObject, recordEvent, targetConfig);
                     }
                 } catch (Exception ex) {
                     LOG.error(EVENT, "Error mapping the source [{}] of entry [{}]", mappingConfig.getSource(),
@@ -83,12 +75,57 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         return records;
     }
 
-    private String getSourceValue(Object recordObject, String sourceKey) {
-        if (recordObject instanceof Map) {
-            return (String) ((Map<?, ?>) recordObject).get(sourceKey);
+    private List<String> getSourceKeys(Object sourceObject){
+        List<String> sourceKeys;
+        if (sourceObject instanceof List<?>) {
+            sourceKeys = (ArrayList<String>) sourceObject;
+        } else if (sourceObject instanceof String) {
+            sourceKeys = List.of((String) sourceObject);
         } else {
-            return ((Event) recordObject).get(sourceKey, String.class);
+            String exceptionMsg = "source option configured incorrectly. source can only be a String or list of Strings";
+            throw new InvalidPluginConfigurationException(exceptionMsg);
         }
+        return sourceKeys;
+    }
+
+    private void translateSource(Object sourceObject, Event recordEvent, TargetsParameterConfig targetConfig) {
+        Map<String, Object> recordObject =  recordEvent.toMap();
+        List<String> sourceKeysPaths = getSourceKeys(sourceObject);
+        if(Objects.isNull(recordObject) || sourceKeysPaths.isEmpty()){
+            return;
+        }
+
+        List<String> sourceKeys = new ArrayList<>();
+        for(String sourceKeyPath: sourceKeysPaths){
+            sourceKeys.add(jsonExtractor.getLeafField(sourceKeyPath));
+        }
+
+        String commonPath = jsonExtractor.getParentPath(sourceKeysPaths.get(0));
+        if(commonPath.isEmpty()) {
+            performMappings(recordEvent, sourceKeys, sourceObject, targetConfig);
+            return;
+        }
+
+        String rootField = jsonExtractor.getRootField(commonPath);
+        if(!recordObject.containsKey(rootField)){
+            return;
+        }
+
+        List<Object> targetObjects = jsonExtractor.getObjectFromPath(commonPath, recordObject);
+        if(!targetObjects.isEmpty()) {
+            targetObjects.forEach(targetObj -> performMappings(targetObj, sourceKeys, sourceObject, targetConfig));
+            recordEvent.put(rootField, recordObject.get(rootField));
+        }
+    }
+
+    private String getSourceValue(Object recordObject, String sourceKey) {
+        Optional<Object> sourceValue;
+        if (recordObject instanceof Map) {
+            sourceValue = Optional.ofNullable(((Map<?, ?>) recordObject).get(sourceKey));
+        } else {
+            sourceValue = Optional.ofNullable(((Event) recordObject).get(sourceKey, String.class));
+        }
+        return sourceValue.map(Object::toString).orElse(null);
     }
 
     private Object getTargetValue(Object sourceObject, List<Object> targetValues, TargetsParameterConfig targetConfig) {
@@ -102,17 +139,18 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
                 .collect(Collectors.toList());
     }
 
-    private void performMappings(Object recordObject, Object sourceObject, TargetsParameterConfig targetConfig) {
-        List<Object> targetValues = new ArrayList<>();
-        List<String> sourceKeys;
-        if (sourceObject instanceof List<?>) {
-            sourceKeys = (ArrayList<String>) sourceObject;
-        } else if (sourceObject instanceof String) {
-            sourceKeys = List.of((String) sourceObject);
-        } else {
-            String exceptionMsg = "source option configured incorrectly. source can only be a String or list of Strings";
-            throw new InvalidPluginConfigurationException(exceptionMsg);
+    private void performMappings(Object recordObject, List<String> sourceKeys, Object sourceObject, TargetsParameterConfig targetConfig) {
+        if (Objects.isNull(recordObject) ||
+            Objects.isNull(sourceObject) ||
+            Objects.isNull(targetConfig) ||
+            sourceKeys.isEmpty()) {
+            return;
         }
+        String translateWhen = targetConfig.getTranslateWhen();
+        if(!isExpressionValid(translateWhen, recordObject)){
+            return;
+        }
+        List<Object> targetValues = new ArrayList<>();
         for (String sourceKey : sourceKeys) {
             String sourceValue = getSourceValue(recordObject, sourceKey);
             if(sourceValue!=null){
@@ -121,6 +159,16 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
             }
         }
         addTargetToRecords(sourceObject, targetValues, recordObject, targetConfig);
+    }
+
+    private boolean isExpressionValid(String translateWhen, Object recordObject){
+        Event recordEvent;
+        if (recordObject instanceof Map) {
+            recordEvent = eventBuilder.withData(recordObject).withEventType("event").build();
+        } else {
+            recordEvent = (Event)recordObject;
+        }
+        return (translateWhen == null) || expressionEvaluator.evaluateConditional(translateWhen, recordEvent);
     }
 
     private Optional<Object> getTargetValueForSource(final String sourceValue, TargetsParameterConfig targetConfig) {
@@ -164,8 +212,12 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
         final boolean exact = targetConfig.getRegexParameterConfiguration().getExact();
         for (Pattern pattern : compiledPatterns.keySet()) {
             Matcher matcher = pattern.matcher(sourceValue);
-            if (matcher.matches() || (!exact && matcher.find())) {
+            if (matcher.matches()) {
                 return Optional.of(compiledPatterns.get(pattern));
+            }
+            if(!exact && matcher.find()) {
+                String targetValue = (String)compiledPatterns.get(pattern);
+                return Optional.of(matcher.replaceAll(targetValue));
             }
         }
         return Optional.empty();
