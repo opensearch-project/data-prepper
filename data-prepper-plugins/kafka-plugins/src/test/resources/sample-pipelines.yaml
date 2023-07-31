@@ -37,7 +37,7 @@ log-pipeline:
         sts_role_arn: sts_role_arn
       authentication:
         sasl:
-          aws_iam: role
+          aws_msk_iam: role
           plaintext:
             security_protocol: SASL_SSL
             username: 5UH4NID4OENKDIBI
