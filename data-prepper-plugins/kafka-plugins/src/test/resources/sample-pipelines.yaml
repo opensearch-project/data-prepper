@@ -39,7 +39,6 @@ log-pipeline:
         sasl:
           aws_msk_iam: role
           plaintext:
-            security_protocol: SASL_SSL
             username: 5UH4NID4OENKDIBI
             password: jCmncn77F9asfox3yhgZLCEwQ5fx8pKiXnszMqdt0y1GLrdZO1V1iz95aIe1UubX
           oauth:
