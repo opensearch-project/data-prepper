@@ -68,12 +68,57 @@ pipeline:
 
 ## Sample JSON input:
 
-{"peer": { "ips":{ "src_ip1" : "8.8.8.8", "dst_ip1": "8.8.8.9" }, "host": "example.org" }, "status": "success"}
+{
+"peer": {
+"ips": {
+"src_ip1": "8.8.8.8",
+"dst_ip1": "8.8.8.9"
+},
+"host": "example.org"
+},
+"status": "success"
+}
 
 ## Sample JSON Output:
 
-{"peer":{"ips":{"src_ip":"8.8.8.8","dst_ip":"8.8.8.9"},"host":"example.org"},"status":"success","target1":{"continent_name":"North America","country_iso_code":"US","timezone":"America/Chicago","ip":"8.8.8.8","country_name":"United States","location":{"lon":-97.822,"lat":37.751},"organization_name":"GOOGLE","asn":15169,"network":"8.8.8.0/24"},"target2":{"continent_name":"North America","country_iso_code":"US","timezone":"America/Chicago","ip":"8.8.8.9","country_name":"United States","location":{"lon":-97.822,"lat":37.751},"organization_name":"GOOGLE","asn":15169,"network":"8.8.8.0/24"}}
-
+{
+"peer": {
+"ips": {
+"src_ip": "8.8.8.8",
+"dst_ip": "8.8.8.9"
+},
+"host": "example.org"
+},
+"status": "success",
+"target1": {
+"continent_name": "North America",
+"country_iso_code": "US",
+"timezone": "America/Chicago",
+"ip": "8.8.8.8",
+"country_name": "United States",
+"location": {
+"lon": -97.822,
+"lat": 37.751
+},
+"organization_name": "GOOGLE",
+"asn": 15169,
+"network": "8.8.8.0/24"
+},
+"target2": {
+"continent_name": "North America",
+"country_iso_code": "US",
+"timezone": "America/Chicago",
+"ip": "8.8.8.9",
+"country_name": "United States",
+"location": {
+"lon": -97.822,
+"lat": 37.751
+},
+"organization_name": "GOOGLE",
+"asn": 15169,
+"network": "8.8.8.0/24"
+}
+}
 
 
 ## Developer Guide

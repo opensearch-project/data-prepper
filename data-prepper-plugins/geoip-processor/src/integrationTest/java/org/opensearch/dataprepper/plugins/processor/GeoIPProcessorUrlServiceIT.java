@@ -41,7 +41,7 @@ public class GeoIPProcessorUrlServiceIT {
     @BeforeEach
     public void setUp() throws JsonProcessingException {
 
-        maxmindLicenseKey =  System.getProperty("tests.geoipProcessor.maxmindLicenseKey");
+        maxmindLicenseKey = System.getProperty("tests.geoipProcessor.maxmindLicenseKey");
 
         jsonInput = "{\"peer\": { \"ips\":{ \"src_ip1\" : \"8.8.8.8\", \"dst_ip1\": \"8.8.8.9\" }, \"host\": \"example.org\" }, \"status\": \"success\"}";
 
