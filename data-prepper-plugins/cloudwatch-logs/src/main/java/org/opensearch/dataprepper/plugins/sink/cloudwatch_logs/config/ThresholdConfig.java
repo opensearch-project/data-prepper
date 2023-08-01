@@ -12,6 +12,8 @@ import org.hibernate.validator.constraints.time.DurationMin;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 
 /**
  * The threshold config holds the different configurations for
@@ -24,7 +26,7 @@ public class ThresholdConfig {
     public static  final String DEFAULT_SIZE_OF_REQUEST = "1mb";
     public static final int DEFAULT_RETRY_COUNT = 5;
     public static final long DEFAULT_LOG_SEND_INTERVAL_TIME = 60;
-    public static final int DEFAULT_BACKOFF_TIME = 500;
+    public static final long DEFAULT_BACKOFF_TIME = 500;
 
     @JsonProperty("batch_size")
     @Size(min = 1, max = 10000, message = "batch_size amount should be between 1 to 10000")
@@ -47,8 +49,9 @@ public class ThresholdConfig {
     private Duration logSendInterval = Duration.ofSeconds(DEFAULT_LOG_SEND_INTERVAL_TIME);
 
     @JsonProperty("back_off_time")
-    @Size(min = 500, max = 1000, message = "back_off_time amount should be between 500 and 1000 milliseconds")
-    private int backOffTime = DEFAULT_BACKOFF_TIME;
+    @DurationMin(millis = 500)
+    @DurationMax(millis = 1000)
+    private Duration backOffTime = Duration.ofMillis(DEFAULT_BACKOFF_TIME);
 
     public int getBatchSize() {
         return batchSize;
@@ -70,7 +73,7 @@ public class ThresholdConfig {
         return logSendInterval.getSeconds();
     }
 
-    public int getBackOffTime() {
-        return backOffTime;
+    public long getBackOffTime() {
+        return (backOffTime.get(ChronoUnit.NANOS) / 1000000) + (backOffTime.getSeconds() * 1000);
     }
 }

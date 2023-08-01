@@ -80,10 +80,10 @@ class ThresholdConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 100, 5000})
-    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_back_off_time(final int back_off_time) {
-        final Map<String, Integer> jsonMap = Map.of("back_off_time", back_off_time);
-        final ThresholdConfig thresholdConfigTest = objectMapper.convertValue(jsonMap, ThresholdConfig.class);
-        assertThat(thresholdConfigTest.getBackOffTime(), equalTo(back_off_time));
+    @ValueSource(longs = {0, 500, 1000})
+    void GIVEN_deserialized_threshold_config_SHOULD_return_valid_back_off_time(final long back_off_time) throws NoSuchFieldException, IllegalAccessException {
+        ThresholdConfig sampleThresholdConfig = new ThresholdConfig();
+        ReflectivelySetField.setField(sampleThresholdConfig.getClass(), sampleThresholdConfig, "backOffTime", Duration.ofMillis(back_off_time));
+        assertThat(sampleThresholdConfig.getBackOffTime(), equalTo(back_off_time));
     }
 }
