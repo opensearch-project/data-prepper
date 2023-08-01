@@ -32,7 +32,7 @@ import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     private static final Logger LOG = LoggerFactory.getLogger(DissectProcessor.class);
     private final DissectProcessorConfig dissectConfig;
-    private final Map<String, Dissector> dissectorMap = new HashMap<>();;
+    private final Map<String, Dissector> dissectorMap = new HashMap<>();
     private final Map<String, TargetType> targetTypeMap;
     private final ExpressionEvaluator expressionEvaluator;
 
