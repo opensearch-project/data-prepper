@@ -202,11 +202,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     continue;
                 }
 
-                if (defaultKeysSet.contains(key)) {
-                    LOG.debug("Skipping already included default key-value pair: '{}'", key);
-                    continue;
-                }
-
                 if(keyValueProcessorConfig.getDeleteKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteKeyRegex(), "")) {
                     key = key.replaceAll(keyValueProcessorConfig.getDeleteKeyRegex(), "");
                 }
@@ -217,6 +212,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 } else {
                     LOG.debug("Unsuccessful match: '{}'", terms[0]);
                     value = keyValueProcessorConfig.getNonMatchValue();
+                }
+
+                if (defaultKeysMap.containsKey(key) && defaultKeysMap.containsValue(value)) {
+                    LOG.debug("Skipping already included default key-value pair: '{}'", key);
+                    continue;
                 }
 
                 if(value != null
