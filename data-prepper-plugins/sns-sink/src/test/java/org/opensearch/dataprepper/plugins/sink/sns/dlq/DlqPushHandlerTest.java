@@ -2,8 +2,9 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink.dlq;
+package org.opensearch.dataprepper.plugins.sink.sns.dlq;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -11,7 +12,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
 import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
-import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.sns.configuration.AwsAuthenticationOptions;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -26,7 +27,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class DlqPushHandlerTest {
+class DlqPushHandlerTest {
 
     private static final String BUCKET = "bucket";
     private static final String BUCKET_VALUE = "test";
@@ -53,8 +54,9 @@ public class DlqPushHandlerTest {
 
     private DlqWriter dlqWriter;
 
+
     @BeforeEach
-    public void setUp() throws Exception{
+    public void setUp(){
         this.pluginFactory = mock(PluginFactory.class);
         this.pluginModel = mock(PluginModel.class);
         this.awsAuthenticationOptions =  mock(AwsAuthenticationOptions.class);
@@ -63,7 +65,7 @@ public class DlqPushHandlerTest {
     }
 
     @Test
-    public void perform_for_dlq_s3_success() throws IOException {
+    void perform_for_dlq_s3_success() throws IOException {
         Map<String, Object> props = new HashMap<>();
         props.put(BUCKET,BUCKET_VALUE);
         props.put(KEY_PATH_PREFIX,KEY_PATH_PREFIX_VALUE);
@@ -72,20 +74,21 @@ public class DlqPushHandlerTest {
 
         when(dlqProvider.getDlqWriter(anyString())).thenReturn(Optional.of(dlqWriter));
         doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
-        SNSSinkFailedDlqData failedDlqData = new SNSSinkFailedDlqData("topic","message",0);
+        SnsSinkFailedDlqData failedDlqData = new SnsSinkFailedDlqData("topic","message",0);
         dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE);
 
         PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
         pluginSetting.setPipelineName(PIPELINE_NAME);
         dlqPushHandler.perform(pluginSetting, failedDlqData);
+        Assertions.assertNotNull(pluginFactory);
         verify(dlqWriter).write(anyList(), anyString(), anyString());
     }
 
 
     @Test
-    public void perform_for_dlq_local_file_success(){
+    void perform_for_dlq_local_file_success(){
 
-        SNSSinkFailedDlqData failedDlqData = new SNSSinkFailedDlqData("topic","message",0);
+        SnsSinkFailedDlqData failedDlqData = new SnsSinkFailedDlqData("topic","message",0);
         dlqPushHandler = new DlqPushHandler(DLQ_FILE,pluginFactory,null, ROLE, REGION,null);
 
         PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, null);

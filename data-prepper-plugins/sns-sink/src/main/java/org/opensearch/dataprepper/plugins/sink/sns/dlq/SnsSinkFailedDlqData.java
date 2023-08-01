@@ -2,9 +2,9 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink.dlq;
+package org.opensearch.dataprepper.plugins.sink.sns.dlq;
 
-public class SNSSinkFailedDlqData {
+public class SnsSinkFailedDlqData {
 
     private String topic;
 
@@ -12,7 +12,7 @@ public class SNSSinkFailedDlqData {
 
     private int status;
 
-    public SNSSinkFailedDlqData(String topic, String message, int status) {
+    public SnsSinkFailedDlqData(String topic, String message, int status) {
         this.topic = topic;
         this.message = message;
         this.status = status;
@@ -22,7 +22,7 @@ public class SNSSinkFailedDlqData {
         return topic;
     }
 
-    public SNSSinkFailedDlqData setTopic(String topic) {
+    public SnsSinkFailedDlqData setTopic(String topic) {
         this.topic = topic;
         return this;
     }
@@ -31,7 +31,7 @@ public class SNSSinkFailedDlqData {
         return message;
     }
 
-    public SNSSinkFailedDlqData setMessage(String message) {
+    public SnsSinkFailedDlqData setMessage(String message) {
         this.message = message;
         return this;
     }
@@ -40,7 +40,7 @@ public class SNSSinkFailedDlqData {
         return status;
     }
 
-    public SNSSinkFailedDlqData setStatus(int status) {
+    public SnsSinkFailedDlqData setStatus(int status) {
         this.status = status;
         return this;
     }

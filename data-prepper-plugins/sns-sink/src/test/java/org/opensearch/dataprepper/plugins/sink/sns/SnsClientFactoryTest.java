@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.sns;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.sns.configuration.AwsAuthenticationOptions;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
@@ -35,9 +35,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class SNSClientFactoryTest {
+class SnsClientFactoryTest {
     @Mock
-    private SNSSinkConfig snsSinkConfig;
+    private SnsSinkConfig snsSinkConfig;
     @Mock
     private AwsCredentialsSupplier awsCredentialsSupplier;
 
@@ -52,7 +52,7 @@ class SNSClientFactoryTest {
     @Test
     void createSnsClient_with_real_SnsClient() {
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.US_EAST_1);
-        final SnsClient s3Client = SNSClientFactory.createSNSClient(snsSinkConfig, awsCredentialsSupplier);
+        final SnsClient s3Client = SnsClientFactory.createSNSClient(snsSinkConfig, awsCredentialsSupplier);
 
         assertThat(s3Client, notNullValue());
     }
@@ -62,7 +62,6 @@ class SNSClientFactoryTest {
     void createSNSClient_provides_correct_inputs(final String regionString) {
         final Region region = Region.of(regionString);
         final String stsRoleArn = UUID.randomUUID().toString();
-        final String externalId = UUID.randomUUID().toString();
         final Map<String, String> stsHeaderOverrides = Map.of(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(region);
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn(stsRoleArn);
@@ -78,7 +77,7 @@ class SNSClientFactoryTest {
         try(final MockedStatic<SnsClient> s3ClientMockedStatic = mockStatic(SnsClient.class)) {
             s3ClientMockedStatic.when(SnsClient::builder)
                     .thenReturn(snsClientBuilder);
-            SNSClientFactory.createSNSClient(snsSinkConfig, awsCredentialsSupplier);
+            SnsClientFactory.createSNSClient(snsSinkConfig, awsCredentialsSupplier);
         }
 
         final ArgumentCaptor<AwsCredentialsProvider> credentialsProviderArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsProvider.class);

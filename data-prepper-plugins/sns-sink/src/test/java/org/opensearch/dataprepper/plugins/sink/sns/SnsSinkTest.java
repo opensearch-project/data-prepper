@@ -3,17 +3,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.sns;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.sink.SinkContext;
-import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.sns.configuration.AwsAuthenticationOptions;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.HashMap;
@@ -24,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class SNSSinkTest {
+class SnsSinkTest {
 
     public static final int MAX_EVENTS = 100;
     public static final int MAX_RETRIES = 5;
@@ -35,8 +36,8 @@ class SNSSinkTest {
     public static final String CODEC_PLUGIN_NAME = "json";
     public static final String SINK_PLUGIN_NAME = "sns";
     public static final String SINK_PIPELINE_NAME = "sns-sink-pipeline";
-    private SNSSinkConfig snsSinkConfig;
-    private SNSSink snsSink;
+    private SnsSinkConfig snsSinkConfig;
+    private SnsSink snsSink;
     private PluginSetting pluginSetting;
     private PluginFactory pluginFactory;
     private AwsCredentialsSupplier awsCredentialsSupplier;
@@ -46,8 +47,7 @@ class SNSSinkTest {
 
     @BeforeEach
     void setUp() {
-
-        snsSinkConfig = mock(SNSSinkConfig.class);
+        snsSinkConfig = mock(SnsSinkConfig.class);
         sinkContext = mock(SinkContext.class);
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
         pluginSetting = mock(PluginSetting.class);
@@ -66,8 +66,8 @@ class SNSSinkTest {
         when(pluginSetting.getPipelineName()).thenReturn(SINK_PIPELINE_NAME);
     }
 
-    private SNSSink createObjectUnderTest() {
-        return new SNSSink(pluginSetting, snsSinkConfig, pluginFactory, sinkContext, awsCredentialsSupplier);
+    private SnsSink createObjectUnderTest() {
+        return new SnsSink(pluginSetting, snsSinkConfig, pluginFactory, sinkContext,mock(ExpressionEvaluator.class), awsCredentialsSupplier);
     }
 
     @Test

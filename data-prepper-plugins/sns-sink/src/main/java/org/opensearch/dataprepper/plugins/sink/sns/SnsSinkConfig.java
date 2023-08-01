@@ -2,14 +2,13 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.sns;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.sink.configuration.AwsAuthenticationOptions;
+import org.opensearch.dataprepper.plugins.sink.sns.configuration.AwsAuthenticationOptions;
 
 import java.util.Map;
 import java.util.Objects;
@@ -17,7 +16,7 @@ import java.util.Objects;
 /**
  * sns sink configuration class contains properties, used to read yaml configuration.
  */
-public class SNSSinkConfig {
+public class SnsSinkConfig {
 
     private static final int DEFAULT_CONNECTION_RETRIES = 5;
 
@@ -34,13 +33,12 @@ public class SNSSinkConfig {
     @Valid
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
-    @JsonProperty("topic")
+    @JsonProperty("topic_arn")
     @NotNull
-    @NotEmpty
     private String topicArn;
 
     @JsonProperty("message_group_id")
-    private String messageGroupId;
+    public String messageGroupId;
 
     @JsonProperty("codec")
     @NotNull

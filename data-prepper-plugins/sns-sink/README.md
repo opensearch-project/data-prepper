@@ -13,7 +13,9 @@ pipeline:
   ...
     sink:
     - sns:
-        topic: arn:aws:sns:ap-south-1:524239988922:my-topic
+        topic_arn: arn:aws:sns:ap-south-1:524239988922:my-topic
+        message_group_id: /type
+        message_deduplication_id: /id
         batch_size: 10
         aws:
           region: ap-south-1
@@ -29,9 +31,13 @@ pipeline:
 
 ## SNS Pipeline Configuration
 
-- `topic` (Optional) : The SNS Topic Arn of the Topic to push events.
+- `topic_arn` (Optional) : The SNS Topic Arn of the Topic to push events.
 
 - `batch_size` (Optional) : An integer value indicates the maximum number of events required to ingest into sns topic. Defaults to 10.
+
+- `message_group_id` (optional): A string of message group identifier which is used as `message_group_id` for the message group when it is stored in the sns topic. Default to Auto generated Random key.
+
+- `message_deduplication_id` (Optional) : A string of message deduplication identifier which is used as `message_deduplication_id` for the message deduplication when it is stored in the sns topic. Default to Auto generated Random key.
 
 - `dlq_file`(optional): A String of absolute file path for DLQ failed output records. Defaults to null.
   If not provided, failed records will be written into the default data-prepper log file (`logs/Data-Prepper.log`). If the `dlq` option is present along with this, an error is thrown.
@@ -66,6 +72,8 @@ The integration tests for this plugin do not run as part of the Data Prepper bui
 
 The following command runs the integration tests:
 
+Note: Subscribe sns topic to sqs queues to run the integration tests.
+
 ```
-./gradlew :data-prepper-plugins:sns-sink:integrationTest -Dtests.sns.sink.region=<<aws-region>> -Dtests.sns.sink.sts.role.arn=<<aws-sts-role-arn>> -Dtests.sns.sink.standard.topic=<<standard-topic-arn>> -Dtests.sns.sink.fifo.topic=<<fifo-topic-arn>> -Dtests.sns.sink.dlq.file.path=<<dlq-file-path>>
+./gradlew :data-prepper-plugins:sns-sink:integrationTest -Dtests.sns.sink.region=<<aws-region>> -Dtests.sns.sink.sts.role.arn=<<aws-sts-role-arn>> -Dtests.sns.sink.standard.topic=<<standard-topic-arn>> -Dtests.sns.sink.fifo.topic=<<fifo-topic-arn>> -Dtests.sns.sink.dlq.file.path=<<dlq-file-path>> -Dtests.sns.sink.standard.sqs.queue.url=<<sqs-standard-queue>> -Dtests.sns.sink.fifo.sqs.queue.url=<<sqs-fifo-queue>>
 ```

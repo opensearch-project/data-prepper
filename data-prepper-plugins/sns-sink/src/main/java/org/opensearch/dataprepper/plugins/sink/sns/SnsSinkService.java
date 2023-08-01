@@ -2,18 +2,20 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.sns;
 
 import io.micrometer.core.instrument.Counter;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluationException;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.sink.dlq.DlqPushHandler;
-import org.opensearch.dataprepper.plugins.sink.dlq.SNSSinkFailedDlqData;
+import org.opensearch.dataprepper.plugins.sink.sns.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.sink.sns.dlq.SnsSinkFailedDlqData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -37,21 +39,21 @@ import java.util.concurrent.locks.ReentrantLock;
  * Class responsible for create {@link SnsClient} object, check thresholds,
  * get new buffer and write records into buffer.
  */
-public class SNSSinkService {
+public class SnsSinkService {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SNSSinkService.class);
-
-    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_SNS_SUCCESS = "snsSinkObjectsEventsSucceeded";
-
-    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_SNS_FAILED = "snsSinkObjectsEventsFailed";
+    private static final Logger LOG = LoggerFactory.getLogger(SnsSinkService.class);
 
     private static final String BUCKET = "bucket";
 
     private static final String KEY_PATH = "key_path_prefix";
 
+    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_SNS_SUCCESS = "snsSinkObjectsEventsSucceeded";
+
+    public static final String NUMBER_OF_RECORDS_FLUSHED_TO_SNS_FAILED = "snsSinkObjectsEventsFailed";
+
     public static final String FIFO = ".fifo";
 
-    private final SNSSinkConfig snsSinkConfig;
+    private final SnsSinkConfig snsSinkConfig;
 
     private final Lock reentrantLock;
 
@@ -63,7 +65,7 @@ public class SNSSinkService {
 
     private final PluginSetting pluginSetting;
 
-    private final List<String> processRecordsList;
+    private final List<Event> processRecordsList;
 
     private final String topicName;
 
@@ -73,18 +75,23 @@ public class SNSSinkService {
 
     private final Counter numberOfRecordsFailedCounter;
 
+    private final boolean isDocumentIdAnExpression;
+
+    private final ExpressionEvaluator expressionEvaluator;
+
     /**
-     * @param snsSinkConfig sns sink related configuration.
+     * @param snsSinkConfig  sns sink related configuration.
      * @param snsClient
-     * @param pluginMetrics metrics.
+     * @param pluginMetrics  metrics.
      * @param pluginFactory
      * @param pluginSetting
      */
-    public SNSSinkService(final SNSSinkConfig snsSinkConfig,
+    public SnsSinkService(final SnsSinkConfig snsSinkConfig,
                           final SnsClient snsClient,
                           final PluginMetrics pluginMetrics,
                           final PluginFactory pluginFactory,
-                          final PluginSetting pluginSetting) {
+                          final PluginSetting pluginSetting,
+                          final ExpressionEvaluator expressionEvaluator) {
         this.snsSinkConfig = snsSinkConfig;
         this.snsClient = snsClient;
         this.reentrantLock = new ReentrantLock();
@@ -92,10 +99,9 @@ public class SNSSinkService {
         this.topicName = snsSinkConfig.getTopicArn();
         this.maxRetries = snsSinkConfig.getMaxUploadRetries();
         this.pluginSetting = pluginSetting;
-
+        this.expressionEvaluator = expressionEvaluator;
+        this.isDocumentIdAnExpression = expressionEvaluator.isValidExpressionStatement(snsSinkConfig.getMessageGroupId());
         this.processRecordsList = new ArrayList();
-
-
         this.numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_SUCCESS);
         this.numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_FAILED);
 
@@ -114,7 +120,7 @@ public class SNSSinkService {
         try {
             for (Record<Event> record : records) {
                 final Event event = record.getData();
-                processRecordsList.add(event.toJsonString());
+                processRecordsList.add(event);
                 if (event.getEventHandle() != null) {
                     bufferedEventHandles.add(event.getEventHandle());
                 }
@@ -141,7 +147,7 @@ public class SNSSinkService {
             numberOfRecordsSuccessCounter.increment(processRecordsList.size());
         } else {
             numberOfRecordsFailedCounter.increment(processRecordsList.size());
-            dlqPushHandler.perform(pluginSetting,new SNSSinkFailedDlqData(topicName,errorMsgObj.get(),0));
+            dlqPushHandler.perform(pluginSetting,new SnsSinkFailedDlqData(topicName,errorMsgObj.get(),0));
         }
         releaseEventHandles(true);
     }
@@ -161,7 +167,7 @@ public class SNSSinkService {
      * @return boolean based on object upload status.
      * @throws InterruptedException interruption during sleep.
      */
-    protected boolean retryFlushToSNS(final List<String> processRecordsList,
+    protected boolean retryFlushToSNS(final List<Event> processRecordsList,
                                       final String topicName,
                                       final AtomicReference<String> errorMsgObj) throws InterruptedException {
         boolean isUploadedToSNS = Boolean.FALSE;
@@ -184,32 +190,44 @@ public class SNSSinkService {
         return isUploadedToSNS;
     }
 
-    public void publishToTopic(SnsClient snsClient, String topicName,final List<String> processRecordsList) {
+    public void publishToTopic(SnsClient snsClient, String topicName,final List<Event> processRecordsList) {
         LOG.debug("Trying to Push Msg to SNS: {}",topicName);
         try {
             final PublishBatchRequest request = createPublicRequestByTopic(topicName, processRecordsList);
             final PublishBatchResponse publishBatchResponse = snsClient.publishBatch(request);
             LOG.info(" Message sent. Status is " + publishBatchResponse.sdkHttpResponse().statusCode());
         }catch (Exception e) {
+            LOG.error("Error while pushing messages to topic ",e);
             throw e;
         }
     }
 
-    private PublishBatchRequest createPublicRequestByTopic(final String topicName, final List<String>  processRecordsList) {
+    private PublishBatchRequest createPublicRequestByTopic(final String topicName, final List<Event>  processRecordsList) {
         final PublishBatchRequest.Builder requestBatch = PublishBatchRequest.builder().topicArn(topicName);
         final List<PublishBatchRequestEntry> batchRequestEntries = new ArrayList<PublishBatchRequestEntry>();
         final String defaultRandomGroupId = UUID.randomUUID().toString();
-        for (String message : processRecordsList) {
-            final PublishBatchRequestEntry.Builder entry = PublishBatchRequestEntry.builder().id(String.valueOf(new Random().nextInt())).message(message);
+        for (Event messageEvent : processRecordsList) {
+            final PublishBatchRequestEntry.Builder entry = PublishBatchRequestEntry.builder().id(String.valueOf(new Random().nextInt())).message(messageEvent.toJsonString());
             if(topicName.endsWith(FIFO))
                 batchRequestEntries.add(entry
-                    .messageGroupId(snsSinkConfig.getMessageGroupId() != null ? snsSinkConfig.getMessageGroupId() : defaultRandomGroupId)
-                    .messageDeduplicationId(snsSinkConfig.getMessageDeduplicationId() != null ? snsSinkConfig.getMessageDeduplicationId() : UUID.randomUUID().toString()).build());
+                    .messageGroupId(snsSinkConfig.getMessageGroupId() != null ? getMessageGroupId(messageEvent,snsSinkConfig.getMessageGroupId()) : defaultRandomGroupId)
+                    .messageDeduplicationId(snsSinkConfig.getMessageDeduplicationId() != null ? getMessageGroupId(messageEvent,snsSinkConfig.getMessageDeduplicationId()) : UUID.randomUUID().toString()).build());
             else
                 batchRequestEntries.add(entry.build());
         }
         requestBatch.publishBatchRequestEntries(batchRequestEntries);
         return requestBatch.build();
+    }
+
+    private String getMessageGroupId(Event event,final String fieldName) {
+        if (isDocumentIdAnExpression) {
+            try {
+                return (String) expressionEvaluator.evaluate(fieldName, event);
+            } catch (final ExpressionEvaluationException e) {
+                LOG.error("Unable to construct message_group_id from expression {}, the message_group_id will be generated by Sns Sink", snsSinkConfig.getMessageGroupId());
+            }
+        }
+        return event.get(fieldName, String.class);
     }
 
 }

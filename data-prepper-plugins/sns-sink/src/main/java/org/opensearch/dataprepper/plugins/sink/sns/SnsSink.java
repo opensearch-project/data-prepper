@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.sns;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sns.SnsClient;
@@ -26,14 +27,14 @@ import java.util.Collection;
  * Implementation class of sns-sink plugin. It is responsible for receive the collection of
  * {@link Event} and upload to amazon sns based on thresholds configured.
  */
-@DataPrepperPlugin(name = "sns", pluginType = Sink.class, pluginConfigurationType = SNSSinkConfig.class)
-public class SNSSink extends AbstractSink<Record<Event>> {
+@DataPrepperPlugin(name = "sns", pluginType = Sink.class, pluginConfigurationType = SnsSinkConfig.class)
+public class SnsSink extends AbstractSink<Record<Event>> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(SNSSink.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SnsSink.class);
 
     private volatile boolean sinkInitialized;
 
-    private final SNSSinkService snsSinkService;
+    private final SnsSinkService snsSinkService;
 
     /**
      * @param pluginSetting dp plugin settings.
@@ -41,11 +42,12 @@ public class SNSSink extends AbstractSink<Record<Event>> {
      * @param pluginFactory dp plugin factory.
      */
     @DataPrepperPluginConstructor
-    public SNSSink(final PluginSetting pluginSetting,
-                  final SNSSinkConfig snsSinkConfig,
-                  final PluginFactory pluginFactory,
+    public SnsSink(final PluginSetting pluginSetting,
+                   final SnsSinkConfig snsSinkConfig,
+                   final PluginFactory pluginFactory,
                    final SinkContext sinkContext,
-                  final AwsCredentialsSupplier awsCredentialsSupplier) {
+                   final ExpressionEvaluator expressionEvaluator,
+                   final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         final PluginModel codecConfiguration = snsSinkConfig.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
@@ -53,9 +55,16 @@ public class SNSSink extends AbstractSink<Record<Event>> {
         // TODO: Sink codec changes are pending
         // codec = pluginFactory.loadPlugin(Codec.class, codecPluginSettings);
         sinkInitialized = Boolean.FALSE;
+        final SnsClient snsClient = SnsClientFactory.createSNSClient(snsSinkConfig, awsCredentialsSupplier);
 
-        final SnsClient snsClient = SNSClientFactory.createSNSClient(snsSinkConfig, awsCredentialsSupplier);
-        snsSinkService = new SNSSinkService(snsSinkConfig,snsClient,pluginMetrics,pluginFactory,pluginSetting);
+
+
+        snsSinkService = new SnsSinkService(snsSinkConfig,
+                snsClient,
+                pluginMetrics,
+                pluginFactory,
+                pluginSetting,
+                expressionEvaluator);
     }
 
     @Override
@@ -79,7 +88,7 @@ public class SNSSink extends AbstractSink<Record<Event>> {
     }
 
     /**
-     * Initialize {@link SNSSinkService}
+     * Initialize {@link SnsSinkService}
      */
     private void doInitializeInternal() {
         sinkInitialized = Boolean.TRUE;
