@@ -15,6 +15,7 @@ import java.util.ArrayList;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 
 public class InMemoryBufferTest {
     private static InMemoryBuffer inMemoryBuffer;
@@ -45,13 +46,13 @@ public class InMemoryBufferTest {
     }
 
     @Test
-    void check_empty_buffer() {
+    void GIVEN_empty_buffer_SHOULD_return_valid_event_count() {
         assertThat(inMemoryBuffer.getBufferSize(), equalTo(0));
         assertThat(inMemoryBuffer.getEventCount(), equalTo(0));
     }
 
     @Test
-    void check_buffer_has_right_number_of_events_test() {
+    void GIVEN_filled_buffer_SHOULD_return_valid_event_count() {
         for (Record<Event> eventToTest: getTestCollection()) {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
@@ -60,7 +61,7 @@ public class InMemoryBufferTest {
     }
 
     @Test
-    void check_right_event_count_after_event_fetch_test() {
+    void GIVEN_filled_buffer_WHEN_pop_event_SHOULD_return_valid_event_count() {
         for (Record<Event> eventToTest: getTestCollection()) {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
@@ -71,7 +72,7 @@ public class InMemoryBufferTest {
     }
 
     @Test
-    void check_right_buffer_size_after_event_fetch_test() {
+    void GIVEN_filled_buffer_WHEN_pop_event_SHOULD_return_valid_buffer_size() {
         for (Record<Event> eventToTest: getTestCollection()) {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
@@ -82,7 +83,7 @@ public class InMemoryBufferTest {
     }
 
     @Test
-    void check_buffer_has_right_size_test() {
+    void GIVEN_filled_buffer_WHEN_get_buffer_size_SHOULD_return_valid_buffer_size() {
         for (Record<Event> eventToTest: getTestCollection()) {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
@@ -90,9 +91,8 @@ public class InMemoryBufferTest {
         assertThat(inMemoryBuffer.getBufferSize(), equalTo(getStringJsonMessageSize() * TEST_COLLECTION_SIZE));
     }
 
-    //TODO: Add tests for getting events.
     @Test
-    void check_if_event_matches_test() {
+    void GIVEN_filled_buffer_WHEN_pop_event_SHOULD_return_valid_string() {
         for (Record<Event> eventToTest: getTestCollection()) {
             inMemoryBuffer.writeEvent(eventToTest.getData().toJsonString().getBytes());
         }
@@ -102,5 +102,12 @@ public class InMemoryBufferTest {
         for (int i = 0; i < eventCount; i++) {
             assertThat(new String(inMemoryBuffer.popEvent()), equalTo(getStringJsonMessage()));
         }
+    }
+
+    @Test
+    void GIVEN_empty_buffer_WHEN_pop_SHOULD_return_empty_byte_array() {
+        byte[] popResult = inMemoryBuffer.popEvent();
+
+        assertArrayEquals(new byte[0], popResult);
     }
 }

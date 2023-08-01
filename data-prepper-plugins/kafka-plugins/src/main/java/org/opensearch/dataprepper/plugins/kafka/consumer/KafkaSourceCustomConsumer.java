@@ -22,9 +22,11 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.slf4j.Logger;
@@ -200,14 +202,13 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         }
     }
 
-    private <T> Record<Event> getRecord(ConsumerRecord<String, T> consumerRecord) {
+    private <T> Record<Event> getRecord(ConsumerRecord<String, T> consumerRecord, int partition) {
         Map<String, Object> data = new HashMap<>();
         Event event;
         Object value = consumerRecord.value();
         String key = (String)consumerRecord.key();
-        if (Objects.isNull(key)) {
-            key = DEFAULT_KEY;
-        }
+        KafkaKeyMode kafkaKeyMode = topicConfig.getKafkaKeyMode();
+        boolean plainTextMode = false;
         try {
             if (value instanceof JsonDataWithSchema) {
                 JsonDataWithSchema j = (JsonDataWithSchema)consumerRecord.value();
@@ -217,13 +218,37 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                 value = objectMapper.readValue(jsonParser, Map.class);
             } else if (schema == MessageFormat.PLAINTEXT) {
                 value = (String)consumerRecord.value();
+                plainTextMode = true;
+            } else if (schema == MessageFormat.JSON) {
+                value = objectMapper.convertValue(value, Map.class);
             }
         } catch (Exception e){
             LOG.error("Failed to parse JSON or AVRO record", e);
         }
-        data.put(key, value);
-
+        if (!plainTextMode) {
+            if (!(value instanceof Map)) {
+                data.put(key, value);
+            } else {
+                Map<String, Object> valueMap = (Map<String, Object>)value;
+                if (kafkaKeyMode == KafkaKeyMode.INCLUDE_AS_FIELD) {
+                    valueMap.put("kafka_key", key);
+                }
+                data = valueMap;
+            }
+        } else {
+            if (Objects.isNull(key)) {
+                key = DEFAULT_KEY;
+            }
+            data.put(key, value);
+        }
         event = JacksonLog.builder().withData(data).build();
+        EventMetadata eventMetadata = event.getMetadata();
+        if (kafkaKeyMode == KafkaKeyMode.INCLUDE_AS_METADATA) {
+            eventMetadata.setAttribute("kafka_key", key);
+        }
+        eventMetadata.setAttribute("kafka_topic", topicName);
+        eventMetadata.setAttribute("kafka_partition", partition);
+
         return new Record<Event>(event);
     }
 
@@ -232,7 +257,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             List<Record<Event>> kafkaRecords = new ArrayList<>();
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
-                Record<Event> record = getRecord(consumerRecord);
+                Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
                 if (record != null) {
                     // Always add record to acknowledgementSet before adding to
                     // buffer because another thread may take and process
