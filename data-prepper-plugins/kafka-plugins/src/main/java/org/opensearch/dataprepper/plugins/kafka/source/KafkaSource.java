@@ -192,7 +192,7 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private Properties getConsumerProperties(final TopicConfig topicConfig) {
         Properties properties = new Properties();
-        KafkaSourceSecurityConfigurer.setAuthProperties(properties, sourceConfig);
+        KafkaSourceSecurityConfigurer.setAuthProperties(properties, sourceConfig, LOG);
        /* if (isKafkaClusterExists(sourceConfig.getBootStrapServers())) {
             throw new RuntimeException("Can't be able to connect to the given Kafka brokers... ");
         }*/
@@ -300,7 +300,7 @@ public class KafkaSource implements Source<Record<Event>> {
             return;
         }
 
-        if (schemaConfig.getType() == SchemaRegistryType.GLUE) {
+        if (schemaConfig.getType() == SchemaRegistryType.AWS_GLUE) {
             setPropertiesForGlueSchemaRegistry(properties);
             return;
         }

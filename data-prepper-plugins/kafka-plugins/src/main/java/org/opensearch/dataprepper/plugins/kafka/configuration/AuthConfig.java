@@ -24,7 +24,7 @@ public class AuthConfig {
         @JsonProperty("oauth")
         private OAuthConfig oAuthConfig;
 
-        @JsonProperty("aws_iam")
+        @JsonProperty("aws_msk_iam")
         private AwsIamAuthConfig awsIamAuthConfig;
 
         @JsonProperty("ssl_endpoint_identification_algorithm")
@@ -69,19 +69,12 @@ public class AuthConfig {
     @JsonProperty("sasl")
     private SaslAuthConfig saslAuthConfig;
 
-    @JsonProperty("insecure")
-    private Boolean insecure = false;
-
     public SslAuthConfig getSslAuthConfig() {
         return sslAuthConfig;
     }
 
     public SaslAuthConfig getSaslAuthConfig() {
         return saslAuthConfig;
-    }
-
-    public Boolean getInsecure() {
-        return insecure;
     }
 
     /*
