@@ -14,7 +14,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsDispatcher;
+import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsClientFactory;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.client.CloudWatchLogsMetrics;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.AwsConfig;
 import org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.config.CloudWatchLogsSinkConfig;
@@ -23,13 +23,9 @@ import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -46,8 +42,7 @@ class CloudWatchLogsSinkTest {
     private AwsConfig mockAwsConfig;
     private ThresholdConfig thresholdConfig;
     private CloudWatchLogsMetrics mockCloudWatchLogsMetrics;
-    private CloudWatchLogsDispatcher mockedDispatcher;
-    private CloudWatchLogsDispatcher.CloudWatchLogsDispatcherBuilder mockedBuilder;
+    private CloudWatchLogsClient mockClient;
     private static final String TEST_LOG_GROUP = "testLogGroup";
     private static final String TEST_LOG_STREAM= "testLogStream";
     private static final String TEST_PLUGIN_NAME = "testPluginName";
@@ -62,8 +57,7 @@ class CloudWatchLogsSinkTest {
         mockAwsConfig = mock(AwsConfig.class);
         thresholdConfig = new ThresholdConfig();
         mockCloudWatchLogsMetrics = mock(CloudWatchLogsMetrics.class);
-        mockedDispatcher = mock(CloudWatchLogsDispatcher.class);
-        mockedBuilder = mock(CloudWatchLogsDispatcher.CloudWatchLogsDispatcherBuilder.class, RETURNS_DEEP_STUBS);
+        mockClient = mock(CloudWatchLogsClient.class);
 
         when(mockCloudWatchLogsSinkConfig.getAwsConfig()).thenReturn(mockAwsConfig);
         when(mockCloudWatchLogsSinkConfig.getThresholdConfig()).thenReturn(thresholdConfig);
@@ -73,16 +67,6 @@ class CloudWatchLogsSinkTest {
 
         when(mockPluginSetting.getName()).thenReturn(TEST_PLUGIN_NAME);
         when(mockPluginSetting.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
-
-        when(mockedBuilder.cloudWatchLogsClient(any(CloudWatchLogsClient.class))
-                .cloudWatchLogsMetrics(any(CloudWatchLogsMetrics.class))
-                .logGroup(TEST_LOG_GROUP)
-                .logStream(TEST_LOG_STREAM)
-                .backOffTimeBase(anyLong())
-                .retryCount(anyInt())
-                .executor(any(Executor.class))
-                .build())
-                .thenReturn(mockedDispatcher);
     }
 
     CloudWatchLogsSink getTestCloudWatchSink() {
@@ -109,9 +93,10 @@ class CloudWatchLogsSinkTest {
 
     @Test
     void WHEN_given_sample_empty_records_THEN_records_are_processed() {
-        try(MockedStatic<CloudWatchLogsDispatcher> mockedStatic = mockStatic(CloudWatchLogsDispatcher.class)) {
-            mockedStatic.when(CloudWatchLogsDispatcher::builder)
-                    .thenReturn(mockedBuilder);
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class)))
+                    .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
             testCloudWatchSink.doInitialize();
@@ -127,9 +112,10 @@ class CloudWatchLogsSinkTest {
 
     @Test
     void WHEN_given_sample_empty_records_THEN_records_are_not_processed() {
-        try(MockedStatic<CloudWatchLogsDispatcher> mockedStatic = mockStatic(CloudWatchLogsDispatcher.class)) {
-            mockedStatic.when(CloudWatchLogsDispatcher::builder)
-                    .thenReturn(mockedBuilder);
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class)))
+                    .thenReturn(mockClient);
 
             CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
             testCloudWatchSink.doInitialize();
