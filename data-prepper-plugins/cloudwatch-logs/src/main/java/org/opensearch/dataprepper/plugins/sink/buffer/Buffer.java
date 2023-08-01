@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.buffer;
 
-import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Buffer that handles the temporary storage of
@@ -14,6 +14,13 @@ import java.util.ArrayList;
  * 2. Transforms to Byte type.
  * 3. Returns a Byte type.
  */
+
+/*
+    TODO:
+     Need to add PriorityQueue for extracting timestamp, this will need the timestamp and the actual string message itself.
+     Can refactor the buffer to contain
+ */
+
 public interface Buffer {
     /**
      * Size of buffer in events.
@@ -31,7 +38,9 @@ public interface Buffer {
 
     byte[] popEvent();
 
-    ArrayList<byte[]> getBufferedData();
+    List<byte[]> getBufferedData();
 
     void clearBuffer();
+
+    void resetBuffer();
 }
