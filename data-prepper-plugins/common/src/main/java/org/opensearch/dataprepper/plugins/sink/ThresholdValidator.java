@@ -11,9 +11,9 @@ import org.opensearch.dataprepper.plugins.accumulator.Buffer;
 /**
  * Check threshold limits.
  */
-public class ThresholdCheck {
+public class ThresholdValidator {
 
-    private ThresholdCheck() {
+    private ThresholdValidator() {
     }
 
     /**

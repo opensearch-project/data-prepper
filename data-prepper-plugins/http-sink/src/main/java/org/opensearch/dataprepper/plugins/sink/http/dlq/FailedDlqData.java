@@ -5,54 +5,56 @@
 package org.opensearch.dataprepper.plugins.sink.http.dlq;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import org.opensearch.dataprepper.model.event.EventHandle;
-
-import java.util.Objects;
+import org.opensearch.dataprepper.plugins.sink.http.HttpEndPointResponse;
 
 public class FailedDlqData {
 
-    private final int status;
-
-    private final String message;
-
+    private final HttpEndPointResponse endPointResponse;
     @JsonIgnore
-    private final EventHandle eventHandle;
+    private final String bufferData;
 
-    private FailedDlqData(final int status,
-                          final String message,
-                          final EventHandle eventHandle) {
-        this.status = status;
-        Objects.requireNonNull(message);
-        this.message = message;
-        this.eventHandle = eventHandle;
+    public FailedDlqData(final Builder builder) {
+        this.endPointResponse = builder.endPointResponse;
+        this.bufferData = builder.bufferData;
     }
 
-    public int getStatus() {
-        return status;
+    public HttpEndPointResponse getEndPointResponse() {
+        return endPointResponse;
     }
 
-    public String getMessage() {
-        return message;
+    public String getBufferData() {
+        return bufferData;
     }
-    public EventHandle getEventHandle() {
-        return eventHandle;
-    }
-
 
     public static Builder builder() {
         return new Builder();
     }
+    @Override
+    public String toString() {
+        return "{" +
+                "endPointResponse=" + endPointResponse +
+                ", bufferData='" + bufferData + '\'' +
+                '}';
+    }
 
     public static class Builder {
 
-        private EventHandle eventHandle;
+        private HttpEndPointResponse endPointResponse;
 
-        private int status = 0;
+        private String bufferData;
 
-        private String message;
+        public Builder withEndPointResponses(HttpEndPointResponse endPointResponses) {
+            this.endPointResponse = endPointResponses;
+            return this;
+        }
+
+        public Builder withBufferData(String bufferData) {
+            this.bufferData = bufferData;
+            return this;
+        }
 
         public FailedDlqData build() {
-            return new FailedDlqData(status, message, eventHandle);
+            return new FailedDlqData(this);
         }
     }
 }
