@@ -86,9 +86,15 @@ class CloudWatchLogsSinkTest {
 
     @Test
     void WHEN_sink_is_initialized_THEN_sink_is_ready_returns_true() {
-        CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
-        testCloudWatchSink.doInitialize();
-        assertTrue(testCloudWatchSink.isReady());
+        try(MockedStatic<CloudWatchLogsClientFactory> mockedStatic = mockStatic(CloudWatchLogsClientFactory.class)) {
+            mockedStatic.when(() -> CloudWatchLogsClientFactory.createCwlClient(any(AwsConfig.class),
+                            any(AwsCredentialsSupplier.class)))
+                    .thenReturn(mockClient);
+
+            CloudWatchLogsSink testCloudWatchSink = getTestCloudWatchSink();
+            testCloudWatchSink.doInitialize();
+            assertTrue(testCloudWatchSink.isReady());
+        }
     }
 
     @Test
