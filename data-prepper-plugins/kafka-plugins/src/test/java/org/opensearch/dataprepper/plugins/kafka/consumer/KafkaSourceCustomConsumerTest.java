@@ -213,6 +213,44 @@ public class KafkaSourceCustomConsumerTest {
     }
 
     @Test
+    public void testPlainTextConsumeRecordsWithNegativeAcknowledgements() throws InterruptedException {
+        String topic = topicConfig.getName();
+        consumerRecords = createPlainTextRecords(topic);
+        when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("plaintext", true);
+
+        try {
+            consumer.consumeRecords();
+        } catch (Exception e){}
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 0);
+
+        for (Record<Event> record: bufferedRecords) {
+            Event event = record.getData();
+            String value1 = event.get(testKey1, String.class);
+            String value2 = event.get(testKey2, String.class);
+            assertTrue(value1 != null || value2 != null);
+            if (value1 != null) {
+                Assertions.assertEquals(value1, testValue1);
+            }
+            if (value2 != null) {
+                Assertions.assertEquals(value2, testValue2);
+            }
+            event.getEventHandle().release(false);
+        }
+        // Wait for acknowledgement callback function to run
+        try {
+            Thread.sleep(10000);
+        } catch (Exception e){}
+
+        offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 0);
+    }
+
+    @Test
     public void testJsonConsumeRecords() throws InterruptedException, Exception {
         String topic = topicConfig.getName();
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON);
