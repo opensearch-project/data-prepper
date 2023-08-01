@@ -48,7 +48,7 @@ class CloudWatchLogsServiceTest {
 
         thresholdConfig = new ThresholdConfig();
         cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(), thresholdConfig.getMaxEventSizeBytes(),
-                thresholdConfig.getMaxRequestSize(), thresholdConfig.getLogSendInterval());
+                thresholdConfig.getMaxRequestSizeBytes(), thresholdConfig.getLogSendInterval());
 
         mockClient = mock(CloudWatchLogsClient.class);
         mockMetrics = mock(CloudWatchLogsMetrics.class);
@@ -85,7 +85,7 @@ class CloudWatchLogsServiceTest {
     Collection<Record<Event>> getSampleRecordsOfLargerSize() {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < thresholdConfig.getBatchSize() * 2; i++) {
-            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("a".repeat((ThresholdConfig.DEFAULT_SIZE_OF_REQUEST/24)));
+            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("a".repeat((int) (thresholdConfig.getMaxRequestSizeBytes()/24)));
             final EventHandle mockEventHandle = mock(EventHandle.class);
             mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
@@ -97,7 +97,7 @@ class CloudWatchLogsServiceTest {
     Collection<Record<Event>> getSampleRecordsOfLimitSize() {
         final ArrayList<Record<Event>> returnCollection = new ArrayList<>();
         for (int i = 0; i < thresholdConfig.getBatchSize(); i++) {
-            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage".repeat(ThresholdConfig.DEFAULT_EVENT_SIZE * ThresholdConfig.BYTE_TO_KB_FACTOR));
+            JacksonEvent mockJacksonEvent = (JacksonEvent) JacksonEvent.fromMessage("testMessage".repeat((int) thresholdConfig.getMaxEventSizeBytes()));
             final EventHandle mockEventHandle = mock(EventHandle.class);
             mockJacksonEvent.setEventHandle(mockEventHandle);
             returnCollection.add(new Record<>(mockJacksonEvent));
