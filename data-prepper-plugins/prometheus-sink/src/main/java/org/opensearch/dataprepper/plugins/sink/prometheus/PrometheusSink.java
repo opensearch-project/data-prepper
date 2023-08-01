@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.prometheus;
 
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -16,8 +16,8 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
 
-import org.opensearch.dataprepper.plugins.sink.configuration.PrometheusSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.service.PrometheusSinkService;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
+import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusSinkService;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,9 +28,6 @@ import java.util.Collection;
 public class PrometheusSink extends AbstractSink<Record<Event>> {
 
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusSink.class);
-
-    private static final String BUCKET = "bucket";
-    private static final String KEY_PATH = "key_path_prefix";
 
     private volatile boolean sinkInitialized;
 

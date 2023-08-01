@@ -2,9 +2,9 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.prometheus;
 
-import org.opensearch.dataprepper.plugins.sink.configuration.BearerTokenOptions;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.BearerTokenOptions;
 
 public class OAuthAccessTokenManager {
 

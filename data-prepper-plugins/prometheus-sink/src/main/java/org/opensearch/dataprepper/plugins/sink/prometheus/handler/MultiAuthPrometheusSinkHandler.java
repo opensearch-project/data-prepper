@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink.handler;
+package org.opensearch.dataprepper.plugins.sink.prometheus.handler;
 
 /**
  * An interface to handle multiple authentications

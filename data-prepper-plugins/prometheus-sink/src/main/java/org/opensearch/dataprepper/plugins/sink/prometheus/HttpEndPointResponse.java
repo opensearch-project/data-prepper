@@ -2,19 +2,19 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.prometheus;
 
 public class HttpEndPointResponse {
     private String url;
     private int statusCode;
-    private String errMessage;
+    private String errorMessage;
 
     public HttpEndPointResponse(final String url,
                                 final int statusCode,
-                                final String errMessage) {
+                                final String errorMessage) {
         this.url = url;
         this.statusCode = statusCode;
-        this.errMessage = errMessage;
+        this.errorMessage = errorMessage;
     }
 
     public HttpEndPointResponse(final String url,
@@ -31,8 +31,8 @@ public class HttpEndPointResponse {
         return statusCode;
     }
 
-    public String getErrMessage() {
-        return errMessage;
+    public String getErrorMessage() {
+        return errorMessage;
     }
 
     @Override
@@ -40,7 +40,7 @@ public class HttpEndPointResponse {
         return "{" +
                 "url='" + url + '\'' +
                 ", statusCode=" + statusCode +
-                ", errMessage='" + errMessage + '\'' +
+                ", errorMessage='" + errorMessage + '\'' +
                 '}';
     }
 }

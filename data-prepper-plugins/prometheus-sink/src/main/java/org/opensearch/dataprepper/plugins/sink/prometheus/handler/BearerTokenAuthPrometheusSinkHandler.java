@@ -2,12 +2,12 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink.handler;
+package org.opensearch.dataprepper.plugins.sink.prometheus.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
-import org.opensearch.dataprepper.plugins.sink.OAuthAccessTokenManager;
-import org.opensearch.dataprepper.plugins.sink.configuration.BearerTokenOptions;
+import org.opensearch.dataprepper.plugins.sink.prometheus.OAuthAccessTokenManager;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.BearerTokenOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink.configuration;
+package org.opensearch.dataprepper.plugins.sink.prometheus.configuration;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
@@ -10,12 +10,11 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public enum AuthTypeOptions {
-    HTTP_BASIC("http_basic"),
-    BEARER_TOKEN("bearer_token"),
-    UNAUTHENTICATED("unauthenticated");
+public enum HTTPMethodOptions {
+    PUT("PUT"),
+    POST("POST");
 
-    private static final Map<String, AuthTypeOptions> OPTIONS_MAP = Arrays.stream(AuthTypeOptions.values())
+    private static final Map<String, HTTPMethodOptions> OPTIONS_MAP = Arrays.stream(HTTPMethodOptions.values())
             .collect(Collectors.toMap(
                     value -> value.option,
                     value -> value
@@ -23,12 +22,12 @@ public enum AuthTypeOptions {
 
     private final String option;
 
-    AuthTypeOptions(final String option) {
+    HTTPMethodOptions(final String option) {
         this.option = option;
     }
 
     @JsonCreator
-    static AuthTypeOptions fromOptionValue(final String option) {
+    static HTTPMethodOptions fromOptionValue(final String option) {
         return OPTIONS_MAP.get(option);
     }
 }

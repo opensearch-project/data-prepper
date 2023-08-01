@@ -2,11 +2,11 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink.service;
+package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.sink.configuration.PrometheusSinkConfiguration;
+import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 
 import java.util.Collection;
 import java.util.concurrent.locks.Lock;
