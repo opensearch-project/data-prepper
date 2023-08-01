@@ -82,6 +82,7 @@ public class DlqPushHandler {
         try(BufferedWriter dlqFileWriter = Files.newBufferedWriter(Paths.get(dlqFile),
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
             dlqFileWriter.write(objectWriter.writeValueAsString(failedData)+"\n");
+
         } catch (IOException e) {
             LOG.error("Exception while writing failed data to DLQ file Exception: ",e);
         }

@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.http.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.FailedHttpResponseInterceptor;
+
 import org.opensearch.dataprepper.plugins.sink.http.util.HttpSinkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

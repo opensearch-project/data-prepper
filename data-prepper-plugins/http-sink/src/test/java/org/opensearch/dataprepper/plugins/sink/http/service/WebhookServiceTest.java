@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.plugins.sink.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.HttpEndPointResponse;
+
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.http.dlq.FailedDlqData;
 

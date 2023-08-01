@@ -42,7 +42,6 @@ public class FailedDlqData {
 
         private String message;
 
-
         public Builder withUrl(String url) {
             this.url = url;
             return this;

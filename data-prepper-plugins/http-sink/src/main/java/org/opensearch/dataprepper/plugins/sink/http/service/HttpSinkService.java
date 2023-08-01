@@ -23,6 +23,7 @@ import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.HttpEndPointResponse;
 import org.opensearch.dataprepper.plugins.sink.OAuthAccessTokenManager;
 import org.opensearch.dataprepper.plugins.sink.ThresholdValidator;
+
 import org.opensearch.dataprepper.plugins.sink.http.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.sink.http.certificate.HttpClientSSLConnectionManager;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.AuthTypeOptions;
@@ -40,8 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-
 import java.io.OutputStream;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -110,7 +111,6 @@ public class HttpSinkService {
 
     private final List<String> excludeKeys;
 
-
     public HttpSinkService(final HttpSinkConfiguration httpSinkConfiguration,
                            final BufferFactory bufferFactory,
                            final DlqPushHandler dlqPushHandler,
@@ -123,6 +123,7 @@ public class HttpSinkService {
                            final String tagsTargetKey,
                            final List<String> includeKeys,
                            final List<String> excludeKeys) {
+
         this.httpSinkConfiguration = httpSinkConfiguration;
         this.bufferFactory = bufferFactory;
         this.dlqPushHandler = dlqPushHandler;
@@ -136,6 +137,7 @@ public class HttpSinkService {
         this.maxCollectionDuration = httpSinkConfiguration.getThresholdOptions().getEventCollectTimeOut().getSeconds();
         this.httpPluginSetting = httpPluginSetting;
 		this.oAuthRefreshTokenManager = new OAuthAccessTokenManager(httpClientBuilder);
+
         if (httpSinkConfiguration.isSsl() || httpSinkConfiguration.useAcmCertForSSL()) {
             this.certificateProviderFactory = new CertificateProviderFactory(httpSinkConfiguration);
             httpSinkConfiguration.validateAndInitializeCertAndKeyFileInS3();
@@ -215,6 +217,7 @@ public class HttpSinkService {
                         .withUrl(endPointResponses.getUrl())
                         .withMessage(endPointResponses.getErrMessage())
                         .withStatus(endPointResponses.getStatusCode()).build();
+
         LOG.info("Failed to push the data. Failed DLQ Data: {}",failedDlqData);
 
         logFailureForDlqObjects(failedDlqData);
@@ -242,7 +245,6 @@ public class HttpSinkService {
         try {
            if(AuthTypeOptions.BEARER_TOKEN.equals(httpSinkConfiguration.getAuthType()))
                     refreshTokenIfExpired(classicHttpRequestBuilder.getFirstHeader(BearerTokenAuthHttpSinkHandler.AUTHORIZATION).getValue(),httpSinkConfiguration.getUrl());
-
             httpAuthOptions.get(httpSinkConfiguration.getUrl()).getHttpClientBuilder().build()
                     .execute(classicHttpRequestBuilder.build(), HttpClientContext.create());
             LOG.info("No of Records successfully pushed to endpoint {}", httpSinkConfiguration.getUrl() +" " + currentBuffer.getEventCount());
@@ -366,4 +368,5 @@ public class HttpSinkService {
                     .setHeader(BearerTokenAuthHttpSinkHandler.AUTHORIZATION, oAuthRefreshTokenManager.getAccessToken(httpSinkConfiguration.getAuthentication().getBearerTokenOptions()));
         }
     }
+
 }

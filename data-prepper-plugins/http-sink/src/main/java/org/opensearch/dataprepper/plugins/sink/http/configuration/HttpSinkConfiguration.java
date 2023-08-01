@@ -282,4 +282,5 @@ public class HttpSinkConfiguration {
     public  Map<String, Object> getDlqPluginSetting(){
         return dlq != null ? dlq.getPluginSettings() : Map.of();
     }
+
 }
