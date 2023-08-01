@@ -13,7 +13,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 
-public class CloudWatchLogsSinkConfigTest {
+class CloudWatchLogsSinkConfigTest {
     private CloudWatchLogsSinkConfig cloudWatchLogsSinkConfig;
     private AwsConfig awsConfig;
     private ThresholdConfig thresholdConfig;
@@ -28,32 +28,32 @@ public class CloudWatchLogsSinkConfigTest {
     }
 
     @Test
-    void check_null_auth_config_test() {
+    void GIVEN_new_sink_config_WHEN_get_aws_config_called_SHOULD_return_null() {
         assertThat(new CloudWatchLogsSinkConfig().getAwsConfig(), equalTo(null));
     }
 
     @Test
-    void check_null_threshold_config_test() {
+    void GIVEN_new_sink_config_WHEN_get_threshold_config_called_SHOULD_return_null() {
         assertThat(new CloudWatchLogsSinkConfig().getThresholdConfig(), notNullValue());
     }
 
     @Test
-    void check_default_buffer_type_test() {
+    void GIVEN_new_sink_config_WHEN_get_buffer_type_called_SHOULD_return_default_buffer_type() {
         assertThat(new CloudWatchLogsSinkConfig().getBufferType(), equalTo(CloudWatchLogsSinkConfig.DEFAULT_BUFFER_TYPE));
     }
 
     @Test
-    void check_null_log_group_test() {
+    void GIVEN_new_sink_config_WHEN_get_log_group_called_SHOULD_return_null() {
         assertThat(new CloudWatchLogsSinkConfig().getLogGroup(), equalTo(null));
     }
 
     @Test
-    void check_null_log_stream_test() {
+    void GIVEN_new_sink_config_WHEN_get_log_stream_called_SHOULD_return_null() {
         assertThat(new CloudWatchLogsSinkConfig().getLogStream(), equalTo(null));
     }
 
     @Test
-    void check_valid_log_group_and_log_stream_test() throws NoSuchFieldException, IllegalAccessException {
+    void GIVEN_empty_sink_config_WHEN_deserialized_from_json_SHOULD_return_valid_log_group_and_log_stream() throws NoSuchFieldException, IllegalAccessException {
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logGroup", LOG_GROUP);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "logStream", LOG_STREAM);
 
@@ -62,7 +62,7 @@ public class CloudWatchLogsSinkConfigTest {
     }
 
     @Test
-    void check_valid_sub_config_test() throws NoSuchFieldException, IllegalAccessException {
+    void GIVEN_empty_sink_config_WHEN_deserialized_from_json_SHOULD_return_valid_threshold_config_and_aws_config() throws NoSuchFieldException, IllegalAccessException {
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "thresholdConfig", thresholdConfig);
         ReflectivelySetField.setField(cloudWatchLogsSinkConfig.getClass(), cloudWatchLogsSinkConfig, "awsConfig", awsConfig);
 
