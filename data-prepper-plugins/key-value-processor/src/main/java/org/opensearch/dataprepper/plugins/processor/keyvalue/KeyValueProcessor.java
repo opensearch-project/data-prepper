@@ -193,17 +193,17 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 Object value;
 
                 if (!includeKeysSet.isEmpty() && !includeKeysSet.contains(key)) {
-                    LOG.debug(String.format("Skipping not included key: '%s'", key));
+                    LOG.debug("Skipping not included key: '{}'", key);
                     continue;
                 }
 
                 if (excludeKeysSet.contains(key)) {
-                    LOG.debug(String.format("Key is being excluded: '%s'", key));
+                    LOG.debug("Key is being excluded: '{}'", key);
                     continue;
                 }
 
                 if (defaultKeysSet.contains(key)) {
-                    LOG.debug(String.format("Skipping already included default key-value pair: '%s'", key));
+                    LOG.debug("Skipping already included default key-value pair: '{}'", key);
                     continue;
                 }
 
@@ -215,7 +215,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 if (terms.length == 2) {
                     value = terms[1];
                 } else {
-                    LOG.debug(String.format("Unsuccessful match: '%s'", terms[0]));
+                    LOG.debug("Unsuccessful match: '{}'", terms[0]);
                     value = keyValueProcessorConfig.getNonMatchValue();
                 }
 
