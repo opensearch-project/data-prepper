@@ -16,7 +16,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
-import software.amazon.awssdk.services.kafka.model.InternalServerErrorException;
 import software.amazon.awssdk.services.kafka.model.KafkaException;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.StsException;
