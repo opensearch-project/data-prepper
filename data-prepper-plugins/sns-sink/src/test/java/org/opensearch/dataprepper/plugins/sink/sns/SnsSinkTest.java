@@ -42,7 +42,6 @@ class SnsSinkTest {
     private PluginFactory pluginFactory;
     private AwsCredentialsSupplier awsCredentialsSupplier;
     private SinkContext sinkContext;
-
     private PluginModel pluginModel;
 
     @BeforeEach
@@ -56,6 +55,8 @@ class SnsSinkTest {
         awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         Map<String,Object> dlqMap = mock(HashMap.class);
 
+        when(snsSinkConfig.getMessageGroupId()).thenReturn("/message");
+        when(snsSinkConfig.getMessageDeduplicationId()).thenReturn("/message");
         when(snsSinkConfig.getDlq()).thenReturn(pluginModel);
         when(pluginModel.getPluginSettings()).thenReturn(dlqMap);
         when(snsSinkConfig.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
