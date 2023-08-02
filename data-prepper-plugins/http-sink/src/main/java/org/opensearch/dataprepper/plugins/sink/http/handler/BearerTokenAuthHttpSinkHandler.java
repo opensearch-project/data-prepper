@@ -6,12 +6,12 @@ package org.opensearch.dataprepper.plugins.sink.http.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
-import org.opensearch.dataprepper.plugins.sink.OAuthAccessTokenManager;
+import org.opensearch.dataprepper.plugins.sink.http.OAuthAccessTokenManager;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.BearerTokenOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.opensearch.dataprepper.plugins.sink.FailedHttpResponseInterceptor;
+import org.opensearch.dataprepper.plugins.sink.http.FailedHttpResponseInterceptor;
 
 /**
  * * This class handles Bearer Token Authentication

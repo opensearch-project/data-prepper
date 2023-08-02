@@ -35,8 +35,8 @@ pipeline:
   - http:
       authentication:
          bearer_token:
-            client_id: 0oaafr4j79segrYGC5d7
-            client_secret: fFel-3FutCXAOndezEsOVlght6D6DR4OIt7G5D1_oJ6w0wNoaYtgU17JdyXmGf0M
+            client_id: 0oaafr4j79grYGC5d7
+            client_secret: fFel-3FutCXAOndezEsOVlght6D6DR4OIt7G5D1_oJ6YtgU17JdyXmGf0M
             token_url: https://localhost/oauth2/default/v1/token
             grant_type: client_credentials
             scope: httpSink

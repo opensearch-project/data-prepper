@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.http.service;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.plugins.sink.AwsRequestSigningApacheInterceptor;
+import org.opensearch.dataprepper.plugins.sink.http.AwsRequestSigningApacheInterceptor;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

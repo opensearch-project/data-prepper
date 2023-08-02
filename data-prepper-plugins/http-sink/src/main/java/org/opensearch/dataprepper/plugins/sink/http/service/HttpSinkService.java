@@ -20,8 +20,8 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 
 import org.opensearch.dataprepper.plugins.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
-import org.opensearch.dataprepper.plugins.sink.HttpEndPointResponse;
-import org.opensearch.dataprepper.plugins.sink.OAuthAccessTokenManager;
+import org.opensearch.dataprepper.plugins.sink.http.HttpEndPointResponse;
+import org.opensearch.dataprepper.plugins.sink.http.OAuthAccessTokenManager;
 import org.opensearch.dataprepper.plugins.sink.ThresholdValidator;
 
 import org.opensearch.dataprepper.plugins.sink.http.certificate.CertificateProviderFactory;
@@ -34,7 +34,7 @@ import org.opensearch.dataprepper.plugins.sink.http.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.http.handler.BasicAuthHttpSinkHandler;
 import org.opensearch.dataprepper.plugins.sink.http.handler.BearerTokenAuthHttpSinkHandler;
 import org.opensearch.dataprepper.plugins.sink.http.handler.HttpAuthOptions;
-import org.opensearch.dataprepper.plugins.sink.FailedHttpResponseInterceptor;
+import org.opensearch.dataprepper.plugins.sink.http.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.http.handler.MultiAuthHttpSinkHandler;
 import org.opensearch.dataprepper.plugins.sink.http.util.HttpSinkUtil;
 import org.slf4j.Logger;
@@ -89,7 +89,7 @@ public class HttpSinkService {
 
     private final Counter httpSinkRecordsFailedCounter;
 
-    private final OAuthAccessTokenManager oAuthRefreshTokenManager;
+    private final OAuthAccessTokenManager oAuthAccessTokenManager;
 
     private CertificateProviderFactory certificateProviderFactory;
 
@@ -136,7 +136,7 @@ public class HttpSinkService {
         this.maxBytes = httpSinkConfiguration.getThresholdOptions().getMaximumSize();
         this.maxCollectionDuration = httpSinkConfiguration.getThresholdOptions().getEventCollectTimeOut().getSeconds();
         this.httpPluginSetting = httpPluginSetting;
-		this.oAuthRefreshTokenManager = new OAuthAccessTokenManager(httpClientBuilder);
+		this.oAuthAccessTokenManager = new OAuthAccessTokenManager(httpClientBuilder);
 
         if (httpSinkConfiguration.isSsl() || httpSinkConfiguration.useAcmCertForSSL()) {
             this.certificateProviderFactory = new CertificateProviderFactory(httpSinkConfiguration);
@@ -184,12 +184,12 @@ public class HttpSinkService {
                         final HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
                         if (failedHttpEndPointResponses != null) {
                             logFailedData(failedHttpEndPointResponses);
+                            releaseEventHandles(Boolean.FALSE);
                         } else {
                             LOG.info("data pushed to the end point successfully");
+                            releaseEventHandles(Boolean.TRUE);
                         }
                         currentBuffer = bufferFactory.getBuffer();
-                        releaseEventHandles(Boolean.TRUE);
-
                     }}
                 catch (IOException e) {
                     throw new RuntimeException(e);
@@ -244,7 +244,7 @@ public class HttpSinkService {
         classicHttpRequestBuilder.setEntity(new String(currentBufferData));
         try {
            if(AuthTypeOptions.BEARER_TOKEN.equals(httpSinkConfiguration.getAuthType()))
-                    refreshTokenIfExpired(classicHttpRequestBuilder.getFirstHeader(BearerTokenAuthHttpSinkHandler.AUTHORIZATION).getValue(),httpSinkConfiguration.getUrl());
+               accessTokenIfExpired(classicHttpRequestBuilder.getFirstHeader(BearerTokenAuthHttpSinkHandler.AUTHORIZATION).getValue(),httpSinkConfiguration.getUrl());
             httpAuthOptions.get(httpSinkConfiguration.getUrl()).getHttpClientBuilder().build()
                     .execute(classicHttpRequestBuilder.build(), HttpClientContext.create());
             LOG.info("No of Records successfully pushed to endpoint {}", httpSinkConfiguration.getUrl() +" " + currentBuffer.getEventCount());
@@ -291,7 +291,7 @@ public class HttpSinkService {
             case BEARER_TOKEN:
                 multiAuthHttpSinkHandler = new BearerTokenAuthHttpSinkHandler(
                         httpSinkConfiguration.getAuthentication().getBearerTokenOptions(),
-                        httpClientConnectionManager,oAuthRefreshTokenManager);
+                        httpClientConnectionManager, oAuthAccessTokenManager);
                 break;
             case UNAUTHENTICATED:
             default:
@@ -362,10 +362,10 @@ public class HttpSinkService {
         return classicRequestBuilder;
     }
 
-    private void refreshTokenIfExpired(final String token,final String url){
-        if(oAuthRefreshTokenManager.isTokenExpired(token)) {
+    private void accessTokenIfExpired(final String token,final String url){
+        if(oAuthAccessTokenManager.isTokenExpired(token)) {
             httpAuthOptions.get(url).getClassicHttpRequestBuilder()
-                    .setHeader(BearerTokenAuthHttpSinkHandler.AUTHORIZATION, oAuthRefreshTokenManager.getAccessToken(httpSinkConfiguration.getAuthentication().getBearerTokenOptions()));
+                    .setHeader(BearerTokenAuthHttpSinkHandler.AUTHORIZATION, oAuthAccessTokenManager.getAccessToken(httpSinkConfiguration.getAuthentication().getBearerTokenOptions()));
         }
     }
 

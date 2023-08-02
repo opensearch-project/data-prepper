@@ -11,7 +11,7 @@ import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opensearch.dataprepper.plugins.sink.OAuthAccessTokenManager;
+import org.opensearch.dataprepper.plugins.sink.http.OAuthAccessTokenManager;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.BearerTokenOptions;
 
 import static org.mockito.Mockito.mock;

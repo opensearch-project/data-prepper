@@ -27,7 +27,7 @@ import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.FailedHttpResponseInterceptor;
+import org.opensearch.dataprepper.plugins.sink.http.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.AuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.AuthTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
