@@ -11,6 +11,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.expression.ExpressionEvaluator;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -108,26 +109,40 @@ public class SnsSinkServiceTest {
 
     @Test
     public void sns_sink_test_with_single_collection_record_success_push_to_sns(){
-        when(sdkHttpResponse.statusCode()).thenReturn(500);
+        when(sdkHttpResponse.statusCode()).thenReturn(200);
+        when(snsClient.publishBatch(any(PublishBatchRequest.class))).thenReturn(publishBatchResponse);
         SnsSinkService snsSinkService = createObjectUnderTest();
         final Record<Event> eventRecord = new Record<>(JacksonEvent.fromMessage("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}"));
         Collection<Record<Event>> records = List.of(eventRecord);
+        final ArgumentCaptor<PublishBatchRequest> publishBatchRequestCaptor = ArgumentCaptor.forClass(PublishBatchRequest.class);
+
         snsSinkService.output(records);
+
+        verify(snsClient).publishBatch(publishBatchRequestCaptor.capture());
+        final PublishBatchRequest actualRequest = publishBatchRequestCaptor.getValue();
+        assertThat(actualRequest.topicArn(), equalTo("arn:aws:sns:ap-south-1:524239988912:my-topic"));
+        assertThat(actualRequest.publishBatchRequestEntries().size(), equalTo(1));
+        assertThat(actualRequest.publishBatchRequestEntries().get(0).message(),equalTo(eventRecord.getData().toJsonString()));
         verify(numberOfRecordsSuccessCounter).increment(records.size());
     }
 
     @Test
     public void sns_sink_test_with_multiple_collection_record_success_push_to_sns(){
-        numberOfRecordsSuccessCounter = mock(Counter.class);
         SnsSinkService snsSinkService = createObjectUnderTest();
         final Record<Event> eventRecord = new Record<>(JacksonEvent.fromMessage("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}"));
         Collection<Record<Event>> records = new ArrayList<>();
         for(int recordSize = 0; recordSize <= 11 ; recordSize++) {
             records.add(eventRecord);
         }
+        final ArgumentCaptor<PublishBatchRequest> publishBatchRequestCaptor = ArgumentCaptor.forClass(PublishBatchRequest.class);
+
         snsSinkService.output(records);
-        assertThat(sdkHttpResponse.statusCode(),equalTo(200));
-        verify(numberOfRecordsSuccessCounter,times(2));
+
+        verify(snsClient,times(2)).publishBatch(publishBatchRequestCaptor.capture());
+        final PublishBatchRequest actualRequest = publishBatchRequestCaptor.getValue();
+        assertThat(actualRequest.topicArn(), equalTo("arn:aws:sns:ap-south-1:524239988912:my-topic"));
+        assertThat(actualRequest.publishBatchRequestEntries().size(), equalTo(2));
+        assertThat(actualRequest.publishBatchRequestEntries().get(0).message(),equalTo(eventRecord.getData().toJsonString()));
     }
 
     @Test
@@ -139,7 +154,13 @@ public class SnsSinkServiceTest {
         SnsSinkService snsSinkService = createObjectUnderTest();
         final Record<Event> eventRecord = new Record<>(JacksonEvent.fromMessage("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}"));
         Collection<Record<Event>> records = List.of(eventRecord);
+        final ArgumentCaptor<PublishBatchRequest> publishBatchRequestCaptor = ArgumentCaptor.forClass(PublishBatchRequest.class);
         snsSinkService.output(records);
+        verify(snsClient,times(10)).publishBatch(publishBatchRequestCaptor.capture());
+        final PublishBatchRequest actualRequest = publishBatchRequestCaptor.getValue();
+        assertThat(actualRequest.topicArn(), equalTo("arn:aws:sns:ap-south-1:524239988912:my-topic"));
+        assertThat(actualRequest.publishBatchRequestEntries().size(), equalTo(1));
+        assertThat(actualRequest.publishBatchRequestEntries().get(0).message(),equalTo(eventRecord.getData().toJsonString()));
         verify(snsSinkObjectsEventsFailedCounter).increment(records.size());
     }
 
@@ -149,7 +170,15 @@ public class SnsSinkServiceTest {
         final Event event = mock(Event.class);
         given(event.toJsonString()).willReturn("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}");
         given(event.getEventHandle()).willReturn(mock(EventHandle.class));
+        final ArgumentCaptor<PublishBatchRequest> publishBatchRequestCaptor = ArgumentCaptor.forClass(PublishBatchRequest.class);
+
         snsSinkService.output(List.of(new Record<>(event)));
+
+        verify(snsClient,times(1)).publishBatch(publishBatchRequestCaptor.capture());
+        final PublishBatchRequest actualRequest = publishBatchRequestCaptor.getValue();
+        assertThat(actualRequest.topicArn(), equalTo("arn:aws:sns:ap-south-1:524239988912:my-topic"));
+        assertThat(actualRequest.publishBatchRequestEntries().size(), equalTo(1));
+        assertThat(actualRequest.publishBatchRequestEntries().get(0).message(),equalTo("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}"));
         verify(numberOfRecordsSuccessCounter).increment(1);
     }
 }

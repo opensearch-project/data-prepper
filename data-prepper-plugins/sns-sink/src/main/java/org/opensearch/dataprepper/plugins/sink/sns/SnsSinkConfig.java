@@ -38,7 +38,7 @@ public class SnsSinkConfig {
     private String topicArn;
 
     @JsonProperty("message_group_id")
-    public String messageGroupId;
+    private String messageGroupId;
 
     @JsonProperty("codec")
     @NotNull

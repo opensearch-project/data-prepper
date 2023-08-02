@@ -75,6 +75,7 @@ class SnsSinkTest {
     void test_sns_sink_plugin_isReady_positive() {
         snsSink = createObjectUnderTest();
         Assertions.assertNotNull(snsSink);
+        Assertions.assertNotNull(snsSinkConfig);
         snsSink.doInitialize();
         assertTrue(snsSink.isReady(), "sns sink is not initialized and not ready to work");
     }

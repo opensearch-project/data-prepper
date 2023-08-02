@@ -118,7 +118,6 @@ public class SnsSinkServiceIT {
         this.sqsClient = SqsClient.builder().region(Region.of(region)).build();
         when(pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_SUCCESS)).thenReturn(snsSinkObjectsEventsSucceeded);
         when(pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_SNS_FAILED)).thenReturn(numberOfRecordsFailedCounter);
-
     }
 
     private Collection<Record<Event>> setEventQueue(final int records) {
@@ -170,12 +169,15 @@ public class SnsSinkServiceIT {
 
     private List<String> readMessagesFromSNSTopicQueue(List<String> inputRecords, final String sqsQueue) {
         final List<Message> messages = new ArrayList<>();
-        do{
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + 60000;
+        do {
             messages.addAll(sqsClient.receiveMessage(builder -> builder.queueUrl(sqsQueue)).messages());
             if(messages.size() >= inputRecords.size()){
                 break;
             }
-        } while(true);
+        } while (System.currentTimeMillis() < endTime);
+
         List<String> topicData = messages.stream().map(Message::body).map(obj-> {
             try {
                 Map<String,String> map = objectMapper.readValue(obj,Map.class);
