@@ -13,7 +13,6 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 
 /**
  * The threshold config holds the different configurations for
