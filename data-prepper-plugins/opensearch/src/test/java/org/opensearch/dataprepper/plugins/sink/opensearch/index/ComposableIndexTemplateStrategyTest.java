@@ -9,13 +9,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.client.opensearch.indices.GetIndexTemplateResponse;
 import org.opensearch.client.opensearch.indices.get_index_template.IndexTemplate;
 import org.opensearch.client.opensearch.indices.get_index_template.IndexTemplateItem;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
@@ -36,7 +40,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ComposableIndexTemplateStrategyTest {
     @Mock
-    private IndexTemplateAPIWrapper<IndexTemplateItem> indexTemplateAPIWrapper;
+    private IndexTemplateAPIWrapper<GetIndexTemplateResponse> indexTemplateAPIWrapper;
+    @Mock
+    private GetIndexTemplateResponse getIndexTemplateResponse;
     @Mock
     private IndexTemplateItem indexTemplateItem;
     @Mock
@@ -56,10 +62,13 @@ class ComposableIndexTemplateStrategyTest {
 
     @Test
     void getExistingTemplateVersion_should_calls_getTemplate_with_templateName() throws IOException {
-        when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(indexTemplateItem));
+        when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(getIndexTemplateResponse));
+        when(getIndexTemplateResponse.indexTemplates()).thenReturn(List.of(indexTemplateItem));
+        when(indexTemplateItem.indexTemplate()).thenReturn(indexTemplate);
         createObjectUnderTest().getExistingTemplateVersion(indexTemplateName);
 
         verify(indexTemplateAPIWrapper).getTemplate(eq(indexTemplateName));
+        verify(indexTemplate).version();
     }
 
     @Test
@@ -72,7 +81,8 @@ class ComposableIndexTemplateStrategyTest {
     class WithExistingIndexTemplate {
         @Test
         void getExistingTemplateVersion_should_return_empty_if_index_template_exists_without_version() throws IOException {
-            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(indexTemplateItem));
+            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(getIndexTemplateResponse));
+            when(getIndexTemplateResponse.indexTemplates()).thenReturn(List.of(indexTemplateItem));
             when(indexTemplateItem.indexTemplate()).thenReturn(indexTemplate);
             when(indexTemplate.version()).thenReturn(null);
 
@@ -85,7 +95,8 @@ class ComposableIndexTemplateStrategyTest {
         @Test
         void getExistingTemplateVersion_should_return_template_version_if_template_exists() throws IOException {
             final Long version = (long) (random.nextInt(10_000) + 100);
-            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(indexTemplateItem));
+            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(getIndexTemplateResponse));
+            when(getIndexTemplateResponse.indexTemplates()).thenReturn(List.of(indexTemplateItem));
             when(indexTemplateItem.indexTemplate()).thenReturn(indexTemplate);
             when(indexTemplate.version()).thenReturn(version);
 
@@ -94,6 +105,21 @@ class ComposableIndexTemplateStrategyTest {
             assertThat(optionalVersion, notNullValue());
             assertThat(optionalVersion.isPresent(), equalTo(true));
             assertThat(optionalVersion.get(), equalTo(version));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, 2})
+        void getExistingTemplateVersion_should_throw_if_get_template_returns_unexpected_number_of_templates(
+                final int numberOfTemplatesReturned) throws IOException {
+            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(getIndexTemplateResponse));
+            final List<IndexTemplateItem> indexTemplateItems = mock(List.class);
+            when(indexTemplateItems.size()).thenReturn(numberOfTemplatesReturned);
+            when(getIndexTemplateResponse.indexTemplates()).thenReturn(indexTemplateItems);
+
+            assertThrows(RuntimeException.class,
+                    () -> createObjectUnderTest().getExistingTemplateVersion(indexTemplateName));
+
+            verify(indexTemplateAPIWrapper).getTemplate(eq(indexTemplateName));
         }
     }
 

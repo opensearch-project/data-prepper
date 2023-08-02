@@ -11,7 +11,6 @@ import org.opensearch.client.opensearch.indices.GetTemplateResponse;
 import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
 import org.opensearch.client.opensearch.indices.PutTemplateRequest;
 import org.opensearch.client.opensearch.indices.PutTemplateResponse;
-import org.opensearch.client.opensearch.indices.TemplateMapping;
 import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.client.transport.endpoints.SimpleEndpoint;
@@ -23,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class Es6IndexTemplateAPIWrapper implements IndexTemplateAPIWrapper<TemplateMapping> {
+public class Es6IndexTemplateAPIWrapper implements IndexTemplateAPIWrapper<GetTemplateResponse> {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final OpenSearchClient openSearchClient;
@@ -56,7 +55,7 @@ public class Es6IndexTemplateAPIWrapper implements IndexTemplateAPIWrapper<Templ
     }
 
     @Override
-    public Optional<TemplateMapping> getTemplate(final String templateName) throws IOException {
+    public Optional<GetTemplateResponse> getTemplate(final String templateName) throws IOException {
         final ExistsTemplateRequest existsTemplateRequest = new ExistsTemplateRequest.Builder()
                 .name(templateName)
                 .build();
@@ -69,14 +68,7 @@ public class Es6IndexTemplateAPIWrapper implements IndexTemplateAPIWrapper<Templ
         final GetTemplateRequest getTemplateRequest = new GetTemplateRequest.Builder()
                 .name(templateName)
                 .build();
-        final GetTemplateResponse response = openSearchClient.indices().getTemplate(getTemplateRequest);
-
-        if (response.result().size() == 1) {
-            return response.result().values().stream().findFirst();
-        } else {
-            throw new RuntimeException(String.format("Found zero or multiple index templates result when querying for %s",
-                    templateName));
-        }
+        return Optional.of(openSearchClient.indices().getTemplate(getTemplateRequest));
     }
 
     private JsonEndpoint<PutTemplateRequest, PutTemplateResponse, ErrorResponse> es6PutTemplateEndpoint(

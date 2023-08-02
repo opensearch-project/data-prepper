@@ -11,17 +11,15 @@ import org.opensearch.client.opensearch.indices.ExistsIndexTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetIndexTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetIndexTemplateResponse;
 import org.opensearch.client.opensearch.indices.PutIndexTemplateRequest;
-import org.opensearch.client.opensearch.indices.get_index_template.IndexTemplateItem;
 import org.opensearch.client.opensearch.indices.put_index_template.IndexTemplateMapping;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Optional;
 
-public class ComposableTemplateAPIWrapper implements IndexTemplateAPIWrapper<IndexTemplateItem> {
+public class ComposableTemplateAPIWrapper implements IndexTemplateAPIWrapper<GetIndexTemplateResponse> {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final OpenSearchClient openSearchClient;
 
@@ -52,7 +50,7 @@ public class ComposableTemplateAPIWrapper implements IndexTemplateAPIWrapper<Ind
     }
 
     @Override
-    public Optional<IndexTemplateItem> getTemplate(final String indexTemplateName) throws IOException {
+    public Optional<GetIndexTemplateResponse> getTemplate(final String indexTemplateName) throws IOException {
         final ExistsIndexTemplateRequest existsRequest = new ExistsIndexTemplateRequest.Builder()
                 .name(indexTemplateName)
                 .build();
@@ -65,15 +63,7 @@ public class ComposableTemplateAPIWrapper implements IndexTemplateAPIWrapper<Ind
         final GetIndexTemplateRequest getRequest = new GetIndexTemplateRequest.Builder()
                 .name(indexTemplateName)
                 .build();
-        final GetIndexTemplateResponse indexTemplateResponse = openSearchClient.indices().getIndexTemplate(getRequest);
-
-        final List<IndexTemplateItem> indexTemplateItems = indexTemplateResponse.indexTemplates();
-        if (indexTemplateItems.size() == 1) {
-            return indexTemplateItems.stream().findFirst();
-        } else {
-            throw new RuntimeException(String.format("Found zero or multiple index templates result when querying for %s",
-                    indexTemplateName));
-        }
+        return Optional.of(openSearchClient.indices().getIndexTemplate(getRequest));
     }
 
     private static class PutIndexTemplateRequestDeserializer {

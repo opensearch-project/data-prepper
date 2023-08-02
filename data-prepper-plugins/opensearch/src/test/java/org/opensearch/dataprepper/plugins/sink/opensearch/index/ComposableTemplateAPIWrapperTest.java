@@ -4,8 +4,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -16,7 +14,6 @@ import org.opensearch.client.opensearch.indices.GetIndexTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetIndexTemplateResponse;
 import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
 import org.opensearch.client.opensearch.indices.PutIndexTemplateRequest;
-import org.opensearch.client.opensearch.indices.get_index_template.IndexTemplateItem;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.PreSerializedJsonpMapper;
@@ -116,27 +113,11 @@ class ComposableTemplateAPIWrapperTest {
         when(openSearchIndicesClient.existsIndexTemplate(any(ExistsIndexTemplateRequest.class)))
                 .thenReturn(booleanResponse);
 
-        final Optional<IndexTemplateItem> optionalIndexTemplateItem = objectUnderTest.getTemplate(indexTemplateName);
+        final Optional<GetIndexTemplateResponse> optionalGetIndexTemplateResponse = objectUnderTest.getTemplate(
+                indexTemplateName);
 
-        assertThat(optionalIndexTemplateItem, notNullValue());
-        assertThat(optionalIndexTemplateItem.isPresent(), equalTo(false));
-    }
-
-    @ParameterizedTest
-    @ValueSource(ints = {0, 2})
-    void getExistingTemplate_should_throw_if_get_template_returns_unexpected_number_of_templates(final int numberOfTemplatesReturned) throws IOException {
-        when(booleanResponse.value()).thenReturn(true);
-        when(openSearchIndicesClient.existsIndexTemplate(any(ExistsIndexTemplateRequest.class)))
-                .thenReturn(booleanResponse);
-        final List<IndexTemplateItem> indexTemplateItems = mock(List.class);
-        when(indexTemplateItems.size()).thenReturn(numberOfTemplatesReturned);
-        when(getIndexTemplateResponse.indexTemplates()).thenReturn(indexTemplateItems);
-        when(openSearchIndicesClient.getIndexTemplate(any(GetIndexTemplateRequest.class)))
-                .thenReturn(getIndexTemplateResponse);
-
-        assertThrows(RuntimeException.class, () -> objectUnderTest.getTemplate(indexTemplateName));
-
-        verify(openSearchIndicesClient).getIndexTemplate(any(GetIndexTemplateRequest.class));
+        assertThat(optionalGetIndexTemplateResponse, notNullValue());
+        assertThat(optionalGetIndexTemplateResponse.isPresent(), equalTo(false));
     }
 
     @Test
@@ -144,16 +125,15 @@ class ComposableTemplateAPIWrapperTest {
         when(booleanResponse.value()).thenReturn(true);
         when(openSearchIndicesClient.existsIndexTemplate(any(ExistsIndexTemplateRequest.class)))
                 .thenReturn(booleanResponse);
-        final IndexTemplateItem indexTemplateItem = mock(IndexTemplateItem.class);
-        when(getIndexTemplateResponse.indexTemplates()).thenReturn(Collections.singletonList(indexTemplateItem));
         when(openSearchIndicesClient.getIndexTemplate(any(GetIndexTemplateRequest.class)))
                 .thenReturn(getIndexTemplateResponse);
 
-        final Optional<IndexTemplateItem> optionalIndexTemplateItem = objectUnderTest.getTemplate(indexTemplateName);
+        final Optional<GetIndexTemplateResponse> optionalGetIndexTemplateResponse = objectUnderTest.getTemplate(
+                indexTemplateName);
 
-        assertThat(optionalIndexTemplateItem, notNullValue());
-        assertThat(optionalIndexTemplateItem.isPresent(), equalTo(true));
-        assertThat(optionalIndexTemplateItem.get(), equalTo(indexTemplateItem));
+        assertThat(optionalGetIndexTemplateResponse, notNullValue());
+        assertThat(optionalGetIndexTemplateResponse.isPresent(), equalTo(true));
+        assertThat(optionalGetIndexTemplateResponse.get(), equalTo(getIndexTemplateResponse));
     }
 
 

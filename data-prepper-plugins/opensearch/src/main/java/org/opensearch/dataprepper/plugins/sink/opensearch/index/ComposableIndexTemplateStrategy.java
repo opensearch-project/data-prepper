@@ -5,9 +5,11 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 
+import org.opensearch.client.opensearch.indices.GetIndexTemplateResponse;
 import org.opensearch.client.opensearch.indices.get_index_template.IndexTemplateItem;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -15,17 +17,24 @@ import java.util.Optional;
  * A {@link TemplateStrategy} for the OpenSearch <a href="https://opensearch.org/docs/latest/im-plugin/index-templates/">index template</a>.
  */
 class ComposableIndexTemplateStrategy implements TemplateStrategy {
-    private final IndexTemplateAPIWrapper<IndexTemplateItem> indexTemplateAPIWrapper;
+    private final IndexTemplateAPIWrapper<GetIndexTemplateResponse> indexTemplateAPIWrapper;
 
-    public ComposableIndexTemplateStrategy(final IndexTemplateAPIWrapper<IndexTemplateItem> indexTemplateAPIWrapper) {
+    public ComposableIndexTemplateStrategy(final IndexTemplateAPIWrapper<GetIndexTemplateResponse> indexTemplateAPIWrapper) {
         this.indexTemplateAPIWrapper = indexTemplateAPIWrapper;
     }
 
     @Override
     public Optional<Long> getExistingTemplateVersion(final String templateName) throws IOException {
         return indexTemplateAPIWrapper.getTemplate(templateName)
-                .map(IndexTemplateItem::indexTemplate)
-                .map(indexTemplate -> indexTemplate.version());
+                .map(getIndexTemplateResponse -> {
+                    final List<IndexTemplateItem> indexTemplateItems = getIndexTemplateResponse.indexTemplates();
+                    if (indexTemplateItems.size() == 1) {
+                        return indexTemplateItems.stream().findFirst().get().indexTemplate().version();
+                    } else {
+                        throw new RuntimeException(String.format("Found zero or multiple index templates result when querying for %s",
+                                templateName));
+                    }
+                });
     }
 
     @Override

@@ -9,7 +9,6 @@ import org.opensearch.client.opensearch.indices.GetTemplateRequest;
 import org.opensearch.client.opensearch.indices.GetTemplateResponse;
 import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
 import org.opensearch.client.opensearch.indices.PutTemplateRequest;
-import org.opensearch.client.opensearch.indices.TemplateMapping;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 
 import java.io.ByteArrayInputStream;
@@ -18,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
 
-public class OpenSearchLegacyTemplateAPIWrapper implements IndexTemplateAPIWrapper<TemplateMapping> {
+public class OpenSearchLegacyTemplateAPIWrapper implements IndexTemplateAPIWrapper<GetTemplateResponse> {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final OpenSearchClient openSearchClient;
@@ -50,7 +49,7 @@ public class OpenSearchLegacyTemplateAPIWrapper implements IndexTemplateAPIWrapp
     }
 
     @Override
-    public Optional<TemplateMapping> getTemplate(final String templateName) throws IOException {
+    public Optional<GetTemplateResponse> getTemplate(final String templateName) throws IOException {
         final ExistsTemplateRequest existsTemplateRequest = new ExistsTemplateRequest.Builder()
                 .name(templateName)
                 .build();
@@ -63,13 +62,6 @@ public class OpenSearchLegacyTemplateAPIWrapper implements IndexTemplateAPIWrapp
         final GetTemplateRequest getTemplateRequest = new GetTemplateRequest.Builder()
                 .name(templateName)
                 .build();
-        final GetTemplateResponse response = openSearchClient.indices().getTemplate(getTemplateRequest);
-
-        if (response.result().size() == 1) {
-            return response.result().values().stream().findFirst();
-        } else {
-            throw new RuntimeException(String.format("Found zero or multiple index templates result when querying for %s",
-                    templateName));
-        }
+        return Optional.of(openSearchClient.indices().getTemplate(getTemplateRequest));
     }
 }

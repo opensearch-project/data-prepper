@@ -9,8 +9,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.client.opensearch.indices.GetTemplateResponse;
 import org.opensearch.client.opensearch.indices.TemplateMapping;
 
 import java.io.IOException;
@@ -40,7 +43,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class V1TemplateStrategyTest {
     @Mock
-    private IndexTemplateAPIWrapper<TemplateMapping> indexTemplateAPIWrapper;
+    private IndexTemplateAPIWrapper<GetTemplateResponse> indexTemplateAPIWrapper;
+    @Mock
+    private GetTemplateResponse getTemplateResponse;
     @Mock
     private TemplateMapping templateMapping;
     private Random random;
@@ -58,10 +63,12 @@ class V1TemplateStrategyTest {
 
     @Test
     void getExistingTemplateVersion_should_calls_getTemplate_with_templateName() throws IOException {
-        when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(templateMapping));
+        when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(getTemplateResponse));
+        when(getTemplateResponse.result()).thenReturn(Map.of(templateName, templateMapping));
         createObjectUnderTest().getExistingTemplateVersion(templateName);
 
         verify(indexTemplateAPIWrapper).getTemplate(eq(templateName));
+        verify(templateMapping).version();
     }
 
     @Test
@@ -74,7 +81,8 @@ class V1TemplateStrategyTest {
     class WithExistingTemplate {
         @Test
         void getExistingTemplateVersion_should_return_empty_if_template_exists_without_version() throws IOException {
-            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(templateMapping));
+            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(getTemplateResponse));
+            when(getTemplateResponse.result()).thenReturn(Map.of(templateName, templateMapping));
             when(templateMapping.version()).thenReturn(null);
 
             final Optional<Long> optionalVersion = createObjectUnderTest().getExistingTemplateVersion(templateName);
@@ -86,7 +94,8 @@ class V1TemplateStrategyTest {
         @Test
         void getExistingTemplateVersion_should_return_template_version_if_template_exists() throws IOException {
             final Long version = (long) (random.nextInt(10_000) + 100);
-            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(templateMapping));
+            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(getTemplateResponse));
+            when(getTemplateResponse.result()).thenReturn(Map.of(templateName, templateMapping));
             when(templateMapping.version()).thenReturn(version);
 
             final Optional<Long> optionalVersion = createObjectUnderTest().getExistingTemplateVersion(templateName);
@@ -94,6 +103,21 @@ class V1TemplateStrategyTest {
             assertThat(optionalVersion, notNullValue());
             assertThat(optionalVersion.isPresent(), equalTo(true));
             assertThat(optionalVersion.get(), equalTo(version));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, 2})
+        void getExistingTemplateVersion_should_throw_if_get_template_returns_unexpected_number_of_templates(
+                final int numberOfTemplatesReturned) throws IOException {
+            when(indexTemplateAPIWrapper.getTemplate(any())).thenReturn(Optional.of(getTemplateResponse));
+            final Map<String, TemplateMapping> templateResult = mock(Map.class);
+            when(templateResult.size()).thenReturn(numberOfTemplatesReturned);
+            when(getTemplateResponse.result()).thenReturn(templateResult);
+
+            assertThrows(RuntimeException.class,
+                    () -> createObjectUnderTest().getExistingTemplateVersion(templateName));
+
+            verify(indexTemplateAPIWrapper).getTemplate(eq(templateName));
         }
     }
 

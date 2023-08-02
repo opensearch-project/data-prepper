@@ -3,8 +3,6 @@ package org.opensearch.dataprepper.plugins.sink.opensearch.index;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -17,7 +15,6 @@ import org.opensearch.client.opensearch.indices.GetTemplateResponse;
 import org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
 import org.opensearch.client.opensearch.indices.PutTemplateRequest;
 import org.opensearch.client.opensearch.indices.PutTemplateResponse;
-import org.opensearch.client.opensearch.indices.TemplateMapping;
 import org.opensearch.client.transport.JsonEndpoint;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.TransportOptions;
@@ -28,7 +25,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -132,27 +128,10 @@ class Es6IndexTemplateAPIWrapperTest {
         when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class)))
                 .thenReturn(booleanResponse);
 
-        final Optional<TemplateMapping> optionalTemplateMapping = objectUnderTest.getTemplate(templateName);
+        final Optional<GetTemplateResponse> optionalGetTemplateResponse = objectUnderTest.getTemplate(templateName);
 
-        assertThat(optionalTemplateMapping, notNullValue());
-        assertThat(optionalTemplateMapping.isPresent(), equalTo(false));
-    }
-
-    @ParameterizedTest
-    @ValueSource(ints = {0, 2})
-    void getExistingTemplate_should_throw_if_get_template_returns_unexpected_number_of_templates(final int numberOfTemplatesReturned) throws IOException {
-        when(booleanResponse.value()).thenReturn(true);
-        when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class)))
-                .thenReturn(booleanResponse);
-        final Map<String, TemplateMapping> templateResult = mock(Map.class);
-        when(templateResult.size()).thenReturn(numberOfTemplatesReturned);
-        when(getTemplateResponse.result()).thenReturn(templateResult);
-        when(openSearchIndicesClient.getTemplate(any(GetTemplateRequest.class)))
-                .thenReturn(getTemplateResponse);
-
-        assertThrows(RuntimeException.class, () -> objectUnderTest.getTemplate(templateName));
-
-        verify(openSearchIndicesClient).getTemplate(any(GetTemplateRequest.class));
+        assertThat(optionalGetTemplateResponse, notNullValue());
+        assertThat(optionalGetTemplateResponse.isPresent(), equalTo(false));
     }
 
     @Test
@@ -160,15 +139,13 @@ class Es6IndexTemplateAPIWrapperTest {
         when(booleanResponse.value()).thenReturn(true);
         when(openSearchIndicesClient.existsTemplate(any(ExistsTemplateRequest.class)))
                 .thenReturn(booleanResponse);
-        final TemplateMapping templateMapping = mock(TemplateMapping.class);
-        when(getTemplateResponse.result()).thenReturn(Collections.singletonMap(templateName, templateMapping));
         when(openSearchIndicesClient.getTemplate(any(GetTemplateRequest.class)))
                 .thenReturn(getTemplateResponse);
 
-        final Optional<TemplateMapping> optionalTemplateMapping = objectUnderTest.getTemplate(templateName);
+        final Optional<GetTemplateResponse> optionalGetTemplateResponse = objectUnderTest.getTemplate(templateName);
 
-        assertThat(optionalTemplateMapping, notNullValue());
-        assertThat(optionalTemplateMapping.isPresent(), equalTo(true));
-        assertThat(optionalTemplateMapping.get(), equalTo(templateMapping));
+        assertThat(optionalGetTemplateResponse, notNullValue());
+        assertThat(optionalGetTemplateResponse.isPresent(), equalTo(true));
+        assertThat(optionalGetTemplateResponse.get(), equalTo(getTemplateResponse));
     }
 }
