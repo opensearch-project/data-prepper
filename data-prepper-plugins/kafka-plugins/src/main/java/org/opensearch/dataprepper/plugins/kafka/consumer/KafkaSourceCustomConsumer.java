@@ -218,14 +218,14 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
 
     @Override
     public void run() {
-        try {
-            consumer.subscribe(Arrays.asList(topicName));
-            while (!shutdownInProgress.get()) {
+        consumer.subscribe(Arrays.asList(topicName));
+        while (!shutdownInProgress.get()) {
+            try {
                 resetOrCommitOffsets();
                 consumeRecords();
+            } catch (Exception exp) {
+                LOG.error("Error while reading the records from the topic...", exp);
             }
-        } catch (Exception exp) {
-            LOG.error("Error while reading the records from the topic...", exp);
         }
     }
 
