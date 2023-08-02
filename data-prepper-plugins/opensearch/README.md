@@ -209,6 +209,65 @@ With the `document_root_key` set to `status`. The document structure would be `{
     duration: "15 ms"
 }
 ```
+- `include_keys`: A list of keys to be included (retained). The key in the list can be a valid JSON path, such as 'request/status'. This option can work together with `document_root_key`.
+
+For example, If we have the following sample event:
+```
+{
+    status: 200,
+    message: null,
+    metadata: {
+        sourceIp: "123.212.49.58",
+        destinationIp: "79.54.67.231",
+        bytes: 3545,
+        duration: "15 ms"
+    }
+}
+```
+if `include_keys` is set to ["status", "metadata/sourceIp"], the document written to OpenSearch would be:
+```
+{
+    status: 200,
+    metadata: {
+        sourceIp: "123.212.49.58"
+    }
+}
+```
+if you have also set `document_root_key` as "metadata", and the include_keys as ["sourceIp, "bytes"], the document written to OpenSearch would be:
+```
+{
+   sourceIp: "123.212.49.58",
+   bytes: 3545
+}
+```
+
+- `exclude_keys`: Similar to include_keys except any keys in the list will be excluded. Note that you should not have both include_keys and exclude_keys in the configuration at the same time.
+
+For example, If we have the following sample event:
+```
+{
+    status: 200,
+    message: null,
+    metadata: {
+        sourceIp: "123.212.49.58",
+        destinationIp: "79.54.67.231",
+        bytes: 3545,
+        duration: "15 ms"
+    }
+}
+```
+if `exclude_keys` is set to ["status", "metadata/sourceIp"], the document written to OpenSearch would be:
+```
+{
+    message: null,
+    metadata: {
+        destinationIp: "79.54.67.231",
+        bytes: 3545,
+        duration: "15 ms"
+    }
+}
+```
+
 - `distribution_version`: A String indicating whether the sink backend version is Elasticsearch 6 or above (i.e. Elasticsearch 7.x or OpenSearch). `es6` represents Elasticsearch 6; `default` represents latest compatible backend version (Elasticsearch 7.x, OpenSearch 1.x, OpenSearch 2.x). Default to `default`.
 
 ### <a name="aws_configuration">AWS Configuration</a>

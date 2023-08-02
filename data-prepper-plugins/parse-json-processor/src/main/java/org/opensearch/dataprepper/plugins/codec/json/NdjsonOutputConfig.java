@@ -19,11 +19,23 @@ public class NdjsonOutputConfig {
     @JsonProperty("exclude_keys")
     private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
+
+    @JsonProperty("include_keys")
+    private List<String> includeKeys = DEFAULT_EXCLUDE_KEYS;
+
     public List<String> getExcludeKeys() {
         return excludeKeys;
     }
 
+    public List<String> getIncludeKeys() {
+        return includeKeys;
+    }
+
     public void setExcludeKeys(List<String> excludeKeys) {
         this.excludeKeys = excludeKeys;
+    }
+
+    public void setIncludeKeys(List<String> includeKeys) {
+        this.includeKeys = includeKeys;
     }
 }

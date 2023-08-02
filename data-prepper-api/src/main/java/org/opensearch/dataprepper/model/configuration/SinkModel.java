@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -122,6 +123,13 @@ public class SinkModel extends PluginModel {
             this.includeKeys = includeKeys != null ? preprocessingKeys(includeKeys) : Collections.emptyList();
             this.excludeKeys = excludeKeys != null ? preprocessingKeys(excludeKeys) : Collections.emptyList();
             this.tagsTargetKey = tagsTargetKey;
+            validateConfiguration();
+        }
+
+        void validateConfiguration() {
+            if (!includeKeys.isEmpty() && !excludeKeys.isEmpty()) {
+                throw new InvalidPluginConfigurationException("include_keys and exclude_keys cannot both exist in the configuration at the same time.");
+            }
         }
 
 

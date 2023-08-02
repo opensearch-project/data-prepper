@@ -12,8 +12,11 @@ import org.opensearch.dataprepper.model.event.Event;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * An implementation of {@link OutputCodec} which deserializes Data-Prepper events
@@ -25,10 +28,17 @@ public class NdjsonOutputCodec implements OutputCodec {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final NdjsonOutputConfig config;
 
+    private final List<String> includeKeys;
+    private final List<String> excludeKeys;
+
+
     @DataPrepperPluginConstructor
     public NdjsonOutputCodec(final NdjsonOutputConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
+
+        this.includeKeys = preprocessingKeys(config.getIncludeKeys());
+        this.excludeKeys = preprocessingKeys(config.getExcludeKeys());
     }
 
     @Override
@@ -39,13 +49,10 @@ public class NdjsonOutputCodec implements OutputCodec {
     @Override
     public void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
         Objects.requireNonNull(event);
-        Map<String, Object> eventMap;
-        if (tagsTargetKey != null) {
-            eventMap = addTagsToEvent(event, tagsTargetKey).toMap();
-        } else {
-            eventMap = event.toMap();
-        }
-        writeToOutputStream(outputStream, eventMap);
+        String jsonString = event.jsonBuilder().includeKeys(includeKeys).excludeKeys(excludeKeys).includeTags(tagsTargetKey).toJsonString();
+
+        outputStream.write(jsonString.getBytes());
+        outputStream.write(System.lineSeparator().getBytes());
     }
 
     @Override
@@ -53,26 +60,28 @@ public class NdjsonOutputCodec implements OutputCodec {
         outputStream.close();
     }
 
-    private void writeToOutputStream(final OutputStream outputStream, final Object object) throws IOException {
-        byte[] byteArr = null;
-        if (object instanceof Map) {
-            Map<Object, Object> map = objectMapper.convertValue(object, Map.class);
-            for (String key : config.getExcludeKeys()) {
-                if (map.containsKey(key)) {
-                    map.remove(key);
-                }
-            }
-            String json = objectMapper.writeValueAsString(map);
-            byteArr = json.getBytes();
-        } else {
-            byteArr = object.toString().getBytes();
-        }
-        outputStream.write(byteArr);
-        outputStream.write(System.lineSeparator().getBytes());
-    }
-
     @Override
     public String getExtension() {
         return NDJSON;
     }
+
+    /**
+     * Pre-processes a list of Keys and returns a sorted list
+     * The keys must start with `/` and not end with `/`
+     *
+     * @param keys a list of raw keys
+     * @return a sorted processed keys
+     */
+    private List<String> preprocessingKeys(final List<String> keys) {
+        if (keys.contains("/")) {
+            return new ArrayList<>();
+        }
+        List<String> result = keys.stream()
+                .map(k -> k.startsWith("/") ? k : "/" + k)
+                .map(k -> k.endsWith("/") ? k.substring(0, k.length() - 1) : k)
+                .collect(Collectors.toList());
+        Collections.sort(result);
+        return result;
+    }
+
 }
