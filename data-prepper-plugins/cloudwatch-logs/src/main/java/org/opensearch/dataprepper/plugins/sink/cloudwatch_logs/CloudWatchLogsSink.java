@@ -49,7 +49,7 @@ public class CloudWatchLogsSink extends AbstractSink<Record<Event>> {
         CloudWatchLogsMetrics cloudWatchLogsMetrics = new CloudWatchLogsMetrics(pluginMetrics);
         CloudWatchLogsLimits cloudWatchLogsLimits = new CloudWatchLogsLimits(thresholdConfig.getBatchSize(),
                 thresholdConfig.getMaxEventSizeBytes(),
-                thresholdConfig.getMaxRequestSize(),thresholdConfig.getLogSendInterval());
+                thresholdConfig.getMaxRequestSizeBytes(),thresholdConfig.getLogSendInterval());
 
         CloudWatchLogsClient cloudWatchLogsClient = CloudWatchLogsClientFactory.createCwlClient(awsConfig, awsCredentialsSupplier);
 
