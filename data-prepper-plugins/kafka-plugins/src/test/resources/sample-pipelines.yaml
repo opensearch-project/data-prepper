@@ -9,8 +9,8 @@ log-pipeline:
         - name: my-topic-1
           workers: 5
           auto_commit: false
-          auto_commit_interval: PT5S
-          session_timeout: 45000
+          commit_interval: PT5S
+          session_timeout: PT45S
           max_retry_attempts: 1000
           auto_offset_reset: earliest
           thread_waiting_time: PT1S
@@ -39,7 +39,6 @@ log-pipeline:
         sasl:
           aws_msk_iam: role
           plaintext:
-            security_protocol: SASL_SSL
             username: 5UH4NID4OENKDIBI
             password: jCmncn77F9asfox3yhgZLCEwQ5fx8pKiXnszMqdt0y1GLrdZO1V1iz95aIe1UubX
           oauth:
