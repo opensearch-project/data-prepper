@@ -68,9 +68,9 @@ class TopicConfigTest {
     void testConfigValues_default() {
         assertEquals("my-topic-2", topicConfig.getName());
         assertEquals(false, topicConfig.getAutoCommit());
-        assertEquals(Duration.ofSeconds(5), topicConfig.getAutoCommitInterval());
-        assertEquals(45000, topicConfig.getSessionTimeOut());
-        assertEquals("earliest", topicConfig.getAutoOffsetReset());
+        assertEquals(Duration.ofSeconds(5), topicConfig.getCommitInterval());
+        assertEquals(45000, topicConfig.getSessionTimeOut().toMillis());
+        assertEquals(TopicConfig.DEFAULT_AUTO_OFFSET_RESET, topicConfig.getAutoOffsetReset());
         assertEquals(TopicConfig.THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
         assertEquals(Duration.ofSeconds(4), topicConfig.getMaxRecordFetchTime());
         assertEquals(Duration.ofSeconds(5), topicConfig.getBufferDefaultTimeout());
@@ -80,8 +80,8 @@ class TopicConfigTest {
         assertEquals(Duration.ofSeconds(100), topicConfig.getRetryBackoff());
         assertEquals(Duration.ofSeconds(300000), topicConfig.getMaxPollInterval());
         assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
-        assertEquals(5, topicConfig.getWorkers().intValue());
-        assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
+        assertEquals(TopicConfig.DEFAULT_NUM_OF_WORKERS, topicConfig.getWorkers().intValue());
+        assertEquals(TopicConfig.HEART_BEAT_INTERVAL_DURATION, topicConfig.getHeartBeatInterval());
     }
 
     @Test
@@ -89,8 +89,8 @@ class TopicConfigTest {
     void testConfigValues_from_yaml() {
         assertEquals("my-topic-1", topicConfig.getName());
         assertEquals(false, topicConfig.getAutoCommit());
-        assertEquals(Duration.ofSeconds(5), topicConfig.getAutoCommitInterval());
-        assertEquals(45000, topicConfig.getSessionTimeOut());
+        assertEquals(Duration.ofSeconds(5), topicConfig.getCommitInterval());
+        assertEquals(45000, topicConfig.getSessionTimeOut().toMillis());
         assertEquals("earliest", topicConfig.getAutoOffsetReset());
         assertEquals(Duration.ofSeconds(1), topicConfig.getThreadWaitingTime());
         assertEquals(Duration.ofSeconds(4), topicConfig.getMaxRecordFetchTime());
@@ -110,7 +110,7 @@ class TopicConfigTest {
     void testConfigValues_from_yaml_not_null() {
         assertNotNull(topicConfig.getName());
         assertNotNull(topicConfig.getAutoCommit());
-        assertNotNull(topicConfig.getAutoCommitInterval());
+        assertNotNull(topicConfig.getCommitInterval());
         assertNotNull(topicConfig.getSessionTimeOut());
         assertNotNull(topicConfig.getAutoOffsetReset());
         assertNotNull(topicConfig.getThreadWaitingTime());

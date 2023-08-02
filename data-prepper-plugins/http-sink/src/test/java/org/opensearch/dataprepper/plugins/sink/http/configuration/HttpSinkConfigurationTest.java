@@ -14,6 +14,9 @@ import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
 import software.amazon.awssdk.regions.Region;
 
+import java.util.List;
+import java.util.Map;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
@@ -23,14 +26,8 @@ import static org.opensearch.dataprepper.plugins.sink.http.configuration.AuthTyp
 
 public class HttpSinkConfigurationTest {
 
-    private static final String SINK_YAML = "        urls:\n" +
-            "        - url: \"https://httpbin.org/post\"\n" +
-            "          workers: 1\n" +
-            "          proxy: test\n" +
-            "          codec:\n" +
-            "            ndjson:\n" +
-            "          http_method: \"POST\"\n" +
-            "          auth_type: \"http_basic\"\n" +
+    private static final String SINK_YAML =
+            "        url: \"http://localhost:8080/test\"\n" +
             "        proxy: test-proxy\n" +
             "        codec:\n" +
             "          ndjson:\n" +
@@ -59,12 +56,12 @@ public class HttpSinkConfigurationTest {
             "        max_retries: 5\n" +
             "        aws_sigv4: true\n" +
             "        custom_header:\n" +
-            "          X-Amzn-SageMaker-Custom-Attributes: test-attribute\n" +
-            "          X-Amzn-SageMaker-Target-Model: test-target-model\n" +
-            "          X-Amzn-SageMaker-Target-Variant: test-target-variant\n" +
-            "          X-Amzn-SageMaker-Target-Container-Hostname: test-container-host\n" +
-            "          X-Amzn-SageMaker-Inference-Id: test-interface-id\n" +
-            "          X-Amzn-SageMaker-Enable-Explanations: test-explanation";
+            "          X-Amzn-SageMaker-Custom-Attributes: [\"test-attribute\"]\n" +
+            "          X-Amzn-SageMaker-Target-Model: [\"test-target-model\"]\n" +
+            "          X-Amzn-SageMaker-Target-Variant: [\"test-target-variant\"]\n" +
+            "          X-Amzn-SageMaker-Target-Container-Hostname: [\"test-container-host\"]\n" +
+            "          X-Amzn-SageMaker-Inference-Id: [\"test-interface-id\"]\n" +
+            "          X-Amzn-SageMaker-Enable-Explanations: [\"test-explanation\"]";
 
     private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
 
@@ -95,8 +92,8 @@ public class HttpSinkConfigurationTest {
     }
 
     @Test
-    void get_urls_test() {
-        assertThat(new HttpSinkConfiguration().getUrlConfigurationOptions(), equalTo(null));
+    void get_url_test() {
+        assertThat(new HttpSinkConfiguration().getUrl(), equalTo(null));
     }
 
     @Test
@@ -153,6 +150,7 @@ public class HttpSinkConfigurationTest {
     void http_sink_pipeline_test_with_provided_config_options() throws JsonProcessingException {
         final HttpSinkConfiguration httpSinkConfiguration = objectMapper.readValue(SINK_YAML, HttpSinkConfiguration.class);
 
+        assertThat(httpSinkConfiguration.getUrl(),equalTo("http://localhost:8080/test"));
         assertThat(httpSinkConfiguration.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
         assertThat(httpSinkConfiguration.getAuthType(),equalTo(HTTP_BASIC));
         assertThat(httpSinkConfiguration.getBufferType(),equalTo(BufferTypeOptions.INMEMORY));
@@ -163,20 +161,13 @@ public class HttpSinkConfigurationTest {
         assertThat(httpSinkConfiguration.getWorkers(),equalTo(1));
         assertThat(httpSinkConfiguration.getDlqFile(),equalTo("/your/local/dlq-file"));
 
-        final UrlConfigurationOption urlConfigurationOption = httpSinkConfiguration.getUrlConfigurationOptions().get(0);
-        assertThat(urlConfigurationOption.getUrl(),equalTo("https://httpbin.org/post"));
-        assertThat(urlConfigurationOption.getHttpMethod(),equalTo(HTTPMethodOptions.POST));
-        assertThat(urlConfigurationOption.getProxy(),equalTo("test"));
-        assertThat(urlConfigurationOption.getAuthType(),equalTo(HTTP_BASIC));
-
-        final CustomHeaderOptions customHeaderOptions = httpSinkConfiguration.getCustomHeaderOptions();
-
-        assertThat(customHeaderOptions.getCustomAttributes(),equalTo("test-attribute"));
-        assertThat(customHeaderOptions.getInferenceId(),equalTo("test-interface-id"));
-        assertThat(customHeaderOptions.getEnableExplanations(),equalTo("test-explanation"));
-        assertThat(customHeaderOptions.getTargetVariant(),equalTo("test-target-variant"));
-        assertThat(customHeaderOptions.getTargetContainerHostname(),equalTo("test-container-host"));
-        assertThat(customHeaderOptions.getTargetModel(),equalTo("test-target-model"));
+        final Map<String, List<String>> customHeaderOptions = httpSinkConfiguration.getCustomHeaderOptions();
+        assertThat(customHeaderOptions.get("X-Amzn-SageMaker-Custom-Attributes"),equalTo(List.of("test-attribute")));
+        assertThat(customHeaderOptions.get("X-Amzn-SageMaker-Inference-Id"),equalTo(List.of("test-interface-id")));
+        assertThat(customHeaderOptions.get("X-Amzn-SageMaker-Enable-Explanations"),equalTo(List.of("test-explanation")));
+        assertThat(customHeaderOptions.get("X-Amzn-SageMaker-Target-Variant"),equalTo(List.of("test-target-variant")));
+        assertThat(customHeaderOptions.get("X-Amzn-SageMaker-Target-Container-Hostname"),equalTo(List.of("test-container-host")));
+        assertThat(customHeaderOptions.get("X-Amzn-SageMaker-Target-Model"),equalTo(List.of("test-target-model")));
 
         final AwsAuthenticationOptions awsAuthenticationOptions =
                 httpSinkConfiguration.getAwsAuthenticationOptions();
