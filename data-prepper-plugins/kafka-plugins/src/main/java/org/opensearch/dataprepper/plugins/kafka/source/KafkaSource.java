@@ -118,7 +118,7 @@ public class KafkaSource implements Source<Record<Event>> {
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         sourceConfig.getTopics().forEach(topic -> {
-            consumerGroupID = getGroupId(topic.getName());
+            consumerGroupID = topic.getGroupId();
             Properties consumerProperties = getConsumerProperties(topic);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
             try {
@@ -173,10 +173,6 @@ public class KafkaSource implements Source<Record<Event>> {
             }
         }
         LOG.info("Consumer shutdown successfully...");
-    }
-
-    private String getGroupId(String name) {
-        return pipelineName + "::" + name;
     }
 
     private long calculateLongestThreadWaitingTime() {
@@ -368,13 +364,13 @@ public class KafkaSource implements Source<Record<Event>> {
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
                 topicConfig.getAutoCommit());
         properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                topicConfig.getAutoCommitInterval().toSecondsPart());
+                ((Long)topicConfig.getCommitInterval().toMillis()).intValue());
         properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                 topicConfig.getAutoOffsetReset());
         properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
                 topicConfig.getConsumerMaxPollRecords());
-        properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, topicConfig.getSessionTimeOut());
-        properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, topicConfig.getHeartBeatInterval().toSecondsPart());
+        properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, ((Long)topicConfig.getSessionTimeOut().toMillis()).intValue());
+        properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, ((Long)topicConfig.getHeartBeatInterval().toMillis()).intValue());
         properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, topicConfig.getFetchMaxBytes().intValue());
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
     }
