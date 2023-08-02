@@ -17,28 +17,34 @@ pipeline:
           region: us-east-1
           sts_role_arn: arn:aws:iam::123456789012:role/Data-Prepper
           sts_header_overrides:
-        log_group: "sample_group"
-        log_stream: "sample_stream"
-        buffer_type: "in_memory"
+            custom_header: ...
+            custom_header2: ...
+            ...
+          sts_external_id: 123ABC
+        log_group: sample_group
+        log_stream: sample_stream
+        buffer_type: in_memory
         threshold:
           batch_size: 10000
-          max_event_size: "256kb"
-          max_request_size: "1mb"
+          max_event_size: 256kb
+          max_request_size: 1mb
           retry_count: 5
-          back_off_time: "500ms"
+          back_off_time: 500ms
 ```
 
 ## AWS Configuration
 
-- `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
+- `region` (Optional) : A string representing the AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
 
-- `sts_role_arn` (Optional) : The AWS STS role to assume for requests to CloudWatchLogs. which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html). 
+- `sts_role_arn` (Optional) : A string representing AWS STS role to assume for requests to CloudWatchLogs. which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
 
-- `sts_external_id` (Optional) : The external ID to attach to AssumeRole requests.
+- `sts_header_overrides` (Optional) : A string map representing different custom headers that can be added.
+
+- `sts_external_id` (Optional) : A string representing the external ID to attach to AssumeRole requests. Referenced here: [how to use external ID](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html)
 
 ## Threshold Configuration
 
-- `batch_size` (Optional) : An integer value that indicates how many events we hold until we make a call to CloudWatch Logs. Defaults to 25.
+- `batch_size` (Optional) : An integer value that indicates how many events we hold until we make a call to CloudWatch Logs. Defaults to 25. (Min = 1, Max = 10000)
 
 - `max_event_size` (Optional) : A string representing the max size in bytes of the allowed events. Defaults to "256kb". (Min = "1b", Max = "256kb")
 
