@@ -55,8 +55,7 @@ pipeline:
 - `buffer_type` (Optional) : A string representing the type of buffer to use to hold onto events. Currently only supports `in_memory`.
 
 ## Plugin Functionality
-The cloudwatch_logs sink plugin uses credentials to establish a client to CloudWatch Logs. It currently uses the system
-default timestamp for publishing (ex: System.currentTimeMillis()) and also implements an exponential back off strategy
+The cloudwatch_logs sink plugin uses credentials to establish a client to CloudWatch Logs. It currently uses the current system timestamp for publishing and implements an exponential back off strategy
 for retransmission. 
 
 ## Metrics
