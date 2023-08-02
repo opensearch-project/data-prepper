@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
-      - name: Checkout Data-Prepper
+      - name: Checkout Data Prepper
         uses: actions/checkout@v2
       - name: Run basic grok end-to-end tests with Gradle
         run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:log:${{ matrix.test }}

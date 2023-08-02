@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
-      - name: Checkout Data-Prepper
+      - name: Checkout Data Prepper
         uses: actions/checkout@v2
       - name: Run raw-span latest release compatibility end-to-end tests with Gradle
         run: ./gradlew -PendToEndJavaVersion=${{ matrix.java }} :e2e-test:trace:rawSpanPeerForwarderEndToEndTest
