@@ -62,8 +62,10 @@ pipeline:
 
 ## Plugin Functionality
 The cloudwatch_logs sink plugin uses credentials to establish a client to CloudWatch Logs. It currently uses the current system timestamp for publishing and implements an exponential back off strategy
-for retransmission. 
+for retransmission.
 
+The cloudwatch_logs sink plugin also adds an overhead of 26 bytes added to each event message. This is done by the AWS SDK when formatting the API call to CloudWatch Logs. This must be considered when setting custom
+threshold parameters.
 ## Metrics
 
 ### Counters
