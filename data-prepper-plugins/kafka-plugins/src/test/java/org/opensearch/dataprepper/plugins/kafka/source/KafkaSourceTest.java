@@ -71,8 +71,8 @@ class KafkaSourceTest {
         when(topic2.getName()).thenReturn("topic2");
         when(topic1.getWorkers()).thenReturn(2);
         when(topic2.getWorkers()).thenReturn(3);
-        when(topic1.getAutoCommitInterval()).thenReturn(Duration.ofSeconds(1));
-        when(topic2.getAutoCommitInterval()).thenReturn(Duration.ofSeconds(1));
+        when(topic1.getCommitInterval()).thenReturn(Duration.ofSeconds(1));
+        when(topic2.getCommitInterval()).thenReturn(Duration.ofSeconds(1));
         when(topic1.getAutoOffsetReset()).thenReturn("earliest");
         when(topic2.getAutoOffsetReset()).thenReturn("earliest");
         when(topic1.getConsumerMaxPollRecords()).thenReturn(1);
