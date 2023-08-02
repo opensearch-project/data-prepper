@@ -398,9 +398,11 @@ public class IndexConfigurationTests {
         final Map<String, Object> metadata = initializeConfigMetaData(
                 null, "foo", null, null, null, null);
         metadata.put(DISTRIBUTION_VERSION, "es6");
+        metadata.put(TEMPLATE_TYPE, TemplateType.INDEX_TEMPLATE.getTypeName());
         final PluginSetting pluginSetting = getPluginSetting(metadata);
         final IndexConfiguration indexConfiguration = IndexConfiguration.readIndexConfig(pluginSetting);
         assertEquals(indexConfiguration.getDistributionVersion(), DistributionVersion.ES6);
+        assertEquals(TemplateType.V1, indexConfiguration.getTemplateType());
         assertEquals(IndexType.CUSTOM, indexConfiguration.getIndexType());
     }
 

@@ -57,7 +57,7 @@ public class IndexConfiguration {
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
     private IndexType indexType;
-    private final TemplateType templateType;
+    private TemplateType templateType;
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
@@ -90,7 +90,7 @@ public class IndexConfiguration {
         this.s3AwsExternalId = builder.s3AwsStsExternalId;
         this.s3Client = builder.s3Client;
 
-        this.templateType = builder.templateType != null ? builder.templateType : TemplateType.V1;
+        determineTemplateType(builder);
         this.indexTemplate = readIndexTemplate(builder.templateFile, indexType, templateType);
 
         if (builder.numReplicas > 0) {
@@ -128,6 +128,11 @@ public class IndexConfiguration {
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
         this.documentRootKey = builder.documentRootKey;
+    }
+
+    private void determineTemplateType(Builder builder) {
+        this.templateType = DistributionVersion.ES6.equals(builder.distributionVersion) ? TemplateType.V1 :
+                (builder.templateType != null ? builder.templateType : TemplateType.V1);
     }
 
     private void determineIndexType(Builder builder) {
