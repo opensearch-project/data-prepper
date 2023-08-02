@@ -67,21 +67,23 @@ class TopicConfigTest {
     @Tag(YAML_FILE_WITH_MISSING_CONSUMER_CONFIG)
     void testConfigValues_default() {
         assertEquals("my-topic-2", topicConfig.getName());
-        assertEquals(false, topicConfig.getAutoCommit());
-        assertEquals(Duration.ofSeconds(5), topicConfig.getCommitInterval());
-        assertEquals(45000, topicConfig.getSessionTimeOut().toMillis());
+        assertEquals("my-test-group", topicConfig.getGroupId());
+        assertEquals(TopicConfig.DEFAULT_AUTO_COMMIT, topicConfig.getAutoCommit());
+        assertEquals(TopicConfig.DEFAULT_COMMIT_INTERVAL, topicConfig.getCommitInterval());
+        assertEquals(TopicConfig.DEFAULT_SESSION_TIMEOUT, topicConfig.getSessionTimeOut());
         assertEquals(TopicConfig.DEFAULT_AUTO_OFFSET_RESET, topicConfig.getAutoOffsetReset());
-        assertEquals(TopicConfig.THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
-        assertEquals(Duration.ofSeconds(4), topicConfig.getMaxRecordFetchTime());
-        assertEquals(Duration.ofSeconds(5), topicConfig.getBufferDefaultTimeout());
-        assertEquals(52428800L, topicConfig.getFetchMaxBytes().longValue());
-        assertEquals(500L, topicConfig.getFetchMaxWait().longValue());
-        assertEquals(1L, topicConfig.getFetchMinBytes().longValue());
-        assertEquals(Duration.ofSeconds(100), topicConfig.getRetryBackoff());
-        assertEquals(Duration.ofSeconds(300000), topicConfig.getMaxPollInterval());
-        assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
-        assertEquals(TopicConfig.DEFAULT_NUM_OF_WORKERS, topicConfig.getWorkers().intValue());
-        assertEquals(TopicConfig.HEART_BEAT_INTERVAL_DURATION, topicConfig.getHeartBeatInterval());
+        assertEquals(TopicConfig.DEFAULT_THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
+        assertEquals(TopicConfig.DEFAULT_MAX_RECORD_FETCH_TIME, topicConfig.getMaxRecordFetchTime());
+        assertEquals(TopicConfig.DEFAULT_BUFFER_TIMEOUT, topicConfig.getBufferDefaultTimeout());
+        assertEquals(TopicConfig.DEFAULT_FETCH_MAX_BYTES, topicConfig.getFetchMaxBytes());
+        assertEquals(TopicConfig.DEFAULT_FETCH_MAX_WAIT, topicConfig.getFetchMaxWait());
+        assertEquals(TopicConfig.DEFAULT_FETCH_MIN_BYTES, topicConfig.getFetchMinBytes());
+        assertEquals(TopicConfig.DEFAULT_RETRY_BACKOFF, topicConfig.getRetryBackoff());
+        assertEquals(TopicConfig.DEFAULT_RECONNECT_BACKOFF, topicConfig.getReconnectBackoff());
+        assertEquals(TopicConfig.DEFAULT_MAX_POLL_INTERVAL, topicConfig.getMaxPollInterval());
+        assertEquals(TopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS, topicConfig.getConsumerMaxPollRecords());
+        assertEquals(TopicConfig.DEFAULT_NUM_OF_WORKERS, topicConfig.getWorkers());
+        assertEquals(TopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION, topicConfig.getHeartBeatInterval());
     }
 
     @Test

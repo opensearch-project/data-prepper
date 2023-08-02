@@ -18,23 +18,24 @@ import java.time.Duration;
  * pipelines.yaml
  */
 public class TopicConfig {
-    private static final String AUTO_COMMIT = "false";
-    private static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
-    private static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
-    private static final int MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
+    static final boolean DEFAULT_AUTO_COMMIT = false;
+    static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
+    static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
+    static final int DEFAULT_MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
     static final String DEFAULT_AUTO_OFFSET_RESET = "latest";
-    static final Duration THREAD_WAITING_TIME = Duration.ofSeconds(5);
-    private static final Duration MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
-    private static final Duration BUFFER_DEFAULT_TIMEOUT = Duration.ofSeconds(5);
-    private static final Duration MAX_RETRY_DELAY = Duration.ofSeconds(1);
-    private static final Integer FETCH_MAX_BYTES = 52428800;
-    private static final Integer FETCH_MAX_WAIT = 500;
-    private static final Integer FETCH_MIN_BYTES = 1;
-    private static final Duration RETRY_BACKOFF = Duration.ofSeconds(100);
-    private static final Duration MAX_POLL_INTERVAL = Duration.ofSeconds(300000);
-    private static final Integer CONSUMER_MAX_POLL_RECORDS = 500;
+    static final Duration DEFAULT_THREAD_WAITING_TIME = Duration.ofSeconds(5);
+    static final Duration DEFAULT_MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
+    static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(5);
+    static final Duration DEFAULT_MAX_RETRY_DELAY = Duration.ofSeconds(1);
+    static final Integer DEFAULT_FETCH_MAX_BYTES = 52428800;
+    static final Integer DEFAULT_FETCH_MAX_WAIT = 500;
+    static final Integer DEFAULT_FETCH_MIN_BYTES = 1;
+    static final Duration DEFAULT_RETRY_BACKOFF = Duration.ofSeconds(10);
+    static final Duration DEFAULT_RECONNECT_BACKOFF = Duration.ofSeconds(10);
+    static final Duration DEFAULT_MAX_POLL_INTERVAL = Duration.ofSeconds(300000);
+    static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
-    static final Duration HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
+    static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
 
     @JsonProperty("name")
     @NotNull
@@ -54,18 +55,18 @@ public class TopicConfig {
     @JsonProperty("max_retry_attempts")
     @Valid
     @Size(min = 1, max = Integer.MAX_VALUE, message = " Max retry attempts should lies between 1 and Integer.MAX_VALUE")
-    private Integer maxRetryAttempts = MAX_RETRY_ATTEMPT;
+    private Integer maxRetryAttempts = DEFAULT_MAX_RETRY_ATTEMPT;
 
     @JsonProperty("max_retry_delay")
     @Valid
     @Size(min = 1)
-    private Duration maxRetryDelay = MAX_RETRY_DELAY;
+    private Duration maxRetryDelay = DEFAULT_MAX_RETRY_DELAY;
 
     @JsonProperty("serde_format")
     private MessageFormat serdeFormat= MessageFormat.PLAINTEXT;
 
     @JsonProperty("auto_commit")
-    private Boolean autoCommit = false;
+    private Boolean autoCommit = DEFAULT_AUTO_COMMIT;
 
     @JsonProperty("commit_interval")
     @Valid
@@ -86,47 +87,50 @@ public class TopicConfig {
     private String groupName;
 
     @JsonProperty("thread_waiting_time")
-    private Duration threadWaitingTime = THREAD_WAITING_TIME;
+    private Duration threadWaitingTime = DEFAULT_THREAD_WAITING_TIME;
 
     @JsonProperty("max_record_fetch_time")
-    private Duration maxRecordFetchTime = MAX_RECORD_FETCH_TIME;
+    private Duration maxRecordFetchTime = DEFAULT_MAX_RECORD_FETCH_TIME;
 
     @JsonProperty("buffer_default_timeout")
     @Valid
     @Size(min = 1)
-    private Duration bufferDefaultTimeout = BUFFER_DEFAULT_TIMEOUT;
+    private Duration bufferDefaultTimeout = DEFAULT_BUFFER_TIMEOUT;
 
     @JsonProperty("fetch_max_bytes")
     @Valid
     @Size(min = 1, max = 52428800)
-    private Integer fetchMaxBytes = FETCH_MAX_BYTES;
+    private Integer fetchMaxBytes = DEFAULT_FETCH_MAX_BYTES;
 
     @JsonProperty("fetch_max_wait")
     @Valid
     @Size(min = 1)
-    private Integer fetchMaxWait = FETCH_MAX_WAIT;
+    private Integer fetchMaxWait = DEFAULT_FETCH_MAX_WAIT;
 
     @JsonProperty("fetch_min_bytes")
     @Size(min = 1)
     @Valid
-    private Integer fetchMinBytes = FETCH_MIN_BYTES;
+    private Integer fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
 
     @JsonProperty("key_mode")
     private KafkaKeyMode kafkaKeyMode = KafkaKeyMode.INCLUDE_AS_FIELD;
 
     @JsonProperty("retry_backoff")
-    private Duration retryBackoff = RETRY_BACKOFF;
+    private Duration retryBackoff = DEFAULT_RETRY_BACKOFF;
+
+    @JsonProperty("reconnect_backoff")
+    private Duration reconnectBackoff = DEFAULT_RECONNECT_BACKOFF;
 
     @JsonProperty("max_poll_interval")
-    private Duration maxPollInterval = MAX_POLL_INTERVAL;
+    private Duration maxPollInterval = DEFAULT_MAX_POLL_INTERVAL;
 
     @JsonProperty("consumer_max_poll_records")
-    private Integer consumerMaxPollRecords = CONSUMER_MAX_POLL_RECORDS;
+    private Integer consumerMaxPollRecords = DEFAULT_CONSUMER_MAX_POLL_RECORDS;
 
     @JsonProperty("heart_beat_interval")
     @Valid
     @Size(min = 1)
-    private Duration heartBeatInterval= HEART_BEAT_INTERVAL_DURATION;
+    private Duration heartBeatInterval= DEFAULT_HEART_BEAT_INTERVAL_DURATION;
 
     public String getGroupId() {
         return groupId;
@@ -218,6 +222,10 @@ public class TopicConfig {
 
     public Duration getRetryBackoff() {
         return retryBackoff;
+    }
+
+    public Duration getReconnectBackoff() {
+        return reconnectBackoff;
     }
 
     public void setRetryBackoff(Duration retryBackoff) {
