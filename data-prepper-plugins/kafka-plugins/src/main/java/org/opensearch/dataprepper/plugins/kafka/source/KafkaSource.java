@@ -95,6 +95,7 @@ public class KafkaSource implements Source<Record<Event>> {
     private final Counter kafkaWorkerThreadProcessingErrors;
     private final PluginMetrics pluginMetrics;
     private KafkaSourceCustomConsumer consumer;
+    private KafkaConsumer kafkaConsumer;
     private String pipelineName;
     private String consumerGroupID;
     private String schemaType = MessageFormat.PLAINTEXT.toString();
@@ -125,7 +126,6 @@ public class KafkaSource implements Source<Record<Event>> {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
                 IntStream.range(0, numWorkers + 1).forEach(index -> {
-                    KafkaConsumer kafkaConsumer;
                     switch (schema) {
                         case JSON:
                             kafkaConsumer = new KafkaConsumer<String, JsonNode>(consumerProperties);
@@ -185,6 +185,9 @@ public class KafkaSource implements Source<Record<Event>> {
                 orElse(1L);
     }
 
+    KafkaConsumer getConsumer() {
+        return kafkaConsumer;
+    }
 
     private Properties getConsumerProperties(final TopicConfig topicConfig) {
         Properties properties = new Properties();
@@ -361,6 +364,8 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private void setConsumerTopicProperties(Properties properties, TopicConfig topicConfig) {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupID);
+        properties.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, ((Long)topicConfig.getRetryBackoff().toMillis()).intValue());
+        properties.put(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, ((Long)topicConfig.getReconnectBackoff().toMillis()).intValue());
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
                 topicConfig.getAutoCommit());
         properties.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG,
