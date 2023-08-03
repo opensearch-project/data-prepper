@@ -1,6 +1,6 @@
 # Avro Sink/Output Codec
 
-This is an implementation of Avro Sink Codec that parses the Dataprepper Events into avro records and writes them into the underlying OutputStream.
+This is an implementation of Avro Sink Codec that parses the Data Prepper Events into Avro records and writes them into the underlying OutputStream.
 
 ## Usages
 
@@ -20,20 +20,35 @@ pipeline:
         max_retries: 5
         bucket: bucket_name
         object_key:
-          path_prefix: my-elb/%{yyyy}/%{MM}/%{dd}/
+          path_prefix: vpc-flow-logs/%{yyyy}/%{MM}/%{dd}/
         threshold:
           event_count: 2000
           maximum_size: 50mb
           event_collect_timeout: 15s
         codec:
           avro:
-            schema: "{\"namespace\": \"org.example.test\"," +
-                " \"type\": \"record\"," +
-                " \"name\": \"TestMessage\"," +
-                " \"fields\": [" +
-                "     {\"name\": \"name\", \"type\": \"string\"}," +
-                "     {\"name\": \"age\", \"type\": \"int\"}]" +
-                "}";
+            schema: >
+              {
+                "type" : "record",
+                "namespace" : "org.opensearch.dataprepper.examples",
+                "name" : "VpcFlowLog",
+                "fields" : [
+                  { "name" : "version", "type" : ["null", "string"]},
+                  { "name" : "srcport", "type": ["null", "int"]},
+                  { "name" : "dstport", "type": ["null", "int"]},
+                  { "name" : "accountId", "type" : ["null", "string"]},
+                  { "name" : "interfaceId", "type" : ["null", "string"]},
+                  { "name" : "srcaddr", "type" : ["null", "string"]},
+                  { "name" : "dstaddr", "type" : ["null", "string"]},
+                  { "name" : "start", "type": ["null", "int"]},
+                  { "name" : "end", "type": ["null", "int"]},
+                  { "name" : "protocol", "type": ["null", "int"]},
+                  { "name" : "packets", "type": ["null", "int"]},
+                  { "name" : "bytes", "type": ["null", "int"]},
+                  { "name" : "action", "type": ["null", "string"]},
+                  { "name" : "logStatus", "type" : ["null", "string"]}
+                ]
+              }
             exclude_keys:
               - s3
         buffer_type: in_memory
