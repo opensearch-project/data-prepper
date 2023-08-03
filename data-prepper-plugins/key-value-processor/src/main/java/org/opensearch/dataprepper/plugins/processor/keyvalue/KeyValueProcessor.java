@@ -110,8 +110,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         validateKeySets(includeKeysSet, excludeKeysSet, defaultValuesSet);
-
-        // look at former logic for removing include from default?
         
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));

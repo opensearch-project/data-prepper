@@ -348,7 +348,7 @@ public class KeyValueProcessorTests {
 
     @Test
     void testDefaultIncludeKeysOverlapKeyValueProcessor() {
-        final Map<String, Object> defaultMap = Map.of("key1", "value1");
+        final Map<String, Object> defaultMap = Map.of("key1", "abc");
         final List<String> includeKeys = List.of("key1");
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
