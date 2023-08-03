@@ -45,9 +45,11 @@ When run, the processor will parse the message into the following output:
 * `exclude_keys` - An array specifying the parsed keys which should not be added to the event. By default no keys will be excluded.
   * Default: `[]`
   * Example: `exclude_keys` is `["key2"]`. `key1=value1&key2=value2` will parse into `{"key1": "value1"}`
-* `default_keys` - A hash specifying the default keys and their values which should be added to the event in case these keys do not exist in the source field being parsed.
+* `default_values` - A hash specifying the default keys and their values which should be added to the event in case these keys do not exist in the source field being parsed.
   * Default: `{}`
-  * Example: `default_keys` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"key1": "value1", "defaultkey": "defaultvalue"}`
+  * Example: `default_values` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"key1": "value1", "defaultkey": "defaultvalue"}`
+  * If the default key already exists in the message, the value is not changed.
+  * Example: `default_values` is `{"value1": "abc"}`. `key1=value1` will parse into `{"key1": "value1"}`
   * It should be noted that the include_keys filter will be applied to the message first, and then default keys.
   * Example: `include_keys` is `["key1"]`, and `default_keys` is `{"key2": "value2"}`. `key1=value1&key2=abc` will parse into `{"key1": "value1", "key2": "value2"}`
 * `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value. Special regex characters such as `[` and `]` must be escaped using `\\`.

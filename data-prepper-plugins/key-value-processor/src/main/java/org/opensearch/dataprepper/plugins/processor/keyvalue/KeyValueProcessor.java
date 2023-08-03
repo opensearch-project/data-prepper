@@ -37,8 +37,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
     private final Set<String> excludeKeysSet = new HashSet<String>();
-    private final HashMap<String, Object> defaultKeysMap = new HashMap<>();
-    private final Set<String> defaultKeysSet = new HashSet<String>();
+    private final HashMap<String, Object> defaultValuesMap = new HashMap<>();
+    private final Set<String> defaultValuesSet = new HashSet<String>();
     private final String lowercaseKey = "lowercase";
     private final String uppercaseKey = "uppercase";
     private final String capitalizeKey = "capitalize";
@@ -104,12 +104,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
-        defaultKeysMap.putAll(keyValueProcessorConfig.getDefaultKeys());
-        if (!defaultKeysMap.isEmpty()) {
-            defaultKeysSet.addAll(defaultKeysMap.keySet());
+        defaultValuesMap.putAll(keyValueProcessorConfig.getDefaultValues());
+        if (!defaultValuesMap.isEmpty()) {
+            defaultValuesSet.addAll(defaultValuesMap.keySet());
         }
 
-        validateKeySets(includeKeysSet, excludeKeysSet, defaultKeysSet);
+        validateKeySets(includeKeysSet, excludeKeysSet, defaultValuesSet);
+
+        // look at former logic for removing include from default?
         
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
@@ -185,8 +187,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
-            parsedMap.putAll(defaultKeysMap);
-
             for(final String group : groups) {
                 final String[] terms = keyValueDelimiterPattern.split(group, 2);
                 String key = terms[0];
@@ -212,11 +212,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 } else {
                     LOG.debug("Unsuccessful match: '{}'", terms[0]);
                     value = keyValueProcessorConfig.getNonMatchValue();
-                }
-
-                if (defaultKeysMap.containsKey(key) && defaultKeysMap.containsValue(value)) {
-                    LOG.debug("Skipping already included default key-value pair: '{}'", key);
-                    continue;
                 }
 
                 if(value != null
@@ -245,6 +240,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
 
                 addKeyValueToMap(parsedMap, key, value);
+            }
+
+            for (Map.Entry<String,Object> pair : defaultValuesMap.entrySet()) {
+                if (parsedMap.containsKey(pair.getKey())) {
+                    LOG.debug("Skipping already included default key: '{}'", pair.getKey());
+                    continue;
+                }
+                parsedMap.put(pair.getKey(), pair.getValue());
             }
 
             recordEvent.put(keyValueProcessorConfig.getDestination(), parsedMap);
