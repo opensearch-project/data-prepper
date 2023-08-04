@@ -20,7 +20,7 @@ dependencies {
     implementation project(':data-prepper-plugins:date-processor')
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation "org.apache.commons:commons-lang3:3.13.0"
     testImplementation testLibs.slf4j.simple
     testImplementation testLibs.mockito.inline
 }
