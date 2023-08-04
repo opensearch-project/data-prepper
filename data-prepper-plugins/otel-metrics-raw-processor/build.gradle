@@ -12,7 +12,7 @@ dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:otel-proto-common')
     implementation 'commons-codec:commons-codec:1.15'
-    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation 'org.apache.commons:commons-lang3:3.13.0'
     testImplementation project(':data-prepper-api').sourceSets.test.output
     implementation libs.opentelemetry.proto
     implementation libs.protobuf.util
