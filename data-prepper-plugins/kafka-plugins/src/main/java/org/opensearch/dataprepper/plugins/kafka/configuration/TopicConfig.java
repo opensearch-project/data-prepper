@@ -32,6 +32,7 @@ public class TopicConfig {
     static final Integer DEFAULT_FETCH_MIN_BYTES = 1;
     static final Duration DEFAULT_RETRY_BACKOFF = Duration.ofSeconds(10);
     static final Duration DEFAULT_RECONNECT_BACKOFF = Duration.ofSeconds(10);
+    static final Integer DEFAULT_MAX_PARTITION_FETCH_BYTES = 1048576;
     static final Duration DEFAULT_MAX_POLL_INTERVAL = Duration.ofSeconds(300000);
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
@@ -91,6 +92,9 @@ public class TopicConfig {
 
     @JsonProperty("max_record_fetch_time")
     private Duration maxRecordFetchTime = DEFAULT_MAX_RECORD_FETCH_TIME;
+
+    @JsonProperty("max_partition_fetch_bytes")
+    private Integer maxPartitionFetchBytes = DEFAULT_MAX_PARTITION_FETCH_BYTES;
 
     @JsonProperty("buffer_default_timeout")
     @Valid
@@ -190,6 +194,10 @@ public class TopicConfig {
 
     public Duration getMaxRecordFetchTime() {
         return maxRecordFetchTime;
+    }
+
+    public Integer getMaxPartitionFetchBytes() {
+        return maxPartitionFetchBytes;
     }
 
     public void setMaxRecordFetchTime(Duration maxRecordFetchTime) {
