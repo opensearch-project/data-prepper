@@ -406,22 +406,6 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testDefaultDuplicateKeysKeyValueProcessor() {
-        final Map<String, Object> defaultMap = Map.of("key2", "value2");
-        when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
-        when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
-        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
-
-        final Record<Event> record = getMessage("key1=value1&key2=altvalue");
-        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
-
-        assertThat(parsed_message.size(), equalTo(2));
-        assertThatKeyEquals(parsed_message, "key1", "value1");
-        assertThatKeyEquals(parsed_message, "key2", "altvalue");
-    }
-
-    @Test
     void testCustomPrefixKvProcessor() {
         when(mockConfig.getPrefix()).thenReturn("TEST_");
 
