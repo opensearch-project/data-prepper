@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.cloudwatch_logs.utils;
 /**
- * ThresholdCheck receives parameters for which to reference the
+ * CloudWatchLogsLimits receives parameters for which to reference the
  * limits of a buffer and CloudWatchLogsClient before making a
  * PutLogEvent request to AWS.
  */
@@ -13,11 +13,11 @@ public class CloudWatchLogsLimits {
     // Size of overhead for each log event message. See https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_PutLogEvents.html
     public static final int APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE = 26;
     private final int maxBatchSize;
-    private final int maxEventSizeBytes;
-    private final int maxRequestSizeBytes;
+    private final long maxEventSizeBytes;
+    private final long maxRequestSizeBytes;
     private final long logSendInterval;
 
-    public CloudWatchLogsLimits(final int maxBatchSize, final int maxEventSizeBytes, final int maxRequestSizeBytes, final int logSendInterval) {
+    public CloudWatchLogsLimits(final int maxBatchSize, final long maxEventSizeBytes, final long maxRequestSizeBytes, final long logSendInterval) {
         this.maxBatchSize = maxBatchSize;
         this.maxEventSizeBytes = maxEventSizeBytes;
         this.maxRequestSizeBytes = maxRequestSizeBytes;
@@ -31,8 +31,8 @@ public class CloudWatchLogsLimits {
      * @param batchSize size of batch in events.
      * @return boolean true if we exceed the threshold events or false otherwise.
      */
-    public boolean isGreaterThanLimitReached(final long currentTime, final int currentRequestSize, final int batchSize) {
-        int bufferSizeWithOverhead = (currentRequestSize + ((batchSize) * APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
+    public boolean isGreaterThanLimitReached(final long currentTime, final long currentRequestSize, final int batchSize) {
+        long bufferSizeWithOverhead = (currentRequestSize + ((long) (batchSize) * APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
         return (isGreaterThanBatchSize(batchSize) || isGreaterEqualToLogSendInterval(currentTime)
                 || isGreaterThanMaxRequestSize(bufferSizeWithOverhead));
     }
@@ -43,8 +43,8 @@ public class CloudWatchLogsLimits {
      * @param batchSize size of batch in events.
      * @return boolean true if we equal the threshold events or false otherwise.
      */
-    public boolean isEqualToLimitReached(final int currentRequestSize, final int batchSize) {
-        int bufferSizeWithOverhead = (currentRequestSize + ((batchSize) * APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
+    public boolean isEqualToLimitReached(final long currentRequestSize, final int batchSize) {
+        long bufferSizeWithOverhead = (currentRequestSize + ((long) (batchSize) * APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE));
         return (isEqualBatchSize(batchSize) || isEqualMaxRequestSize(bufferSizeWithOverhead));
     }
 
@@ -63,7 +63,7 @@ public class CloudWatchLogsLimits {
      * @param eventSize int denoting size of event.
      * @return boolean true if greater than MaxEventSize, false otherwise.
      */
-    public boolean isGreaterThanMaxEventSize(final int eventSize) {
+    public boolean isGreaterThanMaxEventSize(final long eventSize) {
         return (eventSize + APPROXIMATE_LOG_EVENT_OVERHEAD_SIZE) > maxEventSizeBytes;
     }
 
@@ -72,7 +72,7 @@ public class CloudWatchLogsLimits {
      * @param currentRequestSize int denoting size of request(Sum of PutLogEvent messages).
      * @return boolean true if greater than Max request size, smaller otherwise.
      */
-    private boolean isGreaterThanMaxRequestSize(final int currentRequestSize) {
+    private boolean isGreaterThanMaxRequestSize(final long currentRequestSize) {
         return currentRequestSize > maxRequestSizeBytes;
     }
 
@@ -91,7 +91,7 @@ public class CloudWatchLogsLimits {
      * @param currentRequestSize int denoting size of request(Sum of PutLogEvent messages).
      * @return boolean true if equal Max request size, smaller otherwise.
      */
-    private boolean isEqualMaxRequestSize(final int currentRequestSize) {
+    private boolean isEqualMaxRequestSize(final long currentRequestSize) {
         return currentRequestSize == maxRequestSizeBytes;
     }
 

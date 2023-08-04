@@ -31,8 +31,8 @@ public class BearerTokenAuthPrometheusSinkHandler implements MultiAuthPrometheus
     private OAuthAccessTokenManager oAuthRefreshTokenManager;
 
     public BearerTokenAuthPrometheusSinkHandler(final BearerTokenOptions bearerTokenOptions,
-                                          final HttpClientConnectionManager httpClientConnectionManager,
-                                          final OAuthAccessTokenManager oAuthRefreshTokenManager){
+                                                final HttpClientConnectionManager httpClientConnectionManager,
+                                                final OAuthAccessTokenManager oAuthRefreshTokenManager){
         this.bearerTokenOptions = bearerTokenOptions;
         this.httpClientConnectionManager = httpClientConnectionManager;
         this.objectMapper = new ObjectMapper();

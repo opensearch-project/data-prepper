@@ -22,7 +22,7 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: ${{ matrix.java }}
-    - name: Checkout Data-Prepper
+    - name: Checkout Data Prepper
       uses: actions/checkout@v2
     - name: Build with Gradle
       run: ./gradlew build

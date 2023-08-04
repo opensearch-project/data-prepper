@@ -11,8 +11,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public enum AuthTypeOptions {
-    HTTP_BASIC("http_basic"),
-    BEARER_TOKEN("bearer_token"),
+    HTTP_BASIC("http-basic"),
+    BEARER_TOKEN("bearer-token"),
+
     UNAUTHENTICATED("unauthenticated");
 
     private static final Map<String, AuthTypeOptions> OPTIONS_MAP = Arrays.stream(AuthTypeOptions.values())

@@ -97,11 +97,11 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
         try {
             doInitializeInternal();
         } catch (InvalidPluginConfigurationException e) {
-            LOG.error("Invalid plugin configuration, Hence failed to initialize http-sink plugin.");
+            LOG.error("Invalid plugin configuration, Hence failed to initialize prometheus-sink plugin.");
             this.shutdown();
             throw e;
         } catch (Exception e) {
-            LOG.error("Failed to initialize http-sink plugin.");
+            LOG.error("Failed to initialize prometheus-sink plugin.");
             this.shutdown();
             throw e;
         }
