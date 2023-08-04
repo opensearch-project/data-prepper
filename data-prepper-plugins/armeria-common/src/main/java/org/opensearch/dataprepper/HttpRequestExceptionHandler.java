@@ -17,12 +17,10 @@ import com.linecorp.armeria.common.MediaType;
 import io.micrometer.core.instrument.Counter;
 
 import java.io.IOException;
-import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 
 public class HttpRequestExceptionHandler implements ExceptionHandlerFunction {
     static final String ARMERIA_REQUEST_TIMEOUT_MESSAGE = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
-    static final String DEFAULT_MESSAGE = "";
 
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String BAD_REQUESTS = "badRequests";
@@ -43,29 +41,30 @@ public class HttpRequestExceptionHandler implements ExceptionHandlerFunction {
 
     @Override
     public HttpResponse handleException(final ServiceRequestContext ctx, final HttpRequest req, final Throwable cause) {
+        final HttpStatus status = handleException(cause);
         final String message;
         if (cause instanceof RequestTimeoutException) {
             message = ARMERIA_REQUEST_TIMEOUT_MESSAGE;
         } else {
-            message = cause.getMessage() == null ? DEFAULT_MESSAGE : cause.getMessage();
+            message = cause.getMessage() == null ? status.reasonPhrase() : cause.getMessage();
         }
 
-        return handleException(cause, message);
+        return HttpResponse.of(status, MediaType.ANY_TYPE, message);
     }
 
-    private HttpResponse handleException(final Throwable e, final String message) {
-        Objects.requireNonNull(message);
+    private HttpStatus handleException(final Throwable e) {
         if (e instanceof IOException) {
             badRequestsCounter.increment();
-            return HttpResponse.of(HttpStatus.BAD_REQUEST, MediaType.ANY_TYPE, message);
+            return HttpStatus.BAD_REQUEST;
         } else if (e instanceof TimeoutException || e instanceof RequestTimeoutException) {
             requestTimeoutsCounter.increment();
-            return HttpResponse.of(HttpStatus.REQUEST_TIMEOUT, MediaType.ANY_TYPE, message);
+            return HttpStatus.REQUEST_TIMEOUT;
         } else if (e instanceof SizeOverflowException) {
             requestsTooLargeCounter.increment();
-            return HttpResponse.of(HttpStatus.REQUEST_ENTITY_TOO_LARGE, MediaType.ANY_TYPE, message);
+            return HttpStatus.REQUEST_ENTITY_TOO_LARGE;
         }
+
         internalServerErrorCounter.increment();
-        return HttpResponse.of(HttpStatus.INTERNAL_SERVER_ERROR, MediaType.ANY_TYPE, message);
+        return HttpStatus.INTERNAL_SERVER_ERROR;
     }
 }

@@ -31,7 +31,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.GrpcRequestExceptionHandler.ARMERIA_REQUEST_TIMEOUT_MESSAGE;
-import static org.opensearch.dataprepper.GrpcRequestExceptionHandler.DEFAULT_MESSAGE;
 
 @ExtendWith(MockitoExtension.class)
 public class GrpcRequestExceptionHandlerTest {
@@ -76,7 +75,7 @@ public class GrpcRequestExceptionHandlerTest {
 
         final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, badRequestExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
-        assertThat(noMessageStatus.getDescription(), equalTo(DEFAULT_MESSAGE));
+        assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.INVALID_ARGUMENT.name()));
 
         final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, badRequestExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.INVALID_ARGUMENT));
@@ -93,7 +92,7 @@ public class GrpcRequestExceptionHandlerTest {
 
         final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, timeoutExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
-        assertThat(noMessageStatus.getDescription(), equalTo(DEFAULT_MESSAGE));
+        assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.RESOURCE_EXHAUSTED.name()));
 
         final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, timeoutExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
@@ -121,7 +120,7 @@ public class GrpcRequestExceptionHandlerTest {
 
         final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, sizeOverflowExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
-        assertThat(noMessageStatus.getDescription(), equalTo(DEFAULT_MESSAGE));
+        assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.RESOURCE_EXHAUSTED.name()));
 
         final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, sizeOverflowExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.RESOURCE_EXHAUSTED));
@@ -138,7 +137,7 @@ public class GrpcRequestExceptionHandlerTest {
 
         final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, requestCancelledExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.CANCELLED));
-        assertThat(noMessageStatus.getDescription(), equalTo(DEFAULT_MESSAGE));
+        assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.CANCELLED.name()));
 
         final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, requestCancelledExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.CANCELLED));
@@ -155,7 +154,7 @@ public class GrpcRequestExceptionHandlerTest {
 
         final Status noMessageStatus = grpcRequestExceptionHandler.apply(requestContext, runtimeExceptionNoMessage, metadata);
         assertThat(noMessageStatus.getCode(), equalTo(Status.Code.INTERNAL));
-        assertThat(noMessageStatus.getDescription(), equalTo(DEFAULT_MESSAGE));
+        assertThat(noMessageStatus.getDescription(), equalTo(Status.Code.INTERNAL.name()));
 
         final Status messageStatus = grpcRequestExceptionHandler.apply(requestContext, runtimeExceptionWithMessage, metadata);
         assertThat(messageStatus.getCode(), equalTo(Status.Code.INTERNAL));

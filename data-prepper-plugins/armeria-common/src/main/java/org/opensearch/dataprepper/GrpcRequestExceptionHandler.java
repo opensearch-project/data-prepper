@@ -22,7 +22,6 @@ import java.util.concurrent.TimeoutException;
 
 public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
     static final String ARMERIA_REQUEST_TIMEOUT_MESSAGE = "Timeout waiting for request to be served. This is usually due to the buffer being full.";
-    static final String DEFAULT_MESSAGE = "";
 
     public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String BAD_REQUESTS = "badRequests";
@@ -72,7 +71,7 @@ public class GrpcRequestExceptionHandler implements GrpcStatusFunction {
         if (e instanceof RequestTimeoutException) {
             message = ARMERIA_REQUEST_TIMEOUT_MESSAGE;
         } else {
-            message = e.getMessage() == null ? DEFAULT_MESSAGE : e.getMessage();
+            message = e.getMessage() == null ? status.getCode().name() : e.getMessage();
         }
 
         return status.withDescription(message);

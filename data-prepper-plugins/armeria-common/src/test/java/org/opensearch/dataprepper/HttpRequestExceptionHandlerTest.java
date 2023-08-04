@@ -29,7 +29,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.HttpRequestExceptionHandler.ARMERIA_REQUEST_TIMEOUT_MESSAGE;
-import static org.opensearch.dataprepper.HttpRequestExceptionHandler.DEFAULT_MESSAGE;
 
 @ExtendWith(MockitoExtension.class)
 class HttpRequestExceptionHandlerTest {
@@ -79,7 +78,7 @@ class HttpRequestExceptionHandlerTest {
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.BAD_REQUEST, aggregatedHttpResponse.status());
-        assertEquals(DEFAULT_MESSAGE, aggregatedHttpResponse.contentUtf8());
+        assertEquals(HttpStatus.BAD_REQUEST.reasonPhrase(), aggregatedHttpResponse.contentUtf8());
 
         // When
         httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
@@ -106,7 +105,7 @@ class HttpRequestExceptionHandlerTest {
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_TIMEOUT, aggregatedHttpResponse.status());
-        assertEquals(DEFAULT_MESSAGE, aggregatedHttpResponse.contentUtf8());
+        assertEquals(HttpStatus.REQUEST_TIMEOUT.reasonPhrase(), aggregatedHttpResponse.contentUtf8());
 
         // When
         httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
@@ -140,17 +139,17 @@ class HttpRequestExceptionHandlerTest {
     @Test
     public void testHandleSizeOverflowException() throws ExecutionException, InterruptedException {
         // Prepare
-        final SizeOverflowException testExceptionEmptyMessage = new SizeOverflowException("");
+        final SizeOverflowException testExceptionNoMessage = new SizeOverflowException(null);
         final String testMessage = "test exception message";
         final SizeOverflowException testExceptionWithMessage = new SizeOverflowException(testMessage);
 
         // When
-        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionEmptyMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionNoMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, aggregatedHttpResponse.status());
-        assertEquals(DEFAULT_MESSAGE, aggregatedHttpResponse.contentUtf8());
+        assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE.reasonPhrase(), aggregatedHttpResponse.contentUtf8());
 
         // When
         httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
@@ -167,17 +166,17 @@ class HttpRequestExceptionHandlerTest {
     @Test
     public void testHandleUnknownException() throws ExecutionException, InterruptedException {
         // Prepare
-        final UnknownException testExceptionEmptyMessage = new UnknownException("");
+        final UnknownException testExceptionNoMessage = new UnknownException(null);
         final String testMessage = "test exception message";
         final UnknownException testExceptionWithMessage = new UnknownException(testMessage);
 
         // When
-        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionEmptyMessage);
+        HttpResponse httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionNoMessage);
 
         // Then
         AggregatedHttpResponse aggregatedHttpResponse = httpResponse.aggregate().get();
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, aggregatedHttpResponse.status());
-        assertEquals(DEFAULT_MESSAGE, aggregatedHttpResponse.contentUtf8());
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR.reasonPhrase(), aggregatedHttpResponse.contentUtf8());
 
         // When
         httpResponse = httpRequestExceptionHandler.handleException(serviceRequestContext, httpRequest, testExceptionWithMessage);
