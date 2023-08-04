@@ -86,6 +86,7 @@ public class CloudWatchLogsDispatcher {
                 .cloudWatchLogsMetrics(cloudWatchLogsMetrics)
                 .putLogEventsRequest(putLogEventsRequest)
                 .eventHandles(eventHandles)
+                .totalEventCount(inputLogEvents.size())
                 .backOffTimeBase(backOffTimeBase)
                 .retryCount(retryCount)
                 .build());
@@ -97,6 +98,7 @@ public class CloudWatchLogsDispatcher {
         private final CloudWatchLogsMetrics cloudWatchLogsMetrics;
         private final PutLogEventsRequest putLogEventsRequest;
         private final Collection<EventHandle> eventHandles;
+        private final int totalEventCount;
         private final int retryCount;
         private final long backOffTimeBase;
 
@@ -132,10 +134,10 @@ public class CloudWatchLogsDispatcher {
 
 
             if (failedToTransmit) {
-                cloudWatchLogsMetrics.increaseLogEventFailCounter(eventHandles.size());
+                cloudWatchLogsMetrics.increaseLogEventFailCounter(totalEventCount);
                 releaseEventHandles(false, eventHandles);
             } else {
-                cloudWatchLogsMetrics.increaseLogEventSuccessCounter(eventHandles.size());
+                cloudWatchLogsMetrics.increaseLogEventSuccessCounter(totalEventCount);
                 releaseEventHandles(true, eventHandles);
             }
         }
