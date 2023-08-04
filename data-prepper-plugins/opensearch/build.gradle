@@ -28,7 +28,7 @@ dependencies {
     implementation 'software.amazon.awssdk:arns'
     implementation 'io.micrometer:micrometer-core'
     implementation 'software.amazon.awssdk:s3'
-    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation "org.apache.commons:commons-lang3:3.13.0"
     implementation 'software.amazon.awssdk:apache-client'
     testImplementation testLibs.junit.vintage
     testImplementation 'commons-io:commons-io:2.12.0'
