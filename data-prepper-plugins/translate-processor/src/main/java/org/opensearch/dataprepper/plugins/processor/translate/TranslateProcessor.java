@@ -129,7 +129,7 @@ public class TranslateProcessor extends AbstractProcessor<Record<Event>, Record<
     }
 
     private Object getTargetValue(Object sourceObject, List<Object> targetValues, TargetsParameterConfig targetConfig) {
-        TypeConverter converter = targetConfig.getConverter();
+        TypeConverter converter = targetConfig.getTargetType().getTargetConverter();
         if(sourceObject instanceof String) {
             return converter.convert(targetValues.get(0));
         }
