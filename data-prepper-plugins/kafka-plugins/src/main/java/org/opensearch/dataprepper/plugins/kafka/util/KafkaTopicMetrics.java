@@ -99,7 +99,6 @@ public class KafkaTopicMetrics {
                     });
                 });
                 aggregatedMetrics.forEach((name, value) -> {
-                    System.out.println("__METRIC__topic."+topicName+"."+getCamelCaseName(name)+"___VALUE__"+value);
                     pluginMetrics.gauge("topic."+topicName+"."+getCamelCaseName(name), value);
                 });
                 updateTime = curTime;
