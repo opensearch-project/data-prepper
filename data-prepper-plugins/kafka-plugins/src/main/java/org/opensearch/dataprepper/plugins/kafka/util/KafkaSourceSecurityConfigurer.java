@@ -212,7 +212,7 @@ public class KafkaSourceSecurityConfigurer {
             try {
                 result = kafkaClient.getBootstrapBrokers(request);
             } catch (KafkaException | StsException e) {
-                LOG.debug("Failed to get bootstrap server information from MSK. Retrying...", e);
+                LOG.info("Failed to get bootstrap server information from MSK. Will try every 10 seconds for {} seconds", 10*MAX_KAFKA_CLIENT_RETRIES, e);
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException exp) {}

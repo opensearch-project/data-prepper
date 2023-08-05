@@ -24,6 +24,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -34,17 +35,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Map;
-import java.util.HashMap;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
 import org.apache.commons.lang3.Range;
 
@@ -55,9 +59,15 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
-    static final String POSITIVE_ACKNOWLEDGEMENT_METRIC_NAME = "positiveAcknowledgementSetCounter";
-    static final String NEGATIVE_ACKNOWLEDGEMENT_METRIC_NAME = "negativeAcknowledgementSetCounter";
+    static final String NUMBER_OF_POSITIVE_ACKNOWLEDGEMENTS = "numberOfPositiveAcknowledgements";
+    static final String NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS = "numberOfNegativeAcknowledgements";
+    static final String NUMBER_OF_RECORDS_FAILED_TO_PARSE = "numberOfRecordsFailedToParse";
+    static final String NUMBER_OF_DESERIALIZATION_ERRORS = "numberOfDeserializationErrors";
+    static final String NUMBER_OF_BUFFER_SIZE_OVERFLOWS = "numberOfBufferSizeOverflows";
+    static final String NUMBER_OF_POLL_AUTH_ERRORS = "numberOfPollAuthErrors";
+    static final String NUMBER_OF_NON_CONSUMERS = "numberOfNonConsumers";
     static final String DEFAULT_KEY = "message";
+    static final int METRICS_UPDATE_INTERVAL = 60;
 
     private volatile long lastCommitTime;
     private KafkaConsumer consumer= null;
@@ -74,10 +84,16 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private Set<TopicPartition> partitionsToReset;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Map<Integer, TopicPartitionCommitTracker> partitionCommitTrackerMap;
-    private final Counter positiveAcknowledgementSetCounter;
-    private final Counter negativeAcknowledgementSetCounter;
+    private Integer numberOfPositiveAcknowledgements;
+    private Integer numberOfNegativeAcknowledgements;
+    private Integer numberOfRecordsFailedToParse;
+    private Integer numberOfDeserializationErrors;
+    private Integer numberOfBufferSizeOverflows;
+    private Integer numberOfPollAuthErrors;
     private final boolean acknowledgementsEnabled;
     private final Duration acknowledgementsTimeout;
+    private final KafkaTopicMetrics topicMetrics;
+    private long metricsUpdatedTime;
 
     public KafkaSourceCustomConsumer(final KafkaConsumer consumer,
                                      final AtomicBoolean shutdownInProgress,
@@ -86,26 +102,33 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                                      final TopicConfig topicConfig,
                                      final String schemaType,
                                      final AcknowledgementSetManager acknowledgementSetManager,
-                                     final PluginMetrics pluginMetrics) {
+                                     KafkaTopicMetrics topicMetrics) {
         this.topicName = topicConfig.getName();
         this.topicConfig = topicConfig;
         this.shutdownInProgress = shutdownInProgress;
         this.consumer = consumer;
         this.buffer = buffer;
+        this.numberOfRecordsFailedToParse = 0;
+        this.numberOfDeserializationErrors = 0;
+        this.numberOfBufferSizeOverflows = 0;
+        this.numberOfPollAuthErrors = 0;
+        this.numberOfPositiveAcknowledgements = 0;
+        this.numberOfNegativeAcknowledgements = 0;
+        this.topicMetrics = topicMetrics;
         this.offsetsToCommit = new HashMap<>();
+        this.metricsUpdatedTime = Instant.now().getEpochSecond();
+        this.topicMetrics.register(consumer);
         this.acknowledgementsTimeout = sourceConfig.getAcknowledgementsTimeout();
         // If the timeout value is different from default value, then enable acknowledgements automatically.
         this.acknowledgementsEnabled = sourceConfig.getAcknowledgementsEnabled() || acknowledgementsTimeout != KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pluginMetrics = pluginMetrics;
         this.partitionCommitTrackerMap = new HashMap<>();
-        this.partitionsToReset = new HashSet<>();
+        this.partitionsToReset = Collections.synchronizedSet(new HashSet<>());
         this.schema = MessageFormat.getByMessageFormatByName(schemaType);
         Duration bufferTimeout = Duration.ofSeconds(1);
         this.bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, bufferTimeout);
         this.lastCommitTime = System.currentTimeMillis();
-        this.positiveAcknowledgementSetCounter = pluginMetrics.counter(POSITIVE_ACKNOWLEDGEMENT_METRIC_NAME);
-        this.negativeAcknowledgementSetCounter = pluginMetrics.counter(NEGATIVE_ACKNOWLEDGEMENT_METRIC_NAME);
     }
 
     public void updateOffsetsToCommit(final TopicPartition partition, final OffsetAndMetadata offsetAndMetadata) {
@@ -121,7 +144,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         AcknowledgementSet acknowledgementSet =
             acknowledgementSetManager.create((result) -> {
                 if (result == true) {
-                    positiveAcknowledgementSetCounter.increment();
+                    numberOfPositiveAcknowledgements++;
                     offsets.forEach((partition, offsetRange) -> {
                         try {
                             int partitionId = partition.partition();
@@ -137,19 +160,13 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                         }
                     });
                 } else {
-                    negativeAcknowledgementSetCounter.increment();
+                    numberOfNegativeAcknowledgements++;
                     offsets.forEach((partition, offsetRange) -> {
-                        synchronized(partitionsToReset) {
-                            partitionsToReset.add(partition);
-                        }
+                        partitionsToReset.add(partition);
                     });
                 }
             }, acknowledgementsTimeout);
         return acknowledgementSet;
-    }
-
-    double getPositiveAcknowledgementsCount() {
-        return positiveAcknowledgementSetCounter.count();
     }
 
     public <T> void consumeRecords() throws Exception {
@@ -170,17 +187,19 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                 }
             }
         } catch (AuthenticationException e) {
-            LOG.warn("Access Denied while doing poll(). Will retry after 10 seconds", e);
+            LOG.warn("Authentication error while doing poll(). Will retry after 10 seconds", e);
+            numberOfPollAuthErrors++;
             Thread.sleep(10000);
         } catch (RecordDeserializationException e) {
-            LOG.warn("Serialization error - topic {} partition {} offset {}, seeking past the error record",
+            LOG.warn("Deserialization error - topic {} partition {} offset {}, seeking past the error record",
                      e.topicPartition().topic(), e.topicPartition().partition(), e.offset());
+            numberOfDeserializationErrors++;
             consumer.seek(e.topicPartition(), e.offset()+1);
         }
     }
 
     private void resetOrCommitOffsets() {
-        synchronized(partitionsToReset) {
+        if (partitionsToReset.size() > 0) {
             partitionsToReset.forEach(partition -> {
                 try {
                     final OffsetAndMetadata offsetAndMetadata = consumer.committed(partition);
@@ -216,6 +235,22 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         return offsetsToCommit;
     }
 
+    public void updateMetrics() {
+        long curTime = Instant.now().getEpochSecond();
+        if (curTime - metricsUpdatedTime >= METRICS_UPDATE_INTERVAL) {
+            topicMetrics.update(consumer);
+            topicMetrics.update(consumer, NUMBER_OF_DESERIALIZATION_ERRORS, numberOfDeserializationErrors);
+            topicMetrics.update(consumer, NUMBER_OF_BUFFER_SIZE_OVERFLOWS, numberOfBufferSizeOverflows);
+            topicMetrics.update(consumer, NUMBER_OF_RECORDS_FAILED_TO_PARSE, numberOfRecordsFailedToParse);
+            topicMetrics.update(consumer, NUMBER_OF_POLL_AUTH_ERRORS, numberOfPollAuthErrors);
+            topicMetrics.update(consumer, NUMBER_OF_POSITIVE_ACKNOWLEDGEMENTS, numberOfPositiveAcknowledgements);
+            topicMetrics.update(consumer, NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS , numberOfNegativeAcknowledgements);
+            topicMetrics.update(consumer, NUMBER_OF_NON_CONSUMERS , (consumer.assignment().size() == 0) ? 1 : 0);
+
+            metricsUpdatedTime = curTime;
+        }
+    }
+
     @Override
     public void run() {
         consumer.subscribe(Arrays.asList(topicName));
@@ -223,8 +258,9 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             try {
                 resetOrCommitOffsets();
                 consumeRecords();
+                updateMetrics();
             } catch (Exception exp) {
-                LOG.error("Error while reading the records from the topic...", exp);
+                LOG.error("Error while reading the records from the topic {}", topicName, exp);
             }
         }
     }
@@ -251,6 +287,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             }
         } catch (Exception e){
             LOG.error("Failed to parse JSON or AVRO record", e);
+            numberOfRecordsFailedToParse++;
         }
         if (!plainTextMode) {
             if (!(value instanceof Map)) {
@@ -293,7 +330,15 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                     if (acknowledgementSet != null) {
                         acknowledgementSet.add(record.getData());
                     }
-                    bufferAccumulator.add(record);
+                    while (true) {
+                        try {
+                            bufferAccumulator.add(record);
+                            break;
+                        } catch (SizeOverflowException e) {
+                            numberOfBufferSizeOverflows++;
+                            Thread.sleep(100);
+                        }
+                    }
                 }
             }
             long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
