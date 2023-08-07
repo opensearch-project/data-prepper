@@ -40,7 +40,7 @@ public abstract class AbstractIndexManager implements IndexManager {
             = "Invalid alias name [%s], an index exists with the same name as the alias";
     public static final String INVALID_INDEX_ALIAS_ERROR
             = "invalid_index_name_exception";
-    static final Set<Integer> NON_RETRYABLE_HTTP_STATUS = Set.of(HttpStatus.SC_NOT_FOUND, HttpStatus.SC_BAD_REQUEST);
+    static final Set<Integer> NO_ISM_HTTP_STATUS = Set.of(HttpStatus.SC_NOT_FOUND, HttpStatus.SC_BAD_REQUEST);
     private static final String TIME_PATTERN_STARTING_SYMBOLS = "%{";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     protected RestHighLevelClient restHighLevelClient;
@@ -185,7 +185,7 @@ public abstract class AbstractIndexManager implements IndexManager {
             final String enabled = getISMEnabled(response);
             return enabled != null && enabled.equals("true");
         } catch (OpenSearchException ex) {
-            if (NON_RETRYABLE_HTTP_STATUS.contains(ex.status())) {
+            if (NO_ISM_HTTP_STATUS.contains(ex.status())) {
                 return false;
             }
             throw ex;
