@@ -84,6 +84,7 @@ When run, the processor will parse the message into the following output:
   * In the case of a key-value pair with a brackets and a split character, the splitting will take priority over `remove_brackets=true`. `{key1=(value1&value2)}` will parse into `{"key1":"value1","value2)":null}`
 * `recursive` - Specify whether to drill down into values and recursively get more key-value pairs from it. The extra key-value pairs will be stored as subkeys of the root key.
   * Default: `false`
+  * The levels of recursive parsing must be defined by different brackets for each level: `[]`, `()`, and `<>` in this order.
   * Example: `recursive` is true. `{item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value&item1-subitem2-subitem2B=item1-subitem2-subitem2B-value)]&item2=item2-value}` will parse into `"item1": {"item1-subitem1": "item1-subitem1-value", "item1-subitem2": {"item1-subitem2-subitem2A": "item1-subitem2-subitem2A-value", "item1-subitem2-subitem2B": "item1-subitem2-subitem2B-value"}}`
   * Example: `recursive` is false. `{item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value&item1-subitem2-subitem2B=item1-subitem2-subitem2B-value)]&item2=item2-value}` will parse into `"item1-subitem2": "(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value", "item2": "item2-value","item1": "[item1-subitem1=item1-subitem1-value", "item1-subitem2-subitem2B": "item1-subitem2-subitem2B-value)]"`
 
