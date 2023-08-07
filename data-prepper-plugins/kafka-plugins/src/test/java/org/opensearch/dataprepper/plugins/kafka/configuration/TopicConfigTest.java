@@ -84,6 +84,7 @@ class TopicConfigTest {
         assertEquals(TopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS, topicConfig.getConsumerMaxPollRecords());
         assertEquals(TopicConfig.DEFAULT_NUM_OF_WORKERS, topicConfig.getWorkers());
         assertEquals(TopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION, topicConfig.getHeartBeatInterval());
+        assertEquals(TopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES, topicConfig.getMaxPartitionFetchBytes());
     }
 
     @Test
@@ -105,6 +106,7 @@ class TopicConfigTest {
         assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
         assertEquals(5, topicConfig.getWorkers().intValue());
         assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
+        assertEquals(10*TopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES, topicConfig.getMaxPartitionFetchBytes());
     }
 
     @Test

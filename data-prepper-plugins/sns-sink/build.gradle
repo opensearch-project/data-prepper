@@ -1,0 +1,64 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(path: ':data-prepper-plugins:common')
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
+    implementation 'software.amazon.awssdk:sns'
+    implementation 'software.amazon.awssdk:sts'
+    testImplementation 'software.amazon.awssdk:sqs'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.21'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.8.21'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation project(':data-prepper-plugins:failures-common')
+    testImplementation project(':data-prepper-test-common')
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.sns.sink.region', System.getProperty('tests.sns.sink.region')
+    systemProperty 'tests.sns.sink.dlq.file.path', System.getProperty('tests.sns.sink.dlq.file.path')
+    systemProperty 'tests.sns.sink.sts.role.arn', System.getProperty('tests.sns.sink.sts.role.arn')
+    systemProperty 'tests.sns.sink.standard.topic', System.getProperty('tests.sns.sink.standard.topic')
+    systemProperty 'tests.sns.sink.fifo.topic', System.getProperty('tests.sns.sink.fifo.topic')
+    systemProperty 'tests.sns.sink.standard.sqs.queue.url', System.getProperty('tests.sns.sink.standard.sqs.queue.url')
+    systemProperty 'tests.sns.sink.fifo.sqs.queue.url', System.getProperty('tests.sns.sink.fifo.sqs.queue.url')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}
+

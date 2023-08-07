@@ -14,7 +14,6 @@ import org.apache.avro.generic.GenericRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.serializers.KafkaAvroDeserializer;
-import io.micrometer.core.instrument.Counter;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -87,12 +86,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @SuppressWarnings("deprecation")
 @DataPrepperPlugin(name = "kafka", pluginType = Source.class, pluginConfigurationType = KafkaSourceConfig.class)
 public class KafkaSource implements Source<Record<Event>> {
-    private static final String KAFKA_WORKER_THREAD_PROCESSING_ERRORS = "kafkaWorkerThreadProcessingErrors";
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSource.class);
     private final KafkaSourceConfig sourceConfig;
     private AtomicBoolean shutdownInProgress;
     private ExecutorService executorService;
-    private final Counter kafkaWorkerThreadProcessingErrors;
     private final PluginMetrics pluginMetrics;
     private KafkaSourceCustomConsumer consumer;
     private KafkaConsumer kafkaConsumer;
@@ -112,15 +109,16 @@ public class KafkaSource implements Source<Record<Event>> {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pipelineName = pipelineDescription.getPipelineName();
-        this.kafkaWorkerThreadProcessingErrors = pluginMetrics.counter(KAFKA_WORKER_THREAD_PROCESSING_ERRORS);
         shutdownInProgress = new AtomicBoolean(false);
     }
 
     @Override
     public void start(Buffer<Record<Event>> buffer) {
+        Properties authProperties = new Properties();
+        KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
-            Properties consumerProperties = getConsumerProperties(topic);
+            Properties consumerProperties = getConsumerProperties(topic, authProperties);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
             try {
                 int numWorkers = topic.getWorkers();
@@ -189,12 +187,8 @@ public class KafkaSource implements Source<Record<Event>> {
         return kafkaConsumer;
     }
 
-    private Properties getConsumerProperties(final TopicConfig topicConfig) {
-        Properties properties = new Properties();
-        KafkaSourceSecurityConfigurer.setAuthProperties(properties, sourceConfig, LOG);
-       /* if (isKafkaClusterExists(sourceConfig.getBootStrapServers())) {
-            throw new RuntimeException("Can't be able to connect to the given Kafka brokers... ");
-        }*/
+    private Properties getConsumerProperties(final TopicConfig topicConfig, final Properties authProperties) {
+        Properties properties = (Properties)authProperties.clone();
         if (StringUtils.isNotEmpty(sourceConfig.getClientDnsLookup())) {
             ClientDNSLookupType dnsLookupType = ClientDNSLookupType.getDnsLookupType(sourceConfig.getClientDnsLookup());
             switch (dnsLookupType) {
@@ -364,6 +358,7 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private void setConsumerTopicProperties(Properties properties, TopicConfig topicConfig) {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupID);
+        properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, topicConfig.getMaxPartitionFetchBytes());
         properties.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, ((Long)topicConfig.getRetryBackoff().toMillis()).intValue());
         properties.put(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, ((Long)topicConfig.getReconnectBackoff().toMillis()).intValue());
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
@@ -374,10 +369,13 @@ public class KafkaSource implements Source<Record<Event>> {
                 topicConfig.getAutoOffsetReset());
         properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG,
                 topicConfig.getConsumerMaxPollRecords());
+        properties.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG,
+                ((Long)topicConfig.getMaxPollInterval().toMillis()).intValue());
         properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, ((Long)topicConfig.getSessionTimeOut().toMillis()).intValue());
         properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, ((Long)topicConfig.getHeartBeatInterval().toMillis()).intValue());
         properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, topicConfig.getFetchMaxBytes().intValue());
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
+        properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, topicConfig.getFetchMinBytes());
     }
 
     private void setPropertiesForSchemaRegistryConnectivity(Properties properties) {

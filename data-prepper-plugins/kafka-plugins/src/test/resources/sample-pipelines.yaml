@@ -23,6 +23,7 @@ log-pipeline:
           fetch_min_bytes: 1
           retry_backoff: PT100S
           consumer_max_poll_records: 500
+          max_partition_fetch_bytes: 10485760
       schema:
         registry_url: http://localhost:8081/
         version: 1
