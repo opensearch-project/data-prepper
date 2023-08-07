@@ -13,6 +13,8 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -317,7 +319,7 @@ public class KeyValueProcessorTests {
     }
 
     @Test
-    void testDefaultKeysKeyValueProcessor() {
+    void testDefaultKeysNoOverlapsBetweenEventKvProcessor() {
         final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
@@ -331,10 +333,12 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "dKey", "dValue");
     }
 
-    @Test
-    void testDefaultKeysAlreadyInMessageKeyValueProcessor() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testDefaultKeysAlreadyInMessageKvProcessor(boolean skipDuplicateValues) {
         final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key1=value1&dKey=abc");
@@ -346,12 +350,14 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "dKey", "abc");
     }
 
-    @Test
-    void testDefaultIncludeKeysOverlapKeyValueProcessor() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testDefaultIncludeKeysOverlapKvProcessor(boolean skipDuplicateValues) {
         final Map<String, Object> defaultMap = Map.of("key1", "abc");
         final List<String> includeKeys = List.of("key1");
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key1=value1&key2=value2");
@@ -362,12 +368,14 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "key1", "value1");
     }
 
-    @Test
-    void testDefaultPrioritizeIncludeKeysKeyValueProcessor() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testDefaultPrioritizeIncludeKeysKvProcessor(boolean skipDuplicateValues) {
         final Map<String, Object> defaultMap = Map.of("key2", "value2");
         final List<String> includeKeys = List.of("key1");
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key1=value1&key2=abc");
@@ -379,12 +387,14 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "key2", "value2");
     }
 
-    @Test
-    void testIncludeKeysNotInRecordMessageKeyValueProcessor() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testIncludeKeysNotInRecordMessageKvProcessor(boolean skipDuplicateValues) {
         final Map<String, Object> defaultMap = Map.of("key2", "value2");
         final List<String> includeKeys = List.of("key1");
         when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
         when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
 
         final Record<Event> record = getMessage("key2=abc");
@@ -534,10 +544,10 @@ public class KeyValueProcessorTests {
 
         final Record<Event> record = getMessage("key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
-        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+        final LinkedHashMap<String, Object> parsedMessage = getLinkedHashMap(editedRecords);
 
-        assertThat(parsed_message.size(), equalTo(1));
-        assertThatKeyEquals(parsed_message, "KEY1", "value1");
+        assertThat(parsedMessage.size(), equalTo(1));
+        assertThatKeyEquals(parsedMessage, "KEY1", "value1");
     }
 
     @Test

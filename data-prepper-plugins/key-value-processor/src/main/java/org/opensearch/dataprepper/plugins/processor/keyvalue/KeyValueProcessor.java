@@ -167,12 +167,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         includeIntersectionSet.retainAll(excludeSet);
         if (!includeIntersectionSet.isEmpty()) {
-            throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
+            throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap");
         }
 
         defaultIntersectionSet.retainAll(excludeSet);
         if (!defaultIntersectionSet.isEmpty()) {
-            throw new IllegalArgumentException("Cannot exclude a default key!", null);
+            throw new IllegalArgumentException("Cannot exclude a default key!");
         }
     }
 
