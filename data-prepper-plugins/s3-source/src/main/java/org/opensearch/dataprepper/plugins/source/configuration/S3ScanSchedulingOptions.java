@@ -10,15 +10,15 @@ public class S3ScanSchedulingOptions {
     private Duration rate = Duration.ofHours(8);
 
     @Min(1)
-    @JsonProperty("job_count")
-    private int jobCount = 1;
+    @JsonProperty("count")
+    private int Count = 1;
 
     public Duration getRate() {
         return rate;
     }
 
-    public int getJobCount() {
-        return jobCount;
+    public int getCount() {
+        return Count;
     }
 
 }

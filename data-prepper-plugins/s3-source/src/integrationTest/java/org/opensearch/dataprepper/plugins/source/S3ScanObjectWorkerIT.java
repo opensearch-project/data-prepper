@@ -207,7 +207,7 @@ public class S3ScanObjectWorkerIT {
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
         lenient().when(s3ScanSchedulingOptions.getRate()).thenReturn(Duration.ofHours(1));
-        lenient().when(s3ScanSchedulingOptions.getJobCount()).thenReturn(1);
+        lenient().when(s3ScanSchedulingOptions.getCount()).thenReturn(1);
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
@@ -318,7 +318,7 @@ public class S3ScanObjectWorkerIT {
         final int numberOfRecords = 100;
         final int numberOfRecordsToAccumulate = 50;
 
-        when(s3SourceConfig.isDeleteOnRead()).thenReturn(deleteS3Objects);
+        when(s3SourceConfig.isDeleteS3ObjectsOnRead()).thenReturn(deleteS3Objects);
         String keyPrefix = "s3source/s3-scan/" + recordsGenerator.getFileExtension() + "/" + Instant.now().toEpochMilli();
         final String key = getKeyString(keyPrefix,recordsGenerator, shouldCompress);
         final String buketOptionYaml = "name: " + bucket + "\n" +

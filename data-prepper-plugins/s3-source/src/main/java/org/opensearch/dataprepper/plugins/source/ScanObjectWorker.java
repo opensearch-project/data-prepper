@@ -65,7 +65,7 @@ public class ScanObjectWorker implements Runnable{
 
     // Should there be a duration or time that is configured in the source to stop processing? Otherwise will only stop when data prepper is stopped
     private final boolean shouldStopProcessing = false;
-    private final boolean deleteOnRead;
+    private final boolean deleteS3ObjectsOnRead;
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
     private final PluginMetrics pluginMetrics;
     private final Counter acknowledgementSetCallbackCounter;
@@ -87,7 +87,7 @@ public class ScanObjectWorker implements Runnable{
         this.s3ScanSchedulingOptions = s3SourceConfig.getS3ScanScanOptions().getSchedulingOptions();
         this.endToEndAcknowledgementsEnabled = s3SourceConfig.getAcknowledgements();
         this.acknowledgementSetManager = acknowledgementSetManager;
-        this.deleteOnRead = s3SourceConfig.isDeleteOnRead();
+        this.deleteS3ObjectsOnRead = s3SourceConfig.isDeleteS3ObjectsOnRead();
         this.s3ObjectDeleteWorker = s3ObjectDeleteWorker;
         this.pluginMetrics = pluginMetrics;
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME);
@@ -135,7 +135,7 @@ public class ScanObjectWorker implements Runnable{
                     acknowledgementSetCallbackCounter.increment();
                     // Delete only if this is positive acknowledgement
                     if (result == true) {
-                        sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
+                        sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey());
                         waitingForAcknowledgements.forEach(s3ObjectDeleteWorker::deleteS3Object);
                     }
                     completableFuture.complete(result);
@@ -151,7 +151,7 @@ public class ScanObjectWorker implements Runnable{
                 acknowledgementSet.complete();
                 completableFuture.get(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } else {
-                sourceCoordinator.closePartition(objectToProcess.get().getPartitionKey(), s3ScanSchedulingOptions.getRate(), s3ScanSchedulingOptions.getJobCount());
+                sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey());
                 deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
             }
         } catch (final PartitionNotOwnedException | PartitionNotFoundException | PartitionUpdateException e) {
@@ -168,7 +168,7 @@ public class ScanObjectWorker implements Runnable{
                                                           final SourcePartition<S3SourceProgressState> sourcePartition) {
         try {
             s3ObjectHandler.parseS3Object(s3ObjectReference, acknowledgementSet, sourceCoordinator, sourcePartition.getPartitionKey());
-            if (deleteOnRead && endToEndAcknowledgementsEnabled && sourcePartition.getPartitionClosedCount() + 1 >= s3ScanSchedulingOptions.getJobCount()) {
+            if (deleteS3ObjectsOnRead && endToEndAcknowledgementsEnabled) {
                 final DeleteObjectRequest deleteObjectRequest = s3ObjectDeleteWorker.buildDeleteObjectRequest(s3ObjectReference.getBucketName(), s3ObjectReference.getKey());
                 return Optional.of(deleteObjectRequest);
             }

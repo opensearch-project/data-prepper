@@ -19,9 +19,9 @@ public class S3ScanSchedulingOptionsTest {
     @Test
     public void s3_scan_bucket_option_yaml_configuration_test() throws JsonProcessingException {
 
-        final String schedulingOptionsYaml = "rate: \"PT1H\" \njob_count: 2 \n";
+        final String schedulingOptionsYaml = "rate: \"PT1H\" \ncount: 2 \n";
         final S3ScanSchedulingOptions s3ScanSchedulingOptions = objectMapper.readValue(schedulingOptionsYaml, S3ScanSchedulingOptions.class);
-        assertThat(s3ScanSchedulingOptions.getJobCount(), equalTo(2));
+        assertThat(s3ScanSchedulingOptions.getCount(), equalTo(2));
         assertThat(s3ScanSchedulingOptions.getRate(), equalTo(Duration.ofHours(1)));
     }
 }
