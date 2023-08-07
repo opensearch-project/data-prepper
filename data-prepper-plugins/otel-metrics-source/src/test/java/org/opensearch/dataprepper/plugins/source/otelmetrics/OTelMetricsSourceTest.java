@@ -20,6 +20,7 @@ import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.common.grpc.GrpcStatusFunction;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -183,6 +184,7 @@ class OTelMetricsSourceTest {
         lenient().when(grpcServiceBuilder.addService(any(BindableService.class))).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.useBlockingTaskExecutor(anyBoolean())).thenReturn(grpcServiceBuilder);
+        lenient().when(grpcServiceBuilder.exceptionMapping(any(GrpcStatusFunction.class))).thenReturn(grpcServiceBuilder);
         lenient().when(grpcServiceBuilder.build()).thenReturn(grpcService);
         pluginMetrics = PluginMetrics.fromNames("otel_metrics", "pipeline");
 
@@ -978,7 +980,7 @@ class OTelMetricsSourceTest {
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
             return Stream.of(
                     arguments(TimeoutException.class, Status.Code.RESOURCE_EXHAUSTED),
-                    arguments(RuntimeException.class, Status.Code.UNKNOWN)
+                    arguments(RuntimeException.class, Status.Code.INTERNAL)
             );
         }
     }
