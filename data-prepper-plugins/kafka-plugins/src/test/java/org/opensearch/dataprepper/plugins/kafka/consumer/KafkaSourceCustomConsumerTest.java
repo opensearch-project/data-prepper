@@ -12,7 +12,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -23,6 +22,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import io.micrometer.core.instrument.Counter;
@@ -77,7 +77,7 @@ public class KafkaSourceCustomConsumerTest {
     private TopicConfig topicConfig;
 
     @Mock
-    private PluginMetrics pluginMetrics;
+    private KafkaTopicMetrics topicMetrics;
 
     private KafkaSourceCustomConsumer consumer;
 
@@ -100,7 +100,7 @@ public class KafkaSourceCustomConsumerTest {
     @BeforeEach
     public void setUp() {
         kafkaConsumer = mock(KafkaConsumer.class);
-        pluginMetrics = mock(PluginMetrics.class);
+        topicMetrics = mock(KafkaTopicMetrics.class);
         counter = mock(Counter.class);
         topicConfig = mock(TopicConfig.class);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
@@ -108,7 +108,6 @@ public class KafkaSourceCustomConsumerTest {
         when(topicConfig.getAutoCommit()).thenReturn(false);
         when(kafkaConsumer.committed(any(TopicPartition.class))).thenReturn(null);
 
-        when(pluginMetrics.counter(anyString())).thenReturn(counter);
         doAnswer((i)-> {return null;}).when(counter).increment();
         callbackExecutor = Executors.newFixedThreadPool(2); 
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(2000));
@@ -122,7 +121,7 @@ public class KafkaSourceCustomConsumerTest {
     public KafkaSourceCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
         when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
-        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, pluginMetrics);
+        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, topicMetrics);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() {
