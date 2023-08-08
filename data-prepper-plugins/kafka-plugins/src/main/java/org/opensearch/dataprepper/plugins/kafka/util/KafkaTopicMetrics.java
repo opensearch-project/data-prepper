@@ -16,19 +16,19 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class KafkaTopicMetrics {
-    private int metricUpdateInterval;
+    private long metricUpdateInterval;
     private final String topicName;
     private long updateTime;
     private Map<KafkaConsumer, Map<String, Object>> consumerMetricsMap;
     private Map<String, String> camelCaseMap;
     private final PluginMetrics pluginMetrics;
     
-    public KafkaTopicMetrics(final String topicName, final PluginMetrics pluginMetrics) {
+    public KafkaTopicMetrics(final String topicName, final PluginMetrics pluginMetrics, final long metricUpdateInterval) {
         this.pluginMetrics = pluginMetrics;
         this.topicName = topicName;
         this.consumerMetricsMap = new HashMap<>();
         this.updateTime = Instant.now().getEpochSecond();
-        this.metricUpdateInterval = 60; //seconds
+        this.metricUpdateInterval = metricUpdateInterval;
         this.camelCaseMap = new HashMap<>();
         camelCaseMap.put("bytes-consumed-total", "bytesConsumedTotal");
         camelCaseMap.put("records-consumed-total", "recordsConsumedTotal");
@@ -56,7 +56,7 @@ public class KafkaTopicMetrics {
         return camelCaseName;
     }
 
-    public void update(final KafkaConsumer consumer, final String metricName, Integer metricValue) {
+    public void setMetric(final KafkaConsumer consumer, final String metricName, Integer metricValue) {
         synchronized(consumerMetricsMap) {
             Map<String, Object> cmetrics = consumerMetricsMap.get(consumer);
             if (cmetrics != null) {
@@ -65,12 +65,30 @@ public class KafkaTopicMetrics {
         }
     }
 
+    private void aggregateMetrics() {
+        synchronized (consumerMetricsMap) {
+            final Map<String, Double> aggregatedMetrics = new HashMap<>();
+            consumerMetricsMap.forEach((c, metricsMap) -> {
+                Double value = 0.0;
+                metricsMap.forEach((metricName, metricValue) -> {
+                    if (metricValue instanceof Double) {
+                        aggregatedMetrics.put(metricName, ((Double)metricValue) + aggregatedMetrics.getOrDefault(metricName, 0.0));
+                    }
+                });
+            });
+            aggregatedMetrics.forEach((name, value) -> {
+                pluginMetrics.gauge("topic."+topicName+"."+getCamelCaseName(name), value);
+            });
+        }
+    }
+
     public void update(final KafkaConsumer consumer) {
         Map<String, Object> cmetrics = null;
         synchronized(consumerMetricsMap) {
             cmetrics = consumerMetricsMap.get(consumer);
         }
-        if (cmetrics == null) {
+        // This should not happen...
+        if (Objects.isNull(cmetrics)) {
             return;
         }
         Map<MetricName, ? extends Metric> metrics = consumer.metrics();
@@ -79,31 +97,19 @@ public class KafkaTopicMetrics {
             Metric value = entry.getValue();
             String metricName = metric.name();
             String metricGroup = metric.group();
-            if ((metricName.contains("consumed")) ||
-                ((!metric.tags().containsKey("partition")) &&
-                     (metricName.equals("records-lag-max") || metricName.equals("records-lead-min"))) ||
-                (metricName.equals("commit-rate") || metricName.equals("join-rate") || metricName.equals("commit-total")) ||
-                (metricName.equals("incoming-byte-rate") || metricName.equals("outgoing-byte-rate"))) {
-                    cmetrics.put(metricName, value.metricValue());
+            if (Objects.nonNull(camelCaseMap.get(metricName))) {
+                if (metric.tags().containsKey("partition") &&
+                   (metricName.equals("records-lag-max") || metricName.equals("records-lead-min"))) {
+                   continue;
+                }
+                cmetrics.put(metricName, value.metricValue());
             }
         }
-        synchronized (consumerMetricsMap) {
-            long curTime = Instant.now().getEpochSecond();
-            if (curTime - updateTime > metricUpdateInterval) {
-                final Map<String, Double> aggregatedMetrics = new HashMap<>();
-                consumerMetricsMap.forEach((c, metricsMap) -> {
-                    Double value = 0.0;
-                    metricsMap.forEach((metricName, metricValue) -> {
-                        if (metricValue instanceof Double) {
-                            aggregatedMetrics.put(metricName, ((Double)metricValue) + aggregatedMetrics.getOrDefault(metricName, 0.0));
-                        }
-                    });
-                });
-                aggregatedMetrics.forEach((name, value) -> {
-                    pluginMetrics.gauge("topic."+topicName+"."+getCamelCaseName(name), value);
-                });
-                updateTime = curTime;
-            }
+
+        long curTime = Instant.now().getEpochSecond();
+        if (curTime - updateTime > metricUpdateInterval) {
+            aggregateMetrics();
+            updateTime = curTime;
         }
     }
 }

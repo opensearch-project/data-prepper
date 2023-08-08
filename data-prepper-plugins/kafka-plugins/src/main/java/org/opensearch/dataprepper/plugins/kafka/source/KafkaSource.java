@@ -119,7 +119,7 @@ public class KafkaSource implements Source<Record<Event>> {
         KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
-            KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
+            KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics, sourceConfig.getMetricsUpdateInterval().getSeconds());
             Properties consumerProperties = getConsumerProperties(topic, authProperties);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
             try {

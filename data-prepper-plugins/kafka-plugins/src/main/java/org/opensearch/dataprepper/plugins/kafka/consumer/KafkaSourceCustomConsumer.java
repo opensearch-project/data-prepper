@@ -67,7 +67,6 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     static final String NUMBER_OF_POLL_AUTH_ERRORS = "numberOfPollAuthErrors";
     static final String NUMBER_OF_NON_CONSUMERS = "numberOfNonConsumers";
     static final String DEFAULT_KEY = "message";
-    static final int METRICS_UPDATE_INTERVAL = 60;
 
     private volatile long lastCommitTime;
     private KafkaConsumer consumer= null;
@@ -94,6 +93,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private final Duration acknowledgementsTimeout;
     private final KafkaTopicMetrics topicMetrics;
     private long metricsUpdatedTime;
+    private long metricsUpdateInterval;
 
     public KafkaSourceCustomConsumer(final KafkaConsumer consumer,
                                      final AtomicBoolean shutdownInProgress,
@@ -119,6 +119,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         this.metricsUpdatedTime = Instant.now().getEpochSecond();
         this.topicMetrics.register(consumer);
         this.acknowledgementsTimeout = sourceConfig.getAcknowledgementsTimeout();
+        this.metricsUpdateInterval = sourceConfig.getMetricsUpdateInterval().getSeconds();
         // If the timeout value is different from default value, then enable acknowledgements automatically.
         this.acknowledgementsEnabled = sourceConfig.getAcknowledgementsEnabled() || acknowledgementsTimeout != KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -237,15 +238,15 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
 
     public void updateMetrics() {
         long curTime = Instant.now().getEpochSecond();
-        if (curTime - metricsUpdatedTime >= METRICS_UPDATE_INTERVAL) {
+        if (curTime - metricsUpdatedTime >= metricsUpdateInterval) {
             topicMetrics.update(consumer);
-            topicMetrics.update(consumer, NUMBER_OF_DESERIALIZATION_ERRORS, numberOfDeserializationErrors);
-            topicMetrics.update(consumer, NUMBER_OF_BUFFER_SIZE_OVERFLOWS, numberOfBufferSizeOverflows);
-            topicMetrics.update(consumer, NUMBER_OF_RECORDS_FAILED_TO_PARSE, numberOfRecordsFailedToParse);
-            topicMetrics.update(consumer, NUMBER_OF_POLL_AUTH_ERRORS, numberOfPollAuthErrors);
-            topicMetrics.update(consumer, NUMBER_OF_POSITIVE_ACKNOWLEDGEMENTS, numberOfPositiveAcknowledgements);
-            topicMetrics.update(consumer, NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS , numberOfNegativeAcknowledgements);
-            topicMetrics.update(consumer, NUMBER_OF_NON_CONSUMERS , (consumer.assignment().size() == 0) ? 1 : 0);
+            topicMetrics.setMetric(consumer, NUMBER_OF_DESERIALIZATION_ERRORS, numberOfDeserializationErrors);
+            topicMetrics.setMetric(consumer, NUMBER_OF_BUFFER_SIZE_OVERFLOWS, numberOfBufferSizeOverflows);
+            topicMetrics.setMetric(consumer, NUMBER_OF_RECORDS_FAILED_TO_PARSE, numberOfRecordsFailedToParse);
+            topicMetrics.setMetric(consumer, NUMBER_OF_POLL_AUTH_ERRORS, numberOfPollAuthErrors);
+            topicMetrics.setMetric(consumer, NUMBER_OF_POSITIVE_ACKNOWLEDGEMENTS, numberOfPositiveAcknowledgements);
+            topicMetrics.setMetric(consumer, NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS , numberOfNegativeAcknowledgements);
+            topicMetrics.setMetric(consumer, NUMBER_OF_NON_CONSUMERS , (consumer.assignment().size() == 0) ? 1 : 0);
 
             metricsUpdatedTime = curTime;
         }

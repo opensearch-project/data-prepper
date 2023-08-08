@@ -37,6 +37,7 @@ public class KafkaSourceConfig {
     }
 
     public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
+    public static final Duration DEFAULT_METRICS_UPDATE_INTERVAL = Duration.ofSeconds(60);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
@@ -67,6 +68,9 @@ public class KafkaSourceConfig {
     @JsonProperty("acknowledgments_timeout")
     private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
 
+    @JsonProperty("metrics_update_interval")
+    private Duration metricsUpdateInterval = DEFAULT_METRICS_UPDATE_INTERVAL;
+
     @JsonProperty("client_dns_lookup")
     private String clientDnsLookup;
 
@@ -80,6 +84,10 @@ public class KafkaSourceConfig {
 
     public Duration getAcknowledgementsTimeout() {
         return acknowledgementsTimeout;
+    }
+
+    public Duration getMetricsUpdateInterval() {
+        return metricsUpdateInterval;
     }
 
     public List<TopicConfig> getTopics() {
