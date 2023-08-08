@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.aggregate;
+package org.opensearch.dataprepper.plugins.hasher;
 
 import org.opensearch.dataprepper.model.event.Event;
 
@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class AggregateIdentificationKeysHasher {
+public class IdentificationKeysHasher {
     private final List<String> identificationKeys;
-    public AggregateIdentificationKeysHasher(final List<String> identificationKeys) {
+    public IdentificationKeysHasher(final List<String> identificationKeys) {
         this.identificationKeys = identificationKeys;
     }
 
@@ -29,7 +29,7 @@ public class AggregateIdentificationKeysHasher {
     public static class IdentificationKeysMap {
         private final Map<Object, Object> keyMap;
 
-        IdentificationKeysMap(final Map<Object, Object> keyMap) {
+        public IdentificationKeysMap(final Map<Object, Object> keyMap) {
             this.keyMap = keyMap;
         }
 
@@ -46,7 +46,7 @@ public class AggregateIdentificationKeysHasher {
             return Objects.hash(keyMap);
         }
 
-        Map<Object, Object> getKeyMap() {
+        public Map<Object, Object> getKeyMap() {
             return keyMap;
         }
     }

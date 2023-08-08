@@ -24,6 +24,9 @@ public class AnomalyDetectorProcessorConfig {
     @JsonProperty("identification_keys")
     private List<String> identificationKeys;
 
+    @JsonProperty("verbose")
+    private Boolean verbose = false;
+
     public PluginModel getDetectorMode() { 
         return detectorMode;
     }
@@ -40,5 +43,9 @@ public class AnomalyDetectorProcessorConfig {
     public List<String> getIdentificationKeys() {
         return identificationKeys;
     }
+    public boolean getVerbose() {
+        return verbose;
+    }
+
 
 }
