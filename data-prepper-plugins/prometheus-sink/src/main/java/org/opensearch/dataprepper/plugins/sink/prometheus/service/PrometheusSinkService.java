@@ -157,23 +157,23 @@ public class PrometheusSinkService {
                     if (event instanceof JacksonGauge) {
                         JacksonGauge jacksonGauge = (JacksonGauge) event;
                         message = buildRemoteWriteRequest(jacksonGauge.getTime(),
-                                jacksonGauge.getStartTime(), jacksonGauge.getValue(), jacksonGauge.getAttributes());
+                                jacksonGauge.getStartTime(), jacksonGauge.getValue(), jacksonGauge.getAttributes(),jacksonGauge.getName());
                     } else if (event instanceof JacksonSum) {
                         JacksonSum jacksonSum = (JacksonSum) event;
                         message = buildRemoteWriteRequest(jacksonSum.getTime(),
-                                jacksonSum.getStartTime(), jacksonSum.getValue(), jacksonSum.getAttributes());
+                                jacksonSum.getStartTime(), jacksonSum.getValue(), jacksonSum.getAttributes(), jacksonSum.getName());
                     } else if (event instanceof JacksonSummary) {
                         JacksonSummary jacksonSummary = (JacksonSummary) event;
                         message = buildRemoteWriteRequest(jacksonSummary.getTime(),
-                                jacksonSummary.getStartTime(), jacksonSummary.getSum(), jacksonSummary.getAttributes());
+                                jacksonSummary.getStartTime(), jacksonSummary.getSum(), jacksonSummary.getAttributes(), jacksonSummary.getName());
                     } else if (event instanceof JacksonHistogram) {
                         JacksonHistogram jacksonHistogram = (JacksonHistogram) event;
                         message = buildRemoteWriteRequest(jacksonHistogram.getTime(),
-                                jacksonHistogram.getStartTime(), jacksonHistogram.getSum(), jacksonHistogram.getAttributes());
+                                jacksonHistogram.getStartTime(), jacksonHistogram.getSum(), jacksonHistogram.getAttributes(), jacksonHistogram.getName());
                     } else if (event instanceof JacksonExponentialHistogram) {
                         JacksonExponentialHistogram jacksonExpHistogram = (JacksonExponentialHistogram) event;
                         message = buildRemoteWriteRequest(jacksonExpHistogram.getTime(),
-                                jacksonExpHistogram.getStartTime(), jacksonExpHistogram.getSum(), jacksonExpHistogram.getAttributes());
+                                jacksonExpHistogram.getStartTime(), jacksonExpHistogram.getSum(), jacksonExpHistogram.getAttributes(), jacksonExpHistogram.getName());
                     } else {
                         LOG.error("No valid Event type found");
                     }
@@ -209,15 +209,17 @@ public class PrometheusSinkService {
      *  @param startTime start time
      *  @param value value
      *  @param attributeMap attributes
+     *  @param metricName metricName
      */
     private static Remote.WriteRequest buildRemoteWriteRequest(String time, String startTime,
-                                                               Double value, Map<String, Object> attributeMap) {
+                                                               Double value, Map<String, Object> attributeMap, final String metricName) {
         Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
 
         Types.TimeSeries.Builder timeSeriesBuilder = Types.TimeSeries.newBuilder();
 
         List<Types.Label> arrayList = new ArrayList<>();
 
+        setMetricName(metricName, arrayList);
         prepareLabelList(attributeMap, arrayList);
 
         Types.Sample.Builder prometheusSampleBuilder = Types.Sample.newBuilder();
@@ -430,5 +432,12 @@ public class PrometheusSinkService {
             httpAuthOptions.get(url).getClassicHttpRequestBuilder()
                     .setHeader(AUTHORIZATION, oAuthAccessTokenManager.getAccessToken(prometheusSinkConfiguration.getAuthentication().getBearerTokenOptions()));
         }
+    }
+
+    private static void setMetricName(final String metricName, final List<Types.Label> arrayList) {
+        final Types.Label.Builder labelBuilder = Types.Label.newBuilder();
+        labelBuilder.setName("__name__").setValue(metricName);
+        final Types.Label label = labelBuilder.build();
+        arrayList.add(label);
     }
 }

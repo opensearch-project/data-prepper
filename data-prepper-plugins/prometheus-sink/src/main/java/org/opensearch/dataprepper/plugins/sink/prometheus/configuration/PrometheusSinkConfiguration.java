@@ -22,8 +22,6 @@ public class PrometheusSinkConfiguration {
 
     private static final int DEFAULT_UPLOAD_RETRIES = 5;
 
-    private static final int DEFAULT_WORKERS = 1;
-
     static final boolean DEFAULT_SSL = false;
 
     private static final String S3_PREFIX = "s3://";
@@ -60,12 +58,6 @@ public class PrometheusSinkConfiguration {
     @NotNull
     @JsonProperty("url")
     private String url;
-
-    @JsonProperty("workers")
-    private Integer workers = DEFAULT_WORKERS;
-
-    @JsonProperty("codec")
-    private PluginModel codec;
 
     @JsonProperty("http_method")
     private HTTPMethodOptions httpMethod = HTTPMethodOptions.POST;
@@ -198,10 +190,6 @@ public class PrometheusSinkConfiguration {
         return acmCertificateArn;
     }
 
-    public PluginModel getCodec() {
-        return codec;
-    }
-
     public HTTPMethodOptions getHttpMethod() {
         return httpMethod;
     }
@@ -245,10 +233,6 @@ public class PrometheusSinkConfiguration {
 
     public AwsAuthenticationOptions getAwsAuthenticationOptions() {
         return awsAuthenticationOptions;
-    }
-
-    public Integer getWorkers() {
-        return workers;
     }
 
     public String getDlqFile() {
