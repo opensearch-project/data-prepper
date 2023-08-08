@@ -37,6 +37,7 @@ public class KafkaTopicMetrics {
         camelCaseMap.put("records-lag-max", "recordsLagMax");
         camelCaseMap.put("records-lead-min", "recordsLeadMin");
         camelCaseMap.put("commit-rate", "commitRate");
+        camelCaseMap.put("commit-total", "commitTotal");
         camelCaseMap.put("join-rate", "joinRate");
         camelCaseMap.put("incoming-byte-rate", "incomingByteRate");
         camelCaseMap.put("outgoing-byte-rate", "outgoingByteRate");
@@ -81,7 +82,7 @@ public class KafkaTopicMetrics {
             if ((metricName.contains("consumed")) ||
                 ((!metric.tags().containsKey("partition")) &&
                      (metricName.equals("records-lag-max") || metricName.equals("records-lead-min"))) ||
-                (metricName.equals("commit-rate") || metricName.equals("join-rate")) ||
+                (metricName.equals("commit-rate") || metricName.equals("join-rate") || metricName.equals("commit-total")) ||
                 (metricName.equals("incoming-byte-rate") || metricName.equals("outgoing-byte-rate"))) {
                     cmetrics.put(metricName, value.metricValue());
             }
