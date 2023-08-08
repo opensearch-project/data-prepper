@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 /**
@@ -28,6 +30,7 @@ import java.util.function.BiConsumer;
  */
 class S3ObjectWorker implements S3ObjectHandler {
     private static final Logger LOG = LoggerFactory.getLogger(S3ObjectWorker.class);
+    static final int RECORDS_TO_ACCUMULATE_TO_SAVE_STATE = 10_000;
     private final S3Client s3Client;
     private final Buffer<Record<Event>> buffer;
 
@@ -51,11 +54,14 @@ class S3ObjectWorker implements S3ObjectHandler {
         this.s3ObjectPluginMetrics = s3ObjectRequest.getS3ObjectPluginMetrics();
     }
 
-    public void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
+    public void parseS3Object(final S3ObjectReference s3ObjectReference,
+                              final AcknowledgementSet acknowledgementSet,
+                              final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                              final String partitionKey) throws IOException {
         final BufferAccumulator<Record<Event>> bufferAccumulator = BufferAccumulator.create(buffer, numberOfRecordsToAccumulate, bufferTimeout);
         try {
             s3ObjectPluginMetrics.getS3ObjectReadTimer().recordCallable((Callable<Void>) () -> {
-                doParseObject(acknowledgementSet, s3ObjectReference, bufferAccumulator);
+                doParseObject(acknowledgementSet, s3ObjectReference, bufferAccumulator, sourceCoordinator, partitionKey);
                 return null;
             });
         } catch (final IOException | RuntimeException e) {
@@ -68,7 +74,11 @@ class S3ObjectWorker implements S3ObjectHandler {
         s3ObjectPluginMetrics.getS3ObjectsSucceededCounter().increment();
     }
 
-    private void doParseObject(final AcknowledgementSet acknowledgementSet, final S3ObjectReference s3ObjectReference, final BufferAccumulator<Record<Event>> bufferAccumulator) throws IOException {
+    private void doParseObject(final AcknowledgementSet acknowledgementSet,
+                               final S3ObjectReference s3ObjectReference,
+                               final BufferAccumulator<Record<Event>> bufferAccumulator,
+                               final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                               final String partitionKey) throws IOException {
         final long s3ObjectSize;
         final long totalBytesRead;
 
@@ -79,6 +89,7 @@ class S3ObjectWorker implements S3ObjectHandler {
         final CompressionOption fileCompressionOption = compressionOption != CompressionOption.AUTOMATIC ?
                 compressionOption : CompressionOption.fromFileName(s3ObjectReference.getKey());
 
+        final AtomicInteger saveStateCounter = new AtomicInteger();
         try {
             s3ObjectSize = inputFile.getLength();
 
@@ -93,6 +104,12 @@ class S3ObjectWorker implements S3ObjectHandler {
                         acknowledgementSet.add(record.getData());
                     }
                     bufferAccumulator.add(record);
+                    int recordsWrittenAfterLastSaveState = bufferAccumulator.getTotalWritten() - saveStateCounter.get() * RECORDS_TO_ACCUMULATE_TO_SAVE_STATE;
+                    // Saving state to renew source coordination ownership for every 10,000 records, ownership time is 10 minutes
+                    if (recordsWrittenAfterLastSaveState >= RECORDS_TO_ACCUMULATE_TO_SAVE_STATE && sourceCoordinator != null && partitionKey != null) {
+                        sourceCoordinator.saveProgressStateForPartition(partitionKey, null);
+                        saveStateCounter.getAndIncrement();
+                    }
                 } catch (final Exception e) {
                     LOG.error("Failed writing S3 objects to buffer due to: {}", e.getMessage());
                 }
