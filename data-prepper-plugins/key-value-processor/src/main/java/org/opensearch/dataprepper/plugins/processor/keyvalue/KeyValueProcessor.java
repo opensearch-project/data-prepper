@@ -37,6 +37,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Pattern keyValueDelimiterPattern;
     private final Set<String> includeKeysSet = new HashSet<String>();
     private final Set<String> excludeKeysSet = new HashSet<String>();
+    private final HashMap<String, Object> defaultValuesMap = new HashMap<>();
+    private final Set<String> defaultValuesSet = new HashSet<String>();
     private final String lowercaseKey = "lowercase";
     private final String uppercaseKey = "uppercase";
     private final String capitalizeKey = "capitalize";
@@ -102,9 +104,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
         includeKeysSet.addAll(keyValueProcessorConfig.getIncludeKeys());
         excludeKeysSet.addAll(keyValueProcessorConfig.getExcludeKeys());
+        defaultValuesMap.putAll(keyValueProcessorConfig.getDefaultValues());
+        if (!defaultValuesMap.isEmpty()) {
+            defaultValuesSet.addAll(defaultValuesMap.keySet());
+        }
 
-        validateKeySets(includeKeysSet, excludeKeysSet);
-
+        validateKeySets(includeKeysSet, excludeKeysSet, defaultValuesSet);
+        
         if (!validTransformOptionSet.contains(keyValueProcessorConfig.getTransformKey())) {
             throw new IllegalArgumentException(String.format("The transform_key value: %s is not a valid option", keyValueProcessorConfig.getTransformKey()));
         }
@@ -155,11 +161,18 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return true;
     }
 
-    private void validateKeySets(final Set<String> includeSet, final Set<String> excludeSet) {
-        Set<String> intersectionSet = new HashSet<String>(includeSet);
-        intersectionSet.retainAll(excludeSet);
-        if (!intersectionSet.isEmpty()) {
-            throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap", null);
+    private void validateKeySets(final Set<String> includeSet, final Set<String> excludeSet, final Set<String> defaultSet) {
+        final Set<String> includeIntersectionSet = new HashSet<String>(includeSet);
+        final Set<String> defaultIntersectionSet = new HashSet<String>(defaultSet);
+
+        includeIntersectionSet.retainAll(excludeSet);
+        if (!includeIntersectionSet.isEmpty()) {
+            throw new IllegalArgumentException("Include keys and exclude keys set cannot have any overlap");
+        }
+
+        defaultIntersectionSet.retainAll(excludeSet);
+        if (!defaultIntersectionSet.isEmpty()) {
+            throw new IllegalArgumentException("Cannot exclude a default key!");
         }
     }
 
@@ -171,18 +184,19 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
+
             for(final String group : groups) {
                 final String[] terms = keyValueDelimiterPattern.split(group, 2);
                 String key = terms[0];
                 Object value;
 
                 if (!includeKeysSet.isEmpty() && !includeKeysSet.contains(key)) {
-                    LOG.debug(String.format("Skipping not included key: '%s'", key));
+                    LOG.debug("Skipping not included key: '{}'", key);
                     continue;
                 }
 
-                if (!excludeKeysSet.isEmpty() && excludeKeysSet.contains(key)) {
-                    LOG.debug(String.format("Key is being excluded: '%s'", key));
+                if (excludeKeysSet.contains(key)) {
+                    LOG.debug("Key is being excluded: '{}'", key);
                     continue;
                 }
 
@@ -194,7 +208,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 if (terms.length == 2) {
                     value = terms[1];
                 } else {
-                    LOG.debug(String.format("Unsuccessful match: '%s'", terms[0]));
+                    LOG.debug("Unsuccessful match: '{}'", terms[0]);
                     value = keyValueProcessorConfig.getNonMatchValue();
                 }
 
@@ -224,6 +238,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
 
                 addKeyValueToMap(parsedMap, key, value);
+            }
+
+            for (Map.Entry<String,Object> pair : defaultValuesMap.entrySet()) {
+                if (parsedMap.containsKey(pair.getKey())) {
+                    LOG.debug("Skipping already included default key: '{}'", pair.getKey());
+                    continue;
+                }
+                parsedMap.put(pair.getKey(), pair.getValue());
             }
 
             recordEvent.put(keyValueProcessorConfig.getDestination(), parsedMap);
