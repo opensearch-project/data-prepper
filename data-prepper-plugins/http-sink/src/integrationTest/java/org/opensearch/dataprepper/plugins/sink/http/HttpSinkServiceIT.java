@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink;
+package org.opensearch.dataprepper.plugins.sink.http;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,10 +27,10 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.configuration.HttpSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.configuration.ThresholdOptions;
-import org.opensearch.dataprepper.plugins.sink.dlq.DlqPushHandler;
-import org.opensearch.dataprepper.plugins.sink.service.HttpSinkService;
+import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
+import org.opensearch.dataprepper.plugins.sink.http.configuration.ThresholdOptions;
+import org.opensearch.dataprepper.plugins.sink.http.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.sink.http.service.HttpSinkService;
 import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.text.MessageFormat;
@@ -42,7 +42,7 @@ import java.util.UUID;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.sink.service.HttpSinkService.HTTP_SINK_RECORDS_SUCCESS_COUNTER;
+import static org.opensearch.dataprepper.plugins.sink.http.service.HttpSinkService.HTTP_SINK_RECORDS_SUCCESS_COUNTER;
 
 public class HttpSinkServiceIT {
 

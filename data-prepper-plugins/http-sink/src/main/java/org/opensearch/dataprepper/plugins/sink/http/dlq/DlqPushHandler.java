@@ -64,7 +64,7 @@ public class DlqPushHandler {
                           final String dlqPathPrefix) {
         if(dlqFile != null) {
             this.dlqFile = dlqFile;
-            this.objectWriter = new ObjectMapper().writer().withDefaultPrettyPrinter();
+            this.objectWriter = new ObjectMapper().writer();
         }else{
             this.dlqProvider = getDlqProvider(pluginFactory,bucket,stsRoleArn,awsRegion,dlqPathPrefix);
         }

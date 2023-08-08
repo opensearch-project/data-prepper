@@ -113,9 +113,7 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
                 pluginMetrics,
                 pluginSetting,
                 codec,
-                Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null,
-                Objects.nonNull(sinkContext) ? sinkContext.getIncludeKeys() : null,
-                Objects.nonNull(sinkContext) ? sinkContext.getExcludeKeys() : null);
+                Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
     }
 
     @Override

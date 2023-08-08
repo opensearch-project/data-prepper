@@ -107,10 +107,6 @@ public class HttpSinkService {
 
     private final String tagsTargetKey;
 
-    private final List<String> includeKeys;
-
-    private final List<String> excludeKeys;
-
     public HttpSinkService(final HttpSinkConfiguration httpSinkConfiguration,
                            final BufferFactory bufferFactory,
                            final DlqPushHandler dlqPushHandler,
@@ -120,9 +116,7 @@ public class HttpSinkService {
                            final PluginMetrics pluginMetrics,
                            final PluginSetting httpPluginSetting,
                            final OutputCodec codec,
-                           final String tagsTargetKey,
-                           final List<String> includeKeys,
-                           final List<String> excludeKeys) {
+                           final String tagsTargetKey) {
 
         this.httpSinkConfiguration = httpSinkConfiguration;
         this.bufferFactory = bufferFactory;
@@ -136,7 +130,7 @@ public class HttpSinkService {
         this.maxBytes = httpSinkConfiguration.getThresholdOptions().getMaximumSize();
         this.maxCollectionDuration = httpSinkConfiguration.getThresholdOptions().getEventCollectTimeOut().getSeconds();
         this.httpPluginSetting = httpPluginSetting;
-		this.oAuthAccessTokenManager = new OAuthAccessTokenManager(httpClientBuilder);
+		this.oAuthAccessTokenManager = new OAuthAccessTokenManager();
 
         if (httpSinkConfiguration.isSsl() || httpSinkConfiguration.useAcmCertForSSL()) {
             this.certificateProviderFactory = new CertificateProviderFactory(httpSinkConfiguration);
@@ -149,8 +143,6 @@ public class HttpSinkService {
         this.httpSinkRecordsFailedCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_FAILED_COUNTER);
         this.codec= codec;
         this.tagsTargetKey = tagsTargetKey;
-        this.includeKeys = includeKeys;
-        this.excludeKeys = excludeKeys;
     }
 
     /**
@@ -167,8 +159,6 @@ public class HttpSinkService {
             records.forEach(record -> {
                 try {
                     final Event event = record.getData();
-                    event.jsonBuilder().includeKeys(includeKeys);
-                    event.jsonBuilder().excludeKeys(excludeKeys);
                     if(currentBuffer.getEventCount() == 0) {
                         codec.start(outputStream,event , tagsTargetKey);
                     }
@@ -244,7 +234,7 @@ public class HttpSinkService {
         classicHttpRequestBuilder.setEntity(new String(currentBufferData));
         try {
            if(AuthTypeOptions.BEARER_TOKEN.equals(httpSinkConfiguration.getAuthType()))
-               accessTokenIfExpired(classicHttpRequestBuilder.getFirstHeader(BearerTokenAuthHttpSinkHandler.AUTHORIZATION).getValue(),httpSinkConfiguration.getUrl());
+               accessTokenIfExpired(httpSinkConfiguration.getAuthentication().getBearerTokenOptions().getTokenExpired(),httpSinkConfiguration.getUrl());
             httpAuthOptions.get(httpSinkConfiguration.getUrl()).getHttpClientBuilder().build()
                     .execute(classicHttpRequestBuilder.build(), HttpClientContext.create());
             LOG.info("No of Records successfully pushed to endpoint {}", httpSinkConfiguration.getUrl() +" " + currentBuffer.getEventCount());
@@ -362,8 +352,8 @@ public class HttpSinkService {
         return classicRequestBuilder;
     }
 
-    private void accessTokenIfExpired(final String token,final String url){
-        if(oAuthAccessTokenManager.isTokenExpired(token)) {
+    private void accessTokenIfExpired(final Integer tokenExpired,final String url){
+        if(oAuthAccessTokenManager.isTokenExpired(tokenExpired)) {
             httpAuthOptions.get(url).getClassicHttpRequestBuilder()
                     .setHeader(BearerTokenAuthHttpSinkHandler.AUTHORIZATION, oAuthAccessTokenManager.getAccessToken(httpSinkConfiguration.getAuthentication().getBearerTokenOptions()));
         }

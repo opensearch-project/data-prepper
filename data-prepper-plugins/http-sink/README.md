@@ -64,7 +64,7 @@ pipeline:
 
 - `token_url`: The End point URL of the OAuth server.(Eg: /oauth2/default/v1/token)
 
-- `grant_type` (Optional) : This grant type refers to the way an application gets an access token.
+- `grant_type` (Optional) : This grant type refers to the way an application gets an access token. Example: client_credentials/refresh_token
 
 - `scope` (Optional) : This scope limit an application's access to a user's account.
 
@@ -82,6 +82,49 @@ pipeline:
 - `buffer_type`(optional) : Buffer type can be in_memory/local_file. Default is in_memory
 
 - `max_retries`(optional): A number indicating the maximum number of times Http Sink should try to push the data to the Http arbitrary endpoint before considering it as failure. Defaults to `Integer.MAX_VALUE`.
+
+### HTTP Sink full pipeline
+```
+  sink:
+    - http:
+        url: http/https arbitrary endpoint url
+        proxy: proxy url
+        codec:
+          json:
+        http_method: "POST"
+        auth_type: "unauthenticated"
+        authentication:
+          http_basic:
+            username: "username"
+            password: "password"
+          bearer_token:
+            client_id: 0oaafr4j79segd7
+            client_secret: fFel-3FutCXAOndezEsOVlghoJ6w0wNoaYtgU17JdyXmGf0M
+            token_url: token url
+            grant_type: client_credentials
+            scope:
+        ssl: false
+        ssl_certificate_file: "/full/path/to/certfile.crt"
+        buffer_type: "in_memory"
+        use_acm_cert_for_ssl: false
+        acm_certificate_arn:
+        custom_header:
+          header: ["value"]
+        aws_sigv4: false
+        dlq_file : <dlq file with full path>
+        dlq:
+          s3:
+            bucket: 
+            key_path_prefix:
+        webhook_url:
+        aws:
+          region: "us-east-2"
+          sts_role_arn: "arn:aws:iam::1234567890:role/data-prepper-s3source-execution-role"
+        threshold:
+          event_count: 5
+          event_collect_timeout: PT2M
+        max_retries: 5
+```
 
 ### SSL
 
