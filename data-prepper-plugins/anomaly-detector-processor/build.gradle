@@ -17,5 +17,5 @@ dependencies {
     implementation 'software.amazon.randomcutforest:randomcutforest-examples:3.7.0'
     implementation 'software.amazon.randomcutforest:randomcutforest-parkservices:3.7.0'
     implementation 'software.amazon.randomcutforest:randomcutforest-serialization-json:1.0'
-    testImplementation 'org.apache.commons:commons-lang3:3.12.0'
+    testImplementation libs.commons.lang3
 }
