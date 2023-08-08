@@ -5,6 +5,7 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 
 import java.io.IOException;
 
@@ -21,5 +22,7 @@ public interface S3ObjectHandler {
      * @throws IOException exception is thrown every time because this is not supported
      */
     void parseS3Object(final S3ObjectReference s3ObjectReference,
-                       final AcknowledgementSet acknowledgementSet) throws IOException;
+                       final AcknowledgementSet acknowledgementSet,
+                       final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                       final String partitionKey) throws IOException;
 }
