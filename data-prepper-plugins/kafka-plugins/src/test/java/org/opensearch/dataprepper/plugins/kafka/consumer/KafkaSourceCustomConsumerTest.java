@@ -32,7 +32,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -202,6 +201,7 @@ public class KafkaSourceCustomConsumerTest {
             Thread.sleep(10000);
         } catch (Exception e){}
 
+        consumer.processAcknowledgedOffsets();
         offsetsToCommit = consumer.getOffsetsToCommit();
         Assertions.assertEquals(offsetsToCommit.size(), 1);
         offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {

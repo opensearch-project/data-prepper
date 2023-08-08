@@ -37,7 +37,6 @@ public class KafkaTopicMetrics {
         camelCaseMap.put("records-lag-max", "recordsLagMax");
         camelCaseMap.put("records-lead-min", "recordsLeadMin");
         camelCaseMap.put("commit-rate", "commitRate");
-        camelCaseMap.put("commit-total", "commitTotal");
         camelCaseMap.put("join-rate", "joinRate");
         camelCaseMap.put("incoming-byte-rate", "incomingByteRate");
         camelCaseMap.put("outgoing-byte-rate", "outgoingByteRate");
@@ -56,11 +55,11 @@ public class KafkaTopicMetrics {
         return camelCaseName;
     }
 
-    public void setMetric(final KafkaConsumer consumer, final String metricName, Integer metricValue) {
+    public void setMetric(final KafkaConsumer consumer, final String metricName, Number metricValue) {
         synchronized(consumerMetricsMap) {
             Map<String, Object> cmetrics = consumerMetricsMap.get(consumer);
             if (cmetrics != null) {
-                cmetrics.put(metricName, (double)metricValue);
+                cmetrics.put(metricName, metricValue.doubleValue());
             }
         }
     }
