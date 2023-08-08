@@ -16,10 +16,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
-import software.amazon.awssdk.services.kafka.model.InternalServerErrorException;
-import software.amazon.awssdk.services.kafka.model.ConflictException;
-import software.amazon.awssdk.services.kafka.model.ForbiddenException;
-import software.amazon.awssdk.services.kafka.model.UnauthorizedException;
+import software.amazon.awssdk.services.kafka.model.KafkaException;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.StsException;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
@@ -214,17 +211,15 @@ public class KafkaSourceSecurityConfigurer {
             retryable = false;
             try {
                 result = kafkaClient.getBootstrapBrokers(request);
-            } catch (InternalServerErrorException | ConflictException | ForbiddenException | UnauthorizedException | StsException e) {
+            } catch (KafkaException | StsException e) {
                 LOG.debug("Failed to get bootstrap server information from MSK. Retrying...", e);
-
-                retryable = true;
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException exp) {}
             } catch (Exception e) {
                 throw new RuntimeException("Failed to get bootstrap server information from MSK.", e);
             }
-        } while (retryable && numRetries++ < MAX_KAFKA_CLIENT_RETRIES);
+        } while (numRetries++ < MAX_KAFKA_CLIENT_RETRIES);
         if (Objects.isNull(result)) {
             throw new RuntimeException("Failed to get bootstrap server information from MSK after trying multiple times with retryable exceptions.");
         }

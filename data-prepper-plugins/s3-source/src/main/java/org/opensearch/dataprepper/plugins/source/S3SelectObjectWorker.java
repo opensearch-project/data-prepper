@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
@@ -99,7 +100,10 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         this.bucketOwnerProvider = s3ObjectRequest.getBucketOwnerProvider();
     }
 
-    public void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
+    public void parseS3Object(final S3ObjectReference s3ObjectReference,
+                              final AcknowledgementSet acknowledgementSet,
+                              final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                              final String partitionKey) throws IOException {
         try{
             LOG.info("Read S3 object: {}", s3ObjectReference);
             selectObject(s3ObjectReference, acknowledgementSet);
