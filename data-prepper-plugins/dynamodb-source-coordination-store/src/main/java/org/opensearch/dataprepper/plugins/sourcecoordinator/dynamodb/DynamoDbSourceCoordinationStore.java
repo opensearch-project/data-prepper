@@ -118,6 +118,10 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
             dynamoDbSourcePartitionItem.setPartitionPriority(updateItem.getPartitionOwnershipTimeout().toString());
         }
 
+        if (Objects.nonNull(dynamoStoreSettings.getTtl())) {
+            dynamoDbSourcePartitionItem.setExpirationTime(Instant.now().plus(dynamoStoreSettings.getTtl()).getEpochSecond());
+        }
+
         dynamoDbClientWrapper.tryUpdatePartitionItem(dynamoDbSourcePartitionItem);
     }
 

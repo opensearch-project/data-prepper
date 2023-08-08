@@ -133,6 +133,8 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.ASSIGNED);
 
+        given(dynamoStoreSettings.getTtl()).willReturn(null);
+
         doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
 
         final Instant partitionOwnershipTimeout = Instant.now();
@@ -151,6 +153,8 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.CLOSED);
 
+        given(dynamoStoreSettings.getTtl()).willReturn(null);
+
         doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
         final Instant reOpenAtTime = Instant.now();
         given(updateItem.getReOpenAt()).willReturn(reOpenAtTime);
@@ -168,9 +172,18 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.COMPLETED);
 
+        final ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
+        final Duration ttl = Duration.ofSeconds(30);
+        final Long nowPlusTtl = Instant.now().plus(ttl).getEpochSecond();
+        given(dynamoStoreSettings.getTtl()).willReturn(ttl);
+        doNothing().when((DynamoDbSourcePartitionItem) updateItem).setExpirationTime(argumentCaptor.capture());
+
         doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
 
         createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem);
+
+        final Long expirationTimeResult = argumentCaptor.getValue();
+        assertThat(expirationTimeResult, greaterThanOrEqualTo(nowPlusTtl));
 
         verify((DynamoDbSourcePartitionItem) updateItem).setSourceStatusCombinationKey(sourceIdentifier + "|" + SourcePartitionStatus.COMPLETED);
         verify((DynamoDbSourcePartitionItem) updateItem, never()).setPartitionPriority(anyString());
