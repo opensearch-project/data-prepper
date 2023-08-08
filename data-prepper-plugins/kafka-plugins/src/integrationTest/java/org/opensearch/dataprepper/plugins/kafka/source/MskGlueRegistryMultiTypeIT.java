@@ -99,6 +99,9 @@ public class MskGlueRegistryMultiTypeIT {
     @Mock
     private AwsConfig.AwsMskConfig awsMskConfig;
 
+    @Mock
+    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+
     private KafkaSource kafkaSource;
     private TopicConfig jsonTopic;
     private TopicConfig avroTopic;
@@ -144,7 +147,7 @@ public class MskGlueRegistryMultiTypeIT {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
         when(sourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
-        when(schemaConfig.getType()).thenReturn(SchemaRegistryType.GLUE);
+        when(schemaConfig.getType()).thenReturn(SchemaRegistryType.AWS_GLUE);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
         when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
         try {
@@ -166,7 +169,7 @@ public class MskGlueRegistryMultiTypeIT {
         when(avroTopic.getAutoCommit()).thenReturn(false);
         when(avroTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(avroTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
-        when(avroTopic.getSessionTimeOut()).thenReturn(15000);
+        when(avroTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(5));
         when(avroTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(jsonTopic.getName()).thenReturn(testTopic);
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
@@ -174,7 +177,6 @@ public class MskGlueRegistryMultiTypeIT {
         when(jsonTopic.getAutoCommit()).thenReturn(false);
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
-        when(jsonTopic.getSessionTimeOut()).thenReturn(15000);
         when(jsonTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         testRegistryName = System.getProperty("tests.kafka.glue_registry_name");
@@ -183,13 +185,15 @@ public class MskGlueRegistryMultiTypeIT {
         testMskArn = System.getProperty("tests.msk.arn");
         testMskRegion = System.getProperty("tests.msk.region");
         when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
+        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
         System.setProperty("software.amazon.awssdk.http.service.impl", "software.amazon.awssdk.http.urlconnection.UrlConnectionSdkHttpService");
     }
 
     @Test
     public void TestJsonRecordConsumer() throws Exception {
         final int numRecords = 1;
-        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.SSL);
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
@@ -256,7 +260,7 @@ public class MskGlueRegistryMultiTypeIT {
     @Test
     public void TestAvroRecordConsumer() throws Exception {
         final int numRecords = 1;
-        when(sourceConfig.getEncryptionType()).thenReturn(EncryptionType.SSL);
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.SSL);
         when(avroTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(sourceConfig.getTopics()).thenReturn(List.of(avroTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(authConfig);

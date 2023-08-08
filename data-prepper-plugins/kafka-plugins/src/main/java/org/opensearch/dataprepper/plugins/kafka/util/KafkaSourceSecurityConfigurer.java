@@ -16,10 +16,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import software.amazon.awssdk.services.kafka.KafkaClient;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersRequest;
 import software.amazon.awssdk.services.kafka.model.GetBootstrapBrokersResponse;
-import software.amazon.awssdk.services.kafka.model.InternalServerErrorException;
-import software.amazon.awssdk.services.kafka.model.ConflictException;
-import software.amazon.awssdk.services.kafka.model.ForbiddenException;
-import software.amazon.awssdk.services.kafka.model.UnauthorizedException;
+import software.amazon.awssdk.services.kafka.model.KafkaException;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.StsException;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
@@ -27,6 +24,8 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.regions.Region;
+
+import org.slf4j.Logger;
 
 import java.util.Base64;
 import java.util.Objects;
@@ -173,7 +172,7 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static String getBootStrapServersForMsk(final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig) {
+    public static String getBootStrapServersForMsk(final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig, final Logger LOG) {
         AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
         if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
             String sessionName = "data-prepper-kafka-session" + UUID.randomUUID();
@@ -212,18 +211,17 @@ public class KafkaSourceSecurityConfigurer {
             retryable = false;
             try {
                 result = kafkaClient.getBootstrapBrokers(request);
-            } catch (InternalServerErrorException | ConflictException | ForbiddenException | UnauthorizedException | StsException e) {
-
-                retryable = true;
+            } catch (KafkaException | StsException e) {
+                LOG.debug("Failed to get bootstrap server information from MSK. Retrying...", e);
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException exp) {}
             } catch (Exception e) {
-                break;
+                throw new RuntimeException("Failed to get bootstrap server information from MSK.", e);
             }
-        } while (retryable && numRetries++ < MAX_KAFKA_CLIENT_RETRIES);
+        } while (numRetries++ < MAX_KAFKA_CLIENT_RETRIES);
         if (Objects.isNull(result)) {
-            throw new RuntimeException("Failed to get bootstrap server information from MSK, using user configured bootstrap servers");
+            throw new RuntimeException("Failed to get bootstrap server information from MSK after trying multiple times with retryable exceptions.");
         }
         switch (awsMskConfig.getBrokerConnectionType()) {
             case PUBLIC:
@@ -236,10 +234,11 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static void setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig) {
+    public static void setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
         final AwsConfig awsConfig = sourceConfig.getAwsConfig();
         final AuthConfig authConfig = sourceConfig.getAuthConfig();
-        final EncryptionType encryptionType = sourceConfig.getEncryptionType();
+        final KafkaSourceConfig.EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
+        final EncryptionType encryptionType = encryptionConfig.getType();
 
         String bootstrapServers = sourceConfig.getBootStrapServers();
         AwsIamAuthConfig awsIamAuthConfig = null;
@@ -257,7 +256,7 @@ public class KafkaSourceSecurityConfigurer {
                         throw new RuntimeException("AWS Config is not specified");
                     }
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
-                    bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig);
+                    bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig, LOG);
                 } else if (Objects.nonNull(saslAuthConfig.getOAuthConfig())) {
                     setOauthProperties(sourceConfig, properties);
                 } else if (Objects.nonNull(plainTextAuthConfig)) {
@@ -266,7 +265,7 @@ public class KafkaSourceSecurityConfigurer {
                     throw new RuntimeException("No SASL auth config specified");
                 }
             }
-            if (authConfig.getInsecure()) {
+            if (encryptionConfig.getInsecure()) {
                 properties.put("ssl.engine.factory.class", InsecureSslEngineFactory.class);
             }
         }

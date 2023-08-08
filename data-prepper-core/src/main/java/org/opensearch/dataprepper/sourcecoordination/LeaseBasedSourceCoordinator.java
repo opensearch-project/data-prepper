@@ -168,6 +168,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
         final SourcePartition<T> sourcePartition = SourcePartition.builder(partitionProgressStateClass)
                 .withPartitionKey(ownedPartitions.get().getSourcePartitionKey())
                 .withPartitionState(convertStringToPartitionProgressStateClass(ownedPartitions.get().getPartitionProgressState()))
+                .withPartitionClosedCount(ownedPartitions.get().getClosedCount())
                 .build();
 
         partitionManager.setActivePartition(sourcePartition);

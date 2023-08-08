@@ -24,10 +24,12 @@ public interface OutputCodec {
      * this method get called from {@link Sink} to do initial wrapping in {@link OutputStream}
      * Implementors should do initial wrapping according to the implementation
      *
-     * @param outputStream outputStream param for wrapping
+     * @param outputStream  outputStream param for wrapping
+     * @param event         Event to auto-generate schema
+     * @param tagsTargetKey to add tags to the record to create schema
      * @throws IOException throws IOException when invalid input is received or not able to create wrapping
      */
-    void start(OutputStream outputStream) throws IOException;
+    void start(OutputStream outputStream, Event event, String tagsTargetKey) throws IOException;
 
     /**
      * this method get called from {@link Sink} to write event in {@link OutputStream}

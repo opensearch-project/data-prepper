@@ -13,9 +13,12 @@ dependencies {
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-csv'
     implementation 'io.micrometer:micrometer-core'
     implementation 'org.apache.parquet:parquet-common:1.12.3'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:apache-client'
     testImplementation project(':data-prepper-plugins:log-generator-source')
     testImplementation project(':data-prepper-test-common')
     testImplementation project(':data-prepper-plugins:common')
+    implementation 'com.opencsv:opencsv:5.8'
 }
 
 test {

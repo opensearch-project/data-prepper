@@ -21,6 +21,8 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import io.micrometer.core.instrument.Counter;
@@ -102,6 +104,7 @@ public class KafkaSourceCustomConsumerTest {
         counter = mock(Counter.class);
         topicConfig = mock(TopicConfig.class);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
         when(kafkaConsumer.committed(any(TopicPartition.class))).thenReturn(null);
 
@@ -210,8 +213,48 @@ public class KafkaSourceCustomConsumerTest {
     }
 
     @Test
+    public void testPlainTextConsumeRecordsWithNegativeAcknowledgements() throws InterruptedException {
+        String topic = topicConfig.getName();
+        consumerRecords = createPlainTextRecords(topic);
+        when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
+        consumer = createObjectUnderTest("plaintext", true);
+
+        try {
+            consumer.consumeRecords();
+        } catch (Exception e){}
+        final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(consumerRecords.count(), bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 0);
+
+        for (Record<Event> record: bufferedRecords) {
+            Event event = record.getData();
+            String value1 = event.get(testKey1, String.class);
+            String value2 = event.get(testKey2, String.class);
+            assertTrue(value1 != null || value2 != null);
+            if (value1 != null) {
+                Assertions.assertEquals(value1, testValue1);
+            }
+            if (value2 != null) {
+                Assertions.assertEquals(value2, testValue2);
+            }
+            event.getEventHandle().release(false);
+        }
+        // Wait for acknowledgement callback function to run
+        try {
+            Thread.sleep(10000);
+        } catch (Exception e){}
+
+        offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 0);
+    }
+
+    @Test
     public void testJsonConsumeRecords() throws InterruptedException, Exception {
         String topic = topicConfig.getName();
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON);
+        when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         consumerRecords = createJsonRecords(topic);
         when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("json", false);
@@ -229,14 +272,14 @@ public class KafkaSourceCustomConsumerTest {
 
         for (Record<Event> record: bufferedRecords) {
             Event event = record.getData();
-            Map<String, Object> value1 = event.get(testKey1, Map.class);
-            Map<String, Object> value2 = event.get(testKey2, Map.class);
-            assertTrue(value1 != null || value2 != null);
-            if (value1 != null) {
-                testMap1.forEach((k, v) -> assertThat(value1, hasEntry(k,v)));
+            Map<String, Object> eventMap = event.toMap();
+            String kafkaKey = event.get("kafka_key", String.class);
+            assertTrue(kafkaKey.equals(testKey1) || kafkaKey.equals(testKey2));
+            if (kafkaKey.equals(testKey1)) {
+                testMap1.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
-            if (value2 != null) {
-                testMap2.forEach((k, v) -> assertThat(value2, hasEntry(k,v)));
+            if (kafkaKey.equals(testKey2)) {
+                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
             }
         }
     }

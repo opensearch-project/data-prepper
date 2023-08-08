@@ -19,13 +19,6 @@ public class PlainTextAuthConfig {
     @JsonProperty("password")
     private String password;
 
-    @JsonProperty("security_protocol")
-    private String securityProtocol;
-
-    public String getSecurityProtocol() {
-        return securityProtocol;
-    }
-
     public String getUsername() {
         return username;
     }

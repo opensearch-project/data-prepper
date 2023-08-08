@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public enum SchemaRegistryType {
-    GLUE("glue"),
+    AWS_GLUE("aws_glue"),
     CONFLUENT("confluent");
 
     private static final Map<String, SchemaRegistryType> OPTIONS_MAP = Arrays.stream(SchemaRegistryType.values())

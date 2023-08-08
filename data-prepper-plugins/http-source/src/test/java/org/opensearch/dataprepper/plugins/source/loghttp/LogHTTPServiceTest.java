@@ -5,8 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
+import com.linecorp.armeria.server.ServiceRequestContext;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.record.Record;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -33,15 +35,18 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.stubbing.Answer;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Supplier;
+import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,19 +65,7 @@ class LogHTTPServiceTest {
     private Counter requestsReceivedCounter;
 
     @Mock
-    private Counter requestTimeoutsCounter;
-
-    @Mock
     private Counter successRequestsCounter;
-
-    @Mock
-    private Counter badRequestsCounter;
-
-    @Mock
-    private Counter requestsTooLargeCounter;
-
-    @Mock
-    private Counter internalServerErrorCounter;
 
     @Mock
     private DistributionSummary payloadSizeSummary;
@@ -80,24 +73,24 @@ class LogHTTPServiceTest {
     @Mock
     private Timer requestProcessDuration;
 
+    @Mock
+    private ServiceRequestContext serviceRequestContext;
+
     private LogHTTPService logHTTPService;
 
     @BeforeEach
-    public void setUp() {
+    public void setUp() throws Exception {
         when(pluginMetrics.counter(LogHTTPService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
-        when(pluginMetrics.counter(RequestExceptionHandler.REQUEST_TIMEOUTS)).thenReturn(requestTimeoutsCounter);
         when(pluginMetrics.counter(LogHTTPService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
-        when(pluginMetrics.counter(RequestExceptionHandler.BAD_REQUESTS)).thenReturn(badRequestsCounter);
-        when(pluginMetrics.counter(RequestExceptionHandler.REQUESTS_TOO_LARGE)).thenReturn(requestsTooLargeCounter);
-        when(pluginMetrics.counter(RequestExceptionHandler.INTERNAL_SERVER_ERROR)).thenReturn(internalServerErrorCounter);
         when(pluginMetrics.summary(LogHTTPService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
         when(pluginMetrics.timer(LogHTTPService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
-        when(requestProcessDuration.record(ArgumentMatchers.<Supplier<HttpResponse>>any())).thenAnswer(
+        when(serviceRequestContext.isTimedOut()).thenReturn(false);
+        when(requestProcessDuration.recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any())).thenAnswer(
                 (Answer<HttpResponse>) invocation -> {
                     final Object[] args = invocation.getArguments();
                     @SuppressWarnings("unchecked")
-                    final Supplier<HttpResponse> supplier = (Supplier<HttpResponse>) args[0];
-                    return supplier.get();
+                    final Callable<HttpResponse> callable = (Callable<HttpResponse>) args[0];
+                    return callable.call();
                 }
         );
 
@@ -106,90 +99,75 @@ class LogHTTPServiceTest {
     }
 
     @Test
-    public void testHTTPRequestSuccess() throws InterruptedException, ExecutionException, JsonProcessingException {
+    public void testHTTPRequestSuccess() throws Exception {
         // Prepare
         AggregatedHttpRequest testRequest = generateRandomValidHTTPRequest(2);
 
         // When
-        AggregatedHttpResponse postResponse = logHTTPService.doPost(testRequest).aggregate().get();
+        AggregatedHttpResponse postResponse = logHTTPService.doPost(serviceRequestContext, testRequest).aggregate().get();
 
         // Then
         assertEquals(HttpStatus.OK, postResponse.status());
         verify(requestsReceivedCounter, times(1)).increment();
-        verify(requestTimeoutsCounter, never()).increment();
         verify(successRequestsCounter, times(1)).increment();
-        verify(badRequestsCounter, never()).increment();
-        verify(requestsTooLargeCounter, never()).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertEquals(testRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
-        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
+        verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
     @Test
-    public void testHTTPRequestBadRequest() throws ExecutionException, InterruptedException {
+    public void testHTTPRequestBadRequest() throws Exception {
         // Prepare
         AggregatedHttpRequest testBadRequest = generateBadHTTPRequest();
 
         // When
-        AggregatedHttpResponse postResponse = logHTTPService.doPost(testBadRequest).aggregate().get();
+        assertThrows(IOException.class, () -> logHTTPService.doPost(serviceRequestContext, testBadRequest).aggregate().get());
 
         // Then
-        assertEquals(HttpStatus.BAD_REQUEST, postResponse.status());
         verify(requestsReceivedCounter, times(1)).increment();
-        verify(requestTimeoutsCounter, never()).increment();
         verify(successRequestsCounter, never()).increment();
-        verify(badRequestsCounter, times(1)).increment();
-        verify(requestsTooLargeCounter, never()).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertEquals(testBadRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
-        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
+        verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
     @Test
-    public void testHTTPRequestEntityTooLarge() throws ExecutionException, InterruptedException, JsonProcessingException {
+    public void testHTTPRequestEntityTooLarge() throws Exception {
         // Prepare
         AggregatedHttpRequest testTooLargeRequest = generateRandomValidHTTPRequest(TEST_BUFFER_CAPACITY + 1);
 
         // When
-        AggregatedHttpResponse postResponse = logHTTPService.doPost(testTooLargeRequest).aggregate().get();
+        assertThrows(SizeOverflowException.class, () -> logHTTPService.doPost(serviceRequestContext, testTooLargeRequest).aggregate().get());
 
         // Then
-        assertEquals(HttpStatus.REQUEST_ENTITY_TOO_LARGE, postResponse.status());
         verify(requestsReceivedCounter, times(1)).increment();
-        verify(requestTimeoutsCounter, never()).increment();
         verify(successRequestsCounter, never()).increment();
-        verify(badRequestsCounter, never()).increment();
-        verify(requestsTooLargeCounter, times(1)).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertEquals(testTooLargeRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
-        verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
+        verify(requestProcessDuration, times(1)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
     @Test
-    public void testHTTPRequestTimeout() throws InterruptedException, ExecutionException, JsonProcessingException {
+    public void testHTTPRequestTimeout() throws Exception {
         // Prepare
         AggregatedHttpRequest populateDataRequest = generateRandomValidHTTPRequest(3);
-        AggregatedHttpResponse goodResponse = logHTTPService.doPost(populateDataRequest).aggregate().get();
+        AggregatedHttpResponse goodResponse = logHTTPService.doPost(serviceRequestContext, populateDataRequest).aggregate().get();
         assertEquals(HttpStatus.OK, goodResponse.status());
         AggregatedHttpRequest timeoutRequest = generateRandomValidHTTPRequest(2);
 
         // When
-        AggregatedHttpResponse timeoutPostResponse = logHTTPService.doPost(timeoutRequest).aggregate().get();
+        assertThrows(TimeoutException.class, () -> logHTTPService.doPost(serviceRequestContext, timeoutRequest).aggregate().get());
 
         // Then
-        assertEquals(HttpStatus.REQUEST_TIMEOUT, timeoutPostResponse.status());
         verify(requestsReceivedCounter, times(2)).increment();
-        verify(requestTimeoutsCounter, times(1)).increment();
         verify(successRequestsCounter, times(1)).increment();
-        verify(badRequestsCounter, never()).increment();
-        verify(requestsTooLargeCounter, never()).increment();
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(2)).record(payloadLengthCaptor.capture());
         assertEquals(timeoutRequest.content().length(), Math.round(payloadLengthCaptor.getValue()));
-        verify(requestProcessDuration, times(2)).record(ArgumentMatchers.<Supplier<HttpResponse>>any());
+        verify(requestProcessDuration, times(2)).recordCallable(ArgumentMatchers.<Callable<HttpResponse>>any());
     }
 
     private AggregatedHttpRequest generateRandomValidHTTPRequest(int numJson) throws JsonProcessingException,
