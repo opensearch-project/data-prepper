@@ -130,11 +130,6 @@ public class IndexConfiguration {
         this.documentRootKey = builder.documentRootKey;
     }
 
-    private void determineTemplateType(Builder builder) {
-        this.templateType = DistributionVersion.ES6.equals(builder.distributionVersion) ? TemplateType.V1 :
-                (builder.templateType != null ? builder.templateType : TemplateType.V1);
-    }
-
     private void determineIndexType(Builder builder) {
         if(builder.indexType != null) {
             Optional<IndexType> mappedIndexType = IndexType.getByValue(builder.indexType);
@@ -152,7 +147,8 @@ public class IndexConfiguration {
         if (builder.serverless) {
             templateType = TemplateType.INDEX_TEMPLATE;
         } else {
-            templateType = builder.templateType != null ? builder.templateType : TemplateType.V1;
+            templateType = DistributionVersion.ES6.equals(builder.distributionVersion) ? TemplateType.V1 :
+                    (builder.templateType != null ? builder.templateType : TemplateType.V1);
         }
     }
 
