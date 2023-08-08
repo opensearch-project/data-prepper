@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.sink.http.service;
 
+import io.micrometer.core.instrument.Counter;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
@@ -14,8 +15,12 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.types.ByteCount;
+
 import org.opensearch.dataprepper.plugins.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.ThresholdValidator;
+
 import org.opensearch.dataprepper.plugins.sink.http.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.http.HttpEndPointResponse;
 import org.opensearch.dataprepper.plugins.sink.http.certificate.CertificateProviderFactory;
@@ -23,7 +28,8 @@ import org.opensearch.dataprepper.plugins.sink.http.certificate.HttpClientSSLCon
 import org.opensearch.dataprepper.plugins.sink.http.configuration.AuthTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HTTPMethodOptions;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
-import org.opensearch.dataprepper.plugins.sink.http.configuration.UrlConfigurationOption;
+import org.opensearch.dataprepper.plugins.sink.http.dlq.DlqPushHandler;
+import org.opensearch.dataprepper.plugins.sink.http.dlq.FailedDlqData;
 import org.opensearch.dataprepper.plugins.sink.http.handler.BasicAuthHttpSinkHandler;
 import org.opensearch.dataprepper.plugins.sink.http.handler.BearerTokenAuthHttpSinkHandler;
 import org.opensearch.dataprepper.plugins.sink.http.handler.HttpAuthOptions;
@@ -33,7 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -58,6 +64,9 @@ public class HttpSinkService {
 
     public static final String BEARER = "Bearer ";
 
+    public static final String HTTP_SINK_RECORDS_SUCCESS_COUNTER = "httpSinkRecordsSuccessPushToEndPoint";
+    public static final String HTTP_SINK_RECORDS_FAILED_COUNTER = "httpSinkRecordsFailedToPushEndPoint";
+
     private final Collection<EventHandle> bufferedEventHandles;
 
     private final HttpSinkConfiguration httpSinkConfiguration;
@@ -66,30 +75,54 @@ public class HttpSinkService {
 
     private final Map<String,HttpAuthOptions> httpAuthOptions;
 
+    private DlqPushHandler dlqPushHandler;
+
     private final PluginSetting pluginSetting;
 
     private final Lock reentrantLock;
 
     private final HttpClientBuilder httpClientBuilder;
 
+    private final int maxEvents;
+
+    private final ByteCount maxBytes;
+
+    private final long maxCollectionDuration;
+
+    private final Counter httpSinkRecordsSuccessCounter;
+
+    private final Counter httpSinkRecordsFailedCounter;
+
     private CertificateProviderFactory certificateProviderFactory;
+
+    private WebhookService webhookService;
 
     private HttpClientConnectionManager httpClientConnectionManager;
 
     private Buffer currentBuffer;
 
+    private final PluginSetting httpPluginSetting;
+
     public HttpSinkService(final HttpSinkConfiguration httpSinkConfiguration,
                            final BufferFactory bufferFactory,
+                           final DlqPushHandler dlqPushHandler,
                            final PluginSetting pluginSetting,
+                           final WebhookService webhookService,
                            final HttpClientBuilder httpClientBuilder,
-                           final PluginMetrics pluginMetrics){
+                           final PluginMetrics pluginMetrics,
+                           final PluginSetting httpPluginSetting){
         this.httpSinkConfiguration = httpSinkConfiguration;
         this.bufferFactory = bufferFactory;
+        this.dlqPushHandler = dlqPushHandler;
         this.pluginSetting = pluginSetting;
         this.reentrantLock = new ReentrantLock();
+        this.webhookService = webhookService;
         this.bufferedEventHandles = new LinkedList<>();
         this.httpClientBuilder = httpClientBuilder;
-
+        this.maxEvents = httpSinkConfiguration.getThresholdOptions().getEventCount();
+        this.maxBytes = httpSinkConfiguration.getThresholdOptions().getMaximumSize();
+        this.maxCollectionDuration = httpSinkConfiguration.getThresholdOptions().getEventCollectTimeOut().getSeconds();
+        this.httpPluginSetting = httpPluginSetting;
         if (httpSinkConfiguration.isSsl() || httpSinkConfiguration.useAcmCertForSSL()) {
             this.certificateProviderFactory = new CertificateProviderFactory(httpSinkConfiguration);
             httpSinkConfiguration.validateAndInitializeCertAndKeyFileInS3();
@@ -97,6 +130,8 @@ public class HttpSinkService {
                     .createHttpClientConnectionManager(httpSinkConfiguration, certificateProviderFactory);
         }
         this.httpAuthOptions = buildAuthHttpSinkObjectsByConfig(httpSinkConfiguration);
+        this.httpSinkRecordsSuccessCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_SUCCESS_COUNTER);
+        this.httpSinkRecordsFailedCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_FAILED_COUNTER);
     }
 
     /**
@@ -119,16 +154,18 @@ public class HttpSinkService {
                 if (event.getEventHandle() != null) {
                     this.bufferedEventHandles.add(event.getEventHandle());
                 }
-                final List<HttpEndPointResponse> failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
-                if (!failedHttpEndPointResponses.isEmpty()) {
-                    //TODO send to DLQ and webhook
-                } else {
-                    LOG.info("data pushed to all the end points successfully");
-                }
-                currentBuffer = bufferFactory.getBuffer();
-                releaseEventHandles(Boolean.TRUE);
+                if (ThresholdValidator.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
+                    final HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(getCurrentBufferData(currentBuffer));
+                    if (failedHttpEndPointResponses != null) {
+                        logFailedData(failedHttpEndPointResponses, getCurrentBufferData(currentBuffer));
+                    } else {
+                        LOG.info("data pushed to the end point successfully");
+                    }
+                    currentBuffer = bufferFactory.getBuffer();
+                    releaseEventHandles(Boolean.TRUE);
 
-            });
+                }});
+
         }finally {
             reentrantLock.unlock();
         }
@@ -139,6 +176,22 @@ public class HttpSinkService {
             return currentBuffer.getSinkBufferData();
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * * This method logs Failed Data to DLQ and Webhook
+     *  @param endPointResponses HttpEndPointResponses.
+     *  @param currentBufferData Current bufferData.
+     */
+    private void logFailedData(final HttpEndPointResponse endPointResponses, final byte[] currentBufferData) {
+        FailedDlqData failedDlqData =
+                FailedDlqData.builder().withBufferData(new String(currentBufferData)).withEndPointResponses(endPointResponses).build();
+        LOG.info("Failed to push the data. Failed DLQ Data: {}",failedDlqData);
+
+        logFailureForDlqObjects(failedDlqData);
+        if(Objects.nonNull(webhookService)){
+            logFailureForWebHook(failedDlqData);
         }
     }
 
@@ -153,23 +206,39 @@ public class HttpSinkService {
      * * This method pushes bufferData to configured HttpEndPoints
      *  @param currentBufferData bufferData.
      */
-    private List<HttpEndPointResponse> pushToEndPoint(final byte[] currentBufferData) {
-        List<HttpEndPointResponse> httpEndPointResponses = new ArrayList<>(httpSinkConfiguration.getUrlConfigurationOptions().size());
-        httpSinkConfiguration.getUrlConfigurationOptions().forEach( urlConfOption -> {
-            final ClassicRequestBuilder classicHttpRequestBuilder =
-                    httpAuthOptions.get(urlConfOption.getUrl()).getClassicHttpRequestBuilder();
-            classicHttpRequestBuilder.setEntity(new String(currentBufferData));
-            try {
-                httpAuthOptions.get(urlConfOption.getUrl()).getHttpClientBuilder().build()
-                        .execute(classicHttpRequestBuilder.build(), HttpClientContext.create());
-            } catch (IOException e) {
-                LOG.info("No of Records failed to push endpoint {}",currentBuffer.getEventCount());
-                LOG.error("Exception while pushing buffer data to end point. URL : {}, Exception : ", urlConfOption.getUrl(), e);
-                httpEndPointResponses.add(new HttpEndPointResponse(urlConfOption.getUrl(), HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage()));
-            }
-        });
-        LOG.info("No of Records successfully pushed to endpoint {}",currentBuffer.getEventCount());
+    private HttpEndPointResponse pushToEndPoint(final byte[] currentBufferData) {
+        HttpEndPointResponse httpEndPointResponses = null;
+        final ClassicRequestBuilder classicHttpRequestBuilder =
+                httpAuthOptions.get(httpSinkConfiguration.getUrl()).getClassicHttpRequestBuilder();
+        classicHttpRequestBuilder.setEntity(new String(currentBufferData));
+        try {
+            httpAuthOptions.get(httpSinkConfiguration.getUrl()).getHttpClientBuilder().build()
+                    .execute(classicHttpRequestBuilder.build(), HttpClientContext.create());
+            LOG.info("No of Records successfully pushed to endpoint {}", httpSinkConfiguration.getUrl() +" " + currentBuffer.getEventCount());
+            httpSinkRecordsSuccessCounter.increment(currentBuffer.getEventCount());
+        } catch (IOException e) {
+            httpSinkRecordsFailedCounter.increment(currentBuffer.getEventCount());
+            LOG.info("No of Records failed to push endpoint {}",currentBuffer.getEventCount());
+            LOG.error("Exception while pushing buffer data to end point. URL : {}, Exception : ", httpSinkConfiguration.getUrl(), e);
+            httpEndPointResponses = new HttpEndPointResponse(httpSinkConfiguration.getUrl(), HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+        }
         return httpEndPointResponses;
+    }
+
+    /**
+     * * This method sends Failed objects to DLQ
+     *  @param failedDlqData FailedDlqData.
+     */
+    private void logFailureForDlqObjects(final FailedDlqData failedDlqData){
+        dlqPushHandler.perform(httpPluginSetting, failedDlqData);
+    }
+
+    /**
+     * * This method push Failed objects to Webhook
+     *  @param failedDlqData FailedDlqData.
+     */
+    private void logFailureForWebHook(final FailedDlqData failedDlqData){
+        webhookService.pushWebhook(failedDlqData);
     }
 
     /**
@@ -180,7 +249,6 @@ public class HttpSinkService {
     private HttpAuthOptions getAuthHandlerByConfig(final AuthTypeOptions authType,
                                                    final HttpAuthOptions.Builder authOptions){
         MultiAuthHttpSinkHandler multiAuthHttpSinkHandler = null;
-        // TODO: AWS Sigv4 - check
         switch(authType) {
             case HTTP_BASIC:
                 String username = httpSinkConfiguration.getAuthentication().getPluginSettings().get(USERNAME).toString();
@@ -205,30 +273,41 @@ public class HttpSinkService {
      *  @param httpSinkConfiguration HttpSinkConfiguration.
      */
     private Map<String,HttpAuthOptions> buildAuthHttpSinkObjectsByConfig(final HttpSinkConfiguration httpSinkConfiguration){
-        final List<UrlConfigurationOption> urlConfigurationOptions = httpSinkConfiguration.getUrlConfigurationOptions();
-        final Map<String,HttpAuthOptions> authMap = new HashMap<>(urlConfigurationOptions.size());
-        urlConfigurationOptions.forEach( urlOption -> {
-            final HTTPMethodOptions httpMethod = Objects.nonNull(urlOption.getHttpMethod()) ? urlOption.getHttpMethod() : httpSinkConfiguration.getHttpMethod();
-            final AuthTypeOptions authType = Objects.nonNull(urlOption.getAuthType()) ? urlOption.getAuthType() : httpSinkConfiguration.getAuthType();
-            final String proxyUrlString =  Objects.nonNull(urlOption.getProxy()) ? urlOption.getProxy() : httpSinkConfiguration.getProxy();
-            final ClassicRequestBuilder classicRequestBuilder = buildRequestByHTTPMethodType(httpMethod).setUri(urlOption.getUrl());
+        final Map<String,HttpAuthOptions> authMap = new HashMap<>();
 
-            if(Objects.nonNull(httpSinkConfiguration.getCustomHeaderOptions())){
-                //TODO:add custom headers
-            }
-            if(Objects.nonNull(proxyUrlString)) {
-                httpClientBuilder.setProxy(HttpSinkUtil.getHttpHostByURL(HttpSinkUtil.getURLByUrlString(proxyUrlString)));
-                LOG.info("Sending data via proxy {}",proxyUrlString);
-            }
+        final HTTPMethodOptions httpMethod = httpSinkConfiguration.getHttpMethod();
+        final AuthTypeOptions authType =  httpSinkConfiguration.getAuthType();
+        final String proxyUrlString =  httpSinkConfiguration.getProxy();
+        final ClassicRequestBuilder classicRequestBuilder = buildRequestByHTTPMethodType(httpMethod).setUri(httpSinkConfiguration.getUrl());
 
-            final HttpAuthOptions.Builder authOptions = new HttpAuthOptions.Builder()
-                    .setUrl(urlOption.getUrl())
-                    .setClassicHttpRequestBuilder(classicRequestBuilder)
-                    .setHttpClientBuilder(httpClientBuilder);
 
-            authMap.put(urlOption.getUrl(),getAuthHandlerByConfig(authType,authOptions));
-        });
+
+        if(Objects.nonNull(httpSinkConfiguration.getCustomHeaderOptions()))
+            addCustomHeaders(classicRequestBuilder,httpSinkConfiguration.getCustomHeaderOptions());
+
+        if(Objects.nonNull(proxyUrlString)) {
+            httpClientBuilder.setProxy(HttpSinkUtil.getHttpHostByURL(HttpSinkUtil.getURLByUrlString(proxyUrlString)));
+            LOG.info("sending data via proxy {}",proxyUrlString);
+        }
+
+        final HttpAuthOptions.Builder authOptions = new HttpAuthOptions.Builder()
+                .setUrl(httpSinkConfiguration.getUrl())
+                .setClassicHttpRequestBuilder(classicRequestBuilder)
+                .setHttpClientBuilder(httpClientBuilder);
+
+        authMap.put(httpSinkConfiguration.getUrl(),getAuthHandlerByConfig(authType,authOptions));
         return authMap;
+    }
+
+    /**
+     * * This method adds SageMakerHeaders as custom Header in the request
+     *  @param classicRequestBuilder ClassicRequestBuilder.
+     *  @param customHeaderOptions CustomHeaderOptions .
+     */
+    private void addCustomHeaders(final ClassicRequestBuilder classicRequestBuilder,
+                                  final Map<String, List<String>> customHeaderOptions) {
+
+        customHeaderOptions.forEach((k, v) -> classicRequestBuilder.addHeader(k,v.toString()));
     }
 
     /**
@@ -248,4 +327,6 @@ public class HttpSinkService {
         }
         return classicRequestBuilder;
     }
+
+
 }

@@ -83,6 +83,7 @@ public class KafkaSourceJsonTypeIT {
     private String bootstrapServers;
     private String testKey;
     private String testTopic;
+    private String testGroup;
 
     public KafkaSource createObjectUnderTest() {
         return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
@@ -112,13 +113,13 @@ public class KafkaSourceJsonTypeIT {
         } catch (Exception e){}
 
         testKey = RandomStringUtils.randomAlphabetic(5);
-        final String testGroup = "TestGroup_"+RandomStringUtils.randomAlphabetic(6);
+        testGroup = "TestGroup_"+RandomStringUtils.randomAlphabetic(6);
         testTopic = "TestJsonTopic_"+RandomStringUtils.randomAlphabetic(5);
         jsonTopic = mock(TopicConfig.class);
         when(jsonTopic.getName()).thenReturn(testTopic);
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
         when(jsonTopic.getWorkers()).thenReturn(1);
-        when(jsonTopic.getSessionTimeOut()).thenReturn(15000);
+        when(jsonTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
         when(jsonTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(jsonTopic.getAutoCommit()).thenReturn(false);
         when(jsonTopic.getSerdeFormat()).thenReturn(MessageFormat.JSON);
@@ -337,6 +338,7 @@ public class KafkaSourceJsonTypeIT {
             Thread.sleep(1000);
         }
         kafkaSource.start(buffer);
+        assertThat(kafkaSource.getConsumer().groupMetadata().groupId(), equalTo(testGroup));
         produceJsonRecords(bootstrapServers, topicName, numRecords);
         int numRetries = 0;
         while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {

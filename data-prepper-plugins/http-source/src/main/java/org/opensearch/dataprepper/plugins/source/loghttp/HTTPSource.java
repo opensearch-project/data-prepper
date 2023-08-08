@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import com.linecorp.armeria.server.encoding.DecodingService;
+import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
@@ -48,6 +49,7 @@ public class HTTPSource implements Source<Record<Log>> {
     private final HTTPSourceConfig sourceConfig;
     private final CertificateProviderFactory certificateProviderFactory;
     private final ArmeriaHttpAuthenticationProvider authenticationProvider;
+    private final HttpRequestExceptionHandler httpRequestExceptionHandler;
     private final String pipelineName;
     private Server server;
     private final PluginMetrics pluginMetrics;
@@ -77,6 +79,7 @@ public class HTTPSource implements Source<Record<Log>> {
         }
         authenticationPluginSetting.setPipelineName(pipelineName);
         authenticationProvider = pluginFactory.loadPlugin(ArmeriaHttpAuthenticationProvider.class, authenticationPluginSetting);
+        httpRequestExceptionHandler = new HttpRequestExceptionHandler(pluginMetrics);
     }
 
     @Override
@@ -130,9 +133,9 @@ public class HTTPSource implements Source<Record<Log>> {
             final LogHTTPService logHTTPService = new LogHTTPService(sourceConfig.getBufferTimeoutInMillis(), buffer, pluginMetrics);
 
             if (CompressionOption.NONE.equals(sourceConfig.getCompression())) {
-                sb.annotatedService(httpSourcePath, logHTTPService);
+                sb.annotatedService(httpSourcePath, logHTTPService, httpRequestExceptionHandler);
             } else {
-                sb.annotatedService(httpSourcePath, logHTTPService, DecodingService.newDecorator());
+                sb.annotatedService(httpSourcePath, logHTTPService, DecodingService.newDecorator(), httpRequestExceptionHandler);
             }
 
             if (sourceConfig.hasHealthCheckService()) {

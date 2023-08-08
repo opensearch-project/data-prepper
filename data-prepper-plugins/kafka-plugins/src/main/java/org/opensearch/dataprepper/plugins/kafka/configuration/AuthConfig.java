@@ -6,8 +6,8 @@
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 
 import java.util.stream.Stream;
 
@@ -27,6 +27,9 @@ public class AuthConfig {
         @JsonProperty("aws_msk_iam")
         private AwsIamAuthConfig awsIamAuthConfig;
 
+        @JsonProperty("ssl_endpoint_identification_algorithm")
+        private String sslEndpointAlgorithm;
+
         public AwsIamAuthConfig getAwsIamAuthConfig() {
             return awsIamAuthConfig;
         }
@@ -39,14 +42,19 @@ public class AuthConfig {
             return oAuthConfig;
         }
 
+        public String getSslEndpointAlgorithm() {
+            return sslEndpointAlgorithm;
+        }
+
         @AssertTrue(message = "Only one of AwsIam or oAuth or PlainText auth config must be specified")
         public boolean hasOnlyOneConfig() {
-            return Stream.of(awsIamAuthConfig, plainTextAuthConfig, oAuthConfig).filter(n -> n!=null).count() == 1;
+            return Stream.of(awsIamAuthConfig, plainTextAuthConfig, oAuthConfig).filter(n -> n != null).count() == 1;
         }
 
     }
 
-    public static  class SslAuthConfig {
+
+    public static class SslAuthConfig {
         // TODO Add Support for SSL authentication types like
         // one-way or two-way authentication
 

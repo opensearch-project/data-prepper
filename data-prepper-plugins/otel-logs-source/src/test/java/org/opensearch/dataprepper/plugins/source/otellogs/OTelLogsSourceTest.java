@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
 import com.linecorp.armeria.common.HttpHeaderNames;
+import com.linecorp.armeria.common.grpc.GrpcStatusFunction;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
 import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
@@ -474,6 +475,7 @@ class OTelLogsSourceTest {
             grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.exceptionMapping(any(GrpcStatusFunction.class))).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
             final Path certFilePath = Path.of("data/certificate/test_cert.crt");
@@ -515,6 +517,7 @@ class OTelLogsSourceTest {
             grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.exceptionMapping(any(GrpcStatusFunction.class))).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
             final Path certFilePath = Path.of("data/certificate/test_cert.crt");

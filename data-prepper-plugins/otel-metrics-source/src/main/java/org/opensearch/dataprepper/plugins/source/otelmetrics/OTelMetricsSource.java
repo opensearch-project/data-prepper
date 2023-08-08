@@ -19,6 +19,7 @@ import io.grpc.protobuf.services.ProtoReflectionService;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -59,6 +60,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
+    private final GrpcRequestExceptionHandler requestExceptionHandler;
     private Server server;
 
     @DataPrepperPluginConstructor
@@ -76,6 +78,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+        this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics);
     }
 
     @Override
@@ -87,7 +90,7 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
         if (server == null) {
 
             final OTelMetricsGrpcService oTelMetricsGrpcService = new OTelMetricsGrpcService(
-                    oTelMetricsSourceConfig.getRequestTimeoutInMillis(),
+                    (int) (oTelMetricsSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     buffer,
                     pluginMetrics
             );
@@ -97,7 +100,8 @@ public class OTelMetricsSource implements Source<Record<ExportMetricsServiceRequ
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
                     .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true);
+                    .useBlockingTaskExecutor(true)
+                    .exceptionMapping(requestExceptionHandler);
 
             final MethodDescriptor<ExportMetricsServiceRequest, ExportMetricsServiceResponse> methodDescriptor = MetricsServiceGrpc.getExportMethod();
             final String oTelMetricsSourcePath = oTelMetricsSourceConfig.getPath();

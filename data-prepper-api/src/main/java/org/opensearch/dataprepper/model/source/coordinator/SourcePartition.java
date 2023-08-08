@@ -18,12 +18,14 @@ public class SourcePartition<T> {
 
     private final String partitionKey;
     private final T partitionState;
+    private final Long partitionClosedCount;
 
     private SourcePartition(final Builder<T> builder) {
         Objects.requireNonNull(builder.partitionKey);
 
         this.partitionKey = builder.partitionKey;
         this.partitionState = builder.partitionState;
+        this.partitionClosedCount = builder.partitionClosedCount;
     }
 
     public String getPartitionKey() {
@@ -34,6 +36,10 @@ public class SourcePartition<T> {
         return Optional.ofNullable(partitionState);
     }
 
+    public Long getPartitionClosedCount() {
+        return partitionClosedCount;
+    }
+
     public static <T> Builder<T> builder(Class<T> clazz) {
         return new Builder<>(clazz);
     }
@@ -42,6 +48,7 @@ public class SourcePartition<T> {
 
         private String partitionKey;
         private T partitionState;
+        private Long partitionClosedCount;
 
         public Builder(Class<T> clazz) {
 
@@ -54,6 +61,11 @@ public class SourcePartition<T> {
 
         public Builder<T> withPartitionState(final T partitionState) {
             this.partitionState = partitionState;
+            return this;
+        }
+
+        public Builder<T> withPartitionClosedCount(final Long partitionClosedCount) {
+            this.partitionClosedCount = partitionClosedCount;
             return this;
         }
 

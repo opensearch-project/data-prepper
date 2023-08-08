@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import com.linecorp.armeria.common.HttpHeaderNames;
+import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -146,13 +147,13 @@ class HTTPSourceTest {
                         .add(LogHTTPService.SUCCESS_REQUESTS).toString());
         requestTimeoutsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(RequestExceptionHandler.REQUEST_TIMEOUTS).toString());
+                        .add(HttpRequestExceptionHandler.REQUEST_TIMEOUTS).toString());
         badRequestsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(RequestExceptionHandler.BAD_REQUESTS).toString());
+                        .add(HttpRequestExceptionHandler.BAD_REQUESTS).toString());
         requestsTooLargeMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(RequestExceptionHandler.REQUESTS_TOO_LARGE).toString());
+                        .add(HttpRequestExceptionHandler.REQUESTS_TOO_LARGE).toString());
         rejectedRequestsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
                         .add(LogThrottlingRejectHandler.REQUESTS_REJECTED).toString());

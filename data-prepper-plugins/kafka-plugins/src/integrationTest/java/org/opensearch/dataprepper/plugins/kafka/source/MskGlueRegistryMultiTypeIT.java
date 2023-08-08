@@ -169,7 +169,7 @@ public class MskGlueRegistryMultiTypeIT {
         when(avroTopic.getAutoCommit()).thenReturn(false);
         when(avroTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(avroTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
-        when(avroTopic.getSessionTimeOut()).thenReturn(15000);
+        when(avroTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(5));
         when(avroTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(jsonTopic.getName()).thenReturn(testTopic);
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
@@ -177,7 +177,6 @@ public class MskGlueRegistryMultiTypeIT {
         when(jsonTopic.getAutoCommit()).thenReturn(false);
         when(jsonTopic.getAutoOffsetReset()).thenReturn("earliest");
         when(jsonTopic.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
-        when(jsonTopic.getSessionTimeOut()).thenReturn(15000);
         when(jsonTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         bootstrapServers = System.getProperty("tests.kafka.bootstrap_servers");
         testRegistryName = System.getProperty("tests.kafka.glue_registry_name");

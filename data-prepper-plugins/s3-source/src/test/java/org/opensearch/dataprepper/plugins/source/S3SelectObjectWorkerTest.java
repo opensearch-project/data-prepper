@@ -178,7 +178,7 @@ class S3SelectObjectWorkerTest {
         given(selectObjectResponseFuture.join()).willReturn(mock(Void.class));
         given(s3AsyncClient.selectObjectContent(any(SelectObjectContentRequest.class), eq(selectResponseHandler))).willReturn(selectObjectResponseFuture);
 
-        assertThrows(IOException.class, () -> createObjectUnderTest().parseS3Object(s3ObjectReference, null));
+        assertThrows(IOException.class, () -> createObjectUnderTest().parseS3Object(s3ObjectReference, null, null, null));
 
         assertHeadObjectRequestIsCorrect();
 
@@ -198,7 +198,7 @@ class S3SelectObjectWorkerTest {
         given(selectObjectResponseFuture.join()).willReturn(mock(Void.class));
         given(s3AsyncClient.selectObjectContent(any(SelectObjectContentRequest.class), eq(selectResponseHandler))).willReturn(selectObjectResponseFuture);
 
-        createObjectUnderTest().parseS3Object(s3ObjectReference, null);
+        createObjectUnderTest().parseS3Object(s3ObjectReference, null, null, null);
 
         assertHeadObjectRequestIsCorrect();
 
@@ -232,7 +232,7 @@ class S3SelectObjectWorkerTest {
         given(s3AsyncClient.selectObjectContent(any(SelectObjectContentRequest.class), eq(selectResponseHandler))).willReturn(selectObjectResponseFuture);
         doAnswer(invocation -> null).when(eventConsumer).accept(any(Event.class), eq(s3ObjectReference));
 
-        createObjectUnderTest().parseS3Object(s3ObjectReference, null);
+        createObjectUnderTest().parseS3Object(s3ObjectReference, null, null, null);
 
         if (isBatchingExpected) {
             assertHeadObjectRequestIsCorrect();
@@ -270,7 +270,7 @@ class S3SelectObjectWorkerTest {
         doAnswer(invocation -> null).when(eventConsumer).accept(any(Event.class), eq(s3ObjectReference));
 
         numEventsAdded = 0;
-        createObjectUnderTest().parseS3Object(s3ObjectReference, acknowledgementSet);
+        createObjectUnderTest().parseS3Object(s3ObjectReference, acknowledgementSet, null, null);
         assertThat(numEventsAdded, equalTo(1));
 
         if (isBatchingExpected) {
@@ -305,7 +305,7 @@ class S3SelectObjectWorkerTest {
 
         doThrow(TimeoutException.class).doNothing().when(buffer).writeAll(any(Collection.class), anyInt());
 
-        createObjectUnderTest().parseS3Object(s3ObjectReference, null);
+        createObjectUnderTest().parseS3Object(s3ObjectReference, null, null, null);
 
         assertHeadObjectRequestIsCorrect();
 
@@ -325,7 +325,7 @@ class S3SelectObjectWorkerTest {
         given(selectJsonOption.getType()).willReturn(jsonType);
         mockNonBatchedS3SelectCall(compressionType);
 
-        createObjectUnderTest().parseS3Object(s3ObjectReference, null);
+        createObjectUnderTest().parseS3Object(s3ObjectReference, null, null, null);
 
         verifyNonBatchedS3SelectCall();
     }
@@ -345,7 +345,7 @@ class S3SelectObjectWorkerTest {
         given(selectCSVOption.getQuiteEscape()).willReturn(quoteEscape);
         mockNonBatchedS3SelectCall(compressionType);
 
-        createObjectUnderTest().parseS3Object(s3ObjectReference, null);
+        createObjectUnderTest().parseS3Object(s3ObjectReference, null, null, null);
 
         verifyNonBatchedS3SelectCall();
     }
