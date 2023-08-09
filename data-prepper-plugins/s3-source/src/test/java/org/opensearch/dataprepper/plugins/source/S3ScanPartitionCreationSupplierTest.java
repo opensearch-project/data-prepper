@@ -78,8 +78,8 @@ public class S3ScanPartitionCreationSupplierTest {
         given(firstBucketScanOptions.getUseStartDateTime()).willReturn(LocalDateTime.ofInstant(startTime, ZoneId.systemDefault()));
         given(firstBucketScanOptions.getUseEndDateTime()).willReturn(LocalDateTime.ofInstant(endTime, ZoneId.systemDefault()));
         final S3ScanKeyPathOption firstBucketScanKeyPath = mock(S3ScanKeyPathOption.class);
-        given(firstBucketScanBucketOption.getkeyPrefix()).willReturn(firstBucketScanKeyPath);
-        given(firstBucketScanKeyPath.getS3scanIncludeOptions()).willReturn(List.of(UUID.randomUUID().toString()));
+        given(firstBucketScanBucketOption.getS3ScanFilter()).willReturn(firstBucketScanKeyPath);
+        given(firstBucketScanKeyPath.getS3scanIncludePrefixOptions()).willReturn(List.of(UUID.randomUUID().toString()));
         given(firstBucketScanKeyPath.getS3ScanExcludeSuffixOptions()).willReturn(List.of(".invalid"));
         scanOptionsList.add(firstBucketScanOptions);
 
@@ -90,8 +90,8 @@ public class S3ScanPartitionCreationSupplierTest {
         given(secondBucketScanOptions.getUseStartDateTime()).willReturn(LocalDateTime.ofInstant(startTime, ZoneId.systemDefault()));
         given(secondBucketScanOptions.getUseEndDateTime()).willReturn(LocalDateTime.ofInstant(endTime, ZoneId.systemDefault()));
         final S3ScanKeyPathOption secondBucketScanKeyPath = mock(S3ScanKeyPathOption.class);
-        given(secondBucketScanBucketOption.getkeyPrefix()).willReturn(secondBucketScanKeyPath);
-        given(secondBucketScanKeyPath.getS3scanIncludeOptions()).willReturn(null);
+        given(secondBucketScanBucketOption.getS3ScanFilter()).willReturn(secondBucketScanKeyPath);
+        given(secondBucketScanKeyPath.getS3scanIncludePrefixOptions()).willReturn(null);
         given(secondBucketScanKeyPath.getS3ScanExcludeSuffixOptions()).willReturn(null);
         scanOptionsList.add(secondBucketScanOptions);
 

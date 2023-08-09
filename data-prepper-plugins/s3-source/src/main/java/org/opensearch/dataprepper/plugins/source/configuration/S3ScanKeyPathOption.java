@@ -12,13 +12,13 @@ import java.util.List;
  * Class consists the scan include and exclude keys properties.
  */
 public class S3ScanKeyPathOption {
-    @JsonProperty("include")
-    private List<String> s3scanIncludeOptions;
+    @JsonProperty("include_prefix")
+    private List<String> s3scanIncludePrefixOptions;
     @JsonProperty("exclude_suffix")
     private List<String> s3ScanExcludeSuffixOptions;
 
-    public List<String> getS3scanIncludeOptions() {
-        return s3scanIncludeOptions;
+    public List<String> getS3scanIncludePrefixOptions() {
+        return s3scanIncludePrefixOptions;
     }
 
     public List<String> getS3ScanExcludeSuffixOptions() {

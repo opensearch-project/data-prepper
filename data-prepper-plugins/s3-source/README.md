@@ -72,13 +72,13 @@ source-pipeline:
         region: "us-east-1"
         sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
       scan:
-        start_time: 2023-01-21T18:00:00
-        end_time: 2023-04-21T18:00:00
+        start_time: now
+        end_time: 2023-12-31T11:59:59
         buckets:
           - bucket:
               name: my-bucket-1
-              key_prefix:
-                include:
+              filter:
+                include_prefix:
                   - bucket2/
                 exclude_suffix:
                   - .jpeg
@@ -117,7 +117,7 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `disable_bucket_ownership_validation` (Optional) : Boolean - If set to true, then the S3 Source will not attempt to validate that the bucket is owned by the expected account. The only expected account is the same account which owns the SQS queue. Defaults to `false`.
 
-* `delete_on_read` (Optional) : Boolean - If set to true, then the S3 Source will attempt to delete S3 objects after all the events from the S3 object are successfully acknowledged by all sinks. `acknowledgments` should be enabled for deleting S3 objects. Defaults to `false`.
+* `delete_s3_objects_on_read` (Optional) : Boolean - If set to true, then the S3 Scan will attempt to delete S3 objects after all the events from the S3 object are successfully acknowledged by all sinks. `acknowledgments` should be enabled for deleting S3 objects. Defaults to `false`.
 
 ### <a name="s3_select_configuration">S3 Select Configuration</a>
 
@@ -150,15 +150,15 @@ All Duration values are a string that represents a duration. They support ISO_86
 * `poll_delay` (Optional) : Duration - A delay to place between reading and processing a batch of SQS messages and making a subsequent request. Defaults to 0 seconds.
 
 ### <a name="s3_scan_configuration">S3 Scan Configuration</a>
-* `start_time` (Optional) : Provide the start time to scan objects from all the buckets. This parameter defines a time range together with either end_time or range. Example: `2023-01-23T10:00:00`.
-* `end_time` (Optional) : Provide the end time to scan objects from all the buckets. This parameter defines a time range together with either start_time or range. Example: `2023-01-23T10:00:00`.
-* `range` (Optional) : Provide the duration to scan objects from all the buckets. This parameter defines a time range together with either start_time or end_time.
+* `start_time` (Optional) : Provide the start time to scan objects from all the buckets. This should follow [ISO LocalDateTime](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_LOCAL_DATE_TIME) format, or it can be configured to `now` keyword which represents current LocalDateTime. This parameter defines a time range together with either end_time or range. Examples: `2023-01-23T10:00:00`, `now`.
+* `end_time` (Optional) : Provide the end time to scan objects from all the buckets. This should follow [ISO LocalDateTime](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_LOCAL_DATE_TIME) format, or it can be configured to `now` keyword which represents current LocalDateTime. This parameter defines a time range together with either start_time or range. Examples: `2023-01-23T10:00:00`, `now`.
+* `range` (Optional) : Provide the duration to scan objects from all the buckets. This parameter defines a time range together with either `start_time` or `end_time`.
 * `scheduling` (Optional): See [Scheduling Configuration](#scheduling_configuration) for details
 * `bucket`: Provide S3 bucket information
   * `name` (Required if bucket block is used): Provide S3 bucket name.
-  * `key_prefix` (Optional) : Provide include and exclude the list items.
-    * `include` (Optional) : Provide the list of include key path prefix.
-    * `exclude_suffix` (Optional) : Provide the list of suffix to exclude items.
+  * `filter` (Optional) : Provide include and exclude list items to filter objects in bucket.
+    * `include_prefix` (Optional) : Provide the list of include key path prefix. For example `dlq/`
+    * `exclude_suffix` (Optional) : Provide the list of suffix to exclude items. For example `.csv`.
     * `start_time` (Optional) : Provide the start time to scan objects from the current bucket. This parameter defines a time range together with either end_time or range. Example: `2023-01-23T10:00:00`.
     * `end_time` (Optional) : Provide the end time to scan objects from the current bucket. This parameter defines a time range together with either start_time or range. Example: `2023-01-23T10:00:00`.
     * `range` (Optional) : Provide the duration to scan objects from the current bucket. This parameter defines a time range together with either start_time or end_time.
@@ -167,14 +167,13 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 ### <a name="scheduling_configuration">Scheduling Configuration</a>
 
-Schedule frequency and amount of times an object should be processed when using S3 Scan. For example,
-a `rate` of `PT1H` and a `job_count` of 3 would result in each object getting processed 3 times, starting after source is ready
-and then every hour after the first time the object is processed.
-
-* `rate` (Optional) : A String that indicates the rate to process an S3 object based on the `job_count`.
+Schedule interval and amount of times a S3 bucket should be scanned when using S3 Scan. For example,
+a `interval` of `PT1H` and a `count` of `3` would result in each bucket being scanned 3 times with 1 hour interval in between each scan, starting after source is ready
+and then every hour after the first scan. 
+* `interval` (Optional) : A String that indicates the minimum interval between each scan. If objects from fist scan are not proceed within configured interval, scan will be done whenever there are no pending objects to process from previous scan.
   Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms").
-  Defaults to 8 hours, and is only applicable when `job_count` is greater than 1.
-* `job_count` (Optional) : An Integer that specifies how many times each S3 object should be processed. Defaults to 1.
+  Defaults to 8 hours, and is only applicable when `count` is greater than 1.
+* `count` (Optional) : An Integer that specifies how many times bucket will be scanned. Defaults to 1.
 
 
 ### <a name="aws_configuration">AWS Configuration</a>
