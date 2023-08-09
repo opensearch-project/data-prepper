@@ -19,7 +19,7 @@ dependencies {
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:acm'
     implementation 'software.amazon.awssdk:auth'
-    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation libs.commons.lang3
     implementation project(':data-prepper-plugins:failures-common')
     implementation group: 'org.apache.httpcomponents.client5', name: 'httpclient5', version: '5.2'
     testImplementation project(':data-prepper-test-common')

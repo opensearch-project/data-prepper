@@ -15,7 +15,7 @@ dependencies {
     implementation project(':data-prepper-plugins:otel-proto-common')
     implementation project(':data-prepper-plugins:otel-metrics-raw-processor')
     implementation libs.guava.core
-    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation libs.commons.lang3
     implementation libs.opentelemetry.proto
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
