@@ -48,6 +48,8 @@ dependencies {
     implementation 'org.apache.kafka:connect-json:3.4.0'
     implementation 'com.github.fge:json-schema-validator:2.2.14'
     implementation 'commons-collections:commons-collections:3.2.2'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:apache-client'
 
 
 }

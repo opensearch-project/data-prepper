@@ -9,10 +9,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
+
 /**
  * * A helper class that helps to read consumer configuration values from
  * pipelines.yaml
@@ -23,6 +23,7 @@ public class TopicConfig {
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
     static final int DEFAULT_MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
     static final String DEFAULT_AUTO_OFFSET_RESET = "latest";
+
     static final Duration DEFAULT_THREAD_WAITING_TIME = Duration.ofSeconds(5);
     static final Duration DEFAULT_MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(5);
@@ -37,6 +38,11 @@ public class TopicConfig {
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
+
+
+    private static final Integer NUM_OF_PARTITIONS = 3;
+    private static final Short REPLICATION_FACTOR = 1;
+
 
     @JsonProperty("name")
     @NotNull
@@ -64,7 +70,7 @@ public class TopicConfig {
     private Duration maxRetryDelay = DEFAULT_MAX_RETRY_DELAY;
 
     @JsonProperty("serde_format")
-    private MessageFormat serdeFormat= MessageFormat.PLAINTEXT;
+    private MessageFormat serdeFormat = MessageFormat.PLAINTEXT;
 
     @JsonProperty("auto_commit")
     private Boolean autoCommit = DEFAULT_AUTO_COMMIT;
@@ -134,7 +140,16 @@ public class TopicConfig {
     @JsonProperty("heart_beat_interval")
     @Valid
     @Size(min = 1)
-    private Duration heartBeatInterval= DEFAULT_HEART_BEAT_INTERVAL_DURATION;
+    private Duration heartBeatInterval = DEFAULT_HEART_BEAT_INTERVAL_DURATION;
+
+    @JsonProperty("is_create")
+    private Boolean isCreate=Boolean.FALSE;
+
+    @JsonProperty("number_of_partitions")
+    private Integer numberOfPartions = NUM_OF_PARTITIONS;
+
+    @JsonProperty("replication_factor")
+    private Short replicationFactor = REPLICATION_FACTOR;
 
     public String getGroupId() {
         return groupId;
@@ -288,8 +303,21 @@ public class TopicConfig {
         this.name = name;
     }
 
+
     public KafkaKeyMode getKafkaKeyMode() {
         return kafkaKeyMode;
+    }
+
+    public Boolean isCreate() {
+        return isCreate;
+    }
+
+    public Integer getNumberOfPartions() {
+        return numberOfPartions;
+    }
+
+    public Short getReplicationFactor() {
+        return replicationFactor;
     }
 
 }
