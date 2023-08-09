@@ -1,0 +1,57 @@
+{
+  "resourceLogs": [{
+    "resource": {
+      "attributes": [{
+        "key": "service.name",
+        "value": {
+          "stringValue": "service"
+        }
+      }]
+    },
+    "scopeLogs": [{
+      "logRecords": [{
+        "timeUnixNano": "1590328800000000000",
+        "severityNumber": "SEVERITY_NUMBER_DEBUG",
+        "body": {
+          "kvlistValue": {
+            "values": [{
+              "key": "key1",
+              "value": {
+                "stringValue": "value1"
+              }
+            }, {
+              "key": "key2",
+              "value": {
+                "stringValue": "value2"
+              }
+            }, {
+              "key": "key3",
+              "value": {
+                "kvlistValue": {
+                  "values": [{
+                    "key": "nestedKey1",
+                    "value": {
+                      "stringValue": "nestedValue1"
+                    }
+                  }]
+                }
+              }
+            }]
+          }
+        },
+        "attributes": [{
+          "key": "statement.params",
+          "value": {
+            "stringValue": "us-east-1"
+          }
+        }],
+        "droppedAttributesCount": 3,
+        "flags": 1,
+        "traceId": "uhocI7QJO2M=",
+        "spanId": "LMg6yQ68Rpw=",
+        "observedTimeUnixNano": "1590328802000000000"
+      }]
+    }],
+    "schemaUrl": "schemaurl"
+  }]
+}

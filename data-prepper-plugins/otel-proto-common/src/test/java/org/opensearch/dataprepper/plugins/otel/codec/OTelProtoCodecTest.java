@@ -89,6 +89,7 @@ public class OTelProtoCodecTest {
 
     private static final String TEST_REQUEST_LOGS_IS_JSON_FILE = "test-request-log-is.json";
 
+    private static final String TEST_REQUEST_COMPLEX_LOGS_JSON_FILE = "test-request-complex-log.json";
 
     private static final Long TIME = TimeUnit.MILLISECONDS.toNanos(ZonedDateTime.of(
             LocalDateTime.of(2020, 5, 24, 14, 1, 0),
@@ -425,6 +426,15 @@ public class OTelProtoCodecTest {
 
             assertThat(logs.size() , is(equalTo(1)));
             validateLog(logs.get(0));
+        }
+
+        @Test
+        public void testParseExportComplexLogsServiceRequest_ScopedLogs() throws IOException {
+            final ExportLogsServiceRequest exportLogsServiceRequest = buildExportLogsServiceRequestFromJsonFile(TEST_REQUEST_COMPLEX_LOGS_JSON_FILE);
+            List<OpenTelemetryLog> logs = decoderUnderTest.parseExportLogsServiceRequest(exportLogsServiceRequest);
+
+            assertThat(logs.size() , is(equalTo(1)));
+            assertThat(logs.get(0).getBody(), is("{\"key1\":\"value1\",\"key2\":\"value2\",\"key3\":{\"nestedKey1\":\"nestedValue1\"}}"));
         }
 
         @Test
