@@ -19,8 +19,6 @@ public class CsvOutputCodecConfig {
     @JsonProperty("header")
     private List<String> header;
 
-    @JsonProperty("exclude_keys")
-    private List<String> excludeKeys;
     @Valid
     @Size(max = 0, message = "Header from file is not supported.")
     @JsonProperty("header_file_location")
@@ -43,10 +41,6 @@ public class CsvOutputCodecConfig {
         return headerFileLocation;
     }
 
-    public List<String> getExcludeKeys() {
-        return excludeKeys;
-    }
-
     public String getDelimiter() {
         return delimiter;
     }
@@ -54,9 +48,11 @@ public class CsvOutputCodecConfig {
     public List<String> getHeader() {
         return header;
     }
+
     public void setHeader(List<String> header) {
         this.header = header;
     }
+
     public String getRegion() {
         return region;
     }
@@ -68,7 +64,5 @@ public class CsvOutputCodecConfig {
     public String getFile_key() {
         return file_key;
     }
-    public void setExcludeKeys(List<String> excludeKeys) {
-        this.excludeKeys = excludeKeys;
-    }
+
 }

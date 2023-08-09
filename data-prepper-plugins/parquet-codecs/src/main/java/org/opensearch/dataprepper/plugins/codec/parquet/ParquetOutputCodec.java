@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 import org.opensearch.dataprepper.plugins.fs.LocalOutputFile;
 import org.opensearch.dataprepper.plugins.s3keyindex.S3ObjectIndexUtility;
@@ -31,7 +32,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
 
 @DataPrepperPlugin(name = "parquet", pluginType = OutputCodec.class, pluginConfigurationType = ParquetOutputCodecConfig.class)
 public class ParquetOutputCodec implements OutputCodec {
-    private static final Logger LOG =  LoggerFactory.getLogger(ParquetOutputCodec.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ParquetOutputCodec.class);
 
     private final ParquetOutputCodecConfig config;
     private static final String BASE_SCHEMA_STRING = "{\"type\":\"record\",\"name\":\"ParquetRecords\",\"fields\":[";
@@ -49,6 +49,7 @@ public class ParquetOutputCodec implements OutputCodec {
     private ParquetWriter<GenericRecord> writer;
     private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
     private S3Client s3Client;
+    private OutputCodecContext codecContext;
     private static final String PARQUET = "parquet";
 
     private static final String TIME_PATTERN_REGULAR_EXPRESSION = "\\%\\{.*?\\}";
@@ -68,15 +69,20 @@ public class ParquetOutputCodec implements OutputCodec {
     }
 
     @Override
-    public synchronized void start(final OutputStream outputStream, final Event event, final String tagsTargetKey) throws IOException {
+    public synchronized void start(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {
+        Objects.requireNonNull(outputStream);
+        Objects.requireNonNull(codecContext);
+        this.codecContext = codecContext;
         this.s3Client = buildS3Client();
-        buildSchemaAndKey(event, tagsTargetKey);
+        buildSchemaAndKey(event, codecContext.getTagsTargetKey());
         final S3OutputFile s3OutputFile = new S3OutputFile(s3Client, bucket, key);
         buildWriter(s3OutputFile);
     }
 
-    public synchronized void start(File file) throws IOException {
-        LocalOutputFile localOutputFile =new LocalOutputFile(file);
+    public synchronized void start(File file, final OutputCodecContext codecContext) throws IOException {
+        Objects.requireNonNull(codecContext);
+        this.codecContext = codecContext;
+        LocalOutputFile localOutputFile = new LocalOutputFile(file);
         buildSchemaAndKey(null, null);
         buildWriter(localOutputFile);
     }
@@ -84,57 +90,52 @@ public class ParquetOutputCodec implements OutputCodec {
     void buildSchemaAndKey(final Event event, final String tagsTargetKey) throws IOException {
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
-        } else if(config.getFileLocation()!=null){
+        } else if (config.getFileLocation() != null) {
             schema = ParquetSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
-        }else if(config.getSchemaRegistryUrl()!=null){
+        } else if (config.getSchemaRegistryUrl() != null) {
             schema = parseSchema(ParquetSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
-        }else if(checkS3SchemaValidity()){
+        } else if (checkS3SchemaValidity()) {
             schema = ParquetSchemaParserFromS3.parseSchema(config);
-        }
-        else{
+        } else {
             schema = buildInlineSchemaFromEvent(event, tagsTargetKey);
         }
         key = generateKey();
     }
+
     public Schema buildInlineSchemaFromEvent(final Event event, final String tagsTargetKey) throws IOException {
-        if(tagsTargetKey!=null){
+        if (tagsTargetKey != null) {
             return parseSchema(buildSchemaStringFromEventMap(addTagsToEvent(event, tagsTargetKey).toMap(), false));
-        }else{
+        } else {
             return parseSchema(buildSchemaStringFromEventMap(event.toMap(), false));
         }
     }
 
     private String buildSchemaStringFromEventMap(final Map<String, Object> eventData, boolean nestedRecordFlag) {
         final StringBuilder builder = new StringBuilder();
-        int nestedRecordIndex=1;
-        if(nestedRecordFlag==false){
+        int nestedRecordIndex = 1;
+        if (!nestedRecordFlag) {
             builder.append(BASE_SCHEMA_STRING);
-        }else{
-            builder.append("{\"type\":\"record\",\"name\":\""+"NestedRecord"+nestedRecordIndex+"\",\"fields\":[");
+        } else {
+            builder.append("{\"type\":\"record\",\"name\":\"" + "NestedRecord" + nestedRecordIndex + "\",\"fields\":[");
             nestedRecordIndex++;
         }
         String fields;
         int index = 0;
-        for(final String key: eventData.keySet()){
-            if(config.getExcludeKeys()==null){
-                config.setExcludeKeys(new ArrayList<>());
-            }
-            if(config.getExcludeKeys().contains(key)){
+        for (final String key : eventData.keySet()) {
+            if (codecContext.getExcludeKeys().contains(key)) {
                 continue;
             }
-            if(index == 0){
-                if(!(eventData.get(key) instanceof Map)){
-                    fields = "{\"name\":\""+key+"\",\"type\":\""+typeMapper(eventData.get(key))+"\"}";
+            if (index == 0) {
+                if (!(eventData.get(key) instanceof Map)) {
+                    fields = "{\"name\":\"" + key + "\",\"type\":\"" + typeMapper(eventData.get(key)) + "\"}";
+                } else {
+                    fields = "{\"name\":\"" + key + "\",\"type\":" + typeMapper(eventData.get(key)) + "}";
                 }
-                else{
-                    fields = "{\"name\":\""+key+"\",\"type\":"+typeMapper(eventData.get(key))+"}";
-                }
-            }
-            else{
-                if(!(eventData.get(key) instanceof Map)){
-                    fields = ","+"{\"name\":\""+key+"\",\"type\":\""+typeMapper(eventData.get(key))+"\"}";
-                }else{
-                    fields = ","+"{\"name\":\""+key+"\",\"type\":"+typeMapper(eventData.get(key))+"}";
+            } else {
+                if (!(eventData.get(key) instanceof Map)) {
+                    fields = "," + "{\"name\":\"" + key + "\",\"type\":\"" + typeMapper(eventData.get(key)) + "\"}";
+                } else {
+                    fields = "," + "{\"name\":\"" + key + "\",\"type\":" + typeMapper(eventData.get(key)) + "}";
                 }
             }
             builder.append(fields);
@@ -145,20 +146,19 @@ public class ParquetOutputCodec implements OutputCodec {
     }
 
     private String typeMapper(final Object value) {
-        if(value instanceof Integer || value.getClass().equals(int.class)){
+        if (value instanceof Integer || value.getClass().equals(int.class)) {
             return "int";
-        }else if(value instanceof Float || value.getClass().equals(float.class)){
+        } else if (value instanceof Float || value.getClass().equals(float.class)) {
             return "float";
-        }else if(value instanceof Double || value.getClass().equals(double.class)){
+        } else if (value instanceof Double || value.getClass().equals(double.class)) {
             return "double";
-        }else if(value instanceof Long || value.getClass().equals(long.class)){
+        } else if (value instanceof Long || value.getClass().equals(long.class)) {
             return "long";
-        }else if(value instanceof Byte[]){
+        } else if (value instanceof Byte[]) {
             return "bytes";
-        }else if(value instanceof Map){
+        } else if (value instanceof Map) {
             return buildSchemaStringFromEventMap((Map<String, Object>) value, true);
-        }
-        else{
+        } else {
             return "string";
         }
     }
@@ -170,16 +170,16 @@ public class ParquetOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream,final String tagsTargetKey) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         final GenericData.Record parquetRecord = new GenericData.Record(schema);
         final Event modifiedEvent;
-        if (tagsTargetKey != null) {
-            modifiedEvent = addTagsToEvent(event, tagsTargetKey);
+        if (codecContext.getTagsTargetKey() != null) {
+            modifiedEvent = addTagsToEvent(event, codecContext.getTagsTargetKey());
         } else {
             modifiedEvent = event;
         }
         for (final String key : modifiedEvent.toMap().keySet()) {
-            if (config.getExcludeKeys().contains(key)) {
+            if (codecContext.getExcludeKeys().contains(key)) {
                 continue;
             }
             final Schema.Field field = schema.getField(key);
@@ -202,6 +202,7 @@ public class ParquetOutputCodec implements OutputCodec {
                 .build();
         s3Client.deleteObject(deleteRequest);
     }
+
     public void closeWriter(final OutputStream outputStream, File file) throws IOException {
         final LocalInputFile inputFile = new LocalInputFile(file);
         byte[] byteBuffer = inputFile.newStream().readAllBytes();
@@ -257,11 +258,12 @@ public class ParquetOutputCodec implements OutputCodec {
     private String buildObjectFileName(final String configNamePattern) {
         return S3ObjectIndexUtility.getObjectNameWithDateTimeId(configNamePattern) + "." + getExtension();
     }
-    private static Object schemaMapper(final Schema.Field field , final Object rawValue){
+
+    private static Object schemaMapper(final Schema.Field field, final Object rawValue) {
         Object finalValue = null;
-        final String fieldType = field.schema().getType().name().toString().toLowerCase();
-        if (field.schema().getLogicalType() == null && primitiveTypes.contains(fieldType)){
-            switch (fieldType){
+        final String fieldType = field.schema().getType().name().toLowerCase();
+        if (field.schema().getLogicalType() == null && primitiveTypes.contains(fieldType)) {
+            switch (fieldType) {
                 case "string":
                     finalValue = rawValue.toString();
                     break;
@@ -284,9 +286,9 @@ public class ParquetOutputCodec implements OutputCodec {
                     LOG.error("Unrecognised Field name : '{}' & type : '{}'", field.name(), fieldType);
                     break;
             }
-        }else{
+        } else {
             final String logicalTypeName = field.schema().getLogicalType().getName();
-            switch (logicalTypeName){
+            switch (logicalTypeName) {
                 case "date":
                     finalValue = Integer.parseInt(rawValue.toString());
                     break;
@@ -307,8 +309,9 @@ public class ParquetOutputCodec implements OutputCodec {
                     break;
             }
         }
-        return  finalValue;
+        return finalValue;
     }
+
     boolean checkS3SchemaValidity() throws IOException {
         if (config.getSchemaBucket() != null && config.getFileKey() != null && config.getSchemaRegion() != null) {
             return true;

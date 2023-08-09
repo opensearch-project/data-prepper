@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -27,6 +28,7 @@ public class JsonOutputCodec implements OutputCodec {
     private static final JsonFactory factory = new JsonFactory();
     JsonOutputCodecConfig config;
     private JsonGenerator generator;
+    private OutputCodecContext codecContext;
 
     @DataPrepperPluginConstructor
     public JsonOutputCodec(final JsonOutputCodecConfig config) {
@@ -35,8 +37,10 @@ public class JsonOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream, Event event, String tagsTargetKey) throws IOException {
+    public void start(final OutputStream outputStream, Event event, final OutputCodecContext codecContext) throws IOException {
         Objects.requireNonNull(outputStream);
+        Objects.requireNonNull(codecContext);
+        this.codecContext = codecContext;
         generator = factory.createGenerator(outputStream, JsonEncoding.UTF8);
         generator.writeStartArray();
     }
@@ -50,18 +54,18 @@ public class JsonOutputCodec implements OutputCodec {
     }
 
     @Override
-    public synchronized void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
+    public synchronized void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
         final Event modifiedEvent;
-        if (tagsTargetKey != null) {
-            modifiedEvent = addTagsToEvent(event, tagsTargetKey);
+        if (codecContext.getTagsTargetKey() != null) {
+            modifiedEvent = addTagsToEvent(event, codecContext.getTagsTargetKey());
         } else {
             modifiedEvent = event;
         }
         generator.writeStartObject();
-        final boolean isExcludeKeyAvailable = !Objects.isNull(config.getExcludeKeys());
+        final boolean isExcludeKeyAvailable = !codecContext.getExcludeKeys().isEmpty();
         for (final String key : modifiedEvent.toMap().keySet()) {
-            if (isExcludeKeyAvailable && config.getExcludeKeys().contains(key)) {
+            if (isExcludeKeyAvailable && codecContext.getExcludeKeys().contains(key)) {
                 continue;
             }
             generator.writeStringField(key, modifiedEvent.toMap().get(key).toString());

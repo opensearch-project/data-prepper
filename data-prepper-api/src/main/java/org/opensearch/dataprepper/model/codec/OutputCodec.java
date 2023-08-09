@@ -10,6 +10,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
 
 import java.io.IOException;
@@ -26,10 +27,10 @@ public interface OutputCodec {
      *
      * @param outputStream  outputStream param for wrapping
      * @param event         Event to auto-generate schema
-     * @param tagsTargetKey to add tags to the record to create schema
+     * @param context       Extra Context used in Codec.
      * @throws IOException throws IOException when invalid input is received or not able to create wrapping
      */
-    void start(OutputStream outputStream, Event event, String tagsTargetKey) throws IOException;
+    void start(OutputStream outputStream, Event event, OutputCodecContext context) throws IOException;
 
     /**
      * this method get called from {@link Sink} to write event in {@link OutputStream}
@@ -37,10 +38,9 @@ public interface OutputCodec {
      *
      * @param event         event Record event
      * @param outputStream  outputStream param to hold the event data
-     * @param tagsTargetKey to add tags to the record
      * @throws IOException throws IOException when not able to write data to {@link OutputStream}
      */
-    void writeEvent(Event event, OutputStream outputStream, String tagsTargetKey) throws IOException;
+    void writeEvent(Event event, OutputStream outputStream) throws IOException;
 
     /**
      * this method get called from {@link Sink} to do final wrapping in {@link OutputStream}
