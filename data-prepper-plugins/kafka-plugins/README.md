@@ -1,86 +1,45 @@
 # Kafka source
 
-This is the Data Prepper Kafka source plugin that reads records from Kafka topic. It uses the consumer API provided by Kafka to read messages from the kafka broker.
+This source allows Data Prepper to use Kafka as source. This source reads records from one or more Kafka topics. It uses the consumer API provided by Kafka to read messages from the kafka broker.
 
-
-## Usages
-
-The Kafka source should be configured as part of Data Prepper pipeline yaml file.
-
-## Configuration Options
+## Basic Usage
+The following pipeline configuration will read plain string messages from two configured Kafka topics `Topic1` and `Topic2`
 
 ```
-log-pipeline:
+kafka-pipeline:
   source:
     kafka:
       bootstrap_servers:
         - 127.0.0.1:9093
       topics:
-        - name: my-topic-1
-          workers: 10
-          autocommit: false
-          autocommit_interval: 5s
-          session_timeout: 45s
-          max_retry_delay: 1s
-          auto_offset_reset: earliest
-          thread_waiting_time: 1s
-          max_record_fetch_time: 4s
-          heart_beat_interval: 3s
-          buffer_default_timeout: 5s
-          fetch_max_bytes: 52428800
-          fetch_max_wait: 500
-          fetch_min_bytes: 1
-          retry_backoff: 100s
-          max_poll_interval: 300000s
-          consumer_max_poll_records: 500
-        - name: my-topic-2
-          workers: 10
-      schema:
-        registry_url: http://localhost:8081/
-        version: 1
-      authentication:
-        sasl_plaintext:
-          username: admin
-          password: admin-secret
-        sasl_oauth:
-          oauth_client_id: 0oa9wc21447Pc5vsV5d8
-          oauth_client_secret: aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPb
-          oauth_login_server: https://dev-1365.okta.com
-          oauth_login_endpoint: /oauth2/default/v1/token
-          oauth_login_grant_type: refresh_token
-          oauth_login_scope: kafka
-          oauth_introspect_server: https://dev-1365.okta.com
-          oauth_introspect_endpoint: /oauth2/default/v1/introspect
-          oauth_sasl_mechanism: OAUTHBEARER
-          oauth_security_protocol: SASL_PLAINTEXT
-          oauth_sasl_login_callback_handler_class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
-          oauth_jwks_endpoint_url: https://dev-1365.okta.com/oauth2/default/v1/keys
-  sink:
-    - stdout:
-
+        - name: Topic1
+          group_id: groupID1
+        - name: Topic2
+          group_id: groupID1
 ```
 
-## Configuration
 
-- `bootstrap_servers` (Required) : It is a host/port to use for establishing the initial connection to the Kafka cluster. Multiple brokers can be configured.
+## Configuration 
 
-- `topics` (Required) : The topic in which kafka source plugin associated with to read the messages.The maximum number of topics should be 10.
+### Options
+
+- `bootstrap_servers` (Required when not using MSK) : It is a host/port to use for establishing the initial connection to the Kafka cluster. Multiple brokers can be configured. When using MSK as the Kafka cluster, bootstrap server information is obtained from the MSK using MSK ARN provided in the config.
+
+- `topics` (Required) : List of topics to read the messages from. The maximum number of topics should be 10.
 
 - `name` (Required) : This denotes the name of the topic, and it is a mandatory one. Multiple list can be configured and the maximum number of topic should be 10.
 
-- `workers` (Optional) : Number of multithreaded consumers associated with each topic. Defaults to `10` and its maximum value should be 200.
+- `workers` (Optional) : Number of multithreaded consumers associated with each topic. Defaults value `2`. Maximum value is 200.
 
-- `autocommit` (Optional) : If false, the consumer's offset will not be periodically committed in the background. Defaults to `false`.
+- `auto_commit` (Optional) : If false, the consumer's offset will not be periodically committed in the background. Default value `false`.
 
-- `autocommit_interval` (Optional) : The frequency in seconds that the consumer offsets are auto-committed to Kafka. Defaults to `1s`.
+- `commit_interval` (Optional) : The frequency in seconds that the consumer offsets are auto-committed to Kafka. Default value `5s`.
 
-- `session_timeout` (Optional) : The timeout used to detect client failures when using Kafka's group management. It is used for the rebalance.
+- `session_timeout` (Optional) : The timeout used to detect client failures when using Kafka's group management. It is used for the rebalance. Default value `45s`
 
-- `max_retry_delay` (Optional) : By default the Kafka source will retry for every 1 second when there is a buffer write error. Defaults to `1s`.
+- `auto_offset_reset` (Optional) : Sets Kafka's `auto.offset.reset` option. Default value `latest`.
 
-- `auto_offset_reset` (Optional) : automatically reset the offset to the earliest or latest offset. Defaults to `earliest`.
-
-- `thread_waiting_time` (Optional) : It is the time for thread to wait until other thread completes the task and signal it.
+- `thread_waiting_time` (Optional) : It is the time for thread to wait until other thread completes the task and signal it. Kafka consumer poll timeout value is set to half of `thread_waiting_time`. Default value `5s`
 
 - `max_record_fetch_time` (Optional) : maximum time to fetch the record from the topic.
 Defaults to `4s`.
@@ -185,3 +144,54 @@ This plugin is compatible with Java 11. See
 
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
+
+```
+log-pipeline:
+  source:
+    kafka:
+      bootstrap_servers:
+        - 127.0.0.1:9093
+      topics:
+        - name: my-topic-1
+          workers: 10
+          autocommit: false
+          autocommit_interval: 5s
+          session_timeout: 45s
+          max_retry_delay: 1s
+          auto_offset_reset: earliest
+          thread_waiting_time: 1s
+          max_record_fetch_time: 4s
+          heart_beat_interval: 3s
+          buffer_default_timeout: 5s
+          fetch_max_bytes: 52428800
+          fetch_max_wait: 500
+          fetch_min_bytes: 1
+          retry_backoff: 100s
+          max_poll_interval: 300000s
+          consumer_max_poll_records: 500
+        - name: my-topic-2
+          workers: 10
+      schema:
+        registry_url: http://localhost:8081/
+        version: 1
+      authentication:
+        sasl_plaintext:
+          username: admin
+          password: admin-secret
+        sasl_oauth:
+          oauth_client_id: 0oa9wc21447Pc5vsV5d8
+          oauth_client_secret: aGmOfHqIEvBJGDxXAOOcatiE9PvsPgoEePx8IPPb
+          oauth_login_server: https://dev-1365.okta.com
+          oauth_login_endpoint: /oauth2/default/v1/token
+          oauth_login_grant_type: refresh_token
+          oauth_login_scope: kafka
+          oauth_introspect_server: https://dev-1365.okta.com
+          oauth_introspect_endpoint: /oauth2/default/v1/introspect
+          oauth_sasl_mechanism: OAUTHBEARER
+          oauth_security_protocol: SASL_PLAINTEXT
+          oauth_sasl_login_callback_handler_class: org.apache.kafka.common.security.oauthbearer.secured.OAuthBearerLoginCallbackHandler
+          oauth_jwks_endpoint_url: https://dev-1365.okta.com/oauth2/default/v1/keys
+  sink:
+    - stdout:
+
+```
