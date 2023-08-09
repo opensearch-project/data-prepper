@@ -23,7 +23,6 @@ public class KafkaTopicMetrics {
     static final String NUMBER_OF_DESERIALIZATION_ERRORS = "numberOfDeserializationErrors";
     static final String NUMBER_OF_BUFFER_SIZE_OVERFLOWS = "numberOfBufferSizeOverflows";
     static final String NUMBER_OF_POLL_AUTH_ERRORS = "numberOfPollAuthErrors";
-    static final String NUMBER_OF_NON_CONSUMERS = "numberOfNonConsumers";
     static final String NUMBER_OF_RECORDS_COMMITTED = "numberOfRecordsCommitted";
     static final String NUMBER_OF_RECORDS_CONSUMED = "numberOfRecordsConsumed";
     static final String NUMBER_OF_BYTES_CONSUMED = "numberOfBytesConsumed";
@@ -42,7 +41,6 @@ public class KafkaTopicMetrics {
     private final Counter numberOfRecordsCommitted;
     private final Counter numberOfRecordsConsumed;
     private final Counter numberOfBytesConsumed;
-    private final Counter numberOfNonConsumers;
 
     public KafkaTopicMetrics(final String topicName, final PluginMetrics pluginMetrics) {
         this.pluginMetrics = pluginMetrics;
@@ -57,7 +55,6 @@ public class KafkaTopicMetrics {
         this.numberOfDeserializationErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_DESERIALIZATION_ERRORS));
         this.numberOfBufferSizeOverflows = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BUFFER_SIZE_OVERFLOWS));
         this.numberOfPollAuthErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_POLL_AUTH_ERRORS));
-        this.numberOfNonConsumers = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_NON_CONSUMERS));
         this.numberOfPositiveAcknowledgements = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_POSITIVE_ACKNOWLEDGEMENTS));
         this.numberOfNegativeAcknowledgements = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_NEGATIVE_ACKNOWLEDGEMENTS));
     }
@@ -74,6 +71,7 @@ public class KafkaTopicMetrics {
         metricsNameMap.put("join-rate", "joinRate");
         metricsNameMap.put("incoming-byte-rate", "incomingByteRate");
         metricsNameMap.put("outgoing-byte-rate", "outgoingByteRate");
+        metricsNameMap.put("assigned-partitions", "numberOfNonConsumers");
         metricsNameMap.forEach((metricName, camelCaseName) -> {
             if (!metricName.contains("-total")) {
                 pluginMetrics.gauge(getTopicMetricName(camelCaseName), metricValues, metricValues -> {
@@ -117,10 +115,6 @@ public class KafkaTopicMetrics {
 
     public Counter getNumberOfRecordsCommitted() {
         return numberOfRecordsCommitted;
-    }
-
-    public Counter getNumberOfNonConsumers() {
-        return numberOfNonConsumers;
     }
 
     public Counter getNumberOfPollAuthErrors() {
@@ -188,8 +182,12 @@ public class KafkaTopicMetrics {
                         double prevValue = consumerMetrics.get(metricName);
                         numberOfBytesConsumed.increment(newValue - prevValue);
                     }
-
-                    consumerMetrics.put(metricName, newValue);
+                    // Keep the count of number of consumers without any assigned partitions. This value can go up or down. So, it is made as Guage metric
+                    if (metricName.equals("assigned-partitions")) {
+                        consumerMetrics.put(metricName, ((Double)value.metricValue() == 0.0) ? 1.0 : 0.0);
+                    } else {
+                        consumerMetrics.put(metricName, newValue);
+                    }
                 }
             }
         }
