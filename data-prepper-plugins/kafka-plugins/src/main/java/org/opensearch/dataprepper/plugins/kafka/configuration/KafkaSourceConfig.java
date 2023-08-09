@@ -37,7 +37,6 @@ public class KafkaSourceConfig {
     }
 
     public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
-    public static final Duration DEFAULT_METRICS_UPDATE_INTERVAL = Duration.ofSeconds(60);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
