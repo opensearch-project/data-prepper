@@ -7,7 +7,6 @@ package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 import com.arpnetworking.metrics.prometheus.Remote;
 import com.arpnetworking.metrics.prometheus.Types;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.micrometer.core.instrument.Counter;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
@@ -27,8 +26,6 @@ import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.record.Record;
 
-import org.opensearch.dataprepper.plugins.accumulator.Buffer;
-import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.prometheus.certificate.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.sink.prometheus.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.prometheus.HttpEndPointResponse;
@@ -75,15 +72,9 @@ public class PrometheusSinkService {
 
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusSinkService.class);
 
-    public static final String HTTP_SINK_RECORDS_SUCCESS_COUNTER = "httpSinkRecordsSuccessPushToEndPoint";
-
-    public static final String HTTP_SINK_RECORDS_FAILED_COUNTER = "httpSinkRecordsFailedToPushEndPoint";
-
     private final Collection<EventHandle> bufferedEventHandles;
 
     private final PrometheusSinkConfiguration prometheusSinkConfiguration;
-
-    private final BufferFactory bufferFactory;
 
     private final Map<String,HttpAuthOptions> httpAuthOptions;
 
@@ -93,17 +84,11 @@ public class PrometheusSinkService {
 
     private final HttpClientBuilder httpClientBuilder;
 
-    private final Counter httpSinkRecordsSuccessCounter;
-
-    private final Counter httpSinkRecordsFailedCounter;
-
     private final OAuthAccessTokenManager oAuthAccessTokenManager;
 
     private CertificateProviderFactory certificateProviderFactory;
 
     private HttpClientConnectionManager httpClientConnectionManager;
-
-    private Buffer currentBuffer;
 
     private final PluginSetting httpPluginSetting;
 
@@ -115,13 +100,11 @@ public class PrometheusSinkService {
     private static final Pattern BODY_PATTERN = Pattern.compile("[^a-zA-Z0-9_:]");
 
     public PrometheusSinkService(final PrometheusSinkConfiguration prometheusSinkConfiguration,
-                                 final BufferFactory bufferFactory,
                                  final DlqPushHandler dlqPushHandler,
                                  final HttpClientBuilder httpClientBuilder,
                                  final PluginMetrics pluginMetrics,
                                  final PluginSetting httpPluginSetting){
         this.prometheusSinkConfiguration = prometheusSinkConfiguration;
-        this.bufferFactory = bufferFactory;
         this.dlqPushHandler = dlqPushHandler;
         this.reentrantLock = new ReentrantLock();
         this.bufferedEventHandles = new LinkedList<>();
@@ -135,8 +118,6 @@ public class PrometheusSinkService {
                     .createHttpClientConnectionManager(prometheusSinkConfiguration, certificateProviderFactory);
         }
         this.httpAuthOptions = buildAuthHttpSinkObjectsByConfig(prometheusSinkConfiguration);
-        this.httpSinkRecordsSuccessCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_SUCCESS_COUNTER);
-        this.httpSinkRecordsFailedCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_FAILED_COUNTER);
     }
 
     /**
@@ -145,9 +126,6 @@ public class PrometheusSinkService {
      */
     public void output(Collection<Record<Event>> records) {
         reentrantLock.lock();
-        if (currentBuffer == null) {
-            this.currentBuffer = bufferFactory.getBuffer();
-        }
         try {
             records.forEach(record -> {
                 final Event event = record.getData();
@@ -296,15 +274,15 @@ public class PrometheusSinkService {
 
     /**
      * * This method pushes bufferData to configured HttpEndPoints
-     *  @param currentBufferData bufferData.
+     *  @param data byte[] data.
      */
-    private HttpEndPointResponse pushToEndPoint(final byte[] currentBufferData) throws IOException {
+    private HttpEndPointResponse pushToEndPoint(final byte[] data) throws IOException {
         HttpEndPointResponse httpEndPointResponses = null;
         final ClassicRequestBuilder classicHttpRequestBuilder =
                 httpAuthOptions.get(prometheusSinkConfiguration.getUrl()).getClassicHttpRequestBuilder();
 
-        final byte[] compressedBufferData = Snappy.compress(currentBufferData);
-
+        final byte[] compressedBufferData = Snappy.compress(data);
+         LOG.info("******* compressedBufferData ***** "+ compressedBufferData);
         HttpEntity entity = new ByteArrayEntity(compressedBufferData,
                 ContentType.create(prometheusSinkConfiguration.getContentType()), prometheusSinkConfiguration.getEncoding());
 
@@ -319,11 +297,9 @@ public class PrometheusSinkService {
 
             httpAuthOptions.get(prometheusSinkConfiguration.getUrl()).getHttpClientBuilder().build()
                     .execute(classicHttpRequestBuilder.build(), HttpClientContext.create());
-            LOG.info("No of Records successfully pushed to endpoint {}", prometheusSinkConfiguration.getUrl() +" " + currentBuffer.getEventCount());
-            httpSinkRecordsSuccessCounter.increment(currentBuffer.getEventCount());
+            LOG.info("Records successfully pushed to endpoint {}", prometheusSinkConfiguration.getUrl());
         } catch (IOException e) {
-            httpSinkRecordsFailedCounter.increment(currentBuffer.getEventCount());
-            LOG.info("No of Records failed to push endpoint {}",currentBuffer.getEventCount());
+            LOG.info("Records failed to push endpoint {}");
             LOG.error("Exception while pushing buffer data to end point. URL : {}, Exception : ", prometheusSinkConfiguration.getUrl(), e);
             httpEndPointResponses = new HttpEndPointResponse(prometheusSinkConfiguration.getUrl(), HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }

@@ -8,10 +8,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class AuthenticationOptions {
 
-    @JsonProperty("http_basic")
+    @JsonProperty("http-basic")
     private BasicAuthCredentials httpBasic;
 
-    @JsonProperty("bearer_token")
+    @JsonProperty("bearer-token")
     private BearerTokenOptions bearerTokenOptions;
 
     public BasicAuthCredentials getHttpBasic() {

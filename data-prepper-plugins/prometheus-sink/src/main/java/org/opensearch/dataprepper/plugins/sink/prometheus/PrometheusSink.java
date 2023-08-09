@@ -20,10 +20,6 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.Sink;
-import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
-import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
-import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.accumulator.LocalFileBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.prometheus.dlq.DlqPushHandler;
 import org.opensearch.dataprepper.plugins.sink.prometheus.service.PrometheusSinkAwsService;
@@ -45,8 +41,6 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
 
     private final PrometheusSinkService prometheusSinkService;
 
-    private final BufferFactory bufferFactory;
-
     private DlqPushHandler dlqPushHandler;
 
     @DataPrepperPluginConstructor
@@ -57,12 +51,6 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
                     final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         this.sinkInitialized = Boolean.FALSE;
-        if (prometheusSinkConfiguration.getBufferType().equals(BufferTypeOptions.LOCALFILE)) {
-            this.bufferFactory = new LocalFileBufferFactory();
-        } else {
-            this.bufferFactory = new InMemoryBufferFactory();
-        }
-
         this.dlqPushHandler = new DlqPushHandler(prometheusSinkConfiguration.getDlqFile(), pluginFactory,
                 String.valueOf(prometheusSinkConfiguration.getDlqPluginSetting().get(BUCKET)),
                 prometheusSinkConfiguration.getDlqStsRoleARN()
@@ -80,7 +68,6 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
         }
         this.prometheusSinkService = new PrometheusSinkService(
                 prometheusSinkConfiguration,
-                bufferFactory,
                 dlqPushHandler,
                 httpClientBuilder,
                 pluginMetrics,

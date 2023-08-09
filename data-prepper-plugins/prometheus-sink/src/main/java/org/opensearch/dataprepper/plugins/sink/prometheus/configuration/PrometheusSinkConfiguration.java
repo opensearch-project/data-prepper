@@ -9,7 +9,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.apache.commons.lang3.StringUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.prometheus.util.PrometheusSinkUtil;
 
 import java.net.URL;
@@ -79,9 +78,6 @@ public class PrometheusSinkConfiguration {
 
     @JsonProperty("aws_sigv4")
     private boolean awsSigv4;
-
-    @JsonProperty("buffer_type")
-    private BufferTypeOptions bufferType = BufferTypeOptions.INMEMORY;
 
     @JsonProperty("max_retries")
     private int maxUploadRetries = DEFAULT_UPLOAD_RETRIES;
@@ -217,11 +213,6 @@ public class PrometheusSinkConfiguration {
     public boolean isAwsSigv4() {
         return awsSigv4;
     }
-
-    public BufferTypeOptions getBufferType() {
-        return bufferType;
-    }
-
 
     public int getMaxUploadRetries() {
         return maxUploadRetries;
