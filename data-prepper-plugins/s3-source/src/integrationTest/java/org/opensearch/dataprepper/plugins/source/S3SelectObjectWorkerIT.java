@@ -193,7 +193,7 @@ class S3SelectObjectWorkerIT {
 
     private void parseObject(final String key, final S3SelectObjectWorker objectUnderTest) throws IOException {
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        objectUnderTest.parseS3Object(s3ObjectReference,null);
+        objectUnderTest.parseS3Object(s3ObjectReference,null, null, null);
     }
 
     static class IntegrationTestArguments implements ArgumentsProvider {

@@ -5,8 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.otelmetrics;
 
+import com.linecorp.armeria.server.ServiceRequestContext;
 import io.grpc.Context;
-import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -14,18 +14,17 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceRequest;
 import io.opentelemetry.proto.collector.metrics.v1.ExportMetricsServiceResponse;
 import io.opentelemetry.proto.collector.metrics.v1.MetricsServiceGrpc;
+import org.opensearch.dataprepper.exceptions.BufferWriteException;
+import org.opensearch.dataprepper.exceptions.RequestCancelledException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.TimeoutException;
-
 public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImplBase {
     private static final Logger LOG = LoggerFactory.getLogger(OTelMetricsGrpcService.class);
 
-    public static final String REQUEST_TIMEOUTS = "requestTimeouts";
     public static final String REQUESTS_RECEIVED = "requestsReceived";
     public static final String SUCCESS_REQUESTS = "successRequests";
     public static final String PAYLOAD_SIZE = "payloadSize";
@@ -34,7 +33,6 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
     private final int bufferWriteTimeoutInMillis;
     private final Buffer<Record<ExportMetricsServiceRequest>> buffer;
 
-    private final Counter requestTimeoutCounter;
     private final Counter requestsReceivedCounter;
     private final Counter successRequestsCounter;
     private final DistributionSummary payloadSizeSummary;
@@ -47,7 +45,6 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
         this.bufferWriteTimeoutInMillis = bufferWriteTimeoutInMillis;
         this.buffer = buffer;
 
-        requestTimeoutCounter = pluginMetrics.counter(REQUEST_TIMEOUTS);
         requestsReceivedCounter = pluginMetrics.counter(REQUESTS_RECEIVED);
         successRequestsCounter = pluginMetrics.counter(SUCCESS_REQUESTS);
         payloadSizeSummary = pluginMetrics.summary(PAYLOAD_SIZE);
@@ -57,30 +54,40 @@ public class OTelMetricsGrpcService extends MetricsServiceGrpc.MetricsServiceImp
 
     @Override
     public void export(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
+        requestsReceivedCounter.increment();
+        payloadSizeSummary.record(request.getSerializedSize());
+
+        if (ServiceRequestContext.current().isTimedOut()) {
+            return;
+        }
+
+        if (Context.current().isCancelled()) {
+            throw new RequestCancelledException("Cancelled by client");
+        }
+
         requestProcessDuration.record(() -> processRequest(request, responseObserver));
     }
 
     private void processRequest(final ExportMetricsServiceRequest request, final StreamObserver<ExportMetricsServiceResponse> responseObserver) {
-        requestsReceivedCounter.increment();
-        payloadSizeSummary.record(request.getSerializedSize());
+        try {
+            buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
+        } catch (Exception e) {
+            if (ServiceRequestContext.current().isTimedOut()) {
+                LOG.warn("Exception writing to buffer but request already timed out.", e);
+                return;
+            }
 
-        if (Context.current().isCancelled()) {
-            requestTimeoutCounter.increment();
-            responseObserver.onError(Status.CANCELLED.withDescription("Cancelled by client").asRuntimeException());
+            LOG.error("Failed to write the request of size {} due to:", request.toString().length(), e);
+            throw new BufferWriteException(e.getMessage(), e);
+        }
+
+        if (ServiceRequestContext.current().isTimedOut()) {
+            LOG.warn("Buffer write completed successfully but request already timed out.");
             return;
         }
 
-        try {
-            buffer.write(new Record<>(request), bufferWriteTimeoutInMillis);
-            successRequestsCounter.increment();
-            responseObserver.onNext(ExportMetricsServiceResponse.newBuilder().build());
-            responseObserver.onCompleted();
-        } catch (TimeoutException e) {
-            LOG.error("Buffer is full, unable to write");
-            requestTimeoutCounter.increment();
-            responseObserver
-                    .onError(Status.RESOURCE_EXHAUSTED.withDescription("Buffer is full, request timed out.")
-                            .asException());
-        }
+        successRequestsCounter.increment();
+        responseObserver.onNext(ExportMetricsServiceResponse.newBuilder().build());
+        responseObserver.onCompleted();
     }
 }

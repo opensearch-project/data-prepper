@@ -20,6 +20,7 @@ import io.grpc.protobuf.services.ProtoReflectionService;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceRequest;
 import io.opentelemetry.proto.collector.trace.v1.ExportTraceServiceResponse;
 import io.opentelemetry.proto.collector.trace.v1.TraceServiceGrpc;
+import org.opensearch.dataprepper.GrpcRequestExceptionHandler;
 import org.opensearch.dataprepper.armeria.authentication.GrpcAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -59,6 +60,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
     private final PluginMetrics pluginMetrics;
     private final GrpcAuthenticationProvider authenticationProvider;
     private final CertificateProviderFactory certificateProviderFactory;
+    private final GrpcRequestExceptionHandler requestExceptionHandler;
     private final String pipelineName;
     private Server server;
 
@@ -77,6 +79,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         this.certificateProviderFactory = certificateProviderFactory;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.authenticationProvider = createAuthenticationProvider(pluginFactory);
+        this.requestExceptionHandler = new GrpcRequestExceptionHandler(pluginMetrics);
     }
 
     @Override
@@ -88,7 +91,7 @@ public class OTelTraceSource implements Source<Record<Object>> {
         if (server == null) {
 
             final OTelTraceGrpcService oTelTraceGrpcService = new OTelTraceGrpcService(
-                    oTelTraceSourceConfig.getRequestTimeoutInMillis(),
+                    (int)(oTelTraceSourceConfig.getRequestTimeoutInMillis() * 0.8),
                     new OTelProtoCodec.OTelProtoDecoder(),
                     buffer,
                     pluginMetrics
@@ -99,7 +102,8 @@ public class OTelTraceSource implements Source<Record<Object>> {
             final GrpcServiceBuilder grpcServiceBuilder = GrpcService
                     .builder()
                     .useClientTimeoutHeader(false)
-                    .useBlockingTaskExecutor(true);
+                    .useBlockingTaskExecutor(true)
+                    .exceptionMapping(requestExceptionHandler);
 
             final MethodDescriptor<ExportTraceServiceRequest, ExportTraceServiceResponse> methodDescriptor = TraceServiceGrpc.getExportMethod();
             final String oTelTraceSourcePath = oTelTraceSourceConfig.getPath();

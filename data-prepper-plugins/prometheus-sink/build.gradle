@@ -1,0 +1,24 @@
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(path: ':data-prepper-plugins:common')
+    implementation 'com.arpnetworking.metrics:prometheus-remote-protocol:1.0.1'
+    implementation project(':data-prepper-plugins:aws-plugin-api')
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.apache.commons:commons-compress:1.21'
+    implementation project(':data-prepper-plugins:common')
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    implementation 'software.amazon.awssdk:auth'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation project(':data-prepper-plugins:failures-common')
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2'
+    testImplementation project(':data-prepper-test-common')
+}
+
+test {
+    useJUnitPlatform()
+}
