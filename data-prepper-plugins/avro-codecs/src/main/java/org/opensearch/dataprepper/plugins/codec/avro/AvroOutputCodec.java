@@ -15,13 +15,13 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +46,8 @@ public class AvroOutputCodec implements OutputCodec {
 
     private Schema schema;
 
+    private OutputCodecContext codecContext;
+
     @DataPrepperPluginConstructor
     public AvroOutputCodec(final AvroOutputCodecConfig config) {
         Objects.requireNonNull(config);
@@ -53,8 +55,10 @@ public class AvroOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream, final Event event, final String tagsTargetKey) throws IOException {
+    public void start(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {
         Objects.requireNonNull(outputStream);
+        Objects.requireNonNull(codecContext);
+        this.codecContext = codecContext;
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
         } else if (config.getFileLocation() != null) {
@@ -63,53 +67,48 @@ public class AvroOutputCodec implements OutputCodec {
             schema = parseSchema(AvroSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
         } else if (checkS3SchemaValidity()) {
             schema = AvroSchemaParserFromS3.parseSchema(config);
-        }else {
-            schema = buildInlineSchemaFromEvent(event, tagsTargetKey);
+        } else {
+            schema = buildInlineSchemaFromEvent(event);
         }
         final DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<GenericRecord>(schema);
         dataFileWriter = new DataFileWriter<>(datumWriter);
         dataFileWriter.create(schema, outputStream);
     }
 
-    public Schema buildInlineSchemaFromEvent(final Event event, final String tagsTargetKey) throws IOException {
-        if(tagsTargetKey!=null){
-            return parseSchema(buildSchemaStringFromEventMap(addTagsToEvent(event, tagsTargetKey).toMap(), false));
-        }else{
+    public Schema buildInlineSchemaFromEvent(final Event event) throws IOException {
+        if (codecContext != null && codecContext.getTagsTargetKey() != null) {
+            return parseSchema(buildSchemaStringFromEventMap(addTagsToEvent(event, codecContext.getTagsTargetKey()).toMap(), false));
+        } else {
             return parseSchema(buildSchemaStringFromEventMap(event.toMap(), false));
         }
     }
 
     private String buildSchemaStringFromEventMap(final Map<String, Object> eventData, boolean nestedRecordFlag) {
         final StringBuilder builder = new StringBuilder();
-        int nestedRecordIndex=1;
-        if(nestedRecordFlag==false){
+        int nestedRecordIndex = 1;
+        if (!nestedRecordFlag) {
             builder.append(BASE_SCHEMA_STRING);
-        }else{
-            builder.append("{\"type\":\"record\",\"name\":\""+"NestedRecord"+nestedRecordIndex+"\",\"fields\":[");
+        } else {
+            builder.append("{\"type\":\"record\",\"name\":\"" + "NestedRecord" + nestedRecordIndex + "\",\"fields\":[");
             nestedRecordIndex++;
         }
         String fields;
         int index = 0;
-        for(final String key: eventData.keySet()){
-            if(config.getExcludeKeys()==null){
-                config.setExcludeKeys(new ArrayList<>());
-            }
-            if(config.getExcludeKeys().contains(key)){
+        for (final String key : eventData.keySet()) {
+            if (codecContext != null && codecContext.getExcludeKeys().contains(key)) {
                 continue;
             }
-            if(index == 0){
-                if(!(eventData.get(key) instanceof Map)){
-                    fields = "{\"name\":\""+key+"\",\"type\":\""+typeMapper(eventData.get(key))+"\"}";
+            if (index == 0) {
+                if (!(eventData.get(key) instanceof Map)) {
+                    fields = "{\"name\":\"" + key + "\",\"type\":\"" + typeMapper(eventData.get(key)) + "\"}";
+                } else {
+                    fields = "{\"name\":\"" + key + "\",\"type\":" + typeMapper(eventData.get(key)) + "}";
                 }
-                else{
-                    fields = "{\"name\":\""+key+"\",\"type\":"+typeMapper(eventData.get(key))+"}";
-                }
-            }
-            else{
-                if(!(eventData.get(key) instanceof Map)){
-                    fields = ","+"{\"name\":\""+key+"\",\"type\":\""+typeMapper(eventData.get(key))+"\"}";
-                }else{
-                    fields = ","+"{\"name\":\""+key+"\",\"type\":"+typeMapper(eventData.get(key))+"}";
+            } else {
+                if (!(eventData.get(key) instanceof Map)) {
+                    fields = "," + "{\"name\":\"" + key + "\",\"type\":\"" + typeMapper(eventData.get(key)) + "\"}";
+                } else {
+                    fields = "," + "{\"name\":\"" + key + "\",\"type\":" + typeMapper(eventData.get(key)) + "}";
                 }
             }
             builder.append(fields);
@@ -120,20 +119,19 @@ public class AvroOutputCodec implements OutputCodec {
     }
 
     private String typeMapper(final Object value) {
-        if(value instanceof Integer || value.getClass().equals(int.class)){
+        if (value instanceof Integer || value.getClass().equals(int.class)) {
             return "int";
-        }else if(value instanceof Float || value.getClass().equals(float.class)){
+        } else if (value instanceof Float || value.getClass().equals(float.class)) {
             return "float";
-        }else if(value instanceof Double || value.getClass().equals(double.class)){
+        } else if (value instanceof Double || value.getClass().equals(double.class)) {
             return "double";
-        }else if(value instanceof Long || value.getClass().equals(long.class)){
+        } else if (value instanceof Long || value.getClass().equals(long.class)) {
             return "long";
-        }else if(value instanceof Byte[]){
+        } else if (value instanceof Byte[]) {
             return "bytes";
-        }else if(value instanceof Map){
+        } else if (value instanceof Map) {
             return buildSchemaStringFromEventMap((Map<String, Object>) value, true);
-        }
-        else{
+        } else {
             return "string";
         }
     }
@@ -145,10 +143,10 @@ public class AvroOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream, final String tagsTargetKey) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
-        if (tagsTargetKey != null) {
-            final GenericRecord avroRecord = buildAvroRecord(schema, addTagsToEvent(event, tagsTargetKey).toMap());
+        if (codecContext.getTagsTargetKey() != null) {
+            final GenericRecord avroRecord = buildAvroRecord(schema, addTagsToEvent(event, codecContext.getTagsTargetKey()).toMap());
             dataFileWriter.append(avroRecord);
         } else {
             final GenericRecord avroRecord = buildAvroRecord(schema, event.toMap());
@@ -173,9 +171,9 @@ public class AvroOutputCodec implements OutputCodec {
 
     private GenericRecord buildAvroRecord(final Schema schema, final Map<String, Object> eventData) {
         final GenericRecord avroRecord = new GenericData.Record(schema);
-        final boolean isExcludeKeyAvailable = !Objects.isNull(config.getExcludeKeys());
+        final boolean isExcludeKeyAvailable = !codecContext.getExcludeKeys().isEmpty();
         for (final String key : eventData.keySet()) {
-            if (isExcludeKeyAvailable && config.getExcludeKeys().contains(key)) {
+            if (isExcludeKeyAvailable && codecContext.getExcludeKeys().contains(key)) {
                 continue;
             }
             final Schema.Field field = schema.getField(key);
@@ -228,10 +226,6 @@ public class AvroOutputCodec implements OutputCodec {
     }
 
     private boolean checkS3SchemaValidity() throws IOException {
-        if (config.getBucketName() != null && config.getFileKey() != null && config.getRegion() != null) {
-            return true;
-        } else {
-            return false;
-        }
+        return config.getBucketName() != null && config.getFileKey() != null && config.getRegion() != null;
     }
 }

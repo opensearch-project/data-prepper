@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -179,9 +180,10 @@ public class AvroCodecsIT {
         verify(eventConsumer, times(numberOfRecords)).accept(recordArgumentCaptor.capture());
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        avroOutputCodec.start(outputStream, null, null);
+        OutputCodecContext codecContext = new OutputCodecContext();
+        avroOutputCodec.start(outputStream, null, codecContext);
         for (Record<Event> record : actualRecords) {
-            avroOutputCodec.writeEvent(record.getData(), outputStream, null);
+            avroOutputCodec.writeEvent(record.getData(), outputStream);
         }
         avroOutputCodec.complete(outputStream);
         List<GenericRecord> actualOutputRecords = createAvroRecordsList(outputStream);

@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -49,9 +50,11 @@ public class JsonCodecsIT {
     private JsonInputCodec createJsonInputCodecObjectUnderTest() {
         return new JsonInputCodec();
     }
+
     private JsonOutputCodec createJsonOutputCodecObjectUnderTest() {
         return new JsonOutputCodec(new JsonOutputCodecConfig());
     }
+
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
     void parse_with_InputStream_calls_Consumer_with_Event(final int numberOfObjects) throws IOException {
@@ -65,7 +68,8 @@ public class JsonCodecsIT {
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         JsonOutputCodec jsonOutputCodec = createJsonOutputCodecObjectUnderTest();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        jsonOutputCodec.start(outputStream, null, null);
+        OutputCodecContext codecContext = new OutputCodecContext();
+        jsonOutputCodec.start(outputStream, null, codecContext);
 
         assertThat(actualRecords.size(), equalTo(numberOfObjects));
 
@@ -73,16 +77,16 @@ public class JsonCodecsIT {
         for (int i = 0; i < actualRecords.size(); i++) {
 
             final Record<Event> actualRecord = actualRecords.get(i);
-            jsonOutputCodec.writeEvent(actualRecord.getData(),outputStream, null);
+            jsonOutputCodec.writeEvent(actualRecord.getData(), outputStream);
         }
         jsonOutputCodec.complete(outputStream);
-        int index=0;
+        int index = 0;
         ObjectMapper mapper = new ObjectMapper();
         JsonNode jsonNode = mapper.readTree(outputStream.toByteArray());
         for (JsonNode element : jsonNode) {
             Set<String> keys = initialRecords.get(index).keySet();
-            Map<String , Object> actualMap = new HashMap<>();
-            for(String key: keys){
+            Map<String, Object> actualMap = new HashMap<>();
+            for (String key : keys) {
                 actualMap.put(key, element.get(key).asText());
             }
             assertThat(initialRecords.get(index), Matchers.equalTo(actualMap));
@@ -106,11 +110,11 @@ public class JsonCodecsIT {
 
         List<HashMap> recordList = new ArrayList<>();
 
-        for(int rows = 0; rows < numberOfRecords; rows++){
+        for (int rows = 0; rows < numberOfRecords; rows++) {
 
             HashMap<String, String> eventData = new HashMap<>();
 
-            eventData.put("name", "Person"+rows);
+            eventData.put("name", "Person" + rows);
             eventData.put("age", Integer.toString(rows));
             recordList.add((eventData));
 

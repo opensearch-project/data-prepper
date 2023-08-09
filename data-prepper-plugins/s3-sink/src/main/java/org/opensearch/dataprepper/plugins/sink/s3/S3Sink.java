@@ -16,8 +16,9 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
-import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.InMemoryBufferFactory;
@@ -27,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.util.Collection;
-import java.util.Objects;
 
 /**
  * Implementation class of s3-sink plugin. It is responsible for receive the collection of
@@ -46,7 +46,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
 
     /**
      * @param pluginSetting dp plugin settings.
-     * @param s3SinkConfig s3 sink configurations.
+     * @param s3SinkConfig  s3 sink configurations.
      * @param pluginFactory dp plugin factory.
      */
     @DataPrepperPluginConstructor
@@ -70,7 +70,7 @@ public class S3Sink extends AbstractSink<Record<Event>> {
             bufferFactory = new InMemoryBufferFactory();
         }
         final S3Client s3Client = ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
-        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null, pluginMetrics);
+        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, OutputCodecContext.fromSinkContext(sinkContext), s3Client, pluginMetrics);
     }
 
     @Override

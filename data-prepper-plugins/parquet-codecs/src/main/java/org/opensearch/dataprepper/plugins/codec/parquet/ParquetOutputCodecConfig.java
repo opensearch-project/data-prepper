@@ -9,13 +9,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class ParquetOutputCodecConfig {
 
     private static final String DEFAULT_OBJECT_NAME_PATTERN = "events-%{yyyy-MM-dd'T'hh-mm-ss}";
-    private static final List<String> DEFAULT_EXCLUDE_KEYS = new ArrayList<>();
 
     @JsonProperty("schema")
     private String schema;
@@ -54,17 +50,11 @@ public class ParquetOutputCodecConfig {
     @NotNull
     @Valid
     private String pathPrefix;
-    @JsonProperty("exclude_keys")
-    private List<String> excludeKeys = DEFAULT_EXCLUDE_KEYS;
 
     @Valid
     @Size(max = 0, message = "Schema from Schema Registry is not supported.")
     @JsonProperty("schema_registry_url")
     private String schemaRegistryUrl;
-
-    public List<String> getExcludeKeys() {
-        return excludeKeys;
-    }
 
     public String getFileLocation() {
         return fileLocation;
@@ -102,6 +92,7 @@ public class ParquetOutputCodecConfig {
     public String getNamePattern() {
         return DEFAULT_OBJECT_NAME_PATTERN;
     }
+
     public void setRegion(String region) {
         this.region = region;
     }
@@ -113,6 +104,7 @@ public class ParquetOutputCodecConfig {
     public void setPathPrefix(String pathPrefix) {
         this.pathPrefix = pathPrefix;
     }
+
     public String getSchemaBucket() {
         return schemaBucket;
     }
@@ -128,6 +120,7 @@ public class ParquetOutputCodecConfig {
     public void setFileKey(String fileKey) {
         this.fileKey = fileKey;
     }
+
     public void setSchemaBucket(String schemaBucket) {
         this.schemaBucket = schemaBucket;
     }
@@ -135,6 +128,7 @@ public class ParquetOutputCodecConfig {
     public void setSchemaRegion(String schemaRegion) {
         this.schemaRegion = schemaRegion;
     }
+
     public void setFileLocation(String fileLocation) {
         this.fileLocation = fileLocation;
     }
@@ -142,8 +136,6 @@ public class ParquetOutputCodecConfig {
     public void setSchemaRegistryUrl(String schemaRegistryUrl) {
         this.schemaRegistryUrl = schemaRegistryUrl;
     }
-    public void setExcludeKeys(List<String> excludeKeys) {
-        this.excludeKeys = excludeKeys;
-    }
+
 }
 
