@@ -110,6 +110,7 @@ public class OpenSearchSinkIT {
     private static final String DEFAULT_RAW_SPAN_FILE_1 = "raw-span-1.json";
     private static final String DEFAULT_RAW_SPAN_FILE_2 = "raw-span-2.json";
     private static final String DEFAULT_SERVICE_MAP_FILE = "service-map-1.json";
+    private static final String INCLUDE_TYPE_NAME_FALSE_URI = "?include_type_name=false";
     private static final String TRACE_INGESTION_TEST_DISABLED_REASON = "Trace ingestion is not supported for ES 6";
 
     private RestClient client;
@@ -430,7 +431,7 @@ public class OpenSearchSinkIT {
         final PluginSetting pluginSetting = generatePluginSetting(null, testIndexAlias, testTemplateFile);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         final String extraURI = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(
-                OpenSearchIntegrationHelper.getVersion()) >= 0 ? "?include_type_name=false" : "";
+                OpenSearchIntegrationHelper.getVersion()) >= 0 ? INCLUDE_TYPE_NAME_FALSE_URI : "";
         final Request request = new Request(HttpMethod.HEAD, testIndexAlias + extraURI);
         final Response response = client.performRequest(request);
         MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
@@ -452,7 +453,7 @@ public class OpenSearchSinkIT {
         final PluginSetting pluginSetting = generatePluginSettingByMetadata(metadata);
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
         final String extraURI = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(
-                OpenSearchIntegrationHelper.getVersion()) >= 0 ? "?include_type_name=false" : "";
+                OpenSearchIntegrationHelper.getVersion()) >= 0 ? INCLUDE_TYPE_NAME_FALSE_URI : "";
         Request request = new Request(HttpMethod.HEAD, indexAlias + extraURI);
         Response response = client.performRequest(request);
         MatcherAssert.assertThat(response.getStatusLine().getStatusCode(), equalTo(SC_OK));
@@ -510,7 +511,7 @@ public class OpenSearchSinkIT {
         OpenSearchSink sink = createObjectUnderTest(pluginSetting, true);
 
         final String extraURI = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(
-                OpenSearchIntegrationHelper.getVersion()) >= 0 ? "?include_type_name=false" : "";
+                OpenSearchIntegrationHelper.getVersion()) >= 0 ? INCLUDE_TYPE_NAME_FALSE_URI : "";
         Request getTemplateRequest = new Request(HttpMethod.GET,
                 "/" + templatePath + "/" + expectedIndexTemplateName + extraURI);
         Response getTemplateResponse = client.performRequest(getTemplateRequest);
@@ -1047,7 +1048,7 @@ public class OpenSearchSinkIT {
 
     private Map<String, Object> getIndexMappings(final String index) throws IOException {
         final String extraURI = DeclaredOpenSearchVersion.OPENDISTRO_0_10.compareTo(
-                OpenSearchIntegrationHelper.getVersion()) >= 0 ? "?include_type_name=false" : "";
+                OpenSearchIntegrationHelper.getVersion()) >= 0 ? INCLUDE_TYPE_NAME_FALSE_URI : "";
         final Request request = new Request(HttpMethod.GET, index + "/_mappings" + extraURI);
         final Response response = client.performRequest(request);
         final String responseBody = EntityUtils.toString(response.getEntity());
