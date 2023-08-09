@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,6 +34,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasKey;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -90,7 +93,6 @@ class SinkModelTest {
     }
 
 
-
     @Test
     void deserialize_with_any_pluginModel() throws IOException {
         final InputStream inputStream = this.getClass().getResourceAsStream("/serialized_with_plugin_settings.yaml");
@@ -144,11 +146,27 @@ class SinkModelTest {
     @Test
     void sinkModel_with_include_keys() throws IOException {
         final Map<String, Object> pluginSettings = new LinkedHashMap<>();
-        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, Arrays.asList("/"), Arrays.asList("bcd", "/abc", "efg/"), pluginSettings);
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, Arrays.asList("bcd", "/abc", "efg/"), null, pluginSettings);
+
+        assertThat(sinkModel.getExcludeKeys(), equalTo(new ArrayList<String>()));
+        assertThat(sinkModel.getIncludeKeys(), equalTo(Arrays.asList("/abc", "/bcd", "/efg")));
+
+    }
+
+    @Test
+    void sinkModel_with_exclude_keys() throws IOException {
+        final Map<String, Object> pluginSettings = new LinkedHashMap<>();
+        final SinkModel sinkModel = new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of("/"), Arrays.asList("bcd", "/abc", "efg/"), pluginSettings);
 
         assertThat(sinkModel.getIncludeKeys(), equalTo(new ArrayList<String>()));
         assertThat(sinkModel.getExcludeKeys(), equalTo(Arrays.asList("/abc", "/bcd", "/efg")));
 
+    }
+
+    @Test
+    void sinkModel_with_both_include_and_exclude_keys() throws IOException {
+        final Map<String, Object> pluginSettings = new LinkedHashMap<>();
+        assertThrows(InvalidPluginConfigurationException.class, () -> new SinkModel("customSinkPlugin", Arrays.asList("routeA", "routeB"), null, List.of("abc"), List.of("bcd"), pluginSettings));
     }
 
     @Nested
@@ -181,6 +199,7 @@ class SinkModelTest {
             assertThat(actualSinkModel.getExcludeKeys(), empty());
             assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
             assertThat(actualSinkModel.getTagsTargetKey(), nullValue());
+
         }
     }
 
