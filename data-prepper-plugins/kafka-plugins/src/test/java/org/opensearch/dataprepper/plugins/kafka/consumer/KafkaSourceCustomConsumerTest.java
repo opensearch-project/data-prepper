@@ -102,6 +102,10 @@ public class KafkaSourceCustomConsumerTest {
         topicMetrics = mock(KafkaTopicMetrics.class);
         counter = mock(Counter.class);
         topicConfig = mock(TopicConfig.class);
+        when(topicMetrics.getNumberOfPositiveAcknowledgements()).thenReturn(counter);
+        when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(counter);
+        when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(counter);
+        when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
@@ -245,6 +249,7 @@ public class KafkaSourceCustomConsumerTest {
             Thread.sleep(10000);
         } catch (Exception e){}
 
+        consumer.processAcknowledgedOffsets();
         offsetsToCommit = consumer.getOffsetsToCommit();
         Assertions.assertEquals(offsetsToCommit.size(), 0);
     }

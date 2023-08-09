@@ -119,13 +119,13 @@ public class KafkaSource implements Source<Record<Event>> {
         KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
-            KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics, sourceConfig.getMetricsUpdateInterval().getSeconds());
+            KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
             Properties consumerProperties = getConsumerProperties(topic, authProperties);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
             try {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
-                IntStream.range(0, numWorkers + 1).forEach(index -> {
+                IntStream.range(0, numWorkers).forEach(index -> {
                     switch (schema) {
                         case JSON:
                             kafkaConsumer = new KafkaConsumer<String, JsonNode>(consumerProperties);
