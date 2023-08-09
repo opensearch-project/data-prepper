@@ -40,6 +40,8 @@ public class KafkaTopicMetrics {
     private final Counter numberOfBufferSizeOverflows;
     private final Counter numberOfPollAuthErrors;
     private final Counter numberOfRecordsCommitted;
+    private final Counter numberOfRecordsConsumed;
+    private final Counter numberOfBytesConsumed;
     private final Counter numberOfNonConsumers;
 
     public KafkaTopicMetrics(final String topicName, final PluginMetrics pluginMetrics) {
@@ -48,6 +50,8 @@ public class KafkaTopicMetrics {
         this.updateTime = Instant.now().getEpochSecond();
         this.metricValues = new HashMap<>();
         initializeMetricNamesMap();
+        this.numberOfRecordsConsumed = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_CONSUMED));
+        this.numberOfBytesConsumed = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_BYTES_CONSUMED));
         this.numberOfRecordsCommitted = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_COMMITTED));
         this.numberOfRecordsFailedToParse = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_RECORDS_FAILED_TO_PARSE));
         this.numberOfDeserializationErrors = pluginMetrics.counter(getTopicMetricName(NUMBER_OF_DESERIALIZATION_ERRORS));
@@ -71,33 +75,35 @@ public class KafkaTopicMetrics {
         metricsNameMap.put("incoming-byte-rate", "incomingByteRate");
         metricsNameMap.put("outgoing-byte-rate", "outgoingByteRate");
         metricsNameMap.forEach((metricName, camelCaseName) -> {
-            pluginMetrics.gauge(getTopicMetricName(camelCaseName), metricValues, metricValues -> {
-                synchronized(metricValues) {
-                    if (metricName.equals("records-lag-max")) {
-                        double max = 0.0;
-                        for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
-                            if (entry.getValue().get(metricName) > max) {
-                                max = entry.getValue().get(metricName);
+            if (!metricName.contains("-total")) {
+                pluginMetrics.gauge(getTopicMetricName(camelCaseName), metricValues, metricValues -> {
+                    synchronized(metricValues) {
+                        if (metricName.equals("records-lag-max")) {
+                            double max = 0.0;
+                            for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
+                                if (entry.getValue().get(metricName) > max) {
+                                    max = entry.getValue().get(metricName);
+                                }
                             }
-                        }
-                        return max;
-                    } else if (metricName.equals("records-lead-min")) {
-                        double min = Double.MAX_VALUE;
-                        for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
-                            if (entry.getValue().get(metricName) < min) {
-                                min = entry.getValue().get(metricName);
+                            return max;
+                        } else if (metricName.equals("records-lead-min")) {
+                            double min = Double.MAX_VALUE;
+                            for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
+                                if (entry.getValue().get(metricName) < min) {
+                                    min = entry.getValue().get(metricName);
+                                }
                             }
+                            return min;
+                        } else {
+                            double sum = 0;
+                            for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
+                                sum += entry.getValue().get(metricName);
+                            }
+                            return sum;
                         }
-                        return min;
-                    } else {
-                        double sum = 0;
-                        for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
-                            sum += entry.getValue().get(metricName);
-                        }
-                        return sum;
                     }
-                }
-            });
+                });
+            }
         });
     }
 
@@ -174,7 +180,16 @@ public class KafkaTopicMetrics {
                     if (metricName.contains("byte-rate") && metric.tags().containsKey("node-id")) {
                         continue;
                     }
-                    consumerMetrics.put(metricName, (Double)value.metricValue());
+                    double newValue = (Double)value.metricValue();
+                    if (metricName.equals("records-consumed-total")) {
+                        double prevValue = consumerMetrics.get(metricName);
+                        numberOfRecordsConsumed.increment(newValue - prevValue);
+                    } else if (metricName.equals("bytes-consumed-total")) {
+                        double prevValue = consumerMetrics.get(metricName);
+                        numberOfBytesConsumed.increment(newValue - prevValue);
+                    }
+
+                    consumerMetrics.put(metricName, newValue);
                 }
             }
         }
