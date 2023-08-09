@@ -33,7 +33,7 @@ import java.util.Objects;
 @DataPrepperPlugin(name = "avro", pluginType = OutputCodec.class, pluginConfigurationType = AvroOutputCodecConfig.class)
 public class AvroOutputCodec implements OutputCodec {
 
-    private static final List<String> NON_COMPLEX_TYPES = Arrays.asList("int", "long", "string", "float", "double", "bytes");
+    private static final List<String> PRIMITIVE_TYPES = Arrays.asList("int", "long", "string", "float", "double", "bytes");
     private static final Logger LOG = LoggerFactory.getLogger(AvroOutputCodec.class);
     private static final String AVRO = "avro";
     private static final String BASE_SCHEMA_STRING = "{\"type\":\"record\",\"name\":\"AvroRecords\",\"fields\":[";
@@ -189,7 +189,7 @@ public class AvroOutputCodec implements OutputCodec {
     private Object schemaMapper(final Schema.Field field, final Object rawValue) {
         Object finalValue = null;
         final String fieldType = field.schema().getType().name().toLowerCase();
-        if (NON_COMPLEX_TYPES.contains(fieldType)) {
+        if (PRIMITIVE_TYPES.contains(fieldType)) {
             switch (fieldType) {
                 case "string":
                     finalValue = rawValue.toString();
