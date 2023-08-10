@@ -9,7 +9,7 @@ ext {
             linux: ['x64']
     ]
     jdkSources = [
-            linux_x64: 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.4.1%2B1/OpenJDK17U-jdk_x64_linux_hotspot_17.0.4.1_1.tar.gz',
+            linux_x64: 'https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.8%2B7/OpenJDK17U-jdk_x64_linux_hotspot_17.0.8_7.tar.gz',
             linux_arm64: 'https://hg.openjdk.java.net/aarch64-port/jdk8/archive/tip.tar.gz'
     ]
     awsResources = [
