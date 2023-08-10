@@ -282,7 +282,6 @@ public class PrometheusSinkService {
                 httpAuthOptions.get(prometheusSinkConfiguration.getUrl()).getClassicHttpRequestBuilder();
 
         final byte[] compressedBufferData = Snappy.compress(data);
-         LOG.info("******* compressedBufferData ***** "+ compressedBufferData);
         HttpEntity entity = new ByteArrayEntity(compressedBufferData,
                 ContentType.create(prometheusSinkConfiguration.getContentType()), prometheusSinkConfiguration.getEncoding());
 
