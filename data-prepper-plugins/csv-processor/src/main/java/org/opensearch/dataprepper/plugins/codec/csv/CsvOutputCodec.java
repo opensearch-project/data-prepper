@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +33,7 @@ public class CsvOutputCodec implements OutputCodec {
     private int headerLength = 0;
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private List<String> headerList;
+    private OutputCodecContext codecContext;
 
     @DataPrepperPluginConstructor
     public CsvOutputCodec(final CsvOutputCodecConfig config) {
@@ -40,20 +42,22 @@ public class CsvOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void start(final OutputStream outputStream, Event event, String tagsTargetKey) throws IOException {
+    public void start(final OutputStream outputStream, Event event, final OutputCodecContext codecContext) throws IOException {
         Objects.requireNonNull(outputStream);
+        Objects.requireNonNull(codecContext);
+        this.codecContext = codecContext;
         if (config.getHeader() != null) {
             headerList = config.getHeader();
         } else if (config.getHeaderFileLocation() != null) {
             try {
                 headerList = CsvHeaderParser.headerParser(config.getHeaderFileLocation());
             } catch (Exception e) {
-                LOG.error("Unable to parse CSV Header, Error:{} ",e.getMessage());
+                LOG.error("Unable to parse CSV Header, Error:{} ", e.getMessage());
                 throw new IOException("Unable to parse CSV Header.");
             }
-        }else if(checkS3HeaderValidity()){
+        } else if (checkS3HeaderValidity()) {
             headerList = CsvHeaderParserFromS3.parseHeader(config);
-        }else {
+        } else {
             LOG.error("No header provided.");
             throw new IOException("No header found. Can't proceed without header.");
         }
@@ -69,20 +73,18 @@ public class CsvOutputCodec implements OutputCodec {
     }
 
     @Override
-    public void writeEvent(final Event event, final OutputStream outputStream, String tagsTargetKey) throws IOException {
+    public void writeEvent(final Event event, final OutputStream outputStream) throws IOException {
         Objects.requireNonNull(event);
         final Map<String, Object> eventMap;
-        if(tagsTargetKey!=null){
-            eventMap = addTagsToEvent(event,tagsTargetKey).toMap();
-        }else{
+        if (codecContext.getTagsTargetKey() != null) {
+            eventMap = addTagsToEvent(event, codecContext.getTagsTargetKey()).toMap();
+        } else {
             eventMap = event.toMap();
         }
 
-        if (!Objects.isNull(config.getExcludeKeys())) {
-            for (final String key : config.getExcludeKeys()) {
-                if (eventMap.containsKey(key)) {
-                    eventMap.remove(key);
-                }
+        if (!codecContext.getExcludeKeys().isEmpty()) {
+            for (final String key : codecContext.getExcludeKeys()) {
+                eventMap.remove(key);
             }
         }
 
@@ -110,10 +112,11 @@ public class CsvOutputCodec implements OutputCodec {
     public String getExtension() {
         return CSV;
     }
+
     private boolean checkS3HeaderValidity() throws IOException {
-        if(config.getBucketName()!=null && config.getFile_key()!=null && config.getRegion()!=null){
+        if (config.getBucketName() != null && config.getFile_key() != null && config.getRegion() != null) {
             return true;
-        }else{
+        } else {
             LOG.error("Invalid S3 credentials, can't reach the header file.");
             throw new IOException("Can't proceed without header.");
         }

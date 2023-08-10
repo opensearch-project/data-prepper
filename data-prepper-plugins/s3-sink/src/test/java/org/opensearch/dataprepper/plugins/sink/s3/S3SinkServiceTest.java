@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
@@ -79,6 +80,7 @@ class S3SinkServiceTest {
     private S3SinkConfig s3SinkConfig;
     private S3Client s3Client;
     private OutputCodec codec;
+    private OutputCodecContext codecContext;
     private PluginMetrics pluginMetrics;
     private BufferFactory bufferFactory;
     private Counter snapshotSuccessCounter;
@@ -92,6 +94,7 @@ class S3SinkServiceTest {
         random = new Random();
         tagsTargetKey = RandomStringUtils.randomAlphabetic(5);
         s3SinkConfig = mock(S3SinkConfig.class);
+        codecContext = new OutputCodecContext(tagsTargetKey, Collections.emptyList(), Collections.emptyList());
         s3Client = mock(S3Client.class);
         ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
         ObjectKeyOptions objectKeyOptions = mock(ObjectKeyOptions.class);
@@ -135,7 +138,7 @@ class S3SinkServiceTest {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, tagsTargetKey, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, pluginMetrics);
     }
 
     @Test
@@ -186,7 +189,7 @@ class S3SinkServiceTest {
         when(s3SinkConfig.getThresholdOptions().getEventCount()).thenReturn(5);
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         s3SinkService.output(generateRandomStringEventRecord());
@@ -209,7 +212,7 @@ class S3SinkServiceTest {
         when(s3SinkConfig.getThresholdOptions().getMaximumSize()).thenReturn(ByteCount.parse("2kb"));
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         s3SinkService.output(generateRandomStringEventRecord());
@@ -227,7 +230,7 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         assertThat(s3SinkService, instanceOf(S3SinkService.class));
@@ -247,7 +250,7 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         s3SinkService.output(generateRandomStringEventRecord());
 
@@ -260,7 +263,7 @@ class S3SinkServiceTest {
         when(s3SinkConfig.getMaxUploadRetries()).thenReturn(3);
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         assertThat(s3SinkService, instanceOf(S3SinkService.class));
@@ -283,7 +286,7 @@ class S3SinkServiceTest {
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
         final OutputStream outputStream = mock(OutputStream.class);
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         s3SinkService.output(Collections.singletonList(new Record<>(event)));
 
         verify(s3ObjectSizeSummary, never()).record(anyLong());
@@ -303,7 +306,7 @@ class S3SinkServiceTest {
         assertNotNull(buffer);
         OutputStream outputStream = buffer.getOutputStream();
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        codec.writeEvent(event, outputStream, null);
+        codec.writeEvent(event, outputStream);
         final String s3Key = UUID.randomUUID().toString();
         boolean isUploadedToS3 = s3SinkService.retryFlushToS3(buffer, s3Key);
         assertTrue(isUploadedToS3);
@@ -319,7 +322,7 @@ class S3SinkServiceTest {
         assertNotNull(s3SinkService);
         OutputStream outputStream = buffer.getOutputStream();
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        codec.writeEvent(event, outputStream, null);
+        codec.writeEvent(event, outputStream);
         final String s3Key = UUID.randomUUID().toString();
         doThrow(AwsServiceException.class).when(buffer).flushToS3(eq(s3Client), anyString(), anyString());
         boolean isUploadedToS3 = s3SinkService.retryFlushToS3(buffer, s3Key);
@@ -338,7 +341,7 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
         s3SinkService.output(records);
@@ -361,7 +364,7 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event1 = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event1, outputStream, null);
+        doNothing().when(codec).writeEvent(event1, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
         records.stream()
@@ -394,7 +397,7 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final List<Record<Event>> records = generateEventRecords(1);
         s3SinkService.output(records);
@@ -417,7 +420,7 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final Collection<Record<Event>> records = generateRandomStringEventRecord();
         s3SinkService.output(records);
@@ -450,7 +453,7 @@ class S3SinkServiceTest {
 
         final OutputStream outputStream = mock(OutputStream.class);
         final Event event = JacksonEvent.fromMessage(UUID.randomUUID().toString());
-        doNothing().when(codec).writeEvent(event, outputStream, null);
+        doNothing().when(codec).writeEvent(event, outputStream);
         final S3SinkService s3SinkService = createObjectUnderTest();
         final List<Record<Event>> records = generateEventRecords(1);
         s3SinkService.output(records);

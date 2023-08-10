@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -48,6 +49,7 @@ public class CsvCodecsIT {
     private CsvInputCodec createObjectUnderTest() {
         return new CsvInputCodec(config);
     }
+
     @BeforeEach
     void setup() {
         CsvInputCodecConfig defaultCsvCodecConfig = new CsvInputCodecConfig();
@@ -67,9 +69,9 @@ public class CsvCodecsIT {
 
 
     @ParameterizedTest
-    @ValueSource(ints = { 1, 10, 100, 200})
+    @ValueSource(ints = {1, 10, 100, 200})
     void test_when_autoDetectHeaderHappyCase_then_callsConsumerWithParsedEvents(final int numberOfRows) throws IOException {
-        final InputStream inputStream = createCsvInputStream(numberOfRows,header());
+        final InputStream inputStream = createCsvInputStream(numberOfRows, header());
         CsvInputCodec csvInputCodec = createObjectUnderTest();
         csvInputCodec.parse(inputStream, eventConsumer);
 
@@ -78,33 +80,33 @@ public class CsvCodecsIT {
         final List<Record<Event>> actualRecords = recordArgumentCaptor.getAllValues();
         CsvOutputCodec csvOutputCodec = createOutputCodecObjectUnderTest();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        csvOutputCodec.start(outputStream, null, null);
-        for (Record<Event> record: actualRecords){
-            csvOutputCodec.writeEvent(record.getData(),outputStream, null);
+        OutputCodecContext codecContext = new OutputCodecContext();
+        csvOutputCodec.start(outputStream, null, codecContext);
+        for (Record<Event> record : actualRecords) {
+            csvOutputCodec.writeEvent(record.getData(), outputStream);
         }
         csvOutputCodec.complete(outputStream);
         //createTestFileFromStream(outputStream);
-        String csvData = new String(outputStream.toByteArray(), StandardCharsets.UTF_8);
+        String csvData = outputStream.toString(StandardCharsets.UTF_8);
         StringReader stringReader = new StringReader(csvData);
         CSVReader csvReader = new CSVReaderBuilder(stringReader).build();
         try {
             String[] line;
-            int index=0;
+            int index = 0;
             int headerIndex;
             List<String> headerList = header();
             List<HashMap> expectedRecords = generateRecords(numberOfRows);
             while ((line = csvReader.readNext()) != null) {
-                if(index==0){
-                    headerIndex=0;
-                    for(String value: line){
+                if (index == 0) {
+                    headerIndex = 0;
+                    for (String value : line) {
                         assertThat(headerList.get(headerIndex), Matchers.equalTo(value));
                         headerIndex++;
                     }
-                }
-                else{
-                    headerIndex=0;
+                } else {
+                    headerIndex = 0;
                     for (String value : line) {
-                        assertThat(expectedRecords.get(index-1).get(headerList.get(headerIndex)), Matchers.equalTo(value));
+                        assertThat(expectedRecords.get(index - 1).get(headerList.get(headerIndex)), Matchers.equalTo(value));
                         headerIndex++;
                     }
                 }
@@ -162,18 +164,19 @@ public class CsvCodecsIT {
             throw new RuntimeException(e);
         }
     }
+
     private String createCsvData(int numberOfRows, List<String> header) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         OutputStreamWriter writer = new OutputStreamWriter(outputStream);
-        for(int i=0;i<header.size();i++){
+        for (int i = 0; i < header.size(); i++) {
             writer.append(header.get(i));
-            if(i!=header.size()-1){
+            if (i != header.size() - 1) {
                 writer.append(",");
             }
         }
         writer.append("\n");
-        for(int i=0;i<numberOfRows;i++){
-            writer.append("Person"+i);
+        for (int i = 0; i < numberOfRows; i++) {
+            writer.append("Person" + i);
             writer.append(",");
             writer.append(Integer.toString(i));
             writer.append("\n");
@@ -181,6 +184,6 @@ public class CsvCodecsIT {
         writer.flush();
         writer.close();
         outputStream.close();
-        return new String(outputStream.toByteArray());
+        return outputStream.toString();
     }
 }

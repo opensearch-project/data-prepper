@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
@@ -58,7 +59,7 @@ public class S3SinkService {
     private final Counter numberOfRecordsSuccessCounter;
     private final Counter numberOfRecordsFailedCounter;
     private final DistributionSummary s3ObjectSizeSummary;
-    private final String tagsTargetKey;
+    private final OutputCodecContext codecContext;
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
@@ -68,12 +69,12 @@ public class S3SinkService {
      * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
-                         final OutputCodec codec, final S3Client s3Client, final String tagsTargetKey, final PluginMetrics pluginMetrics) {
+                         final OutputCodec codec, final OutputCodecContext codecContext, final S3Client s3Client, final PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
         this.s3Client = s3Client;
-        this.tagsTargetKey = tagsTargetKey;
+        this.codecContext = codecContext;
         reentrantLock = new ReentrantLock();
 
         bufferedEventHandles = new LinkedList<>();
@@ -105,17 +106,17 @@ public class S3SinkService {
 
             for (Record<Event> record : records) {
 
-                if(currentBuffer.getEventCount() == 0) {
+                if (currentBuffer.getEventCount() == 0) {
                     final Event eventForSchemaAutoGenerate = record.getData();
-                    codec.start(outputStream,eventForSchemaAutoGenerate , tagsTargetKey);
+                    codec.start(outputStream, eventForSchemaAutoGenerate, codecContext);
                 }
 
                 final Event event = record.getData();
-                codec.writeEvent(event, outputStream, tagsTargetKey);
-                int count = currentBuffer.getEventCount() +1;
+                codec.writeEvent(event, outputStream);
+                int count = currentBuffer.getEventCount() + 1;
                 currentBuffer.setEventCount(count);
 
-                if(event.getEventHandle() != null) {
+                if (event.getEventHandle() != null) {
                     bufferedEventHandles.add(event.getEventHandle());
                 }
                 if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
@@ -184,6 +185,7 @@ public class S3SinkService {
 
     /**
      * Generate the s3 object path prefix and object file name.
+     *
      * @return object key path.
      */
     protected String generateKey(OutputCodec codec) {

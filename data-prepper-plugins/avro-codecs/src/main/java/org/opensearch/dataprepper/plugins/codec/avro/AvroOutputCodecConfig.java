@@ -8,8 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
-import java.util.List;
-
 /**
  * Configuration class for {@link AvroOutputCodec}.
  */
@@ -23,8 +21,6 @@ public class AvroOutputCodecConfig {
     @JsonProperty("schema_file_location")
     private String fileLocation;
 
-    @JsonProperty("exclude_keys")
-    private List<String> excludeKeys;
     @Valid
     @Size(max = 0, message = "Schema from schema registry is not supported.")
     @JsonProperty("schema_registry_url")
@@ -44,10 +40,6 @@ public class AvroOutputCodecConfig {
     @Size(max = 0, message = "Schema from file is not supported.")
     @JsonProperty("file_key")
     private String fileKey;
-
-    public List<String> getExcludeKeys() {
-        return excludeKeys;
-    }
 
     public String getSchema() {
         return schema;
@@ -76,8 +68,6 @@ public class AvroOutputCodecConfig {
     public String getFileKey() {
         return fileKey;
     }
-    public void setExcludeKeys(List<String> excludeKeys) {
-        this.excludeKeys = excludeKeys;
-    }
+
 
 }

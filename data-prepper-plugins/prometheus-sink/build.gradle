@@ -13,7 +13,7 @@ dependencies {
     implementation 'org.hibernate.validator:hibernate-validator:7.0.5.Final'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     implementation 'software.amazon.awssdk:auth'
-    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation libs.commons.lang3
     implementation project(':data-prepper-plugins:failures-common')
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.2'
     testImplementation project(':data-prepper-test-common')
