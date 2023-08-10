@@ -73,33 +73,38 @@ public class KafkaTopicMetrics {
         metricsNameMap.put("outgoing-byte-rate", "outgoingByteRate");
         metricsNameMap.put("assigned-partitions", "numberOfNonConsumers");
         metricsNameMap.forEach((metricName, camelCaseName) -> {
-            if (!metricName.contains("-total")) {
+            if (metricName.equals("records-lag-max")) {
                 pluginMetrics.gauge(getTopicMetricName(camelCaseName), metricValues, metricValues -> {
-                    synchronized(metricValues) {
-                        if (metricName.equals("records-lag-max")) {
-                            double max = 0.0;
-                            for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
-                                if (entry.getValue().get(metricName) > max) {
-                                    max = entry.getValue().get(metricName);
-                                }
-                            }
-                            return max;
-                        } else if (metricName.equals("records-lead-min")) {
-                            double min = Double.MAX_VALUE;
-                            for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
-                                if (entry.getValue().get(metricName) < min) {
-                                    min = entry.getValue().get(metricName);
-                                }
-                            }
-                            return min;
-                        } else {
-                            double sum = 0;
-                            for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
-                                sum += entry.getValue().get(metricName);
-                            }
-                            return sum;
+                    double max = 0.0;
+                    for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
+                        Map<String, Double> consumerMetrics = entry.getValue();
+                        synchronized(consumerMetrics) {
+                            max = Math.max(max, consumerMetrics.get(metricName));
                         }
                     }
+                    return max;
+                });
+            } else if (metricName.equals("records-lead-min")) {
+                pluginMetrics.gauge(getTopicMetricName(camelCaseName), metricValues, metricValues -> {
+                    double min = Double.MAX_VALUE;
+                    for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
+                        Map<String, Double> consumerMetrics = entry.getValue();
+                        synchronized(consumerMetrics) {
+                            min = Math.min(min, consumerMetrics.get(metricName));
+                        }
+                    }
+                    return min;
+                });
+            } else if (!metricName.contains("-total")) {
+                pluginMetrics.gauge(getTopicMetricName(camelCaseName), metricValues, metricValues -> {
+                    double sum = 0;
+                    for (Map.Entry<KafkaConsumer, Map<String, Double>> entry : metricValues.entrySet()) {
+                        Map<String, Double> consumerMetrics = entry.getValue();
+                        synchronized(consumerMetrics) {
+                            sum += consumerMetrics.get(metricName);
+                        }
+                    }
+                    return sum;
                 });
             }
         });
@@ -111,6 +116,14 @@ public class KafkaTopicMetrics {
         metricsNameMap.forEach((k, name) -> {
             consumerMetrics.put(k, 0.0);
         });
+    }
+
+    Counter getNumberOfRecordsConsumed() {
+        return numberOfRecordsConsumed;
+    }
+
+    Counter getNumberOfBytesConsumed() {
+        return numberOfBytesConsumed;
     }
 
     public Counter getNumberOfRecordsCommitted() {
@@ -141,7 +154,7 @@ public class KafkaTopicMetrics {
         return numberOfPositiveAcknowledgements;
     }
 
-    public String getTopicMetricName(final String metricName) {
+    private String getTopicMetricName(final String metricName) {
         return "topic."+topicName+"."+metricName;
     }
 
@@ -153,41 +166,48 @@ public class KafkaTopicMetrics {
         return camelCaseName;
     }
 
+    Map<KafkaConsumer, Map<String, Double>> getMetricValues() {
+        return metricValues;
+    }
+
     public void update(final KafkaConsumer consumer) {
+        Map<String, Double> consumerMetrics = metricValues.get(consumer);
+
         Map<MetricName, ? extends Metric> metrics = consumer.metrics();
+        for (Map.Entry<MetricName, ? extends Metric> entry : metrics.entrySet()) {
+            MetricName metric = entry.getKey();
+            Metric value = entry.getValue();
+            String metricName = metric.name();
+            if (Objects.nonNull(metricsNameMap.get(metricName))) {
+                if (metric.tags().containsKey("partition") &&
+                   (metricName.equals("records-lag-max") || metricName.equals("records-lead-min"))) {
+                   continue;
+                }
 
-        synchronized(metricValues) {
-            Map<String, Double> consumerMetrics = metricValues.get(consumer);
-            for (Map.Entry<MetricName, ? extends Metric> entry : metrics.entrySet()) {
-                MetricName metric = entry.getKey();
-                Metric value = entry.getValue();
-                String metricName = metric.name();
-                if (Objects.nonNull(metricsNameMap.get(metricName))) {
-                    if (metric.tags().containsKey("partition") &&
-                       (metricName.equals("records-lag-max") || metricName.equals("records-lead-min"))) {
-                       continue;
-                    }
-
-                    if (metricName.contains("consumed-total") && !metric.tags().containsKey("topic")) {
-                        continue;
-                    }
-                    if (metricName.contains("byte-rate") && metric.tags().containsKey("node-id")) {
-                        continue;
-                    }
-                    double newValue = (Double)value.metricValue();
-                    if (metricName.equals("records-consumed-total")) {
+                if (metricName.contains("consumed-total") && !metric.tags().containsKey("topic")) {
+                    continue;
+                }
+                if (metricName.contains("byte-rate") && metric.tags().containsKey("node-id")) {
+                    continue;
+                }
+                double newValue = (Double)value.metricValue();
+                if (metricName.equals("records-consumed-total")) {
+                    synchronized(consumerMetrics) {
                         double prevValue = consumerMetrics.get(metricName);
                         numberOfRecordsConsumed.increment(newValue - prevValue);
-                    } else if (metricName.equals("bytes-consumed-total")) {
+                    }
+                } else if (metricName.equals("bytes-consumed-total")) {
+                    synchronized(consumerMetrics) {
                         double prevValue = consumerMetrics.get(metricName);
                         numberOfBytesConsumed.increment(newValue - prevValue);
                     }
-                    // Keep the count of number of consumers without any assigned partitions. This value can go up or down. So, it is made as Guage metric
-                    if (metricName.equals("assigned-partitions")) {
-                        consumerMetrics.put(metricName, ((Double)value.metricValue() == 0.0) ? 1.0 : 0.0);
-                    } else {
-                        consumerMetrics.put(metricName, newValue);
-                    }
+                }
+                // Keep the count of number of consumers without any assigned partitions. This value can go up or down. So, it is made as Guage metric
+                if (metricName.equals("assigned-partitions")) {
+                    newValue = (newValue == 0.0) ? 1.0 : 0.0;
+                }
+                synchronized(consumerMetrics) {
+                    consumerMetrics.put(metricName, newValue);
                 }
             }
         }
