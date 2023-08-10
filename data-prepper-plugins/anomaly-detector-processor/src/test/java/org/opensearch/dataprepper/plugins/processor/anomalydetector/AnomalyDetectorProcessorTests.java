@@ -5,6 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.processor.anomalydetector;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+import org.junit.jupiter.api.BeforeEach;
+import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -43,6 +47,16 @@ import org.opensearch.dataprepper.plugins.processor.anomalydetector.modes.Random
 public class AnomalyDetectorProcessorTests {
     @Mock
     private PluginMetrics pluginMetrics;
+    @Mock
+    private Counter numberRCFInstances;
+    @Mock
+    private Counter recordsIn;
+
+    @Mock
+    private Counter recordsOut;
+
+    @Mock
+    private Timer timeElapsed;
 
     @Mock
     private AnomalyDetectorProcessorConfig mockConfig;
@@ -55,48 +69,29 @@ public class AnomalyDetectorProcessorTests {
 
     private AnomalyDetectorProcessor anomalyDetectorProcessor;
 
-    static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
-        return new Record<>(JacksonEvent.builder()
-                .withData(data)
-                .withEventType("event")
-                .build());
-    }
 
-    private Record<Event> getBytesStringMessage(String message, String bytes) {
-        final Map<String, Object> testData = new HashMap();
-        testData.put("message", message);
-        testData.put("bytes", bytes);
-        return buildRecordWithEvent(testData);
-    }
+    @BeforeEach
+    void setUp() {
+        when(mockConfig.getKeys()).thenReturn(new ArrayList<String>(Collections.singleton("latency")));
+        RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
 
-    private Record<Event> getLatencyMessage(String message, Object latency) {
-        final Map<String, Object> testData = new HashMap();
-        testData.put("message", message);
-        testData.put("latency", latency);
-        return buildRecordWithEvent(testData);
-    }
+        when(mockConfig.getDetectorMode()).thenReturn(modeConfiguration);
+        when(modeConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
+        when(modeConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
+        when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
+            .thenAnswer(invocation -> new RandomCutForestMode(randomCutForestModeConfig));
 
-    private Record<Event> getLatencyBytesMessage(String message, double latency, long bytes) {
-        final Map<String, Object> testData = new HashMap();
-        testData.put("message", message);
-        testData.put("latency", latency);
-        testData.put("bytes", bytes);
-        return buildRecordWithEvent(testData);
+        when(pluginMetrics.counter(AnomalyDetectorProcessor.NUMBER_RCF_INSTANCES)).thenReturn(numberRCFInstances);
+        when(pluginMetrics.counter(MetricNames.RECORDS_IN)).thenReturn(recordsIn);
+        when(pluginMetrics.counter(MetricNames.RECORDS_OUT)).thenReturn(recordsOut);
+        when(pluginMetrics.timer(MetricNames.TIME_ELAPSED)).thenReturn(timeElapsed);
+
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3, 4, 5, 6})
     void testAnomalyDetectorProcessor(int type) {
-        when(mockConfig.getKeys()).thenReturn(new ArrayList<String>(Collections.singleton("latency")));
-        RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
-        AnomalyDetectorMode anomalyDetectorMode = new RandomCutForestMode(randomCutForestModeConfig);
 
-        when(mockConfig.getDetectorMode()).thenReturn(modeConfiguration);
-        when(modeConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
-        when(modeConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
-
-        when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
-                .thenReturn(anomalyDetectorMode);
         anomalyDetectorProcessor = new AnomalyDetectorProcessor(mockConfig, pluginMetrics, pluginFactory);
         final int numSamples = 1024;
         final List<Record<Event>> records = new ArrayList<Record<Event>>();
@@ -146,19 +141,7 @@ public class AnomalyDetectorProcessorTests {
 
     @Test
     void testAnomalyDetectorProcessorTwoKeys() {
-        List<String> keyList = new ArrayList<String>();
-        keyList.add("latency");
-        keyList.add("bytes");
-        when(mockConfig.getKeys()).thenReturn(keyList);
-        RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
-        AnomalyDetectorMode anomalyDetectorMode = new RandomCutForestMode(randomCutForestModeConfig);
 
-        when(mockConfig.getDetectorMode()).thenReturn(modeConfiguration);
-        when(modeConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
-        when(modeConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
-
-        when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
-                .thenReturn(anomalyDetectorMode);
         anomalyDetectorProcessor = new AnomalyDetectorProcessor(mockConfig, pluginMetrics, pluginFactory);
         final int numSamples = 1024;
         final List<Record<Event>> records = new ArrayList<Record<Event>>();
@@ -170,7 +153,7 @@ public class AnomalyDetectorProcessorTests {
         assertThat(recordsWithAnomaly.size(), equalTo(1));
         Event event = recordsWithAnomaly.get(0).getData();
         List<Double> deviation = event.get(AnomalyDetectorProcessor.DEVIATION_KEY, List.class);
-        for (int i = 0; i < keyList.size(); i++) {
+        for (int i = 0; i < mockConfig.getKeys().size(); i++) {
             assertThat((double)deviation.get(i), greaterThan(9.0));
         }
         double grade = (double)event.get(AnomalyDetectorProcessor.GRADE_KEY, Double.class);
@@ -180,15 +163,6 @@ public class AnomalyDetectorProcessorTests {
     @Test
     void testAnomalyDetectorProcessorNoMatchingKeys() {
         when(mockConfig.getKeys()).thenReturn(new ArrayList<String>(Collections.singleton("bytes")));
-        RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
-        AnomalyDetectorMode anomalyDetectorMode = new RandomCutForestMode(randomCutForestModeConfig);
-
-        when(mockConfig.getDetectorMode()).thenReturn(modeConfiguration);
-        when(modeConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
-        when(modeConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
-
-        when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
-                .thenReturn(anomalyDetectorMode);
         anomalyDetectorProcessor = new AnomalyDetectorProcessor(mockConfig, pluginMetrics, pluginFactory);
         final int numSamples = 1024;
         final List<Record<Event>> records = new ArrayList<Record<Event>>();
@@ -204,15 +178,6 @@ public class AnomalyDetectorProcessorTests {
     @Test
     void testAnomalyDetectorProcessorInvalidTypeKeys() {
         when(mockConfig.getKeys()).thenReturn(new ArrayList<String>(Collections.singleton("bytes")));
-        RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
-        AnomalyDetectorMode anomalyDetectorMode = new RandomCutForestMode(randomCutForestModeConfig);
-
-        when(mockConfig.getDetectorMode()).thenReturn(modeConfiguration);
-        when(modeConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
-        when(modeConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
-
-        when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
-                .thenReturn(anomalyDetectorMode);
         anomalyDetectorProcessor = new AnomalyDetectorProcessor(mockConfig, pluginMetrics, pluginFactory);
         final int numSamples = 1024;
         final List<Record<Event>> records = new ArrayList<Record<Event>>();
@@ -220,5 +185,71 @@ public class AnomalyDetectorProcessorTests {
             records.add(getBytesStringMessage(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
         }
         assertThrows(RuntimeException.class, () -> anomalyDetectorProcessor.doExecute(records));
+    }
+
+    @Test
+    void testAnomalyDetectorCardinality() {
+        List<String> identificationKeyList = new ArrayList<String>();
+        identificationKeyList.add("ip");
+        when(mockConfig.getIdentificationKeys()).thenReturn(identificationKeyList);
+
+        anomalyDetectorProcessor = new AnomalyDetectorProcessor(mockConfig, pluginMetrics, pluginFactory);
+        final int numSamples = 1024;
+        final List<Record<Event>> records = new ArrayList<Record<Event>>();
+        for (int i = 0; i < numSamples; i++) {
+            if (i % 2 == 0) {
+                records.add(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6), ThreadLocalRandom.current().nextLong(100, 110), "1.1.1.1"));
+            } else {
+                records.add(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(15.5, 15.6), ThreadLocalRandom.current().nextLong(1000, 1110), "255.255.255.255"));
+            }
+        }
+
+        anomalyDetectorProcessor.doExecute(records);
+
+        final List<Record<Event>> slowRecordFromFastIp = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(15.5, 15.8), ThreadLocalRandom.current().nextLong(1000, 1110), "1.1.1.1")));
+        assertThat(slowRecordFromFastIp.size(), equalTo(1));
+
+        final List<Record<Event>> slowRecordFromSlowIp = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(15.5, 15.6), ThreadLocalRandom.current().nextLong(1000, 1110), "255.255.255.255")));
+        assertThat(slowRecordFromSlowIp.size(), equalTo(0));
+
+    }
+
+    static Record<Event> buildRecordWithEvent(final Map<String, Object> data) {
+        return new Record<>(JacksonEvent.builder()
+            .withData(data)
+            .withEventType("event")
+            .build());
+    }
+
+    private Record<Event> getBytesStringMessage(String message, String bytes) {
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", message);
+        testData.put("bytes", bytes);
+        return buildRecordWithEvent(testData);
+    }
+
+    private Record<Event> getLatencyMessage(String message, Object latency) {
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", message);
+        testData.put("latency", latency);
+        return buildRecordWithEvent(testData);
+    }
+
+    private Record<Event> getLatencyBytesMessage(String message, double latency, long bytes) {
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", message);
+        testData.put("latency", latency);
+        testData.put("bytes", bytes);
+        return buildRecordWithEvent(testData);
+    }
+
+    private Record<Event> getLatencyBytesMessageWithIp(String message, double latency, long bytes, String ip) {
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", message);
+        testData.put("latency", latency);
+        testData.put("bytes", bytes);
+        testData.put("ip", ip);
+
+        return buildRecordWithEvent(testData);
     }
 }
