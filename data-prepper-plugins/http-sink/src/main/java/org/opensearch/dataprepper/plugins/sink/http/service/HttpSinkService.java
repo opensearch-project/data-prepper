@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 
 import org.opensearch.dataprepper.plugins.accumulator.Buffer;
@@ -105,7 +106,7 @@ public class HttpSinkService {
 
     private final OutputCodec codec;
 
-    private final String tagsTargetKey;
+    private final OutputCodecContext codecContext;
 
     public HttpSinkService(final HttpSinkConfiguration httpSinkConfiguration,
                            final BufferFactory bufferFactory,
@@ -116,7 +117,7 @@ public class HttpSinkService {
                            final PluginMetrics pluginMetrics,
                            final PluginSetting httpPluginSetting,
                            final OutputCodec codec,
-                           final String tagsTargetKey) {
+                           final OutputCodecContext codecContext) {
 
         this.httpSinkConfiguration = httpSinkConfiguration;
         this.bufferFactory = bufferFactory;
@@ -142,7 +143,7 @@ public class HttpSinkService {
         this.httpSinkRecordsSuccessCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_SUCCESS_COUNTER);
         this.httpSinkRecordsFailedCounter = pluginMetrics.counter(HTTP_SINK_RECORDS_FAILED_COUNTER);
         this.codec= codec;
-        this.tagsTargetKey = tagsTargetKey;
+        this.codecContext = codecContext;
     }
 
     /**
@@ -160,9 +161,9 @@ public class HttpSinkService {
                 try {
                     final Event event = record.getData();
                     if(currentBuffer.getEventCount() == 0) {
-                        codec.start(outputStream,event , tagsTargetKey);
+                        codec.start(outputStream,event , codecContext);
                     }
-                    codec.writeEvent(event, outputStream, tagsTargetKey);
+                    codec.writeEvent(event, outputStream);
                     int count = currentBuffer.getEventCount() +1;
                     currentBuffer.setEventCount(count);
 

@@ -37,7 +37,6 @@ import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.text.MessageFormat;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.UUID;
@@ -112,7 +111,6 @@ public class HttpSinkServiceIT {
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
         this.ndjsonOutputConfig = mock(NdjsonOutputConfig.class);
-        when(ndjsonOutputConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
         codec = new NdjsonOutputCodec(ndjsonOutputConfig);
         this.bufferFactory = new InMemoryBufferFactory();
         this.dlqPushHandler = new DlqPushHandler(httpSinkConfiguration.getDlqFile(), pluginFactory,

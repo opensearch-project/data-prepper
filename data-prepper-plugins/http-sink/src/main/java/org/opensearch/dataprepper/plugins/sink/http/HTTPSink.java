@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.AbstractSink;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
@@ -113,7 +114,7 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
                 pluginMetrics,
                 pluginSetting,
                 codec,
-                Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null);
+                OutputCodecContext.fromSinkContext(sinkContext));
     }
 
     @Override
