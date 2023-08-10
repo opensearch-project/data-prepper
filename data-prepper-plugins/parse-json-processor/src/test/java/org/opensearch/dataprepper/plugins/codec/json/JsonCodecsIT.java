@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.codec.json;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +31,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -83,6 +85,13 @@ public class JsonCodecsIT {
         int index = 0;
         ObjectMapper mapper = new ObjectMapper();
         JsonNode jsonNode = mapper.readTree(outputStream.toByteArray());
+        assertThat(jsonNode.getNodeType(), equalTo(JsonNodeType.OBJECT));
+        Map.Entry<String, JsonNode> nextField = jsonNode.fields().next();
+        assertThat(nextField, notNullValue());
+        assertThat(nextField.getKey(), equalTo(JsonOutputCodecConfig.DEFAULT_KEY_NAME));
+        jsonNode = nextField.getValue();
+        assertThat(jsonNode, notNullValue());
+        assertThat(jsonNode.getNodeType(), equalTo(JsonNodeType.ARRAY));
         for (JsonNode element : jsonNode) {
             Set<String> keys = initialRecords.get(index).keySet();
             Map<String, Object> actualMap = new HashMap<>();
