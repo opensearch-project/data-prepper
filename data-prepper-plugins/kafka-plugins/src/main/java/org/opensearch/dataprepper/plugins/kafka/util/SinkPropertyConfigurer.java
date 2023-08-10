@@ -114,7 +114,7 @@ public class SinkPropertyConfigurer {
         setPropertiesForSerializer(properties, kafkaSinkConfig.getSerdeFormat());
 
         if (kafkaSinkConfig.getSchemaConfig() != null) {
-            setSchemaProps(kafkaSinkConfig, properties);
+            setSchemaProps(kafkaSinkConfig.getSerdeFormat(), kafkaSinkConfig.getSchemaConfig(), properties);
         }
         if (kafkaSinkConfig.getKafkaProducerProperties() != null) {
             setPropertiesProviderByKafkaProducer(kafkaSinkConfig.getKafkaProducerProperties(), properties);
@@ -159,29 +159,32 @@ public class SinkPropertyConfigurer {
         }
     }
 
-    private static void validateForRegistryURL(final KafkaSinkConfig kafkaSinkConfig) {
-        String serdeFormat = kafkaSinkConfig.getSerdeFormat();
+    private static void validateForRegistryURL(final String serdeFormat, final SchemaConfig schemaConfig) {
+
         if (serdeFormat.equalsIgnoreCase(MessageFormat.AVRO.toString())) {
-            if (kafkaSinkConfig.getSchemaConfig() == null || kafkaSinkConfig.getSchemaConfig().getRegistryURL() == null ||
-                    kafkaSinkConfig.getSchemaConfig().getRegistryURL().isBlank() || kafkaSinkConfig.getSchemaConfig().getRegistryURL().isEmpty()) {
+            if (schemaConfig == null || schemaConfig.getRegistryURL() == null ||
+                    schemaConfig.getRegistryURL().isBlank() || schemaConfig.getRegistryURL().isEmpty()) {
                 throw new RuntimeException("Schema registry is mandatory when serde type is avro");
             }
         }
         if (serdeFormat.equalsIgnoreCase(MessageFormat.PLAINTEXT.toString())) {
-            if (kafkaSinkConfig.getSchemaConfig() != null &&
-                    kafkaSinkConfig.getSchemaConfig().getRegistryURL() != null) {
+            if (schemaConfig != null &&
+                    schemaConfig.getRegistryURL() != null) {
                 throw new RuntimeException("Schema registry is not required for type plaintext");
             }
         }
     }
 
-    public static void setSchemaProps(final KafkaSinkConfig kafkaSinkConfig, final Properties properties) {
-        validateForRegistryURL(kafkaSinkConfig);
-        SchemaConfig schemaConfig = kafkaSinkConfig.getSchemaConfig();
+    public static void setSchemaProps(final String serdeFormat, final SchemaConfig schemaConfig, final Properties properties) {
+        validateForRegistryURL(serdeFormat, schemaConfig);
         final String registryURL = schemaConfig != null ? schemaConfig.getRegistryURL() : null;
         if (registryURL != null && !registryURL.isEmpty()) {
             properties.put(REGISTRY_URL, registryURL);
         }
+        setSchemaCredentialsConfig(schemaConfig, properties);
+    }
+
+    public static void setSchemaCredentialsConfig(final SchemaConfig schemaConfig,final Properties properties) {
         if (!ObjectUtils.isEmpty(schemaConfig.getBasicAuthCredentialsSource())) {
             properties.put(CREDENTIALS_SOURCE, schemaConfig.getBasicAuthCredentialsSource());
         }
@@ -311,7 +314,6 @@ public class SinkPropertyConfigurer {
             properties.put(RETRY_BACKOFF_MS, producerProperties.getRetryBackoffMs());
         }
 
-
         LOG.info("Producer properties");
         properties.entrySet().forEach(prop -> {
             LOG.info("property " + prop.getKey() + " value" + prop.getValue());
@@ -319,5 +321,13 @@ public class SinkPropertyConfigurer {
 
         LOG.info("Producer properties ends");
     }
+
+    public static Properties getPropertiesForAdmintClient(final KafkaSinkConfig kafkaSinkConfig) {
+        Properties properties = new Properties();
+        setCommonServerProperties(properties, kafkaSinkConfig);
+        setAuthProperties(kafkaSinkConfig, properties);
+        return properties;
+    }
+
 
 }
