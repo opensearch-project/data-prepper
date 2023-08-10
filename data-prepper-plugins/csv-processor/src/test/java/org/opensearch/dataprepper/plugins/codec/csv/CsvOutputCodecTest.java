@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -71,10 +72,11 @@ public class CsvOutputCodecTest {
         CsvOutputCodecTest.numberOfRecords = numberOfRecords;
         CsvOutputCodec csvOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        csvOutputCodec.start(outputStream, null, null);
+        OutputCodecContext codecContext = new OutputCodecContext();
+        csvOutputCodec.start(outputStream, null, codecContext);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            csvOutputCodec.writeEvent(event, outputStream, null);
+            csvOutputCodec.writeEvent(event, outputStream);
         }
         csvOutputCodec.complete(outputStream);
         String csvData = outputStream.toString(StandardCharsets.UTF_8);

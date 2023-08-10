@@ -44,12 +44,13 @@ class DeclaredOpenSearchVersionTest {
     @CsvSource({
             "opensearch:1.2.4,opensearch:1.2.4,0",
             "opendistro:1.13.3,opendistro:1.13.3,0",
+            "opendistro:0.10.0,opendistro:1.0.0,-1",
             "opensearch:1.2.4,opensearch:1.2.3,1",
             "opensearch:1.2.3,opensearch:1.2.4,-1",
             "opensearch:2.6.0,opensearch:1.2.3,1",
             "opensearch:1.2.3,opensearch:2.6.0,-1",
             "opensearch:1.3.9,opendistro:1.13.3,1",
-            "opendistro:1.13.3,opensearch:1.3.9,-1"
+            "opendistro:1.13.3,opensearch:1.3.9,-1",
     })
     void compareTo_returns_correct_value(final String versionStringToTest, final String otherVersionString, final int expectedCompareTo) {
         final DeclaredOpenSearchVersion objectUnderTest = DeclaredOpenSearchVersion.parse(versionStringToTest);

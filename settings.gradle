@@ -36,6 +36,7 @@ dependencyResolutionManagement {
             library('spring-context', 'org.springframework', 'spring-context').versionRef('spring')
             version('guava', '32.0.1-jre')
             library('guava-core', 'com.google.guava', 'guava').versionRef('guava')
+            library('commons-lang3', 'org.apache.commons', 'commons-lang3').version('3.13.0')
         }
         testLibs {
             version('junit', '5.8.2')

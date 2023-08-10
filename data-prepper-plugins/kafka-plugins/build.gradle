@@ -14,7 +14,7 @@ dependencies {
     implementation 'org.apache.avro:avro:1.11.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'io.micrometer:micrometer-core'
-    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation libs.commons.lang3
     implementation 'io.confluent:kafka-avro-serializer:7.3.3'
     implementation 'io.confluent:kafka-schema-registry-client:7.3.3'
     implementation 'io.confluent:kafka-avro-serializer:7.3.3'

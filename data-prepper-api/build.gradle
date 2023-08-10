@@ -10,7 +10,7 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8:2.15.2'
     implementation 'org.apache.parquet:parquet-common:1.12.3'
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation libs.commons.lang3
     testImplementation testLibs.junit.vintage
     testImplementation project(':data-prepper-test-common')
     testImplementation 'org.skyscreamer:jsonassert:1.5.1'

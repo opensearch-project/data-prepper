@@ -11,7 +11,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:blocking-buffer')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
-    testImplementation 'org.apache.commons:commons-lang3:3.12.0'
+    testImplementation libs.commons.lang3
 }
 
 test {
