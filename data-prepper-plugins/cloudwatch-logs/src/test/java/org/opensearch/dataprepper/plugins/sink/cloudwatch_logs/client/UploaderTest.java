@@ -49,6 +49,7 @@ class UploaderTest {
                 .cloudWatchLogsMetrics(mockCloudWatchLogsMetrics)
                 .putLogEventsRequest(getMockPutLogEventsRequest())
                 .eventHandles(getTestEventHandles())
+                .totalEventCount(ThresholdConfig.DEFAULT_BATCH_SIZE)
                 .retryCount(ThresholdConfig.DEFAULT_RETRY_COUNT)
                 .backOffTimeBase(ThresholdConfig.DEFAULT_BACKOFF_TIME)
                 .build();

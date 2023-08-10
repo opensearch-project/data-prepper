@@ -12,12 +12,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,30 +33,29 @@ public class NewlineDelimitedOutputCodecTest {
 
     private static int numberOfRecords;
     private static final String REGEX = "\\r?\\n";
-    private static ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private NdjsonOutputCodec createObjectUnderTest() {
         config = new NdjsonOutputConfig();
-        config.setExcludeKeys(Arrays.asList("S3"));
         return new NdjsonOutputCodec(config);
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 3, 10, 100})
     void test_happy_case(final int numberOfRecords) throws IOException {
-        this.numberOfRecords = numberOfRecords;
+        NewlineDelimitedOutputCodecTest.numberOfRecords = numberOfRecords;
         NdjsonOutputCodec ndjsonOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        ndjsonOutputCodec.start(outputStream, null, null);
+        OutputCodecContext codecContext = new OutputCodecContext();
+        ndjsonOutputCodec.start(outputStream, null, codecContext);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            ndjsonOutputCodec.writeEvent(event, outputStream, null);
+            ndjsonOutputCodec.writeEvent(event, outputStream);
         }
         ndjsonOutputCodec.complete(outputStream);
-        byte[] byteArray = outputStream.toByteArray();
         String jsonString = null;
         try {
-            jsonString = new String(byteArray, StandardCharsets.UTF_8);
+            jsonString = outputStream.toString(StandardCharsets.UTF_8);
         } catch (Exception e) {
             e.printStackTrace();
         }

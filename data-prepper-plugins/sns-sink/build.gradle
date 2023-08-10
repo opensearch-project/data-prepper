@@ -16,7 +16,7 @@ dependencies {
     testImplementation 'software.amazon.awssdk:sqs'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.8.21'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.8.21'
-    implementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation libs.commons.lang3
     implementation project(':data-prepper-plugins:failures-common')
     testImplementation project(':data-prepper-test-common')
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'

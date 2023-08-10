@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.model.event.EventMetadata;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -30,11 +31,11 @@ public class OutputCodecTest {
     public void testWriteMetrics() throws JsonProcessingException {
         OutputCodec outputCodec = new OutputCodec() {
             @Override
-            public void start(OutputStream outputStream, Event event, String tagsTargetKey) throws IOException {
+            public void start(OutputStream outputStream, Event event, final OutputCodecContext codecContext) throws IOException {
             }
 
             @Override
-            public void writeEvent(Event event, OutputStream outputStream, String tagsTargetKey) throws IOException {
+            public void writeEvent(Event event, OutputStream outputStream) throws IOException {
             }
 
             @Override

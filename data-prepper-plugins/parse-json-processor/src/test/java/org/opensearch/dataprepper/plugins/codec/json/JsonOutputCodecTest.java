@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -63,10 +64,11 @@ class JsonOutputCodecTest {
         JsonOutputCodecTest.numberOfRecords = numberOfRecords;
         JsonOutputCodec jsonOutputCodec = createObjectUnderTest();
         outputStream = new ByteArrayOutputStream();
-        jsonOutputCodec.start(outputStream, null, null);
+        OutputCodecContext codecContext = new OutputCodecContext();
+        jsonOutputCodec.start(outputStream, null, codecContext);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            jsonOutputCodec.writeEvent(event, outputStream, null);
+            jsonOutputCodec.writeEvent(event, outputStream);
         }
         jsonOutputCodec.complete(outputStream);
         List<HashMap> expectedRecords = generateRecords(numberOfRecords);
@@ -84,6 +86,7 @@ class JsonOutputCodecTest {
 
         }
     }
+
     @Test
     void testGetExtension() {
         JsonOutputCodec jsonOutputCodec = createObjectUnderTest();

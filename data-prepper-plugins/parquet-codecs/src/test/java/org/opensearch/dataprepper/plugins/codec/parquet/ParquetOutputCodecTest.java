@@ -28,6 +28,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -71,7 +72,7 @@ public class ParquetOutputCodecTest {
             eventData.put("doubleType", Double.valueOf(rows));
             eventData.put("floatType", Float.valueOf(rows));
             eventData.put("longType", Long.valueOf(rows));
-            eventData.put("bytesType", ("Person"+rows).getBytes());
+            eventData.put("bytesType", ("Person" + rows).getBytes());
             recordList.add((eventData));
 
         }
@@ -97,6 +98,7 @@ public class ParquetOutputCodecTest {
         config.setBucket("test");
         config.setRegion("test");
         return new ParquetOutputCodec(config);
+
     }
 
     @ParameterizedTest
@@ -106,10 +108,11 @@ public class ParquetOutputCodecTest {
         ParquetOutputCodec parquetOutputCodec = createObjectUnderTest();
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
-        parquetOutputCodec.start(tempFile);
+        OutputCodecContext codecContext = new OutputCodecContext();
+        parquetOutputCodec.start(tempFile, codecContext);
         for (int index = 0; index < numberOfRecords; index++) {
             final Event event = (Event) getRecord(index).getData();
-            parquetOutputCodec.writeEvent(event, outputStream, null);
+            parquetOutputCodec.writeEvent(event, outputStream);
         }
         parquetOutputCodec.closeWriter(outputStream, tempFile);
         List<HashMap<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
@@ -122,6 +125,7 @@ public class ParquetOutputCodecTest {
         }
         tempFile.delete();
     }
+
     @Test
     public void test_getExtension() {
         ParquetOutputCodec parquetOutputCodec = createObjectUnderTest();
@@ -129,6 +133,7 @@ public class ParquetOutputCodecTest {
 
         assertThat(extension, equalTo("parquet"));
     }
+
     @Test
     public void whenNoSchemaProvided_thenThrowsException() {
         config = new ParquetOutputCodecConfig();
@@ -136,7 +141,7 @@ public class ParquetOutputCodecTest {
         config.setFileLocation(null);
         config.setSchemaRegistryUrl(null);
         ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
-        assertThrows(IOException.class,()->
+        assertThrows(IOException.class, () ->
                 parquetOutputCodec.buildSchemaAndKey(null, null));
     }
 
@@ -150,7 +155,7 @@ public class ParquetOutputCodecTest {
         ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
         assertThat(parquetOutputCodec.checkS3SchemaValidity(), equalTo(Boolean.TRUE));
         ParquetOutputCodec parquetOutputCodecFalse = createObjectUnderTest();
-        assertThrows(IOException.class,()->
+        assertThrows(IOException.class, () ->
                 parquetOutputCodecFalse.checkS3SchemaValidity());
     }
 

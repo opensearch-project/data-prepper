@@ -41,11 +41,12 @@ import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
-import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodec;
-import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
+import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodec;
+import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
@@ -67,11 +68,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -90,7 +91,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class S3SinkServiceIT {
 
-    private static final String PATH_PREFIX = UUID.randomUUID().toString() + "/%{yyyy}/%{MM}/%{dd}/";
+    private static final String PATH_PREFIX = UUID.randomUUID() + "/%{yyyy}/%{MM}/%{dd}/";
     private static final int numberOfRecords = 2;
     private S3Client s3Client;
     private String bucketName;
@@ -164,7 +165,6 @@ class S3SinkServiceIT {
 
     void configureNewLineCodec() {
         codec = new NdjsonOutputCodec(ndjsonOutputConfig);
-        when(ndjsonOutputConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
     }
 
     @Test
@@ -186,7 +186,8 @@ class S3SinkServiceIT {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, s3Client, "Tag", pluginMetrics);
+        OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, pluginMetrics);
     }
 
     private int gets3ObjectCount() {
@@ -255,6 +256,7 @@ class S3SinkServiceIT {
         jsonObject.put("Tag", testTags.toArray());
         return jsonObject;
     }
+
     private static Record getRecord(int index) {
         List<HashMap> recordList = generateRecords(numberOfRecords);
         final Event event = JacksonLog.builder().withData(recordList.get(index)).build();
@@ -276,6 +278,7 @@ class S3SinkServiceIT {
         }
         return recordList;
     }
+
     @Test
     void verify_flushed_records_into_s3_bucket_Parquet() throws IOException {
         configureParquetCodec();
@@ -301,15 +304,16 @@ class S3SinkServiceIT {
         parquetOutputCodecConfig.setRegion(s3region);
         parquetOutputCodecConfig.setPathPrefix(PATH_PREFIX);
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
-        when(parquetOutputCodecConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
 
     }
+
     private Collection<Record<Event>> getRecordList() {
         final Collection<Record<Event>> recordList = new ArrayList<>();
         for (int i = 0; i < numberOfRecords; i++)
             recordList.add(getRecord(i));
         return recordList;
     }
+
     private static Schema parseSchema() {
         return SchemaBuilder.record("Person")
                 .fields()
@@ -317,6 +321,7 @@ class S3SinkServiceIT {
                 .name("age").type().intType().noDefault()
                 .endRecord();
     }
+
     private List<HashMap<String, Object>> createParquetRecordsList(final InputStream inputStream) throws IOException {
 
         final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
