@@ -1,4 +1,4 @@
-# GeoIP Processor
+# CloudWatch Metrics Source
 
 This is the Data Prepper Cloudwatch Metrics Source plugin which will fetch the metrics based on user configuration and writes to buffer.
 
