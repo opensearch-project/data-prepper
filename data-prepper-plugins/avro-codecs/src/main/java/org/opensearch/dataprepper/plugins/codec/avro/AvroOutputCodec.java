@@ -4,7 +4,6 @@
  */
 package org.opensearch.dataprepper.plugins.codec.avro;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericData;
@@ -34,9 +33,8 @@ import java.util.Objects;
 @DataPrepperPlugin(name = "avro", pluginType = OutputCodec.class, pluginConfigurationType = AvroOutputCodecConfig.class)
 public class AvroOutputCodec implements OutputCodec {
 
-    private static final List<String> nonComplexTypes = Arrays.asList("int", "long", "string", "float", "double", "bytes");
+    private static final List<String> PRIMITIVE_TYPES = Arrays.asList("int", "long", "string", "float", "double", "bytes");
     private static final Logger LOG = LoggerFactory.getLogger(AvroOutputCodec.class);
-    private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final String AVRO = "avro";
     private static final String BASE_SCHEMA_STRING = "{\"type\":\"record\",\"name\":\"AvroRecords\",\"fields\":[";
     private static final String END_SCHEMA_STRING = "]}";
@@ -52,13 +50,7 @@ public class AvroOutputCodec implements OutputCodec {
     public AvroOutputCodec(final AvroOutputCodecConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
-    }
 
-    @Override
-    public void start(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {
-        Objects.requireNonNull(outputStream);
-        Objects.requireNonNull(codecContext);
-        this.codecContext = codecContext;
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
         } else if (config.getFileLocation() != null) {
@@ -67,10 +59,18 @@ public class AvroOutputCodec implements OutputCodec {
             schema = parseSchema(AvroSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
         } else if (checkS3SchemaValidity()) {
             schema = AvroSchemaParserFromS3.parseSchema(config);
-        } else {
+        }
+    }
+
+    @Override
+    public void start(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {
+        Objects.requireNonNull(outputStream);
+        Objects.requireNonNull(codecContext);
+        this.codecContext = codecContext;
+        if (schema == null) {
             schema = buildInlineSchemaFromEvent(event);
         }
-        final DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<GenericRecord>(schema);
+        final DatumWriter<GenericRecord> datumWriter = new GenericDatumWriter<>(schema);
         dataFileWriter = new DataFileWriter<>(datumWriter);
         dataFileWriter.create(schema, outputStream);
     }
@@ -159,13 +159,13 @@ public class AvroOutputCodec implements OutputCodec {
         return AVRO;
     }
 
-    Schema parseSchema(final String schemaString) throws IOException {
+    Schema parseSchema(final String schemaString) {
         try {
             Objects.requireNonNull(schemaString);
             return new Schema.Parser().parse(schemaString);
         } catch (Exception e) {
-            LOG.error("Unable to parse Schema from Schema String provided.");
-            throw new IOException("Can't proceed without schema.");
+            LOG.error("Unable to parse Schema from Schema String provided.", e);
+            throw new RuntimeException("There is an error in the schema: " + e.getMessage());
         }
     }
 
@@ -177,6 +177,9 @@ public class AvroOutputCodec implements OutputCodec {
                 continue;
             }
             final Schema.Field field = schema.getField(key);
+            if (field == null) {
+                throw new RuntimeException("The event has a key ('" + key + "') which is not included in the schema.");
+            }
             final Object value = schemaMapper(field, eventData.get(key));
             avroRecord.put(key, value);
         }
@@ -186,7 +189,7 @@ public class AvroOutputCodec implements OutputCodec {
     private Object schemaMapper(final Schema.Field field, final Object rawValue) {
         Object finalValue = null;
         final String fieldType = field.schema().getType().name().toLowerCase();
-        if (nonComplexTypes.contains(fieldType)) {
+        if (PRIMITIVE_TYPES.contains(fieldType)) {
             switch (fieldType) {
                 case "string":
                     finalValue = rawValue.toString();
@@ -225,7 +228,7 @@ public class AvroOutputCodec implements OutputCodec {
         return finalValue;
     }
 
-    private boolean checkS3SchemaValidity() throws IOException {
+    private boolean checkS3SchemaValidity() {
         return config.getBucketName() != null && config.getFileKey() != null && config.getRegion() != null;
     }
 }
