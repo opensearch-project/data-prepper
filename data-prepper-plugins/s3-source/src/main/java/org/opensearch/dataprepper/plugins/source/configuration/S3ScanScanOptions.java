@@ -6,12 +6,9 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.deser.DurationDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.DurationSerializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import jakarta.validation.constraints.AssertTrue;
+import org.opensearch.dataprepper.plugins.source.CustomLocalDateTimeDeserializer;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -23,19 +20,15 @@ import java.util.stream.Stream;
  * Class consists the scan options list bucket configuration properties.
  */
 public class S3ScanScanOptions {
-
-    @JsonSerialize(using = DurationSerializer.class)
     @JsonDeserialize(using = DurationDeserializer.class)
     @JsonProperty("range")
     private Duration range;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("start_time")
     private LocalDateTime startTime;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("end_time")
     private LocalDateTime endTime;
 

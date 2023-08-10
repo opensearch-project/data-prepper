@@ -6,12 +6,9 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.deser.DurationDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.DurationSerializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import jakarta.validation.constraints.AssertTrue;
+import org.opensearch.dataprepper.plugins.source.CustomLocalDateTimeDeserializer;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -25,23 +22,20 @@ public class S3ScanBucketOption {
     @JsonProperty("name")
     private String name;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("start_time")
     private LocalDateTime startTime;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("end_time")
     private LocalDateTime endTime;
 
-    @JsonSerialize(using = DurationSerializer.class)
     @JsonDeserialize(using = DurationDeserializer.class)
     @JsonProperty("range")
     private Duration range;
 
-    @JsonProperty("key_prefix")
-    private S3ScanKeyPathOption keyPrefix;
+    @JsonProperty("filter")
+    private S3ScanKeyPathOption s3ScanFilter;
 
     @AssertTrue(message = "At most two options from start_time, end_time and range can be specified at the same time")
     public boolean hasValidTimeOptions() {
@@ -64,7 +58,7 @@ public class S3ScanBucketOption {
         return range;
     }
 
-    public S3ScanKeyPathOption getkeyPrefix() {
-        return keyPrefix;
+    public S3ScanKeyPathOption getS3ScanFilter() {
+        return s3ScanFilter;
     }
 }

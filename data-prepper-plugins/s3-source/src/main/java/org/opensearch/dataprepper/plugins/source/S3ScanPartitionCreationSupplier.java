@@ -47,7 +47,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
 
         for (final ScanOptions scanOptions : scanOptionsList) {
             final List<String> excludeItems = new ArrayList<>();
-            final S3ScanKeyPathOption s3ScanKeyPathOption = scanOptions.getBucketOption().getkeyPrefix();
+            final S3ScanKeyPathOption s3ScanKeyPathOption = scanOptions.getBucketOption().getS3ScanFilter();
             final ListObjectsV2Request.Builder listObjectsV2Request = ListObjectsV2Request.builder()
                     .bucket(scanOptions.getBucketOption().getName());
             bucketOwnerProvider.getBucketOwner(scanOptions.getBucketOption().getName())
@@ -56,8 +56,8 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
             if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions()))
                 excludeItems.addAll(s3ScanKeyPathOption.getS3ScanExcludeSuffixOptions());
 
-            if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3scanIncludeOptions()))
-                s3ScanKeyPathOption.getS3scanIncludeOptions().forEach(includePath -> {
+            if (Objects.nonNull(s3ScanKeyPathOption) && Objects.nonNull(s3ScanKeyPathOption.getS3scanIncludePrefixOptions()))
+                s3ScanKeyPathOption.getS3scanIncludePrefixOptions().forEach(includePath -> {
                     listObjectsV2Request.prefix(includePath);
                     objectsToProcess.addAll(listFilteredS3ObjectsForBucket(excludeItems, listObjectsV2Request,
                             scanOptions.getBucketOption().getName(), scanOptions.getUseStartDateTime(), scanOptions.getUseEndDateTime()));

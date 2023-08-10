@@ -1,3 +1,8 @@
+/*
+ *  * Copyright OpenSearch Contributors
+ *  * SPDX-License-Identifier: Apache-2.0
+ *
+ */
 package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -6,19 +11,19 @@ import jakarta.validation.constraints.Min;
 import java.time.Duration;
 
 public class S3ScanSchedulingOptions {
-    @JsonProperty("rate")
-    private Duration rate = Duration.ofHours(8);
+    @JsonProperty("interval")
+    private Duration interval = Duration.ofHours(8);
 
     @Min(1)
     @JsonProperty("count")
-    private int Count = 1;
+    private int count = 1;
 
-    public Duration getRate() {
-        return rate;
+    public Duration getInterval() {
+        return interval;
     }
 
     public int getCount() {
-        return Count;
+        return count;
     }
 
 }
