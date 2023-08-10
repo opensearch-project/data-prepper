@@ -46,6 +46,8 @@ public class AuthConfig {
 
     }
 
+    /*
+     * For Future USE
     public static  class SslAuthConfig {
         // TODO Add Support for SSL authentication types like
         // one-way or two-way authentication
@@ -57,13 +59,15 @@ public class AuthConfig {
     @JsonProperty("ssl")
     private SslAuthConfig sslAuthConfig;
 
-    @Valid
-    @JsonProperty("sasl")
-    private SaslAuthConfig saslAuthConfig;
-
     public SslAuthConfig getSslAuthConfig() {
         return sslAuthConfig;
     }
+
+    */
+
+    @Valid
+    @JsonProperty("sasl")
+    private SaslAuthConfig saslAuthConfig;
 
     public SaslAuthConfig getSaslAuthConfig() {
         return saslAuthConfig;
