@@ -12,7 +12,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.CheckpointState;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -23,6 +22,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import io.micrometer.core.instrument.Counter;
@@ -32,7 +32,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -77,7 +76,7 @@ public class KafkaSourceCustomConsumerTest {
     private TopicConfig topicConfig;
 
     @Mock
-    private PluginMetrics pluginMetrics;
+    private KafkaTopicMetrics topicMetrics;
 
     private KafkaSourceCustomConsumer consumer;
 
@@ -100,15 +99,18 @@ public class KafkaSourceCustomConsumerTest {
     @BeforeEach
     public void setUp() {
         kafkaConsumer = mock(KafkaConsumer.class);
-        pluginMetrics = mock(PluginMetrics.class);
+        topicMetrics = mock(KafkaTopicMetrics.class);
         counter = mock(Counter.class);
         topicConfig = mock(TopicConfig.class);
+        when(topicMetrics.getNumberOfPositiveAcknowledgements()).thenReturn(counter);
+        when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(counter);
+        when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(counter);
+        when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
         when(kafkaConsumer.committed(any(TopicPartition.class))).thenReturn(null);
 
-        when(pluginMetrics.counter(anyString())).thenReturn(counter);
         doAnswer((i)-> {return null;}).when(counter).increment();
         callbackExecutor = Executors.newFixedThreadPool(2); 
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(callbackExecutor, Duration.ofMillis(2000));
@@ -122,7 +124,7 @@ public class KafkaSourceCustomConsumerTest {
     public KafkaSourceCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
         when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
-        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, pluginMetrics);
+        return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, topicMetrics);
     }
 
     private BlockingBuffer<Record<Event>> getBuffer() {
@@ -203,6 +205,7 @@ public class KafkaSourceCustomConsumerTest {
             Thread.sleep(10000);
         } catch (Exception e){}
 
+        consumer.processAcknowledgedOffsets();
         offsetsToCommit = consumer.getOffsetsToCommit();
         Assertions.assertEquals(offsetsToCommit.size(), 1);
         offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
@@ -246,6 +249,7 @@ public class KafkaSourceCustomConsumerTest {
             Thread.sleep(10000);
         } catch (Exception e){}
 
+        consumer.processAcknowledgedOffsets();
         offsetsToCommit = consumer.getOffsetsToCommit();
         Assertions.assertEquals(offsetsToCommit.size(), 0);
     }

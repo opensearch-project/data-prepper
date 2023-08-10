@@ -119,6 +119,7 @@ public class KafkaSourceJsonTypeIT {
         when(jsonTopic.getName()).thenReturn(testTopic);
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
         when(jsonTopic.getWorkers()).thenReturn(1);
+        when(jsonTopic.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
         when(jsonTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
         when(jsonTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(jsonTopic.getAutoCommit()).thenReturn(false);
