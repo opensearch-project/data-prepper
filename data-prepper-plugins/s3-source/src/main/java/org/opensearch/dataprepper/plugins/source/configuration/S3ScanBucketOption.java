@@ -6,7 +6,7 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
+import com.fasterxml.jackson.datatype.jsr310.deser.DurationDeserializer;
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.plugins.source.CustomLocalDateTimeDeserializer;
 
@@ -26,11 +26,11 @@ public class S3ScanBucketOption {
     @JsonProperty("start_time")
     private LocalDateTime startTime;
 
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("end_time")
     private LocalDateTime endTime;
 
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = DurationDeserializer.class)
     @JsonProperty("range")
     private Duration range;
 
