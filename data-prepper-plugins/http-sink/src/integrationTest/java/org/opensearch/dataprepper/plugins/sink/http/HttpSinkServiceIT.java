@@ -27,6 +27,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.accumulator.BufferFactory;
 import org.opensearch.dataprepper.plugins.accumulator.InMemoryBufferFactory;
+import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputCodec;
+import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.HttpSinkConfiguration;
 import org.opensearch.dataprepper.plugins.sink.http.configuration.ThresholdOptions;
 import org.opensearch.dataprepper.plugins.sink.http.dlq.DlqPushHandler;
@@ -35,6 +37,7 @@ import org.opensearch.dataprepper.test.helper.ReflectivelySetField;
 
 import java.text.MessageFormat;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.UUID;
@@ -57,7 +60,7 @@ public class HttpSinkServiceIT {
             "        http_method: POST\n" +
             "        auth_type: {1}\n" +
             "        codec:\n" +
-            "          ndjson:\n" +
+            "          json:\n" +
             "        ssl: false\n" +
             "        aws:\n" +
             "          region: {2}\n" +
@@ -73,6 +76,7 @@ public class HttpSinkServiceIT {
 
     private PluginMetrics pluginMetrics;
 
+    private PluginSetting pluginSetting;
 
     @BeforeEach
     void setUp() throws JsonProcessingException{
@@ -85,17 +89,21 @@ public class HttpSinkServiceIT {
     @Mock
     private PipelineDescription pipelineDescription;
 
-    @Mock
     private PluginFactory pluginFactory;
 
     @Mock
     private Counter httpSinkRecordsSuccessCounter;
+
+    @Mock
+    NdjsonOutputConfig ndjsonOutputConfig;
 
     public HttpSinkService createHttpSinkServiceUnderTest() throws NoSuchFieldException, IllegalAccessException {
         this.pipelineDescription = mock(PipelineDescription.class);
         this.pluginFactory = mock(PluginFactory.class);
         this.httpSinkRecordsSuccessCounter = mock(Counter.class);
         this.pluginMetrics = mock(PluginMetrics.class);
+        this.pluginSetting = mock(PluginSetting.class);
+
         when(pluginMetrics.counter(HTTP_SINK_RECORDS_SUCCESS_COUNTER)).thenReturn(httpSinkRecordsSuccessCounter);
         when(pipelineDescription.getPipelineName()).thenReturn("http-plugin");
         ReflectivelySetField.setField(ThresholdOptions.class,httpSinkConfiguration.getThresholdOptions(),"eventCollectTimeOut", Duration.ofNanos(1));
@@ -103,7 +111,9 @@ public class HttpSinkServiceIT {
         final PluginModel codecConfiguration = httpSinkConfiguration.getCodec();
         final PluginSetting codecPluginSettings = new PluginSetting(codecConfiguration.getPluginName(),
                 codecConfiguration.getPluginSettings());
-
+        this.ndjsonOutputConfig = mock(NdjsonOutputConfig.class);
+        when(ndjsonOutputConfig.getExcludeKeys()).thenReturn(new ArrayList<>());
+        codec = new NdjsonOutputCodec(ndjsonOutputConfig);
         this.bufferFactory = new InMemoryBufferFactory();
         this.dlqPushHandler = new DlqPushHandler(httpSinkConfiguration.getDlqFile(), pluginFactory,
                 "bucket",
@@ -120,6 +130,8 @@ public class HttpSinkServiceIT {
                 null,
                 httpClientBuilder,
                 pluginMetrics,
+                pluginSetting,
+                codec,
                 null);
     }
 
@@ -131,7 +143,7 @@ public class HttpSinkServiceIT {
     }
 
     private static Record<Event> createRecord() {
-        final JacksonEvent event = JacksonLog.builder().withData("[{\"name\":\""+ UUID.randomUUID() +"\"}]").build();
+        final JacksonEvent event = JacksonLog.builder().withData("{\"name\":\""+ UUID.randomUUID() +"\"}").build();
         event.setEventHandle(mock(EventHandle.class));
         return new Record<>(event);
     }

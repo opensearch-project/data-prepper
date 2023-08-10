@@ -22,9 +22,41 @@ dependencies {
     implementation project(':data-prepper-plugins:failures-common')
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
     implementation 'com.github.scribejava:scribejava-core:8.3.3'
+    implementation project(path: ':data-prepper-core')
+    implementation project(':data-prepper-plugins:parse-json-processor')
     testImplementation project(':data-prepper-test-common')
 }
 
 test {
     useJUnitPlatform()
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.http.sink.http.endpoint', System.getProperty('tests.http.sink.http.endpoint')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
 }
