@@ -40,8 +40,8 @@ public class TopicConfig {
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
 
 
-    private static final Integer NUM_OF_PARTITIONS = 3;
-    private static final Short REPLICATION_FACTOR = 1;
+    private static final Integer DEFAULT_NUM_OF_PARTITIONS = 3;
+    private static final Short DEFAULT_REPLICATION_FACTOR = 1;
 
 
     @JsonProperty("name")
@@ -146,10 +146,10 @@ public class TopicConfig {
     private Boolean isCreate=Boolean.FALSE;
 
     @JsonProperty("number_of_partitions")
-    private Integer numberOfPartions = NUM_OF_PARTITIONS;
+    private Integer numberOfPartions = DEFAULT_NUM_OF_PARTITIONS;
 
     @JsonProperty("replication_factor")
-    private Short replicationFactor = REPLICATION_FACTOR;
+    private Short replicationFactor = DEFAULT_REPLICATION_FACTOR;
 
     public String getGroupId() {
         return groupId;
