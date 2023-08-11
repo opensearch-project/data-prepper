@@ -162,7 +162,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             Thread.sleep(10000);
         } catch (RecordDeserializationException e) {
             LOG.warn("Deserialization error - topic {} partition {} offset {}, seeking past the error record",
-                     e.topicPartition().topic(), e.topicPartition().partition(), e.offset());
+                     e.topicPartition().topic(), e.topicPartition().partition(), e.offset(), e);
             topicMetrics.getNumberOfDeserializationErrors().increment();
             consumer.seek(e.topicPartition(), e.offset()+1);
         }
