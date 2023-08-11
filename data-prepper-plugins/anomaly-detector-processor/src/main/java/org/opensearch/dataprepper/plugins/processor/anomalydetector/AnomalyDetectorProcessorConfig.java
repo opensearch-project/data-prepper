@@ -10,6 +10,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.Collections;
 import java.util.List;
 
 public class AnomalyDetectorProcessorConfig {
@@ -22,7 +23,7 @@ public class AnomalyDetectorProcessorConfig {
     private List<String> keys;
 
     @JsonProperty("identification_keys")
-    private List<String> identificationKeys;
+    private List<String> identificationKeys = Collections.emptyList();
 
     @JsonProperty("verbose")
     private Boolean verbose = false;
