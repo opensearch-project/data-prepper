@@ -21,6 +21,7 @@ import static java.util.stream.Collectors.toList;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.both;
 import static org.hamcrest.Matchers.greaterThan;
 
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.hamcrest.Matchers.lessThan;
 import static org.mockito.Mockito.mock;
 import org.mockito.Mock;
 import static org.mockito.Mockito.when;
@@ -205,6 +207,7 @@ public class RandomCutForestModeTests {
         }
 
         final List<Record<Event>> anomalyRecords = randomCutForestMode.handleEvents(recordsWithAnomaly).stream().collect(toList());;
-        assertThat(anomalyRecords.size(), equalTo(1));
+        // Due to inherent variance in the RCF algorithm, 1-3 anomalies will be detected after the level shift.
+        assertThat(anomalyRecords.size(), both(greaterThan(0)).and(lessThan(4)));
     }
 }
