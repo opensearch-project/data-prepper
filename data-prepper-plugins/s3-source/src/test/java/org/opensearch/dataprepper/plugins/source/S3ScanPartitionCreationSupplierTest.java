@@ -158,7 +158,7 @@ public class S3ScanPartitionCreationSupplierTest {
     @Test
     void getNextPartition_supplier_with_scheduling_options_returns_expected_PartitionIdentifiers() {
         schedulingOptions = mock(S3ScanSchedulingOptions.class);
-        given(schedulingOptions.getInterval()).willReturn(Duration.ofMillis(10));
+        given(schedulingOptions.getInterval()).willReturn(Duration.ofMillis(0));
         given(schedulingOptions.getCount()).willReturn(2);
 
         final String firstBucket = "bucket-one";
@@ -171,8 +171,8 @@ public class S3ScanPartitionCreationSupplierTest {
         given(firstBucketScanOptions.getUseStartDateTime()).willReturn(null);
         given(firstBucketScanOptions.getUseEndDateTime()).willReturn(null);
         final S3ScanKeyPathOption firstBucketScanKeyPath = mock(S3ScanKeyPathOption.class);
-        given(firstBucketScanBucketOption.getkeyPrefix()).willReturn(firstBucketScanKeyPath);
-        given(firstBucketScanKeyPath.getS3scanIncludeOptions()).willReturn(List.of(UUID.randomUUID().toString()));
+        given(firstBucketScanBucketOption.getS3ScanFilter()).willReturn(firstBucketScanKeyPath);
+        given(firstBucketScanKeyPath.getS3scanIncludePrefixOptions()).willReturn(List.of(UUID.randomUUID().toString()));
         given(firstBucketScanKeyPath.getS3ScanExcludeSuffixOptions()).willReturn(List.of(".invalid"));
         scanOptionsList.add(firstBucketScanOptions);
 
@@ -183,8 +183,8 @@ public class S3ScanPartitionCreationSupplierTest {
         given(secondBucketScanOptions.getUseStartDateTime()).willReturn(null);
         given(secondBucketScanOptions.getUseEndDateTime()).willReturn(null);
         final S3ScanKeyPathOption secondBucketScanKeyPath = mock(S3ScanKeyPathOption.class);
-        given(secondBucketScanBucketOption.getkeyPrefix()).willReturn(secondBucketScanKeyPath);
-        given(secondBucketScanKeyPath.getS3scanIncludeOptions()).willReturn(null);
+        given(secondBucketScanBucketOption.getS3ScanFilter()).willReturn(secondBucketScanKeyPath);
+        given(secondBucketScanKeyPath.getS3scanIncludePrefixOptions()).willReturn(null);
         given(secondBucketScanKeyPath.getS3ScanExcludeSuffixOptions()).willReturn(null);
         scanOptionsList.add(secondBucketScanOptions);
 
