@@ -5,7 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.processor.anomalydetector;
 
-import io.micrometer.core.instrument.Counter;
+
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -23,19 +23,20 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @DataPrepperPlugin(name = "anomaly_detector", pluginType = Processor.class, pluginConfigurationType = AnomalyDetectorProcessorConfig.class)
 public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
     public static final String DEVIATION_KEY = "deviation_from_expected";
     public static final String GRADE_KEY = "grade";
-    static final String NUMBER_RCF_INSTANCES = "numberRCFInstances";
+    static final String NUMBER_RCF_INSTANCES = "RCFInstances";
 
     private final Boolean verbose;
     private final IdentificationKeysHasher identificationKeysHasher;
-    private final Counter numberRCFInstances;
     private final List<String> keys;
     private final PluginFactory pluginFactory;
     private final HashMap<Integer, AnomalyDetectorMode> forestMap;
+    private final AtomicInteger cardinality;
     private final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig;
 
     @DataPrepperPluginConstructor
@@ -44,9 +45,9 @@ public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, R
         this.identificationKeysHasher = new IdentificationKeysHasher(anomalyDetectorProcessorConfig.getIdentificationKeys());
         this.anomalyDetectorProcessorConfig = anomalyDetectorProcessorConfig;
         this.pluginFactory = pluginFactory;
-        this.numberRCFInstances = pluginMetrics.counter(NUMBER_RCF_INSTANCES);
         this.keys = anomalyDetectorProcessorConfig.getKeys();
         this.verbose = anomalyDetectorProcessorConfig.getVerbose();
+        this.cardinality = pluginMetrics.gauge(NUMBER_RCF_INSTANCES, new AtomicInteger());
         forestMap = new HashMap<>();
     }
 
@@ -71,10 +72,10 @@ public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, R
                 forest = loadAnomalyDetectorMode(pluginFactory);
                 forest.initialize(keys, verbose);
                 forestMap.put(identificationKeysMap.hashCode(), forest);
-                this.numberRCFInstances.increment();
             }
             recordsOut.addAll(forestMap.get(identificationKeysMap.hashCode()).handleEvents(List.of(record)));
         }
+        cardinality.set(forestMap.size());
         return recordsOut;
     }
 
