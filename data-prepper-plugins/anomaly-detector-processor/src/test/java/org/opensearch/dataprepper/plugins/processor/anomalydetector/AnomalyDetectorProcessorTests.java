@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -48,7 +49,7 @@ public class AnomalyDetectorProcessorTests {
     @Mock
     private PluginMetrics pluginMetrics;
     @Mock
-    private Counter numberRCFInstances;
+    private AtomicInteger numberRCFInstances;
     @Mock
     private Counter recordsIn;
 
@@ -81,7 +82,7 @@ public class AnomalyDetectorProcessorTests {
         when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
             .thenAnswer(invocation -> new RandomCutForestMode(randomCutForestModeConfig));
 
-        when(pluginMetrics.counter(AnomalyDetectorProcessor.NUMBER_RCF_INSTANCES)).thenReturn(numberRCFInstances);
+        when(pluginMetrics.gauge(eq(AnomalyDetectorProcessor.NUMBER_RCF_INSTANCES), any())).thenReturn(numberRCFInstances);
         when(pluginMetrics.counter(MetricNames.RECORDS_IN)).thenReturn(recordsIn);
         when(pluginMetrics.counter(MetricNames.RECORDS_OUT)).thenReturn(recordsOut);
         when(pluginMetrics.timer(MetricNames.TIME_ELAPSED)).thenReturn(timeElapsed);
