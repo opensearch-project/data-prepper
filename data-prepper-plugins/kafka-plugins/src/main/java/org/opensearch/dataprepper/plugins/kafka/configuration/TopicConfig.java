@@ -22,7 +22,7 @@ public class TopicConfig {
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
     static final int DEFAULT_MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
-    static final String DEFAULT_AUTO_OFFSET_RESET = "latest";
+    static final String DEFAULT_AUTO_OFFSET_RESET = "earliest";
     static final Duration DEFAULT_THREAD_WAITING_TIME = Duration.ofSeconds(5);
     static final Duration DEFAULT_MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(5);
