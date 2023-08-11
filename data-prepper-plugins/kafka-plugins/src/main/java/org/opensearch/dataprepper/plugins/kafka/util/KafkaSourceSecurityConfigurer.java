@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 
 import software.amazon.awssdk.services.kafka.KafkaClient;
@@ -25,9 +26,17 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.regions.Region;
 
+import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
+import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
+import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
+import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
+import software.amazon.awssdk.services.glue.model.Compatibility;
+
 import org.slf4j.Logger;
 
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.UUID;
@@ -72,6 +81,8 @@ public class KafkaSourceSecurityConfigurer {
     private static final String REGISTRY_BASIC_AUTH_USER_INFO = "schema.registry.basic.auth.user.info";
 
     private static final int MAX_KAFKA_CLIENT_RETRIES = 360; // for one hour every 10 seconds
+
+    private static AwsCredentialsProvider credentialsProvider;
 
 
     /*public static void setSaslPlainTextProperties(final KafkaSourceConfig kafkaSourConfig,
@@ -173,7 +184,6 @@ public class KafkaSourceSecurityConfigurer {
     }
 
     public static String getBootStrapServersForMsk(final AwsIamAuthConfig awsIamAuthConfig, final AwsConfig awsConfig, final Logger LOG) {
-        AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.create();
         if (awsIamAuthConfig == AwsIamAuthConfig.ROLE) {
             String sessionName = "data-prepper-kafka-session" + UUID.randomUUID();
             StsClient stsClient = StsClient.builder()
@@ -216,10 +226,11 @@ public class KafkaSourceSecurityConfigurer {
                 try {
                     Thread.sleep(10000);
                 } catch (InterruptedException exp) {}
+                retryable = true;
             } catch (Exception e) {
                 throw new RuntimeException("Failed to get bootstrap server information from MSK.", e);
             }
-        } while (numRetries++ < MAX_KAFKA_CLIENT_RETRIES);
+        } while (retryable && numRetries++ < MAX_KAFKA_CLIENT_RETRIES);
         if (Objects.isNull(result)) {
             throw new RuntimeException("Failed to get bootstrap server information from MSK after trying multiple times with retryable exceptions.");
         }
@@ -234,11 +245,14 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static void setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
+    public static GlueSchemaRegistryKafkaDeserializer setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
         final AwsConfig awsConfig = sourceConfig.getAwsConfig();
         final AuthConfig authConfig = sourceConfig.getAuthConfig();
         final KafkaSourceConfig.EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
         final EncryptionType encryptionType = encryptionConfig.getType();
+        GlueSchemaRegistryKafkaDeserializer glueDeserializer = null;
+
+        credentialsProvider = DefaultCredentialsProvider.create();
 
         String bootstrapServers = sourceConfig.getBootStrapServers();
         AwsIamAuthConfig awsIamAuthConfig = null;
@@ -269,6 +283,15 @@ public class KafkaSourceSecurityConfigurer {
                 properties.put("ssl.engine.factory.class", InsecureSslEngineFactory.class);
             }
         }
+        if (sourceConfig.getSchemaConfig().getType() == SchemaRegistryType.AWS_GLUE) {
+            Map<String, Object> configs = new HashMap();
+            configs.put(AWSSchemaRegistryConstants.AWS_REGION, sourceConfig.getAwsConfig().getRegion());
+            configs.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
+            configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");
+            configs.put(AWSSchemaRegistryConstants.CACHE_SIZE, "10");
+            configs.put(AWSSchemaRegistryConstants.COMPATIBILITY_SETTING, Compatibility.FULL);
+            glueDeserializer = new GlueSchemaRegistryKafkaDeserializer(credentialsProvider, configs);
+        }
         if (Objects.isNull(authConfig) || Objects.isNull(authConfig.getSaslAuthConfig())) {
             if (encryptionType == EncryptionType.SSL) {
                 properties.put(SECURITY_PROTOCOL, "SSL");
@@ -278,6 +301,7 @@ public class KafkaSourceSecurityConfigurer {
             throw new RuntimeException("Bootstrap servers are not specified");
         }
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        return glueDeserializer;
     }
 }
 
