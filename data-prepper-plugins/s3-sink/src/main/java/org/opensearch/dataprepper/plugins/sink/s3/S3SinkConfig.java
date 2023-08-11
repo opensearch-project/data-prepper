@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
@@ -35,6 +36,9 @@ public class S3SinkConfig {
 
     @JsonProperty("object_key")
     private ObjectKeyOptions objectKeyOptions;
+
+    @JsonProperty("compression")
+    private CompressionOption compression = CompressionOption.NONE;
 
     @JsonProperty("threshold")
     @NotNull
@@ -117,5 +121,9 @@ public class S3SinkConfig {
      */
     public int getMaxUploadRetries() {
         return maxUploadRetries;
+    }
+
+    public CompressionOption getCompression() {
+        return compression;
     }
 }

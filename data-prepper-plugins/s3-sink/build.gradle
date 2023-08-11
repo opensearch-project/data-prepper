@@ -23,8 +23,10 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.8.21'
     implementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
-	implementation project(':data-prepper-plugins:parquet-codecs')
-    implementation project(':data-prepper-plugins:parse-json-processor')
+    testImplementation project(':data-prepper-plugins:parquet-codecs')
+    testImplementation project(':data-prepper-plugins:parse-json-processor')
+    testImplementation project(':data-prepper-plugins:csv-processor')
+    testImplementation project(':data-prepper-plugins:avro-codecs')
 }
 
 test {
@@ -55,7 +57,7 @@ task integrationTest(type: Test) {
 
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.s3sink.bucket', System.getProperty('tests.s3sink.bucket')
-    systemProperty 'tests.s3ink.region', System.getProperty('tests.s3sink.region')
+    systemProperty 'tests.s3sink.region', System.getProperty('tests.s3sink.region')
 
     filter {
         includeTestsMatching '*IT'
