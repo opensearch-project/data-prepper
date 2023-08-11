@@ -117,7 +117,7 @@ public class KafkaSource implements Source<Record<Event>> {
     @Override
     public void start(Buffer<Record<Event>> buffer) {
         Properties authProperties = new Properties();
-        glueDeserializer =  KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
+        KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
             KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
@@ -136,7 +136,8 @@ public class KafkaSource implements Source<Record<Event>> {
                             break;
                         case PLAINTEXT:
                         default:
-                            if (sourceConfig.getSchemaConfig().getType() == SchemaRegistryType.AWS_GLUE) {
+                            glueDeserializer = KafkaSourceSecurityConfigurer.getGlueSerializer(sourceConfig);
+                            if (Objects.nonNull(glueDeserializer)) {
                                 kafkaConsumer = new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
                             } else {
                                 kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);

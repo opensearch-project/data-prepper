@@ -8,6 +8,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.PlainTextAuthConfig;
@@ -83,6 +84,7 @@ public class KafkaSourceSecurityConfigurer {
     private static final int MAX_KAFKA_CLIENT_RETRIES = 360; // for one hour every 10 seconds
 
     private static AwsCredentialsProvider credentialsProvider;
+    private static GlueSchemaRegistryKafkaDeserializer glueDeserializer;
 
 
     /*public static void setSaslPlainTextProperties(final KafkaSourceConfig kafkaSourConfig,
@@ -245,12 +247,11 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static GlueSchemaRegistryKafkaDeserializer setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
+    public static void setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
         final AwsConfig awsConfig = sourceConfig.getAwsConfig();
         final AuthConfig authConfig = sourceConfig.getAuthConfig();
         final KafkaSourceConfig.EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
         final EncryptionType encryptionType = encryptionConfig.getType();
-        GlueSchemaRegistryKafkaDeserializer glueDeserializer = null;
 
         credentialsProvider = DefaultCredentialsProvider.create();
 
@@ -283,15 +284,6 @@ public class KafkaSourceSecurityConfigurer {
                 properties.put("ssl.engine.factory.class", InsecureSslEngineFactory.class);
             }
         }
-        if (sourceConfig.getSchemaConfig().getType() == SchemaRegistryType.AWS_GLUE) {
-            Map<String, Object> configs = new HashMap();
-            configs.put(AWSSchemaRegistryConstants.AWS_REGION, sourceConfig.getAwsConfig().getRegion());
-            configs.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
-            configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");
-            configs.put(AWSSchemaRegistryConstants.CACHE_SIZE, "10");
-            configs.put(AWSSchemaRegistryConstants.COMPATIBILITY_SETTING, Compatibility.FULL);
-            glueDeserializer = new GlueSchemaRegistryKafkaDeserializer(credentialsProvider, configs);
-        }
         if (Objects.isNull(authConfig) || Objects.isNull(authConfig.getSaslAuthConfig())) {
             if (encryptionType == EncryptionType.SSL) {
                 properties.put(SECURITY_PROTOCOL, "SSL");
@@ -301,7 +293,22 @@ public class KafkaSourceSecurityConfigurer {
             throw new RuntimeException("Bootstrap servers are not specified");
         }
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    }
+
+    public static GlueSchemaRegistryKafkaDeserializer getGlueSerializer(final KafkaSourceConfig sourceConfig) {
+        SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
+        if (Objects.isNull(schemaConfig) || schemaConfig.getType() != SchemaRegistryType.AWS_GLUE) {
+            return null;
+        }
+        Map<String, Object> configs = new HashMap();
+        configs.put(AWSSchemaRegistryConstants.AWS_REGION, sourceConfig.getAwsConfig().getRegion());
+        configs.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
+        configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");
+        configs.put(AWSSchemaRegistryConstants.CACHE_SIZE, "10");
+        configs.put(AWSSchemaRegistryConstants.COMPATIBILITY_SETTING, Compatibility.FULL);
+        glueDeserializer = new GlueSchemaRegistryKafkaDeserializer(credentialsProvider, configs);
         return glueDeserializer;
     }
+
 }
 

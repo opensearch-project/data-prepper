@@ -13,6 +13,8 @@ import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
 import org.junit.jupiter.api.Assertions;
@@ -25,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.time.Duration;
@@ -36,6 +39,9 @@ class KafkaSourceTest {
 
     @Mock
     private KafkaSourceConfig sourceConfig;
+
+    @Mock
+    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -64,6 +70,7 @@ class KafkaSourceTest {
     @BeforeEach
     void setUp() throws Exception {
         sourceConfig = mock(KafkaSourceConfig.class);
+        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
         pipelineDescription = mock(PipelineDescription.class);
         pluginMetrics = mock(PluginMetrics.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
@@ -79,12 +86,21 @@ class KafkaSourceTest {
         when(topic2.getConsumerMaxPollRecords()).thenReturn(1);
         when(topic1.getGroupId()).thenReturn(TEST_GROUP_ID);
         when(topic2.getGroupId()).thenReturn(TEST_GROUP_ID);
+        when(topic1.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
+        when(topic2.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
+        when(topic1.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(5));
+        when(topic2.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(5));
         when(topic1.getAutoCommit()).thenReturn(false);
+        when(topic1.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
+        when(topic2.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topic2.getAutoCommit()).thenReturn(false);
         when(topic1.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
         when(topic2.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(10));
         when(sourceConfig.getBootStrapServers()).thenReturn("http://localhost:1234");
         when(sourceConfig.getTopics()).thenReturn(Arrays.asList(topic1, topic2));
+        when(sourceConfig.getSchemaConfig()).thenReturn(null);
+        when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
     }
 
    /* @Test
@@ -107,5 +123,15 @@ class KafkaSourceTest {
     void test_kafkaSource_start_execution_exception() {
         kafkaSource = createObjectUnderTest();
         Assertions.assertThrows(Exception.class, () -> kafkaSource.start(buffer));
+    }
+
+    @Test
+    void test_kafkaSource_basicFunctionality() {
+        when(topic1.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        when(topic2.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
+        kafkaSource = createObjectUnderTest();
+        assertTrue(Objects.nonNull(kafkaSource));
+        kafkaSource.start(buffer);
+        assertTrue(Objects.nonNull(kafkaSource.getConsumer()));
     }
 }
