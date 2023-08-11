@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.processor.aggregate;
+package org.opensearch.dataprepper.plugins.hasher;
 
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
@@ -21,10 +21,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-public class AggregateIdentificationKeysHasherTest {
+public class IdentificationKeysHasherTest {
     private Event event;
     private List<String> identificationKeys;
-    private AggregateIdentificationKeysHasher aggregateIdentificationKeysHasher;
+    private IdentificationKeysHasher identificationKeysHasher;
 
     @BeforeEach
     void setup() {
@@ -33,18 +33,18 @@ public class AggregateIdentificationKeysHasherTest {
         identificationKeys.add("secondIdentificationKey");
     }
 
-    private AggregateIdentificationKeysHasher createObjectUnderTest() {
-        return new AggregateIdentificationKeysHasher(identificationKeys);
+    private IdentificationKeysHasher createObjectUnderTest() {
+        return new IdentificationKeysHasher(identificationKeys);
     }
 
     @Test
     void createIdentificationKeysMapFromEvent_returns_expected_IdentficationKeysMap() {
-        aggregateIdentificationKeysHasher = createObjectUnderTest();
+        identificationKeysHasher = createObjectUnderTest();
         final Map<Object, Object> eventMap = new HashMap<>();
         eventMap.put("firstIdentificationKey", UUID.randomUUID().toString());
         eventMap.put("secondIdentificationKey", UUID.randomUUID().toString());
 
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap expectedResult = new AggregateIdentificationKeysHasher.IdentificationKeysMap(new HashMap<>(eventMap));
+        final IdentificationKeysHasher.IdentificationKeysMap expectedResult = new IdentificationKeysHasher.IdentificationKeysMap(new HashMap<>(eventMap));
 
         eventMap.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
@@ -53,20 +53,20 @@ public class AggregateIdentificationKeysHasherTest {
                 .withData(eventMap)
                 .build();
 
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap result = aggregateIdentificationKeysHasher.createIdentificationKeysMapFromEvent(event);
+        final IdentificationKeysHasher.IdentificationKeysMap result = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
         assertThat(result, equalTo(expectedResult));
     }
 
     @Test
     void createIdentificationKeysMapFromEvent_where_Event_does_not_contain_one_of_the_identification_keys_returns_expected_Map() {
-        aggregateIdentificationKeysHasher = createObjectUnderTest();
+        identificationKeysHasher = createObjectUnderTest();
         final Map<Object, Object> eventMap = new HashMap<>();
         eventMap.put("firstIdentificationKey", UUID.randomUUID().toString());
 
         final Map<Object, Object> mapForExpectedHash = new HashMap<>(eventMap);
         mapForExpectedHash.put("secondIdentificationKey", null);
 
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap expectedResult = new AggregateIdentificationKeysHasher.IdentificationKeysMap(mapForExpectedHash);
+        final IdentificationKeysHasher.IdentificationKeysMap expectedResult = new IdentificationKeysHasher.IdentificationKeysMap(mapForExpectedHash);
 
         eventMap.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
@@ -75,13 +75,13 @@ public class AggregateIdentificationKeysHasherTest {
                 .withData(eventMap)
                 .build();
 
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap result = aggregateIdentificationKeysHasher.createIdentificationKeysMapFromEvent(event);
+        final IdentificationKeysHasher.IdentificationKeysMap result = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
         assertThat(result, equalTo(expectedResult));
     }
 
     @Test
     void identical_identification_hashes_but_different_objects_are_considered_equal() {
-        aggregateIdentificationKeysHasher = createObjectUnderTest();
+        identificationKeysHasher = createObjectUnderTest();
         final Map<Object, Object> eventMap = new HashMap<>();
         eventMap.put("firstIdentificationKey", UUID.randomUUID().toString());
         eventMap.put("secondIdentificationKey", UUID.randomUUID().toString());
@@ -92,15 +92,15 @@ public class AggregateIdentificationKeysHasherTest {
                 .withData(eventMap)
                 .build();
 
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap result = aggregateIdentificationKeysHasher.createIdentificationKeysMapFromEvent(event);
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap secondResult = aggregateIdentificationKeysHasher.createIdentificationKeysMapFromEvent(event);
+        final IdentificationKeysHasher.IdentificationKeysMap result = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
+        final IdentificationKeysHasher.IdentificationKeysMap secondResult = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
 
         assertThat(result, equalTo(secondResult));
     }
 
     @Test
     void different_identification_hashes_are_not_considered_equal() {
-        aggregateIdentificationKeysHasher = createObjectUnderTest();
+        identificationKeysHasher = createObjectUnderTest();
         final Map<Object, Object> eventMap = new HashMap<>();
         eventMap.put("firstIdentificationKey", UUID.randomUUID().toString());
         eventMap.put("secondIdentificationKey", UUID.randomUUID().toString());
@@ -119,8 +119,8 @@ public class AggregateIdentificationKeysHasherTest {
                 .withData(secondEventMap)
                 .build();
 
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap result = aggregateIdentificationKeysHasher.createIdentificationKeysMapFromEvent(event);
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap secondResult = aggregateIdentificationKeysHasher.createIdentificationKeysMapFromEvent(secondEvent);
+        final IdentificationKeysHasher.IdentificationKeysMap result = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
+        final IdentificationKeysHasher.IdentificationKeysMap secondResult = identificationKeysHasher.createIdentificationKeysMapFromEvent(secondEvent);
 
         assertThat(result, is(not(equalTo(secondResult))));
     }

@@ -37,7 +37,7 @@ class TopicPartitionCommitTrackerTest {
     @ParameterizedTest
     @MethodSource("getInputOrder")
     public void test(List<Integer> order) {
-        topicPartitionCommitTracker = createObjectUnderTest(testTopic, testPartition, -1L);
+        topicPartitionCommitTracker = createObjectUnderTest(testTopic, testPartition, 0L);
         List<Range<Long>> ranges = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             ranges.add(Range.between(i*10L, i*10L+9L));

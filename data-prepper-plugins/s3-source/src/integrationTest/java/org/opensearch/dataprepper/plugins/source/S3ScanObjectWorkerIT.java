@@ -206,7 +206,7 @@ public class S3ScanObjectWorkerIT {
 
         when(s3SourceConfig.getS3ScanScanOptions()).thenReturn(s3ScanScanOptions);
         when(s3ScanScanOptions.getSchedulingOptions()).thenReturn(s3ScanSchedulingOptions);
-        lenient().when(s3ScanSchedulingOptions.getRate()).thenReturn(Duration.ofHours(1));
+        lenient().when(s3ScanSchedulingOptions.getInterval()).thenReturn(Duration.ofHours(1));
         lenient().when(s3ScanSchedulingOptions.getCount()).thenReturn(1);
 
         ExecutorService executor = Executors.newFixedThreadPool(2);

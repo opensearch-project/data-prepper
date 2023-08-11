@@ -130,6 +130,7 @@ public class KafkaSourceMultipleAuthTypeIT {
         when(plainTextTopic.getName()).thenReturn(testTopic);
         when(plainTextTopic.getGroupId()).thenReturn(testGroup);
         when(plainTextTopic.getWorkers()).thenReturn(1);
+        when(plainTextTopic.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
         when(plainTextTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
         when(plainTextTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(plainTextTopic.getAutoCommit()).thenReturn(false);
