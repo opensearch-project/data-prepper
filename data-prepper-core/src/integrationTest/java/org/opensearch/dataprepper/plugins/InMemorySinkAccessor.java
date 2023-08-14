@@ -34,7 +34,7 @@ public class InMemorySinkAccessor {
     public List<Record<Event>> get(final String testingKey) {
         lock.lock();
         try {
-            return recordsMap.getOrDefault(testingKey, Collections.emptyList());
+            return new ArrayList<>(recordsMap.getOrDefault(testingKey, Collections.emptyList()));
         } finally {
             lock.unlock();
         }
@@ -49,7 +49,7 @@ public class InMemorySinkAccessor {
     public List<Record<Event>> getAndClear(final String testingKey) {
         lock.lock();
         try {
-            final List<Record<Event>> records = recordsMap.getOrDefault(testingKey, Collections.emptyList());
+            final List<Record<Event>> records = get(testingKey);
 
             recordsMap.remove(testingKey);
 
