@@ -11,9 +11,12 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
+import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -122,6 +125,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         final Pattern boolCheck = Pattern.compile("true|false", Pattern.CASE_INSENSITIVE);
         final Matcher duplicateValueBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getSkipDuplicateValues()));
         final Matcher removeBracketsBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getRemoveBrackets()));
+        final Matcher recursiveBoolMatch = boolCheck.matcher(String.valueOf(keyValueProcessorConfig.getRecursive()));
 
         if (!duplicateValueBoolMatch.matches()) {
             throw new IllegalArgumentException(String.format("The skip_duplicate_values value must be either true or false", keyValueProcessorConfig.getSkipDuplicateValues()));
@@ -130,6 +134,16 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if (!removeBracketsBoolMatch.matches()) {
             throw new IllegalArgumentException(String.format("The remove_brackets value must be either true or false", keyValueProcessorConfig.getRemoveBrackets()));
         }
+
+        if (!recursiveBoolMatch.matches()) {
+            throw new IllegalArgumentException(String.format("The recursive value must be either true or false", keyValueProcessorConfig.getRemoveBrackets()));
+        }
+
+        if (keyValueProcessorConfig.getRemoveBrackets() && keyValueProcessorConfig.getRecursive()) {
+            throw new IllegalArgumentException("Cannot remove brackets needed for determining levels of recursion");
+        }
+
+        initRecursiveMap(recursiveBracketMap);
     }
 
     private String buildRegexFromCharacters(String s) {
@@ -183,6 +197,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final Event recordEvent = record.getData();
 
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
+
+            if (keyValueProcessorConfig.getRecursive()) {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode result = recurse(groupsRaw);
+            }
+
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
             for(final String group : groups) {
@@ -252,6 +272,35 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
 
         return records;
+    }
+
+    private static JsonNode recurse(String rawStringInput, ObjectMapper mapper) {
+        ObjectNode root = mapper.createObjectNode();
+        String[] pairs = rawStringInput.split("&"); // KeyValueProcessorConfig.getFieldSplitCharacters
+
+        for (String pair : pairs) {
+            String[] kv = pair.split("="); // KeyValueProcessorConfig.getValueSplitCharacters
+            String key = kv[0];
+            String val = kv[1];
+
+            if (val.startsWith("[") && val.endsWith("]")) {
+                String nested = val.substring(1, val.length() - 1);
+                JsonNode nestedNode = recurse(nested, mapper);
+                root.set(key, nestedNode);
+            } else if (val.startsWith("(") && val.endsWith(")")) {
+                String nested = val.substring(1, val.length() - 1);
+                JsonNode nestedNode = recurse(nested, mapper);
+                root.set(key, nestedNode);
+            } else if (val.startsWith("<") && val.endsWith(">")) {
+                String nested = val.substring(1, val.length() - 1);
+                JsonNode nestedNode = recurse(nested, mapper);
+                root.set(key, nestedNode);
+            } else {
+                root.put(key, val);
+            }
+        }
+
+        return root;
     }
 
     private String[] trimWhitespace(String key, Object value) {
