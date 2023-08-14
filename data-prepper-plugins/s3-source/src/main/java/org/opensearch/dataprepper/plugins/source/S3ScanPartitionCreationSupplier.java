@@ -116,10 +116,14 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                     .map(objectKey -> PartitionIdentifier.builder().withPartitionKey(String.format(BUCKET_OBJECT_PARTITION_KEY_FORMAT, bucket, objectKey)).build())
                     .collect(Collectors.toList()));
 
+            LOG.info("Found page of {} objects from bucket {}", listObjectsV2Response.keyCount(), bucket);
+
             mostRecentLastModifiedTimestamp = getMostRecentLastModifiedTimestamp(listObjectsV2Response, mostRecentLastModifiedTimestamp);
         } while (listObjectsV2Response.isTruncated());
 
         globalStateMap.put(bucket, Objects.nonNull(mostRecentLastModifiedTimestamp) ? mostRecentLastModifiedTimestamp.toString() : null);
+
+        LOG.info("Returning partitions for {} S3 objects from bucket {}", allPartitionIdentifiers.size(), bucket);
         return allPartitionIdentifiers;
     }
 
