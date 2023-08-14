@@ -5,6 +5,8 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -15,7 +17,7 @@ import java.util.stream.Stream;
  * Class consists the scan related properties.
  */
 public class ScanOptions {
-
+    private static final Logger LOG = LoggerFactory.getLogger(ScanOptions.class);
     private LocalDateTime startDateTime;
 
     private Duration range;
@@ -102,21 +104,22 @@ public class ScanOptions {
                     .filter(Objects::nonNull)
                     .count();
 
-            if (nonNullCount == 0 || nonNullCount == 2) {
-                setDateTimeToUse(bucketStartDateTime, bucketEndDateTime, bucketRange);
-            } else if (nonNullCount == 3) {
-                long originalBucketLevelNonNullCount = Stream.of(
-                        bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange())
-                        .filter(Objects::nonNull)
-                        .count();
+            long originalBucketLevelNonNullCount = Stream.of(
+                            bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange())
+                    .filter(Objects::nonNull)
+                    .count();
 
-                if (originalBucketLevelNonNullCount == 2) {
-                    setDateTimeToUse(bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange());
-                } else {
+            if (nonNullCount == 3) {
+                if (originalBucketLevelNonNullCount == 3) {
                     scanRangeDateValidationError();
+                } else if (originalBucketLevelNonNullCount == 2) {
+                    setDateTimeToUse(bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange());
+                } else if (originalBucketLevelNonNullCount == 1) {
+                    // Use start_time, end_time, range from global level options, because we are unable to build it from single option configured at bucket level
+                    setDateTimeToUse(startDateTime, endDateTime, range);
                 }
             } else {
-                scanRangeDateValidationError();
+                setDateTimeToUse(bucketStartDateTime, bucketEndDateTime, bucketRange);
             }
             return new ScanOptions(this);
         }
@@ -132,10 +135,17 @@ public class ScanOptions {
             } else if (Objects.nonNull(bucketEndDateTime) && Objects.nonNull(bucketRange)) {
                 this.useStartDateTime = bucketEndDateTime.minus(bucketRange);
                 this.useEndDateTime = bucketEndDateTime;
+            } else if (Objects.nonNull(bucketStartDateTime)) {
+                this.useStartDateTime = bucketStartDateTime;
+            } else if (Objects.nonNull(bucketEndDateTime)) {
+                this.useEndDateTime = bucketEndDateTime;
+            } else if (Objects.nonNull(bucketRange)) {
+                LOG.info("Scan is configured with just range for the bucket with name {}, unable to establish a time period with range alone. " +
+                        "Configure start_time or end_time, else all the objects in the bucket will be included", bucketOption.getName());
             }
         }
 
-        private void scanRangeDateValidationError(){
+        private void scanRangeDateValidationError() {
             String message = "To set a time range for the bucket with name " + bucketOption.getName() +
                     ", specify any two configurations from start_time, end_time and range";
             throw new IllegalArgumentException(message);

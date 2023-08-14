@@ -142,6 +142,8 @@ class ScanOptionsTest {
                         LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00")),
                 Arguments.of(null, LocalDateTime.parse("2023-01-24T18:00:00"), Duration.parse("P3D"),
                         LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00")),
+                Arguments.of(LocalDateTime.parse("2023-01-21T18:00:00"), null, null, LocalDateTime.parse("2023-01-21T18:00:00"), null),
+                Arguments.of(null, LocalDateTime.parse("2023-01-21T18:00:00"), null, null, LocalDateTime.parse("2023-01-21T18:00:00")),
                 Arguments.of(null, null, null, null, null)
         );
     }
@@ -149,10 +151,7 @@ class ScanOptionsTest {
     private static Stream<Arguments> invalidTimeRangeOptions() {
         return Stream.of(
                 Arguments.of(LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-04-21T18:00:00"),
-                        Duration.parse("P90DT3H4M")),
-                Arguments.of(LocalDateTime.parse("2023-01-21T18:00:00"), null, null),
-                Arguments.of(null, LocalDateTime.parse("2023-04-21T18:00:00"), null),
-                Arguments.of(null, null, Duration.parse("P90DT3H4M"))
+                        Duration.parse("P90DT3H4M"))
         );
     }
 
@@ -164,6 +163,8 @@ class ScanOptionsTest {
                         LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00")),
                 Arguments.of(null, LocalDateTime.parse("2023-01-24T18:00:00"), Duration.ofDays(3L),
                         LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00")),
+                Arguments.of(LocalDateTime.parse("2023-01-21T18:00:00"), null, null, LocalDateTime.parse("2023-01-21T18:00:00"), null),
+                Arguments.of(null, LocalDateTime.parse("2023-01-21T18:00:00"), null, null, LocalDateTime.parse("2023-01-21T18:00:00")),
                 Arguments.of(null, null, null, null, null)
         );
     }
@@ -189,30 +190,20 @@ class ScanOptionsTest {
                 Arguments.of(
                         LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00"), null,
                         LocalDateTime.parse("2023-05-21T18:00:00"), null, Duration.ofDays(3L),
-                        LocalDateTime.parse("2023-05-21T18:00:00"), LocalDateTime.parse("2023-05-24T18:00:00"))
+                        LocalDateTime.parse("2023-05-21T18:00:00"), LocalDateTime.parse("2023-05-24T18:00:00")),
+                Arguments.of(
+                        LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00"), null,
+                        null, null, Duration.ofDays(3L),
+                        LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00")),
+                Arguments.of(
+                        LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-12-24T18:00:00"), null,
+                        LocalDateTime.parse("2023-05-21T18:00:00"), null, null,
+                        LocalDateTime.parse("2023-05-21T18:00:00"), LocalDateTime.parse("2023-12-24T18:00:00"))
         );
     }
 
     private static Stream<Arguments> invalidCombinedTimeRangeOptions() {
         return Stream.of(
-                Arguments.of(
-                        LocalDateTime.parse("2023-05-21T18:00:00"), null, null,
-                        LocalDateTime.parse("2023-05-24T18:00:00"), null, null),
-                Arguments.of(
-                        null, LocalDateTime.parse("2023-05-24T18:00:00"), null,
-                        null, LocalDateTime.parse("2023-05-21T18:00:00"), null),
-                Arguments.of(
-                        null, null, Duration.ofDays(3L),
-                        null, null, Duration.ofDays(3L)),
-                Arguments.of(
-                        LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00"), null,
-                        null, null, Duration.ofDays(3L)),
-                Arguments.of(
-                        LocalDateTime.parse("2023-01-21T18:00:00"), null, Duration.ofDays(3L),
-                        null, LocalDateTime.parse("2023-05-24T18:00:00"), null),
-                Arguments.of(
-                        null, LocalDateTime.parse("2023-01-24T18:00:00"), Duration.ofDays(3L),
-                        LocalDateTime.parse("2023-05-21T18:00:00"), null, null),
                 Arguments.of(
                         LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-01-24T18:00:00"), Duration.ofDays(3L),
                         LocalDateTime.parse("2023-05-21T18:00:00"), LocalDateTime.parse("2023-05-24T18:00:00"), Duration.ofDays(3L))

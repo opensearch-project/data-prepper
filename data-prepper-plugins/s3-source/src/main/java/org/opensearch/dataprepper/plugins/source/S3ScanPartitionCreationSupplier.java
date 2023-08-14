@@ -138,9 +138,15 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
      */
     private boolean isKeyMatchedBetweenTimeRange(final LocalDateTime lastModifiedTime,
                                                  final LocalDateTime startDateTime,
-                                                 final LocalDateTime endDateTime){
-        if (Objects.isNull(startDateTime) || Objects.isNull(endDateTime) || Objects.nonNull(schedulingOptions)) {
+                                                 final LocalDateTime endDateTime) {
+        if (Objects.nonNull(schedulingOptions)) {
             return true;
+        } else if (Objects.isNull(startDateTime) && Objects.isNull(endDateTime)) {
+            return true;
+        } else if (Objects.isNull(startDateTime)) {
+            return lastModifiedTime.isBefore(endDateTime);
+        } else if (Objects.isNull(endDateTime)) {
+            return lastModifiedTime.isAfter(startDateTime);
         }
         return lastModifiedTime.isAfter(startDateTime) && lastModifiedTime.isBefore(endDateTime);
     }
