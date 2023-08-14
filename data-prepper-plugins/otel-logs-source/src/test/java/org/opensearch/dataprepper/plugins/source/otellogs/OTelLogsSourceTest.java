@@ -89,6 +89,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
 import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
@@ -800,8 +801,9 @@ class OTelLogsSourceTest {
                 .stream()
                 .map(Map.Entry::getKey)
                 .map(AsciiString::toString)
+                .map(String::toLowerCase)
                 .collect(Collectors.toList());
-        assertThat("Response Header Keys", headerKeys, not(contains("server")));
+        assertThat("Response Header Keys", headerKeys, not(hasItem("server")));
     }
 
     private byte[] createGZipCompressedPayload(final String payload) throws IOException {
