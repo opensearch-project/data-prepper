@@ -8,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.plugins.source.CustomLocalDateTimeDeserializer;
 
 import java.time.Duration;
@@ -24,7 +23,6 @@ public class S3ScanBucketOption {
 
     @JsonProperty("name")
     @NotEmpty
-    @Size(min = 3, max = 63, message = "bucket lengthy should be between 3 and 63 characters")
     private String name;
 
     @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)

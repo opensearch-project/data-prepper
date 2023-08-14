@@ -45,7 +45,7 @@ public class S3DlqWriterConfigTest {
 
     @ParameterizedTest
     @CsvSource({"bucket-name, bucket-name", "s3://bucket-name, bucket-name"})
-    public void getS3ClientWithInvalidStsRoleArnThrowException_(final String bucketName, final String expectedBucketName) throws NoSuchFieldException, IllegalAccessException {
+    public void getS3BucketNameShouldReturnCorrectBucketName(final String bucketName, final String expectedBucketName) throws NoSuchFieldException, IllegalAccessException {
         final S3DlqWriterConfig config = new S3DlqWriterConfig();
         reflectivelySetField(config, "bucket", bucketName);
         assertThat(config.getBucket(), is(equalTo(expectedBucketName)));
