@@ -115,8 +115,14 @@ public class ScanOptions {
                 } else if (originalBucketLevelNonNullCount == 2) {
                     setDateTimeToUse(bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange());
                 } else if (originalBucketLevelNonNullCount == 1) {
-                    // Use start_time, end_time, range from global level options, because we are unable to build it from single option configured at bucket level
-                    setDateTimeToUse(startDateTime, endDateTime, range);
+                    if (Objects.nonNull(bucketOption.getStartTime()) || Objects.nonNull(bucketOption.getEndTime())) {
+                        setDateTimeToUse(bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange());
+                    } else {
+                        LOG.warn("Scan is configured with start_time and end_time at global level and range at bucket level for the bucket with name {}. " +
+                                "Unable to establish a time period with range alone at bucket level. " +
+                                "Using start_time and end_time configured at global level and ignoring range.", bucketOption.getName());
+                        setDateTimeToUse(startDateTime, endDateTime, range);
+                    }
                 }
             } else {
                 setDateTimeToUse(bucketStartDateTime, bucketEndDateTime, bucketRange);
@@ -140,7 +146,7 @@ public class ScanOptions {
             } else if (Objects.nonNull(bucketEndDateTime)) {
                 this.useEndDateTime = bucketEndDateTime;
             } else if (Objects.nonNull(bucketRange)) {
-                LOG.info("Scan is configured with just range for the bucket with name {}, unable to establish a time period with range alone. " +
+                LOG.warn("Scan is configured with just range for the bucket with name {}. Unable to establish a time period with range alone. " +
                         "Configure start_time or end_time, else all the objects in the bucket will be included", bucketOption.getName());
             }
         }

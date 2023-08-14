@@ -198,7 +198,15 @@ class ScanOptionsTest {
                 Arguments.of(
                         LocalDateTime.parse("2023-01-21T18:00:00"), LocalDateTime.parse("2023-12-24T18:00:00"), null,
                         LocalDateTime.parse("2023-05-21T18:00:00"), null, null,
-                        LocalDateTime.parse("2023-05-21T18:00:00"), LocalDateTime.parse("2023-12-24T18:00:00"))
+                        LocalDateTime.parse("2023-05-21T18:00:00"), LocalDateTime.parse("2023-12-24T18:00:00")),
+                Arguments.of(
+                        LocalDateTime.parse("2023-01-21T18:00:00"), null, Duration.ofDays(3L),
+                        null, LocalDateTime.parse("2023-05-21T18:00:00"), null,
+                        null, LocalDateTime.parse("2023-05-21T18:00:00")),
+                Arguments.of(
+                        null, LocalDateTime.parse("2023-01-21T18:00:00"), Duration.ofDays(3L),
+                        LocalDateTime.parse("2023-05-21T18:00:00"), null, null,
+                        LocalDateTime.parse("2023-05-21T18:00:00"), null)
         );
     }
 
