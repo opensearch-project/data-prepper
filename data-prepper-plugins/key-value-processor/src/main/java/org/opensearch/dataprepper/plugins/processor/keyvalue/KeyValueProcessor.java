@@ -16,7 +16,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -142,8 +144,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         if (keyValueProcessorConfig.getRemoveBrackets() && keyValueProcessorConfig.getRecursive()) {
             throw new IllegalArgumentException("Cannot remove brackets needed for determining levels of recursion");
         }
-
-        initRecursiveMap(recursiveBracketMap);
     }
 
     private String buildRegexFromCharacters(String s) {
@@ -200,7 +200,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             if (keyValueProcessorConfig.getRecursive()) {
                 ObjectMapper mapper = new ObjectMapper();
-                JsonNode result = recurse(groupsRaw);
+                JsonNode result = recurse(groupsRaw, mapper);
             }
 
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
