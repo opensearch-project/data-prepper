@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.dlq.s3;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -33,8 +33,10 @@ public class S3DlqWriterConfig {
     private static final String DEFAULT_AWS_REGION = "us-east-1";
     private static final String AWS_IAM_ROLE = "role";
     private static final String AWS_IAM = "iam";
+    private static final String S3_PREFIX = "s3://";
+
     @JsonProperty("bucket")
-    @NotNull
+    @NotEmpty
     @Size(min = 3, max = 63, message = "bucket lengthy should be between 3 and 63 characters")
     private String bucket;
 
@@ -55,6 +57,9 @@ public class S3DlqWriterConfig {
     private String stsExternalId;
 
     public String getBucket() {
+        if (bucket.startsWith(S3_PREFIX)) {
+            return bucket.substring(S3_PREFIX.length());
+        }
         return bucket;
     }
 

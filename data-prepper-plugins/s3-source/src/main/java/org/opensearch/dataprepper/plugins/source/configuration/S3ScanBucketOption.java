@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.plugins.source.CustomLocalDateTimeDeserializer;
 
 import java.time.Duration;
@@ -18,7 +20,11 @@ import java.util.stream.Stream;
  * Class consists the bucket related configuration properties.
  */
 public class S3ScanBucketOption {
+    private static final String S3_PREFIX = "s3://";
+
     @JsonProperty("name")
+    @NotEmpty
+    @Size(min = 3, max = 63, message = "bucket lengthy should be between 3 and 63 characters")
     private String name;
 
     @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
@@ -41,6 +47,9 @@ public class S3ScanBucketOption {
     }
 
     public String getName() {
+        if (name.startsWith(S3_PREFIX)) {
+            return name.substring(S3_PREFIX.length());
+        }
         return name;
     }
 
