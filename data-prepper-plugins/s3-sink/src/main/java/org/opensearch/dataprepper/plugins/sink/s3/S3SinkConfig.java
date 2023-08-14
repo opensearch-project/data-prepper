@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
@@ -32,6 +33,7 @@ public class S3SinkConfig {
 
     @JsonProperty("bucket")
     @NotEmpty
+    @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String bucketName;
 
     @JsonProperty("object_key")

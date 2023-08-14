@@ -37,6 +37,7 @@ public class S3DlqWriterConfig {
 
     @JsonProperty("bucket")
     @NotEmpty
+    @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String bucket;
 
     @JsonProperty("key_path_prefix")
