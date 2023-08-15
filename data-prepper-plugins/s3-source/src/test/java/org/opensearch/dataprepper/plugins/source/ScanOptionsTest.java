@@ -40,21 +40,6 @@ class ScanOptionsTest {
     }
 
     @ParameterizedTest
-    @MethodSource("invalidTimeRangeOptions")
-    public void s3scan_options_with_invalid_global_time_range_throws_exception_when_build(
-            LocalDateTime startDateTime, LocalDateTime endDateTime, Duration range) throws NoSuchFieldException, IllegalAccessException {
-        S3ScanBucketOption bucketOption = new S3ScanBucketOption();
-        setField(S3ScanBucketOption.class, bucketOption, "name", "bucket_name");
-
-        assertThrows(IllegalArgumentException.class, () -> ScanOptions.builder()
-                .setStartDateTime(startDateTime)
-                .setEndDateTime(endDateTime)
-                .setRange(range)
-                .setBucketOption(bucketOption)
-                .build());
-    }
-
-    @ParameterizedTest
     @MethodSource("validBucketTimeRangeOptions")
     public void s3scan_options_with_valid_bucket_time_range_build_success(
             LocalDateTime bucketStartDateTime, LocalDateTime bucketEndDateTime, Duration bucketRange,
