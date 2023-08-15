@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 import org.opensearch.dataprepper.model.metric.Bucket;
+import org.opensearch.dataprepper.model.metric.Exemplar;
+import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
@@ -25,6 +27,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.Objects;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Arrays;
@@ -53,6 +56,11 @@ public class HistogramAggregateAction implements AggregateAction {
     private final String key;
     private final String units;
     private final boolean recordMinMax;
+    private List<Exemplar> exemplarList;
+    private Event minEvent;
+    private Event maxEvent;
+    private double minValue;
+    private double maxValue;
 
     private long startTimeNanos;
     private double[] buckets;
@@ -62,6 +70,7 @@ public class HistogramAggregateAction implements AggregateAction {
         this.key = histogramAggregateActionConfig.getKey();
         List<Number> bucketList = histogramAggregateActionConfig.getBuckets();
         this.buckets = new double[bucketList.size()+2];
+        this.exemplarList = new ArrayList<>();
         int bucketIdx = 0;
         this.buckets[bucketIdx++] = -Float.MAX_VALUE;
         for (int i = 0; i < bucketList.size(); i++) {
@@ -101,6 +110,19 @@ public class HistogramAggregateAction implements AggregateAction {
         return doubleValue;
     }
 
+    public Exemplar createExemplar(final String id, final Event event, double value) {
+        long curTimeNanos = getTimeNanos(Instant.now());
+        Map<String, Object> attributes = event.toMap();
+        if (Objects.nonNull(id)) {
+            attributes.put("exemplar_id", id);
+        }
+        return new DefaultExemplar(OTelProtoCodec.convertUnixNanosToISO8601(curTimeNanos),
+                    value,
+                    event.get("spanId", String.class), // maybe null
+                    event.get("traceId", String.class), // maybe null
+                    attributes);
+    }
+
     @Override
     public AggregateActionResponse handleEvent(final Event event, final AggregateActionInput aggregateActionInput) {
         final GroupState groupState = aggregateActionInput.getGroupState();
@@ -126,6 +148,10 @@ public class HistogramAggregateAction implements AggregateAction {
             if (this.recordMinMax) {
                 groupState.put(minKey, doubleValue);
                 groupState.put(maxKey, doubleValue);
+                minEvent = event;
+                maxEvent = event;
+                minValue = doubleValue;
+                maxValue = doubleValue;
             }
         } else {
             Integer v = (Integer)groupState.get(countKey) + 1;
@@ -138,10 +164,14 @@ public class HistogramAggregateAction implements AggregateAction {
                 double min = (double)groupState.get(minKey);
                 if (doubleValue < min) {
                     groupState.put(minKey, doubleValue);
+                    minEvent = event;
+                    minValue = doubleValue;
                 }
                 double max = (double)groupState.get(maxKey);
                 if (doubleValue > max) {
                     groupState.put(maxKey, doubleValue);
+                    maxEvent = event;
+                    maxValue = doubleValue;
                 }
             }
         } 
@@ -159,6 +189,8 @@ public class HistogramAggregateAction implements AggregateAction {
         long startTimeNanos = getTimeNanos(startTime);
         long endTimeNanos = getTimeNanos(endTime);
         String histogramKey = HISTOGRAM_METRIC_NAME + "_key";
+        exemplarList.add(createExemplar("min", minEvent, minValue));
+        exemplarList.add(createExemplar("max", maxEvent, maxValue));
         if (outputFormat.equals(OutputFormat.RAW.toString())) {
             groupState.put(histogramKey, key);
             groupState.put(durationKey, endTimeNanos-startTimeNanos);
@@ -203,6 +235,7 @@ public class HistogramAggregateAction implements AggregateAction {
                 .withBuckets(buckets)
                 .withBucketCountsList(bucketCounts)
                 .withExplicitBoundsList(explicitBoundsList)
+                .withExemplars(exemplarList)
                 .withAttributes(attr)
                 .build(false);
             event = (Event)histogram;
