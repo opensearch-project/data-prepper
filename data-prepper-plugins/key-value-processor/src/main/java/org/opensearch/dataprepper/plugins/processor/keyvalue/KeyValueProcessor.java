@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.regex.Matcher;
+import java.util.Stack;
 
 @DataPrepperPlugin(name = "key_value", pluginType = Processor.class, pluginConfigurationType = KeyValueProcessorConfig.class)
 public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<Event>> {
@@ -51,6 +52,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final String whitespaceStrict = "strict";
     private final String whitespaceLenient = "lenient";
     private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
+    private final List openBrackets = new ArrayList();
+    private final List closedBrackets = new ArrayList();
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -197,13 +200,20 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final Event recordEvent = record.getData();
 
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
+            final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
             if (keyValueProcessorConfig.getRecursive()) {
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode result = recurse(groupsRaw, mapper);
-            }
+                Map<String, Object> recursedMap = treeToMap(mapper, result);
+                // recordEvent.put(keyValueProcessorConfig.getDestination(), recursedMap);
 
-            final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
+                for (String name: recursedMap.keySet()) {
+                    String key = name.toString();
+                    String value = recursedMap.get(name).toString();
+                    System.out.println(key + " " + value);
+                }
+            }
 
             for(final String group : groups) {
                 final String[] terms = keyValueDelimiterPattern.split(group, 2);
@@ -274,33 +284,56 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return records;
     }
 
-    private static JsonNode recurse(String rawStringInput, ObjectMapper mapper) {
-        ObjectNode root = mapper.createObjectNode();
-        String[] pairs = rawStringInput.split("&"); // KeyValueProcessorConfig.getFieldSplitCharacters
+    private static JsonNode recurse(String input) {
+        Stack<Character> bracketStack = new Stack<Character>();
+        initBracketLists();
+        int innerStart = -1;
+        int innerEnd = -1;
 
-        for (String pair : pairs) {
-            String[] kv = pair.split("="); // KeyValueProcessorConfig.getValueSplitCharacters
-            String key = kv[0];
-            String val = kv[1];
+        for (int i = 0; i < input.length(); i++) {
+            if (input[i] == "=" && bracketStack.isEmpty()) { // change to config variable
+                // do some splitting
+                // save key name into variable, need to keep track of beginning and end of key
+            }
 
-            if (val.startsWith("[") && val.endsWith("]")) {
-                String nested = val.substring(1, val.length() - 1);
-                JsonNode nestedNode = recurse(nested, mapper);
-                root.set(key, nestedNode);
-            } else if (val.startsWith("(") && val.endsWith(")")) {
-                String nested = val.substring(1, val.length() - 1);
-                JsonNode nestedNode = recurse(nested, mapper);
-                root.set(key, nestedNode);
-            } else if (val.startsWith("<") && val.endsWith(">")) {
-                String nested = val.substring(1, val.length() - 1);
-                JsonNode nestedNode = recurse(nested, mapper);
-                root.set(key, nestedNode);
-            } else {
-                root.put(key, val);
+            if (input[i] == "&" && bracketStack.isEmpty()) {
+                // do some splitting
+                // save individual pairs in some sort of data structure
+            }
+
+            if openBrackets.contains(input[i]) {
+                if (bracketStack.isEmpty()) {
+                    innerStart = i;
+                }
+                bracketStack.push(input[i]);
+            }
+
+            if (closedBrackets.contains(input[i]) && !bracketStack.isEmpty()) {
+                if (bracketStack.peek() == openBrackets[closedBrackets.indexOf(input[i])]) {
+                    innerEnd = i;
+                    bracketStack.pop();
+                }
+            }
+
+            if (innerStart > -1 && innerEnd > -1) {
+                recurse(input.substring(innerStart + 1, innerEnd - 1));
             }
         }
+    }
 
-        return root;
+    private void initBracketLists() {
+        openBrackets.add("[");
+        openBrackets.add("(", ")");
+        openBrackets.add("<", ">");
+
+        closedBrackets.add("]");
+        closedBrackets.add(")");
+        closedBrackets.add(">");
+    }
+
+    private Map<String, Object> treeToMap(ObjectMapper mapper, JsonNode root) {
+        Map<String, Object> map = mapper.convertValue(root, Map.class);
+        return map;
     }
 
     private String[] trimWhitespace(String key, Object value) {
