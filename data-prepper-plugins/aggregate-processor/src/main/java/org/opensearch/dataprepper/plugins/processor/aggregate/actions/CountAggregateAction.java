@@ -13,6 +13,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
@@ -64,11 +65,18 @@ public class CountAggregateAction implements AggregateAction {
     public Exemplar createExemplar(final Event event) {
         long curTimeNanos = getTimeNanos(Instant.now());
         Map<String, Object> attributes = event.toMap();
+        String spanId = null;
+        String traceId = null;
+        if (event instanceof Span) {
+            Span span = (Span)event;
+            spanId = span.getSpanId();
+            traceId = span.getTraceId();
+        }
         return new DefaultExemplar(
                     OTelProtoCodec.convertUnixNanosToISO8601(curTimeNanos),
                     1.0,
-                    event.get("spanId", String.class), // maybe null
-                    event.get("traceId", String.class), // maybe null
+                    spanId,
+                    traceId,
                     attributes);
     }
 

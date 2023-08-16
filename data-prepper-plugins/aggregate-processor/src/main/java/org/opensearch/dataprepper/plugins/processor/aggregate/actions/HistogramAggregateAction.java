@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 import org.opensearch.dataprepper.model.metric.JacksonHistogram;
 import org.opensearch.dataprepper.model.metric.Bucket;
 import org.opensearch.dataprepper.model.metric.Exemplar;
+import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -114,12 +115,19 @@ public class HistogramAggregateAction implements AggregateAction {
         long curTimeNanos = getTimeNanos(Instant.now());
         Map<String, Object> attributes = event.toMap();
         if (Objects.nonNull(id)) {
-            attributes.put("exemplar_id", id);
+            attributes.put("exemplarId", id);
+        }
+        String spanId = null;
+        String traceId = null;
+        if (event instanceof Span) {
+            Span span = (Span)event;
+            spanId = span.getSpanId();
+            traceId = span.getTraceId();
         }
         return new DefaultExemplar(OTelProtoCodec.convertUnixNanosToISO8601(curTimeNanos),
                     value,
-                    event.get("spanId", String.class), // maybe null
-                    event.get("traceId", String.class), // maybe null
+                    spanId,
+                    traceId,
                     attributes);
     }
 
