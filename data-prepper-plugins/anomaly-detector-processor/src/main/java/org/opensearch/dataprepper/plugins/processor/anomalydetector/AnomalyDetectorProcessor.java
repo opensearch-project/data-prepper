@@ -21,6 +21,8 @@ import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -45,8 +47,7 @@ public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, R
     private final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig;
     private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorProcessor.class);
     private final Counter cardinalityOverflowCounter;
-    private boolean overflowWarned = false;
-
+    Instant nextWarnTime = Instant.MIN;
     @DataPrepperPluginConstructor
     public AnomalyDetectorProcessor(final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
         super(pluginMetrics);
@@ -86,9 +87,9 @@ public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, R
                 forestMap.put(identificationKeysMap.hashCode(), forest);
                 recordsOut.addAll(forest.handleEvents(List.of(record)));
             } else {
-                if (!overflowWarned) {
+                if (Instant.now().isAfter(nextWarnTime)) {
                     LOG.warn("Cardinality limit reached, see cardinalityOverflow metric for count of skipped records");
-                    overflowWarned = true;
+                    nextWarnTime = Instant.now().plus(5, ChronoUnit.MINUTES);
                 }
                 cardinalityOverflowCounter.increment();
             }
