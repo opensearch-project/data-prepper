@@ -65,6 +65,10 @@ public class S3ScanService {
         scanObjectWorkerThread.start();
     }
 
+    public void stop() {
+        scanObjectWorkerThread.interrupt();
+    }
+
     /**
      * This Method Used to fetch the scan options details from {@link S3SourceConfig} amd build the
      * all the s3 scan buckets information in list.
