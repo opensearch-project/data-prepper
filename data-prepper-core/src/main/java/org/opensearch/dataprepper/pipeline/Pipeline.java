@@ -274,7 +274,7 @@ public class Pipeline {
             stopRequested.set(true);
         } catch (Exception ex) {
             LOG.error("Pipeline [{}] - Encountered exception while stopping the source, " +
-                    "proceeding with termination of process workers", name);
+                    "proceeding with termination of process workers", name, ex);
         }
 
         shutdownExecutorService(processorExecutorService, processorShutdownTimeout.toMillis(), "processor");
