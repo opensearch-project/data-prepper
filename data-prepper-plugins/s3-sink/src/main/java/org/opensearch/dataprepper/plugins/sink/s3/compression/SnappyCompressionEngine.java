@@ -5,14 +5,14 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.compression;
 
-import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
+import org.xerial.snappy.SnappyOutputStream;
 
 import java.io.IOException;
 import java.io.OutputStream;
 
-class GZipCompressionEngine implements CompressionEngine {
+class SnappyCompressionEngine implements CompressionEngine {
     @Override
     public OutputStream createOutputStream(final OutputStream outputStream) throws IOException {
-        return new GzipCompressorOutputStream(outputStream);
+        return new SnappyOutputStream(outputStream);
     }
 }
