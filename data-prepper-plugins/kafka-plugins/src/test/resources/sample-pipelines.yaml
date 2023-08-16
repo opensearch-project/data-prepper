@@ -12,12 +12,9 @@ log-pipeline:
           auto_commit: false
           commit_interval: PT5S
           session_timeout: PT45S
-          max_retry_attempts: 1000
           auto_offset_reset: earliest
           thread_waiting_time: PT1S
-          max_record_fetch_time: PT4S
           heart_beat_interval: PT3S
-          buffer_default_timeout: PT5S
           fetch_max_bytes: 52428800
           fetch_max_wait: 500
           fetch_min_bytes: 1

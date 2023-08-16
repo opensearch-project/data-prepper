@@ -21,12 +21,9 @@ public class TopicConfig {
     static final boolean DEFAULT_AUTO_COMMIT = false;
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
-    static final int DEFAULT_MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
     static final String DEFAULT_AUTO_OFFSET_RESET = "earliest";
     static final Duration DEFAULT_THREAD_WAITING_TIME = Duration.ofSeconds(5);
     static final Duration DEFAULT_MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
-    static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(5);
-    static final Duration DEFAULT_MAX_RETRY_DELAY = Duration.ofSeconds(1);
     static final Integer DEFAULT_FETCH_MAX_BYTES = 52428800;
     static final Integer DEFAULT_FETCH_MAX_WAIT = 500;
     static final Integer DEFAULT_FETCH_MIN_BYTES = 1;
@@ -53,16 +50,6 @@ public class TopicConfig {
     @Size(min = 1, max = 200, message = "Number of worker threads should lies between 1 and 200")
     private Integer workers = DEFAULT_NUM_OF_WORKERS;
 
-    @JsonProperty("max_retry_attempts")
-    @Valid
-    @Size(min = 1, max = Integer.MAX_VALUE, message = " Max retry attempts should lies between 1 and Integer.MAX_VALUE")
-    private Integer maxRetryAttempts = DEFAULT_MAX_RETRY_ATTEMPT;
-
-    @JsonProperty("max_retry_delay")
-    @Valid
-    @Size(min = 1)
-    private Duration maxRetryDelay = DEFAULT_MAX_RETRY_DELAY;
-
     @JsonProperty("serde_format")
     private MessageFormat serdeFormat= MessageFormat.PLAINTEXT;
 
@@ -82,24 +69,11 @@ public class TopicConfig {
     @JsonProperty("auto_offset_reset")
     private String autoOffsetReset = DEFAULT_AUTO_OFFSET_RESET;
 
-    @JsonProperty("group_name")
-    @Valid
-    @Size(min = 1, max = 255, message = "size of group name should be between 1 and 255")
-    private String groupName;
-
     @JsonProperty("thread_waiting_time")
     private Duration threadWaitingTime = DEFAULT_THREAD_WAITING_TIME;
 
-    @JsonProperty("max_record_fetch_time")
-    private Duration maxRecordFetchTime = DEFAULT_MAX_RECORD_FETCH_TIME;
-
     @JsonProperty("max_partition_fetch_bytes")
     private Integer maxPartitionFetchBytes = DEFAULT_MAX_PARTITION_FETCH_BYTES;
-
-    @JsonProperty("buffer_default_timeout")
-    @Valid
-    @Size(min = 1)
-    private Duration bufferDefaultTimeout = DEFAULT_BUFFER_TIMEOUT;
 
     @JsonProperty("fetch_max_bytes")
     @Valid
@@ -144,10 +118,6 @@ public class TopicConfig {
         this.groupId = groupId;
     }
 
-    public void setMaxRetryAttempts(Integer maxRetryAttempts) {
-        this.maxRetryAttempts = maxRetryAttempts;
-    }
-
     public MessageFormat getSerdeFormat() {
         return serdeFormat;
     }
@@ -176,14 +146,6 @@ public class TopicConfig {
         this.autoOffsetReset = autoOffsetReset;
     }
 
-    public String getGroupName() {
-        return groupName;
-    }
-
-    public void setGroupName(String groupName) {
-        this.groupName = groupName;
-    }
-
     public Duration getThreadWaitingTime() {
         return threadWaitingTime;
     }
@@ -192,24 +154,8 @@ public class TopicConfig {
         this.threadWaitingTime = threadWaitingTime;
     }
 
-    public Duration getMaxRecordFetchTime() {
-        return maxRecordFetchTime;
-    }
-
     public Integer getMaxPartitionFetchBytes() {
         return maxPartitionFetchBytes;
-    }
-
-    public void setMaxRecordFetchTime(Duration maxRecordFetchTime) {
-        this.maxRecordFetchTime = maxRecordFetchTime;
-    }
-
-    public Duration getBufferDefaultTimeout() {
-        return bufferDefaultTimeout;
-    }
-
-    public void setBufferDefaultTimeout(Duration bufferDefaultTimeout) {
-        this.bufferDefaultTimeout = bufferDefaultTimeout;
     }
 
     public Integer getFetchMaxBytes() {
@@ -262,14 +208,6 @@ public class TopicConfig {
 
     public void setWorkers(Integer workers) {
         this.workers = workers;
-    }
-
-    public Duration getMaxRetryDelay() {
-        return maxRetryDelay;
-    }
-
-    public void setMaxRetryDelay(Duration maxRetryDelay) {
-        this.maxRetryDelay = maxRetryDelay;
     }
 
     public Duration getHeartBeatInterval() {
