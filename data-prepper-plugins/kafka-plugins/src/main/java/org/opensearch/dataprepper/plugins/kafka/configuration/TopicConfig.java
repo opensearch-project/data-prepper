@@ -33,7 +33,7 @@ public class TopicConfig {
     static final Duration DEFAULT_RETRY_BACKOFF = Duration.ofSeconds(10);
     static final Duration DEFAULT_RECONNECT_BACKOFF = Duration.ofSeconds(10);
     static final Integer DEFAULT_MAX_PARTITION_FETCH_BYTES = 1048576;
-    static final Duration DEFAULT_MAX_POLL_INTERVAL = Duration.ofSeconds(300000);
+    static final Duration DEFAULT_MAX_POLL_INTERVAL = Duration.ofSeconds(300);
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);

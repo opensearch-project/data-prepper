@@ -102,7 +102,7 @@ class TopicConfigTest {
         assertEquals(500L, topicConfig.getFetchMaxWait().longValue());
         assertEquals(1L, topicConfig.getFetchMinBytes().longValue());
         assertEquals(Duration.ofSeconds(100), topicConfig.getRetryBackoff());
-        assertEquals(Duration.ofSeconds(300000), topicConfig.getMaxPollInterval());
+        assertEquals(Duration.ofSeconds(300), topicConfig.getMaxPollInterval());
         assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
         assertEquals(5, topicConfig.getWorkers().intValue());
         assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
