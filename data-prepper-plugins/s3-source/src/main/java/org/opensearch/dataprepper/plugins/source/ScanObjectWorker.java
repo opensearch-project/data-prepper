@@ -42,6 +42,7 @@ public class ScanObjectWorker implements Runnable{
     private static final Logger LOG = LoggerFactory.getLogger(ScanObjectWorker.class);
 
     private static final int STANDARD_BACKOFF_MILLIS = 30_000;
+    private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
 
     static final int ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS = Integer.MAX_VALUE;
     static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
@@ -93,13 +94,24 @@ public class ScanObjectWorker implements Runnable{
         acknowledgementSetCallbackCounter = pluginMetrics.counter(ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME);
         this.sourceCoordinator.initialize();
 
-        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList);
+        this.partitionCreationSupplier = new S3ScanPartitionCreationSupplier(s3Client, bucketOwnerProvider, scanOptionsBuilderList, s3ScanSchedulingOptions);
     }
 
     @Override
     public void run() {
         while (!shouldStopProcessing) {
-            startProcessingObject(STANDARD_BACKOFF_MILLIS);
+
+            try {
+                startProcessingObject(STANDARD_BACKOFF_MILLIS);
+            } catch (final Exception e) {
+                LOG.error("Received an exception while processing S3 objects, backing off and retrying", e);
+                try {
+                    Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
+                } catch (InterruptedException ex) {
+                    LOG.error("S3 Scan worker thread interrupted while backing off.", ex);
+                }
+            }
+
         }
     }
 

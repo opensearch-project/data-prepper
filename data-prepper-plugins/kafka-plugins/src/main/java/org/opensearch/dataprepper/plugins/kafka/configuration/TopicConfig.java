@@ -9,10 +9,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
 import java.time.Duration;
-
 /**
  * * A helper class that helps to read consumer configuration values from
  * pipelines.yaml
@@ -22,8 +22,7 @@ public class TopicConfig {
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
     static final int DEFAULT_MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
-    static final String DEFAULT_AUTO_OFFSET_RESET = "latest";
-
+    static final String DEFAULT_AUTO_OFFSET_RESET = "earliest";
     static final Duration DEFAULT_THREAD_WAITING_TIME = Duration.ofSeconds(5);
     static final Duration DEFAULT_MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(5);
@@ -70,7 +69,7 @@ public class TopicConfig {
     private Duration maxRetryDelay = DEFAULT_MAX_RETRY_DELAY;
 
     @JsonProperty("serde_format")
-    private MessageFormat serdeFormat = MessageFormat.PLAINTEXT;
+    private MessageFormat serdeFormat= MessageFormat.PLAINTEXT;
 
     @JsonProperty("auto_commit")
     private Boolean autoCommit = DEFAULT_AUTO_COMMIT;
@@ -140,7 +139,7 @@ public class TopicConfig {
     @JsonProperty("heart_beat_interval")
     @Valid
     @Size(min = 1)
-    private Duration heartBeatInterval = DEFAULT_HEART_BEAT_INTERVAL_DURATION;
+    private Duration heartBeatInterval= DEFAULT_HEART_BEAT_INTERVAL_DURATION;
 
     @JsonProperty("is_create")
     private Boolean isCreate=Boolean.FALSE;
@@ -302,7 +301,6 @@ public class TopicConfig {
     public void setName(String name) {
         this.name = name;
     }
-
 
     public KafkaKeyMode getKafkaKeyMode() {
         return kafkaKeyMode;

@@ -41,4 +41,11 @@ public class S3ScanBucketOptionTest {
         assertThat(s3ScanBucketOption.getS3ScanFilter().getS3ScanExcludeSuffixOptions(),instanceOf(List.class));
         assertThat(s3ScanBucketOption.getS3ScanFilter().getS3ScanExcludeSuffixOptions().get(1),equalTo(".png"));
     }
+
+    @Test
+    public void s3scan_bucket_options_with_s3_prefix_test() throws JsonProcessingException {
+        final String bucketOptionsYaml = "---\nname: s3://test-s3-source-test-output";
+        final S3ScanBucketOption s3ScanBucketOption = objectMapper.readValue(bucketOptionsYaml, S3ScanBucketOption.class);
+        assertThat(s3ScanBucketOption.getName(), equalTo("test-s3-source-test-output"));
+    }
 }

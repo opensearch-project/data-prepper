@@ -94,9 +94,9 @@ public class KafkaSinkProducer<T> {
         Event event = getEvent(record);
         final String key = event.formatString(kafkaSinkConfig.getPartitionKey(), expressionEvaluator);
         try {
-            if (MessageFormat.JSON.toString().equalsIgnoreCase(serdeFormat)) {
+            if (serdeFormat == MessageFormat.JSON.toString()) {
                 publishJsonMessage(record, key);
-            } else if (MessageFormat.AVRO.toString().equalsIgnoreCase(serdeFormat)) {
+            } else if (serdeFormat == MessageFormat.AVRO.toString()) {
                 publishAvroMessage(record, key);
             } else {
                 publishPlaintextMessage(record, key);

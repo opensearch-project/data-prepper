@@ -48,8 +48,6 @@ import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 
 import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
-import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
-import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,6 +98,8 @@ public class KafkaSource implements Source<Record<Event>> {
     private static final String SCHEMA_TYPE = "schemaType";
     private final AcknowledgementSetManager acknowledgementSetManager;
     private static CachedSchemaRegistryClient schemaRegistryClient;
+    private GlueSchemaRegistryKafkaDeserializer glueDeserializer;
+    private StringDeserializer stringDeserializer;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
@@ -110,6 +110,7 @@ public class KafkaSource implements Source<Record<Event>> {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pipelineName = pipelineDescription.getPipelineName();
+        this.stringDeserializer = new StringDeserializer();
         shutdownInProgress = new AtomicBoolean(false);
     }
 
@@ -135,7 +136,12 @@ public class KafkaSource implements Source<Record<Event>> {
                             break;
                         case PLAINTEXT:
                         default:
-                            kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);
+                            glueDeserializer = KafkaSourceSecurityConfigurer.getGlueSerializer(sourceConfig);
+                            if (Objects.nonNull(glueDeserializer)) {
+                                kafkaConsumer = new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
+                            } else {
+                                kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);
+                            }
                             break;
                     }
                     consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, topicMetrics);
@@ -296,7 +302,6 @@ public class KafkaSource implements Source<Record<Event>> {
         }
 
         if (schemaConfig.getType() == SchemaRegistryType.AWS_GLUE) {
-            setPropertiesForGlueSchemaRegistry(properties);
             return;
         }
 
@@ -307,13 +312,6 @@ public class KafkaSource implements Source<Record<Event>> {
         } else {
             throw new RuntimeException("RegistryURL must be specified for confluent schema registry");
         }
-    }
-
-    private void setPropertiesForGlueSchemaRegistry(Properties properties) {
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, GlueSchemaRegistryKafkaDeserializer.class.getName());
-        properties.put(AWSSchemaRegistryConstants.AWS_REGION, sourceConfig.getAwsConfig().getRegion());
-        properties.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
     }
 
     private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties, final TopicConfig topicConfig) {
