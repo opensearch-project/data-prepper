@@ -23,7 +23,7 @@ class ThresholdCheckTest {
 
     @BeforeEach
     void setUp() throws IOException {
-        inMemoryBuffer = new InMemoryBufferFactory().getBuffer();
+        inMemoryBuffer = new InMemoryBufferFactory().getBuffer(null, null, null);
 
         while (inMemoryBuffer.getEventCount() < 100) {
             OutputStream outputStream = inMemoryBuffer.getOutputStream();
@@ -80,7 +80,7 @@ class ThresholdCheckTest {
         final ByteCount maxBytes = ByteCount.parse("500mb");
         final long maxCollectionDuration = 10;
 
-        inMemoryBuffer = new InMemoryBufferFactory().getBuffer();
+        inMemoryBuffer = new InMemoryBufferFactory().getBuffer(null, null, null);
         boolean isThresholdExceed = Boolean.FALSE;
         synchronized (this) {
             while (inMemoryBuffer.getEventCount() < 100) {
@@ -106,7 +106,7 @@ class ThresholdCheckTest {
         final ByteCount maxBytes = ByteCount.parse("500mb");
         final long maxCollectionDuration = 240;
 
-        inMemoryBuffer = new InMemoryBufferFactory().getBuffer();
+        inMemoryBuffer = new InMemoryBufferFactory().getBuffer(null,null, null);
 
         boolean isThresholdExceed = Boolean.FALSE;
         synchronized (this) {

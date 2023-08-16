@@ -20,6 +20,7 @@ dependencies {
     implementation 'org.apache.avro:avro:1.11.1'
     implementation 'org.apache.hadoop:hadoop-common:3.3.6'
     implementation 'org.apache.parquet:parquet-avro:1.13.1'
+    implementation 'software.amazon.awssdk:apache-client'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.8.21'
     implementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
@@ -29,6 +30,7 @@ dependencies {
     testImplementation project(':data-prepper-plugins:avro-codecs')
     testImplementation testLibs.slf4j.simple
     testImplementation 'software.amazon.awssdk:s3-transfer-manager'
+    testImplementation 'software.amazon.awssdk.crt:aws-crt:0.25.0'
 }
 
 test {

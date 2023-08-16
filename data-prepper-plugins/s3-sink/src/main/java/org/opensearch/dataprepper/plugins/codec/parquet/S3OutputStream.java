@@ -21,13 +21,14 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class S3OutputStream extends PositionOutputStream {
 
     /**
      * Default chunk size is 10MB
      */
-    protected static final int BUFFER_SIZE = 10000000;
+    protected static final int BUFFER_SIZE = 10 * 1024 * 1024;
 
     /**
      * The bucket-name on Amazon S3
@@ -35,9 +36,9 @@ public class S3OutputStream extends PositionOutputStream {
     private final String bucket;
 
     /**
-     * The path (key) name within the bucket
+     * The key (path) name within the bucket
      */
-    private final String path;
+    private final String key;
 
     /**
      * The temporary buffer used for storing the chunks
@@ -66,13 +67,13 @@ public class S3OutputStream extends PositionOutputStream {
      * Creates a new S3 OutputStream
      *
      * @param s3Client the AmazonS3 client
-     * @param bucket   name of the bucket
-     * @param path     path within the bucket
+     * @param bucketSupplier  name of the bucket
+     * @param keySupplier     path within the bucket
      */
-    public S3OutputStream(S3Client s3Client, String bucket, String path) {
+    public S3OutputStream(final S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) {
         this.s3Client = s3Client;
-        this.bucket = bucket;
-        this.path = path;
+        this.bucket = bucketSupplier.get();
+        this.key = keySupplier.get();
         buf = new byte[BUFFER_SIZE];
         position = 0;
         etags = new ArrayList<>();
@@ -125,52 +126,44 @@ public class S3OutputStream extends PositionOutputStream {
     }
 
     /**
-     * Flushes the buffer by uploading a part to S3.
+     * Flushing is not available because the parts must be of the same size.
      */
     @Override
-    public synchronized void flush() {
-        assertOpen();
+    public void flush() {
     }
 
     @Override
     public void close() {
         if (open) {
             open = false;
-            if (uploadId != null) {
-                if (position > 0) {
-                    uploadPart();
-                }
-
-                CompletedPart[] completedParts = new CompletedPart[etags.size()];
-                for (int i = 0; i < etags.size(); i++) {
-                    completedParts[i] = CompletedPart.builder()
-                            .eTag(etags.get(i))
-                            .partNumber(i + 1)
-                            .build();
-                }
-
-                CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
-                        .parts(completedParts)
-                        .build();
-                CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
-                        .bucket(bucket)
-                        .key(path)
-                        .uploadId(uploadId)
-                        .multipartUpload(completedMultipartUpload)
-                        .build();
-                s3Client.completeMultipartUpload(completeMultipartUploadRequest);
-            } else {
-                PutObjectRequest putRequest = PutObjectRequest.builder()
-                        .bucket(bucket)
-                        .key(path)
-                        .contentLength((long) position)
-                        .build();
-
-                RequestBody requestBody = RequestBody.fromInputStream(new ByteArrayInputStream(buf, 0, position),
-                        position);
-                s3Client.putObject(putRequest, requestBody);
+            possiblyStartMultipartUpload();
+            if (position > 0) {
+                uploadPart();
             }
+
+            CompletedPart[] completedParts = new CompletedPart[etags.size()];
+            for (int i = 0; i < etags.size(); i++) {
+                completedParts[i] = CompletedPart.builder()
+                        .eTag(etags.get(i))
+                        .partNumber(i + 1)
+                        .build();
+            }
+
+            CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
+                    .parts(completedParts)
+                    .build();
+            CompleteMultipartUploadRequest completeMultipartUploadRequest = CompleteMultipartUploadRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .uploadId(uploadId)
+                    .multipartUpload(completedMultipartUpload)
+                    .build();
+            s3Client.completeMultipartUpload(completeMultipartUploadRequest);
         }
+    }
+
+    public String getKey() {
+        return key;
     }
 
     private void assertOpen() {
@@ -179,23 +172,27 @@ public class S3OutputStream extends PositionOutputStream {
         }
     }
 
-    protected void flushBufferAndRewind() {
-        if (uploadId == null) {
-            CreateMultipartUploadRequest uploadRequest = CreateMultipartUploadRequest.builder()
-                    .bucket(bucket)
-                    .key(path)
-                    .build();
-            CreateMultipartUploadResponse multipartUpload = s3Client.createMultipartUpload(uploadRequest);
-            uploadId = multipartUpload.uploadId();
-        }
+    private void flushBufferAndRewind() {
+        possiblyStartMultipartUpload();
         uploadPart();
         position = 0;
     }
 
-    protected void uploadPart() {
+    private void possiblyStartMultipartUpload() {
+        if (uploadId == null) {
+            CreateMultipartUploadRequest uploadRequest = CreateMultipartUploadRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build();
+            CreateMultipartUploadResponse multipartUpload = s3Client.createMultipartUpload(uploadRequest);
+            uploadId = multipartUpload.uploadId();
+        }
+    }
+
+    private void uploadPart() {
         UploadPartRequest uploadRequest = UploadPartRequest.builder()
                 .bucket(bucket)
-                .key(path)
+                .key(key)
                 .uploadId(uploadId)
                 .partNumber(etags.size() + 1)
                 .contentLength((long) position)
@@ -208,7 +205,7 @@ public class S3OutputStream extends PositionOutputStream {
 
     @Override
     public long getPos() throws IOException {
-        return position;
+        return position + (long) etags.size() * (long) BUFFER_SIZE;
     }
 }
 

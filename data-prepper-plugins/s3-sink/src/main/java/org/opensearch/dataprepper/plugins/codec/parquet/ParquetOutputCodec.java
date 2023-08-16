@@ -9,7 +9,9 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.OutputFile;
+import org.apache.parquet.io.PositionOutputStream;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
@@ -18,15 +20,9 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 import org.opensearch.dataprepper.plugins.fs.LocalOutputFile;
 import org.opensearch.dataprepper.plugins.s3keyindex.S3ObjectIndexUtility;
+import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.http.apache.ApacheHttpClient;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,16 +43,12 @@ public class ParquetOutputCodec implements OutputCodec {
     private static final String END_SCHEMA_STRING = "]}";
     private static Schema schema;
     private ParquetWriter<GenericRecord> writer;
-    private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
-    private S3Client s3Client;
     private OutputCodecContext codecContext;
     private static final String PARQUET = "parquet";
 
     private static final String TIME_PATTERN_REGULAR_EXPRESSION = "\\%\\{.*?\\}";
     private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(TIME_PATTERN_REGULAR_EXPRESSION);
     private String key;
-    private final String bucket;
-    private final String region;
     private static final List<String> primitiveTypes = Arrays.asList("int", "long", "string", "float", "double", "bytes");
 
 
@@ -64,19 +56,29 @@ public class ParquetOutputCodec implements OutputCodec {
     public ParquetOutputCodec(final ParquetOutputCodecConfig config) {
         Objects.requireNonNull(config);
         this.config = config;
-        this.region = config.getRegion();
-        this.bucket = config.getBucket();
     }
 
     @Override
     public synchronized void start(final OutputStream outputStream, final Event event, final OutputCodecContext codecContext) throws IOException {
         Objects.requireNonNull(outputStream);
         Objects.requireNonNull(codecContext);
+        if(!(outputStream instanceof PositionOutputStream)) {
+            throw new RuntimeException("The Parquet output codec only works with the S3OutputStream and thus only with multi-part uploads.");
+        }
+        if(!(codecContext instanceof S3OutputCodecContext)) {
+            throw new RuntimeException("The Parquet output codec only works with S3 presently");
+        }
+        S3OutputStream s3OutputStream = (S3OutputStream) outputStream;
+        CompressionCodecName compressionCodecName = CompressionConverter.convertCodec(((S3OutputCodecContext) codecContext).getCompressionOption());
         this.codecContext = codecContext;
-        this.s3Client = buildS3Client();
         buildSchemaAndKey(event, codecContext.getTagsTargetKey());
-        final S3OutputFile s3OutputFile = new S3OutputFile(s3Client, bucket, key);
-        buildWriter(s3OutputFile);
+        final S3OutputFile s3OutputFile = new S3OutputFile(s3OutputStream);
+        buildWriter(s3OutputFile, compressionCodecName);
+    }
+
+    @Override
+    public boolean isCompressionInternal() {
+        return true;
     }
 
     public synchronized void start(File file, final OutputCodecContext codecContext) throws IOException {
@@ -84,7 +86,7 @@ public class ParquetOutputCodec implements OutputCodec {
         this.codecContext = codecContext;
         LocalOutputFile localOutputFile = new LocalOutputFile(file);
         buildSchemaAndKey(null, null);
-        buildWriter(localOutputFile);
+        buildWriter(localOutputFile, CompressionCodecName.UNCOMPRESSED);
     }
 
     void buildSchemaAndKey(final Event event, final String tagsTargetKey) throws IOException {
@@ -163,9 +165,10 @@ public class ParquetOutputCodec implements OutputCodec {
         }
     }
 
-    private void buildWriter(OutputFile outputFile) throws IOException {
+    private void buildWriter(OutputFile outputFile, CompressionCodecName compressionCodecName) throws IOException {
         writer = AvroParquetWriter.<GenericRecord>builder(outputFile)
                 .withSchema(schema)
+                .withCompressionCodec(compressionCodecName)
                 .build();
     }
 
@@ -192,15 +195,6 @@ public class ParquetOutputCodec implements OutputCodec {
     @Override
     public synchronized void complete(final OutputStream outputStream) throws IOException {
         writer.close();
-        final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        final S3InputFile inputFile = new S3InputFile(s3Client, s3ObjectReference);
-        byte[] byteBuffer = inputFile.newStream().readAllBytes();
-        outputStream.write(byteBuffer);
-        final DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
-                .bucket(bucket)
-                .key(key)
-                .build();
-        s3Client.deleteObject(deleteRequest);
     }
 
     public void closeWriter(final OutputStream outputStream, File file) throws IOException {
@@ -217,16 +211,6 @@ public class ParquetOutputCodec implements OutputCodec {
 
     static Schema parseSchema(final String schemaString) {
         return new Schema.Parser().parse(schemaString);
-    }
-
-    private S3Client buildS3Client() {
-        final AwsCredentialsProvider credentialsProvider = AwsCredentialsProviderChain.builder()
-                .addCredentialsProvider(DefaultCredentialsProvider.create()).build();
-        return S3Client.builder()
-                .region(Region.of(region))
-                .credentialsProvider(credentialsProvider)
-                .httpClientBuilder(apacheHttpClientBuilder)
-                .build();
     }
 
     /**
@@ -312,12 +296,11 @@ public class ParquetOutputCodec implements OutputCodec {
         return finalValue;
     }
 
-    boolean checkS3SchemaValidity() throws IOException {
+    boolean checkS3SchemaValidity() {
         if (config.getSchemaBucket() != null && config.getFileKey() != null && config.getSchemaRegion() != null) {
             return true;
         } else {
-            LOG.error("Invalid S3 credentials, can't reach the schema file.");
-            throw new IOException("Can't proceed without schema.");
+            return false;
         }
     }
 }

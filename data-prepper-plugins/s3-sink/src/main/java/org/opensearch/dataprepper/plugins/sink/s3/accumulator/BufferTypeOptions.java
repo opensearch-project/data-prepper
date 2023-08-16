@@ -16,7 +16,8 @@ import java.util.stream.Collectors;
 public enum BufferTypeOptions {
 
     INMEMORY("in_memory", new InMemoryBufferFactory()),
-    LOCALFILE("local_file", new LocalFileBufferFactory());
+    LOCALFILE("local_file", new LocalFileBufferFactory()),
+    MULTI_PART("multipart", new MultipartBufferFactory());
 
     private final String option;
     private final BufferFactory bufferType;
@@ -28,7 +29,7 @@ public enum BufferTypeOptions {
         this.bufferType = bufferType;
     }
 
-    public BufferFactory getBufferType() {
+    public BufferFactory getBufferFactory() {
         return bufferType;
     }
 

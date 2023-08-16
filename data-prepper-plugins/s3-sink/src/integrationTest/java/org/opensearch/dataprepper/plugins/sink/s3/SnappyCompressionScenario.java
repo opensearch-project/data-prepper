@@ -6,28 +6,24 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
+import org.xerial.snappy.SnappyInputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
 
-public class NoneCompressionScenario implements CompressionScenario {
+public class SnappyCompressionScenario implements CompressionScenario {
     @Override
     public CompressionOption getCompressionOption() {
-        return CompressionOption.NONE;
+        return CompressionOption.SNAPPY;
     }
 
     @Override
     public InputStream decompressingInputStream(final InputStream inputStream) throws IOException {
-        return inputStream;
-    }
-
-    @Override
-    public boolean requiresDecompression() {
-        return false;
+        return new SnappyInputStream(inputStream);
     }
 
     @Override
     public String toString() {
-        return "Uncompressed";
+        return "Snappy";
     }
 }
