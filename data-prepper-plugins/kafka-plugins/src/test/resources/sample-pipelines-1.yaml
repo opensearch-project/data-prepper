@@ -5,7 +5,6 @@ log-pipeline:
         - 127.0.0.1:9093
       topics:
         - name: my-topic-2
-          group_name: kafka-consumer-group-2
           group_id: my-test-group
         - name: my-topic-1
           group_id: my-test-group

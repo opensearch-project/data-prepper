@@ -176,7 +176,7 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(map.get("kafka_key"), equalTo(null));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
         }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
@@ -235,7 +235,7 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("id"), equalTo(TEST_ID+i));
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
         }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
@@ -295,7 +295,7 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(map.get("kafka_key"), equalTo(testKey));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
         }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
@@ -356,7 +356,7 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_key"), equalTo(testKey));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
         }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {

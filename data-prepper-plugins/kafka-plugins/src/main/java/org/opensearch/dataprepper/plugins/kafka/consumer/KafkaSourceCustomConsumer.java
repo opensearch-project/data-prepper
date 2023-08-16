@@ -234,14 +234,20 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     @Override
     public void run() {
         consumer.subscribe(Arrays.asList(topicName));
+        boolean retryingAfterException = false;
         while (!shutdownInProgress.get()) {
             try {
+                if (retryingAfterException) {
+                    Thread.sleep(10000);
+                }
                 resetOffsets();
                 commitOffsets();
                 consumeRecords();
                 topicMetrics.update(consumer);
+                retryingAfterException = false;
             } catch (Exception exp) {
-                LOG.error("Error while reading the records from the topic {}", topicName, exp);
+                LOG.error("Error while reading the records from the topic {}. Retry after 10 seconds", topicName, exp);
+                retryingAfterException = true;
             }
         }
     }
@@ -292,7 +298,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             eventMetadata.setAttribute("kafka_key", key);
         }
         eventMetadata.setAttribute("kafka_topic", topicName);
-        eventMetadata.setAttribute("kafka_partition", partition);
+        eventMetadata.setAttribute("kafka_partition", String.valueOf(partition));
 
         return new Record<Event>(event);
     }
