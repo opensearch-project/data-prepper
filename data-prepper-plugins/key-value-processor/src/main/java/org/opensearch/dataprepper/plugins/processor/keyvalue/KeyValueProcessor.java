@@ -55,9 +55,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final String whitespaceStrict = "strict";
     private final String whitespaceLenient = "lenient";
     private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
-    private static HashMap<Character, Character> bracketMap = new HashMap<>();
-    private HashMap<String, Object> nonRecursedMap = new LinkedHashMap<>();
-    private HashMap<String, Object> recursedMap = new LinkedHashMap<>();
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -202,18 +199,18 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         for(final Record<Event> record : records) {
             final Map<String, Object> parsedMap = new HashMap<>();
             final Event recordEvent = record.getData();
-
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
+            final Map<String, Object> outputMap;
 
             if (keyValueProcessorConfig.getRecursive()) {
                 ObjectMapper mapper = new ObjectMapper();
                 JsonNode recursedTree = recurse(groupsRaw, mapper);
-                createRecursedMap(recursedTree, mapper);
-                executeConfigs(recursedMap, parsedMap);
+                outputMap = createRecursedMap(recursedTree, mapper);
+                executeConfigs(outputMap, parsedMap);
             } else {
                 final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
-                createNonRecursedMap(groups);
-                executeConfigs(nonRecursedMap, parsedMap);
+                outputMap = createNonRecursedMap(groups);
+                executeConfigs(outputMap, parsedMap);
             }
 
             for (Map.Entry<String,Object> pair : defaultValuesMap.entrySet()) {
@@ -232,12 +229,10 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private ObjectNode recurse(String input, ObjectMapper mapper) {
         Stack<Character> bracketStack = new Stack<Character>();
-        initBracketMap();
+        Map<Character, Character> bracketMap = initBracketMap();
         int pairStart = 0;
 
         ArrayList<String> pairs = new ArrayList<String>();
-
-        // create empty root node
         ObjectNode root = mapper.createObjectNode();
 
         for (int i = 0; i < input.length(); i++) {
@@ -253,15 +248,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             if (bracketStack.isEmpty() && input.charAt(i) == '&') { // config variable
                 // save pairs in array
-                String pair = input.substring(pairStart, i - 1);
+                String pair = input.substring(pairStart, i);
                 pairs.add(pair);
                 pairStart = i + 1;
             }
         }
 
         // handle last pair case after parsing thru input and there are no more splitters
-        int pairEnd = input.length();
-        pairs.add(input.substring(pairStart, pairEnd - 1));
+        pairs.add(input.substring(pairStart));
 
         for (final String pair : pairs) {
             int keyStart = 0;
@@ -275,7 +269,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             for (int i = 0; i < pair.length(); i++) { // search for kv splitter
                 if (bracketStack.isEmpty() && pair.charAt(i) == '=') { // change to config variable
-                    keyString = pair.substring(keyStart, i - 1);
+                    keyString = pair.substring(keyStart, i);
                     valueStart = i + 1;
                     break;
                 }
@@ -295,14 +289,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                         if (bracketMap.get(bracketStack.peek()) == pair.charAt(i)) { // brackets match, set up for recursion
                             valueEnd = i;
                             bracketStack.pop();
-                            valueString = pair.substring(valueStart, valueEnd - 1);
+                            valueString = pair.substring(valueStart, valueEnd);
                             JsonNode child = ((ObjectNode) root).put(keyString, recurse(valueString, mapper));
                         }
                     }
                 }  
             } else { // no nested content
-                valueEnd = pair.length();
-                valueString = pair.substring(valueStart, valueEnd - 1);
+                valueString = pair.substring(valueStart);
 
                 ObjectNode child = ((ObjectNode)root).put(keyString, valueString);
             }
@@ -311,17 +304,23 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return root;
     }
 
-    private static void initBracketMap() {
+    private static Map<Character, Character> initBracketMap() {
+        Map<Character, Character> bracketMap = new HashMap<>();
+
         bracketMap.put('[', ']');
         bracketMap.put('(', ')');
         bracketMap.put('<', '>');
+
+        return bracketMap;
     }
 
-    private void createRecursedMap(JsonNode node, ObjectMapper mapper) {
-        recursedMap = mapper.convertValue(node, new TypeReference<HashMap<String, Object>>() {});
+    private Map<String, Object> createRecursedMap(JsonNode node, ObjectMapper mapper) {
+        return mapper.convertValue(node, new TypeReference<HashMap<String, Object>>() {});
     }
 
-    private void createNonRecursedMap(String[] groups) {
+    private Map<String, Object> createNonRecursedMap(String[] groups) {
+        Map<String, Object> nonRecursedMap = new LinkedHashMap<>();
+
         for(final String group : groups) {
             final String[] terms = keyValueDelimiterPattern.split(group, 2);
             String key = terms[0];
@@ -336,9 +335,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             nonRecursedMap.put(key, value);
         }
+
+        return nonRecursedMap;
     }
 
-    private void executeConfigs(HashMap<String, Object> map, Map<String, Object> parsed) {
+    private void executeConfigs(Map<String, Object> map, Map<String, Object> parsed) {
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
