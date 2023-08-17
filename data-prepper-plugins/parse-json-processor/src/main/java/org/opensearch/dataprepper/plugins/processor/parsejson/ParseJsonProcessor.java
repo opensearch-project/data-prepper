@@ -40,6 +40,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
     private final String pointer;
     private final String parseWhen;
     private final List<String> tagsOnFailure;
+    private final boolean overwriteIfKeyExists;
 
     private final ExpressionEvaluator expressionEvaluator;
 
@@ -54,6 +55,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
         pointer = parseJsonProcessorConfig.getPointer();
         parseWhen = parseJsonProcessorConfig.getParseWhen();
         tagsOnFailure = parseJsonProcessorConfig.getTagsOnFailure();
+        overwriteIfKeyExists = parseJsonProcessorConfig.getOverwriteIfKeyExists();
         this.expressionEvaluator = expressionEvaluator;
     }
 
@@ -85,7 +87,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
 
                     if (doWriteToRoot) {
                         writeToRoot(event, parsedJson);
-                    } else {
+                    } else if (overwriteIfKeyExists || !event.containsKey(destination)) {
                         event.put(destination, parsedJson);
                     }
                 } catch (final JsonProcessingException jsonException) {
@@ -169,7 +171,9 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
 
     private void writeToRoot(final Event event, final Map<String, Object> parsedJson) {
         for (Map.Entry<String, Object> entry : parsedJson.entrySet()) {
-            event.put(entry.getKey(), entry.getValue());
+            if (overwriteIfKeyExists || !event.containsKey(entry.getKey())) {
+                event.put(entry.getKey(), entry.getValue());
+            }
         }
     }
 }

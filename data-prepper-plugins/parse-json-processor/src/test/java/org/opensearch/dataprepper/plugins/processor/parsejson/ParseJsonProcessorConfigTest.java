@@ -29,6 +29,7 @@ public class ParseJsonProcessorConfigTest {
         assertThat(objectUnderTest.getDestination(), equalTo(null));
         assertThat(objectUnderTest.getPointer(), equalTo(null));
         assertThat(objectUnderTest.getTagsOnFailure(), equalTo(null));
+        assertThat(objectUnderTest.getOverwriteIfKeyExists(), equalTo(true));
     }
 
     @Nested
