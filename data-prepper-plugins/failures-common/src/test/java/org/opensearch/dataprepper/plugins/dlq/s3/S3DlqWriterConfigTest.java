@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.dlq.s3;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.regions.Region;
@@ -40,6 +41,14 @@ public class S3DlqWriterConfigTest {
         final S3DlqWriterConfig config = new S3DlqWriterConfig();
         reflectivelySetField(config, "stsRoleArn", stsRoleArn);
         assertThrows(IllegalArgumentException.class, config::getS3Client);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"bucket-name, bucket-name", "s3://bucket-name, bucket-name"})
+    public void getS3BucketNameShouldReturnCorrectBucketName(final String bucketName, final String expectedBucketName) throws NoSuchFieldException, IllegalAccessException {
+        final S3DlqWriterConfig config = new S3DlqWriterConfig();
+        reflectivelySetField(config, "bucket", bucketName);
+        assertThat(config.getBucket(), is(equalTo(expectedBucketName)));
     }
 
     @ParameterizedTest

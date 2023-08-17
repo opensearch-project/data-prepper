@@ -28,12 +28,12 @@ public class AvroSchemaParserFromS3 {
     private static final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
     private static final Logger LOG = LoggerFactory.getLogger(AvroSchemaParserFromS3.class);
 
-    public static Schema parseSchema(AvroOutputCodecConfig config) throws IOException {
-        try{
+    public static Schema parseSchema(AvroOutputCodecConfig config) {
+        try {
             return new Schema.Parser().parse(getS3SchemaObject(config));
-        }catch (Exception e){
-            LOG.error("Unable to retrieve schema from S3. Error: "+e.getMessage());
-            throw new IOException("Can't proceed without schema.");
+        } catch (Exception e) {
+            LOG.error("Unable to retrieve schema from S3.", e);
+            throw new RuntimeException("There is an error in the schema: " + e.getMessage());
         }
     }
 
@@ -44,7 +44,8 @@ public class AvroSchemaParserFromS3 {
                 .key(config.getFileKey())
                 .build();
         ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest);
-        final Map<String, Object> stringObjectMap = objectMapper.readValue(s3Object, new TypeReference<>() {});
+        final Map<String, Object> stringObjectMap = objectMapper.readValue(s3Object, new TypeReference<>() {
+        });
         return objectMapper.writeValueAsString(stringObjectMap);
     }
 

@@ -6,12 +6,10 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.DurationDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.DurationSerializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.plugins.source.CustomLocalDateTimeDeserializer;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -22,26 +20,26 @@ import java.util.stream.Stream;
  * Class consists the bucket related configuration properties.
  */
 public class S3ScanBucketOption {
+    private static final String S3_PREFIX = "s3://";
+
     @JsonProperty("name")
+    @NotEmpty
+    @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String name;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("start_time")
     private LocalDateTime startTime;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("end_time")
     private LocalDateTime endTime;
 
-    @JsonSerialize(using = DurationSerializer.class)
-    @JsonDeserialize(using = DurationDeserializer.class)
     @JsonProperty("range")
     private Duration range;
 
-    @JsonProperty("key_prefix")
-    private S3ScanKeyPathOption keyPrefix;
+    @JsonProperty("filter")
+    private S3ScanKeyPathOption s3ScanFilter;
 
     @AssertTrue(message = "At most two options from start_time, end_time and range can be specified at the same time")
     public boolean hasValidTimeOptions() {
@@ -49,6 +47,9 @@ public class S3ScanBucketOption {
     }
 
     public String getName() {
+        if (name.startsWith(S3_PREFIX)) {
+            return name.substring(S3_PREFIX.length());
+        }
         return name;
     }
 
@@ -64,7 +65,7 @@ public class S3ScanBucketOption {
         return range;
     }
 
-    public S3ScanKeyPathOption getkeyPrefix() {
-        return keyPrefix;
+    public S3ScanKeyPathOption getS3ScanFilter() {
+        return s3ScanFilter;
     }
 }

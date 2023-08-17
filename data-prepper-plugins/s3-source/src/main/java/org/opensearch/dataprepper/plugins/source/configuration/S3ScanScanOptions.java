@@ -6,12 +6,9 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.datatype.jsr310.deser.DurationDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.DurationSerializer;
-import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
+import org.opensearch.dataprepper.plugins.source.CustomLocalDateTimeDeserializer;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -24,30 +21,33 @@ import java.util.stream.Stream;
  */
 public class S3ScanScanOptions {
 
-    @JsonSerialize(using = DurationSerializer.class)
-    @JsonDeserialize(using = DurationDeserializer.class)
     @JsonProperty("range")
     private Duration range;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("start_time")
     private LocalDateTime startTime;
 
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
     @JsonProperty("end_time")
     private LocalDateTime endTime;
 
     @JsonProperty("buckets")
+    @Valid
     private List<S3ScanBucketOptions> buckets;
 
     @JsonProperty("scheduling")
-    private S3ScanSchedulingOptions schedulingOptions = new S3ScanSchedulingOptions();
+    @Valid
+    private S3ScanSchedulingOptions schedulingOptions;
 
     @AssertTrue(message = "At most two options from start_time, end_time and range can be specified at the same time")
     public boolean hasValidTimeOptions() {
         return Stream.of(startTime, endTime, range).filter(Objects::nonNull).count() < 3;
+    }
+
+    @AssertTrue(message = "start_time, end_time, and range are not valid options when using scheduling with s3 scan")
+    public boolean hasValidTimeOptionsWithScheduling() {
+        return !Objects.nonNull(schedulingOptions) || Stream.of(startTime, endTime, range).noneMatch(Objects::nonNull);
     }
 
     public Duration getRange() {

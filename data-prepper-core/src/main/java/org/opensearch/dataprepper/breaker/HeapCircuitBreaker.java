@@ -66,7 +66,7 @@ class HeapCircuitBreaker implements InnerCircuitBreaker, AutoCloseable {
         scheduledExecutorService
                         .scheduleAtFixedRate(this::checkMemory, 0L, checkInterval.toMillis(), TimeUnit.MILLISECONDS);
 
-        LOG.info("Heap circuit breaker with usage of {} bytes.", usageBytes);
+        LOG.info("Circuit breaker heap limit is set to {} bytes.", usageBytes);
     }
 
     @Override

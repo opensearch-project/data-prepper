@@ -2,11 +2,11 @@
 [Describe what this change achieves]
  
 ### Issues Resolved
-[List any issues this PR will resolve]
+Resolves #[Issue number to be closed when this PR is merged]
  
 ### Check List
 - [ ] New functionality includes testing.
-- [ ] New functionality has been documented.
+- [ ] New functionality has a documentation issue. Please link to it in this PR.
   - [ ] New functionality has javadoc added
 - [ ] Commits are signed with a real name per the DCO
 

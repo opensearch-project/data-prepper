@@ -21,12 +21,16 @@ import static java.util.stream.Collectors.toList;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.both;
 import static org.hamcrest.Matchers.greaterThan;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.mockito.Mockito.mock;
 import org.mockito.Mock;
 import static org.mockito.Mockito.when;
@@ -92,7 +96,7 @@ public class RandomCutForestModeTests {
     void testRandomCutForestMode() {
         randomCutForestMode = createObjectUnderTest();
         List<String> keys = new ArrayList<String>(Collections.singleton("latency"));
-        randomCutForestMode.initialize(keys);
+        randomCutForestMode.initialize(keys, false);
         final int numSamples = 1024;
         List<Record<Event>> records = new ArrayList<Record<Event>>();
         for (int i = 0; i < numSamples; i++) {
@@ -118,7 +122,7 @@ public class RandomCutForestModeTests {
         String longFieldName = "bytes";
         keyList.add(floatFieldName);
         keyList.add(longFieldName);
-        randomCutForestMode.initialize(keyList);
+        randomCutForestMode.initialize(keyList, false);
         final int numSamples = 1024;
         List<Record<Event>> records = new ArrayList<Record<Event>>();
         for (int i = 0; i < numSamples; i++) {
@@ -151,7 +155,7 @@ public class RandomCutForestModeTests {
         String longFieldName = "hour";
         keyList.add(floatFieldName);
         keyList.add(longFieldName); 
-        randomCutForestMode.initialize(keyList);
+        randomCutForestMode.initialize(keyList, false);
         final int numSamples = (365+200)*24+4; // number of samples more than a year
         List<Record<Event>> records = new ArrayList<Record<Event>>();
         long hour = 0;
@@ -165,5 +169,46 @@ public class RandomCutForestModeTests {
 
         final List<Record<Event>> anomalyRecords = randomCutForestMode.handleEvents(recordsWithAnomaly).stream().collect(toList());;
         assertThat(anomalyRecords.size(), equalTo(1));
+    }
+
+    @Test
+    void testRandomCutForestModeVerboseTrue() {
+        randomCutForestMode = createObjectUnderTest();
+        List<String> keys = new ArrayList<String>(Collections.singleton("latency"));
+        randomCutForestMode.initialize(keys, true);
+        final int numSamples = 1024;
+        List<Record<Event>> records = new ArrayList<Record<Event>>();
+        for (int i = 0; i < numSamples; i++) {
+            records.add(getLatencyMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6)));
+        }
+        randomCutForestMode.handleEvents(records);
+        final List<Record<Event>> recordsWithAnomaly = new ArrayList<Record<Event>>();
+        for (int i = 0; i < numSamples; i++) {
+            recordsWithAnomaly.add(getLatencyMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(1, 1.1)));
+        }
+
+        final List<Record<Event>> anomalyRecords = randomCutForestMode.handleEvents(recordsWithAnomaly).stream().collect(toList());;
+        assertThat(anomalyRecords.size(), greaterThan(5));
+    }
+
+    @Test
+    void testRandomCutForestModeVerboseFalse() {
+        randomCutForestMode = createObjectUnderTest();
+        List<String> keys = new ArrayList<String>(Collections.singleton("latency"));
+        randomCutForestMode.initialize(keys, false);
+        final int numSamples = 1024;
+        List<Record<Event>> records = new ArrayList<Record<Event>>();
+        for (int i = 0; i < numSamples; i++) {
+            records.add(getLatencyMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6)));
+        }
+        randomCutForestMode.handleEvents(records);
+        final List<Record<Event>> recordsWithAnomaly = new ArrayList<Record<Event>>();
+        for (int i = 0; i < numSamples; i++) {
+            recordsWithAnomaly.add(getLatencyMessage(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(1, 1.1)));
+        }
+
+        final List<Record<Event>> anomalyRecords = randomCutForestMode.handleEvents(recordsWithAnomaly).stream().collect(toList());;
+        // Due to inherent variance in the RCF algorithm, 1-3 anomalies will be detected after the level shift.
+        assertThat(anomalyRecords.size(), both(greaterThanOrEqualTo(1)).and(lessThanOrEqualTo(3)));
     }
 }
