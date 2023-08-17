@@ -19,6 +19,7 @@ import org.apache.parquet.io.InputFile;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodecConfig;
+import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 
