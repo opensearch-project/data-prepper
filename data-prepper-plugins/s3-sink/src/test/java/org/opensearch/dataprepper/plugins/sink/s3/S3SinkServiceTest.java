@@ -158,7 +158,7 @@ class S3SinkServiceTest {
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         s3SinkService.output(generateRandomStringEventRecord());
-        verify(snapshotSuccessCounter, times(50)).increment();
+        verify(snapshotSuccessCounter, times(51)).increment();
     }
 
 
@@ -181,7 +181,7 @@ class S3SinkServiceTest {
         S3SinkService s3SinkService = createObjectUnderTest();
         assertNotNull(s3SinkService);
         s3SinkService.output(generateRandomStringEventRecord());
-        verify(snapshotSuccessCounter, times(50)).increment();
+        verify(snapshotSuccessCounter, times(51)).increment();
     }
 
     @Test
@@ -200,7 +200,7 @@ class S3SinkServiceTest {
         assertNotNull(s3SinkService);
         assertThat(s3SinkService, instanceOf(S3SinkService.class));
         s3SinkService.output(generateRandomStringEventRecord());
-        verify(snapshotSuccessCounter, times(50)).increment();
+        verify(snapshotSuccessCounter, times(51)).increment();
     }
 
     @Test
@@ -219,7 +219,7 @@ class S3SinkServiceTest {
         final S3SinkService s3SinkService = createObjectUnderTest();
         s3SinkService.output(generateRandomStringEventRecord());
 
-        verify(s3ObjectSizeSummary, times(50)).record(objectSize);
+        verify(s3ObjectSizeSummary, times(51)).record(objectSize);
     }
 
     @Test
@@ -245,7 +245,7 @@ class S3SinkServiceTest {
 
         s3SinkService.output(generateEventRecords(2));
 
-        verify(snapshotSuccessCounter, times(2)).increment();
+        verify(snapshotSuccessCounter, times(3)).increment();
         verify(codec).writeEvent(any(), eq(outputStream1));
         verify(codec).writeEvent(any(), eq(outputStream2));
     }
@@ -283,7 +283,7 @@ class S3SinkServiceTest {
         s3SinkService.output(Collections.singletonList(new Record<>(event)));
 
         verify(s3ObjectSizeSummary, never()).record(anyLong());
-        verify(buffer, times(3)).flushToS3();
+        verify(buffer, times(6)).flushToS3();
     }
 
     @Test

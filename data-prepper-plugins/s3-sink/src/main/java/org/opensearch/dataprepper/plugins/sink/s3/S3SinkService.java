@@ -184,7 +184,7 @@ public class S3SinkService {
             } catch (AwsServiceException | SdkClientException e) {
                 LOG.error("Exception occurred while uploading records to s3 bucket. Retry countdown  : {} | exception:",
                         retryCount, e);
-                LOG.info("Error Massage {}", e.getMessage());
+                LOG.info("Error Message {}", e.getMessage());
                 --retryCount;
                 if (retryCount == 0) {
                     return isUploadedToS3;
