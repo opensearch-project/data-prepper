@@ -15,5 +15,8 @@ import java.io.InputStream;
  */
 public interface CompressionScenario {
     CompressionOption getCompressionOption();
+    default boolean requiresDecompression() {
+        return true;
+    }
     InputStream decompressingInputStream(final InputStream inputStream) throws IOException;
 }

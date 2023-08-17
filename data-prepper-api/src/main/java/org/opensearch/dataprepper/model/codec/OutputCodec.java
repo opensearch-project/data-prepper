@@ -58,6 +58,22 @@ public interface OutputCodec {
      */
     String getExtension();
 
+    /**
+     * Returns true if this codec has an internal compression. That is, the entire
+     * {@link OutputStream} should not be compressed.
+     * <p>
+     * When this value is true, sinks should not attempt to encrypt the final {@link OutputStream}
+     * at all.
+     * <p>
+     * For example, Parquet compression happens within the file. Each column chunk
+     * is compressed independently.
+     *
+     * @return True if the compression is internal to the codec; false if whole-file compression is ok.
+     */
+    default boolean isCompressionInternal() {
+        return false;
+    }
+
     default Event addTagsToEvent(Event event, String tagsTargetKey) throws JsonProcessingException {
         String eventJsonString = event.jsonBuilder().includeTags(tagsTargetKey).toJsonString();
         Map<String, Object> eventData = objectMapper.readValue(eventJsonString, new TypeReference<>() {

@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
-import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -60,6 +59,7 @@ public class S3SinkService {
     private final Counter numberOfRecordsFailedCounter;
     private final DistributionSummary s3ObjectSizeSummary;
     private final OutputCodecContext codecContext;
+    private final KeyGenerator keyGenerator;
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
@@ -69,12 +69,13 @@ public class S3SinkService {
      * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
-                         final OutputCodec codec, final OutputCodecContext codecContext, final S3Client s3Client, final PluginMetrics pluginMetrics) {
+                         final OutputCodec codec, final OutputCodecContext codecContext, final S3Client s3Client, final KeyGenerator keyGenerator, final PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
         this.s3Client = s3Client;
         this.codecContext = codecContext;
+        this.keyGenerator = keyGenerator;
         reentrantLock = new ReentrantLock();
 
         bufferedEventHandles = new LinkedList<>();
@@ -99,7 +100,7 @@ public class S3SinkService {
     void output(Collection<Record<Event>> records) {
         reentrantLock.lock();
         if (currentBuffer == null) {
-            currentBuffer = bufferFactory.getBuffer();
+            currentBuffer = bufferFactory.getBuffer(s3Client, () -> bucket, keyGenerator::generateKey);
         }
         try {
             OutputStream outputStream = currentBuffer.getOutputStream();
@@ -121,7 +122,7 @@ public class S3SinkService {
                 }
                 if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
                     codec.complete(outputStream);
-                    final String s3Key = generateKey(codec);
+                    String s3Key = currentBuffer.getKey();
                     LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
                             s3Key, currentBuffer.getEventCount(), currentBuffer.getSize());
                     final boolean isFlushToS3 = retryFlushToS3(currentBuffer, s3Key);
@@ -137,7 +138,7 @@ public class S3SinkService {
                         objectsFailedCounter.increment();
                         releaseEventHandles(false);
                     }
-                    currentBuffer = bufferFactory.getBuffer();
+                    currentBuffer = bufferFactory.getBuffer(s3Client, () -> bucket, keyGenerator::generateKey);
                     outputStream = currentBuffer.getOutputStream();
                 }
             }
@@ -168,7 +169,7 @@ public class S3SinkService {
         int retryCount = maxRetries;
         do {
             try {
-                currentBuffer.flushToS3(s3Client, bucket, s3Key);
+                currentBuffer.flushToS3();
                 isUploadedToS3 = Boolean.TRUE;
             } catch (AwsServiceException | SdkClientException e) {
                 LOG.error("Exception occurred while uploading records to s3 bucket. Retry countdown  : {} | exception:",
@@ -182,16 +183,5 @@ public class S3SinkService {
             }
         } while (!isUploadedToS3);
         return isUploadedToS3;
-    }
-
-    /**
-     * Generate the s3 object path prefix and object file name.
-     *
-     * @return object key path.
-     */
-    protected String generateKey(OutputCodec codec) {
-        final String pathPrefix = ObjectKey.buildingPathPrefix(s3SinkConfig);
-        final String namePattern = ObjectKey.objectFileName(s3SinkConfig, codec.getExtension());
-        return (!pathPrefix.isEmpty()) ? pathPrefix + namePattern : namePattern;
     }
 }
