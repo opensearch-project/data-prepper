@@ -258,6 +258,34 @@ class S3SinkServiceTest {
     }
 
     @Test
+    void test_output_with_uploadedToS3_midBatch_generatesNewOutputStream() throws IOException {
+
+        bufferFactory = mock(BufferFactory.class);
+        InMemoryBuffer buffer = mock(InMemoryBuffer.class);
+        when(buffer.getEventCount()).thenReturn(10);
+        doNothing().when(buffer).flushToS3(any(S3Client.class), anyString(), any(String.class));
+        when(bufferFactory.getBuffer()).thenReturn(buffer);
+        final OutputStream outputStream1 = mock(OutputStream.class);
+        final OutputStream outputStream2 = mock(OutputStream.class);
+        when(buffer.getOutputStream())
+                .thenReturn(outputStream1)
+                .thenReturn(outputStream2);
+
+        doNothing().when(codec).writeEvent(any(), eq(outputStream1));
+        doNothing().when(codec).writeEvent(any(), eq(outputStream2));
+
+        S3SinkService s3SinkService = createObjectUnderTest();
+        assertNotNull(s3SinkService);
+        assertThat(s3SinkService, instanceOf(S3SinkService.class));
+
+        s3SinkService.output(generateEventRecords(2));
+
+        verify(snapshotSuccessCounter, times(2)).increment();
+        verify(codec).writeEvent(any(), eq(outputStream1));
+        verify(codec).writeEvent(any(), eq(outputStream2));
+    }
+
+    @Test
     void test_output_with_uploadedToS3_failed() throws IOException {
         when(s3SinkConfig.getBucketName()).thenReturn(UUID.randomUUID().toString());
         when(s3SinkConfig.getMaxUploadRetries()).thenReturn(3);

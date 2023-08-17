@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.event.Event;
 import io.micrometer.core.instrument.Counter;
+import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +50,7 @@ class AggregateActionSynchronizer {
         this.actionConcludeGroupEventsProcessingErrors = pluginMetrics.counter(ACTION_CONCLUDE_GROUP_EVENTS_PROCESSING_ERRORS);
     }
 
-    AggregateActionOutput concludeGroup(final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
+    AggregateActionOutput concludeGroup(final IdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup, final boolean forceConclude) {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 
@@ -74,7 +75,7 @@ class AggregateActionSynchronizer {
         return actionOutput;
     }
 
-    AggregateActionResponse handleEventForGroup(final Event event, final AggregateIdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup) {
+    AggregateActionResponse handleEventForGroup(final Event event, final IdentificationKeysHasher.IdentificationKeysMap hash, final AggregateGroup aggregateGroup) {
         final Lock concludeGroupLock = aggregateGroup.getConcludeGroupLock();
         final Lock handleEventForGroupLock = aggregateGroup.getHandleEventForGroupLock();
 

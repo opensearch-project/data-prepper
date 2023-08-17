@@ -23,8 +23,12 @@ dependencies {
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-common:1.8.21'
     implementation libs.commons.lang3
     testImplementation project(':data-prepper-test-common')
-	implementation project(':data-prepper-plugins:parquet-codecs')
-    implementation project(':data-prepper-plugins:parse-json-processor')
+    testImplementation project(':data-prepper-plugins:parquet-codecs')
+    testImplementation project(':data-prepper-plugins:parse-json-processor')
+    testImplementation project(':data-prepper-plugins:csv-processor')
+    testImplementation project(':data-prepper-plugins:avro-codecs')
+    testImplementation testLibs.slf4j.simple
+    testImplementation 'software.amazon.awssdk:s3-transfer-manager'
 }
 
 test {
@@ -54,8 +58,10 @@ task integrationTest(type: Test) {
     useJUnitPlatform()
 
     classpath = sourceSets.integrationTest.runtimeClasspath
+
+    systemProperty 'log4j.configurationFile', 'src/test/resources/log4j2.properties'
     systemProperty 'tests.s3sink.bucket', System.getProperty('tests.s3sink.bucket')
-    systemProperty 'tests.s3ink.region', System.getProperty('tests.s3sink.region')
+    systemProperty 'tests.s3sink.region', System.getProperty('tests.s3sink.region')
 
     filter {
         includeTestsMatching '*IT'

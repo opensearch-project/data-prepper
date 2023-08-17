@@ -11,6 +11,7 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -25,15 +26,21 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class AvroOutputCodecTest {
-    private static final String expectedSchemaString = "{\"type\":\"record\",\"name\":\"AvroRecords\",\"fields\":[{\"name\"" +
+    private static final String EXPECTED_SCHEMA_STRING = "{\"type\":\"record\",\"name\":\"AvroRecords\",\"fields\":[{\"name\"" +
             ":\"name\",\"type\":\"string\"},{\"name\":\"nestedRecord\",\"type\":{\"type\":\"record\",\"name\":" +
             "\"NestedRecord1\",\"fields\":[{\"name\":\"secondFieldInNestedRecord\",\"type\":\"int\"},{\"name\":\"" +
             "firstFieldInNestedRecord\",\"type\":\"string\"}]}},{\"name\":\"age\",\"type\":\"int\"}]}";
@@ -43,12 +50,27 @@ public class AvroOutputCodecTest {
 
     private static int numberOfRecords;
 
-    private AvroOutputCodec createObjectUnderTest() {
+    @BeforeEach
+    void setUp() {
         config = new AvroOutputCodecConfig();
         config.setSchema(parseSchema().toString());
+    }
+
+    private AvroOutputCodec createObjectUnderTest() {
         return new AvroOutputCodec(config);
     }
 
+    @Test
+    void constructor_throws_if_schema_is_invalid() {
+        String invalidSchema = parseSchema().toString().replaceAll(",", ";");
+        config.setSchema(invalidSchema);
+
+        RuntimeException actualException = assertThrows(RuntimeException.class, this::createObjectUnderTest);
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), containsString(invalidSchema));
+        assertThat(actualException.getMessage(), containsString("was expecting comma"));
+    }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
@@ -87,8 +109,24 @@ public class AvroOutputCodecTest {
     }
 
     @Test
+    void writeEvent_throws_exception_when_field_does_not_exist() throws IOException {
+        final Event eventWithInvalidField = mock(Event.class);
+        final String invalidFieldName = UUID.randomUUID().toString();
+        when(eventWithInvalidField.toMap()).thenReturn(Collections.singletonMap(invalidFieldName, UUID.randomUUID().toString()));
+        final AvroOutputCodec objectUnderTest = createObjectUnderTest();
+
+        outputStream = new ByteArrayOutputStream();
+        objectUnderTest.start(outputStream, null, new OutputCodecContext());
+
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), containsString(invalidFieldName));
+    }
+
+    @Test
     public void testInlineSchemaBuilder() throws IOException {
-        Schema expectedSchema = new Schema.Parser().parse(expectedSchemaString);
+        Schema expectedSchema = new Schema.Parser().parse(EXPECTED_SCHEMA_STRING);
         AvroOutputCodec avroOutputCodec = createObjectUnderTest();
         numberOfRecords = 1;
         Event event = getRecord(0).getData();

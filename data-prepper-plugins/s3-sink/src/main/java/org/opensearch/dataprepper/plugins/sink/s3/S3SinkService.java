@@ -138,6 +138,7 @@ public class S3SinkService {
                         releaseEventHandles(false);
                     }
                     currentBuffer = bufferFactory.getBuffer();
+                    outputStream = currentBuffer.getOutputStream();
                 }
             }
         } catch (IOException | InterruptedException e) {

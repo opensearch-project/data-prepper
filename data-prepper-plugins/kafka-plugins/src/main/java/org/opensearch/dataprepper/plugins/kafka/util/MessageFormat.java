@@ -5,9 +5,10 @@
 
 package org.opensearch.dataprepper.plugins.kafka.util;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 import java.util.Arrays;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -19,19 +20,18 @@ public enum MessageFormat {
     PLAINTEXT("plaintext"), JSON("json"), AVRO("avro");
 
     private static final Map<String, MessageFormat> MESSAGE_FORMAT_MAP = Arrays.stream(MessageFormat.values())
-            .collect(Collectors.toMap(MessageFormat::toString, Function.identity()));
+            .collect(Collectors.toMap(
+                    value -> value.type,
+                    value -> value
+            ));
 
-    private final String messageFormatName;
+    private final String type;
 
-    MessageFormat(final String name) {
-        this.messageFormatName = name;
+    MessageFormat(final String type) {
+        this.type = type;
     }
 
-    @Override
-    public String toString() {
-        return this.messageFormatName;
-    }
-
+    @JsonCreator
     public static MessageFormat getByMessageFormatByName(final String name) {
         return MESSAGE_FORMAT_MAP.get(name.toLowerCase());
     }

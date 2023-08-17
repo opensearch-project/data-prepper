@@ -16,6 +16,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.opensearch.dataprepper.plugins.sink.s3.S3SinkConfig.S3_PREFIX;
 
 class S3SinkConfigTest {
 
@@ -42,6 +43,15 @@ class S3SinkConfigTest {
         final String bucketName = UUID.randomUUID().toString();
         final S3SinkConfig objectUnderTest = new S3SinkConfig();
         ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "bucketName", bucketName);
+        assertThat(objectUnderTest.getBucketName(), equalTo(bucketName));
+    }
+
+    @Test
+    void get_bucket_name_with_s3_prefix_test() throws NoSuchFieldException, IllegalAccessException {
+        final String bucketName = UUID.randomUUID().toString();
+        final String bucketNameWithPrefix = S3_PREFIX + bucketName;
+        final S3SinkConfig objectUnderTest = new S3SinkConfig();
+        ReflectivelySetField.setField(S3SinkConfig.class, objectUnderTest, "bucketName", bucketNameWithPrefix);
         assertThat(objectUnderTest.getBucketName(), equalTo(bucketName));
     }
 

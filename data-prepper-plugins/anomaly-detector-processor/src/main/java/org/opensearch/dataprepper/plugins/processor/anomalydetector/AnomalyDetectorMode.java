@@ -20,8 +20,10 @@ public interface AnomalyDetectorMode {
      * 
      * @param keys List of keys which are used as dimensions in the anomaly detector
      * @since 2.1
+     * 
+     * @param verbose Optional, when true, RCF will turn off Auto-Adjust, and anomalies will be continually detected after a level shift
      */
-    void initialize(List<String> keys);
+    void initialize(List<String> keys, boolean verbose);
 
     /**
      * handles a collection of records

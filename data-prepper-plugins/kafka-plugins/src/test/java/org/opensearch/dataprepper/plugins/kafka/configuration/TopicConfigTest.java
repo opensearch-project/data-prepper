@@ -73,8 +73,6 @@ class TopicConfigTest {
         assertEquals(TopicConfig.DEFAULT_SESSION_TIMEOUT, topicConfig.getSessionTimeOut());
         assertEquals(TopicConfig.DEFAULT_AUTO_OFFSET_RESET, topicConfig.getAutoOffsetReset());
         assertEquals(TopicConfig.DEFAULT_THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
-        assertEquals(TopicConfig.DEFAULT_MAX_RECORD_FETCH_TIME, topicConfig.getMaxRecordFetchTime());
-        assertEquals(TopicConfig.DEFAULT_BUFFER_TIMEOUT, topicConfig.getBufferDefaultTimeout());
         assertEquals(TopicConfig.DEFAULT_FETCH_MAX_BYTES, topicConfig.getFetchMaxBytes());
         assertEquals(TopicConfig.DEFAULT_FETCH_MAX_WAIT, topicConfig.getFetchMaxWait());
         assertEquals(TopicConfig.DEFAULT_FETCH_MIN_BYTES, topicConfig.getFetchMinBytes());
@@ -96,13 +94,11 @@ class TopicConfigTest {
         assertEquals(45000, topicConfig.getSessionTimeOut().toMillis());
         assertEquals("earliest", topicConfig.getAutoOffsetReset());
         assertEquals(Duration.ofSeconds(1), topicConfig.getThreadWaitingTime());
-        assertEquals(Duration.ofSeconds(4), topicConfig.getMaxRecordFetchTime());
-        assertEquals(Duration.ofSeconds(5), topicConfig.getBufferDefaultTimeout());
         assertEquals(52428800, topicConfig.getFetchMaxBytes().longValue());
         assertEquals(500L, topicConfig.getFetchMaxWait().longValue());
         assertEquals(1L, topicConfig.getFetchMinBytes().longValue());
         assertEquals(Duration.ofSeconds(100), topicConfig.getRetryBackoff());
-        assertEquals(Duration.ofSeconds(300000), topicConfig.getMaxPollInterval());
+        assertEquals(Duration.ofSeconds(300), topicConfig.getMaxPollInterval());
         assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
         assertEquals(5, topicConfig.getWorkers().intValue());
         assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
@@ -118,8 +114,6 @@ class TopicConfigTest {
         assertNotNull(topicConfig.getSessionTimeOut());
         assertNotNull(topicConfig.getAutoOffsetReset());
         assertNotNull(topicConfig.getThreadWaitingTime());
-        assertNotNull(topicConfig.getMaxRecordFetchTime());
-        assertNotNull(topicConfig.getBufferDefaultTimeout());
         assertNotNull(topicConfig.getFetchMaxBytes());
         assertNotNull(topicConfig.getFetchMaxWait());
         assertNotNull(topicConfig.getFetchMinBytes());

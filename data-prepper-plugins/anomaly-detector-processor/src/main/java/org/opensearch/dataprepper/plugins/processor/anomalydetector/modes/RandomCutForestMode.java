@@ -58,7 +58,7 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
     }
     
     @Override
-    public void initialize(List<String> keys) {
+    public void initialize(List<String> keys, boolean verbose) {
         this.keys = keys;
         baseDimensions = keys.size();
 	    Precision precision = Precision.FLOAT_32;
@@ -79,7 +79,8 @@ public class RandomCutForestMode implements AnomalyDetectorMode {
 			        .transformMethod(transformMethod)
                     .outputAfter(outputAfter)
                     .timeDecay(timeDecay / sampleSize)
-			        .initialAcceptFraction(INITIAL_ACCEPT_FRACTION).build();
+			        .initialAcceptFraction(INITIAL_ACCEPT_FRACTION)
+                    .autoAdjust(!verbose).build();
 	    forest.setLowerThreshold(LOWER_THRESHOLD);
 	    forest.setHorizon(HORIZON_VALUE);
     }
