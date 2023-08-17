@@ -19,7 +19,7 @@ public class BearerTokenOptions {
 
     @JsonProperty("token_url")
     @NotNull(message = "token url type is mandatory for refresh token")
-    private String tokenURL;
+    private String tokenUrl;
 
     @JsonProperty("grant_type")
     @NotNull(message = "grant type is mandatory for refresh token")
@@ -30,6 +30,10 @@ public class BearerTokenOptions {
     private String scope;
 
     private String refreshToken;
+
+    private String accessToken;
+
+    private Integer tokenExpired;
 
     public String getScope() {
         return scope;
@@ -43,6 +47,14 @@ public class BearerTokenOptions {
         return refreshToken;
     }
 
+    public String getAccessToken() {
+        return accessToken;
+    }
+
+    public Integer getTokenExpired() {
+        return tokenExpired;
+    }
+
     public String getClientId() {
         return clientId;
     }
@@ -51,11 +63,20 @@ public class BearerTokenOptions {
         return clientSecret;
     }
 
-    public String getTokenURL() {
-        return tokenURL;
-    }
-
     public void setRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
     }
+
+    public void setAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+    }
+
+    public void setTokenExpired(Integer tokenExpired) {
+        this.tokenExpired = tokenExpired;
+    }
+
+    public String getTokenUrl() {
+        return tokenUrl;
+    }
+
 }

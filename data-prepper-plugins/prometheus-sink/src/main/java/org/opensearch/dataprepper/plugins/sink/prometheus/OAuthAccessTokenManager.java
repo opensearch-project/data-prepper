@@ -4,82 +4,66 @@
  */
 package org.opensearch.dataprepper.plugins.sink.prometheus;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
-import org.apache.hc.core5.http.ClassicHttpResponse;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.HttpHeaders;
-import org.apache.hc.core5.http.io.entity.StringEntity;
+import com.github.scribejava.core.builder.api.DefaultApi20;
+import com.github.scribejava.core.model.OAuth2AccessToken;
+import com.github.scribejava.core.oauth.OAuth20Service;
+import com.github.scribejava.core.builder.ServiceBuilder;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.BearerTokenOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Base64;
-import java.util.Map;
 
 public class OAuthAccessTokenManager {
 
-    public static final String BASIC = "Basic ";
-
-    public static final String BEARER = "Bearer ";
-
-    public static final String APPLICATION_X_WWW_FORM_URLENCODED = "application/x-www-form-urlencoded";
-    public static final String EXP = "exp";
-    public static final String ACCESS_TOKEN = "access_token";
-
-    public static final String REFRESH_TOKEN = "refresh_token";
-
-    private final ObjectMapper objectMapper;
-
-    private HttpClientBuilder httpClientBuilder;
-
-
-    public OAuthAccessTokenManager(final HttpClientBuilder httpClientBuilder){
-        this.httpClientBuilder = httpClientBuilder;
-        this.objectMapper = new ObjectMapper();
-    }
+    private static final Logger LOG = LoggerFactory.getLogger(OAuthAccessTokenManager.class);
 
     public String getAccessToken(final BearerTokenOptions bearerTokenOptions) {
-        HttpPost request = new HttpPost(bearerTokenOptions.getTokenURL());
-        request.setHeader(HttpHeaders.CONTENT_TYPE, APPLICATION_X_WWW_FORM_URLENCODED);
-        request.setHeader(HttpHeaders.AUTHORIZATION, BASIC + base64Encode(bearerTokenOptions.getClientId() + ":" + bearerTokenOptions.getClientSecret()));
-        String requestBody = "grant_type=" + bearerTokenOptions.getGrantType() +"&refresh_token"+bearerTokenOptions.getRefreshToken()+"&scope=" + bearerTokenOptions.getScope();
-        request.setEntity(new StringEntity(requestBody, ContentType.APPLICATION_FORM_URLENCODED));
-        Map<String,String> accessTokenMap;
+        OAuth20Service service = getOAuth20ServiceObj(bearerTokenOptions);
+        OAuth2AccessToken accessTokenObj = null;
         try {
-            ClassicHttpResponse response = (ClassicHttpResponse)httpClientBuilder.build().execute(request);
-            accessTokenMap = objectMapper.readValue(response.getEntity().getContent(),Map.class);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            if(bearerTokenOptions.getRefreshToken() != null) {
+                accessTokenObj = new OAuth2AccessToken(bearerTokenOptions.getAccessToken(), bearerTokenOptions.getRefreshToken());
+                accessTokenObj = service.refreshAccessToken(accessTokenObj.getRefreshToken());
+
+            }else {
+                accessTokenObj = service.getAccessTokenClientCredentialsGrant();
+            }
+            bearerTokenOptions.setRefreshToken(accessTokenObj.getRefreshToken());
+            bearerTokenOptions.setAccessToken(accessTokenObj.getAccessToken());
+            bearerTokenOptions.setTokenExpired(accessTokenObj.getExpiresIn());
+        }catch (Exception e) {
+            LOG.info("Exception : "+ e.getMessage() );
         }
-        bearerTokenOptions.setRefreshToken(accessTokenMap.get(REFRESH_TOKEN));
-        return BEARER + accessTokenMap.get(ACCESS_TOKEN);
+        return bearerTokenOptions.getAccessToken();
     }
 
-    private static String base64Encode(String value) {
-        return java.util.Base64.getEncoder().encodeToString(value.getBytes());
-    }
 
-    public boolean isTokenExpired(final String token){
-        Base64.Decoder decoder = Base64.getUrlDecoder();
-        String[] chunks = token.substring(6).split("\\.");
-        final Map<String,Object> tokenDetails;
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            tokenDetails = objectMapper.readValue(new String(decoder.decode(chunks[1])), Map.class);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-        final String expTime = String.valueOf(tokenDetails.get(EXP));
-        OffsetDateTime accessTokenExpTimeStamp = Instant.ofEpochMilli(Long.valueOf(expTime ) * 1000l).atOffset(ZoneOffset.UTC);
+    public boolean isTokenExpired(final Integer tokenExpired){
         final Instant systemCurrentTimeStamp = Instant.now().atOffset(ZoneOffset.UTC).toInstant();
-        if(systemCurrentTimeStamp.compareTo(accessTokenExpTimeStamp.toInstant())>=0) {
+        Instant accessTokenExpTimeStamp = systemCurrentTimeStamp.plusSeconds(tokenExpired);
+        if(systemCurrentTimeStamp.compareTo(accessTokenExpTimeStamp)>=0) {
             return true;
         }
         return false;
     }
+
+    private OAuth20Service getOAuth20ServiceObj(BearerTokenOptions bearerTokenOptions){
+        return  new ServiceBuilder(bearerTokenOptions.getClientId())
+                .apiSecret(bearerTokenOptions.getClientSecret())
+                .defaultScope(bearerTokenOptions.getScope())
+                .build(new DefaultApi20() {
+                    @Override
+                    public String getAccessTokenEndpoint() {
+                        return bearerTokenOptions.getTokenUrl();
+                    }
+
+                    @Override
+                    protected String getAuthorizationBaseUrl() {
+                        return bearerTokenOptions.getTokenUrl();
+                    }
+                });
+    }
+
 }

@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 import com.arpnetworking.metrics.prometheus.Remote;
 import com.arpnetworking.metrics.prometheus.Types;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
@@ -26,7 +27,7 @@ import org.opensearch.dataprepper.model.metric.JacksonSum;
 import org.opensearch.dataprepper.model.metric.JacksonSummary;
 import org.opensearch.dataprepper.model.record.Record;
 
-import org.opensearch.dataprepper.plugins.sink.prometheus.certificate.CertificateProviderFactory;
+import org.opensearch.dataprepper.plugins.certificate.s3.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.sink.prometheus.FailedHttpResponseInterceptor;
 import org.opensearch.dataprepper.plugins.sink.prometheus.HttpEndPointResponse;
 import org.opensearch.dataprepper.plugins.sink.prometheus.OAuthAccessTokenManager;
@@ -99,6 +100,14 @@ public class PrometheusSinkService {
     private static final Pattern PREFIX_PATTERN = Pattern.compile("^[^a-zA-Z_:]");
     private static final Pattern BODY_PATTERN = Pattern.compile("[^a-zA-Z0-9_:]");
 
+    private final Counter prometheusSinkRecordsSuccessCounter;
+
+    private final Counter prometheusSinkRecordsFailedCounter;
+
+    public static final String PROMETHEUS_SINK_RECORDS_SUCCESS_COUNTER = "prometheusSinkRecordsSuccessPushToEndPoint";
+
+    public static final String PROMETHEUS_SINK_RECORDS_FAILED_COUNTER = "prometheusSinkRecordsFailedToPushEndPoint";
+
     public PrometheusSinkService(final PrometheusSinkConfiguration prometheusSinkConfiguration,
                                  final DlqPushHandler dlqPushHandler,
                                  final HttpClientBuilder httpClientBuilder,
@@ -110,13 +119,19 @@ public class PrometheusSinkService {
         this.bufferedEventHandles = new LinkedList<>();
         this.httpClientBuilder = httpClientBuilder;
         this.httpPluginSetting = httpPluginSetting;
-        this.oAuthAccessTokenManager = new OAuthAccessTokenManager(httpClientBuilder);
+        this.oAuthAccessTokenManager = new OAuthAccessTokenManager();
         if (prometheusSinkConfiguration.isSsl() || prometheusSinkConfiguration.useAcmCertForSSL()) {
-            this.certificateProviderFactory = new CertificateProviderFactory(prometheusSinkConfiguration);
+            this.certificateProviderFactory = new CertificateProviderFactory(prometheusSinkConfiguration.useAcmCertForSSL(),
+                    prometheusSinkConfiguration.getAwsAuthenticationOptions().getAwsRegion(), prometheusSinkConfiguration.getAcmCertificateArn(),
+                    prometheusSinkConfiguration.getAcmCertIssueTimeOutMillis(), prometheusSinkConfiguration.getAcmPrivateKeyPassword(),
+                    prometheusSinkConfiguration.isSslCertAndKeyFileInS3(), prometheusSinkConfiguration.getSslCertificateFile(),
+                    prometheusSinkConfiguration.getSslKeyFile());
             prometheusSinkConfiguration.validateAndInitializeCertAndKeyFileInS3();
             this.httpClientConnectionManager = new HttpClientSSLConnectionManager()
                     .createHttpClientConnectionManager(prometheusSinkConfiguration, certificateProviderFactory);
         }
+        this.prometheusSinkRecordsSuccessCounter = pluginMetrics.counter(PROMETHEUS_SINK_RECORDS_SUCCESS_COUNTER);
+        this.prometheusSinkRecordsFailedCounter = pluginMetrics.counter(PROMETHEUS_SINK_RECORDS_FAILED_COUNTER);
         this.httpAuthOptions = buildAuthHttpSinkObjectsByConfig(prometheusSinkConfiguration);
     }
 
@@ -163,15 +178,18 @@ public class PrometheusSinkService {
                 HttpEndPointResponse failedHttpEndPointResponses = null;
                 try {
                     failedHttpEndPointResponses = pushToEndPoint(bytes);
+
+                    if (failedHttpEndPointResponses != null) {
+                        logFailedData(failedHttpEndPointResponses);
+                        releaseEventHandles(Boolean.FALSE);
+                        prometheusSinkRecordsFailedCounter.increment();
+                    } else {
+                        LOG.info("data pushed to the end point successfully");
+                        releaseEventHandles(Boolean.TRUE);
+                        prometheusSinkRecordsSuccessCounter.increment();
+                    }
                 } catch (IOException e) {
-                    LOG.info("Error while pushing to the end point");
-                }
-                if (failedHttpEndPointResponses != null) {
-                    logFailedData(failedHttpEndPointResponses);
-                    releaseEventHandles(Boolean.FALSE);
-                } else {
-                    LOG.info("data pushed to the end point successfully");
-                    releaseEventHandles(Boolean.TRUE);
+                    LOG.error("Error while pushing to the end point ", e);
                 }
 
             });
@@ -292,7 +310,7 @@ public class PrometheusSinkService {
 
         try {
             if(AuthTypeOptions.BEARER_TOKEN.equals(prometheusSinkConfiguration.getAuthType()))
-                accessTokenIfExpired(classicHttpRequestBuilder.getFirstHeader(AUTHORIZATION).getValue(),prometheusSinkConfiguration.getUrl());
+                accessTokenIfExpired(prometheusSinkConfiguration.getAuthentication().getBearerTokenOptions().getTokenExpired(),prometheusSinkConfiguration.getUrl());
 
             httpAuthOptions.get(prometheusSinkConfiguration.getUrl()).getHttpClientBuilder().build()
                     .execute(classicHttpRequestBuilder.build(), HttpClientContext.create());
@@ -402,8 +420,8 @@ public class PrometheusSinkService {
         return classicRequestBuilder;
     }
 
-    private void accessTokenIfExpired(final String token,final String url){
-        if(oAuthAccessTokenManager.isTokenExpired(token)) {
+    private void accessTokenIfExpired(final Integer tokenExpired,final String url){
+        if(oAuthAccessTokenManager.isTokenExpired(tokenExpired)) {
             httpAuthOptions.get(url).getClassicHttpRequestBuilder()
                     .setHeader(AUTHORIZATION, oAuthAccessTokenManager.getAccessToken(prometheusSinkConfiguration.getAuthentication().getBearerTokenOptions()));
         }

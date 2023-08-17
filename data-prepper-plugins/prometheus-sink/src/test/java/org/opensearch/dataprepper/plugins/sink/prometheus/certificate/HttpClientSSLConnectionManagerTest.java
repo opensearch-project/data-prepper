@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.file.FileCertificateProvider;
+import org.opensearch.dataprepper.plugins.certificate.s3.CertificateProviderFactory;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 
 import java.io.IOException;
@@ -41,10 +42,9 @@ public class HttpClientSSLConnectionManagerTest {
         CertificateProvider provider = new FileCertificateProvider(prometheusSinkConfiguration.getSslCertificateFile(), prometheusSinkConfiguration.getSslKeyFile());
         when(certificateProviderFactory.getCertificateProvider()).thenReturn(provider);
 
-        CertificateProviderFactory providerFactory = new CertificateProviderFactory(prometheusSinkConfiguration);
         httpClientSSLConnectionManager = new HttpClientSSLConnectionManager();
         HttpClientConnectionManager httpClientConnectionManager = httpClientSSLConnectionManager
-                .createHttpClientConnectionManager(prometheusSinkConfiguration, providerFactory);
+                .createHttpClientConnectionManager(prometheusSinkConfiguration, certificateProviderFactory);
         assertNotNull(httpClientConnectionManager);
     }
 }

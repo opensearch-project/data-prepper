@@ -21,6 +21,7 @@ dependencies {
     implementation 'software.amazon.awssdk:apache-client'
     implementation 'software.amazon.awssdk:sts'
     implementation 'software.amazon.awssdk:acm'
+    implementation 'com.github.scribejava:scribejava-core:8.3.3'
     testImplementation project(':data-prepper-test-common')
 }
 

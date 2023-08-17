@@ -10,7 +10,7 @@
  * CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
  * and limitations under the License.
  */
-package org.opensearch.dataprepper.plugins.sink.prometheus;
+package org.opensearch.dataprepper.aws.api;
 
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.ClassicHttpRequest;
@@ -45,8 +45,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
-import static org.apache.http.protocol.HttpCoreContext.HTTP_TARGET_HOST;
-
 /**
  * An {@link HttpRequestInterceptor} that signs requests using any AWS {@link Signer}
  * and {@link AwsCredentialsProvider}.
@@ -65,6 +63,11 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
      * Constant to check if host is the endpoint
      */
     private static final String HOST = "host";
+
+    /**
+     *  Attribute name of a HttpHost object that represents the connection target.
+     */
+    private static final String HTTP_TARGET_HOST = "http.target_host";
 
     /**
      * The service that we're connecting to.

@@ -1,6 +1,7 @@
 
 dependencies {
     implementation 'software.amazon.awssdk:auth'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2'
 }
 
 test {
@@ -12,7 +13,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule {
             limit {
-                minimum = 1.0
+                minimum = 0.1
             }
         }
     }

@@ -7,7 +7,7 @@ package org.opensearch.dataprepper.plugins.sink.prometheus.service;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsOptions;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.plugins.sink.prometheus.AwsRequestSigningApacheInterceptor;
+import org.opensearch.dataprepper.aws.api.AwsRequestSigningApacheInterceptor;
 import org.opensearch.dataprepper.plugins.sink.prometheus.configuration.PrometheusSinkConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

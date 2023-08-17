@@ -49,10 +49,7 @@ public class PrometheusSinkServiceIT {
             "        url: {0}\n" +
                     "        http_method: POST\n" +
                     "        auth_type: {1}\n" +
-                    "        ssl: false\n" +
-                    "        aws:\n" +
-                    "          region: {2}\n" +
-                    "          sts_role_arn: {3}\n";
+                    "        ssl: false\n";
 
     private PrometheusSinkConfiguration prometheusSinkConfiguration;
 
@@ -65,7 +62,7 @@ public class PrometheusSinkServiceIT {
     @BeforeEach
     void setUp() throws JsonProcessingException{
         this.urlString = System.getProperty("tests.prometheus.sink.http.endpoint");
-        String[] values = { urlString,"unauthenticated","ap-south-1","arn:aws:iam::524239988944:role/app-test" };
+        String[] values = { urlString,"unauthenticated"};
         final String configYaml = MessageFormat.format(config, values);
         this.prometheusSinkConfiguration = objectMapper.readValue(configYaml, PrometheusSinkConfiguration.class);
     }
