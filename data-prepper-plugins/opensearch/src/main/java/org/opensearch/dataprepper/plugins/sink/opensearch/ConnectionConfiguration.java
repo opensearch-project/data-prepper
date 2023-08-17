@@ -58,6 +58,7 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 
 public class ConnectionConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
@@ -234,7 +235,11 @@ public class ConnectionConfiguration {
     final String proxy = pluginSetting.getStringOrDefault(PROXY, null);
     builder = builder.withProxy(proxy);
 
-    final boolean requestCompressionEnabled = pluginSetting.getBooleanOrDefault(REQUEST_COMPRESSION_ENABLED, true);
+    final String distributionVersionName = pluginSetting.getStringOrDefault(DISTRIBUTION_VERSION,
+            DistributionVersion.DEFAULT.getVersion());
+    final DistributionVersion distributionVersion = DistributionVersion.fromTypeName(distributionVersionName);
+    final boolean requestCompressionEnabled = pluginSetting.getBooleanOrDefault(
+            REQUEST_COMPRESSION_ENABLED, !DistributionVersion.ES6.equals(distributionVersion));
     builder = builder.withRequestCompressionEnabled(requestCompressionEnabled);
 
     return builder.build();
