@@ -9,6 +9,7 @@ import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setFie
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.metric.JacksonMetric;
+import org.opensearch.dataprepper.model.metric.Exemplar;
 import org.junit.jupiter.api.extension.ExtendWith; 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -207,6 +208,8 @@ public class HistogramAggregateActionTests {
             assertThat(expectedBucketCounts[i], equalTo(bucketCountsFromResult.get(i)));
         }
         assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(HistogramAggregateAction.HISTOGRAM_METRIC_NAME+"_key", testKey));
+        List<Exemplar> exemplars = (List <Exemplar>)result.get(0).toMap().get("exemplars");
+        assertThat(exemplars.size(), equalTo(2));
         assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasEntry(dataKey, dataValue));
         final String expectedDurationKey = histogramAggregateActionConfig.getDurationKey();
         assertThat(((Map<String, String>)result.get(0).toMap().get("attributes")), hasKey(expectedDurationKey));
