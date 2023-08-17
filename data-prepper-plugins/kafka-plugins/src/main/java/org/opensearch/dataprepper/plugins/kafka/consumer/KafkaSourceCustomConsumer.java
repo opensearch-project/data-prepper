@@ -165,7 +165,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             LOG.warn("Deserialization error - topic {} partition {} offset {}",
                      e.topicPartition().topic(), e.topicPartition().partition(), e.offset());
             if (e.getCause() instanceof AWSSchemaRegistryException) {
-                LOG.warn("AWSSchemaRegistryException. Retrying after 30 seconds");
+                LOG.warn("AWSSchemaRegistryException: {}. Retrying after 30 seconds", e.getMessage());
                 Thread.sleep(30000);
             } else {
                 LOG.warn("Seeking past the error record", e);
@@ -180,7 +180,11 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             partitionsToReset.forEach(partition -> {
                 try {
                     final OffsetAndMetadata offsetAndMetadata = consumer.committed(partition);
-                    consumer.seek(partition, offsetAndMetadata);
+                    if (Objects.isNull(offsetAndMetadata)) {
+                        consumer.seek(partition, 0L);
+                    } else {
+                        consumer.seek(partition, offsetAndMetadata);
+                    }
                 } catch (Exception e) {
                     LOG.error("Failed to seek to last committed offset upon negative acknowledgement {}", partition, e);
                 }
