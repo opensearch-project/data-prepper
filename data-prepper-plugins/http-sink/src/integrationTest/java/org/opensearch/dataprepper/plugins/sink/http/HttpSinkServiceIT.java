@@ -61,9 +61,6 @@ public class HttpSinkServiceIT {
             "        codec:\n" +
             "          json:\n" +
             "        ssl: false\n" +
-            "        aws:\n" +
-            "          region: {2}\n" +
-            "          sts_role_arn: {3}\n" +
             "        threshold:\n" +
             "          event_count: 1";
 
@@ -80,7 +77,7 @@ public class HttpSinkServiceIT {
     @BeforeEach
     void setUp() throws JsonProcessingException{
         this.urlString = System.getProperty("tests.http.sink.http.endpoint");
-        String[] values = { urlString,"unauthenticated","ap-south-1","arn:aws:iam::524239988944:role/app-test" };
+        String[] values = { urlString,"unauthenticated"};
         final String configYaml = MessageFormat.format(config, values);
         this.httpSinkConfiguration = objectMapper.readValue(configYaml, HttpSinkConfiguration.class);
     }

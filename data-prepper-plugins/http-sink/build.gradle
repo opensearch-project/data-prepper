@@ -55,6 +55,8 @@ task integrationTest(type: Test) {
 
     classpath = sourceSets.integrationTest.runtimeClasspath
     systemProperty 'tests.http.sink.http.endpoint', System.getProperty('tests.http.sink.http.endpoint')
+    systemProperty 'tests.http.sink.region', System.getProperty('tests.http.sink.region')
+    systemProperty 'tests.http.sink.bucket', System.getProperty('tests.http.sink.bucket')
 
     filter {
         includeTestsMatching '*IT'

@@ -165,3 +165,11 @@ This plugin is compatible with Java 8. See
 
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)
 - [monitoring](https://github.com/opensearch-project/data-prepper/blob/main/docs/monitoring.md)
+
+The integration tests for this plugin do not run as part of the Data Prepper build.
+
+The following command runs the integration tests:
+
+```
+./gradlew :data-prepper-plugins:http-sink:integrationTest -Dtests.http.sink.http.endpoint=<http-endpoint>
+```
