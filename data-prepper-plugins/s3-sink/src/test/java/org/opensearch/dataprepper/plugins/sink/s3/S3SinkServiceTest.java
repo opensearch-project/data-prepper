@@ -291,7 +291,7 @@ class S3SinkServiceTest {
 
         bufferFactory = mock(BufferFactory.class);
         Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer()).thenReturn(buffer);
+        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
         when(buffer.getEventCount()).thenReturn(10);
 
         final OutputStream outputStream = mock(OutputStream.class);
@@ -301,7 +301,7 @@ class S3SinkServiceTest {
         s3SinkService.output(Collections.emptyList());
 
         verify(snapshotSuccessCounter, times(1)).increment();
-        verify(buffer, times(1)).flushToS3(any(), anyString(), anyString());
+        verify(buffer, times(1)).flushToS3();
     }
 
     @Test
@@ -309,7 +309,7 @@ class S3SinkServiceTest {
 
         bufferFactory = mock(BufferFactory.class);
         Buffer buffer = mock(Buffer.class);
-        when(bufferFactory.getBuffer()).thenReturn(buffer);
+        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
         when(buffer.getEventCount()).thenReturn(0);
         final long objectSize = random.nextInt(1_000_000) + 10_000;
         when(buffer.getSize()).thenReturn(objectSize);
@@ -321,7 +321,7 @@ class S3SinkServiceTest {
         s3SinkService.output(Collections.emptyList());
 
         verify(snapshotSuccessCounter, times(0)).increment();
-        verify(buffer, times(0)).flushToS3(any(), anyString(), anyString());
+        verify(buffer, times(0)).flushToS3();
     }
 
     @Test

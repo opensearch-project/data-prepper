@@ -144,7 +144,7 @@ public class S3SinkService {
         if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
             try {
                 codec.complete(currentBuffer.getOutputStream());
-                final String s3Key = generateKey(codec);
+                String s3Key = currentBuffer.getKey();
                 LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
                         s3Key, currentBuffer.getEventCount(), currentBuffer.getSize());
                 final boolean isFlushToS3 = retryFlushToS3(currentBuffer, s3Key);
@@ -160,7 +160,7 @@ public class S3SinkService {
                     objectsFailedCounter.increment();
                     releaseEventHandles(false);
                 }
-                currentBuffer = bufferFactory.getBuffer();
+                currentBuffer = bufferFactory.getBuffer(s3Client, () -> bucket, keyGenerator::generateKey);
             } catch (final IOException e) {
                 LOG.error("Exception while completing codec", e);
             }
