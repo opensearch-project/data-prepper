@@ -106,9 +106,6 @@ public class S3Sink extends AbstractSink<Record<Event>> {
      */
     @Override
     public void doOutput(final Collection<Record<Event>> records) {
-        if (records.isEmpty()) {
-            return;
-        }
         s3SinkService.output(records);
     }
 }
