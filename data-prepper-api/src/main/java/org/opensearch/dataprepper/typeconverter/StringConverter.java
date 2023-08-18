@@ -5,17 +5,10 @@
 
 package org.opensearch.dataprepper.typeconverter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Objects;
 
-import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
-
 public class StringConverter implements TypeConverter<String> {
-    private static final Logger LOG = LoggerFactory.getLogger(StringConverter.class);
-
-    public String convert(final Object source) {
+    public String convert(final Object source) throws IllegalArgumentException {
         if (source instanceof Long) {
             return Long.toString(((Number)source).longValue());
         }
@@ -34,11 +27,9 @@ public class StringConverter implements TypeConverter<String> {
         if (source instanceof String) {
             return (String)source;
         }
-        LOG.error(EVENT, "Unable to convert {} to String", source);
-        if (Objects.nonNull(source)) {
-            return source.toString();
-        } else {
-            return "";
+        if (Objects.isNull(source)) {
+            return "null";
         }
+        throw new IllegalArgumentException("Unsupported type conversion");
     }
 }

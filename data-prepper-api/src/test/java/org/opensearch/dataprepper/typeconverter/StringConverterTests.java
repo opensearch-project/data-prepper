@@ -7,11 +7,12 @@ package org.opensearch.dataprepper.typeconverter;
 
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class StringConverterTests {
     @Test
@@ -65,23 +66,14 @@ public class StringConverterTests {
     @Test
     void testNullValueStringConversion() {
         StringConverter converter = new StringConverter();
-        final String expectedString = "";
+        final String expectedString = "null";
         assertThat(converter.convert(null), equalTo(expectedString));
     }
 
     @Test
-    void testMapToStringConversion() {
+    void testInvalidStringConversion() {
         StringConverter converter = new StringConverter();
-        final Map<Object, Object> map = Map.of("testKey", "testValue");
-        final String expectedString = "{testKey=testValue}";
-        assertThat(converter.convert(map), equalTo(expectedString));
-    }
-
-    @Test
-    void testListToStringConversion() {
-        StringConverter converter = new StringConverter();
-        final List<Object> list = List.of("listItem1", "listItem2");
-        final String expectedString = "[listItem1, listItem2]";
-        assertThat(converter.convert(list), equalTo(expectedString));
+        final Map<Object, Object> map = Collections.emptyMap();
+        assertThrows(IllegalArgumentException.class, () -> converter.convert(map));
     }
 }
