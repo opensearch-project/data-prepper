@@ -649,8 +649,99 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "item2", "item2-value");
     }
 
-    // write test for multiple levels of recursion
-    // write tests for interactions with other features (only applied to top level keys)
+    @Test
+    void testMultiRecursiveKvProcessor() {
+        when(mockConfig.getRecursive()).thenReturn(true);
+
+        final Record<Event> record = getMessage("item1=[item1-subitem1=(inner1=abc&inner2=xyz)&item1-subitem2=item1-subitem2-value]&item2=item2-value");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final Map<String, Object> expectedValueMap = new HashMap<>();
+        final Map<String, Object> nestedInnerMap = new HashMap<>();
+
+        nestedInnerMap.put("inner1", "abc");
+        nestedInnerMap.put("inner2", "xyz");
+        expectedValueMap.put("item1-subitem1", nestedInnerMap);
+        expectedValueMap.put("item1-subitem2", "item1-subitem2-value");
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "item1", expectedValueMap);
+        assertThatKeyEquals(parsed_message, "item2", "item2-value");
+    }
+
+    @Test
+    void testTransformKeyRecursiveKvProcessor() {
+        when(mockConfig.getRecursive()).thenReturn(true);
+        when(mockConfig.getTransformKey()).thenReturn("capitalize");
+
+        final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final Map<String, Object> expectedValueMap = new HashMap<>();
+        expectedValueMap.put("item1-subitem1", "item1-subitem1-value");
+        expectedValueMap.put("item1-subitem2", "item1-subitem2-value");
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "ITEM1", expectedValueMap);
+        assertThatKeyEquals(parsed_message, "ITEM2", "item2-value");
+    }
+
+    @Test
+    void testIncludeInnerKeyRecursiveKvProcessor() {
+        final List<String> includeKeys = List.of("item1-subitem1");
+        when(mockConfig.getRecursive()).thenReturn(true);
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(0));
+    }
+
+    @Test
+    void testExcludeInnerKeyRecursiveKvProcessor() {
+        final List<String> excludeKeys = List.of("item1-subitem1");
+        when(mockConfig.getRecursive()).thenReturn(true);
+        when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final Map<String, Object> expectedValueMap = new HashMap<>();
+        expectedValueMap.put("item1-subitem1", "item1-subitem1-value");
+        expectedValueMap.put("item1-subitem2", "item1-subitem2-value");
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "item1", expectedValueMap);
+        assertThatKeyEquals(parsed_message, "item2", "item2-value");
+    }
+
+    @Test
+    void testDefaultInnerKeyRecursiveKvProcessor() {
+        final Map<String, Object> defaultMap = Map.of("item1-subitem1", "default");
+        when(mockConfig.getRecursive()).thenReturn(true);
+        when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final Map<String, Object> expectedValueMap = new HashMap<>();
+        expectedValueMap.put("item1-subitem1", "item1-subitem1-value");
+        expectedValueMap.put("item1-subitem2", "item1-subitem2-value");
+
+        assertThat(parsed_message.size(), equalTo(3));
+        assertThatKeyEquals(parsed_message, "item1", expectedValueMap);
+        assertThatKeyEquals(parsed_message, "item2", "item2-value");
+        assertThatKeyEquals(parsed_message, "item1-subitem1", "default");
+    }
 
     @Test
     void testShutdownIsReady() {

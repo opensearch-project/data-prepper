@@ -304,8 +304,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             for (int i = 0; i < pair.length(); i++) {
                 if (bracketStack.isEmpty() && pair.charAt(i) == keyValueDelimiterPattern.toString().charAt(0)) {
-                    keyString = pair.substring(keyStart, i);
+                    keyString = pair.substring(keyStart, i).stripTrailing();
                     valueStart = i + keyValueDelimiterPattern.toString().length();
+                    while(pair.charAt(valueStart) == ' ') {
+                        valueStart++;
+                    }
                     break;
                 }
             }
@@ -313,7 +316,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             if (keyString.isBlank()) {
                 keyString = pair;
                 LOG.debug("Unsuccessful match: '{}'", keyString);
-                valueString = keyValueProcessorConfig.getNonMatchValue().toString();
+                valueString = keyValueProcessorConfig.getNonMatchValue().toString().stripLeading();
             } else if (bracketMap.containsKey(pair.charAt(valueStart))) {
                 bracketStack.push(pair.charAt(valueStart));
                 valueStart++;
@@ -323,13 +326,13 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                         if (bracketMap.get(bracketStack.peek()) == pair.charAt(i)) {
                             valueEnd = i;
                             bracketStack.pop();
-                            valueString = pair.substring(valueStart, valueEnd);
+                            valueString = pair.substring(valueStart, valueEnd).stripLeading();
                             JsonNode child = ((ObjectNode) root).put(keyString, recurse(valueString, mapper));
                         }
                     }
                 }  
             } else {
-                valueString = pair.substring(valueStart);
+                valueString = pair.substring(valueStart).stripLeading();
                 ObjectNode child = ((ObjectNode)root).put(keyString, valueString);
             }
         }

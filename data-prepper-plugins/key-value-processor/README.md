@@ -94,8 +94,10 @@ When run, the processor will parse the message into the following output:
   * The levels of recursive parsing must be defined by different brackets for each level: `[]`, `()`, and `<>` in this order.
   * Example: `recursive` is true. `{"item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value&item1-subitem2-subitem2B=item1-subitem2-subitem2B-value)]&item2=item2-value"}` will parse into `"item1": {"item1-subitem1": "item1-subitem1-value", "item1-subitem2": {"item1-subitem2-subitem2A": "item1-subitem2-subitem2A-value", "item1-subitem2-subitem2B": "item1-subitem2-subitem2B-value"}}`
   * Example: `recursive` is false. `{"item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value&item1-subitem2-subitem2B=item1-subitem2-subitem2B-value)]&item2=item2-value"}` will parse into `"item1-subitem2": "(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value", "item2": "item2-value","item1": "[item1-subitem1=item1-subitem1-value", "item1-subitem2-subitem2B": "item1-subitem2-subitem2B-value)]"`
+  * Any other configurations specified will only be applied on the OUTER keys.
   * While `recursive` is `true`, `remove_brackets` cannot also be `true`.
   * While `recursive` is `true`, `skip_duplicate_values` will always be `true`.
+  * While `recursive` is `true`, `whitespace` will always be `"lenient"`.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See
