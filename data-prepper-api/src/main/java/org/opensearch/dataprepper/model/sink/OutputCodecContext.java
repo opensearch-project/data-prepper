@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.sink;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Data Prepper Output Codec Context class.
@@ -18,6 +19,7 @@ public class OutputCodecContext {
 
     private final List<String> includeKeys;
     private final List<String> excludeKeys;
+    private final Predicate<String> inclusionPredicate;
 
     public OutputCodecContext() {
         this(null, Collections.emptyList(), Collections.emptyList());
@@ -28,6 +30,14 @@ public class OutputCodecContext {
         this.tagsTargetKey = tagsTargetKey;
         this.includeKeys = includeKeys;
         this.excludeKeys = excludeKeys;
+
+        if (includeKeys != null && !includeKeys.isEmpty()) {
+            inclusionPredicate = k -> includeKeys.contains(k);
+        } else if (excludeKeys != null && !excludeKeys.isEmpty()) {
+            inclusionPredicate = k -> !excludeKeys.contains(k);
+        } else {
+            inclusionPredicate = k -> true;
+        }
     }
 
 
@@ -48,5 +58,9 @@ public class OutputCodecContext {
 
     public List<String> getExcludeKeys() {
         return excludeKeys;
+    }
+
+    public boolean shouldIncludeKey(String key) {
+        return inclusionPredicate.test(key);
     }
 }
