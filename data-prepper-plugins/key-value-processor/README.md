@@ -49,9 +49,9 @@ When run, the processor will parse the message into the following output:
   * Default: `{}`
   * Example: `default_values` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"key1": "value1", "defaultkey": "defaultvalue"}`
   * If the default key already exists in the message, the value is not changed.
-  * Example: `default_values` is `{"value1": "abc"}`. `key1=value1` will parse into `{"key1": "value1"}`
+  * Example: `default_values` is `{"key1": "abc"}`. `key1=value1` will parse into `{"key1": "value1"}`
   * It should be noted that the include_keys filter will be applied to the message first, and then default keys.
-  * Example: `include_keys` is `["key1"]`, and `default_keys` is `{"key2": "value2"}`. `key1=value1&key2=abc` will parse into `{"key1": "value1", "key2": "value2"}`
+  * Example: `include_keys` is `["key1"]`, and `default_values` is `{"key2": "value2"}`. `key1=value1&key2=abc` will parse into `{"key1": "value1", "key2": "value2"}`
 * `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default.
   * Note: This cannot be defined at the same time as `value_split_characters`
@@ -95,6 +95,7 @@ When run, the processor will parse the message into the following output:
   * Example: `recursive` is true. `{"item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value&item1-subitem2-subitem2B=item1-subitem2-subitem2B-value)]&item2=item2-value"}` will parse into `"item1": {"item1-subitem1": "item1-subitem1-value", "item1-subitem2": {"item1-subitem2-subitem2A": "item1-subitem2-subitem2A-value", "item1-subitem2-subitem2B": "item1-subitem2-subitem2B-value"}}`
   * Example: `recursive` is false. `{"item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value&item1-subitem2-subitem2B=item1-subitem2-subitem2B-value)]&item2=item2-value"}` will parse into `"item1-subitem2": "(item1-subitem2-subitem2A=item1-subitem2-subitem2A-value", "item2": "item2-value","item1": "[item1-subitem1=item1-subitem1-value", "item1-subitem2-subitem2B": "item1-subitem2-subitem2B-value)]"`
   * While `recursive` is `true`, `remove_brackets` cannot also be `true`.
+  * While `recursive` is `true`, `skip_duplicate_values` will always be `true`.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See

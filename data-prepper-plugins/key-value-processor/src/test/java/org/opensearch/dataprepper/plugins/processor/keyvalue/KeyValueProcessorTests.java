@@ -71,6 +71,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getWhitespace()).thenReturn(defaultConfig.getWhitespace());
         lenient().when(mockConfig.getSkipDuplicateValues()).thenReturn(defaultConfig.getSkipDuplicateValues());
         lenient().when(mockConfig.getRemoveBrackets()).thenReturn(defaultConfig.getRemoveBrackets());
+        lenient().when(mockConfig.getRecursive()).thenReturn(defaultConfig.getRecursive());
 
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
@@ -564,8 +565,6 @@ public class KeyValueProcessorTests {
 
     @Test
     void testFalseSkipDuplicateValuesKvProcessor() {
-        when(mockConfig.getSkipDuplicateValues()).thenReturn(false);
-
         final Record<Event> record = getMessage("key1=value1&key1=value1");
         final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
@@ -632,6 +631,26 @@ public class KeyValueProcessorTests {
         assertThatKeyEquals(parsed_message, "key1", "value1");
         assertThatKeyEquals(parsed_message, "key2", "value1value2");
     }
+
+    @Test
+    void testBasicRecursiveKvProcessor() {
+        when(mockConfig.getRecursive()).thenReturn(true);
+
+        final Record<Event> record = getMessage("item1=[item1-subitem1=item1-subitem1-value&item1-subitem2=item1-subitem2-value]&item2=item2-value");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final Map<String, Object> expectedValueMap = new HashMap<>();
+        expectedValueMap.put("item1-subitem1", "item1-subitem1-value");
+        expectedValueMap.put("item1-subitem2", "item1-subitem2-value");
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "item1", expectedValueMap);
+        assertThatKeyEquals(parsed_message, "item2", "item2-value");
+    }
+
+    // write test for multiple levels of recursion
+    // write tests for interactions with other features (only applied to top level keys)
 
     @Test
     void testShutdownIsReady() {

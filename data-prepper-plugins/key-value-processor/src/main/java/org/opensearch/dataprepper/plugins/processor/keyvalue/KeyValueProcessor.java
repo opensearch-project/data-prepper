@@ -55,6 +55,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final String whitespaceStrict = "strict";
     private final String whitespaceLenient = "lenient";
     private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
+    private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
@@ -70,6 +71,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new PatternSyntaxException("field_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getFieldDelimiterRegex(), -1);
             }
 
+            if (keyValueProcessorConfig.getRecursive()) {
+                for (char c : keyValueProcessorConfig.getFieldDelimiterRegex().toCharArray()) {
+                    if (bracketSet.contains(String.valueOf(c))) {
+                        throw new IllegalArgumentException("The set field delimiter regex cannot contain brackets while you are trying to recurse.");
+                    }
+                }
+            }
+
             fieldDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex());
         } else {
             String regex;
@@ -77,6 +86,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 regex = KeyValueProcessorConfig.DEFAULT_FIELD_SPLIT_CHARACTERS;
             } else {
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getFieldSplitCharacters());
+            }
+
+            if (keyValueProcessorConfig.getRecursive()) {
+                for (char c : regex.toCharArray()) {
+                    if (bracketSet.contains(String.valueOf(c))) {
+                        throw new IllegalArgumentException("The set field split characters cannot contain brackets while you are trying to recurse.");
+                    }
+                }
             }
 
             fieldDelimiterPattern = Pattern.compile(regex);
@@ -91,6 +108,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex(), -1);
             }
 
+            if (keyValueProcessorConfig.getRecursive()) {
+                for (char c : keyValueProcessorConfig.getKeyValueDelimiterRegex().toCharArray()) {
+                    if (bracketSet.contains(String.valueOf(c))) {
+                        throw new IllegalArgumentException("The set key value delimiter regex cannot contain brackets while you are trying to recurse.");
+                    }
+                }
+            }
+
             keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
         } else {
             String regex;
@@ -98,6 +123,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 regex = KeyValueProcessorConfig.DEFAULT_VALUE_SPLIT_CHARACTERS;
             } else {
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
+            }
+
+            if (keyValueProcessorConfig.getRecursive()) {
+                for (char c : regex.toCharArray()) {
+                    if (bracketSet.contains(String.valueOf(c))) {
+                        throw new IllegalArgumentException("The set value split characters cannot contain brackets while you are trying to recurse.");
+                    }
+                }
             }
 
             keyValueDelimiterPattern = Pattern.compile(regex);
@@ -197,21 +230,25 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
+            final Map<String, Object> outputMap = new HashMap<>();
             final Map<String, Object> parsedMap = new HashMap<>();
             final Event recordEvent = record.getData();
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
-            final Map<String, Object> outputMap;
+            final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
             if (keyValueProcessorConfig.getRecursive()) {
                 ObjectMapper mapper = new ObjectMapper();
-                JsonNode recursedTree = recurse(groupsRaw, mapper);
-                outputMap = createRecursedMap(recursedTree, mapper);
-                executeConfigs(outputMap, parsedMap);
+                try {
+                    JsonNode recursedTree = recurse(groupsRaw, mapper);
+                    outputMap.putAll(createRecursedMap(recursedTree, mapper));
+                } catch (Exception e) {
+                    LOG.error("Recursive parsing ran into an unexpected error, treating message as non-recursive");
+                }
             } else {
-                final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
-                outputMap = createNonRecursedMap(groups);
-                executeConfigs(outputMap, parsedMap);
+                outputMap.putAll(createNonRecursedMap(groups));
             }
+
+            executeConfigs(outputMap, parsedMap);
 
             for (Map.Entry<String,Object> pair : defaultValuesMap.entrySet()) {
                 if (parsedMap.containsKey(pair.getKey())) {
@@ -236,25 +273,23 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         ObjectNode root = mapper.createObjectNode();
 
         for (int i = 0; i < input.length(); i++) {
-            if (bracketMap.containsKey(input.charAt(i))) { // open bracket
+            if (bracketMap.containsKey(input.charAt(i))) {
                 bracketStack.push(input.charAt(i));
             }
 
-            if (bracketMap.containsValue(input.charAt(i)) && !bracketStack.isEmpty()) { // closed bracket
-                if (bracketMap.get(bracketStack.peek()) == input.charAt(i)) { // check if brackets are matched
+            if (bracketMap.containsValue(input.charAt(i)) && !bracketStack.isEmpty()) {
+                if (bracketMap.get(bracketStack.peek()) == input.charAt(i)) {
                     bracketStack.pop();
                 }
             }
 
-            if (bracketStack.isEmpty() && input.charAt(i) == '&') { // config variable
-                // save pairs in array
+            if (bracketStack.isEmpty() && input.charAt(i) == fieldDelimiterPattern.toString().charAt(0)) {
                 String pair = input.substring(pairStart, i);
                 pairs.add(pair);
-                pairStart = i + 1;
+                pairStart = i + fieldDelimiterPattern.toString().length();
             }
         }
 
-        // handle last pair case after parsing thru input and there are no more splitters
         pairs.add(input.substring(pairStart));
 
         for (final String pair : pairs) {
@@ -267,26 +302,25 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             bracketStack.clear();
 
-            for (int i = 0; i < pair.length(); i++) { // search for kv splitter
-                if (bracketStack.isEmpty() && pair.charAt(i) == '=') { // change to config variable
+            for (int i = 0; i < pair.length(); i++) {
+                if (bracketStack.isEmpty() && pair.charAt(i) == keyValueDelimiterPattern.toString().charAt(0)) {
                     keyString = pair.substring(keyStart, i);
-                    valueStart = i + 1;
+                    valueStart = i + keyValueDelimiterPattern.toString().length();
                     break;
                 }
             }
 
             if (keyString.isBlank()) {
-                // handle nonmatch value
                 keyString = pair;
                 LOG.debug("Unsuccessful match: '{}'", keyString);
                 valueString = keyValueProcessorConfig.getNonMatchValue().toString();
-            } else if (bracketMap.containsKey(pair.charAt(valueStart))) { // nested content
+            } else if (bracketMap.containsKey(pair.charAt(valueStart))) {
                 bracketStack.push(pair.charAt(valueStart));
                 valueStart++;
 
                 for (int i = valueStart + 1; i < pair.length(); i++) {
                     if (bracketMap.containsValue(pair.charAt(i))) {
-                        if (bracketMap.get(bracketStack.peek()) == pair.charAt(i)) { // brackets match, set up for recursion
+                        if (bracketMap.get(bracketStack.peek()) == pair.charAt(i)) {
                             valueEnd = i;
                             bracketStack.pop();
                             valueString = pair.substring(valueStart, valueEnd);
@@ -294,9 +328,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                         }
                     }
                 }  
-            } else { // no nested content
+            } else {
                 valueString = pair.substring(valueStart);
-
                 ObjectNode child = ((ObjectNode)root).put(keyString, valueString);
             }
         }
@@ -320,6 +353,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private Map<String, Object> createNonRecursedMap(String[] groups) {
         Map<String, Object> nonRecursedMap = new LinkedHashMap<>();
+        List<Object> valueList;
 
         for(final String group : groups) {
             final String[] terms = keyValueDelimiterPattern.split(group, 2);
@@ -333,7 +367,27 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 value = keyValueProcessorConfig.getNonMatchValue();
             }
 
-            nonRecursedMap.put(key, value);
+            if (nonRecursedMap.containsKey(key)) {
+                Object existingValue = nonRecursedMap.get(key);
+
+                if (existingValue instanceof List) {
+                    valueList = (List<Object>) existingValue;
+                } else {
+                    valueList = new ArrayList<Object>();
+                    valueList.add(existingValue);
+                    nonRecursedMap.put(key, valueList);
+                }
+
+                if (keyValueProcessorConfig.getSkipDuplicateValues()) {
+                    if (!valueList.contains(value)) {
+                        valueList.add(value);
+                    }
+                } else {
+                    valueList.add(value);
+                }
+            } else {
+                nonRecursedMap.put(key, value);
+            }
         }
 
         return nonRecursedMap;
@@ -388,11 +442,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
     }
 
-    private Map<String, Object> treeToMap(ObjectMapper mapper, JsonNode root) {
-        Map<String, Object> map = mapper.convertValue(root, Map.class);
-        return map;
-    }
-
     private String[] trimWhitespace(String key, Object value) {
         String[] arr = {key.stripTrailing(), value.toString().stripLeading()};
         return arr;
@@ -409,7 +458,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return key;
     }
 
-    private void addKeyValueToMap(final Map<String, Object> parsedMap, final String key, final Object value) {
+    private void addKeyValueToMap(final Map<String, Object> parsedMap, final String key, Object value) {
+        if (value instanceof List) {
+            List<?> valueAsList = (List<?>) value;
+            if (valueAsList.size() == 1) {
+                value = valueAsList.get(0);
+            }
+        }
+
         if(!parsedMap.containsKey(key)) {
             parsedMap.put(key, value);
             return;
