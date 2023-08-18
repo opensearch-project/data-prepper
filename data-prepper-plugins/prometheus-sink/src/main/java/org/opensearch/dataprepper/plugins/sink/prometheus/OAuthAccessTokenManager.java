@@ -49,7 +49,7 @@ public class OAuthAccessTokenManager {
         return false;
     }
 
-    private OAuth20Service getOAuth20ServiceObj(BearerTokenOptions bearerTokenOptions){
+    private OAuth20Service getOAuth20ServiceObj(final BearerTokenOptions bearerTokenOptions){
         return  new ServiceBuilder(bearerTokenOptions.getClientId())
                 .apiSecret(bearerTokenOptions.getClientSecret())
                 .defaultScope(bearerTokenOptions.getScope())

@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
+import io.micrometer.core.instrument.Counter;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
@@ -43,8 +44,9 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 
 public class PrometheusSinkServiceTest {
 
@@ -97,6 +99,10 @@ public class PrometheusSinkServiceTest {
 
     private CloseableHttpResponse closeableHttpResponse;
 
+    private Counter prometheusSinkRecordsSuccessCounter;
+
+    private Counter prometheusSinkRecordsFailedCounter;
+
     @BeforeEach
     void setup() throws IOException {
         this.pluginMetrics = mock(PluginMetrics.class);
@@ -107,10 +113,15 @@ public class PrometheusSinkServiceTest {
         this.awsCredentialsSupplier = mock(AwsCredentialsSupplier.class);
         this.closeableHttpClient = mock(CloseableHttpClient.class);
         this.closeableHttpResponse = mock(CloseableHttpResponse.class);
+        this.prometheusSinkRecordsSuccessCounter = mock(Counter.class);
+        this.prometheusSinkRecordsFailedCounter = mock(Counter.class);
         lenient().when(httpClientBuilder.setConnectionManager(null)).thenReturn(httpClientBuilder);
         lenient().when(httpClientBuilder.addResponseInterceptorLast(any(FailedHttpResponseInterceptor.class))).thenReturn(httpClientBuilder);
         lenient().when(httpClientBuilder.build()).thenReturn(closeableHttpClient);
         lenient().when(closeableHttpClient.execute(any(ClassicHttpRequest.class),any(HttpClientContext.class))).thenReturn(closeableHttpResponse);
+        when(pluginMetrics.counter(PrometheusSinkService.PROMETHEUS_SINK_RECORDS_SUCCESS_COUNTER)).thenReturn(prometheusSinkRecordsSuccessCounter);
+        when(pluginMetrics.counter(PrometheusSinkService.PROMETHEUS_SINK_RECORDS_FAILED_COUNTER)).thenReturn(prometheusSinkRecordsFailedCounter);
+
     }
 
     PrometheusSinkService createObjectUnderTest(final int eventCount, final PrometheusSinkConfiguration httpSinkConfig) throws NoSuchFieldException, IllegalAccessException {
@@ -160,6 +171,7 @@ public class PrometheusSinkServiceTest {
                 .withData("{\"message\":\"c3f847eb-333a-49c3-a4cd-54715ad1b58a\"}")
                 .withEventMetadata(eventMetadata).build());
         Collection<Record<Event>> records = List.of(eventRecord);
+        objectUnderTest.output(records);
         assertDoesNotThrow(() -> { objectUnderTest.output(records);});
     }
 

@@ -28,7 +28,7 @@ public class FailedHttpResponseInterceptor implements HttpResponseInterceptor {
     }
 
     @Override
-    public void process(HttpResponse response, EntityDetails entity, HttpContext context) throws IOException {
+    public void process(final HttpResponse response, final EntityDetails entity, final HttpContext context) throws IOException {
         if (response.getCode() == ERROR_CODE_500 ||
                 response.getCode() == ERROR_CODE_400 ||
                 response.getCode() == ERROR_CODE_404 ||

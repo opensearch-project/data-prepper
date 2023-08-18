@@ -139,7 +139,7 @@ public class PrometheusSinkService {
      * This method process buffer records and send to Http End points based on configured codec
      * @param records Collection of Event
      */
-    public void output(Collection<Record<Event>> records) {
+    public void output(final Collection<Record<Event>> records) {
         reentrantLock.lock();
         try {
             records.forEach(record -> {
@@ -148,23 +148,23 @@ public class PrometheusSinkService {
                 if (event.getMetadata().getEventType().equals("METRIC")) {
                     Remote.WriteRequest message = null;
                     if (event instanceof JacksonGauge) {
-                        JacksonGauge jacksonGauge = (JacksonGauge) event;
+                        final JacksonGauge jacksonGauge = (JacksonGauge) event;
                         message = buildRemoteWriteRequest(jacksonGauge.getTime(),
                                 jacksonGauge.getStartTime(), jacksonGauge.getValue(), jacksonGauge.getAttributes(),jacksonGauge.getName());
                     } else if (event instanceof JacksonSum) {
-                        JacksonSum jacksonSum = (JacksonSum) event;
+                        final JacksonSum jacksonSum = (JacksonSum) event;
                         message = buildRemoteWriteRequest(jacksonSum.getTime(),
                                 jacksonSum.getStartTime(), jacksonSum.getValue(), jacksonSum.getAttributes(), jacksonSum.getName());
                     } else if (event instanceof JacksonSummary) {
-                        JacksonSummary jacksonSummary = (JacksonSummary) event;
+                        final JacksonSummary jacksonSummary = (JacksonSummary) event;
                         message = buildRemoteWriteRequest(jacksonSummary.getTime(),
                                 jacksonSummary.getStartTime(), jacksonSummary.getSum(), jacksonSummary.getAttributes(), jacksonSummary.getName());
                     } else if (event instanceof JacksonHistogram) {
-                        JacksonHistogram jacksonHistogram = (JacksonHistogram) event;
+                        final JacksonHistogram jacksonHistogram = (JacksonHistogram) event;
                         message = buildRemoteWriteRequest(jacksonHistogram.getTime(),
                                 jacksonHistogram.getStartTime(), jacksonHistogram.getSum(), jacksonHistogram.getAttributes(), jacksonHistogram.getName());
                     } else if (event instanceof JacksonExponentialHistogram) {
-                        JacksonExponentialHistogram jacksonExpHistogram = (JacksonExponentialHistogram) event;
+                        final JacksonExponentialHistogram jacksonExpHistogram = (JacksonExponentialHistogram) event;
                         message = buildRemoteWriteRequest(jacksonExpHistogram.getTime(),
                                 jacksonExpHistogram.getStartTime(), jacksonExpHistogram.getSum(), jacksonExpHistogram.getAttributes(), jacksonExpHistogram.getName());
                     } else {
@@ -175,23 +175,15 @@ public class PrometheusSinkService {
                 if (event.getEventHandle() != null) {
                     this.bufferedEventHandles.add(event.getEventHandle());
                 }
-                HttpEndPointResponse failedHttpEndPointResponses = null;
-                try {
-                    failedHttpEndPointResponses = pushToEndPoint(bytes);
+                HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(bytes);
 
-                    if (failedHttpEndPointResponses != null) {
-                        logFailedData(failedHttpEndPointResponses);
-                        releaseEventHandles(Boolean.FALSE);
-                        prometheusSinkRecordsFailedCounter.increment();
-                    } else {
-                        LOG.info("data pushed to the end point successfully");
-                        releaseEventHandles(Boolean.TRUE);
-                        prometheusSinkRecordsSuccessCounter.increment();
-                    }
-                } catch (IOException e) {
-                    LOG.error("Error while pushing to the end point ", e);
+                if (failedHttpEndPointResponses != null) {
+                    logFailedData(failedHttpEndPointResponses);
+                    releaseEventHandles(Boolean.FALSE);
+                } else {
+                    LOG.info("data pushed to the end point successfully");
+                    releaseEventHandles(Boolean.TRUE);
                 }
-
             });
 
         }finally {
@@ -207,18 +199,18 @@ public class PrometheusSinkService {
      *  @param attributeMap attributes
      *  @param metricName metricName
      */
-    private static Remote.WriteRequest buildRemoteWriteRequest(String time, String startTime,
-                                                               Double value, Map<String, Object> attributeMap, final String metricName) {
-        Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
+    private static Remote.WriteRequest buildRemoteWriteRequest(final String time, final String startTime,
+                                                               final Double value, final Map<String, Object> attributeMap, final String metricName) {
+        final Remote.WriteRequest.Builder writeRequestBuilder = Remote.WriteRequest.newBuilder();
 
-        Types.TimeSeries.Builder timeSeriesBuilder = Types.TimeSeries.newBuilder();
+        final Types.TimeSeries.Builder timeSeriesBuilder = Types.TimeSeries.newBuilder();
 
-        List<Types.Label> arrayList = new ArrayList<>();
+        final List<Types.Label> arrayList = new ArrayList<>();
 
         setMetricName(metricName, arrayList);
         prepareLabelList(attributeMap, arrayList);
 
-        Types.Sample.Builder prometheusSampleBuilder = Types.Sample.newBuilder();
+        final Types.Sample.Builder prometheusSampleBuilder = Types.Sample.newBuilder();
         long timeStampVal;
         if (time != null) {
             timeStampVal = getTimeStampVal(time);
@@ -227,44 +219,44 @@ public class PrometheusSinkService {
         }
 
         prometheusSampleBuilder.setValue(value).setTimestamp(timeStampVal);
-        Types.Sample prometheusSample = prometheusSampleBuilder.build();
+        final Types.Sample prometheusSample = prometheusSampleBuilder.build();
 
         timeSeriesBuilder.addAllLabels(arrayList);
         timeSeriesBuilder.addAllSamples(Arrays.asList(prometheusSample));
 
-        Types.TimeSeries timeSeries = timeSeriesBuilder.build();
+        final Types.TimeSeries timeSeries = timeSeriesBuilder.build();
         writeRequestBuilder.addAllTimeseries(Arrays.asList(timeSeries));
 
         return writeRequestBuilder.build();
     }
 
-    private static void prepareLabelList(Map<String, Object> hashMap, List<Types.Label> arrayList) {
-        for (Map.Entry<String, Object> entry : hashMap.entrySet()) {
-            String key = sanitizeName(entry.getKey());
-            Object value = entry.getValue();
+    private static void prepareLabelList(final Map<String, Object> hashMap, final List<Types.Label> arrayList) {
+        for (final Map.Entry<String, Object> entry : hashMap.entrySet()) {
+            final String key = sanitizeName(entry.getKey());
+            final Object value = entry.getValue();
             if (entry.getValue() instanceof Map) {
-                Object innerMap = entry.getValue();
+                final Object innerMap = entry.getValue();
                 prepareLabelList(objectMapper.convertValue(innerMap, Map.class), arrayList);
                 continue;
             }
-            Types.Label.Builder labelBuilder = Types.Label.newBuilder();
+            final Types.Label.Builder labelBuilder = Types.Label.newBuilder();
             labelBuilder.setName(key).setValue(value.toString());
-            Types.Label label = labelBuilder.build();
+            final Types.Label label = labelBuilder.build();
             arrayList.add(label);
         }
     }
 
-    private static String sanitizeName(String name) {
+    private static String sanitizeName(final String name) {
         return BODY_PATTERN
                 .matcher(PREFIX_PATTERN.matcher(name).replaceFirst("_"))
                 .replaceAll("_");
     }
 
-    private static long getTimeStampVal(String time) {
-        LocalDateTime localDateTimeParse = LocalDateTime.parse(time,
+    private static long getTimeStampVal(final String time) {
+        final LocalDateTime localDateTimeParse = LocalDateTime.parse(time,
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'"));
-        LocalDateTime localDateTime = LocalDateTime.parse(localDateTimeParse.toString());
-        ZonedDateTime zdt = ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
+        final LocalDateTime localDateTime = LocalDateTime.parse(localDateTimeParse.toString());
+        final ZonedDateTime zdt = ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
         return zdt.toInstant().toEpochMilli();
     }
 
@@ -273,7 +265,7 @@ public class PrometheusSinkService {
      *  @param endPointResponses HttpEndPointResponses.
      */
     private void logFailedData(final HttpEndPointResponse endPointResponses) {
-        FailedDlqData failedDlqData =
+        final FailedDlqData failedDlqData =
                 FailedDlqData.builder()
                         .withUrl(endPointResponses.getUrl())
                         .withMessage(endPointResponses.getErrorMessage())
@@ -284,7 +276,7 @@ public class PrometheusSinkService {
     }
 
     private void releaseEventHandles(final boolean result) {
-        for (EventHandle eventHandle : bufferedEventHandles) {
+        for (final EventHandle eventHandle : bufferedEventHandles) {
             eventHandle.release(result);
         }
         bufferedEventHandles.clear();
@@ -294,28 +286,30 @@ public class PrometheusSinkService {
      * * This method pushes bufferData to configured HttpEndPoints
      *  @param data byte[] data.
      */
-    private HttpEndPointResponse pushToEndPoint(final byte[] data) throws IOException {
+    private HttpEndPointResponse pushToEndPoint(final byte[] data) {
         HttpEndPointResponse httpEndPointResponses = null;
         final ClassicRequestBuilder classicHttpRequestBuilder =
                 httpAuthOptions.get(prometheusSinkConfiguration.getUrl()).getClassicHttpRequestBuilder();
 
-        final byte[] compressedBufferData = Snappy.compress(data);
-        HttpEntity entity = new ByteArrayEntity(compressedBufferData,
-                ContentType.create(prometheusSinkConfiguration.getContentType()), prometheusSinkConfiguration.getEncoding());
-
-        classicHttpRequestBuilder.setEntity(entity);
         classicHttpRequestBuilder.addHeader("Content-Encoding", prometheusSinkConfiguration.getEncoding());
         classicHttpRequestBuilder.addHeader("Content-Type", prometheusSinkConfiguration.getContentType());
         classicHttpRequestBuilder.addHeader("X-Prometheus-Remote-Write-Version", prometheusSinkConfiguration.getRemoteWriteVersion());
 
         try {
+            final byte[] compressedBufferData = Snappy.compress(data);
+            final HttpEntity entity = new ByteArrayEntity(compressedBufferData,
+                    ContentType.create(prometheusSinkConfiguration.getContentType()), prometheusSinkConfiguration.getEncoding());
+
+            classicHttpRequestBuilder.setEntity(entity);
             if(AuthTypeOptions.BEARER_TOKEN.equals(prometheusSinkConfiguration.getAuthType()))
                 accessTokenIfExpired(prometheusSinkConfiguration.getAuthentication().getBearerTokenOptions().getTokenExpired(),prometheusSinkConfiguration.getUrl());
 
             httpAuthOptions.get(prometheusSinkConfiguration.getUrl()).getHttpClientBuilder().build()
                     .execute(classicHttpRequestBuilder.build(), HttpClientContext.create());
             LOG.info("Records successfully pushed to endpoint {}", prometheusSinkConfiguration.getUrl());
+            prometheusSinkRecordsSuccessCounter.increment();
         } catch (IOException e) {
+            prometheusSinkRecordsFailedCounter.increment();
             LOG.info("Records failed to push endpoint {}");
             LOG.error("Exception while pushing buffer data to end point. URL : {}, Exception : ", prometheusSinkConfiguration.getUrl(), e);
             httpEndPointResponses = new HttpEndPointResponse(prometheusSinkConfiguration.getUrl(), HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
