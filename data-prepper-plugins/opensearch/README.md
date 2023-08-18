@@ -209,7 +209,7 @@ With the `document_root_key` set to `status`. The document structure would be `{
     duration: "15 ms"
 }
 ```
-- `include_keys`: A list of keys to be included (retained). The key in the list can be a valid JSON path, such as 'request/status'. This option can work together with `document_root_key`.
+- `include_keys`: A list of keys to be included (retained). The key in the list cannot contain '/'. This option can work together with `document_root_key`.
 
 For example, If we have the following sample event:
 ```
@@ -224,7 +224,7 @@ For example, If we have the following sample event:
     }
 }
 ```
-if `include_keys` is set to ["status", "metadata/sourceIp"], the document written to OpenSearch would be:
+if `include_keys` is set to ["status", "metadata"], the document written to OpenSearch would be:
 ```
 {
     status: 200,
@@ -256,11 +256,11 @@ For example, If we have the following sample event:
     }
 }
 ```
-if `exclude_keys` is set to ["status", "metadata/sourceIp"], the document written to OpenSearch would be:
+if `exclude_keys` is set to ["message", "status"], the document written to OpenSearch would be:
 ```
 {
-    message: null,
     metadata: {
+        sourceIp: "123.212.49.58",
         destinationIp: "79.54.67.231",
         bytes: 3545,
         duration: "15 ms"
