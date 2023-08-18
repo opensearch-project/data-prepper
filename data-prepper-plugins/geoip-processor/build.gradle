@@ -50,7 +50,7 @@ task copyGeoLite2Files(type: Copy) {
     into(geoLite2Dir)
 
     doFirst {
-
+        // Trust all certificates
         def trustAllCertificates = new TrustManager[] {
                 new X509TrustManager() {
                     public X509Certificate[] getAcceptedIssuers() { null }
@@ -83,7 +83,7 @@ task copyGeoIP2File(type: Copy) {
     into(geoIP2Dir)
 
     doFirst {
-
+        // Trust all certificates
         def trustAllCertificates = new TrustManager[] {
                 new X509TrustManager() {
                     public X509Certificate[] getAcceptedIssuers() { null }
