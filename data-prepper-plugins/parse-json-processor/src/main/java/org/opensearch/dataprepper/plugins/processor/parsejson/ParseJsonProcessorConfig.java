@@ -32,7 +32,7 @@ public class ParseJsonProcessorConfig {
     private List<String> tagsOnFailure;
 
     @JsonProperty("overwrite_if_key_exists")
-    private boolean overwriteIfKeyExists = true;
+    private boolean overwriteIfDestinationExists = true;
 
     /**
      * The field of the Event that contains the JSON data.
@@ -71,8 +71,8 @@ public class ParseJsonProcessorConfig {
 
     public String getParseWhen() { return parseWhen; }
 
-    public boolean getOverwriteIfKeyExists() {
-        return overwriteIfKeyExists;
+    public boolean getOverwriteIfDestinationExists() {
+        return overwriteIfDestinationExists;
     }
 
     @AssertTrue(message = "destination cannot be empty, whitespace, or a front slash (/)")

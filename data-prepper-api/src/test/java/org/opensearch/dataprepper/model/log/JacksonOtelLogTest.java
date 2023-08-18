@@ -151,7 +151,7 @@ public class JacksonOtelLogTest {
     }
 
     @Test
-    public void testDeformedAttributesToJsonStringNotThrow() {
+    public void test_non_object_attributes_toJsonString_serializes_as_is() {
         JacksonOtelLog testLog = JacksonOtelLog.builder()
                 .withAttributes(Map.of("key", "value"))
                 .build();

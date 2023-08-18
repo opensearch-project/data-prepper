@@ -52,7 +52,7 @@ class ParseJsonProcessorTest {
         when(processorConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         when(processorConfig.getPointer()).thenReturn(defaultConfig.getPointer());
         when(processorConfig.getParseWhen()).thenReturn(null);
-        when(processorConfig.getOverwriteIfKeyExists()).thenReturn(true);
+        when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(true);
     }
 
     private ParseJsonProcessor createObjectUnderTest() {
@@ -99,7 +99,7 @@ class ParseJsonProcessorTest {
     void test_when_dataFieldEqualToRootField_then_notOverwritesOriginalFields() {
         final String source = "root_source";
         when(processorConfig.getSource()).thenReturn(source);
-        when(processorConfig.getOverwriteIfKeyExists()).thenReturn(false);
+        when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(false);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
         final Map<String, Object> data = Map.ofEntries(
@@ -119,7 +119,7 @@ class ParseJsonProcessorTest {
         final String source = "root_source";
         when(processorConfig.getSource()).thenReturn(source);
         when(processorConfig.getDestination()).thenReturn(source);  // write back to source
-        when(processorConfig.getOverwriteIfKeyExists()).thenReturn(false);
+        when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(false);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
         final Map<String, Object> data = Map.of("key","value");
