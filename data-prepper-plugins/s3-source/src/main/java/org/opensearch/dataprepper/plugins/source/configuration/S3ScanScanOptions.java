@@ -6,9 +6,10 @@ package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertFalse;
 import jakarta.validation.constraints.AssertTrue;
-import org.opensearch.dataprepper.plugins.source.CustomLocalDateTimeDeserializer;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -24,11 +25,11 @@ public class S3ScanScanOptions {
     @JsonProperty("range")
     private Duration range;
 
-    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     @JsonProperty("start_time")
     private LocalDateTime startTime;
 
-    @JsonDeserialize(using = CustomLocalDateTimeDeserializer.class)
+    @JsonDeserialize(using = LocalDateTimeDeserializer.class)
     @JsonProperty("end_time")
     private LocalDateTime endTime;
 
@@ -43,6 +44,11 @@ public class S3ScanScanOptions {
     @AssertTrue(message = "At most two options from start_time, end_time and range can be specified at the same time")
     public boolean hasValidTimeOptions() {
         return Stream.of(startTime, endTime, range).filter(Objects::nonNull).count() < 3;
+    }
+
+    @AssertFalse(message = "start_time or end_time cannot be used along with range")
+    public boolean hasValidTimeAndRangeOptions() {
+        return (startTime != null || endTime != null) && range != null;
     }
 
     @AssertTrue(message = "start_time, end_time, and range are not valid options when using scheduling with s3 scan")
