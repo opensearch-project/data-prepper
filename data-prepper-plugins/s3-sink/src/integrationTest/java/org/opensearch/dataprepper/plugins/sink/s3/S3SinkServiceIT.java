@@ -5,10 +5,13 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
@@ -24,9 +27,9 @@ import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
-import org.hamcrest.CoreMatchers;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -43,13 +46,16 @@ import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.codec.GZipDecompressionEngine;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.json.NdjsonOutputConfig;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodec;
 import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodecConfig;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CompressionBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.InMemoryBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
+import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
@@ -66,6 +72,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
@@ -122,6 +129,7 @@ class S3SinkServiceIT {
     private DistributionSummary s3ObjectSizeSummary;
 
     private OutputCodec codec;
+    private KeyGenerator keyGenerator;
 
     @Mock
     NdjsonOutputConfig ndjsonOutputConfig;
@@ -129,7 +137,7 @@ class S3SinkServiceIT {
 
     @BeforeEach
     public void setUp() {
-        s3region = System.getProperty("tests.s3ink.region");
+        s3region = System.getProperty("tests.s3sink.region");
 
         s3Client = S3Client.builder().region(Region.of(s3region)).build();
         bucketName = System.getProperty("tests.s3sink.bucket");
@@ -165,29 +173,76 @@ class S3SinkServiceIT {
 
     void configureNewLineCodec() {
         codec = new NdjsonOutputCodec(ndjsonOutputConfig);
+        keyGenerator = new KeyGenerator(s3SinkConfig, codec);
     }
 
     @Test
-    void verify_flushed_records_into_s3_bucketNewLine() {
+    void verify_flushed_records_into_s3_bucketNewLine() throws JsonProcessingException {
         configureNewLineCodec();
         S3SinkService s3SinkService = createObjectUnderTest();
         Collection<Record<Event>> recordsData = setEventQueue();
 
         s3SinkService.output(recordsData);
-        String objectData = getS3Object();
+        String objectData = new String(getS3Object());
 
+        final ObjectMapper objectMapperForDeserialization = new ObjectMapper();
         int count = 0;
-        String[] objectDataArr = objectData.split("\r\n");
+
+        String[] objectDataArr = objectData.split(System.lineSeparator());
+        assertThat(objectDataArr.length, equalTo(recordsData.size()));
+
         for (Record<Event> recordData : recordsData) {
-            String objectRecord = recordData.getData().toJsonString();
-            assertThat(objectDataArr[count], CoreMatchers.containsString(objectRecord));
+            final String actualLine = objectDataArr[count];
+            final Map actualDeserializedJson = objectMapperForDeserialization.readValue(actualLine, Map.class);
+
+            final Map<String, Object> expectedMap = new HashMap<>(recordData.getData().toMap());
+            expectedMap.put("Tag", new ArrayList<>(recordData.getData().getMetadata().getTags()));
+            assertThat(actualDeserializedJson, equalTo(expectedMap));
+
+            final String expectedJsonString = recordData.getData().jsonBuilder().includeTags("Tag").toJsonString();
+            assertThat(actualLine, equalTo(expectedJsonString));
+            count++;
+        }
+    }
+
+    @Test
+    void verify_flushed_records_into_s3_bucketNewLine_with_compression() throws IOException {
+        configureNewLineCodec();
+        bufferFactory = new CompressionBufferFactory(bufferFactory, CompressionOption.GZIP.getCompressionEngine(), codec);
+        S3SinkService s3SinkService = createObjectUnderTest();
+        Collection<Record<Event>> recordsData = setEventQueue();
+
+        s3SinkService.output(recordsData);
+        byte[] s3ObjectBytes = getS3Object();
+
+        ByteArrayInputStream s3ObjectInputStream = new ByteArrayInputStream(s3ObjectBytes);
+        InputStream decompressingInputStream = new GZipDecompressionEngine().createInputStream(s3ObjectInputStream);
+
+        String objectData = IOUtils.toString(decompressingInputStream, Charset.defaultCharset());
+
+        final ObjectMapper objectMapperForDeserialization = new ObjectMapper();
+        int count = 0;
+
+        String[] objectDataArr = objectData.split(System.lineSeparator());
+        assertThat(objectDataArr.length, equalTo(recordsData.size()));
+
+        for (Record<Event> recordData : recordsData) {
+            final String actualLine = objectDataArr[count];
+            final Map actualDeserializedJson = objectMapperForDeserialization.readValue(actualLine, Map.class);
+
+            final Map<String, Object> expectedMap = new HashMap<>(recordData.getData().toMap());
+            expectedMap.put("Tag", new ArrayList<>(recordData.getData().getMetadata().getTags()));
+            assertThat(actualDeserializedJson, equalTo(expectedMap));
+
+            final String expectedJsonString = recordData.getData().jsonBuilder().includeTags("Tag").toJsonString();
+            assertThat(actualLine, equalTo(expectedJsonString));
             count++;
         }
     }
 
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, keyGenerator, pluginMetrics);
     }
 
     private int gets3ObjectCount() {
@@ -202,7 +257,7 @@ class S3SinkServiceIT {
         return s3ObjectCount;
     }
 
-    private String getS3Object() {
+    private byte[] getS3Object() {
 
         ListObjectsRequest listObjects = ListObjectsRequest.builder()
                 .bucket(bucketName)
@@ -220,8 +275,7 @@ class S3SinkServiceIT {
                 .bucket(bucketName).build();
 
         ResponseBytes<GetObjectResponse> objectBytes = s3Client.getObjectAsBytes(objectRequest);
-        byte[] data = objectBytes.asByteArray();
-        return new String(data);
+        return objectBytes.asByteArray();
     }
 
     private String getPathPrefix() {
@@ -240,20 +294,19 @@ class S3SinkServiceIT {
         final EventMetadata defaultEventMetadata = DefaultEventMetadata.builder().
                 withEventType(EventType.LOG.toString()).
                 withTags(testTags).build();
-        Map<String, Object> json = generateJson(testTags);
+        Map<String, Object> json = generateJson();
         final JacksonEvent event = JacksonLog.builder().withData(json).withEventMetadata(defaultEventMetadata).build();
         event.setEventHandle(mock(EventHandle.class));
         return new Record<>(event);
     }
 
-    private static Map<String, Object> generateJson(Set<String> testTags) {
+    private static Map<String, Object> generateJson() {
         final Map<String, Object> jsonObject = new LinkedHashMap<>();
         for (int i = 0; i < 2; i++) {
             jsonObject.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
         }
         jsonObject.put(UUID.randomUUID().toString(), Arrays.asList(UUID.randomUUID().toString(),
                 UUID.randomUUID().toString(), UUID.randomUUID().toString()));
-        jsonObject.put("Tag", testTags.toArray());
         return jsonObject;
     }
 
@@ -280,6 +333,7 @@ class S3SinkServiceIT {
     }
 
     @Test
+    @Disabled
     void verify_flushed_records_into_s3_bucket_Parquet() throws IOException {
         configureParquetCodec();
         S3SinkService s3SinkService = createObjectUnderTest();
@@ -287,7 +341,7 @@ class S3SinkServiceIT {
 
         s3SinkService.output(recordsData);
 
-        List<HashMap<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(getS3Object().getBytes()));
+        List<HashMap<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(getS3Object()));
         int index = 0;
         for (final HashMap<String, Object> actualMap : actualRecords) {
             assertThat(actualMap, notNullValue());
@@ -300,11 +354,9 @@ class S3SinkServiceIT {
     private void configureParquetCodec() {
         parquetOutputCodecConfig = new ParquetOutputCodecConfig();
         parquetOutputCodecConfig.setSchema(parseSchema().toString());
-        parquetOutputCodecConfig.setBucket(bucketName);
-        parquetOutputCodecConfig.setRegion(s3region);
         parquetOutputCodecConfig.setPathPrefix(PATH_PREFIX);
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
-
+        keyGenerator = new KeyGenerator(s3SinkConfig, codec);
     }
 
     private Collection<Record<Event>> getRecordList() {

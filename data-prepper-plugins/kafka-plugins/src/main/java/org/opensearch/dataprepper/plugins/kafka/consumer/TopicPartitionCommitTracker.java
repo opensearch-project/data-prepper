@@ -21,7 +21,7 @@ public class TopicPartitionCommitTracker {
 
     public TopicPartitionCommitTracker(final TopicPartition topicPartition, Long committedOffset) {
         this.topicPartition = topicPartition;
-        this.committedOffset = Objects.nonNull(committedOffset) ? committedOffset : -1L;
+        this.committedOffset = Objects.nonNull(committedOffset) ? committedOffset-1 : -1L;
         this.offsetMaxMap = new HashMap<>();
         this.offsetMinMap = new HashMap<>();
         this.offsetMaxMap.put(this.committedOffset, Range.between(this.committedOffset, this.committedOffset));

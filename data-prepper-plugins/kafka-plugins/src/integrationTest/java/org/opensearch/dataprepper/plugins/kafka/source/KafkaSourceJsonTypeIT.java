@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
@@ -45,6 +46,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import java.time.Duration;
@@ -97,7 +100,8 @@ public class KafkaSourceJsonTypeIT {
         buffer = mock(Buffer.class);
         encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
         receivedRecords = new ArrayList<>();
-        acknowledgementSetManager = mock(AcknowledgementSetManager.class);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
         pipelineDescription = mock(PipelineDescription.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
         when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
@@ -119,6 +123,7 @@ public class KafkaSourceJsonTypeIT {
         when(jsonTopic.getName()).thenReturn(testTopic);
         when(jsonTopic.getGroupId()).thenReturn(testGroup);
         when(jsonTopic.getWorkers()).thenReturn(1);
+        when(jsonTopic.getMaxPollInterval()).thenReturn(Duration.ofSeconds(5));
         when(jsonTopic.getSessionTimeOut()).thenReturn(Duration.ofSeconds(15));
         when(jsonTopic.getHeartBeatInterval()).thenReturn(Duration.ofSeconds(3));
         when(jsonTopic.getAutoCommit()).thenReturn(false);
@@ -175,7 +180,7 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(map.get("kafka_key"), equalTo(null));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
         }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
@@ -192,13 +197,14 @@ public class KafkaSourceJsonTypeIT {
     }
 
     @Test
-    public void TestJsonRecordsWithKafkaKeyModeDiscard() throws Exception {
+    public void TestJsonRecordsWithNegativeAcknowledgements() throws Exception {
         final int numRecords = 1;
         when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
         when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
         when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.DISCARD);
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
+        when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(true);
         kafkaSource = createObjectUnderTest();
         
         Properties props = new Properties();
@@ -234,7 +240,85 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("id"), equalTo(TEST_ID+i));
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
+            event.getEventHandle().release(false);
+        }
+        receivedRecords.clear();
+        Thread.sleep(10000);
+        while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
+            Thread.sleep(1000);
+        }
+        assertThat(receivedRecords.size(), equalTo(numRecords));
+        for (int i = 0; i < numRecords; i++) {
+            Record<Event> record = receivedRecords.get(i);
+            Event event = (Event)record.getData();
+            EventMetadata metadata = event.getMetadata();
+            Map<String, Object> map = event.toMap();
+            assertThat(map.get("name"), equalTo("testName"+i));
+            assertThat(map.get("id"), equalTo(TEST_ID+i));
+            assertThat(map.get("status"), equalTo(true));
+            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
+            event.getEventHandle().release(true);
+        }
+        try (AdminClient adminClient = AdminClient.create(props)) {
+            try {
+                adminClient.deleteTopics(Collections.singleton(topicName))
+                .all().get(30, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            created.set(false);
+        }
+        while (created.get() != false) {
+            Thread.sleep(1000);
+        }
+    }
+
+    @Test
+    public void TestJsonRecordsWithKafkaKeyModeDiscard() throws Exception {
+        final int numRecords = 1;
+        when(encryptionConfig.getType()).thenReturn(EncryptionType.NONE);
+        when(jsonTopic.getConsumerMaxPollRecords()).thenReturn(numRecords);
+        when(jsonTopic.getKafkaKeyMode()).thenReturn(KafkaKeyMode.DISCARD);
+        when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
+        when(sourceConfig.getAuthConfig()).thenReturn(null);
+        kafkaSource = createObjectUnderTest();
+
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        AtomicBoolean created = new AtomicBoolean(false);
+        final String topicName = jsonTopic.getName();
+        try (AdminClient adminClient = AdminClient.create(props)) {
+            try {
+                adminClient.createTopics(
+                    Collections.singleton(new NewTopic(topicName, 1, (short)1)))
+                .all().get(30, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            created.set(true);
+        }
+        while (created.get() != true) {
+            Thread.sleep(1000);
+        }
+        kafkaSource.start(buffer);
+        produceJsonRecords(bootstrapServers, topicName, numRecords);
+        int numRetries = 0;
+        while (numRetries++ < 10 && (receivedRecords.size() != numRecords)) {
+            Thread.sleep(1000);
+        }
+        assertThat(receivedRecords.size(), equalTo(numRecords));
+        for (int i = 0; i < numRecords; i++) {
+            Record<Event> record = receivedRecords.get(i);
+            Event event = (Event)record.getData();
+            EventMetadata metadata = event.getMetadata();
+            Map<String, Object> map = event.toMap();
+            assertThat(map.get("name"), equalTo("testName"+i));
+            assertThat(map.get("id"), equalTo(TEST_ID+i));
+            assertThat(map.get("status"), equalTo(true));
+            assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
         }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
@@ -294,7 +378,7 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(map.get("kafka_key"), equalTo(testKey));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
         }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {
@@ -355,7 +439,7 @@ public class KafkaSourceJsonTypeIT {
             assertThat(map.get("status"), equalTo(true));
             assertThat(metadata.getAttributes().get("kafka_key"), equalTo(testKey));
             assertThat(metadata.getAttributes().get("kafka_topic"), equalTo(topicName));
-            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo(0));
+            assertThat(metadata.getAttributes().get("kafka_partition"), equalTo("0"));
         }
         try (AdminClient adminClient = AdminClient.create(props)) {
             try {

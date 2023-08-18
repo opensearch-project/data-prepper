@@ -9,11 +9,14 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.services.s3.S3Client;
 
@@ -23,12 +26,15 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class IndexConfiguration {
+    private static final Logger LOG = LoggerFactory.getLogger(IndexConfiguration.class);
+
     public static final String SETTINGS = "settings";
     public static final String INDEX_ALIAS = "index";
     public static final String INDEX_TYPE = "index_type";
@@ -41,6 +47,7 @@ public class IndexConfiguration {
     public static final String MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = "max_local_compressions_for_estimation";
     public static final String FLUSH_TIMEOUT = "flush_timeout";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
+    public static final String DOCUMENT_ID = "document_id";
     public static final String ROUTING_FIELD = "routing_field";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
@@ -61,6 +68,7 @@ public class IndexConfiguration {
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
+    private final String documentId;
     private final String routingField;
     private final long bulkSize;
     private final boolean estimateBulkSizeUsingCompression;
@@ -119,12 +127,14 @@ public class IndexConfiguration {
         this.routingField = builder.routingField;
 
         String documentIdField = builder.documentIdField;
+        String documentId = builder.documentId;
         if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
-            documentIdField = "spanId";
+            documentId = "${spanId}";
         } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
-            documentIdField = "hashId";
+            documentId = "${hashId}";
         }
         this.documentIdField = documentIdField;
+        this.documentId = documentId;
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
         this.documentRootKey = builder.documentRootKey;
@@ -180,10 +190,21 @@ public class IndexConfiguration {
 
         final long flushTimeout = pluginSetting.getLongOrDefault(FLUSH_TIMEOUT, DEFAULT_FLUSH_TIMEOUT);
         builder = builder.withFlushTimeout(flushTimeout);
-        final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
-        if (documentId != null) {
-            builder = builder.withDocumentIdField(documentId);
+        final String documentIdField = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
+        final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID, null);
+
+
+        if (Objects.nonNull(documentIdField) && Objects.nonNull(documentId)) {
+            throw new InvalidPluginConfigurationException("Both document_id_field and document_id cannot be used at the same time. It is preferred to only use document_id as document_id_field is deprecated.");
         }
+
+        if (documentIdField != null) {
+            LOG.warn("document_id_field is deprecated in favor of document_id, and support for document_id_field will be removed in a future major version release.");
+            builder = builder.withDocumentIdField(documentIdField);
+        } else if (documentId != null) {
+            builder = builder.withDocumentId(documentId);
+        }
+
         final String routingField = pluginSetting.getStringOrDefault(ROUTING_FIELD, null);
         if (routingField != null) {
             builder = builder.withRoutingField(routingField);
@@ -241,6 +262,8 @@ public class IndexConfiguration {
     public String getDocumentIdField() {
         return documentIdField;
     }
+
+    public String getDocumentId() { return documentId; }
 
     public String getRoutingField() {
         return routingField;
@@ -349,6 +372,7 @@ public class IndexConfiguration {
         private int numReplicas;
         private String routingField;
         private String documentIdField;
+        private String documentId;
         private long bulkSize = DEFAULT_BULK_SIZE;
         private boolean estimateBulkSizeUsingCompression = DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION;
         private int maxLocalCompressionsForEstimation = DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION;
@@ -391,8 +415,14 @@ public class IndexConfiguration {
         }
 
         public Builder withDocumentIdField(final String documentIdField) {
-            checkNotNull(documentIdField, "documentId field cannot be null");
+            checkNotNull(documentIdField, "document_id_field cannot be null");
             this.documentIdField = documentIdField;
+            return this;
+        }
+
+        public Builder withDocumentId(final String documentId) {
+            checkNotNull(documentId, "document_id cannot be null");
+            this.documentId = documentId;
             return this;
         }
 

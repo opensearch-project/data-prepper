@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.model.types.ByteCount;
 
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
@@ -21,19 +22,16 @@ public class TopicConfig {
     static final boolean DEFAULT_AUTO_COMMIT = false;
     static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5);
     static final Duration DEFAULT_SESSION_TIMEOUT = Duration.ofSeconds(45);
-    static final int DEFAULT_MAX_RETRY_ATTEMPT = Integer.MAX_VALUE;
-    static final String DEFAULT_AUTO_OFFSET_RESET = "latest";
+    static final String DEFAULT_AUTO_OFFSET_RESET = "earliest";
     static final Duration DEFAULT_THREAD_WAITING_TIME = Duration.ofSeconds(5);
     static final Duration DEFAULT_MAX_RECORD_FETCH_TIME = Duration.ofSeconds(4);
-    static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(5);
-    static final Duration DEFAULT_MAX_RETRY_DELAY = Duration.ofSeconds(1);
-    static final Integer DEFAULT_FETCH_MAX_BYTES = 52428800;
+    static final String DEFAULT_FETCH_MAX_BYTES = "50mb";
     static final Integer DEFAULT_FETCH_MAX_WAIT = 500;
-    static final Integer DEFAULT_FETCH_MIN_BYTES = 1;
+    static final String DEFAULT_FETCH_MIN_BYTES = "1b";
     static final Duration DEFAULT_RETRY_BACKOFF = Duration.ofSeconds(10);
     static final Duration DEFAULT_RECONNECT_BACKOFF = Duration.ofSeconds(10);
-    static final Integer DEFAULT_MAX_PARTITION_FETCH_BYTES = 1048576;
-    static final Duration DEFAULT_MAX_POLL_INTERVAL = Duration.ofSeconds(300000);
+    static final String DEFAULT_MAX_PARTITION_FETCH_BYTES = "1mb";
+    static final Duration DEFAULT_MAX_POLL_INTERVAL = Duration.ofSeconds(300);
     static final Integer DEFAULT_CONSUMER_MAX_POLL_RECORDS = 500;
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
@@ -52,16 +50,6 @@ public class TopicConfig {
     @Valid
     @Size(min = 1, max = 200, message = "Number of worker threads should lies between 1 and 200")
     private Integer workers = DEFAULT_NUM_OF_WORKERS;
-
-    @JsonProperty("max_retry_attempts")
-    @Valid
-    @Size(min = 1, max = Integer.MAX_VALUE, message = " Max retry attempts should lies between 1 and Integer.MAX_VALUE")
-    private Integer maxRetryAttempts = DEFAULT_MAX_RETRY_ATTEMPT;
-
-    @JsonProperty("max_retry_delay")
-    @Valid
-    @Size(min = 1)
-    private Duration maxRetryDelay = DEFAULT_MAX_RETRY_DELAY;
 
     @JsonProperty("serde_format")
     private MessageFormat serdeFormat= MessageFormat.PLAINTEXT;
@@ -82,29 +70,14 @@ public class TopicConfig {
     @JsonProperty("auto_offset_reset")
     private String autoOffsetReset = DEFAULT_AUTO_OFFSET_RESET;
 
-    @JsonProperty("group_name")
-    @Valid
-    @Size(min = 1, max = 255, message = "size of group name should be between 1 and 255")
-    private String groupName;
-
     @JsonProperty("thread_waiting_time")
     private Duration threadWaitingTime = DEFAULT_THREAD_WAITING_TIME;
 
-    @JsonProperty("max_record_fetch_time")
-    private Duration maxRecordFetchTime = DEFAULT_MAX_RECORD_FETCH_TIME;
-
     @JsonProperty("max_partition_fetch_bytes")
-    private Integer maxPartitionFetchBytes = DEFAULT_MAX_PARTITION_FETCH_BYTES;
-
-    @JsonProperty("buffer_default_timeout")
-    @Valid
-    @Size(min = 1)
-    private Duration bufferDefaultTimeout = DEFAULT_BUFFER_TIMEOUT;
+    private String maxPartitionFetchBytes = DEFAULT_MAX_PARTITION_FETCH_BYTES;
 
     @JsonProperty("fetch_max_bytes")
-    @Valid
-    @Size(min = 1, max = 52428800)
-    private Integer fetchMaxBytes = DEFAULT_FETCH_MAX_BYTES;
+    private String fetchMaxBytes = DEFAULT_FETCH_MAX_BYTES;
 
     @JsonProperty("fetch_max_wait")
     @Valid
@@ -112,9 +85,7 @@ public class TopicConfig {
     private Integer fetchMaxWait = DEFAULT_FETCH_MAX_WAIT;
 
     @JsonProperty("fetch_min_bytes")
-    @Size(min = 1)
-    @Valid
-    private Integer fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
+    private String fetchMinBytes = DEFAULT_FETCH_MIN_BYTES;
 
     @JsonProperty("key_mode")
     private KafkaKeyMode kafkaKeyMode = KafkaKeyMode.INCLUDE_AS_FIELD;
@@ -142,10 +113,6 @@ public class TopicConfig {
 
     public void setGroupId(String groupId) {
         this.groupId = groupId;
-    }
-
-    public void setMaxRetryAttempts(Integer maxRetryAttempts) {
-        this.maxRetryAttempts = maxRetryAttempts;
     }
 
     public MessageFormat getSerdeFormat() {
@@ -176,14 +143,6 @@ public class TopicConfig {
         this.autoOffsetReset = autoOffsetReset;
     }
 
-    public String getGroupName() {
-        return groupName;
-    }
-
-    public void setGroupName(String groupName) {
-        this.groupName = groupName;
-    }
-
     public Duration getThreadWaitingTime() {
         return threadWaitingTime;
     }
@@ -192,28 +151,16 @@ public class TopicConfig {
         this.threadWaitingTime = threadWaitingTime;
     }
 
-    public Duration getMaxRecordFetchTime() {
-        return maxRecordFetchTime;
+    public long getMaxPartitionFetchBytes() {
+        return ByteCount.parse(maxPartitionFetchBytes).getBytes();
     }
 
-    public Integer getMaxPartitionFetchBytes() {
-        return maxPartitionFetchBytes;
-    }
-
-    public void setMaxRecordFetchTime(Duration maxRecordFetchTime) {
-        this.maxRecordFetchTime = maxRecordFetchTime;
-    }
-
-    public Duration getBufferDefaultTimeout() {
-        return bufferDefaultTimeout;
-    }
-
-    public void setBufferDefaultTimeout(Duration bufferDefaultTimeout) {
-        this.bufferDefaultTimeout = bufferDefaultTimeout;
-    }
-
-    public Integer getFetchMaxBytes() {
-        return fetchMaxBytes;
+    public long getFetchMaxBytes() {
+        long value = ByteCount.parse(fetchMaxBytes).getBytes();
+        if (value < 1 || value > 50*1024*1024) {
+            throw new RuntimeException("Invalid Fetch Max Bytes");
+        }
+        return value;
     }
 
     public void setAutoCommit(Boolean autoCommit) {
@@ -224,8 +171,12 @@ public class TopicConfig {
         return fetchMaxWait;
     }
 
-    public Integer getFetchMinBytes() {
-        return fetchMinBytes;
+    public long getFetchMinBytes() {
+        long value = ByteCount.parse(fetchMinBytes).getBytes();
+        if (value < 1) {
+            throw new RuntimeException("Invalid Fetch Min Bytes");
+        }
+        return value;
     }
 
     public Duration getRetryBackoff() {
@@ -262,14 +213,6 @@ public class TopicConfig {
 
     public void setWorkers(Integer workers) {
         this.workers = workers;
-    }
-
-    public Duration getMaxRetryDelay() {
-        return maxRetryDelay;
-    }
-
-    public void setMaxRetryDelay(Duration maxRetryDelay) {
-        this.maxRetryDelay = maxRetryDelay;
     }
 
     public Duration getHeartBeatInterval() {

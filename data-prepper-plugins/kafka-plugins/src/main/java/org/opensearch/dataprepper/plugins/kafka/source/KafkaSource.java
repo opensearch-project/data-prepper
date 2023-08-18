@@ -45,10 +45,9 @@ import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 
 import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
-import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
-import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,6 +98,8 @@ public class KafkaSource implements Source<Record<Event>> {
     private static final String SCHEMA_TYPE = "schemaType";
     private final AcknowledgementSetManager acknowledgementSetManager;
     private static CachedSchemaRegistryClient schemaRegistryClient;
+    private GlueSchemaRegistryKafkaDeserializer glueDeserializer;
+    private StringDeserializer stringDeserializer;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
@@ -109,6 +110,7 @@ public class KafkaSource implements Source<Record<Event>> {
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pipelineName = pipelineDescription.getPipelineName();
+        this.stringDeserializer = new StringDeserializer();
         shutdownInProgress = new AtomicBoolean(false);
     }
 
@@ -118,12 +120,13 @@ public class KafkaSource implements Source<Record<Event>> {
         KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
         sourceConfig.getTopics().forEach(topic -> {
             consumerGroupID = topic.getGroupId();
+            KafkaTopicMetrics topicMetrics = new KafkaTopicMetrics(topic.getName(), pluginMetrics);
             Properties consumerProperties = getConsumerProperties(topic, authProperties);
             MessageFormat schema = MessageFormat.getByMessageFormatByName(schemaType);
             try {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
-                IntStream.range(0, numWorkers + 1).forEach(index -> {
+                IntStream.range(0, numWorkers).forEach(index -> {
                     switch (schema) {
                         case JSON:
                             kafkaConsumer = new KafkaConsumer<String, JsonNode>(consumerProperties);
@@ -133,10 +136,15 @@ public class KafkaSource implements Source<Record<Event>> {
                             break;
                         case PLAINTEXT:
                         default:
-                            kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);
+                            glueDeserializer = KafkaSourceSecurityConfigurer.getGlueSerializer(sourceConfig);
+                            if (Objects.nonNull(glueDeserializer)) {
+                                kafkaConsumer = new KafkaConsumer(consumerProperties, stringDeserializer, glueDeserializer);
+                            } else {
+                                kafkaConsumer = new KafkaConsumer<String, String>(consumerProperties);
+                            }
                             break;
                     }
-                    consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, pluginMetrics);
+                    consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, topicMetrics);
                     executorService.submit(consumer);
                 });
             } catch (Exception e) {
@@ -294,7 +302,6 @@ public class KafkaSource implements Source<Record<Event>> {
         }
 
         if (schemaConfig.getType() == SchemaRegistryType.AWS_GLUE) {
-            setPropertiesForGlueSchemaRegistry(properties);
             return;
         }
 
@@ -305,13 +312,6 @@ public class KafkaSource implements Source<Record<Event>> {
         } else {
             throw new RuntimeException("RegistryURL must be specified for confluent schema registry");
         }
-    }
-
-    private void setPropertiesForGlueSchemaRegistry(Properties properties) {
-        properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, GlueSchemaRegistryKafkaDeserializer.class.getName());
-        properties.put(AWSSchemaRegistryConstants.AWS_REGION, sourceConfig.getAwsConfig().getRegion());
-        properties.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
     }
 
     private void setPropertiesForPlaintextAndJsonWithoutSchemaRegistry(Properties properties, final TopicConfig topicConfig) {
@@ -358,7 +358,7 @@ public class KafkaSource implements Source<Record<Event>> {
 
     private void setConsumerTopicProperties(Properties properties, TopicConfig topicConfig) {
         properties.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupID);
-        properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, topicConfig.getMaxPartitionFetchBytes());
+        properties.put(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, (int)topicConfig.getMaxPartitionFetchBytes());
         properties.put(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, ((Long)topicConfig.getRetryBackoff().toMillis()).intValue());
         properties.put(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, ((Long)topicConfig.getReconnectBackoff().toMillis()).intValue());
         properties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
@@ -373,9 +373,9 @@ public class KafkaSource implements Source<Record<Event>> {
                 ((Long)topicConfig.getMaxPollInterval().toMillis()).intValue());
         properties.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, ((Long)topicConfig.getSessionTimeOut().toMillis()).intValue());
         properties.put(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, ((Long)topicConfig.getHeartBeatInterval().toMillis()).intValue());
-        properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, topicConfig.getFetchMaxBytes().intValue());
+        properties.put(ConsumerConfig.FETCH_MAX_BYTES_CONFIG, (int)topicConfig.getFetchMaxBytes());
         properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, topicConfig.getFetchMaxWait());
-        properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, topicConfig.getFetchMinBytes());
+        properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, (int)topicConfig.getFetchMinBytes());
     }
 
     private void setPropertiesForSchemaRegistryConnectivity(Properties properties) {

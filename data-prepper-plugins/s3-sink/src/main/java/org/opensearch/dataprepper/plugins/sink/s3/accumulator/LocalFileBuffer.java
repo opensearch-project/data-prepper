@@ -20,6 +20,7 @@ import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * A buffer can hold local file data and flushing it to S3.
@@ -28,14 +29,23 @@ public class LocalFileBuffer implements Buffer {
 
     private static final Logger LOG = LoggerFactory.getLogger(LocalFileBuffer.class);
     private final OutputStream outputStream;
+    private final S3Client s3Client;
+    private final Supplier<String> bucketSupplier;
+    private final Supplier<String> keySupplier;
     private int eventCount;
     private final StopWatch watch;
     private final File localFile;
     private boolean isCodecStarted;
+    private String bucket;
+    private String key;
 
-    LocalFileBuffer(File tempFile) throws FileNotFoundException {
+
+    LocalFileBuffer(File tempFile, S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) throws FileNotFoundException {
         localFile = tempFile;
-        outputStream = new BufferedOutputStream(new FileOutputStream(tempFile));
+        outputStream = new BufferedOutputStream(new FileOutputStream(tempFile), 32 * 1024);
+        this.s3Client = s3Client;
+        this.bucketSupplier = bucketSupplier;
+        this.keySupplier = keySupplier;
         eventCount = 0;
         watch = new StopWatch();
         watch.start();
@@ -64,29 +74,14 @@ public class LocalFileBuffer implements Buffer {
 
     /**
      * Upload accumulated data to amazon s3.
-     * @param s3Client s3 client object.
-     * @param bucket bucket name.
-     * @param key s3 object key path.
      */
     @Override
-    public void flushToS3(S3Client s3Client, String bucket, String key) {
+    public void flushToS3() {
         flushAndCloseStream();
         s3Client.putObject(
-                PutObjectRequest.builder().bucket(bucket).key(key).build(),
+                PutObjectRequest.builder().bucket(getBucket()).key(getKey()).build(),
                 RequestBody.fromFile(localFile));
         removeTemporaryFile();
-    }
-
-    /**
-     * write byte array to output stream.
-     * @param bytes byte array.
-     * @throws IOException while writing to output stream fails.
-     */
-    @Override
-    public void writeEvent(byte[] bytes) throws IOException {
-        outputStream.write(bytes);
-        outputStream.write(System.lineSeparator().getBytes());
-        eventCount++;
     }
 
     /**
@@ -113,15 +108,7 @@ public class LocalFileBuffer implements Buffer {
             }
         }
     }
-    @Override
-    public boolean isCodecStarted() {
-        return isCodecStarted;
-    }
 
-    @Override
-    public void setCodecStarted(boolean codecStarted) {
-        isCodecStarted = codecStarted;
-    }
     @Override
     public void setEventCount(int eventCount) {
         this.eventCount = eventCount;
@@ -132,4 +119,17 @@ public class LocalFileBuffer implements Buffer {
         return outputStream;
     }
 
+
+    private String getBucket() {
+        if(bucket == null)
+            bucket = bucketSupplier.get();
+        return bucket;
+    }
+
+    @Override
+    public String getKey() {
+        if(key == null)
+            key = keySupplier.get();
+        return key;
+    }
 }

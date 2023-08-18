@@ -20,9 +20,8 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
-import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
-import org.opensearch.dataprepper.plugins.sink.s3.accumulator.InMemoryBufferFactory;
-import org.opensearch.dataprepper.plugins.sink.s3.accumulator.LocalFileBufferFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CompressionBufferFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -64,13 +63,15 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         codec = pluginFactory.loadPlugin(OutputCodec.class, codecPluginSettings);
         sinkInitialized = Boolean.FALSE;
 
-        if (s3SinkConfig.getBufferType().equals(BufferTypeOptions.LOCALFILE)) {
-            bufferFactory = new LocalFileBufferFactory();
-        } else {
-            bufferFactory = new InMemoryBufferFactory();
-        }
         final S3Client s3Client = ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
-        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, OutputCodecContext.fromSinkContext(sinkContext), s3Client, pluginMetrics);
+        KeyGenerator keyGenerator = new KeyGenerator(s3SinkConfig, codec);
+        final BufferFactory innerBufferFactory = s3SinkConfig.getBufferType().getBufferFactory();
+        final CompressionEngine compressionEngine = s3SinkConfig.getCompression().getCompressionEngine();
+        bufferFactory = new CompressionBufferFactory(innerBufferFactory, compressionEngine, codec);
+
+        S3OutputCodecContext s3OutputCodecContext = new S3OutputCodecContext(OutputCodecContext.fromSinkContext(sinkContext), s3SinkConfig.getCompression());
+
+        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, s3OutputCodecContext, s3Client, keyGenerator, pluginMetrics);
     }
 
     @Override

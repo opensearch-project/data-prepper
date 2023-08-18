@@ -9,8 +9,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
@@ -19,6 +21,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions
  * s3 sink configuration class contains properties, used to read yaml configuration.
  */
 public class S3SinkConfig {
+    static final String S3_PREFIX = "s3://";
 
     private static final int DEFAULT_CONNECTION_RETRIES = 5;
     private static final int DEFAULT_UPLOAD_RETRIES = 5;
@@ -29,12 +32,15 @@ public class S3SinkConfig {
     private AwsAuthenticationOptions awsAuthenticationOptions;
 
     @JsonProperty("bucket")
-    @NotNull
     @NotEmpty
+    @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String bucketName;
 
     @JsonProperty("object_key")
     private ObjectKeyOptions objectKeyOptions;
+
+    @JsonProperty("compression")
+    private CompressionOption compression = CompressionOption.NONE;
 
     @JsonProperty("threshold")
     @NotNull
@@ -73,6 +79,9 @@ public class S3SinkConfig {
      * @return bucket name.
      */
     public String getBucketName() {
+        if (bucketName.startsWith(S3_PREFIX)) {
+            return bucketName.substring(S3_PREFIX.length());
+        }
         return bucketName;
     }
 
@@ -117,5 +126,9 @@ public class S3SinkConfig {
      */
     public int getMaxUploadRetries() {
         return maxUploadRetries;
+    }
+
+    public CompressionOption getCompression() {
+        return compression;
     }
 }

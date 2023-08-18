@@ -1,8 +1,8 @@
 package org.opensearch.dataprepper.model.codec;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.invocation.InvocationOnMock;
 import org.opensearch.dataprepper.model.event.DefaultEventMetadata;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
@@ -19,12 +19,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotEquals;
+import static org.mockito.Mockito.mock;
 
 public class OutputCodecTest {
+    @Test
+    void isCompressionInternal_returns_false() {
+        OutputCodec objectUnderTest = mock(OutputCodec.class, InvocationOnMock::callRealMethod);
 
-    @BeforeEach
-    public void setUp() {
+        assertThat(objectUnderTest.isCompressionInternal(), equalTo(false));
     }
 
     @Test

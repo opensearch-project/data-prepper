@@ -42,12 +42,15 @@ public class JsonOutputCodec implements OutputCodec {
         Objects.requireNonNull(codecContext);
         this.codecContext = codecContext;
         generator = factory.createGenerator(outputStream, JsonEncoding.UTF8);
+        generator.writeStartObject();
+        generator.writeFieldName(config.getKeyName());
         generator.writeStartArray();
     }
 
     @Override
     public void complete(final OutputStream outputStream) throws IOException {
         generator.writeEndArray();
+        generator.writeEndObject();
         generator.close();
         outputStream.flush();
         outputStream.close();
@@ -78,7 +81,6 @@ public class JsonOutputCodec implements OutputCodec {
     public String getExtension() {
         return JSON;
     }
-
 }
 
 

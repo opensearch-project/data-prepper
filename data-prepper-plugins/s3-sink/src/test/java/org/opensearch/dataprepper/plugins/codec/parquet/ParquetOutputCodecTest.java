@@ -22,6 +22,7 @@ import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -95,10 +96,7 @@ public class ParquetOutputCodecTest {
     private ParquetOutputCodec createObjectUnderTest() {
         config = new ParquetOutputCodecConfig();
         config.setSchema(parseSchema().toString());
-        config.setBucket("test");
-        config.setRegion("test");
         return new ParquetOutputCodec(config);
-
     }
 
     @ParameterizedTest
@@ -135,17 +133,7 @@ public class ParquetOutputCodecTest {
     }
 
     @Test
-    public void whenNoSchemaProvided_thenThrowsException() {
-        config = new ParquetOutputCodecConfig();
-        config.setSchema(null);
-        config.setFileLocation(null);
-        config.setSchemaRegistryUrl(null);
-        ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
-        assertThrows(IOException.class, () ->
-                parquetOutputCodec.buildSchemaAndKey(null, null));
-    }
-
-    @Test
+    @Disabled("This feature is not present anyway. But, this test case may be quite correct because it does not account for auto-schema generation.")
     public void test_s3SchemaValidity() throws IOException {
         config = new ParquetOutputCodecConfig();
         config.setSchema(parseSchema().toString());

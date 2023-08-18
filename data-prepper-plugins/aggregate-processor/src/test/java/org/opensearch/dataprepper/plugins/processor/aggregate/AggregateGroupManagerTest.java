@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.processor.aggregate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -28,7 +29,7 @@ public class AggregateGroupManagerTest {
 
     private AggregateGroupManager aggregateGroupManager;
 
-    private AggregateIdentificationKeysHasher.IdentificationKeysMap identificationKeysMap;
+    private IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap;
 
     private static final Duration TEST_GROUP_DURATION = Duration.ofSeconds(new Random().nextInt(10) + 10);
 
@@ -37,7 +38,7 @@ public class AggregateGroupManagerTest {
         final Map<Object, Object> identificationKeysHash = new HashMap<>();
         identificationKeysHash.put(UUID.randomUUID().toString(), UUID.randomUUID().toString());
 
-        identificationKeysMap = new AggregateIdentificationKeysHasher.IdentificationKeysMap(identificationKeysHash);
+        identificationKeysMap = new IdentificationKeysHasher.IdentificationKeysMap(identificationKeysHash);
     }
 
     private AggregateGroupManager createObjectUnderTest() {
@@ -92,16 +93,16 @@ public class AggregateGroupManagerTest {
 
         final AggregateGroup groupToConclude = mock(AggregateGroup.class);
         when(groupToConclude.shouldConcludeGroup(TEST_GROUP_DURATION)).thenReturn(true);
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude = mock(AggregateIdentificationKeysHasher.IdentificationKeysMap.class);
+        final IdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude = mock(IdentificationKeysHasher.IdentificationKeysMap.class);
 
         final AggregateGroup groupToNotConclude = mock(AggregateGroup.class);
         when(groupToNotConclude.shouldConcludeGroup(TEST_GROUP_DURATION)).thenReturn(false);
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap hashForGroupToNotConclude = mock(AggregateIdentificationKeysHasher.IdentificationKeysMap.class);
+        final IdentificationKeysHasher.IdentificationKeysMap hashForGroupToNotConclude = mock(IdentificationKeysHasher.IdentificationKeysMap.class);
 
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude, groupToConclude);
         aggregateGroupManager.putGroupWithHash(hashForGroupToNotConclude, groupToNotConclude);
 
-        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(false);
+        final List<Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(false);
 
         assertThat(groupsToConclude.size(), equalTo(1));
         assertThat(groupsToConclude.get(0), notNullValue());
@@ -114,15 +115,15 @@ public class AggregateGroupManagerTest {
         aggregateGroupManager = createObjectUnderTest();
 
         final AggregateGroup groupToConclude1 = mock(AggregateGroup.class);
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude1 = mock(AggregateIdentificationKeysHasher.IdentificationKeysMap.class);
+        final IdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude1 = mock(IdentificationKeysHasher.IdentificationKeysMap.class);
 
         final AggregateGroup groupToConclude2 = mock(AggregateGroup.class);
-        final AggregateIdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude2 = mock(AggregateIdentificationKeysHasher.IdentificationKeysMap.class);
+        final IdentificationKeysHasher.IdentificationKeysMap hashForGroupToConclude2 = mock(IdentificationKeysHasher.IdentificationKeysMap.class);
 
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude1, groupToConclude1);
         aggregateGroupManager.putGroupWithHash(hashForGroupToConclude2, groupToConclude2);
 
-        final List<Map.Entry<AggregateIdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(true);
+        final List<Map.Entry<IdentificationKeysHasher.IdentificationKeysMap, AggregateGroup>> groupsToConclude = aggregateGroupManager.getGroupsToConclude(true);
 
         assertThat(groupsToConclude.size(), equalTo(2));
         assertThat(groupsToConclude.get(0), notNullValue());

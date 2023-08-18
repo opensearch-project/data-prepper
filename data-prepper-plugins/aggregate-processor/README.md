@@ -98,7 +98,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
     The values in a list are merely appended, so there can be duplicates. 
 
 ### <a name="count"></a>
-* `count`: Count Events belonging to the same group and generate a new event with values of the identification keys and the count, indicating the number of events. All Events that make up the combined Event will be dropped.
+* `count`: Count Events belonging to the same group and generate a new event with values of the identification keys and the count, indicating the number of events. All Events that make up the combined Event will be dropped. One of the events is added as exemplar. If the aggregation is done on traces, then traceId and spanId are included in the exemplar, otherwise, spanId and traceId would be null.
     * It supports the following config options
        * `count_key`: key name to use for storing the count, default name is `aggr._count`
        * `start_time_key`: key name to use for storing the start time, default name is `aggr._start_time`
@@ -114,7 +114,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```
       The following Event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
-        {"isMonotonic":true,"unit":"1","aggregationTemporality":"AGGREGATION_TEMPORALITY_DELTA","kind":"SUM","name":"count","description":"Number of events","startTime":"2022-12-02T19:29:51.245358486Z","time":"2022-12-02T19:30:15.247799684Z","value":3.0,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1"}
+        {"isMonotonic":true,"unit":"1","aggregationTemporality":"AGGREGATION_TEMPORALITY_DELTA","kind":"SUM","name":"count","description":"Number of events","startTime":"2022-12-02T19:29:51.245358486Z","time":"2022-12-02T19:30:15.247799684Z","value":3.0,"sourceIp":"127.0.0.1","destinationIp":"192.168.0.1", "exemplars":[{"time":"2022-12-02T19:29:51.245358486Z", "value": 1.0, "attributes":{"sourceIp":"127.0.0.1","destinationIp": "192.168.0.1", "request" : "/index.html"}, "spanId":null, "traceId":null}]}
       ```
       If raw output format is used, the following Event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
@@ -130,7 +130,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```
 
 ### <a name="histogram"></a>
-* `histogram`: Aggreates events belonging to the same group and generate a new event with values of the identification keys and histogram of the aggregated events based on a configured `key`. The histogram contains the number of events, sum, buckets, bucket counts, and optionally min and max of the values corresponding to the `key`. All events that make up the combined Event will be dropped.
+* `histogram`: Aggreates events belonging to the same group and generate a new event with values of the identification keys and histogram of the aggregated events based on a configured `key`. The histogram contains the number of events, sum, buckets, bucket counts, and optionally min and max of the values corresponding to the `key`. All events that make up the combined Event will be dropped. Events corresponding to min and max values are added as exemplars. If the aggregation is done on traces, then traceId and spanId are included in the exemplar, otherwise, spanId and traceId would be null.
     * It supports the following config options
        * `key`: name of the field in the events for which histogram needs to be generated
        * `generated_key_prefix`: key prefix to be used for all the fields created in the aggregated event. This allows the user to make sure that the names of the histogram event does not conflict with the field names in the event
@@ -149,7 +149,7 @@ While not necessary, a great way to set up the Aggregate Processor [identificati
       ```
       The following Event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json
-        {"max":0.55,"kind":"HISTOGRAM","buckets":[{"min":-3.4028234663852886E38,"max":0.0,"count":0},{"min":0.0,"max":0.25,"count":2},{"min":0.25,"max":0.50,"count":1},{"min":0.50,"max":3.4028234663852886E38,"count":1}],"count":4,"bucketCountsList":[0,2,1,1],"description":"Histogram of latency in the events","sum":1.15,"unit":"seconds","aggregationTemporality":"AGGREGATION_TEMPORALITY_DELTA","min":0.15,"bucketCounts":4,"name":"histogram","startTime":"2022-12-14T06:43:40.848762215Z","explicitBoundsCount":3,"time":"2022-12-14T06:44:04.852564623Z","explicitBounds":[0.0,0.25,0.5],"request":"/index.html","sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "key": "latency"}
+        {"max":0.55,"kind":"HISTOGRAM","buckets":[{"min":-3.4028234663852886E38,"max":0.0,"count":0},{"min":0.0,"max":0.25,"count":2},{"min":0.25,"max":0.50,"count":1},{"min":0.50,"max":3.4028234663852886E38,"count":1}],"count":4,"bucketCountsList":[0,2,1,1],"description":"Histogram of latency in the events","sum":1.15,"unit":"seconds","aggregationTemporality":"AGGREGATION_TEMPORALITY_DELTA","min":0.15,"bucketCounts":4,"name":"histogram","startTime":"2022-12-14T06:43:40.848762215Z","explicitBoundsCount":3,"time":"2022-12-14T06:44:04.852564623Z","explicitBounds":[0.0,0.25,0.5],"request":"/index.html","sourceIp": "127.0.0.1", "destinationIp": "192.168.0.1", "key": "latency", "exemplars": [{"time":"2023-12-14T06:43:43.840684487Z","value":0.50,"attributes":{"sourceIp":"127.0.0.1","destinationIp": "192.168.0.1", "request" : "/index.html", "exemplar_id":"min"},"spanId":null,"traceId":null},{"time":"2022-12-14T06:43:43.844339030Z","value":0.55,"attributes":{"sourceIp":"127.0.0.1","destinationIp": "192.168.0.1", "request" : "/index.html","exemplar_id":"max"},"spanId":null,"traceId":null}]}
       ```
       If raw output format is used, the following event will be created and processed by the rest of the pipeline when the group is concluded:
       ```json

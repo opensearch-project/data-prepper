@@ -25,6 +25,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import org.opensearch.dataprepper.model.types.ByteCount;
+import static org.opensearch.dataprepper.test.helper.ReflectivelySetField.setField;
 
 class TopicConfigTest {
 
@@ -73,18 +77,16 @@ class TopicConfigTest {
         assertEquals(TopicConfig.DEFAULT_SESSION_TIMEOUT, topicConfig.getSessionTimeOut());
         assertEquals(TopicConfig.DEFAULT_AUTO_OFFSET_RESET, topicConfig.getAutoOffsetReset());
         assertEquals(TopicConfig.DEFAULT_THREAD_WAITING_TIME, topicConfig.getThreadWaitingTime());
-        assertEquals(TopicConfig.DEFAULT_MAX_RECORD_FETCH_TIME, topicConfig.getMaxRecordFetchTime());
-        assertEquals(TopicConfig.DEFAULT_BUFFER_TIMEOUT, topicConfig.getBufferDefaultTimeout());
-        assertEquals(TopicConfig.DEFAULT_FETCH_MAX_BYTES, topicConfig.getFetchMaxBytes());
+        assertEquals(ByteCount.parse(TopicConfig.DEFAULT_FETCH_MAX_BYTES).getBytes(), topicConfig.getFetchMaxBytes());
         assertEquals(TopicConfig.DEFAULT_FETCH_MAX_WAIT, topicConfig.getFetchMaxWait());
-        assertEquals(TopicConfig.DEFAULT_FETCH_MIN_BYTES, topicConfig.getFetchMinBytes());
+        assertEquals(ByteCount.parse(TopicConfig.DEFAULT_FETCH_MIN_BYTES).getBytes(), topicConfig.getFetchMinBytes());
         assertEquals(TopicConfig.DEFAULT_RETRY_BACKOFF, topicConfig.getRetryBackoff());
         assertEquals(TopicConfig.DEFAULT_RECONNECT_BACKOFF, topicConfig.getReconnectBackoff());
         assertEquals(TopicConfig.DEFAULT_MAX_POLL_INTERVAL, topicConfig.getMaxPollInterval());
         assertEquals(TopicConfig.DEFAULT_CONSUMER_MAX_POLL_RECORDS, topicConfig.getConsumerMaxPollRecords());
         assertEquals(TopicConfig.DEFAULT_NUM_OF_WORKERS, topicConfig.getWorkers());
         assertEquals(TopicConfig.DEFAULT_HEART_BEAT_INTERVAL_DURATION, topicConfig.getHeartBeatInterval());
-        assertEquals(TopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES, topicConfig.getMaxPartitionFetchBytes());
+        assertEquals(ByteCount.parse(TopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES).getBytes(), topicConfig.getMaxPartitionFetchBytes());
     }
 
     @Test
@@ -96,17 +98,15 @@ class TopicConfigTest {
         assertEquals(45000, topicConfig.getSessionTimeOut().toMillis());
         assertEquals("earliest", topicConfig.getAutoOffsetReset());
         assertEquals(Duration.ofSeconds(1), topicConfig.getThreadWaitingTime());
-        assertEquals(Duration.ofSeconds(4), topicConfig.getMaxRecordFetchTime());
-        assertEquals(Duration.ofSeconds(5), topicConfig.getBufferDefaultTimeout());
-        assertEquals(52428800, topicConfig.getFetchMaxBytes().longValue());
+        assertEquals(52428800L, topicConfig.getFetchMaxBytes());
         assertEquals(500L, topicConfig.getFetchMaxWait().longValue());
-        assertEquals(1L, topicConfig.getFetchMinBytes().longValue());
+        assertEquals(1L, topicConfig.getFetchMinBytes());
         assertEquals(Duration.ofSeconds(100), topicConfig.getRetryBackoff());
-        assertEquals(Duration.ofSeconds(300000), topicConfig.getMaxPollInterval());
+        assertEquals(Duration.ofSeconds(300), topicConfig.getMaxPollInterval());
         assertEquals(500L, topicConfig.getConsumerMaxPollRecords().longValue());
         assertEquals(5, topicConfig.getWorkers().intValue());
         assertEquals(Duration.ofSeconds(3), topicConfig.getHeartBeatInterval());
-        assertEquals(10*TopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES, topicConfig.getMaxPartitionFetchBytes());
+        assertEquals(10*ByteCount.parse(TopicConfig.DEFAULT_MAX_PARTITION_FETCH_BYTES).getBytes(), topicConfig.getMaxPartitionFetchBytes());
     }
 
     @Test
@@ -118,8 +118,6 @@ class TopicConfigTest {
         assertNotNull(topicConfig.getSessionTimeOut());
         assertNotNull(topicConfig.getAutoOffsetReset());
         assertNotNull(topicConfig.getThreadWaitingTime());
-        assertNotNull(topicConfig.getMaxRecordFetchTime());
-        assertNotNull(topicConfig.getBufferDefaultTimeout());
         assertNotNull(topicConfig.getFetchMaxBytes());
         assertNotNull(topicConfig.getFetchMaxWait());
         assertNotNull(topicConfig.getFetchMinBytes());
@@ -128,6 +126,17 @@ class TopicConfigTest {
         assertNotNull(topicConfig.getConsumerMaxPollRecords());
         assertNotNull(topicConfig.getWorkers());
         assertNotNull(topicConfig.getHeartBeatInterval());
+    }
+
+    @Test
+    @Tag(YAML_FILE_WITH_CONSUMER_CONFIG)
+    void TestInvalidConfigValues() throws NoSuchFieldException, IllegalAccessException {
+        setField(TopicConfig.class, topicConfig, "fetchMaxBytes", "60mb");
+        assertThrows(RuntimeException.class, () -> topicConfig.getFetchMaxBytes());
+        setField(TopicConfig.class, topicConfig, "fetchMaxBytes", "0b");
+        assertThrows(RuntimeException.class, () -> topicConfig.getFetchMaxBytes());
+        setField(TopicConfig.class, topicConfig, "fetchMinBytes", "0b");
+        assertThrows(RuntimeException.class, () -> topicConfig.getFetchMinBytes());
     }
 
 }

@@ -286,7 +286,7 @@ public class IndexConfigurationTests {
         assertEquals(60_000L, indexConfiguration.getFlushTimeout());
         assertEquals(false, indexConfiguration.isEstimateBulkSizeUsingCompression());
         assertEquals(2, indexConfiguration.getMaxLocalCompressionsForEstimation());
-        assertEquals("spanId", indexConfiguration.getDocumentIdField());
+        assertEquals("${spanId}", indexConfiguration.getDocumentId());
     }
 
     @Test
@@ -312,7 +312,7 @@ public class IndexConfigurationTests {
         assertEquals(60_000L, indexConfiguration.getFlushTimeout());
         assertEquals(false, indexConfiguration.isEstimateBulkSizeUsingCompression());
         assertEquals(2, indexConfiguration.getMaxLocalCompressionsForEstimation());
-        assertEquals("hashId", indexConfiguration.getDocumentIdField());
+        assertEquals("${hashId}", indexConfiguration.getDocumentId());
     }
 
     @Test
@@ -335,7 +335,7 @@ public class IndexConfigurationTests {
         assertEquals(testFlushTimeout, indexConfiguration.getFlushTimeout());
         assertEquals(true, indexConfiguration.isEstimateBulkSizeUsingCompression());
         assertEquals(5, indexConfiguration.getMaxLocalCompressionsForEstimation());
-        assertEquals(testIdField, indexConfiguration.getDocumentIdField());
+        assertEquals(testIdField, indexConfiguration.getDocumentId());
     }
 
     @Test
@@ -356,7 +356,7 @@ public class IndexConfigurationTests {
         assertFalse(indexConfiguration.getIndexTemplate().isEmpty());
         assertEquals(testBulkSize, indexConfiguration.getBulkSize());
         assertEquals(testFlushTimeout, indexConfiguration.getFlushTimeout());
-        assertEquals(testIdField, indexConfiguration.getDocumentIdField());
+        assertEquals(testIdField, indexConfiguration.getDocumentId());
     }
 
     @Test
@@ -458,7 +458,7 @@ public class IndexConfigurationTests {
     }
 
     private Map<String, Object> initializeConfigMetaData(
-            String indexType, String indexAlias, String templateFilePath, Long bulkSize, Long flushTimeout, String documentIdField) {
+            String indexType, String indexAlias, String templateFilePath, Long bulkSize, Long flushTimeout, String documentId) {
         final Map<String, Object> metadata = new HashMap<>();
         if (indexType != null) {
             metadata.put(IndexConfiguration.INDEX_TYPE, indexType);
@@ -475,8 +475,8 @@ public class IndexConfigurationTests {
         if (flushTimeout != null) {
             metadata.put(IndexConfiguration.FLUSH_TIMEOUT, flushTimeout);
         }
-        if (documentIdField != null) {
-            metadata.put(IndexConfiguration.DOCUMENT_ID_FIELD, documentIdField);
+        if (documentId != null) {
+            metadata.put(IndexConfiguration.DOCUMENT_ID, documentId);
         }
         return metadata;
     }
