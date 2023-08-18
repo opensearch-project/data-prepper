@@ -22,100 +22,134 @@ import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.sink.OutputCodecContext;
+import org.opensearch.dataprepper.plugins.fs.LocalFilePositionOutputStream;
+import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
+import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 public class ParquetOutputCodecTest {
-    private static final String FILE_NAME = "parquet-data";
-    private static final String FILE_SUFFIX = ".parquet";
-    private static int numberOfRecords;
+    private static final String FILE_NAME = "parquet-data.parquet";
     private ParquetOutputCodecConfig config;
+    @Mock
+    private S3OutputCodecContext codecContext;
 
-    private static Record getRecord(int index) {
-        List<HashMap> recordList = generateRecords(numberOfRecords);
-        final Event event = JacksonLog.builder().withData(recordList.get(index)).build();
-        return new Record<>(event);
-    }
+    @TempDir
+    private File tempDirectory;
 
-    private static List<HashMap> generateRecords(int numberOfRecords) {
-
-        List<HashMap> recordList = new ArrayList<>();
-
-        for (int rows = 0; rows < numberOfRecords; rows++) {
-
-            HashMap<String, Object> eventData = new HashMap<>();
-
-            eventData.put("name", "Person" + rows);
-            eventData.put("age", rows);
-            eventData.put("doubleType", Double.valueOf(rows));
-            eventData.put("floatType", Float.valueOf(rows));
-            eventData.put("longType", Long.valueOf(rows));
-            eventData.put("bytesType", ("Person" + rows).getBytes());
-            recordList.add((eventData));
-
-        }
-        return recordList;
-    }
-
-    private static Schema parseSchema() {
-        return SchemaBuilder.record("Person")
-                .fields()
-                .name("name").type().stringType().noDefault()
-                .name("age").type().intType().noDefault()
-                .name("doubleType").type().doubleType().noDefault()
-                .name("floatType").type().floatType().noDefault()
-                .name("longType").type().longType().noDefault()
-                .name("bytesType").type().bytesType().noDefault()
-                .endRecord();
-
+    @BeforeEach
+    void setUp() {
+        config = new ParquetOutputCodecConfig();
     }
 
     private ParquetOutputCodec createObjectUnderTest() {
-        config = new ParquetOutputCodecConfig();
-        config.setSchema(parseSchema().toString());
         return new ParquetOutputCodec(config);
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
     void test_happy_case(final int numberOfRecords) throws Exception {
-        ParquetOutputCodecTest.numberOfRecords = numberOfRecords;
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
         ParquetOutputCodec parquetOutputCodec = createObjectUnderTest();
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
-        OutputCodecContext codecContext = new OutputCodecContext();
-        parquetOutputCodec.start(tempFile, codecContext);
-        for (int index = 0; index < numberOfRecords; index++) {
-            final Event event = (Event) getRecord(index).getData();
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+        parquetOutputCodec.start(outputStream, null, codecContext);
+        List<Map<String, Object>> inputMaps = generateRecords(numberOfRecords);
+        for (Map<String, Object> inputMap : inputMaps) {
+            final Event event = createEventRecord(inputMap);
             parquetOutputCodec.writeEvent(event, outputStream);
         }
         parquetOutputCodec.closeWriter(outputStream, tempFile);
-        List<HashMap<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
+        List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
-        for (final HashMap<String, Object> actualMap : actualRecords) {
+        for (final Map<String, Object> actualMap : actualRecords) {
+            assertThat(actualMap, notNullValue());
+            Map expectedMap = generateRecords(numberOfRecords).get(index);
+            assertThat(expectedMap, Matchers.equalTo(actualMap));
+            index++;
+        }
+        tempFile.delete();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void test_happy_case_nullable_records(final int numberOfRecords) throws Exception {
+        config.setSchema(createStandardSchemaNullable().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+        ParquetOutputCodec parquetOutputCodec = createObjectUnderTest();
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+        parquetOutputCodec.start(outputStream, null, codecContext);
+        List<Map<String, Object>> inputMaps = generateRecords(numberOfRecords);
+        for (Map<String, Object> inputMap : inputMaps) {
+            final Event event = createEventRecord(inputMap);
+            parquetOutputCodec.writeEvent(event, outputStream);
+        }
+        parquetOutputCodec.closeWriter(outputStream, tempFile);
+        List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
+        int index = 0;
+        for (final Map<String, Object> actualMap : actualRecords) {
+            assertThat(actualMap, notNullValue());
+            Map expectedMap = generateRecords(numberOfRecords).get(index);
+            assertThat(expectedMap, Matchers.equalTo(actualMap));
+            index++;
+        }
+        tempFile.delete();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10, 100})
+    void test_happy_case_nullable_records_with_empty_maps(final int numberOfRecords) throws Exception {
+        config.setSchema(createStandardSchemaNullable().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+        ParquetOutputCodec parquetOutputCodec = createObjectUnderTest();
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+        parquetOutputCodec.start(outputStream, null, codecContext);
+        List<Map<String, Object>> inputMaps = generateEmptyRecords(numberOfRecords);
+        for (Map<String, Object> inputMap : inputMaps) {
+            final Event event = createEventRecord(inputMap);
+            parquetOutputCodec.writeEvent(event, outputStream);
+        }
+        parquetOutputCodec.closeWriter(outputStream, tempFile);
+        List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
+        int index = 0;
+        for (final Map<String, Object> actualMap : actualRecords) {
             assertThat(actualMap, notNullValue());
             Map expectedMap = generateRecords(numberOfRecords).get(index);
             assertThat(expectedMap, Matchers.equalTo(actualMap));
@@ -133,10 +167,29 @@ public class ParquetOutputCodecTest {
     }
 
     @Test
+    void writeEvent_throws_exception_when_field_does_not_exist() throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+        final Event eventWithInvalidField = mock(Event.class);
+        final String invalidFieldName = UUID.randomUUID().toString();
+        when(eventWithInvalidField.toMap()).thenReturn(Collections.singletonMap(invalidFieldName, UUID.randomUUID().toString()));
+        final ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), containsString(invalidFieldName));
+    }
+
+    @Test
     @Disabled("This feature is not present anyway. But, this test case may be quite correct because it does not account for auto-schema generation.")
     public void test_s3SchemaValidity() throws IOException {
         config = new ParquetOutputCodecConfig();
-        config.setSchema(parseSchema().toString());
+        config.setSchema(createStandardSchema().toString());
         config.setSchemaBucket("test");
         config.setSchemaRegion("test");
         config.setFileKey("test");
@@ -147,11 +200,87 @@ public class ParquetOutputCodecTest {
                 parquetOutputCodecFalse.checkS3SchemaValidity());
     }
 
-    private List<HashMap<String, Object>> createParquetRecordsList(final InputStream inputStream) throws IOException {
+    private static Event createEventRecord(final Map<String, Object> eventData) {
+        return JacksonLog.builder().withData(eventData).build();
+    }
 
-        final File tempFile = File.createTempFile(FILE_NAME, FILE_SUFFIX);
+    private static List<Map<String, Object>> generateRecords(final int numberOfRecords) {
+        final List<Map<String, Object>> recordList = new ArrayList<>();
+
+        for (int rows = 0; rows < numberOfRecords; rows++) {
+
+            final Map<String, Object> eventData = new HashMap<>();
+
+            eventData.put("name", "Person" + rows);
+            eventData.put("age", rows);
+            eventData.put("myLong", (long) rows + (long) Integer.MAX_VALUE);
+            eventData.put("myFloat", rows * 1.5f);
+            eventData.put("myDouble", rows * 1.89d);
+            eventData.put("myArray", List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString()));
+            final Map<String, Object> nestedRecord = new HashMap<>();
+            nestedRecord.put("firstFieldInNestedRecord", "testString" + rows);
+            nestedRecord.put("secondFieldInNestedRecord", rows);
+            eventData.put("nestedRecord", nestedRecord);
+            recordList.add(eventData);
+        }
+        return recordList;
+    }
+
+    private static List<Map<String, Object>> generateEmptyRecords(final int numberOfRecords) {
+        return IntStream.range(0, numberOfRecords)
+                .mapToObj(i -> Collections.<String, Object>emptyMap())
+                .collect(Collectors.toList());
+    }
+
+    private static Schema createStandardSchema() {
+        return createStandardSchema(false);
+    }
+
+    private static Schema createStandardSchemaNullable() {
+        return createStandardSchema(true);
+    }
+
+    private static Schema createStandardSchema(
+            final boolean useNullable) {
+        final Function<SchemaBuilder.FieldTypeBuilder<Schema>, SchemaBuilder.BaseFieldTypeBuilder<Schema>> typeModifier;
+        if(useNullable) {
+            typeModifier = SchemaBuilder.FieldTypeBuilder::nullable;
+        } else {
+            typeModifier = schemaFieldTypeBuilder -> schemaFieldTypeBuilder;
+        }
+        SchemaBuilder.FieldAssembler<Schema> assembler = SchemaBuilder.record("Person")
+                .fields();
+        assembler = typeModifier.apply(assembler.name("name").type()).stringType().noDefault();
+        assembler = typeModifier.apply(assembler.name("age").type()).intType().noDefault();
+        assembler = typeModifier.apply(assembler.name("myLong").type()).longType().noDefault();
+        assembler = typeModifier.apply(assembler.name("myFloat").type()).floatType().noDefault();
+        assembler = typeModifier.apply(assembler.name("myDouble").type()).doubleType().noDefault();
+        assembler = typeModifier.apply(assembler.name("myArray").type()).array().items().stringType().noDefault();
+        final Schema innerSchema = createStandardInnerSchemaForNestedRecord(useNullable, typeModifier);
+        assembler = assembler.name("nestedRecord").type(innerSchema).noDefault();
+
+        return assembler.endRecord();
+    }
+
+    private static Schema createStandardInnerSchemaForNestedRecord(
+            boolean useNullable, final Function<SchemaBuilder.FieldTypeBuilder<Schema>, SchemaBuilder.BaseFieldTypeBuilder<Schema>> typeModifier) {
+        SchemaBuilder.RecordBuilder<Schema> nestedRecord;
+        if(useNullable) {
+            nestedRecord = SchemaBuilder.nullable().record("nestedRecord");
+        } else {
+            nestedRecord = SchemaBuilder.record("nestedRecord");
+        }
+        SchemaBuilder.FieldAssembler<Schema> assembler = nestedRecord.fields();
+        assembler = typeModifier.apply(assembler.name("firstFieldInNestedRecord").type()).stringType().noDefault();
+        assembler = typeModifier.apply(assembler.name("secondFieldInNestedRecord").type()).intType().noDefault();
+        return assembler.endRecord();
+    }
+
+    private List<Map<String, Object>> createParquetRecordsList(final InputStream inputStream) throws IOException {
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
         Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        List<HashMap<String, Object>> actualRecordList = new ArrayList<>();
+        List<Map<String, Object>> actualRecordList = new ArrayList<>();
         try (ParquetFileReader parquetFileReader = new ParquetFileReader(HadoopInputFile.fromPath(new Path(tempFile.toURI()), new Configuration()), ParquetReadOptions.builder().build())) {
             final ParquetMetadata footer = parquetFileReader.getFooter();
             final MessageType schema = createdParquetSchema(footer);
