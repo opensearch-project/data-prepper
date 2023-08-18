@@ -11,9 +11,9 @@ import java.io.IOException;
 
 
 class S3OutputFile implements OutputFile {
-    private final S3OutputStream outputStream;
+    private final PositionOutputStream outputStream;
 
-    public S3OutputFile(S3OutputStream outputStream) {
+    public S3OutputFile(PositionOutputStream outputStream) {
         this.outputStream = outputStream;
     }
 
