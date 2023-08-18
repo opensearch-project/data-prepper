@@ -2,12 +2,14 @@ package org.opensearch.dataprepper.avro;
 
 import org.apache.avro.Schema;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.File;
@@ -22,11 +24,14 @@ import java.util.stream.Stream;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class AvroAutoSchemaGeneratorTest {
     @Mock
     private OutputCodecContext outputCodecContext;
@@ -183,6 +188,31 @@ class AvroAutoSchemaGeneratorTest {
         assertThat(actualException.getMessage(), containsString(fieldKey));
         assertThat(actualException.getMessage(), containsString(value.getClass().toString()));
     }
+
+
+    @ParameterizedTest
+    @ArgumentsSource(PrimitiveClassesToTypesArgumentsProvider.class)
+    void autoDetermineSchema_with_primitive_type_uses_codec_to_include_keys(Object value, Schema.Type expectedType) {
+        String includeKey = randomAvroName();
+        String notIncludedKey = randomAvroName();
+
+        when(outputCodecContext.shouldNotIncludeKey(includeKey)).thenReturn(false);
+        when(outputCodecContext.shouldNotIncludeKey(notIncludedKey)).thenReturn(true);
+
+        Map<String, Object> data = Map.of(
+                notIncludedKey, value,
+                includeKey, value
+        );
+        Schema schema = createObjectUnderTest().autoDetermineSchema(data, outputCodecContext);
+
+        assertThat(schema, notNullValue());
+        assertThat(schema.getName(), equalTo("Event"));
+        assertThat(schema.getFields(), notNullValue());
+        assertThat(schema.getFields().size(), equalTo(1));
+        assertThat(schema.getField(includeKey), notNullValue());
+        assertThat(schema.getField(notIncludedKey), nullValue());
+    }
+
 
     static class SomeUnknownTypesArgumentsProvider implements ArgumentsProvider {
         @Override
