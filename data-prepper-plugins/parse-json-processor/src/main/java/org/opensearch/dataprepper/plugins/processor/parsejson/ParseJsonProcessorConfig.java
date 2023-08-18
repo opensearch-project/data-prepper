@@ -31,7 +31,7 @@ public class ParseJsonProcessorConfig {
     @JsonProperty("tags_on_failure")
     private List<String> tagsOnFailure;
 
-    @JsonProperty("overwrite_if_key_exists")
+    @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
 
     /**
