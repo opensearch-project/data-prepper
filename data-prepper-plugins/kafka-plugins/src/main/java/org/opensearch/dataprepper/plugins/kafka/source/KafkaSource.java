@@ -165,9 +165,15 @@ public class KafkaSource implements Source<Record<Event>> {
         LOG.info("Shutting down Consumers...");
         shutdownInProgress.set(true);
         executorService.shutdown();
+        long ackTimeoutSeconds = sourceConfig.getAcknowledgementsTimeout().toSeconds();
+        boolean acknowledgementsEnabled = sourceConfig.getAcknowledgementsEnabled() || ackTimeoutSeconds != KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT.toSeconds();
+        long threadWaitingTime = calculateLongestThreadWaitingTime();
+        if (acknowledgementsEnabled && threadWaitingTime < 2 * ackTimeoutSeconds) {
+            threadWaitingTime = 2 * ackTimeoutSeconds;
+        }
         try {
             if (!executorService.awaitTermination(
-                    calculateLongestThreadWaitingTime(), TimeUnit.SECONDS)) {
+                    threadWaitingTime, TimeUnit.SECONDS)) {
                 LOG.info("Consumer threads are waiting for shutting down...");
                 executorService.shutdownNow();
             }
@@ -178,6 +184,7 @@ public class KafkaSource implements Source<Record<Event>> {
                 Thread.currentThread().interrupt();
             }
         }
+        consumer.closeConsumer();
         LOG.info("Consumer shutdown successfully...");
     }
 
