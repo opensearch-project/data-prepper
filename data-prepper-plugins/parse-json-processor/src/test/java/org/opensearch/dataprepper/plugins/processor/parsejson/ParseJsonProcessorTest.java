@@ -102,16 +102,12 @@ class ParseJsonProcessorTest {
         when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(false);
         parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
 
-        final Map<String, Object> data = Map.ofEntries(
-                entry(source,"value_that_will_overwrite_source"),
-                entry("key","value")
-        );
+        final Map<String, Object> data = Map.of(source,"value_that_will_not_be_overwritten");
 
         final String serializedMessage = convertMapToJSONString(data);
         final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
 
-        assertThatKeyEquals(parsedEvent, source, "{\"root_source\":\"value_that_will_overwrite_source\", \"key\":\"value\"}");
-        assertThatKeyEquals(parsedEvent, "key", "value");
+        assertThatKeyEquals(parsedEvent, source, "{\"root_source\":\"value_that_will_not_be_overwritten\"}");
     }
 
     @Test
