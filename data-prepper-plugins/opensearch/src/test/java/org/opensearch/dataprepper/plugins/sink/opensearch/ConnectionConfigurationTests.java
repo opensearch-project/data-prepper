@@ -50,6 +50,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration.SERVERLESS;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 
 @ExtendWith(MockitoExtension.class)
 class ConnectionConfigurationTests {
@@ -84,12 +85,24 @@ class ConnectionConfigurationTests {
         assertNull(connectionConfiguration.getConnectTimeout());
         assertNull(connectionConfiguration.getSocketTimeout());
         assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
+        assertTrue(connectionConfiguration.isRequestCompressionEnabled());
+    }
+
+    @Test
+    void testReadConnectionConfigurationES6Default() {
+        final Map<String, Object> configMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
+        configMetadata.put(DISTRIBUTION_VERSION, "es6");
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertFalse(connectionConfiguration.isRequestCompressionEnabled());
     }
 
     @Test
     void testReadConnectionConfigurationAwsOptionServerlessDefault() {
         final String testArn = TEST_ROLE;
-        final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, TEST_CERT_PATH, false, Collections.emptyMap());
+        final Map<String, Object> configMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, true, false, null, testArn, null, TEST_CERT_PATH, false, Collections.emptyMap());
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -350,7 +363,8 @@ class ConnectionConfigurationTests {
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
         final String testArn = TEST_ROLE;
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final String externalId = UUID.randomUUID().toString();
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, externalId, null,false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -369,6 +383,7 @@ class ConnectionConfigurationTests {
         final AwsCredentialsOptions actualOptions = awsCredentialsOptionsArgumentCaptor.getValue();
 
         assertThat(actualOptions.getStsRoleArn(), equalTo(TEST_ROLE));
+        assertThat(actualOptions.getStsExternalId(), equalTo(externalId));
         assertThat(actualOptions.getStsHeaderOverrides(), notNullValue());
         assertThat(actualOptions.getStsHeaderOverrides().size(), equalTo(2));
         assertThat(actualOptions.getStsHeaderOverrides(), hasKey(headerName1));
@@ -384,7 +399,8 @@ class ConnectionConfigurationTests {
         final String headerName2 = UUID.randomUUID().toString();
         final String headerValue2 = UUID.randomUUID().toString();
         final String testArn = TEST_ROLE;
-        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
+        final String externalId = UUID.randomUUID().toString();
+        final Map<String, Object> configurationMetadata = generateConfigurationMetadataWithAwsOption(TEST_HOSTS, null, null, null, null, false, true, null, testArn, externalId, TEST_CERT_PATH, false, Map.of(headerName1, headerValue1, headerName2, headerValue2));
         final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configurationMetadata);
         final ConnectionConfiguration connectionConfiguration =
                 ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
@@ -634,7 +650,7 @@ class ConnectionConfigurationTests {
     private Map<String, Object> generateConfigurationMetadataWithAwsOption(
             final List<String> hosts, final String username, final String password,
             final Integer connectTimeout, final Integer socketTimeout, final boolean serverless, final boolean awsSigv4, final String awsRegion,
-            final String awsStsRoleArn, final String certPath, final boolean insecure, Map<String, String> headerOverridesMap) {
+            final String awsStsRoleArn, final String awsStsExternalId, final String certPath, final boolean insecure, Map<String, String> headerOverridesMap) {
         final Map<String, Object> metadata = new HashMap<>();
         final Map<String, Object> awsOptionMetadata = new HashMap<>();
         metadata.put("hosts", hosts);
@@ -647,6 +663,7 @@ class ConnectionConfigurationTests {
         }
         awsOptionMetadata.put("serverless", serverless);
         awsOptionMetadata.put("sts_role_arn", awsStsRoleArn);
+        awsOptionMetadata.put("sts_external_id", awsStsExternalId);
         awsOptionMetadata.put("sts_header_overrides", headerOverridesMap);
         metadata.put("aws", awsOptionMetadata);
         metadata.put("cert", certPath);

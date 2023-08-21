@@ -13,6 +13,8 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -56,12 +58,19 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         lenient().when(mockConfig.getFieldDelimiterRegex()).thenReturn(defaultConfig.getFieldDelimiterRegex());
         lenient().when(mockConfig.getFieldSplitCharacters()).thenReturn(defaultConfig.getFieldSplitCharacters());
+        lenient().when(mockConfig.getIncludeKeys()).thenReturn(defaultConfig.getIncludeKeys());
+        lenient().when(mockConfig.getExcludeKeys()).thenReturn(defaultConfig.getExcludeKeys());
+        lenient().when(mockConfig.getDefaultValues()).thenReturn(defaultConfig.getDefaultValues());
         lenient().when(mockConfig.getKeyValueDelimiterRegex()).thenReturn(defaultConfig.getKeyValueDelimiterRegex());
         lenient().when(mockConfig.getValueSplitCharacters()).thenReturn(defaultConfig.getValueSplitCharacters());
         lenient().when(mockConfig.getNonMatchValue()).thenReturn(defaultConfig.getNonMatchValue());
         lenient().when(mockConfig.getPrefix()).thenReturn(defaultConfig.getPrefix());
         lenient().when(mockConfig.getDeleteKeyRegex()).thenReturn(defaultConfig.getDeleteKeyRegex());
         lenient().when(mockConfig.getDeleteValueRegex()).thenReturn(defaultConfig.getDeleteValueRegex());
+        lenient().when(mockConfig.getTransformKey()).thenReturn(defaultConfig.getTransformKey());
+        lenient().when(mockConfig.getWhitespace()).thenReturn(defaultConfig.getWhitespace());
+        lenient().when(mockConfig.getSkipDuplicateValues()).thenReturn(defaultConfig.getSkipDuplicateValues());
+        lenient().when(mockConfig.getRemoveBrackets()).thenReturn(defaultConfig.getRemoveBrackets());
 
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
@@ -230,6 +239,183 @@ public class KeyValueProcessorTests {
     }
 
     @Test
+    void testIncludeKeysKeyValueProcessor() {
+        final List<String> includeKeys = List.of("key2", "key3");
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&key2=value2&key3=value3");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+        assertThatKeyEquals(parsed_message, "key3", "value3");
+    }
+
+    @Test
+    void testIncludeKeysNoMatchKeyValueProcessor() {
+        final List<String> includeKeys = Collections.singletonList("noMatch");
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(0));
+    }
+
+    @Test
+    void testIncludeKeysAsDefaultKeyValueProcessor() {
+        when(mockConfig.getIncludeKeys()).thenReturn(List.of());
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testExcludeKeysKeyValueProcessor() {
+        final List<String> excludeKeys = List.of("key2");
+        when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
+    void testExcludeKeysAsDefaultKeyValueProcessor() {
+        when(mockConfig.getExcludeKeys()).thenReturn(List.of());
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testIncludeExcludeKeysOverlapKeyValueProcessor() {
+        final List<String> includeKeys = List.of("key1", "key3");
+        final List<String> excludeKeys = List.of("key3");
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
+
+        assertThrows(IllegalArgumentException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+    }
+
+    @Test
+    void testDefaultKeysNoOverlapsBetweenEventKvProcessor() {
+        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
+        when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "dKey", "dValue");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testDefaultKeysAlreadyInMessageKvProcessor(boolean skipDuplicateValues) {
+        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
+        when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&dKey=abc");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "dKey", "abc");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testDefaultIncludeKeysOverlapKvProcessor(boolean skipDuplicateValues) {
+        final Map<String, Object> defaultMap = Map.of("key1", "abc");
+        final List<String> includeKeys = List.of("key1");
+        when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testDefaultPrioritizeIncludeKeysKvProcessor(boolean skipDuplicateValues) {
+        final Map<String, Object> defaultMap = Map.of("key2", "value2");
+        final List<String> includeKeys = List.of("key1");
+        when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key1=value1&key2=abc");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void testIncludeKeysNotInRecordMessageKvProcessor(boolean skipDuplicateValues) {
+        final Map<String, Object> defaultMap = Map.of("key2", "value2");
+        final List<String> includeKeys = List.of("key1");
+        when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
+        when(mockConfig.getIncludeKeys()).thenReturn(includeKeys);
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(skipDuplicateValues);
+        keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
+
+        final Record<Event> record = getMessage("key2=abc");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testDefaultExcludeKeysOverlapKeyValueProcessor() {
+        final Map<String, Object> defaultMap = Map.of("dKey", "dValue");
+        final List<String> excludeKeys = List.of("dKey");
+        when(mockConfig.getDefaultValues()).thenReturn(defaultMap);
+        when(mockConfig.getExcludeKeys()).thenReturn(excludeKeys);
+
+        assertThrows(IllegalArgumentException.class, () -> new KeyValueProcessor(pluginMetrics, mockConfig));
+    }
+
+    @Test
     void testCustomPrefixKvProcessor() {
         when(mockConfig.getPrefix()).thenReturn("TEST_");
 
@@ -326,6 +512,125 @@ public class KeyValueProcessorTests {
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
         assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testLowercaseTransformKvProcessor() {
+        when(mockConfig.getTransformKey()).thenReturn("lowercase");
+
+        final Record<Event> record = getMessage("Key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
+    void testUppercaseTransformKvProcessor() {
+        when(mockConfig.getTransformKey()).thenReturn("uppercase");
+
+        final Record<Event> record = getMessage("key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "Key1", "value1");
+    }
+
+    @Test
+    void testCapitalizeTransformKvProcessor() {
+        when(mockConfig.getTransformKey()).thenReturn("capitalize");
+
+        final Record<Event> record = getMessage("key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsedMessage = getLinkedHashMap(editedRecords);
+
+        assertThat(parsedMessage.size(), equalTo(1));
+        assertThatKeyEquals(parsedMessage, "KEY1", "value1");
+    }
+
+    @Test
+    void testStrictWhitespaceKvProcessor() {
+        when(mockConfig.getWhitespace()).thenReturn("strict");
+
+        final Record<Event> record = getMessage("key1  =  value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
+    void testFalseSkipDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(false);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final ArrayList<Object> expectedValue = new ArrayList();
+        expectedValue.add("value1");
+        expectedValue.add("value1");
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", expectedValue);
+    }
+
+    @Test
+    void testTrueSkipDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+    }
+
+    @Test
+    void testTrueThreeInputsDuplicateValuesKvProcessor() {
+        when(mockConfig.getSkipDuplicateValues()).thenReturn(true);
+
+        final Record<Event> record = getMessage("key1=value1&key1=value2&key1=value1");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        final ArrayList<Object> expectedValue = new ArrayList();
+        expectedValue.add("value1");
+        expectedValue.add("value2");
+
+        assertThat(parsed_message.size(), equalTo(1));
+        assertThatKeyEquals(parsed_message, "key1", expectedValue);
+    }
+
+    @Test
+    void testTrueRemoveBracketsKvProcessor() {
+        when(mockConfig.getRemoveBrackets()).thenReturn(true);
+
+        final Record<Event> record = getMessage("key1=(value1)&key2=[value2]&key3=<value3>");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(3));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+        assertThatKeyEquals(parsed_message, "key3", "value3");
+    }
+
+    @Test
+    void testTrueRemoveMultipleBracketsKvProcessor() {
+        when(mockConfig.getRemoveBrackets()).thenReturn(true);
+
+        final Record<Event> record = getMessage("key1=((value1)&key2=[value1][value2]");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value1value2");
     }
 
     @Test

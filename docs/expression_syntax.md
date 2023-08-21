@@ -184,6 +184,10 @@ Currently, the following functions are supported
    - takes one String literal as argument. This is the key to lookup in the event's metadata. If the key contains "/", then recursive lookup into the metadata attributes is done.
    - returns the value corresponding to the argument (key) passed. Value can be of any type.
    For example, if metadata contains {"key1": "value2", "key2": 10}, then `getMetadata("key1")` returns "value2", and `getMetadata("key2")` return 10.
+ * `contains()`
+   - takes two String arguments. Both should be either string literals or Json Pointers with String values.
+   - returns true if the second argument is a substring of the first argument. Otherwise, return false.
+   For example, `contains("abcde", "abcd")` returns true, and `contains("abcde", "xyz")` returns false.
 * `cidrContains()`
    - The function takes two or more arguments. The first argument is of Json Pointer type representing the key to the IP address to check; the argument(s) that follows is of String type representing CIDR block(s) to check against.
    - If the IP address is in the range of any given CIDR blocks, the function evaluates to true; otherwise, the function evaluates to false.

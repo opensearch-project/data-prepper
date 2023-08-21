@@ -29,6 +29,7 @@ class AwsAuthenticationAdapter {
                 .withStsRoleArn(awsAuthenticationOptions.getAwsStsRoleArn())
                 .withRegion(awsAuthenticationOptions.getAwsRegion())
                 .withStsHeaderOverrides(awsAuthenticationOptions.getAwsStsHeaderOverrides())
+                .withStsExternalId(awsAuthenticationOptions.getAwsStsExternalId())
                 .build();
 
         return awsCredentialsSupplier.getProvider(options);

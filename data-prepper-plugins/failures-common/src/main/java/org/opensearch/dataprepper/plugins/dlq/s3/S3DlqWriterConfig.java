@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.dlq.s3;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -33,9 +33,11 @@ public class S3DlqWriterConfig {
     private static final String DEFAULT_AWS_REGION = "us-east-1";
     private static final String AWS_IAM_ROLE = "role";
     private static final String AWS_IAM = "iam";
+    private static final String S3_PREFIX = "s3://";
+
     @JsonProperty("bucket")
-    @NotNull
-    @Size(min = 3, max = 63, message = "bucket lengthy should be between 3 and 63 characters")
+    @NotEmpty
+    @Size(min = 3, max = 500, message = "bucket length should be at least 3 characters")
     private String bucket;
 
     @JsonProperty("key_path_prefix")
@@ -50,7 +52,14 @@ public class S3DlqWriterConfig {
     @Size(min = 20, max = 2048, message = "sts_role_arn length should be between 1 and 2048 characters")
     private String stsRoleArn;
 
+    @JsonProperty("sts_external_id")
+    @Size(min = 2, max = 1224, message = "sts_external_id length should be between 2 and 1224 characters")
+    private String stsExternalId;
+
     public String getBucket() {
+        if (bucket.startsWith(S3_PREFIX)) {
+            return bucket.substring(S3_PREFIX.length());
+        }
         return bucket;
     }
 
@@ -77,6 +86,10 @@ public class S3DlqWriterConfig {
         AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
             .roleSessionName("s3-dlq-" + UUID.randomUUID())
             .roleArn(stsRoleArn);
+
+        if (stsExternalId != null && !stsExternalId.isEmpty()) {
+            assumeRoleRequestBuilder = assumeRoleRequestBuilder.externalId(stsExternalId);
+        }
 
         return StsAssumeRoleCredentialsProvider.builder()
             .stsClient(stsClient)

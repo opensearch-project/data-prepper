@@ -9,8 +9,10 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.String.format;
@@ -36,6 +39,7 @@ public class FileSink implements Sink<Record<Object>> {
     private final ReentrantLock lock;
     private boolean isStopRequested;
     private boolean initialized;
+    private final String tagsTargetKey;
 
     /**
      * Mandatory constructor for Data Prepper Component - This constructor is used by Data Prepper
@@ -44,13 +48,15 @@ public class FileSink implements Sink<Record<Object>> {
      * pluginSetting file.
      *
      * @param fileSinkConfig The file sink configuration
+     * @param sinkContext sink context
      */
     @DataPrepperPluginConstructor
-    public FileSink(final FileSinkConfig fileSinkConfig) {
+    public FileSink(final FileSinkConfig fileSinkConfig, final SinkContext sinkContext) {
         this.outputFilePath = fileSinkConfig.getPath();
         isStopRequested = false;
         initialized = false;
         lock = new ReentrantLock(true);
+        tagsTargetKey = Objects.nonNull(sinkContext) ? sinkContext.getTagsTargetKey() : null;
     }
 
     @Override
@@ -82,8 +88,13 @@ public class FileSink implements Sink<Record<Object>> {
     // TODO: This function should be removed with the completion of: https://github.com/opensearch-project/data-prepper/issues/546
     private void checkTypeAndWriteObject(final Object object, final BufferedWriter writer) throws IOException {
         if (object instanceof Event) {
-            writer.write(((Event) object).toJsonString());
+            String output = ((Event)object).jsonBuilder().includeTags(tagsTargetKey).toJsonString();
+            writer.write(output);
             writer.newLine();
+            EventHandle eventHandle = ((Event)object).getEventHandle();
+            if (eventHandle != null) {
+                eventHandle.release(true);
+            }
         } else {
             writer.write(object.toString());
             writer.newLine();

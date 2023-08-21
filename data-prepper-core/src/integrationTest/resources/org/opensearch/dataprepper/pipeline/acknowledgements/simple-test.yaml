@@ -7,3 +7,4 @@ simple-pipeline:
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true

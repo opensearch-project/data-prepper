@@ -5,10 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
-import com.linecorp.armeria.common.HttpHeaderNames;
-import org.opensearch.dataprepper.compression.CompressionOption;
-import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
-import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -17,11 +13,13 @@ import com.linecorp.armeria.client.Clients;
 import com.linecorp.armeria.client.WebClient;
 import com.linecorp.armeria.common.AggregatedHttpResponse;
 import com.linecorp.armeria.common.HttpData;
+import com.linecorp.armeria.common.HttpHeaderNames;
 import com.linecorp.armeria.common.HttpMethod;
 import com.linecorp.armeria.common.HttpStatus;
 import com.linecorp.armeria.common.MediaType;
 import com.linecorp.armeria.common.RequestHeaders;
 import com.linecorp.armeria.common.SessionProtocol;
+import com.linecorp.armeria.common.grpc.GrpcStatusFunction;
 import com.linecorp.armeria.server.Server;
 import com.linecorp.armeria.server.ServerBuilder;
 import com.linecorp.armeria.server.grpc.GrpcService;
@@ -68,6 +66,9 @@ import org.opensearch.dataprepper.plugins.GrpcBasicAuthenticationProvider;
 import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
 import org.opensearch.dataprepper.plugins.certificate.CertificateProvider;
 import org.opensearch.dataprepper.plugins.certificate.model.Certificate;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.health.HealthGrpcService;
+import org.opensearch.dataprepper.plugins.source.otellogs.certificate.CertificateProviderFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -88,25 +89,22 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.GZIPOutputStream;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
-import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doThrow;
@@ -116,6 +114,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_PORT;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.DEFAULT_REQUEST_TIMEOUT_MS;
+import static org.opensearch.dataprepper.plugins.source.otellogs.OTelLogsSourceConfig.SSL;
 
 @ExtendWith(MockitoExtension.class)
 class OTelLogsSourceTest {
@@ -474,6 +475,7 @@ class OTelLogsSourceTest {
             grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.exceptionMapping(any(GrpcStatusFunction.class))).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
             final Path certFilePath = Path.of("data/certificate/test_cert.crt");
@@ -515,6 +517,7 @@ class OTelLogsSourceTest {
             grpcServerMock.when(GrpcService::builder).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.addService(any(ServerServiceDefinition.class))).thenReturn(grpcServiceBuilder);
             when(grpcServiceBuilder.useClientTimeoutHeader(anyBoolean())).thenReturn(grpcServiceBuilder);
+            when(grpcServiceBuilder.exceptionMapping(any(GrpcStatusFunction.class))).thenReturn(grpcServiceBuilder);
 
             when(server.stop()).thenReturn(completableFuture);
             final Path certFilePath = Path.of("data/certificate/test_cert.crt");
@@ -797,8 +800,9 @@ class OTelLogsSourceTest {
                 .stream()
                 .map(Map.Entry::getKey)
                 .map(AsciiString::toString)
+                .map(String::toLowerCase)
                 .collect(Collectors.toList());
-        assertThat("Response Header Keys", headerKeys, not(contains("server")));
+        assertThat("Response Header Keys", headerKeys, not(hasItem("server")));
     }
 
     private byte[] createGZipCompressedPayload(final String payload) throws IOException {

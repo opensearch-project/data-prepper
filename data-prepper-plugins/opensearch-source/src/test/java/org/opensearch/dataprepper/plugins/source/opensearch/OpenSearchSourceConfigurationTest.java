@@ -9,10 +9,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.fasterxml.jackson.dataformat.yaml.YAMLGenerator;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class OpenSearchSourceConfigurationTest {
 
@@ -21,7 +23,7 @@ public class OpenSearchSourceConfigurationTest {
     @Test
     void open_search_source_username_password_only() throws JsonProcessingException {
 
-        final String sourceConfigurationYaml = "max_retries: 5\n" +
+        final String sourceConfigurationYaml =
                 "hosts: [\"http://localhost:9200\"]\n" +
                 "username: test\n" +
                 "password: test\n" +
@@ -44,18 +46,49 @@ public class OpenSearchSourceConfigurationTest {
         assertThat(sourceConfiguration.getIndexParametersConfiguration(), notNullValue());
         assertThat(sourceConfiguration.getSchedulingParameterConfiguration(), notNullValue());
         assertThat(sourceConfiguration.getHosts(), notNullValue());
-        assertThat(sourceConfiguration.getMaxRetries(), equalTo(5));
 
-        assertThat(sourceConfiguration.validateAwsConfigWithUsernameAndPassword(), equalTo(true));
+        sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
         assertThat(sourceConfiguration.getPassword(), equalTo("test"));
         assertThat(sourceConfiguration.getUsername(), equalTo("test"));
         assertThat(sourceConfiguration.getAwsAuthenticationOptions(), equalTo(null));
     }
 
     @Test
-    void opensearch_source_aws_only() throws JsonProcessingException {
-        final String sourceConfigurationYaml = "max_retries: 5\n" +
+    void open_search_disabled_authentication() throws JsonProcessingException {
+
+        final String sourceConfigurationYaml =
                 "hosts: [\"http://localhost:9200\"]\n" +
+                        "disable_authentication: true\n" +
+                        "connection:\n" +
+                        "  insecure: true\n" +
+                        "  cert: \"cert\"\n" +
+                        "indices:\n" +
+                        "  include:\n" +
+                        "    - index_name_regex: \"regex\"\n" +
+                        "    - index_name_regex: \"regex-two\"\n" +
+                        "scheduling:\n" +
+                        "  job_count: 3\n" +
+                        "search_options:\n" +
+                        "  batch_size: 1000\n" +
+                        "  query: \"test\"\n";
+        final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
+
+        assertThat(sourceConfiguration.getSearchConfiguration(), notNullValue());
+        assertThat(sourceConfiguration.getConnectionConfiguration(), notNullValue());
+        assertThat(sourceConfiguration.getIndexParametersConfiguration(), notNullValue());
+        assertThat(sourceConfiguration.getSchedulingParameterConfiguration(), notNullValue());
+        assertThat(sourceConfiguration.getHosts(), notNullValue());
+
+        sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
+        assertThat(sourceConfiguration.isAuthenticationDisabled(), equalTo(true));
+        assertThat(sourceConfiguration.getPassword(), equalTo(null));
+        assertThat(sourceConfiguration.getUsername(), equalTo(null));
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions(), equalTo(null));
+    }
+
+    @Test
+    void opensearch_source_aws_only() throws JsonProcessingException {
+        final String sourceConfigurationYaml = "hosts: [\"http://localhost:9200\"]\n" +
                 "connection:\n" +
                 "  insecure: true\n" +
                 "  cert: \"cert\"\n" +
@@ -74,10 +107,46 @@ public class OpenSearchSourceConfigurationTest {
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
-        assertThat(sourceConfiguration.validateAwsConfigWithUsernameAndPassword(), equalTo(true));
+        sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
         assertThat(sourceConfiguration.getPassword(), equalTo(null));
         assertThat(sourceConfiguration.getUsername(), equalTo(null));
         assertThat(sourceConfiguration.getAwsAuthenticationOptions(), notNullValue());
+
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn(),
+            equalTo("arn:aws:iam::123456789012:role/aos-role"));
+    }
+
+    @Test
+    void opensearch_source_aws_sts_external_id() throws JsonProcessingException {
+        final String sourceConfigurationYaml = "hosts: [\"http://localhost:9200\"]\n" +
+            "connection:\n" +
+            "  insecure: true\n" +
+            "  cert: \"cert\"\n" +
+            "indices:\n" +
+            "  include:\n" +
+            "    - index_name_regex: \"regex\"\n" +
+            "    - index_name_regex: \"regex-two\"\n" +
+            "aws:\n" +
+            "  region: \"us-east-1\"\n" +
+            "  sts_role_arn: \"arn:aws:iam::123456789012:role/aos-role\"\n" +
+            "  sts_external_id: \"some-random-id\"\n" +
+            "scheduling:\n" +
+            "  job_count: 3\n" +
+            "search_options:\n" +
+            "  batch_size: 1000\n" +
+            "  query: \"test\"\n";
+
+        final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
+
+        sourceConfiguration.validateAwsConfigWithUsernameAndPassword();
+        assertThat(sourceConfiguration.getPassword(), equalTo(null));
+        assertThat(sourceConfiguration.getUsername(), equalTo(null));
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions(), notNullValue());
+
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn(),
+            equalTo("arn:aws:iam::123456789012:role/aos-role"));
+        assertThat(sourceConfiguration.getAwsAuthenticationOptions().getAwsStsExternalId(),
+            equalTo("some-random-id"));
     }
 
     @Test
@@ -104,14 +173,12 @@ public class OpenSearchSourceConfigurationTest {
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
-        assertThat(sourceConfiguration.validateAwsConfigWithUsernameAndPassword(), equalTo(false));
-        assertThat(sourceConfiguration.getMaxRetries(), equalTo(0));
+        assertThrows(InvalidPluginConfigurationException.class, sourceConfiguration::validateAwsConfigWithUsernameAndPassword);
     }
 
     @Test
-    void one_of_username_password_or_aws_config_is_required() throws JsonProcessingException {
+    void one_of_username_password_or_aws_config_or_authDisabled_is_required() throws JsonProcessingException {
         final String sourceConfigurationYaml =
-                "max_retries: 5\n" +
                         "hosts: [\"http://localhost:9200\"]\n" +
                         "connection:\n" +
                         "  insecure: true\n" +
@@ -128,6 +195,6 @@ public class OpenSearchSourceConfigurationTest {
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
-        assertThat(sourceConfiguration.validateAwsConfigWithUsernameAndPassword(), equalTo(false));
+        assertThrows(InvalidPluginConfigurationException.class, sourceConfiguration::validateAwsConfigWithUsernameAndPassword);
     }
 }

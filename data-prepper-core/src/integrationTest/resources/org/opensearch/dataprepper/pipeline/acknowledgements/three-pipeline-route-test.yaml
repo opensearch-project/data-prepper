@@ -24,6 +24,7 @@ pipeline2:
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true
 
 pipeline3:
   source:
@@ -32,3 +33,4 @@ pipeline3:
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true

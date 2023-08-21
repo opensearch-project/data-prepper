@@ -53,6 +53,8 @@ source-pipeline:
     s3:
       notification_type: sqs
       compression: none
+      codec:
+        newline:
       s3_select:
         expression: "select * from s3object s LIMIT 10000"
         expression_type: SQL
@@ -70,14 +72,13 @@ source-pipeline:
         region: "us-east-1"
         sts_role_arn: "arn:aws:iam::123456789012:role/Data-Prepper"
       scan:
-        start_time: 2023-01-21T18:00:00
-        range: P90DT3H4M
-        end_time: 2023-04-21T18:00:00
+        start_time: now
+        end_time: 2023-12-31T11:59:59
         buckets:
           - bucket:
               name: my-bucket-1
-              key_prefix:
-                include:
+              filter:
+                include_prefix:
                   - bucket2/
                 exclude_suffix:
                   - .jpeg
@@ -88,49 +89,19 @@ source-pipeline:
 
 All Duration values are a string that represents a duration. They support ISO_8601 notation string ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms").
 
-* `s3_select` : S3 Select Configuration.
-
-* `expression` (Required if s3_select enabled) : Provide s3 select query to process the data using S3 select for the particular bucket.
-
-* `expression_type` (Optional if s3_select enabled) : Provide s3 select query type to process the data using S3 select for the particular bucket.
-
-* `compression_type` (Optional if s3_select enabled) : The compression algorithm to apply. May be one of: `none`, `gzip`. Defaults to `none`.
-
-* `input_serialization` (Required if s3_select enabled) : Provide the s3 select file format (csv/json/Apache Parquet) Amazon S3 uses this format to parse object data into records and returns only records that match the specified SQL expression. You must also specify the data serialization format for the response.
-
-* `csv` (Optional) : Provide the csv configuration to process the csv data.
-
-* `file_header_info` (Required if csv block is enabled) : Provide CSV Header example : `use` , `none` , `ignore`. Default is `use`.
-
-* `quote_escape` (Optional) : Provide quote_escape attribute example : `,` , `.`.
-
-* `comments` (Optional) : Provide comments attribute example : `#`. Default is `#`.
-
-* `json` (Optional) : Provide the json configuration to process the json data.
-
-* `type` (Optional) : Provide the type attribute to process the json type data example: `Lines` , `Document` Default is `Document`.
-
-* `bucket_name` : Provide S3 bucket name.
-
-* `key_prefix` (Optional) : Provide include and exclude the list items.
-
-* `include` (Optional) : Provide the list of include key path prefix.
-
-* `exclude_suffix` (Optional) : Provide the list of suffix to exclude items. 
-
-* `start_time` (Optional) : Provide the start time to scan the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
-
-* `end_time` (Optional) : Provide the end time to scan the data. for example the files updated between start_time and end_time will be scanned. example : `2023-01-23T10:00:00`.
-
-* `range` (Optional) : Provide the duration to scan the data example : `day` , `week` , `month` , `year`.
+* `s3_select` : S3 Select Configuration. See [S3 Select Configuration](#s3_select_configuration) for details
 
 * `notification_type` (Optional) : Must be `sqs`.
+
+* `notification_source` (Optional): Provide how the notifications are generated. Must be either `s3` or `eventbridge`. Defaults to `s3`. `s3` represents notifications that are sent S3 to SQS directly or fanout pattern from S3 to SNS to SQS. `eventbridge` represents notifications which are sent from S3 to EventBridge to SQS. Only `Object Created` events are supported.
 
 * `compression` (Optional) : The compression algorithm to apply. May be one of: `none`, `gzip`, or `automatic`. Defaults to `none`.
 
 * `codec` (Required) : The codec to apply. Must be either `newline`, `csv` or `json`.
 
 * `sqs` (Optional) : The SQS configuration. See [SQS Configuration](#sqs_configuration) for details.
+
+* `scan` (Optional): S3 Scan Configuration. See [S3 Scan Configuration](#s3_scan_configuration) for details
 
 * `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details.
 
@@ -146,6 +117,30 @@ All Duration values are a string that represents a duration. They support ISO_86
 
 * `disable_bucket_ownership_validation` (Optional) : Boolean - If set to true, then the S3 Source will not attempt to validate that the bucket is owned by the expected account. The only expected account is the same account which owns the SQS queue. Defaults to `false`.
 
+* `delete_s3_objects_on_read` (Optional) : Boolean - If set to true, then the S3 Scan will attempt to delete S3 objects after all the events from the S3 object are successfully acknowledged by all sinks. `acknowledgments` should be enabled for deleting S3 objects. Defaults to `false`.
+
+### <a name="s3_select_configuration">S3 Select Configuration</a>
+
+* `expression` (Required if s3_select enabled) : Provide s3 select query to process the data using S3 select for the particular bucket.
+
+* `expression_type` (Optional if s3_select enabled) : Provide s3 select query type to process the data using S3 select for the particular bucket.
+
+* `compression_type` (Optional if s3_select enabled) : The compression algorithm to apply. May be one of: `none`, `gzip`. Defaults to `none`.
+
+* `input_serialization` (Required if s3_select enabled) : Provide the s3 select file format (csv/json/Apache Parquet) Amazon S3 uses this format to parse object data into records and returns only records that match the specified SQL expression. You must also specify the data serialization format for the response.
+
+* `csv` (Optional) : Provide the csv configuration to process the csv data.
+
+  * `file_header_info` (Required if csv block is enabled) : Provide CSV Header example : `use` , `none` , `ignore`. Default is `use`.
+
+  * `quote_escape` (Optional) : Provide quote_escape attribute example : `,` , `.`.
+
+  * `comments` (Optional) : Provide comments attribute example : `#`. Default is `#`.
+
+* `json` (Optional) : Provide the json configuration to process the json data.
+
+  * `type` (Optional) : Provide the type attribute to process the json type data example: `Lines` , `Document` Default is `Document`.
+
 ### <a name="sqs_configuration">SQS Configuration</a>
 
 * `queue_url` (Required) : The SQS queue URL of the queue to read from.
@@ -154,12 +149,41 @@ All Duration values are a string that represents a duration. They support ISO_86
 * `wait_time` (Optional) : Duration - The time to wait for long-polling on the SQS API. Defaults to 20 seconds.
 * `poll_delay` (Optional) : Duration - A delay to place between reading and processing a batch of SQS messages and making a subsequent request. Defaults to 0 seconds.
 
+### <a name="s3_scan_configuration">S3 Scan Configuration</a>
+* `start_time` (Optional) : Provide the start time to scan objects from all the buckets. This should follow [ISO LocalDateTime](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_LOCAL_DATE_TIME) format, or it can be configured to `now` keyword which represents current LocalDateTime. This parameter defines a time range together with either end_time or range. Examples: `2023-01-23T10:00:00`, `now`.
+* `end_time` (Optional) : Provide the end time to scan objects from all the buckets. This should follow [ISO LocalDateTime](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html#ISO_LOCAL_DATE_TIME) format, or it can be configured to `now` keyword which represents current LocalDateTime. This parameter defines a time range together with either start_time or range. Examples: `2023-01-23T10:00:00`, `now`.
+* `range` (Optional) : Provide the duration to scan objects from all the buckets. This parameter defines a time range together with either `start_time` or `end_time`.
+* `scheduling` (Optional): See [Scheduling Configuration](#scheduling_configuration) for details
+* `bucket`: Provide S3 bucket information
+  * `name` (Required if bucket block is used): Provide S3 bucket name.
+  * `filter` (Optional) : Provide include and exclude list items to filter objects in bucket.
+    * `include_prefix` (Optional) : Provide the list of include key path prefix. For example `dlq/`
+    * `exclude_suffix` (Optional) : Provide the list of suffix to exclude items. For example `.csv`.
+    * `start_time` (Optional) : Provide the start time to scan objects from the current bucket. This parameter defines a time range together with either end_time or range. Example: `2023-01-23T10:00:00`.
+    * `end_time` (Optional) : Provide the end time to scan objects from the current bucket. This parameter defines a time range together with either start_time or range. Example: `2023-01-23T10:00:00`.
+    * `range` (Optional) : Provide the duration to scan objects from the current bucket. This parameter defines a time range together with either start_time or end_time.
+
+> Note: If a time range is not specified, all objects will be included by default. To set a time range, specify any two and only two configurations from start_time, end_time and range. The time range configured on a specific bucket will override the time range specified on the top level
+
+### <a name="scheduling_configuration">Scheduling Configuration</a>
+
+Schedule interval and amount of times a S3 bucket should be scanned when using S3 Scan. For example,
+a `interval` of `PT1H` and a `count` of `3` would result in each bucket being scanned 3 times with 1 hour interval in between each scan, starting after source is ready
+and then every hour after the first scan. 
+* `interval` (Optional) : A String that indicates the minimum interval between each scan. If objects from fist scan are not proceed within configured interval, scan will be done whenever there are no pending objects to process from previous scan.
+  Supports ISO_8601 notation Strings ("PT20.345S", "PT15M", etc.) as well as simple notation Strings for seconds ("60s") and milliseconds ("1500ms").
+  Defaults to 8 hours, and is only applicable when `count` is greater than 1.
+* `count` (Optional) : An Integer that specifies how many times bucket will be scanned. Defaults to 1.
+
+
 ### <a name="aws_configuration">AWS Configuration</a>
 
 The AWS configuration is the same for both SQS and S3.
 
 * `region` (Optional) : The AWS region to use for credentials. Defaults to [standard SDK behavior to determine the region](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/region-selection.html).
 * `sts_role_arn` (Optional) : The AWS STS role to assume for requests to SQS and S3. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html). 
+* `sts_external_id` (Optional) : The external ID to attach to AssumeRole requests.
+
 The following policy shows the necessary permissions for S3 source. `kms:Decrypt` is required if SQS queue is encrypted with AWS [KMS](https://aws.amazon.com/kms/).
 ```json
 {
@@ -169,10 +193,12 @@ The following policy shows the necessary permissions for S3 source. `kms:Decrypt
             "Sid": "s3policy",
             "Effect": "Allow",
             "Action": [
-                "s3:GetObject",
-                "sqs:DeleteMessage",
-                "sqs:ReceiveMessage",
-                "kms:Decrypt"
+              "s3:GetObject",
+              "s3:ListBucket",
+              "s3:DeleteObject",
+              "sqs:DeleteMessage",
+              "sqs:ReceiveMessage",
+              "kms:Decrypt"
             ],
             "Resource": "*"
         }
@@ -188,11 +214,15 @@ The following policy shows the necessary permissions for S3 source. `kms:Decrypt
 * `s3ObjectsFailed` - The number of S3 objects that the S3 Source failed to read.
 * `s3ObjectsNotFound` - The number of S3 objects that the S3 Source failed to read due to a Not Found error from S3. These are also counted toward `s3ObjectsFailed`.
 * `s3ObjectsAccessDenied` - The number of S3 objects that the S3 Source failed to read due to an Access Denied or Forbidden error. These are also counted toward `s3ObjectsFailed`. 
+* `s3ObjectNoRecordsFound` - The number of S3 objects that resulted in 0 records added to the buffer.
 * `s3ObjectsSucceeded` - The number of S3 objects that the S3 Source successfully read.
 * `sqsMessagesReceived` - The number of SQS messages received from the queue by the S3 Source.
 * `sqsMessagesDeleted` - The number of SQS messages deleted from the queue by the S3 Source.
 * `sqsMessagesFailed` - The number of SQS messages that the S3 Source failed to parse.
 * `sqsMessagesDeleteFailed` - The number of SQS messages that the S3 Source failed to delete from the SQS queue.
+* `s3ObjectsDeleted` - The number of S3 objects deleted by the S3 source.
+* `s3ObjectsDeleteFailed` - The number of S3 objects that the S3 source failed to delete.
+* `acknowledgementSetCallbackCounter` - The number of times End-to-end acknowledgments created an acknowledgment set.
 
 
 ### Timers

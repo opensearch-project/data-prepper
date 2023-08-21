@@ -29,12 +29,17 @@ public class S3ClientProvider {
 
     private final String awsRegion;
     private final String awsStsRoleArn;
+    private final String awsStsExternalId;
     private final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
 
-    public S3ClientProvider(final String awsRegion,
-                          final String awsStsRoleArn) {
+    public S3ClientProvider(
+        final String awsRegion,
+        final String awsStsRoleArn,
+        final String awsStsExternalId
+    ) {
         this.awsRegion = awsRegion;
         this.awsStsRoleArn = awsStsRoleArn;
+        this.awsStsExternalId = awsStsExternalId;
     }
 
     public S3Client buildS3Client() {
@@ -61,10 +66,15 @@ public class S3ClientProvider {
     }
 
     private AssumeRoleRequest getAssumeRoleRequest(final String awsStsRoleArn) {
-        return AssumeRoleRequest.builder()
+        AssumeRoleRequest.Builder builder = AssumeRoleRequest.builder()
                 .roleSessionName("OpenSearch-Sink-S3" + UUID.randomUUID())
-                .roleArn(awsStsRoleArn)
-                .build();
+                .roleArn(awsStsRoleArn);
+
+        if (awsStsExternalId != null && !awsStsExternalId.isEmpty()) {
+            builder = builder.externalId(awsStsExternalId);
+        }
+
+        return builder.build();
     }
 
     private StsClient getStsClient(final String awsRegion) {

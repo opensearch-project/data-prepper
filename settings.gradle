@@ -26,23 +26,24 @@ dependencyResolutionManagement {
             library('protobuf-util', 'com.google.protobuf', 'protobuf-java-util').versionRef('protobuf')
             version('opentelemetry', '0.16.0-alpha')
             library('opentelemetry-proto', 'io.opentelemetry.proto', 'opentelemetry-proto').versionRef('opentelemetry')
-            version('opensearchJava', '2.2.0')
+            version('opensearchJava', '2.5.0')
             library('opensearch-java', 'org.opensearch.client', 'opensearch-java').versionRef('opensearchJava')
             version('opensearch', '1.3.8')
             library('opensearch-client', 'org.opensearch.client', 'opensearch-rest-client').versionRef('opensearch')
             library('opensearch-rhlc', 'org.opensearch.client', 'opensearch-rest-high-level-client').versionRef('opensearch')
-            version('spring', '5.3.27')
+            version('spring', '5.3.28')
             library('spring-core', 'org.springframework', 'spring-core').versionRef('spring')
             library('spring-context', 'org.springframework', 'spring-context').versionRef('spring')
-            version('guava', '31.1-jre')
+            version('guava', '32.0.1-jre')
             library('guava-core', 'com.google.guava', 'guava').versionRef('guava')
+            library('commons-lang3', 'org.apache.commons', 'commons-lang3').version('3.13.0')
         }
         testLibs {
             version('junit', '5.8.2')
             version('mockito', '3.11.2')
             version('hamcrest', '2.2')
             version('awaitility', '4.2.0')
-            version('spring', '5.3.26')
+            version('spring', '5.3.28')
             version('slf4j', '2.0.6')
             library('junit-core', 'org.junit.jupiter', 'junit-jupiter').versionRef('junit')
             library('junit-params', 'org.junit.jupiter', 'junit-jupiter-params').versionRef('junit')
@@ -84,6 +85,7 @@ include 'data-prepper-plugins:drop-events-processor'
 include 'data-prepper-plugins:key-value-processor'
 include 'data-prepper-plugins:type-conversion-processor'
 include 'data-prepper-plugins:mutate-event-processors'
+include 'data-prepper-plugins:geoip-processor'
 include 'data-prepper-plugins:grok-processor'
 include 'data-prepper-plugins:aggregate-processor'
 include 'data-prepper-plugins:log-generator-source'
@@ -102,6 +104,7 @@ include 'data-prepper-plugins:rss-source'
 include 'data-prepper-plugins:csv-processor'
 include 'data-prepper-plugins:parse-json-processor'
 include 'data-prepper-plugins:trace-peer-forwarder-processor'
+include 'data-prepper-plugins:translate-processor'
 include 'data-prepper-plugins:dynamodb-source-coordination-store'
 include 'release'
 include 'release:archives'
@@ -109,7 +112,6 @@ include 'release:archives:linux'
 include 'release:docker'
 include 'release:maven'
 include 'e2e-test:peerforwarder'
-include 'rss-source'
 include 'data-prepper-plugins:failures-common'
 include 'data-prepper-plugins:newline-codecs'
 include 'data-prepper-plugins:avro-codecs'
@@ -120,3 +122,11 @@ include 'data-prepper-plugins:in-memory-source-coordination-store'
 include 'data-prepper-plugins:aws-plugin-api'
 include 'data-prepper-plugins:aws-plugin'
 include 'data-prepper-plugins:obfuscate-processor'
+include 'data-prepper-plugins:parquet-codecs'
+include 'data-prepper-plugins:aws-sqs-common'
+include 'data-prepper-plugins:buffer-common'
+include 'data-prepper-plugins:sqs-source'
+include 'data-prepper-plugins:cloudwatch-logs'
+include 'data-prepper-plugins:http-sink'
+include 'data-prepper-plugins:sns-sink'
+include 'data-prepper-plugins:prometheus-sink'

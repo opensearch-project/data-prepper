@@ -25,6 +25,6 @@ public class StringConverter implements TypeConverter<String> {
         if (source instanceof String) {
             return (String)source;
         }
-        throw new IllegalArgumentException("Unsupported type conversion");
+        throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }
 }

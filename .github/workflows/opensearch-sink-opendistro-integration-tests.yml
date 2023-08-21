@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         java: [11]
-        opendistro: [1.3.0, 1.6.0, 1.8.0, 1.9.0, 1.11.0, 1.12.0, 1.13.3]
+        opendistro: [0.10.0, 1.3.0, 1.6.0, 1.8.0, 1.9.0, 1.11.0, 1.12.0, 1.13.3]
       fail-fast: false
 
     runs-on: ubuntu-latest
@@ -30,7 +30,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-      - name: Checkout Data-Prepper
+      - name: Checkout Data Prepper
         uses: actions/checkout@v2
       - name: Run Open Distro docker
         run: |
@@ -40,7 +40,7 @@ jobs:
       - name: Run Open Distro tests
         run: |
           ./gradlew :data-prepper-plugins:opensearch:integrationTest --tests "org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIT" -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin
-          ./gradlew :data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin -Dtests.opensearch.bundle=true
+          ./gradlew :data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin -Dtests.opensearch.bundle=true -Dtests.opensearch.version=opendistro:${{ matrix.opendistro }}
       - name: Upload Unit Test Results
         if: always()
         uses: actions/upload-artifact@v3

@@ -10,17 +10,20 @@ dependencies {
     api project(':data-prepper-api')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
-    implementation "commons-io:commons-io:2.11.0"
+    implementation "commons-io:commons-io:2.12.0"
     implementation 'software.amazon.awssdk:s3'
     implementation 'software.amazon.awssdk:acm'
-    implementation "org.apache.commons:commons-lang3:3.12.0"
+    implementation 'org.apache.commons:commons-compress:1.23.0'
+    implementation libs.commons.lang3
     implementation "org.bouncycastle:bcprov-jdk15on:1.70"
     implementation "org.bouncycastle:bcpkix-jdk15on:1.70"
     implementation 'org.reflections:reflections:0.10.2'
     implementation 'io.micrometer:micrometer-core'
     testImplementation testLibs.junit.vintage
+    implementation 'org.apache.parquet:parquet-common:1.12.3'
+    implementation 'org.xerial.snappy:snappy-java:1.1.10.3'
     testImplementation project(':data-prepper-plugins:blocking-buffer')
-    testImplementation 'commons-io:commons-io:2.11.0'
+    testImplementation 'commons-io:commons-io:2.12.0'
     testImplementation testLibs.mockito.inline
 }
 

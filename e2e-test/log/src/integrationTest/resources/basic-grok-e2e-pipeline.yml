@@ -12,3 +12,4 @@ grok-pipeline:
         username: "admin"
         password: "admin"
         index: "test-grok-index"
+        flush_timeout: 5000

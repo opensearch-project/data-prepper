@@ -49,6 +49,7 @@ The DLQ file will JSON file with an array of failed [DLQ Objects](#DLQ-Objects).
 * `key_path_prefix` (Optional) : The key_prefix to use in the S3 bucket.  Defaults to “” . This field supports time value patterns variables like: `/%{yyyy}/%{MM}/%{dd}`. The pattern supports all the symbols that represent one hour or above and are listed in [Java DateTimeFormatter](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html). For example, with a pattern like `/%{yyyy}/%{MM}/%{dd}`, the following key prefix will be used: `/2023/01/24`.
 * `region` (Optional) : The AWS region of the S3 Bucket. Defaults to us-east-1.
 * `sts_role_arn` (Optional) : The STS role to assume to write to the AWS S3 bucket. Defaults to null, which will use the standard SDK behavior for credentials. The role or credentials used must have S3:PutObject permissions on the configured S3 Bucket.
+* `sts_external_id` (Optional): The STS external ID to attach to AssumeRole requests.
 
 ### Metrics
 

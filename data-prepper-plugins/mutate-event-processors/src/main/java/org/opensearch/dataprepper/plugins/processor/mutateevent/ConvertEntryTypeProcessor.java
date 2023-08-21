@@ -14,15 +14,25 @@ import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.typeconverter.TypeConverter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
+
+import static org.opensearch.dataprepper.logging.DataPrepperMarkers.EVENT;
 
 @DataPrepperPlugin(name = "convert_entry_type", pluginType = Processor.class, pluginConfigurationType = ConvertEntryTypeProcessorConfig.class)
 public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>, Record<Event>> {
-    private final String key;
+    private static final Logger LOG = LoggerFactory.getLogger(ConvertEntryTypeProcessor.class);
+    private final List<String> convertEntryKeys;
     private final TypeConverter converter;
     private final String convertWhen;
+    private final List<String> nullValues;
+    private final String type;
+    private final List<String> tagsOnFailure;
 
     private final ExpressionEvaluator expressionEvaluator;
 
@@ -31,10 +41,14 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                                      final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig,
                                      final ExpressionEvaluator expressionEvaluator) {
         super(pluginMetrics);
-        this.key = convertEntryTypeProcessorConfig.getKey();
+        this.convertEntryKeys = getKeysToConvert(convertEntryTypeProcessorConfig);
+        this.type = convertEntryTypeProcessorConfig.getType().name();
         this.converter = convertEntryTypeProcessorConfig.getType().getTargetConverter();
         this.convertWhen = convertEntryTypeProcessorConfig.getConvertWhen();
+        this.nullValues = convertEntryTypeProcessorConfig.getNullValues()
+                .orElse(List.of());
         this.expressionEvaluator = expressionEvaluator;
+        this.tagsOnFailure = convertEntryTypeProcessorConfig.getTagsOnFailure();
     }
 
     @Override
@@ -46,10 +60,20 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                 continue;
             }
 
-            Object keyVal = recordEvent.get(key, Object.class);
-            if (keyVal != null) {
-                recordEvent.delete(key);
-                recordEvent.put(key, this.converter.convert(keyVal));
+            for(final String key : convertEntryKeys) {
+                Object keyVal = recordEvent.get(key, Object.class);
+                if (keyVal != null) {
+                    if (!nullValues.contains(keyVal.toString())) {
+                        try {
+                            recordEvent.put(key, converter.convert(keyVal));
+                        } catch (final RuntimeException e) {
+                            LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
+                            recordEvent.getMetadata().addTags(tagsOnFailure);
+                        }
+                    } else {
+                        recordEvent.delete(key);
+                    }
+                }
             }
         }
         return records;
@@ -66,6 +90,25 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
 
     @Override
     public void shutdown() {
+    }
+
+    private List<String> getKeysToConvert(final ConvertEntryTypeProcessorConfig convertEntryTypeProcessorConfig) {
+        final String key = convertEntryTypeProcessorConfig.getKey();
+        final List<String> keys = convertEntryTypeProcessorConfig.getKeys();
+        if (key == null && keys == null) {
+            throw new IllegalArgumentException("key and keys cannot both be null. One must be provided.");
+        }
+        if (key != null && keys != null) {
+            throw new IllegalArgumentException("key and keys cannot both be defined.");
+        }
+        if (key != null) {
+            if (key.isEmpty()) {
+                throw new IllegalArgumentException("key cannot be empty.");
+            } else {
+                return Collections.singletonList(key);
+            }
+        }
+        return keys;
     }
 }
 

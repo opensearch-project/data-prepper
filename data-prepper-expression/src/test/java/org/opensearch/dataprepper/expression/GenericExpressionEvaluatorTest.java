@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.UUID;
 import java.util.Random;
 
+import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -91,6 +92,31 @@ class GenericExpressionEvaluatorTest {
 
         verify(parser).parse(eq(statement));
         verify(evaluator).evaluate(eq(parseTree), eq(event));
+    }
+
+    @Test
+    void isValidExpressionStatement_returns_true_when_parse_does_not_throw() {
+        final String statement = UUID.randomUUID().toString();
+        final ParseTree parseTree = mock(ParseTree.class);
+
+        doReturn(parseTree).when(parser).parse(eq(statement));
+
+        final boolean result = statementEvaluator.isValidExpressionStatement(statement);
+
+        assertThat(result, equalTo(true));
+
+        verify(parser).parse(eq(statement));
+    }
+
+    @Test
+    void isValidExpressionStatement_returns_false_when_parse_throws() {
+        final String statement = UUID.randomUUID().toString();
+
+        doThrow(RuntimeException.class).when(parser).parse(eq(statement));
+
+        final boolean result = statementEvaluator.isValidExpressionStatement(statement);
+
+        assertThat(result, equalTo(false));
     }
 
 }

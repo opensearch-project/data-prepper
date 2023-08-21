@@ -11,6 +11,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -34,11 +36,12 @@ import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.test.matcher.MapEquals.isEqualWithoutTimestamp;
 
 public class JacksonEventTest {
-    
+
     class TestEventHandle implements EventHandle {
         @Override
-        public void release(boolean result) {}
-    };
+        public void release(boolean result) {
+        }
+    }
 
     private Event event;
 
@@ -181,7 +184,7 @@ public class JacksonEventTest {
         final String nestedValue = UUID.randomUUID().toString();
         final TestObject value = new TestObject(nestedValue);
 
-        event.put(key, Arrays.asList(value));
+        event.put(key, List.of(value));
 
         assertThrows(RuntimeException.class, () -> event.getList(key, UUID.class));
     }
@@ -322,9 +325,8 @@ public class JacksonEventTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "withSpecialChars*$%", "-withPrefixDash", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
-            "withDashSuffix-", "withDashSuffix-/nestedKey", "withDashPrefix/-nestedKey", "_withUnderscorePrefix", "withUnderscoreSuffix_",
-            ".withDotPrefix", "withDotSuffix.", "with,Comma", "with:Colon", "with[Bracket", "with|Brace"})
+    @ValueSource(strings = {"", "withSpecialChars*$%", "\\-withEscapeChars", "\\\\/withMultipleEscapeChars",
+            "with,Comma", "with:Colon", "with[Bracket", "with|Brace"})
     void testKey_withInvalidKey_throwsIllegalArgumentException(final String invalidKey) {
         assertThrowsForKeyCheck(IllegalArgumentException.class, invalidKey);
     }
@@ -528,6 +530,31 @@ public class JacksonEventTest {
         assertThat(event.formatString(formattedString), is(equalTo(finalString)));
     }
 
+    @Test
+    public void testBuild_withFormatStringWithExpressionEvaluator() {
+
+        final String jsonString = "{\"foo\": \"bar\", \"info\": {\"ids\": {\"id\":\"idx\"}}}";
+        final String expressionStatement = UUID.randomUUID().toString();
+        final String expressionEvaluationResult = UUID.randomUUID().toString();
+
+        final String formatString = "${foo}-${" + expressionStatement + "}-test-string";
+        final String finalString = "bar-" + expressionEvaluationResult + "-test-string";
+
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        final ExpressionEvaluator expressionEvaluator = mock(ExpressionEvaluator.class);
+
+        when(expressionEvaluator.isValidExpressionStatement("foo")).thenReturn(false);
+        when(expressionEvaluator.isValidExpressionStatement(expressionStatement)).thenReturn(true);
+        when(expressionEvaluator.evaluate(expressionStatement, event)).thenReturn(expressionEvaluationResult);
+
+        assertThat(event.formatString(formatString, expressionEvaluator), is(equalTo(finalString)));
+    }
+
     @ParameterizedTest
     @CsvSource({
             "test-${foo}-string, test-123-string",
@@ -554,7 +581,7 @@ public class JacksonEventTest {
                 .withData(jsonString)
                 .getThis()
                 .build();
-        assertThat(event.formatString("test-${boo}-string"), is(equalTo(null)));
+        assertThrows(EventKeyNotFoundException.class, () -> event.formatString("test-${boo}-string"));
     }
 
     @Test
@@ -650,8 +677,103 @@ public class JacksonEventTest {
         eventMetadata.addTags(List.of("tag1", "tag2"));
         final String expectedJsonString = "{\"foo\":\"bar\",\"tags\":[\"tag1\",\"tag2\"]}";
         assertThat(event.jsonBuilder().includeTags("tags").toJsonString(), equalTo(expectedJsonString));
+        assertThat(event.jsonBuilder().rootKey("foo").toJsonString(), equalTo("\"bar\""));
         assertThat(event.jsonBuilder().toJsonString(), equalTo(jsonString));
     }
+
+    @Test
+    void testJsonStringBuilderWithIncludeKeys() {
+        final String jsonString = "{\"id\":1,\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
+        List<String> includeKeys1 = Arrays.asList("/foo", "/info");
+        final String expectedJsonString1 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"}}";
+        assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeKeys1).toJsonString(), equalTo(expectedJsonString1));
+
+        // Test child node
+        List<String> includeKeys2 = Arrays.asList("/foo", "/info/name");
+        final String expectedJsonString2 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\"}}";
+        assertThat(event.jsonBuilder().includeKeys(includeKeys2).toJsonString(), equalTo(expectedJsonString2));
+
+        // Test array node.
+        List<String> includeKeys3 = Arrays.asList("/foo", "/tags/key");
+        final String expectedJsonString3 = "{\"foo\":\"bar\",\"tags\":[{\"key\":\"a\"},{\"key\":\"c\"}]}";
+        assertThat(event.jsonBuilder().includeKeys(includeKeys3).toJsonString(), equalTo(expectedJsonString3));
+
+        // Test some keys not found
+        List<String> includeKeys4 = Arrays.asList("/foo", "/info/age");
+        final String expectedJsonString4 = "{\"foo\":\"bar\",\"info\":{}}";
+        assertThat(event.jsonBuilder().includeKeys(includeKeys4).toJsonString(), equalTo(expectedJsonString4));
+
+        // Test all keys not found
+        List<String> includeKeys5 = List.of("/hello");
+        final String expectedJsonString5 = "{}";
+        assertThat(event.jsonBuilder().includeKeys(includeKeys5).toJsonString(), equalTo(expectedJsonString5));
+
+        // Test working with root node
+        List<String> includeKeys6 = List.of("/name");
+        final String expectedJsonString6 = "{\"name\":\"hello\"}";
+        assertThat(event.jsonBuilder().rootKey("info").includeKeys(includeKeys6).toJsonString(), equalTo(expectedJsonString6));
+
+        // Test working with unknown root node
+        List<String> includeKeys7 = List.of("/name");
+        final String expectedJsonString7 = "{}";
+        assertThat(event.jsonBuilder().rootKey("hello").includeKeys(includeKeys7).toJsonString(), equalTo(expectedJsonString7));
+
+
+    }
+    
+    @Test
+    void testJsonStringBuilderWithExcludeKeys() {
+        final String jsonString = "{\"id\":1,\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
+        event = JacksonEvent.builder()
+                .withEventType(eventType)
+                .withData(jsonString)
+                .getThis()
+                .build();
+
+        // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
+        List<String> excludeKeys1 = Arrays.asList("/foo", "/info");
+        final String expectedJsonString1 = "{\"id\":1,\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
+        assertThat(event.jsonBuilder().rootKey(null).excludeKeys(excludeKeys1).toJsonString(), equalTo(expectedJsonString1));
+
+        // Test child node
+        List<String> excludeKeys2 = Arrays.asList("/foo", "/info/name");
+        final String expectedJsonString2 = "{\"id\":1,\"info\":{\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
+        assertThat(event.jsonBuilder().excludeKeys(excludeKeys2).toJsonString(), equalTo(expectedJsonString2));
+
+        // Test array node.
+        List<String> excludeKeys3 = Arrays.asList("/foo", "/tags/key");
+        final String expectedJsonString3 = "{\"id\":1,\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"value\":\"b\"},{\"value\":\"d\"}]}";
+        assertThat(event.jsonBuilder().excludeKeys(excludeKeys3).toJsonString(), equalTo(expectedJsonString3));
+
+        // Test some keys not found
+        List<String> excludeKeys4 = Arrays.asList("/foo", "/info/age");
+        final String expectedJsonString4 = "{\"id\":1,\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
+        assertThat(event.jsonBuilder().excludeKeys(excludeKeys4).toJsonString(), equalTo(expectedJsonString4));
+
+        // Test all keys not found
+        List<String> excludeKeys5 = List.of("/hello");
+        final String expectedJsonString5 = "{\"id\":1,\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
+        assertThat(event.jsonBuilder().excludeKeys(excludeKeys5).toJsonString(), equalTo(expectedJsonString5));
+
+        // Test working with root node
+        List<String> excludeKeys6 = List.of("/name");
+        final String expectedJsonString6 = "{\"foo\":\"bar\"}";
+        assertThat(event.jsonBuilder().rootKey("info").excludeKeys(excludeKeys6).toJsonString(), equalTo(expectedJsonString6));
+
+        // Test working with unknown root node
+        List<String> includeKeys7 = List.of("/name");
+        final String expectedJsonString7 = "{}";
+        assertThat(event.jsonBuilder().rootKey("hello").includeKeys(includeKeys7).toJsonString(), equalTo(expectedJsonString7));
+
+    }
+
 
     private static Map<String, Object> createComplexDataMap() {
         final Map<String, Object> dataObject = new HashMap<>();

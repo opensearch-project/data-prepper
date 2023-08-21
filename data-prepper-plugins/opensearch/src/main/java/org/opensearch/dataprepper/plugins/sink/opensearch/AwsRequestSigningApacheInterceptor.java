@@ -14,7 +14,6 @@ package org.opensearch.dataprepper.plugins.sink.opensearch;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntityEnclosingRequest;
-import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
@@ -120,7 +119,7 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
      */
     @Override
     public void process(final HttpRequest request, final HttpContext context)
-            throws HttpException, IOException {
+            throws IOException {
         URIBuilder uriBuilder;
         try {
             uriBuilder = new URIBuilder(request.getRequestLine().getUri());

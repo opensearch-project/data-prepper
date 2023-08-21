@@ -31,10 +31,12 @@ public class DynamoDbClientFactory {
     private static final long DYNAMO_CLIENT_BASE_BACKOFF_MILLIS = 1000L;
     private static final long DYNAMO_CLIENT_MAX_BACKOFF_MILLIS = 60000L;
 
-    public static DynamoDbClient provideDynamoDbClient(final String region, final String stsRoleArn) {
+    public static DynamoDbClient provideDynamoDbClient(
+        final String region, final String stsRoleArn, final String stsExternalId
+    ) {
         return DynamoDbClient.builder()
                 .region(Region.of(region))
-                .credentialsProvider(getAwsCredentials(Region.of(region), stsRoleArn))
+                .credentialsProvider(getAwsCredentials(Region.of(region), stsRoleArn, stsExternalId))
                 .overrideConfiguration(getClientOverrideConfiguration())
                 .build();
     }
@@ -57,8 +59,9 @@ public class DynamoDbClientFactory {
                 .build();
     }
 
-    private static AwsCredentialsProvider getAwsCredentials(final Region region, final String stsRoleArn) {
-
+    private static AwsCredentialsProvider getAwsCredentials(
+        final Region region, final String stsRoleArn, final String stsExternalId
+    ) {
         AwsCredentialsProvider awsCredentialsProvider;
         if (stsRoleArn != null && !stsRoleArn.isEmpty()) {
             try {
@@ -75,6 +78,10 @@ public class DynamoDbClientFactory {
             AssumeRoleRequest.Builder assumeRoleRequestBuilder = AssumeRoleRequest.builder()
                     .roleSessionName("Dynamo-Source-Coordination-" + UUID.randomUUID())
                     .roleArn(stsRoleArn);
+
+            if (stsExternalId != null && !stsExternalId.isEmpty()) {
+                assumeRoleRequestBuilder = assumeRoleRequestBuilder.externalId(stsExternalId);
+            }
 
             awsCredentialsProvider = StsAssumeRoleCredentialsProvider.builder()
                     .stsClient(stsClient)

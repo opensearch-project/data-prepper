@@ -193,7 +193,7 @@ class ParseTreeEvaluatorListenerTest {
     @Test
     void testSimpleRelationalOperatorExpressionWithJsonPointerTypeValidValue() {
         final String testKey = "testKey";
-        final int testValue = random.nextInt(1000);
+        final int testValue = random.nextInt(1000) + 2;
         final Map<String, Integer> data = Map.of(testKey, testValue);
         final Event testEvent = createTestEvent(data);
         final String greaterThanStatement = String.format(" /%s > %d", testKey, testValue - 1);
@@ -207,7 +207,7 @@ class ParseTreeEvaluatorListenerTest {
     }
 
     @Test
-    void testSimpleRelationalOperatorExpressionWithJsonPointerTypeInValidValue() {
+    void testSimpleRelationalOperatorExpressionWithJsonPointerTypeInValidValueWithPositiveInteger() {
         final String testKey = "testKey";
         final boolean testValue = true;
         final Map<String, Boolean> data = Map.of(testKey, testValue);

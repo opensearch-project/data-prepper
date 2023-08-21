@@ -1,8 +1,11 @@
 package org.opensearch.dataprepper.plugins.kafka.configuration;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileReader;
 import java.io.IOException;
@@ -10,12 +13,9 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.Map;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.yaml.snakeyaml.Yaml;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class SchemaConfigTest {
 
@@ -54,16 +54,6 @@ class SchemaConfigTest {
 	void test_schemaConfig_values() {
 		assertEquals(1, schemaConfig.getVersion());
 		assertEquals("http://localhost:8081/", schemaConfig.getRegistryURL());
-	}
-
-	@Test
-	void testSetters(){
-		schemaConfig = new SchemaConfig();
-		schemaConfig.setVersion(2);
-		schemaConfig.setRegistryURL("http://localhost:8080/");
-
-		assertEquals(2, schemaConfig.getVersion());
-		assertEquals("http://localhost:8080/", schemaConfig.getRegistryURL());
 	}
 
 }

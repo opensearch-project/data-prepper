@@ -62,13 +62,13 @@ public class DynamoDbClientWrapper {
     private DynamoDbTable<DynamoDbSourcePartitionItem> table;
 
 
-    private DynamoDbClientWrapper(final String region, final String stsRoleArn) {
-        this.dynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn);
+    private DynamoDbClientWrapper(final String region, final String stsRoleArn, final String stsExternalId) {
+        this.dynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, stsExternalId);
         this.dynamoDbEnhancedClient = DynamoDbEnhancedClient.builder().dynamoDbClient(dynamoDbClient).build();
     }
 
-    public static DynamoDbClientWrapper create(final String region, final String stsRoleArn) {
-        return new DynamoDbClientWrapper(region, stsRoleArn);
+    public static DynamoDbClientWrapper create(final String region, final String stsRoleArn, final String stsExternalId) {
+        return new DynamoDbClientWrapper(region, stsRoleArn, stsExternalId);
     }
 
     public void initializeTable(final DynamoStoreSettings dynamoStoreSettings,

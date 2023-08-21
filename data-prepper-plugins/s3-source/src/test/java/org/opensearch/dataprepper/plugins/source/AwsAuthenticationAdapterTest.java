@@ -66,10 +66,11 @@ class AwsAuthenticationAdapterTest {
     @ParameterizedTest
     @ValueSource(strings = {"us-east-1", "eu-west-1"})
     void getCredentialsProvider_creates_expected_AwsCredentialsOptions(final String regionString) {
-
+        final String externalId = UUID.randomUUID().toString();
         final Region region = Region.of(regionString);
 
         final Map<String, String> headerOverrides = Collections.singletonMap(UUID.randomUUID().toString(), UUID.randomUUID().toString());
+        when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn(externalId);
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(region);
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(headerOverrides);
 
@@ -82,6 +83,7 @@ class AwsAuthenticationAdapterTest {
 
         assertThat(actualOptions, notNullValue());
         assertThat(actualOptions.getStsRoleArn(), equalTo(stsRoleArn));
+        assertThat(actualOptions.getStsExternalId(), equalTo(externalId));
         assertThat(actualOptions.getRegion(), equalTo(region));
         assertThat(actualOptions.getStsHeaderOverrides(), equalTo(headerOverrides));
     }

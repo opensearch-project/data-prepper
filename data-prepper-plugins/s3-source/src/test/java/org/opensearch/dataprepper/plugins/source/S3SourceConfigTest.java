@@ -6,7 +6,8 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
+import org.opensearch.dataprepper.plugins.source.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.configuration.OnErrorOption;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectOptions;
@@ -41,6 +42,16 @@ class S3SourceConfigTest {
     @Test
     void default_end_to_end_acknowledgements_test() {
         assertThat(new S3SourceConfig().getAcknowledgements(), equalTo(false));
+    }
+
+    @Test
+    void default_delete_s3_objects_test() {
+        assertThat(new S3SourceConfig().isDeleteS3ObjectsOnRead(), equalTo(false));
+    }
+
+    @Test
+    void default_notification_source_test() {
+        assertThat(new S3SourceConfig().getNotificationSource(), equalTo(NotificationSourceOption.S3));
     }
 
     @Test

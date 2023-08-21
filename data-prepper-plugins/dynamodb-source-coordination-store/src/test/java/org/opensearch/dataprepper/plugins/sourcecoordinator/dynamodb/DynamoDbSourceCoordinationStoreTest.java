@@ -55,12 +55,14 @@ public class DynamoDbSourceCoordinationStoreTest {
     void setup() {
         given(dynamoStoreSettings.getRegion()).willReturn(UUID.randomUUID().toString());
         given(dynamoStoreSettings.getStsRoleArn()).willReturn(UUID.randomUUID().toString());
+        given(dynamoStoreSettings.getStsExternalId()).willReturn(UUID.randomUUID().toString());
     }
 
     private DynamoDbSourceCoordinationStore createObjectUnderTest() {
         try (final MockedStatic<DynamoDbClientWrapper> dynamoDbClientWrapperMockedStatic = mockStatic(DynamoDbClientWrapper.class)) {
-            dynamoDbClientWrapperMockedStatic.when(() -> DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(), dynamoStoreSettings.getStsRoleArn()))
-                            .thenReturn(dynamoDbClientWrapper);
+            dynamoDbClientWrapperMockedStatic.when(() -> DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(),
+                    dynamoStoreSettings.getStsRoleArn(), dynamoStoreSettings.getStsExternalId()))
+                .thenReturn(dynamoDbClientWrapper);
             return new DynamoDbSourceCoordinationStore(dynamoStoreSettings, pluginMetrics);
         }
     }
@@ -103,6 +105,10 @@ public class DynamoDbSourceCoordinationStoreTest {
         final ArgumentCaptor<DynamoDbSourcePartitionItem> argumentCaptor = ArgumentCaptor.forClass(DynamoDbSourcePartitionItem.class);
         given(dynamoDbClientWrapper.tryCreatePartitionItem(argumentCaptor.capture())).willReturn(true);
 
+        final Duration ttl = Duration.ofSeconds(30);
+        final Long nowPlusTtl = Instant.now().plus(ttl).getEpochSecond();
+        given(dynamoStoreSettings.getTtl()).willReturn(ttl);
+
         final boolean result = createObjectUnderTest().tryCreatePartitionItem(sourceIdentifier, sourcePartitionKey, sourcePartitionStatus, closedCount, partitionProgressState);
 
         assertThat(result, equalTo(true));
@@ -116,6 +122,7 @@ public class DynamoDbSourceCoordinationStoreTest {
         assertThat(createdItem.getPartitionProgressState(), equalTo(partitionProgressState));
         assertThat(createdItem.getSourceStatusCombinationKey(), equalTo(sourceIdentifier + "|" + sourcePartitionStatus));
         assertThat(createdItem.getPartitionPriority(), notNullValue());
+        assertThat(createdItem.getExpirationTime(), greaterThanOrEqualTo(nowPlusTtl));
     }
 
     @Test
@@ -125,6 +132,8 @@ public class DynamoDbSourceCoordinationStoreTest {
         final SourcePartitionStoreItem updateItem = mock(DynamoDbSourcePartitionItem.class);
         given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.ASSIGNED);
+
+        given(dynamoStoreSettings.getTtl()).willReturn(null);
 
         doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
 
@@ -144,6 +153,8 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.CLOSED);
 
+        given(dynamoStoreSettings.getTtl()).willReturn(null);
+
         doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
         final Instant reOpenAtTime = Instant.now();
         given(updateItem.getReOpenAt()).willReturn(reOpenAtTime);
@@ -161,13 +172,14 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(updateItem.getSourceIdentifier()).willReturn(sourceIdentifier);
         given(updateItem.getSourcePartitionStatus()).willReturn(SourcePartitionStatus.COMPLETED);
 
-        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
-
         final ArgumentCaptor<Long> argumentCaptor = ArgumentCaptor.forClass(Long.class);
         final Duration ttl = Duration.ofSeconds(30);
         final Long nowPlusTtl = Instant.now().plus(ttl).getEpochSecond();
         given(dynamoStoreSettings.getTtl()).willReturn(ttl);
         doNothing().when((DynamoDbSourcePartitionItem) updateItem).setExpirationTime(argumentCaptor.capture());
+
+        doNothing().when(dynamoDbClientWrapper).tryUpdatePartitionItem((DynamoDbSourcePartitionItem) updateItem);
+
         createObjectUnderTest().tryUpdateSourcePartitionItem(updateItem);
 
         final Long expirationTimeResult = argumentCaptor.getValue();

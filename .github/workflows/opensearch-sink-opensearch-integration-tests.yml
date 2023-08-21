@@ -30,7 +30,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
-      - name: Checkout Data-Prepper
+      - name: Checkout Data Prepper
         uses: actions/checkout@v2
       - name: Run OpenSearch docker
         run: |
@@ -40,7 +40,7 @@ jobs:
       - name: Run OpenSearch tests
         run: |
           ./gradlew :data-prepper-plugins:opensearch:integrationTest --tests "org.opensearch.dataprepper.plugins.sink.opensearch.OpenSearchIT" -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin
-          ./gradlew :data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin -Dtests.opensearch.bundle=true
+          ./gradlew :data-prepper-plugins:opensearch:integrationTest -Dtests.opensearch.host=localhost:9200 -Dtests.opensearch.user=admin -Dtests.opensearch.password=admin -Dtests.opensearch.bundle=true -Dtests.opensearch.version=opensearch:${{ matrix.opensearch }}
       - name: Upload Unit Test Results
         if: always()
         uses: actions/upload-artifact@v3

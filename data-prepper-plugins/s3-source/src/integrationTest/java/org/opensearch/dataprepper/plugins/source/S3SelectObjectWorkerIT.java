@@ -193,16 +193,19 @@ class S3SelectObjectWorkerIT {
 
     private void parseObject(final String key, final S3SelectObjectWorker objectUnderTest) throws IOException {
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        objectUnderTest.parseS3Object(s3ObjectReference,null);
+        objectUnderTest.parseS3Object(s3ObjectReference,null, null, null);
     }
 
     static class IntegrationTestArguments implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
-            final List<RecordsGenerator> recordsGenerators = List.of(new JsonRecordsGenerator(),new CsvRecordsGenerator());
+            final List<RecordsGenerator> recordsGenerators = List.of(
+                    new JsonRecordsGenerator(),
+                    new CsvRecordsGenerator());
             final List<Integer> numberOfRecordsList = List.of(2, 5, 25, 500, 5000);
             final List<Integer> recordsToAccumulateList = List.of(1, 100, 1000);
             final List<Boolean> booleanList = List.of(Boolean.FALSE);
+
             return recordsGenerators
                     .stream()
                     .flatMap(recordsGenerator -> numberOfRecordsList

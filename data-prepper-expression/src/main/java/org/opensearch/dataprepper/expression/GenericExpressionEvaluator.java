@@ -41,4 +41,15 @@ class GenericExpressionEvaluator implements ExpressionEvaluator {
             throw new ExpressionEvaluationException("Unable to evaluate statement \"" + statement + "\"", exception);
         }
     }
+
+    @Override
+    public Boolean isValidExpressionStatement(final String statement) {
+        try {
+            parser.parse(statement);
+            return true;
+        }
+        catch (final Exception exception) {
+            return false;
+        }
+    }
 }

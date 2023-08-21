@@ -75,6 +75,8 @@ Default is null.
 
 - `aws_sts_role_arn`: A IAM role arn which the sink plugin will assume to sign request to Amazon OpenSearch Service. If not provided the plugin will use the default credentials.
 
+- `aws_sts_external_id`: An optional external ID to use when assuming an IAM role. 
+
 - `aws_sts_header_overrides`: An optional map of header overrides to make when assuming the IAM role for the sink plugin.
 
 - `insecure`: A boolean flag to turn off SSL certificate verification. If set to true, CA certificate verification will be turned off and insecure HTTP requests will be sent. Default to `false`.
@@ -91,7 +93,9 @@ Default is null.
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
-- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling. 
+- `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling.
+
+- `enable_request_compression` (optional): A boolean that enables or disables request compression when sending requests to OpenSearch. For `distribution_version` set to `es6`, default value is `false`, otherwise default value is `true`. 
 
 ```
     APM trace analytics raw span data type example:
@@ -128,6 +132,8 @@ Default is null.
   * This index name can be a plain string, such as `application`, `my-index-name`.
   * This index name can also be a plain string plus a date-time pattern as a suffix, such as `application-%{yyyy.MM.dd}`, `my-index-name-%{yyyy.MM.dd.HH}`. When OpenSearch Sink is sending data to OpenSearch, the date-time pattern will be replaced by actual UTC time. The pattern supports all the symbols that represent one hour or above and are listed in [Java DateTimeFormatter](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html). For example, with an index pattern like `my-index-name-%{yyyy.MM.dd}`, a new index is created for each day such as `my-index-name-2022.01.25`. For another example, with an index pattern like `my-index-name-%{yyyy.MM.dd.HH}`, a new index is created for each hour such as `my-index-name-2022.01.25.13`.
   * This index name can also be a formatted string (with or without date-time pattern suffix), such as `my-${index}-name`. When OpenSearchSink is sending data to OpenSearch, the format portion "${index}" will be replaced by it's value in the event that is being processed. The format may also be like "${index1/index2/index3}" in which case the field "index1/index2/index3" is searched in the event and replaced by its value.
+    - Additionally, the formatted string can include expressions to evaluate to format the index name. For example, `my-${index}-${getMetadata(\"some_metadata_key\")}-name` will inject both the `index` value from the Event, as well as the value of `some_metadata_key` from the Event metadata to construct the index name.
+- <a name="template_type"></a>`template_type`(optional): Defines what type of OpenSearch template to use. The available options are `v1` and `index-template`. The default value is `v1`, which uses the original OpenSearch templates available at the `_template` API endpoints. Select `index-template` to use composable index templates which are available at OpenSearch's `_index_template` endpoint. Note: when `distribution_version` is `es6`, `template_type` is enforced into `v1`.
 
 - <a name="template_file"></a>`template_file`(optional): A json file path or AWS S3 URI to be read as index template for custom data ingestion. The json file content should be the json value of
 `"template"` key in the json content of OpenSearch [Index templates API](https://opensearch.org/docs/latest/opensearch/index-templates/), 
@@ -149,7 +155,21 @@ If not provided, the sink will try to push the data to OpenSearch server indefin
 all the records received from the upstream prepper at a time will be sent as a single bulk request.
 If a single record turns out to be larger than the set bulk size, it will be sent as a bulk request of a single document.
 
-- `document_id_field` (optional): A string of document identifier which is used as `id` for the document when it is stored in the OpenSearch. Each incoming record is searched for this field and if it is present, it is used as the id for the document, if it is not present, a unique id is generated by the OpenSearch when storing the document. Standard Data Prepper Json pointer syntax is used for retrieving the value. If the field has "/" in it then the incoming record is searched in the json sub-objects instead of just in the root of the json object. For example, if the field is specified as `info/id`, then the root of the event is searched for `info` and if it is found, then `id` is searched inside it. The value specified for `id` is used as the document id
+- `estimate_bulk_size_using_compression` (optional): A boolean dictating whether to compress the bulk requests when estimating
+the size. This option is ignored if request compression is not enabled for the OpenSearch client. This is an experimental 
+feature and makes no guarantees about the accuracy of the estimation. Default is false.
+
+- `max_local_compressions_for_estimation` (optional): An integer of the maximum number of times to compress a partially packed
+bulk request when estimating its size. Bulk size accuracy increases with this value but performance degrades. This setting is experimental
+and is ignored unless `estimate_bulk_size_using_compression` is enabled. Default is 2.
+
+- `flush_timeout` (optional): A long of the millisecond duration to try packing a bulk request up to the bulk_size before flushing.
+If this timeout expires before a bulk request has reached the bulk_size, the request will be flushed as-is. Set to -1 to disable
+the flush timeout and instead flush whatever is present at the end of each batch. Default is 60,000, or one minute.
+
+- `document_id_field` (optional): A string of document identifier which is used as `id` for the document when it is stored in the OpenSearch. Each incoming record is searched for this field and if it is present, it is used as the id for the document, if it is not present, a unique id is generated by the OpenSearch when storing the document. Standard Data Prepper Json pointer syntax is used for retrieving the value. If the field has "/" in it then the incoming record is searched in the json sub-objects instead of just in the root of the json object. For example, if the field is specified as `info/id`, then the root of the event is searched for `info` and if it is found, then `id` is searched inside it. The value specified for `id` is used as the document id. This field can also be a Data Prepper expression
+   that is evaluated to determine the document_id_field. For example, setting to `getMetadata(\"some_metadata_key\")` will use the value of the metadata key
+   as the document_id
 
 - `routing_field` (optional): A string of routing field which is used as hash for generating sharding id for the document when it is stored in the OpenSearch. Each incoming record is searched for this field and if it is present, it is used as the routing field for the document, if it is not present, default routing mechanism used by the OpenSearch when storing the document. Standard Data Prepper Json pointer syntax is used for retrieving the value. If the field has "/" in it then the incoming record is searched in the json sub-objects instead of just in the root of the json object. For example, if the field is specified as `info/id`, then the root of the event is searched for `info` and if it is found, then `id` is searched inside it. The value specified for `id` is used as the routing id
 
@@ -158,6 +178,8 @@ If a single record turns out to be larger than the set bulk size, it will be sen
 - `s3_aws_region` (optional): A String represents the region of S3 bucket to read `template_file` or `ism_policy_file`, e.g. us-west-2. Only applies to Amazon OpenSearch Service. Defaults to `us-east-1`.
 
 - `s3_aws_sts_role_arn` (optional): An IAM role arn which the sink plugin will assume to read `template_file` or `ism_policy_file` from S3. If not provided the plugin will use the default credentials.
+
+- `s3_aws_sts_external_id` (optional): An external ID that be attached to Assume Role requests.
 
 - `trace_analytics_raw`: No longer supported starting Data Prepper 2.0. Use `index_type` instead.
 
@@ -187,6 +209,65 @@ With the `document_root_key` set to `status`. The document structure would be `{
     duration: "15 ms"
 }
 ```
+- `include_keys`: A list of keys to be included (retained). The key in the list cannot contain '/'. This option can work together with `document_root_key`.
+
+For example, If we have the following sample event:
+```
+{
+    status: 200,
+    message: null,
+    metadata: {
+        sourceIp: "123.212.49.58",
+        destinationIp: "79.54.67.231",
+        bytes: 3545,
+        duration: "15 ms"
+    }
+}
+```
+if `include_keys` is set to ["status", "metadata"], the document written to OpenSearch would be:
+```
+{
+    status: 200,
+    metadata: {
+        sourceIp: "123.212.49.58"
+    }
+}
+```
+if you have also set `document_root_key` as "metadata", and the include_keys as ["sourceIp, "bytes"], the document written to OpenSearch would be:
+```
+{
+   sourceIp: "123.212.49.58",
+   bytes: 3545
+}
+```
+
+- `exclude_keys`: Similar to include_keys except any keys in the list will be excluded. Note that you should not have both include_keys and exclude_keys in the configuration at the same time.
+
+For example, If we have the following sample event:
+```
+{
+    status: 200,
+    message: null,
+    metadata: {
+        sourceIp: "123.212.49.58",
+        destinationIp: "79.54.67.231",
+        bytes: 3545,
+        duration: "15 ms"
+    }
+}
+```
+if `exclude_keys` is set to ["message", "status"], the document written to OpenSearch would be:
+```
+{
+    metadata: {
+        sourceIp: "123.212.49.58",
+        destinationIp: "79.54.67.231",
+        bytes: 3545,
+        duration: "15 ms"
+    }
+}
+```
+- `distribution_version`: A String indicating whether the sink backend version is Elasticsearch 6 or above (i.e. Elasticsearch 7.x or OpenSearch). `es6` represents Elasticsearch 6; `default` represents latest compatible backend version (Elasticsearch 7.x, OpenSearch 1.x, OpenSearch 2.x). Default to `default`.
 
 ### <a name="aws_configuration">AWS Configuration</a>
 

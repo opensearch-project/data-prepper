@@ -7,8 +7,9 @@ package org.opensearch.dataprepper.plugins.source;
 
 import jakarta.validation.constraints.AssertTrue;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.NotificationTypeOption;
-import org.opensearch.dataprepper.plugins.source.configuration.CompressionOption;
+import org.opensearch.dataprepper.plugins.source.configuration.NotificationSourceOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanScanOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.SqsOptions;
 import org.opensearch.dataprepper.plugins.source.configuration.AwsAuthenticationOptions;
@@ -19,6 +20,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.Duration;
+import java.util.Map;
 
 public class S3SourceConfig {
     static final Duration DEFAULT_BUFFER_TIMEOUT = Duration.ofSeconds(10);
@@ -28,6 +30,9 @@ public class S3SourceConfig {
     @JsonProperty("notification_type")
     private NotificationTypeOption notificationType;
 
+    @JsonProperty("notification_source")
+    private NotificationSourceOption notificationSource = NotificationSourceOption.S3;
+
     @JsonProperty("compression")
     private CompressionOption compression = CompressionOption.NONE;
 
@@ -35,6 +40,7 @@ public class S3SourceConfig {
     private PluginModel codec;
 
     @JsonProperty("sqs")
+    @Valid
     private SqsOptions sqsOptions;
 
     @JsonProperty("aws")
@@ -57,13 +63,24 @@ public class S3SourceConfig {
     @JsonProperty("disable_bucket_ownership_validation")
     private boolean disableBucketOwnershipValidation = false;
 
+    @JsonProperty("bucket_owners")
+    private Map<String, String> bucketOwners;
+
+    @JsonProperty("default_bucket_owner")
+    private String defaultBucketOwner;
+
     @JsonProperty("metadata_root_key")
     private String metadataRootKey = DEFAULT_METADATA_ROOT_KEY;
     @JsonProperty("s3_select")
+    @Valid
     private S3SelectOptions s3SelectOptions;
 
     @JsonProperty("scan")
+    @Valid
     private S3ScanScanOptions s3ScanScanOptions;
+
+    @JsonProperty("delete_s3_objects_on_read")
+    private boolean deleteS3ObjectsOnRead = false;
 
     @AssertTrue(message = "A codec is required for reading objects.")
     boolean isCodecProvidedWhenNeeded() {
@@ -74,6 +91,10 @@ public class S3SourceConfig {
 
     public NotificationTypeOption getNotificationType() {
         return notificationType;
+    }
+
+    public NotificationSourceOption getNotificationSource() {
+        return notificationSource;
     }
 
     boolean getAcknowledgements() {
@@ -124,4 +145,15 @@ public class S3SourceConfig {
         return s3ScanScanOptions;
     }
 
+    public boolean isDeleteS3ObjectsOnRead() {
+        return deleteS3ObjectsOnRead;
+    }
+
+    public Map<String, String> getBucketOwners() {
+        return bucketOwners;
+    }
+
+    public String getDefaultBucketOwner() {
+        return defaultBucketOwner;
+    }
 }

@@ -7,6 +7,7 @@ pipeline1:
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true
     - pipeline:
         name: "pipeline2"
 
@@ -17,6 +18,7 @@ pipeline2:
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true
     - pipeline:
         name: "pipeline3"
 
@@ -27,3 +29,4 @@ pipeline3:
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.expression;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,24 +18,23 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-import java.util.Random;
 
 import static org.awaitility.Awaitility.await;
-import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.apache.commons.lang3.RandomStringUtils;
 
 class GenericExpressionEvaluator_ConditionalIT {
     /**
@@ -94,7 +94,7 @@ class GenericExpressionEvaluator_ConditionalIT {
     void testGenericExpressionEvaluatorWithMultipleThreads(final String expression, final Event event, final Boolean expected) {
         final GenericExpressionEvaluator evaluator = applicationContext.getBean(GenericExpressionEvaluator.class);
 
-        final int numberOfThreads = 50;
+        final int numberOfThreads = 10;
         final ExecutorService executorService = Executors.newFixedThreadPool(numberOfThreads);
 
         List<Boolean> evaluationResults = Collections.synchronizedList(new ArrayList<>());
@@ -123,11 +123,11 @@ class GenericExpressionEvaluator_ConditionalIT {
     private static Stream<Arguments> validExpressionArguments() {
         final String key = "status_code";
         final Long value = 200L;
-        final String value3 = RandomStringUtils.randomAlphabetic(5);
+        final String strValue = RandomStringUtils.randomAlphabetic(5);
         final int value4 = 2000;
         final Boolean value5 = false;
         Map<Object, Object> eventMap = Collections.singletonMap(key, value);
-        final Map<String, Object> attributesMap = Map.of("key1", value3, "key2", value4, "key3", value5);
+        final Map<String, Object> attributesMap = Map.of("key1", strValue, "key2", value4, "key3", value5);
         Event longEvent = JacksonEvent.builder()
                 .withEventType("event")
                 .withData(eventMap)
@@ -189,10 +189,16 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("hasTags(\""+ testTag1+"\", \""+testTag2+"\", \""+testTag3+"\")", longEvent, true),
                 Arguments.of("hasTags(\""+ testTag4+"\")", longEvent, false),
                 Arguments.of("hasTags(\""+ testTag3+"\",\""+testTag4+"\")", longEvent, false),
-                Arguments.of("getMetadata(\"key1\") == \""+value3+"\"", longEvent, true),
+                Arguments.of("contains(\""+ strValue+"\",\""+strValue.substring(1,5)+"\")", longEvent, true),
+                Arguments.of("contains(/status,\""+strValue.substring(0,2)+"\")", event("{\"status\":\""+strValue+"\"}"), true),
+                Arguments.of("contains(\""+strValue+strValue+"\",/status)", event("{\"status\":\""+strValue+"\"}"), true),
+                Arguments.of("contains(/message,/status)", event("{\"status\":\""+strValue+"\", \"message\":\""+strValue+strValue+"\"}"), true),
+                Arguments.of("contains(/unknown,/status)", event("{\"status\":\""+strValue+"\", \"message\":\""+strValue+strValue+"\"}"), false),
+                Arguments.of("contains(/status,/unknown)", event("{\"status\":\""+strValue+"\", \"message\":\""+strValue+strValue+"\"}"), false),
+                Arguments.of("getMetadata(\"key1\") == \""+strValue+"\"", longEvent, true),
                 Arguments.of("getMetadata(\"key2\") == "+value4, longEvent, true),
                 Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
-                Arguments.of("getMetadata(\"/key1\") == \""+value3+"\"", longEvent, true),
+                Arguments.of("getMetadata(\"/key1\") == \""+strValue+"\"", longEvent, true),
                 Arguments.of("getMetadata(\"/key2\") == "+value4, longEvent, true),
                 Arguments.of("getMetadata(\"key3\") == "+value5, longEvent, true),
                 Arguments.of("getMetadata(\"/key6\") == \""+value5+"\"", longEvent, false),
@@ -250,6 +256,12 @@ class GenericExpressionEvaluator_ConditionalIT {
                 Arguments.of("hasTags(\""+ testTag1+"\","+testTag2+"\")", tagEvent),
                 Arguments.of("hasTags(,\""+testTag2+"\")", tagEvent),
                 Arguments.of("hasTags(\""+testTag2+"\",)", tagEvent),
+                Arguments.of("contains(\""+testTag2+"\",)", tagEvent),
+                Arguments.of("contains(\""+testTag2+"\")", tagEvent),
+                Arguments.of("contains(/intField, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                Arguments.of("contains(1234, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                Arguments.of("contains(str, /strField)", event("{\"intField\":1234,\"strField\":\"string\"}")),
+                Arguments.of("contains(/strField, 1234)", event("{\"intField\":1234,\"strField\":\"string\"}")),
                 Arguments.of("getMetadata(10)", tagEvent),
                 Arguments.of("getMetadata("+ testMetadataKey+ ")", tagEvent),
                 Arguments.of("getMetadata(\""+ testMetadataKey+")", tagEvent),
