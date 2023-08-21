@@ -129,6 +129,7 @@ class S3SinkServiceIT {
     private DistributionSummary s3ObjectSizeSummary;
 
     private OutputCodec codec;
+    private KeyGenerator keyGenerator;
 
     @Mock
     NdjsonOutputConfig ndjsonOutputConfig;
@@ -172,6 +173,7 @@ class S3SinkServiceIT {
 
     void configureNewLineCodec() {
         codec = new NdjsonOutputCodec(ndjsonOutputConfig);
+        keyGenerator = new KeyGenerator(s3SinkConfig, codec);
     }
 
     @Test
@@ -206,7 +208,7 @@ class S3SinkServiceIT {
     @Test
     void verify_flushed_records_into_s3_bucketNewLine_with_compression() throws IOException {
         configureNewLineCodec();
-        bufferFactory = new CompressionBufferFactory(bufferFactory, CompressionOption.GZIP.getCompressionEngine());
+        bufferFactory = new CompressionBufferFactory(bufferFactory, CompressionOption.GZIP.getCompressionEngine(), codec);
         S3SinkService s3SinkService = createObjectUnderTest();
         Collection<Record<Event>> recordsData = setEventQueue();
 
@@ -240,7 +242,7 @@ class S3SinkServiceIT {
 
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, keyGenerator, pluginMetrics);
     }
 
     private int gets3ObjectCount() {
@@ -352,11 +354,9 @@ class S3SinkServiceIT {
     private void configureParquetCodec() {
         parquetOutputCodecConfig = new ParquetOutputCodecConfig();
         parquetOutputCodecConfig.setSchema(parseSchema().toString());
-        parquetOutputCodecConfig.setBucket(bucketName);
-        parquetOutputCodecConfig.setRegion(s3region);
         parquetOutputCodecConfig.setPathPrefix(PATH_PREFIX);
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
-
+        keyGenerator = new KeyGenerator(s3SinkConfig, codec);
     }
 
     private Collection<Record<Event>> getRecordList() {

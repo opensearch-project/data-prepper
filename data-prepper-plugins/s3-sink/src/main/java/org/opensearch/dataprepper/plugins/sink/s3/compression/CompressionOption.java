@@ -14,7 +14,8 @@ import java.util.stream.Collectors;
 
 public enum CompressionOption {
     NONE("none", NoneCompressionEngine::new),
-    GZIP("gzip", GZipCompressionEngine::new);
+    GZIP("gzip", GZipCompressionEngine::new),
+    SNAPPY("snappy", SnappyCompressionEngine::new);
 
     private static final Map<String, CompressionOption> OPTIONS_MAP = Arrays.stream(CompressionOption.values())
             .collect(Collectors.toMap(
@@ -23,8 +24,8 @@ public enum CompressionOption {
             ));
 
     private final String option;
-    private final Supplier<CompressionEngine> compressionEngineSupplier;
 
+    private final Supplier<CompressionEngine> compressionEngineSupplier;
     CompressionOption(final String option, final Supplier<CompressionEngine> compressionEngineSupplier) {
         this.option = option.toLowerCase();
         this.compressionEngineSupplier = compressionEngineSupplier;
@@ -34,8 +35,12 @@ public enum CompressionOption {
         return compressionEngineSupplier.get();
     }
 
+    public String getOption() {
+        return option;
+    }
+
     @JsonCreator
     public static CompressionOption fromOptionValue(final String option) {
-        return OPTIONS_MAP.get(option.toLowerCase());
+        return OPTIONS_MAP.get(option);
     }
 }

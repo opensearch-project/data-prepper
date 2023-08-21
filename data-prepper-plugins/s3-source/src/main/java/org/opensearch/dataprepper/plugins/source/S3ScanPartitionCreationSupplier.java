@@ -36,6 +36,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
     private static final String BUCKET_OBJECT_PARTITION_KEY_FORMAT = "%s|%s";
     static final String SCAN_COUNT = "SCAN_COUNT";
     static final String LAST_SCAN_TIME = "LAST_SCAN_TIME";
+    static final String SINGLE_SCAN_COMPLETE = "SINGLE_SCAN_COMPLETE";
 
     private final S3Client s3Client;
     private final BucketOwnerProvider bucketOwnerProvider;
@@ -138,15 +139,22 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
      */
     private boolean isKeyMatchedBetweenTimeRange(final LocalDateTime lastModifiedTime,
                                                  final LocalDateTime startDateTime,
-                                                 final LocalDateTime endDateTime){
-        if (Objects.isNull(startDateTime) || Objects.isNull(endDateTime) || Objects.nonNull(schedulingOptions)) {
+                                                 final LocalDateTime endDateTime) {
+        if (Objects.nonNull(schedulingOptions)) {
             return true;
+        } else if (Objects.isNull(startDateTime) && Objects.isNull(endDateTime)) {
+            return true;
+        } else if (Objects.isNull(startDateTime)) {
+            return lastModifiedTime.isBefore(endDateTime);
+        } else if (Objects.isNull(endDateTime)) {
+            return lastModifiedTime.isAfter(startDateTime);
         }
         return lastModifiedTime.isAfter(startDateTime) && lastModifiedTime.isBefore(endDateTime);
     }
 
     private void initializeGlobalStateMap(final Map<String, Object> globalStateMap) {
         globalStateMap.put(SCAN_COUNT, 0);
+        globalStateMap.put(SINGLE_SCAN_COMPLETE, false);
     }
 
     private boolean isLastModifiedTimeAfterMostRecentScanForBucket(final String bucketName,
@@ -178,13 +186,21 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
     }
 
     private boolean shouldScanBeSkipped(final Map<String, Object> globalStateMap) {
+
         if (Objects.isNull(schedulingOptions) && hasAlreadyBeenScanned(globalStateMap)) {
-            LOG.info("Skipping scan because the buckets have already been scanned once");
+
+            if (!(Boolean) globalStateMap.get(SINGLE_SCAN_COMPLETE)) {
+                LOG.info("Single S3 scan has already been completed");
+                globalStateMap.put(SINGLE_SCAN_COMPLETE, true);
+            }
+
             return true;
         }
 
         if (Objects.nonNull(schedulingOptions) &&
                 (hasReachedMaxScanCount(globalStateMap) || !hasReachedScheduledScanTime(globalStateMap))) {
+
+
 
             if (hasReachedMaxScanCount(globalStateMap)) {
                 LOG.info("Skipping scan as the max scan count {} has been reached", schedulingOptions.getCount());

@@ -16,7 +16,6 @@ import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.Buffer;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
-import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
@@ -24,7 +23,6 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.locks.Lock;
@@ -60,6 +58,7 @@ public class S3SinkService {
     private final Counter numberOfRecordsFailedCounter;
     private final DistributionSummary s3ObjectSizeSummary;
     private final OutputCodecContext codecContext;
+    private final KeyGenerator keyGenerator;
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
@@ -69,12 +68,13 @@ public class S3SinkService {
      * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
-                         final OutputCodec codec, final OutputCodecContext codecContext, final S3Client s3Client, final PluginMetrics pluginMetrics) {
+                         final OutputCodec codec, final OutputCodecContext codecContext, final S3Client s3Client, final KeyGenerator keyGenerator, final PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
         this.s3Client = s3Client;
         this.codecContext = codecContext;
+        this.keyGenerator = keyGenerator;
         reentrantLock = new ReentrantLock();
 
         bufferedEventHandles = new LinkedList<>();
@@ -91,58 +91,44 @@ public class S3SinkService {
         numberOfRecordsSuccessCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_S3_SUCCESS);
         numberOfRecordsFailedCounter = pluginMetrics.counter(NUMBER_OF_RECORDS_FLUSHED_TO_S3_FAILED);
         s3ObjectSizeSummary = pluginMetrics.summary(S3_OBJECTS_SIZE);
+
+        currentBuffer = bufferFactory.getBuffer(s3Client, () -> bucket, keyGenerator::generateKey);
     }
 
     /**
      * @param records received records and add into buffer.
      */
     void output(Collection<Record<Event>> records) {
-        reentrantLock.lock();
-        if (currentBuffer == null) {
-            currentBuffer = bufferFactory.getBuffer();
+        // Don't acquire the lock if there's no work to be done
+        if (records.isEmpty() && currentBuffer.getEventCount() == 0) {
+            return;
         }
-        try {
-            OutputStream outputStream = currentBuffer.getOutputStream();
 
+        reentrantLock.lock();
+        try {
             for (Record<Event> record : records) {
 
                 if (currentBuffer.getEventCount() == 0) {
                     final Event eventForSchemaAutoGenerate = record.getData();
-                    codec.start(outputStream, eventForSchemaAutoGenerate, codecContext);
+                    codec.start(currentBuffer.getOutputStream(), eventForSchemaAutoGenerate, codecContext);
                 }
 
                 final Event event = record.getData();
-                codec.writeEvent(event, outputStream);
+                codec.writeEvent(event, currentBuffer.getOutputStream());
                 int count = currentBuffer.getEventCount() + 1;
                 currentBuffer.setEventCount(count);
 
                 if (event.getEventHandle() != null) {
                     bufferedEventHandles.add(event.getEventHandle());
                 }
-                if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
-                    codec.complete(outputStream);
-                    final String s3Key = generateKey(codec);
-                    LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
-                            s3Key, currentBuffer.getEventCount(), currentBuffer.getSize());
-                    final boolean isFlushToS3 = retryFlushToS3(currentBuffer, s3Key);
-                    if (isFlushToS3) {
-                        LOG.info("Successfully saved {} to S3.", s3Key);
-                        numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
-                        objectsSucceededCounter.increment();
-                        s3ObjectSizeSummary.record(currentBuffer.getSize());
-                        releaseEventHandles(true);
-                    } else {
-                        LOG.error("Failed to save {} to S3.", s3Key);
-                        numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
-                        objectsFailedCounter.increment();
-                        releaseEventHandles(false);
-                    }
-                    currentBuffer = bufferFactory.getBuffer();
-                }
+                flushToS3IfNeeded();
             }
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             LOG.error("Exception while write event into buffer :", e);
         }
+
+        flushToS3IfNeeded();
+
         reentrantLock.unlock();
     }
 
@@ -154,43 +140,63 @@ public class S3SinkService {
         bufferedEventHandles.clear();
     }
 
+    private void flushToS3IfNeeded() {
+        if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
+            try {
+                codec.complete(currentBuffer.getOutputStream());
+                String s3Key = currentBuffer.getKey();
+                LOG.info("Writing {} to S3 with {} events and size of {} bytes.",
+                        s3Key, currentBuffer.getEventCount(), currentBuffer.getSize());
+                final boolean isFlushToS3 = retryFlushToS3(currentBuffer, s3Key);
+                if (isFlushToS3) {
+                    LOG.info("Successfully saved {} to S3.", s3Key);
+                    numberOfRecordsSuccessCounter.increment(currentBuffer.getEventCount());
+                    objectsSucceededCounter.increment();
+                    s3ObjectSizeSummary.record(currentBuffer.getSize());
+                    releaseEventHandles(true);
+                } else {
+                    LOG.error("Failed to save {} to S3.", s3Key);
+                    numberOfRecordsFailedCounter.increment(currentBuffer.getEventCount());
+                    objectsFailedCounter.increment();
+                    releaseEventHandles(false);
+                }
+                currentBuffer = bufferFactory.getBuffer(s3Client, () -> bucket, keyGenerator::generateKey);
+            } catch (final IOException e) {
+                LOG.error("Exception while completing codec", e);
+            }
+        }
+    }
+
     /**
      * perform retry in-case any issue occurred, based on max_upload_retries configuration.
      *
      * @param currentBuffer current buffer.
      * @param s3Key
      * @return boolean based on object upload status.
-     * @throws InterruptedException interruption during sleep.
      */
-    protected boolean retryFlushToS3(final Buffer currentBuffer, final String s3Key) throws InterruptedException {
+    protected boolean retryFlushToS3(final Buffer currentBuffer, final String s3Key) {
         boolean isUploadedToS3 = Boolean.FALSE;
         int retryCount = maxRetries;
         do {
             try {
-                currentBuffer.flushToS3(s3Client, bucket, s3Key);
+                currentBuffer.flushToS3();
                 isUploadedToS3 = Boolean.TRUE;
             } catch (AwsServiceException | SdkClientException e) {
                 LOG.error("Exception occurred while uploading records to s3 bucket. Retry countdown  : {} | exception:",
                         retryCount, e);
-                LOG.info("Error Massage {}", e.getMessage());
+                LOG.info("Error Message {}", e.getMessage());
                 --retryCount;
                 if (retryCount == 0) {
                     return isUploadedToS3;
                 }
-                Thread.sleep(5000);
+
+                try {
+                    Thread.sleep(5000);
+                } catch (final InterruptedException ex) {
+                    LOG.warn("Interrupted while backing off before retrying S3 upload", ex);
+                }
             }
         } while (!isUploadedToS3);
         return isUploadedToS3;
-    }
-
-    /**
-     * Generate the s3 object path prefix and object file name.
-     *
-     * @return object key path.
-     */
-    protected String generateKey(OutputCodec codec) {
-        final String pathPrefix = ObjectKey.buildingPathPrefix(s3SinkConfig);
-        final String namePattern = ObjectKey.objectFileName(s3SinkConfig, codec.getExtension());
-        return (!pathPrefix.isEmpty()) ? pathPrefix + namePattern : namePattern;
     }
 }

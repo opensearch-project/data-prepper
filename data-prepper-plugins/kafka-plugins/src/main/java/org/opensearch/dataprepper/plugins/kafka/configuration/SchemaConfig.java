@@ -52,23 +52,23 @@ public class SchemaConfig {
   @JsonProperty("s3_file_config")
   private S3FileConfig s3FileConfig;
 
-  @JsonProperty("is_create")
+  @JsonProperty("is_schema_create")
   @NotNull
-  private Boolean isCreate;
+  private Boolean isSchemaCreate=Boolean.FALSE;
 
   public static class S3FileConfig {
     @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
+    @Size(max = 0, message = "bucket is mandatory.")
     @JsonProperty("bucket_name")
     private String bucketName;
 
     @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
+    @Size(max = 0, message = "file key is mandatory.")
     @JsonProperty("file_key")
     private String fileKey;
 
     @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
+    @Size(max = 0, message = "region is mandatory")
     @JsonProperty("region")
     private String region;
 
@@ -129,15 +129,15 @@ public class SchemaConfig {
     return s3FileConfig;
   }
 
-  @AssertTrue(message = "Only one of Inline schema or Schema file location or S3 file config config must be specified")
+  @AssertTrue(message = "Only one of Inline schema or Schema file location or S3 file config  must be specified")
   public boolean hasOnlyOneConfig() {
-    if(isCreate) {
+    if(isSchemaCreate) {
       return Stream.of(inlineSchema, schemaFileLocation, s3FileConfig).filter(n -> n != null).count() == 1;
     }
     return true;
   }
 
   public Boolean isCreate() {
-    return isCreate;
+    return isSchemaCreate;
   }
 }

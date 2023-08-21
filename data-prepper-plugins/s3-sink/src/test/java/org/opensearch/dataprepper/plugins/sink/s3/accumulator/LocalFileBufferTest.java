@@ -15,6 +15,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.UUID;
+import java.util.function.Supplier;
+
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class LocalFileBufferTest {
@@ -35,13 +38,17 @@ class LocalFileBufferTest {
     public static final String SUFFIX = ".log";
     @Mock
     private S3Client s3Client;
+    @Mock
+    private Supplier<String> bucketSupplier;
+    @Mock
+    private Supplier<String> keySupplier;
     private LocalFileBuffer localFileBuffer;
     private File tempFile;
 
     @BeforeEach
     void setUp() throws IOException {
         tempFile = File.createTempFile(PREFIX, SUFFIX);
-        localFileBuffer = new LocalFileBuffer(tempFile);
+        localFileBuffer = new LocalFileBuffer(tempFile, s3Client, bucketSupplier, keySupplier);
     }
 
     @Test
@@ -82,8 +89,11 @@ class LocalFileBufferTest {
         assertThat(localFileBuffer.getEventCount(), equalTo(55));
         assertThat(localFileBuffer.getDuration(), greaterThanOrEqualTo(0L));
 
+        when(keySupplier.get()).thenReturn(KEY);
+        when(bucketSupplier.get()).thenReturn(BUCKET_NAME);
+
         assertDoesNotThrow(() -> {
-            localFileBuffer.flushToS3(s3Client, BUCKET_NAME, KEY);
+            localFileBuffer.flushToS3();
         });
 
         ArgumentCaptor<PutObjectRequest> putObjectRequestArgumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
@@ -100,9 +110,12 @@ class LocalFileBufferTest {
 
     @Test
     void test_uploadedToS3_success() {
+        when(keySupplier.get()).thenReturn(KEY);
+        when(bucketSupplier.get()).thenReturn(BUCKET_NAME);
+
         Assertions.assertNotNull(localFileBuffer);
         assertDoesNotThrow(() -> {
-            localFileBuffer.flushToS3(s3Client, BUCKET_NAME, KEY);
+            localFileBuffer.flushToS3();
         });
 
         ArgumentCaptor<PutObjectRequest> putObjectRequestArgumentCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);

@@ -9,6 +9,7 @@ package org.opensearch.dataprepper.plugins.kafka.util;
 import io.confluent.kafka.serializers.KafkaAvroSerializer;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.json.JsonSerializer;
 import org.opensearch.dataprepper.model.types.ByteCount;
@@ -326,6 +327,7 @@ public class SinkPropertyConfigurer {
         Properties properties = new Properties();
         setCommonServerProperties(properties, kafkaSinkConfig);
         setAuthProperties(kafkaSinkConfig, properties);
+        properties.put(TopicConfig.RETENTION_MS_CONFIG,kafkaSinkConfig.getTopic().getRetentionPeriod());
         return properties;
     }
 

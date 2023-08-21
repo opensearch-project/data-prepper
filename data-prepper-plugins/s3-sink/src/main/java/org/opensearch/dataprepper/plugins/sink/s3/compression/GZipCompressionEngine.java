@@ -10,7 +10,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
-public class GZipCompressionEngine implements CompressionEngine {
+class GZipCompressionEngine implements CompressionEngine {
     @Override
     public OutputStream createOutputStream(final OutputStream outputStream) throws IOException {
         return new GzipCompressorOutputStream(outputStream);

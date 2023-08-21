@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * An implementation class of path prefix and file pattern configuration Options
  */
 public class ObjectKeyOptions {
-    private static final String DEFAULT_OBJECT_NAME_PATTERN = "events-%{yyyy-MM-dd'T'hh-mm-ss}";
+    private static final String DEFAULT_OBJECT_NAME_PATTERN = "events-%{yyyy-MM-dd'T'HH-mm-ss'Z'}";
 
     @JsonProperty("path_prefix")
     private String pathPrefix;

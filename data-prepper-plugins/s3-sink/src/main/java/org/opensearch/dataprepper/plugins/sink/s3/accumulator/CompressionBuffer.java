@@ -6,7 +6,6 @@
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
-import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -38,8 +37,8 @@ class CompressionBuffer implements Buffer {
     }
 
     @Override
-    public void flushToS3(final S3Client s3Client, final String bucket, final String key) {
-        innerBuffer.flushToS3(s3Client, bucket, key);
+    public void flushToS3() {
+        innerBuffer.flushToS3();
     }
 
     @Override
@@ -62,5 +61,10 @@ class CompressionBuffer implements Buffer {
     @Override
     public void setEventCount(final int eventCount) {
         innerBuffer.setEventCount(eventCount);
+    }
+
+    @Override
+    public String getKey() {
+        return innerBuffer.getKey();
     }
 }

@@ -5,6 +5,8 @@
 package org.opensearch.dataprepper.plugins.source;
 
 import org.opensearch.dataprepper.plugins.source.configuration.S3ScanBucketOption;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -15,18 +17,18 @@ import java.util.stream.Stream;
  * Class consists the scan related properties.
  */
 public class ScanOptions {
+    private static final Logger LOG = LoggerFactory.getLogger(ScanOptions.class);
+    private final LocalDateTime startDateTime;
 
-    private LocalDateTime startDateTime;
+    private final Duration range;
 
-    private Duration range;
+    private final S3ScanBucketOption bucketOption;
 
-    private S3ScanBucketOption bucketOption;
+    private final LocalDateTime endDateTime;
 
-    private LocalDateTime endDateTime;
+    private final LocalDateTime useStartDateTime;
 
-    private LocalDateTime useStartDateTime;
-
-    private LocalDateTime useEndDateTime;
+    private final LocalDateTime useEndDateTime;
 
     private ScanOptions(Builder builder){
         this.startDateTime = builder.startDateTime;
@@ -94,51 +96,42 @@ public class ScanOptions {
         }
 
         public ScanOptions build() {
-            LocalDateTime bucketStartDateTime = Objects.isNull(bucketOption.getStartTime()) ? startDateTime : bucketOption.getStartTime();
-            LocalDateTime bucketEndDateTime = Objects.isNull(bucketOption.getEndTime()) ? endDateTime : bucketOption.getEndTime();
-            Duration bucketRange = Objects.isNull(bucketOption.getRange()) ? range : bucketOption.getRange();
-
-            long nonNullCount = Stream.of(bucketStartDateTime, bucketEndDateTime, bucketRange)
+            long globalLevelNonNullCount = Stream.of(startDateTime, endDateTime, range)
                     .filter(Objects::nonNull)
                     .count();
 
-            if (nonNullCount == 0 || nonNullCount == 2) {
-                setDateTimeToUse(bucketStartDateTime, bucketEndDateTime, bucketRange);
-            } else if (nonNullCount == 3) {
-                long originalBucketLevelNonNullCount = Stream.of(
-                        bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange())
-                        .filter(Objects::nonNull)
-                        .count();
+            long originalBucketLevelNonNullCount = Stream.of(
+                            bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange())
+                    .filter(Objects::nonNull)
+                    .count();
 
-                if (originalBucketLevelNonNullCount == 2) {
-                    setDateTimeToUse(bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange());
-                } else {
-                    scanRangeDateValidationError();
-                }
-            } else {
-                scanRangeDateValidationError();
+            if (originalBucketLevelNonNullCount != 0) {
+                setDateTimeToUse(bucketOption.getStartTime(), bucketOption.getEndTime(), bucketOption.getRange());
+            } else if (globalLevelNonNullCount != 0) {
+                setDateTimeToUse(startDateTime, endDateTime, range);
             }
+
             return new ScanOptions(this);
         }
 
         private void setDateTimeToUse(LocalDateTime bucketStartDateTime, LocalDateTime bucketEndDateTime, Duration bucketRange) {
-
             if (Objects.nonNull(bucketStartDateTime) && Objects.nonNull(bucketEndDateTime)) {
                 this.useStartDateTime = bucketStartDateTime;
                 this.useEndDateTime = bucketEndDateTime;
-            } else if (Objects.nonNull(bucketStartDateTime) && Objects.nonNull(bucketRange)) {
+                LOG.info("Scanning objects modified from {} to {} from bucket: {}", useStartDateTime, useEndDateTime, bucketOption.getName());
+            } else if (Objects.nonNull(bucketStartDateTime)) {
                 this.useStartDateTime = bucketStartDateTime;
-                this.useEndDateTime = bucketStartDateTime.plus(bucketRange);
-            } else if (Objects.nonNull(bucketEndDateTime) && Objects.nonNull(bucketRange)) {
-                this.useStartDateTime = bucketEndDateTime.minus(bucketRange);
+                LOG.info("Scanning objects modified after {} from bucket: {}", useStartDateTime, bucketOption.getName());
+            } else if (Objects.nonNull(bucketEndDateTime)) {
                 this.useEndDateTime = bucketEndDateTime;
+                LOG.info("Scanning objects modified before {} from bucket: {}", useEndDateTime, bucketOption.getName());
+            } else if (Objects.nonNull(bucketRange)) {
+                this.useEndDateTime = LocalDateTime.now();
+                this.useStartDateTime = this.useEndDateTime.minus(bucketRange);
+                LOG.info("Scanning objects modified from {} to {} from bucket: {}", useStartDateTime, useEndDateTime, bucketOption.getName());
+            } else {
+                LOG.info("Scanning all objects from bucket: {}", bucketOption.getName());
             }
-        }
-
-        private void scanRangeDateValidationError(){
-            String message = "To set a time range for the bucket with name " + bucketOption.getName() +
-                    ", specify any two configurations from start_time, end_time and range";
-            throw new IllegalArgumentException(message);
         }
 
         @Override
