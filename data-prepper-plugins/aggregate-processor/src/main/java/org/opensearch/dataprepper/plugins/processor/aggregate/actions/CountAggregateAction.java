@@ -6,11 +6,14 @@
 package org.opensearch.dataprepper.plugins.processor.aggregate.actions;
 
 import org.opensearch.dataprepper.model.metric.JacksonSum;
+import org.opensearch.dataprepper.model.metric.Exemplar;
+import org.opensearch.dataprepper.model.metric.DefaultExemplar;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.plugins.otel.codec.OTelProtoCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.model.trace.Span;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateAction;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionInput;
 import org.opensearch.dataprepper.plugins.processor.aggregate.AggregateActionOutput;
@@ -19,6 +22,7 @@ import org.opensearch.dataprepper.plugins.processor.aggregate.GroupState;
 import io.opentelemetry.proto.metrics.v1.AggregationTemporality;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -42,18 +46,38 @@ public class CountAggregateAction implements AggregateAction {
     public final String startTimeKey;
     public final String outputFormat;
     private long startTimeNanos;
+    private List<Exemplar> exemplarList;
 
     @DataPrepperPluginConstructor
     public CountAggregateAction(final CountAggregateActionConfig countAggregateActionConfig) {
         this.countKey = countAggregateActionConfig.getCountKey();
         this.startTimeKey = countAggregateActionConfig.getStartTimeKey();
         this.outputFormat = countAggregateActionConfig.getOutputFormat();
+        this.exemplarList = new ArrayList<>();
     }
 
     private long getTimeNanos(Instant time) {
         final long NANO_MULTIPLIER = 1_000 * 1_000 * 1_000;
         long currentTimeNanos = time.getEpochSecond() * NANO_MULTIPLIER + time.getNano();
         return currentTimeNanos;
+    }
+
+    public Exemplar createExemplar(final Event event) {
+        long curTimeNanos = getTimeNanos(Instant.now());
+        Map<String, Object> attributes = event.toMap();
+        String spanId = null;
+        String traceId = null;
+        if (event instanceof Span) {
+            Span span = (Span)event;
+            spanId = span.getSpanId();
+            traceId = span.getTraceId();
+        }
+        return new DefaultExemplar(
+                    OTelProtoCodec.convertUnixNanosToISO8601(curTimeNanos),
+                    1.0,
+                    spanId,
+                    traceId,
+                    attributes);
     }
 
     @Override
@@ -63,6 +87,7 @@ public class CountAggregateAction implements AggregateAction {
             groupState.put(startTimeKey, Instant.now());
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
             groupState.put(countKey, 1);
+            exemplarList.add(createExemplar(event));
         } else {
             Integer v = (Integer)groupState.get(countKey) + 1;
             groupState.put(countKey, v);
@@ -98,6 +123,7 @@ public class CountAggregateAction implements AggregateAction {
                 .withUnit(SUM_METRIC_UNIT)
                 .withAggregationTemporality(AggregationTemporality.AGGREGATION_TEMPORALITY_DELTA.name())
                 .withValue((double)countValue)
+                .withExemplars(exemplarList)
                 .withAttributes(attr)
                 .build(false);
             event = (Event)sum;

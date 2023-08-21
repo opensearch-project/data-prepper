@@ -50,6 +50,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.ConnectionConfiguration.SERVERLESS;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 
 @ExtendWith(MockitoExtension.class)
 class ConnectionConfigurationTests {
@@ -84,6 +85,18 @@ class ConnectionConfigurationTests {
         assertNull(connectionConfiguration.getConnectTimeout());
         assertNull(connectionConfiguration.getSocketTimeout());
         assertEquals(TEST_PIPELINE_NAME, connectionConfiguration.getPipelineName());
+        assertTrue(connectionConfiguration.isRequestCompressionEnabled());
+    }
+
+    @Test
+    void testReadConnectionConfigurationES6Default() {
+        final Map<String, Object> configMetadata = generateConfigurationMetadata(
+                TEST_HOSTS, null, null, null, null, true, null, null, null, false);
+        configMetadata.put(DISTRIBUTION_VERSION, "es6");
+        final PluginSetting pluginSetting = getPluginSettingByConfigurationMetadata(configMetadata);
+        final ConnectionConfiguration connectionConfiguration =
+                ConnectionConfiguration.readConnectionConfiguration(pluginSetting);
+        assertFalse(connectionConfiguration.isRequestCompressionEnabled());
     }
 
     @Test

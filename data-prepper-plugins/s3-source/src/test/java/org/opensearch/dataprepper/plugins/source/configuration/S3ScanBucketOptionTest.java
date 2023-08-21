@@ -18,7 +18,7 @@ import static org.hamcrest.Matchers.equalTo;
 
 public class S3ScanBucketOptionTest {
 
-    private ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
+    private final ObjectMapper objectMapper = new ObjectMapper(new YAMLFactory().enable(YAMLGenerator.Feature.USE_PLATFORM_LINE_BREAKS));
     @Test
     public void s3scan_bucket_options_with_scan_buckets_yaml_configuration_test() throws JsonProcessingException {
         final String bucketOptionsYaml = "              name: test-s3-source-test-output\n" +

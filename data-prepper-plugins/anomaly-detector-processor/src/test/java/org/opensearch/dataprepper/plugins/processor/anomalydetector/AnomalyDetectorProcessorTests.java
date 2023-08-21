@@ -55,6 +55,8 @@ public class AnomalyDetectorProcessorTests {
 
     @Mock
     private Counter recordsOut;
+    @Mock
+    private Counter cardinalityOverflow;
 
     @Mock
     private Timer timeElapsed;
@@ -77,6 +79,7 @@ public class AnomalyDetectorProcessorTests {
         RandomCutForestModeConfig randomCutForestModeConfig = new RandomCutForestModeConfig();
 
         when(mockConfig.getDetectorMode()).thenReturn(modeConfiguration);
+        when(mockConfig.getCardinalityLimit()).thenReturn(5000);
         when(modeConfiguration.getPluginName()).thenReturn(UUID.randomUUID().toString());
         when(modeConfiguration.getPluginSettings()).thenReturn(Collections.emptyMap());
         when(pluginFactory.loadPlugin(eq(AnomalyDetectorMode.class), any(PluginSetting.class)))
@@ -212,6 +215,43 @@ public class AnomalyDetectorProcessorTests {
 
         final List<Record<Event>> slowRecordFromSlowIp = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(15.5, 15.6), ThreadLocalRandom.current().nextLong(1000, 1110), "255.255.255.255")));
         assertThat(slowRecordFromSlowIp.size(), equalTo(0));
+
+    }
+
+    @Test
+    void testAnomalyDetectorMaxCardinality() {
+        List<String> identificationKeyList = new ArrayList<String>();
+        identificationKeyList.add("ip");
+        when(mockConfig.getIdentificationKeys()).thenReturn(identificationKeyList);
+        when(mockConfig.getCardinalityLimit()).thenReturn(2);
+        when(pluginMetrics.counter(AnomalyDetectorProcessor.CARDINALITY_OVERFLOW)).thenReturn(cardinalityOverflow);
+
+        anomalyDetectorProcessor = new AnomalyDetectorProcessor(mockConfig, pluginMetrics, pluginFactory);
+        final int numSamples = 1024;
+        final List<Record<Event>> records = new ArrayList<Record<Event>>();
+        for (int i = 0; i < numSamples; i++) {
+            if (i % 2 == 0) {
+                records.add(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6), ThreadLocalRandom.current().nextLong(100, 110), "1.1.1.1"));
+            } else {
+                records.add(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(15.5, 15.6), ThreadLocalRandom.current().nextLong(1000, 1110), "255.255.255.255"));
+            }
+        }
+        // Since limit is 2, the next two IPs will not have anomaly detection
+        for (int i = 0; i < numSamples; i++) {
+            if (i % 2 == 0) {
+                records.add(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(0.5, 0.6), ThreadLocalRandom.current().nextLong(100, 110), "2.2.2.2"));
+            } else {
+                records.add(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(15.5, 15.6), ThreadLocalRandom.current().nextLong(1000, 1110), "254.254.254.254"));
+            }
+        }
+
+        anomalyDetectorProcessor.doExecute(records);
+
+        final List<Record<Event>> newIpOne = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(1000.5, 1000.6), ThreadLocalRandom.current().nextLong(1000, 1110), "3.3.3.3")));
+        assertThat(newIpOne.size(), equalTo(0));
+
+        final List<Record<Event>> newIpTwo = (List<Record<Event>>) anomalyDetectorProcessor.doExecute(Collections.singletonList(getLatencyBytesMessageWithIp(UUID.randomUUID().toString(), ThreadLocalRandom.current().nextDouble(1500.5, 1500.6), ThreadLocalRandom.current().nextLong(1000, 1110), "144.123.412.123")));
+        assertThat(newIpTwo.size(), equalTo(0));
 
     }
 

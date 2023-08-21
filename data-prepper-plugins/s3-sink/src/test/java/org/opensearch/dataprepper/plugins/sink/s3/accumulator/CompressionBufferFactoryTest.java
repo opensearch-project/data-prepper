@@ -11,13 +11,20 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
+import software.amazon.awssdk.services.s3.S3Client;
+
+import java.util.function.Supplier;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,8 +35,20 @@ class CompressionBufferFactoryTest {
     @Mock
     private CompressionEngine compressionEngine;
 
+    @Mock
+    private S3Client s3Client;
+
+    @Mock
+    private Supplier<String> bucketSupplier;
+
+    @Mock
+    private Supplier<String> keySupplier;
+
+    @Mock
+    private OutputCodec codec;
+
     private CompressionBufferFactory createObjectUnderTest() {
-        return new CompressionBufferFactory(innerBufferFactory, compressionEngine);
+        return new CompressionBufferFactory(innerBufferFactory, compressionEngine, codec);
     }
 
     @Test
@@ -46,6 +65,13 @@ class CompressionBufferFactoryTest {
         assertThrows(NullPointerException.class, this::createObjectUnderTest);
     }
 
+    @Test
+    void constructor_throws_if_Codec_is_null() {
+        codec = null;
+
+        assertThrows(NullPointerException.class, this::createObjectUnderTest);
+    }
+
     @Nested
     class WithBuffer {
         @Mock
@@ -53,21 +79,44 @@ class CompressionBufferFactoryTest {
 
         @BeforeEach
         void setUp() {
-            when(innerBufferFactory.getBuffer()).thenReturn(innerBuffer);
+            when(innerBufferFactory.getBuffer(s3Client, bucketSupplier, keySupplier)).thenReturn(innerBuffer);
         }
 
         @Test
         void getBuffer_returns_CompressionBuffer() {
-            final Buffer buffer = createObjectUnderTest().getBuffer();
+            final Buffer buffer = createObjectUnderTest().getBuffer(s3Client, bucketSupplier, keySupplier);
             assertThat(buffer, instanceOf(CompressionBuffer.class));
         }
 
         @Test
         void getBuffer_returns_new_on_each_call() {
             final CompressionBufferFactory objectUnderTest = createObjectUnderTest();
-            final Buffer firstBuffer = objectUnderTest.getBuffer();
+            final Buffer firstBuffer = objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier);
 
-            assertThat(objectUnderTest.getBuffer(), not(equalTo(firstBuffer)));
+            assertThat(objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier), not(equalTo(firstBuffer)));
+        }
+
+        @Nested
+        class WithInternalCompression {
+            @BeforeEach
+            void setUp() {
+                when(codec.isCompressionInternal()).thenReturn(true);
+            }
+
+            @Test
+            void getBuffer_returns_innerBuffer_directly() {
+                final Buffer buffer = createObjectUnderTest().getBuffer(s3Client, bucketSupplier, keySupplier);
+                assertThat(buffer, sameInstance(innerBuffer));
+            }
+
+            @Test
+            void getBuffer_calls_on_each_call() {
+                final CompressionBufferFactory objectUnderTest = createObjectUnderTest();
+                objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier);
+                objectUnderTest.getBuffer(s3Client, bucketSupplier, keySupplier);
+
+                verify(innerBufferFactory, times(2)).getBuffer(s3Client, bucketSupplier, keySupplier);
+            }
         }
     }
 }

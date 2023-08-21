@@ -12,13 +12,11 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Represents an extension of the {@link PluginModel} which is specific to Sink
@@ -120,10 +118,11 @@ public class SinkModel extends PluginModel {
         private SinkInternalJsonModel(final List<String> routes, final String tagsTargetKey, final List<String> includeKeys, final List<String> excludeKeys, final Map<String, Object> pluginSettings) {
             super(pluginSettings);
             this.routes = routes != null ? routes : Collections.emptyList();
-            this.includeKeys = includeKeys != null ? preprocessingKeys(includeKeys) : Collections.emptyList();
-            this.excludeKeys = excludeKeys != null ? preprocessingKeys(excludeKeys) : Collections.emptyList();
+            this.includeKeys = includeKeys != null ? includeKeys : Collections.emptyList();
+            this.excludeKeys = excludeKeys != null ? excludeKeys : Collections.emptyList();
             this.tagsTargetKey = tagsTargetKey;
             validateConfiguration();
+            validateKeys();
         }
 
         void validateConfiguration() {
@@ -132,24 +131,18 @@ public class SinkModel extends PluginModel {
             }
         }
 
-
         /**
-         * Pre-processes a list of Keys and returns a sorted list
-         * The keys must start with `/` and not end with `/`
-         *
-         * @param keys a list of raw keys
-         * @return a sorted processed keys
+         * Validates both include and exclude keys if they contain /
          */
-        private List<String> preprocessingKeys(final List<String> keys) {
-            if (keys.contains("/")) {
-                return new ArrayList<>();
-            }
-            List<String> result = keys.stream()
-                    .map(k -> k.startsWith("/") ? k : "/" + k)
-                    .map(k -> k.endsWith("/") ? k.substring(0, k.length() - 1) : k)
-                    .collect(Collectors.toList());
-            Collections.sort(result);
-            return result;
+        private void validateKeys() {
+            includeKeys.forEach(key -> {
+                if(key.contains("/"))
+                    throw new InvalidPluginConfigurationException("include_keys cannot contain /");
+            });
+            excludeKeys.forEach(key -> {
+                if(key.contains("/"))
+                    throw new InvalidPluginConfigurationException("exclude_keys cannot contain /");
+            });
         }
     }
 

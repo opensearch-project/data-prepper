@@ -23,7 +23,7 @@ class BufferTypeOptionsTest {
 
     @Test
     void get_buffer_type_test() {
-        assertNotNull(BufferTypeOptions.INMEMORY.getBufferType());
+        assertNotNull(BufferTypeOptions.INMEMORY.getBufferFactory());
     }
 
     @Test

@@ -48,6 +48,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
 import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
+import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
 import org.apache.commons.lang3.Range;
 
 /**
@@ -161,10 +162,16 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             topicMetrics.getNumberOfPollAuthErrors().increment();
             Thread.sleep(10000);
         } catch (RecordDeserializationException e) {
-            LOG.warn("Deserialization error - topic {} partition {} offset {}, seeking past the error record",
-                     e.topicPartition().topic(), e.topicPartition().partition(), e.offset(), e);
+            LOG.warn("Deserialization error - topic {} partition {} offset {}",
+                     e.topicPartition().topic(), e.topicPartition().partition(), e.offset());
+            if (e.getCause() instanceof AWSSchemaRegistryException) {
+                LOG.warn("AWSSchemaRegistryException: {}. Retrying after 30 seconds", e.getMessage());
+                Thread.sleep(30000);
+            } else {
+                LOG.warn("Seeking past the error record", e);
+                consumer.seek(e.topicPartition(), e.offset()+1);
+            }
             topicMetrics.getNumberOfDeserializationErrors().increment();
-            consumer.seek(e.topicPartition(), e.offset()+1);
         }
     }
 
@@ -173,7 +180,11 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             partitionsToReset.forEach(partition -> {
                 try {
                     final OffsetAndMetadata offsetAndMetadata = consumer.committed(partition);
-                    consumer.seek(partition, offsetAndMetadata);
+                    if (Objects.isNull(offsetAndMetadata)) {
+                        consumer.seek(partition, 0L);
+                    } else {
+                        consumer.seek(partition, offsetAndMetadata);
+                    }
                 } catch (Exception e) {
                     LOG.error("Failed to seek to last committed offset upon negative acknowledgement {}", partition, e);
                 }
