@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3;
 
 import org.apache.commons.io.IOUtils;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -35,6 +36,8 @@ import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.AwsAuthenticationOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ThresholdOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -53,13 +56,16 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.Duration;
-import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -76,6 +82,14 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 public class S3SinkIT {
+    private static final Logger LOG = LoggerFactory.getLogger(S3SinkIT.class);
+    private static final Random RANDOM = new Random();
+
+    static final int MEDIUM_OBJECT_SIZE = 50 * 500;
+    static final int LARGE_OBJECT_SIZE = 500 * 2_000;
+
+    private static List<String> reusableRandomStrings;
+
     @Mock
     private PluginSetting pluginSetting;
     @Mock
@@ -98,6 +112,21 @@ public class S3SinkIT {
     @TempDir
     private File s3FileLocation;
     private S3TransferManager transferManager;
+    private static String pathPrefixForTestSuite;
+
+    @BeforeAll
+    static void setUpAll() {
+        LocalDateTime now = LocalDateTime.now();
+        String datePart = LocalDate.from(now).format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        String time = LocalTime.from(now).toString();
+        pathPrefixForTestSuite = datePart + "/" + time + "-" + UUID.randomUUID() + "/";
+
+        int totalRandomStrings = 1_000;
+        reusableRandomStrings = new ArrayList<>(totalRandomStrings);
+        for (int i = 0; i < totalRandomStrings; i++) {
+            reusableRandomStrings.add(UUID.randomUUID().toString());
+        }
+    }
 
     @BeforeEach
     void setUp() {
@@ -132,7 +161,7 @@ public class S3SinkIT {
         when(awsCredentialsSupplier.getProvider(any())).thenReturn(awsCredentialsProvider);
 
         final S3AsyncClient s3AsyncClient = S3AsyncClient
-                .builder()
+                .crtBuilder()
                 .credentialsProvider(awsCredentialsProvider)
                 .region(region)
                 .build();
@@ -150,30 +179,37 @@ public class S3SinkIT {
     @ArgumentsSource(IntegrationTestArguments.class)
     void test(final OutputScenario outputScenario, final BufferTypeOptions bufferTypeOptions, final CompressionScenario compressionScenario, final int batchSize, final int numberOfBatches) throws IOException {
 
-        final String pathPrefix = Instant.now().toString() + "-" + UUID.randomUUID();
+        String testRun = outputScenario + "-" + bufferTypeOptions + "-" + compressionScenario + "-" + batchSize + "-" + numberOfBatches;
+        final String pathPrefix = pathPrefixForTestSuite + testRun;
         when(objectKeyOptions.getPathPrefix()).thenReturn(pathPrefix + "/");
 
         when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenReturn(outputScenario.getCodec());
         when(s3SinkConfig.getBufferType()).thenReturn(bufferTypeOptions);
         when(s3SinkConfig.getCompression()).thenReturn(compressionScenario.getCompressionOption());
-        when(thresholdOptions.getEventCount()).thenReturn(batchSize * numberOfBatches);
+        int expectedTotalSize = batchSize * numberOfBatches;
+        when(thresholdOptions.getEventCount()).thenReturn(expectedTotalSize);
 
         final S3Sink objectUnderTest = createObjectUnderTest();
 
-        final List<Map<String, Object>> allEventData = new ArrayList<>(batchSize * numberOfBatches);
+        final int maxEventDataToSample = 5000;
+        final List<Map<String, Object>> sampleEventData = new ArrayList<>(maxEventDataToSample);
         for (int batchNumber = 0; batchNumber < numberOfBatches; batchNumber++) {
             final int currentBatchNumber = batchNumber;
             final List<Record<Event>> events = IntStream.range(0, batchSize)
-                    .mapToObj(sequence -> generateEventData(currentBatchNumber * sequence))
-                    .peek(allEventData::add)
+                    .mapToObj(sequence -> generateEventData((currentBatchNumber+1) * (sequence+1)))
+                    .peek(data -> {
+                        if (sampleEventData.size() < maxEventDataToSample)
+                            sampleEventData.add(data);
+                    })
                     .map(this::generateTestEvent)
                     .map(Record::new)
                     .collect(Collectors.toList());
 
+            LOG.debug("Writing batch {} with size {}.", currentBatchNumber, events.size());
             objectUnderTest.doOutput(events);
         }
 
-        assertThat(allEventData.size(), equalTo(batchSize * numberOfBatches));
+        LOG.info("Listing S3 path prefix: {}", pathPrefix);
 
         final ListObjectsV2Response listObjectsResponse = s3Client.listObjectsV2(ListObjectsV2Request.builder()
                 .bucket(bucketName)
@@ -185,7 +221,9 @@ public class S3SinkIT {
 
         final S3Object s3Object = listObjectsResponse.contents().get(0);
 
-        final File target = new File(s3FileLocation, pathPrefix + ".original");
+        final File target = new File(s3FileLocation, testRun + ".original");
+
+        LOG.info("Downloading S3 object to local file {}.", target);
 
         final FileDownload fileDownload = transferManager.downloadFile(DownloadFileRequest.builder()
                 .destination(target)
@@ -197,12 +235,23 @@ public class S3SinkIT {
 
         fileDownload.completionFuture().join();
 
-        final File actualContentFile = new File(s3FileLocation, pathPrefix + ".content");
+        File actualContentFile = decompressFileIfNecessary(outputScenario, compressionScenario, testRun, target);
+
+        LOG.info("Validating output. totalSize={}; sampleDataSize={}", expectedTotalSize, sampleEventData.size());
+        outputScenario.validate(expectedTotalSize, sampleEventData, actualContentFile, compressionScenario);
+    }
+
+    private File decompressFileIfNecessary(OutputScenario outputScenario, CompressionScenario compressionScenario, String pathPrefix, File target) throws IOException {
+
+        if (outputScenario.isCompressionInternal() || !compressionScenario.requiresDecompression())
+            return target;
+
+        File actualContentFile = new File(s3FileLocation, pathPrefix + ".content");
         IOUtils.copy(
                 compressionScenario.decompressingInputStream(new FileInputStream(target)),
                 new FileOutputStream(actualContentFile));
 
-        outputScenario.validate(allEventData, actualContentFile);
+        return actualContentFile;
     }
 
     private Event generateTestEvent(final Map<String, Object> eventData) {
@@ -217,16 +266,17 @@ public class S3SinkIT {
                 .build();
     }
 
-    private static Map<String, Object> generateEventData(final int sequence) {
+    private Map<String, Object> generateEventData(final int sequence) {
         final Map<String, Object> eventDataMap = new LinkedHashMap<>();
         eventDataMap.put("sequence", sequence);
+        eventDataMap.put("id", UUID.randomUUID().toString());
         for (int i = 0; i < 2; i++) {
-            eventDataMap.put("field" + i, UUID.randomUUID().toString());
-            eventDataMap.put("float" + i, (float) i * 1.1);
+            eventDataMap.put("field" + i, reusableRandomString());
+            eventDataMap.put("float" + i, (float) i * 1.5 * sequence);
         }
         for (int i = 0; i < 2; i++) {
             eventDataMap.put("list" + i,
-                    List.of(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString()));
+                    List.of(reusableRandomString(), reusableRandomString(), reusableRandomString()));
         }
         return eventDataMap;
     }
@@ -234,28 +284,48 @@ public class S3SinkIT {
     static class IntegrationTestArguments implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
-            final List<BufferTypeOptions> bufferTypeOptions = Arrays.asList(BufferTypeOptions.values());
+            final List<BufferScenario> bufferScenarios = List.of(
+                    new InMemoryBufferScenario(),
+                    new LocalFileBufferScenario(),
+                    new MultiPartBufferScenario()
+            );
             final List<OutputScenario> outputScenarios = List.of(
-                    new NdjsonOutputScenario());
+                    new NdjsonOutputScenario(),
+                    new ParquetOutputScenario()
+            );
             final List<CompressionScenario> compressionScenarios = List.of(
                     new NoneCompressionScenario(),
-                    new GZipCompressionScenario()
+                    new GZipCompressionScenario(),
+                    new SnappyCompressionScenario()
             );
-            final List<Integer> numberOfRecordsPerBatchList = List.of(1, 25, 500);
-            final List<Integer> numberOfBatchesList = List.of(1, 25);
+            final List<Integer> numberOfRecordsPerBatchList = List.of(
+                    1,
+                    500
+            );
+            final List<Integer> numberOfBatchesList = List.of(
+                    1,
+                    50,
+                    1_000
+            );
 
             return outputScenarios
                     .stream()
-                    .flatMap(outputScenario -> bufferTypeOptions
+                    .flatMap(outputScenario -> bufferScenarios
                             .stream()
-                            .flatMap(bufferTypeOption -> compressionScenarios
+                            .filter(bufferScenario -> !outputScenario.getIncompatibleBufferTypes().contains(bufferScenario.getBufferType()))
+                            .flatMap(bufferScenario -> compressionScenarios
                                     .stream()
                                     .flatMap(compressionScenario -> numberOfRecordsPerBatchList
                                             .stream()
                                             .flatMap(batchRecordCount -> numberOfBatchesList
                                                     .stream()
-                                                    .map(batchCount -> arguments(outputScenario, bufferTypeOption, compressionScenario, batchRecordCount, batchCount))
+                                                    .filter(batchCount -> batchCount * batchRecordCount <= bufferScenario.getMaximumNumberOfEvents())
+                                                    .map(batchCount -> arguments(outputScenario, bufferScenario.getBufferType(), compressionScenario, batchRecordCount, batchCount))
                                             ))));
         }
+    }
+
+    private static String reusableRandomString() {
+        return reusableRandomStrings.get(RANDOM.nextInt(reusableRandomStrings.size()));
     }
 }

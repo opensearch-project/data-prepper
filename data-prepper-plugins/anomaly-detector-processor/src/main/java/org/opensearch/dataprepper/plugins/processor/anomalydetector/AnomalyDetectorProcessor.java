@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.processor.anomalydetector;
 
 
+import io.micrometer.core.instrument.Counter;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
@@ -17,7 +18,11 @@ import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -30,15 +35,19 @@ public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, R
     public static final String DEVIATION_KEY = "deviation_from_expected";
     public static final String GRADE_KEY = "grade";
     static final String NUMBER_RCF_INSTANCES = "RCFInstances";
+    static final String CARDINALITY_OVERFLOW = "cardinalityOverflow";
 
     private final Boolean verbose;
+    private final int cardinalityLimit;
     private final IdentificationKeysHasher identificationKeysHasher;
     private final List<String> keys;
     private final PluginFactory pluginFactory;
     private final HashMap<Integer, AnomalyDetectorMode> forestMap;
     private final AtomicInteger cardinality;
     private final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig;
-
+    private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorProcessor.class);
+    private final Counter cardinalityOverflowCounter;
+    Instant nextWarnTime = Instant.MIN;
     @DataPrepperPluginConstructor
     public AnomalyDetectorProcessor(final AnomalyDetectorProcessorConfig anomalyDetectorProcessorConfig, final PluginMetrics pluginMetrics, final PluginFactory pluginFactory) {
         super(pluginMetrics);
@@ -48,6 +57,8 @@ public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, R
         this.keys = anomalyDetectorProcessorConfig.getKeys();
         this.verbose = anomalyDetectorProcessorConfig.getVerbose();
         this.cardinality = pluginMetrics.gauge(NUMBER_RCF_INSTANCES, new AtomicInteger());
+        this.cardinalityLimit = anomalyDetectorProcessorConfig.getCardinalityLimit();
+        this.cardinalityOverflowCounter = pluginMetrics.counter(CARDINALITY_OVERFLOW);
         forestMap = new HashMap<>();
     }
 
@@ -68,12 +79,20 @@ public class AnomalyDetectorProcessor extends AbstractProcessor<Record<Event>, R
             final IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap = identificationKeysHasher.createIdentificationKeysMapFromEvent(event);
             AnomalyDetectorMode forest = forestMap.get(identificationKeysMap.hashCode());
 
-            if (Objects.isNull(forest)) {
+            if (Objects.nonNull(forest)) {
+                recordsOut.addAll(forest.handleEvents(List.of(record)));
+            } else if (forestMap.size() < cardinalityLimit) {
                 forest = loadAnomalyDetectorMode(pluginFactory);
                 forest.initialize(keys, verbose);
                 forestMap.put(identificationKeysMap.hashCode(), forest);
+                recordsOut.addAll(forest.handleEvents(List.of(record)));
+            } else {
+                if (Instant.now().isAfter(nextWarnTime)) {
+                    LOG.warn("Cardinality limit reached, see cardinalityOverflow metric for count of skipped records");
+                    nextWarnTime = Instant.now().plus(5, ChronoUnit.MINUTES);
+                }
+                cardinalityOverflowCounter.increment();
             }
-            recordsOut.addAll(forestMap.get(identificationKeysMap.hashCode()).handleEvents(List.of(record)));
         }
         cardinality.set(forestMap.size());
         return recordsOut;

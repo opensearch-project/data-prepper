@@ -35,7 +35,7 @@ public enum CompressionOption {
         return compressionEngineSupplier.get();
     }
 
-    String getOption() {
+    public String getOption() {
         return option;
     }
 

@@ -36,16 +36,6 @@ public class ParquetOutputCodecConfig {
     @JsonProperty("schema_region")
     private String schemaRegion;
 
-    @JsonProperty("region")
-    @NotNull
-    @Valid
-    private String region;
-
-    @JsonProperty("bucket")
-    @NotNull
-    @Valid
-    private String bucket;
-
     @JsonProperty("path_prefix")
     @NotNull
     @Valid
@@ -72,14 +62,6 @@ public class ParquetOutputCodecConfig {
         return schemaRegistryUrl;
     }
 
-    public String getRegion() {
-        return region;
-    }
-
-    public String getBucket() {
-        return bucket;
-    }
-
     public String getPathPrefix() {
         return pathPrefix;
     }
@@ -91,14 +73,6 @@ public class ParquetOutputCodecConfig {
      */
     public String getNamePattern() {
         return DEFAULT_OBJECT_NAME_PATTERN;
-    }
-
-    public void setRegion(String region) {
-        this.region = region;
-    }
-
-    public void setBucket(String bucket) {
-        this.bucket = bucket;
     }
 
     public void setPathPrefix(String pathPrefix) {

@@ -2,6 +2,14 @@ name: Release Artifacts
 
 on:
   workflow_dispatch:
+    inputs:
+      release-major-tag:
+        description: 'Whether to create major tag of docker image or not. This will create a tag such as 2.3 which points to this version.'
+        required: true
+      release-latest-tag:
+        description: >
+          'Whether to create latest tag of docker image or not. This will update the latest tag to point to this version. You should set this when releasing the latest version, but not patches to old versions.'
+        required: true
 
 permissions:
   id-token: write
@@ -95,3 +103,68 @@ jobs:
 
       - name: Smoke Test Tarball Files
         run: ./release/smoke-tests/run-tarball-files-smoke-tests.sh -v ${{ env.version }} -u ${{ secrets.ARCHIVES_PUBLIC_URL }} -n ${{ github.run_number }} -i ${{ matrix.image }} -t ${{ matrix.archive }}
+
+  protomote:
+    runs-on: ubuntu-latest
+    if: success() || failure()
+    needs: [build, validate-docker, validate-archive]
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout Data Prepper
+        uses: actions/checkout@v3
+      - name: Get Version
+        run: grep '^version=' gradle.properties >> $GITHUB_ENV
+
+      - name: Get Approvers
+        id: get_approvers
+        run: |
+          echo "approvers=$(cat .github/CODEOWNERS | grep @ | tr -d '* ' | sed 's/@/,/g' | sed 's/,//1')" >> $GITHUB_OUTPUT
+      - uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: ${{ steps.get_approvers.outputs.approvers }}
+          minimum-approvals: 2
+          issue-title: 'Release Data Prepper : ${{ env.version }}'
+          issue-body: >
+            Please approve or deny the release of Data Prepper.
+
+            **VERSION**: ${{ env.version }}
+
+            **BUILD NUMBER**: ${{ github.run_number }}
+
+            **RELEASE MAJOR TAG**: ${{ github.event.inputs.release-major-tag }}
+
+            **RELEASE LATEST TAG**: ${{ github.event.inputs.release-latest-tag }}
+
+          exclude-workflow-initiator-as-approver: false
+
+      - name: Create Release Description
+        run: |
+          echo 'version: ${{ env.version }}' > release-description.yaml
+          echo 'build_number: ${{ github.run_number }}' >> release-description.yaml
+          echo 'release_major_tag: ${{ github.event.inputs.release-major-tag }}' >> release-description.yaml
+          echo 'release_latest_tag: ${{ github.event.inputs.release-latest-tag }}' >> release-description.yaml
+
+      - name: Create tag
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ github.TOKEN }}
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/${{ env.version }}',
+              sha: context.sha
+            })
+
+      - name: Draft release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          name: '${{ env.version }}'
+          tag_name: 'refs/tags/${{ env.version }}'
+          files: |
+            release-description.yaml

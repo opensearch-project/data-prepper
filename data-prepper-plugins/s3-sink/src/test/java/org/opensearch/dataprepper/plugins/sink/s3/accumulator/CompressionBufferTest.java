@@ -95,9 +95,9 @@ class CompressionBufferTest {
         final String bucket = UUID.randomUUID().toString();
         final String key = UUID.randomUUID().toString();
 
-        createObjectUnderTest().flushToS3(s3Client, bucket, key);
+        createObjectUnderTest().flushToS3();
 
-        verify(innerBuffer).flushToS3(s3Client, bucket, key);
+        verify(innerBuffer).flushToS3();
     }
 
     @Test

@@ -28,6 +28,9 @@ public class AnomalyDetectorProcessorConfig {
     @JsonProperty("verbose")
     private Boolean verbose = false;
 
+    @JsonProperty("cardinality_limit")
+    private int cardinalityLimit = 5000;
+
     public PluginModel getDetectorMode() { 
         return detectorMode;
     }
@@ -46,6 +49,9 @@ public class AnomalyDetectorProcessorConfig {
     }
     public boolean getVerbose() {
         return verbose;
+    }
+    public int getCardinalityLimit() {
+        return cardinalityLimit;
     }
 
 

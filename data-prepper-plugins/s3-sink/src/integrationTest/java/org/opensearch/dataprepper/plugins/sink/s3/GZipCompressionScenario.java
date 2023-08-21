@@ -21,4 +21,9 @@ public class GZipCompressionScenario implements CompressionScenario {
     public InputStream decompressingInputStream(final InputStream inputStream) throws IOException {
         return new GzipCompressorInputStream(inputStream);
     }
+
+    @Override
+    public String toString() {
+        return "GZip";
+    }
 }

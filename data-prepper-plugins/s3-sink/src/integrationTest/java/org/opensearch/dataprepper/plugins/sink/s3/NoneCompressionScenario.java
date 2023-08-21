@@ -20,4 +20,14 @@ public class NoneCompressionScenario implements CompressionScenario {
     public InputStream decompressingInputStream(final InputStream inputStream) throws IOException {
         return inputStream;
     }
+
+    @Override
+    public boolean requiresDecompression() {
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return "Uncompressed";
+    }
 }

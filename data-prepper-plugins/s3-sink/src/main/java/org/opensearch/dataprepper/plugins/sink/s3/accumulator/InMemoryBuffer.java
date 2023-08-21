@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * A buffer can hold in memory data and flushing it to S3.
@@ -19,11 +20,19 @@ import java.util.concurrent.TimeUnit;
 public class InMemoryBuffer implements Buffer {
 
     private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private final S3Client s3Client;
+    private final Supplier<String> bucketSupplier;
+    private final Supplier<String> keySupplier;
     private int eventCount;
     private final StopWatch watch;
     private boolean isCodecStarted;
+    private String bucket;
+    private String key;
 
-    InMemoryBuffer() {
+    InMemoryBuffer(S3Client s3Client, Supplier<String> bucketSupplier, Supplier<String> keySupplier) {
+        this.s3Client = s3Client;
+        this.bucketSupplier = bucketSupplier;
+        this.keySupplier = keySupplier;
         byteArrayOutputStream.reset();
         eventCount = 0;
         watch = new StopWatch();
@@ -47,23 +56,33 @@ public class InMemoryBuffer implements Buffer {
 
     /**
      * Upload accumulated data to s3 bucket.
-     *
-     * @param s3Client s3 client object.
-     * @param bucket   bucket name.
-     * @param key      s3 object key path.
      */
     @Override
-    public void flushToS3(S3Client s3Client, String bucket, String key) {
+    public void flushToS3() {
         final byte[] byteArray = byteArrayOutputStream.toByteArray();
         s3Client.putObject(
-                PutObjectRequest.builder().bucket(bucket).key(key).build(),
+                PutObjectRequest.builder().bucket(getBucket()).key(getKey()).build(),
                 RequestBody.fromBytes(byteArray));
+    }
+
+    private String getBucket() {
+        if(bucket == null)
+            bucket = bucketSupplier.get();
+        return bucket;
     }
 
     @Override
     public void setEventCount(int eventCount) {
         this.eventCount = eventCount;
     }
+
+    @Override
+    public String getKey() {
+        if(key == null)
+            key = keySupplier.get();
+        return key;
+    }
+
     @Override
     public OutputStream getOutputStream() {
         return byteArrayOutputStream;
