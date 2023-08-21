@@ -52,6 +52,7 @@ class ParseJsonProcessorTest {
         when(processorConfig.getDestination()).thenReturn(defaultConfig.getDestination());
         when(processorConfig.getPointer()).thenReturn(defaultConfig.getPointer());
         when(processorConfig.getParseWhen()).thenReturn(null);
+        when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(true);
     }
 
     private ParseJsonProcessor createObjectUnderTest() {
@@ -92,6 +93,38 @@ class ParseJsonProcessorTest {
 
         assertThatKeyEquals(parsedEvent, source, "value_that_will_overwrite_source");
         assertThatKeyEquals(parsedEvent, "key", "value");
+    }
+
+    @Test
+    void test_when_dataFieldEqualToRootField_then_notOverwritesOriginalFields() {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(false);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+
+        final Map<String, Object> data = Map.of(source,"value_that_will_not_be_overwritten");
+
+        final String serializedMessage = convertMapToJSONString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThatKeyEquals(parsedEvent, source, "{\"root_source\":\"value_that_will_not_be_overwritten\"}");
+    }
+
+    @Test
+    void test_when_dataFieldEqualToDestinationField_then_notOverwritesOriginalFields() {
+        final String source = "root_source";
+        when(processorConfig.getSource()).thenReturn(source);
+        when(processorConfig.getDestination()).thenReturn(source);  // write back to source
+        when(processorConfig.getOverwriteIfDestinationExists()).thenReturn(false);
+        parseJsonProcessor = createObjectUnderTest(); // need to recreate so that new config options are used
+
+        final Map<String, Object> data = Map.of("key","value");
+
+        final String serializedMessage = convertMapToJSONString(data);
+        final Event parsedEvent = createAndParseMessageEvent(serializedMessage);
+
+        assertThatKeyEquals(parsedEvent, source, "{\"key\":\"value\"}");
+        assertThat(parsedEvent.containsKey("key"), equalTo(false));
     }
 
     @Test
