@@ -287,12 +287,12 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                     Thread.sleep(10000);
                 }
                 synchronized(this) {
+                    commitOffsets();
+                    resetOffsets();
                     if (currentEpoch != newEpoch) {
                         partitionCommitTrackerMap.clear();
+                        currentEpoch = newEpoch;
                     }
-                    resetOffsets();
-                    commitOffsets();
-                    currentEpoch = newEpoch;
                 }
                 consumeRecords();
                 topicMetrics.update(consumer);
