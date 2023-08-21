@@ -14,20 +14,22 @@ import java.util.Map;
  * It might be a good idea to consolidate similar logic for input.
  */
 public class AvroEventConverter {
-
     private final SchemaChooser schemaChooser;
 
     public AvroEventConverter() {
-        schemaChooser = new SchemaChooser();
+        this(new SchemaChooser());
+    }
+
+    AvroEventConverter(final SchemaChooser schemaChooser) {
+        this.schemaChooser = schemaChooser;
     }
 
     public GenericRecord convertEventDataToAvro(final Schema schema,
                                                 final Map<String, Object> eventData,
                                                 OutputCodecContext codecContext) {
         final GenericRecord avroRecord = new GenericData.Record(schema);
-        final boolean isExcludeKeyAvailable = !codecContext.getExcludeKeys().isEmpty();
         for (final String key : eventData.keySet()) {
-            if (isExcludeKeyAvailable && codecContext.getExcludeKeys().contains(key)) {
+            if (codecContext != null && codecContext.shouldNotIncludeKey(key)) {
                 continue;
             }
             final Schema.Field field = schema.getField(key);
