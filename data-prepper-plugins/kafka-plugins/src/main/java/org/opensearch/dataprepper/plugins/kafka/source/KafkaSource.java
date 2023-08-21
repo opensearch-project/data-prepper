@@ -9,7 +9,7 @@ import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import io.confluent.kafka.serializers.KafkaJsonDeserializer;
-//import kafka.common.BrokerEndPointNotAvailableException;
+import kafka.common.BrokerEndPointNotAvailableException;
 import org.apache.avro.generic.GenericRecord;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -148,12 +148,12 @@ public class KafkaSource implements Source<Record<Event>> {
                     executorService.submit(consumer);
                 });
             } catch (Exception e) {
-               /* if (e instanceof BrokerNotAvailableException ||
+                if (e instanceof BrokerNotAvailableException ||
                         e instanceof BrokerEndPointNotAvailableException || e instanceof TimeoutException) {
                     LOG.error("The kafka broker is not available...");
                 } else {
                     LOG.error("Failed to setup the Kafka Source Plugin.", e);
-                }*/
+                }
                 throw new RuntimeException(e);
             }
             LOG.info("Started Kafka source for topic " + topic.getName());
