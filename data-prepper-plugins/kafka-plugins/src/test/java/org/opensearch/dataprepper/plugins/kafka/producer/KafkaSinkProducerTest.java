@@ -94,7 +94,7 @@ public class KafkaSinkProducerTest {
 
     @Test
     public void produceJsonRecordsTest() throws RestClientException, IOException {
-        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("json");
+        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("JSON");
         MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new JsonSerializer());
         producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
         SchemaMetadata schemaMetadata = mock(SchemaMetadata.class);
@@ -117,7 +117,7 @@ public class KafkaSinkProducerTest {
 
     @Test
     public void produceAvroRecordsTest() throws Exception {
-        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("avro");
+        when(kafkaSinkConfig.getSerdeFormat()).thenReturn("AVRO");
         MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new StringSerializer());
         producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
         SchemaMetadata schemaMetadata = mock(SchemaMetadata.class);
