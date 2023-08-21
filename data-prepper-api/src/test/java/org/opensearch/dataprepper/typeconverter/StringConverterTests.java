@@ -63,12 +63,6 @@ public class StringConverterTests {
         final String strConstant = "testString";
         assertThat(converter.convert(strConstant), equalTo(strConstant));
     }
-    @Test
-    void testNullValueStringConversion() {
-        StringConverter converter = new StringConverter();
-        final String expectedString = "null";
-        assertThat(converter.convert(null), equalTo(expectedString));
-    }
 
     @Test
     void testInvalidStringConversion() {

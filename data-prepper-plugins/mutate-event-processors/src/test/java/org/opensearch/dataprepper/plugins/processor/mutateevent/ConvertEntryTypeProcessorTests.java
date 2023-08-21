@@ -112,7 +112,7 @@ public class ConvertEntryTypeProcessorTests {
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testValue);
 
-        assertThat(event.get(TEST_KEY, Object.class), equalTo(null));
+        assertThat(event.get(TEST_KEY, Object.class), equalTo(testValue));
         assertThat(event.getMetadata().getTags().size(), equalTo(1));
         assertThat(event.getMetadata().getTags(), containsInAnyOrder(tags.toArray()));
     }
@@ -193,7 +193,7 @@ public class ConvertEntryTypeProcessorTests {
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(testDoubleValue);
 
-        assertThat(event.get(TEST_KEY, Object.class), equalTo(null));
+        assertThat(event.get(TEST_KEY, Object.class), equalTo(123.789));
         assertThat(event.getMetadata().getTags().size(), equalTo(1));
         assertThat(event.getMetadata().getTags(), containsInAnyOrder(tags.toArray()));
     }

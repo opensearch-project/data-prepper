@@ -63,7 +63,6 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
             for(final String key : convertEntryKeys) {
                 Object keyVal = recordEvent.get(key, Object.class);
                 if (keyVal != null) {
-                    recordEvent.delete(key);
                     if (!nullValues.contains(keyVal.toString())) {
                         try {
                             recordEvent.put(key, converter.convert(keyVal));
@@ -71,6 +70,8 @@ public class ConvertEntryTypeProcessor  extends AbstractProcessor<Record<Event>,
                             LOG.error(EVENT, "Unable to convert key: {} with value: {} to {}", key, keyVal, type, e);
                             recordEvent.getMetadata().addTags(tagsOnFailure);
                         }
+                    } else {
+                        recordEvent.delete(key);
                     }
                 }
             }

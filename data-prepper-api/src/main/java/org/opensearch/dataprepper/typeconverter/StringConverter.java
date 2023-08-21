@@ -5,10 +5,8 @@
 
 package org.opensearch.dataprepper.typeconverter;
 
-import java.util.Objects;
-
 public class StringConverter implements TypeConverter<String> {
-    public String convert(final Object source) throws IllegalArgumentException {
+    public String convert(Object source) throws IllegalArgumentException {
         if (source instanceof Long) {
             return Long.toString(((Number)source).longValue());
         }
@@ -27,9 +25,6 @@ public class StringConverter implements TypeConverter<String> {
         if (source instanceof String) {
             return (String)source;
         }
-        if (Objects.isNull(source)) {
-            return "null";
-        }
-        throw new IllegalArgumentException("Unsupported type conversion");
+        throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }
 }
