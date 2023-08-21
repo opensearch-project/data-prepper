@@ -13,15 +13,7 @@ import java.io.IOException;
 
 public class FailedHttpResponseInterceptor implements HttpResponseInterceptor {
 
-    public static final int ERROR_CODE_500 = 500;
-
-    public static final int ERROR_CODE_400 = 400;
-
-    public static final int ERROR_CODE_404 = 404;
-
-    public static final int ERROR_CODE_501 = 501;
-
-    public static final int ERROR_CODE_403 = 403;
+    public static final int STATUS_CODE_200 = 200;
 
     private final String url;
 
@@ -31,11 +23,7 @@ public class FailedHttpResponseInterceptor implements HttpResponseInterceptor {
 
     @Override
     public void process(final HttpResponse response, final EntityDetails entity, final HttpContext context) throws IOException {
-        if (response.getCode() == ERROR_CODE_500 ||
-                response.getCode() == ERROR_CODE_400 ||
-                response.getCode() == ERROR_CODE_404 ||
-                response.getCode() == ERROR_CODE_403 ||
-                response.getCode() == ERROR_CODE_501) {
+        if (response.getCode() != STATUS_CODE_200) {
             throw new IOException(String.format("url:  %s , status code: %s", url,response.getCode()));
         }
     }
