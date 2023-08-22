@@ -76,7 +76,6 @@ class ExtensionPluginConfigurationConverterTest {
 
     @Test
     void convert_with_null_rootKey_value_should_return_null() {
-        when(validator.validate(any())).thenReturn(Collections.emptySet());
         when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final String rootKey = "test_extension";
         when(pipelineExtensions.getExtensionMap()).thenReturn(Collections.emptyMap());
@@ -86,7 +85,9 @@ class ExtensionPluginConfigurationConverterTest {
 
     @Test
     void convert_should_throw_exception_when_there_are_constraint_violations() {
+        when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final String rootKey = UUID.randomUUID().toString();
+        when(pipelineExtensions.getExtensionMap()).thenReturn(Map.of(rootKey, Collections.emptyMap()));
         final String errorMessage = UUID.randomUUID().toString();
         given(constraintViolation.getMessage()).willReturn(errorMessage);
         final String propertyPathString = UUID.randomUUID().toString();
