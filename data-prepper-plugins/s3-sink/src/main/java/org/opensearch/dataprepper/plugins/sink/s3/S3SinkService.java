@@ -112,28 +112,32 @@ public class S3SinkService {
         try {
             for (Record<Event> record : records) {
 
-                if (currentBuffer.getEventCount() == 0) {
-                    final Event eventForSchemaAutoGenerate = record.getData();
-                    codec.start(currentBuffer.getOutputStream(), eventForSchemaAutoGenerate, codecContext);
-                }
-
                 final Event event = record.getData();
-                codec.writeEvent(event, currentBuffer.getOutputStream());
-                int count = currentBuffer.getEventCount() + 1;
-                currentBuffer.setEventCount(count);
+                try {
+                    if (currentBuffer.getEventCount() == 0) {
+                        codec.start(currentBuffer.getOutputStream(), event, codecContext);
+                    }
 
-                if (event.getEventHandle() != null) {
-                    bufferedEventHandles.add(event.getEventHandle());
+                    codec.writeEvent(event, currentBuffer.getOutputStream());
+                    int count = currentBuffer.getEventCount() + 1;
+                    currentBuffer.setEventCount(count);
+
+                    if (event.getEventHandle() != null) {
+                        bufferedEventHandles.add(event.getEventHandle());
+                    }
+                } catch (Exception ex) {
+                    if (event.getEventHandle() != null) {
+                        event.getEventHandle().release(false);
+                    }
+                    LOG.error("Unable to add event to buffer. Dropping this event.");
                 }
+
                 flushToS3IfNeeded();
             }
-        } catch (IOException e) {
-            LOG.error("Exception while write event into buffer :", e);
+            flushToS3IfNeeded();
+        } finally {
+            reentrantLock.unlock();
         }
-
-        flushToS3IfNeeded();
-
-        reentrantLock.unlock();
     }
 
     private void releaseEventHandles(final boolean result) {
