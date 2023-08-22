@@ -354,7 +354,6 @@ class S3SinkServiceIT {
     private void configureParquetCodec() {
         parquetOutputCodecConfig = new ParquetOutputCodecConfig();
         parquetOutputCodecConfig.setSchema(parseSchema().toString());
-        parquetOutputCodecConfig.setPathPrefix(PATH_PREFIX);
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
         keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE));
     }
