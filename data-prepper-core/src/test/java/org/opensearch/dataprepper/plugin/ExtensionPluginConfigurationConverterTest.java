@@ -21,6 +21,7 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -71,6 +72,16 @@ class ExtensionPluginConfigurationConverterTest {
         final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKey);
         assertThat(testExtensionConfig, instanceOf(TestExtensionConfig.class));
         assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
+    }
+
+    @Test
+    void convert_with_null_rootKey_value_should_return_null() {
+        when(validator.validate(any())).thenReturn(Collections.emptySet());
+        when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(pipelineExtensions);
+        final String rootKey = "test_extension";
+        when(pipelineExtensions.getExtensionMap()).thenReturn(Collections.emptyMap());
+        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKey);
+        assertThat(testExtensionConfig, nullValue());
     }
 
     @Test

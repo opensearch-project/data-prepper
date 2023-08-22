@@ -47,7 +47,7 @@ public class ExtensionPluginConfigurationConverter {
                 new HashMap<>() : pipelinesDataFlowModel.getPipelineExtensions().getExtensionMap();
 
         final Object configuration = convertSettings(extensionPluginConfigurationType,
-                extensionProperties.getOrDefault(rootKey, new HashMap<>()));
+                extensionProperties.get(rootKey));
 
         final Set<ConstraintViolation<Object>> constraintViolations = validator.validate(configuration);
 
@@ -64,7 +64,6 @@ public class ExtensionPluginConfigurationConverter {
     }
 
     private Object convertSettings(final Class<?> extensionPluginConfigurationType, final Object extensionPlugin) {
-        Objects.requireNonNull(extensionPlugin);
         return objectMapper.convertValue(extensionPlugin, extensionPluginConfigurationType);
     }
 }
