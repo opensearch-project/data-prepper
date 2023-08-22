@@ -12,7 +12,6 @@ import jakarta.validation.constraints.Size;
 
 import java.util.List;
 import java.util.Objects;
-import java.time.Duration;
 
 /**
  * * A helper class that helps to read user configuration values from
@@ -35,8 +34,6 @@ public class KafkaSourceConfig {
             return insecure;
         }
     }
-
-    public static final Duration DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT = Duration.ofSeconds(30);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
@@ -64,9 +61,6 @@ public class KafkaSourceConfig {
     @JsonProperty("acknowledgments")
     private Boolean acknowledgementsEnabled = false;
 
-    @JsonProperty("acknowledgments_timeout")
-    private Duration acknowledgementsTimeout = DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
-
     @JsonProperty("client_dns_lookup")
     private String clientDnsLookup;
 
@@ -76,10 +70,6 @@ public class KafkaSourceConfig {
 
     public Boolean getAcknowledgementsEnabled() {
         return acknowledgementsEnabled;
-    }
-
-    public Duration getAcknowledgementsTimeout() {
-        return acknowledgementsTimeout;
     }
 
     public List<TopicConfig> getTopics() {

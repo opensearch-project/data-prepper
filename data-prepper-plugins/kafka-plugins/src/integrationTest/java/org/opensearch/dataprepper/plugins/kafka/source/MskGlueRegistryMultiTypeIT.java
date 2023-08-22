@@ -5,63 +5,60 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
+import com.amazonaws.services.schemaregistry.serializers.GlueSchemaRegistryKafkaSerializer;
+import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
+import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
+import io.micrometer.core.instrument.Counter;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.MskBrokerConnectionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
-import org.opensearch.dataprepper.plugins.kafka.configuration.MskBrokerConnectionType;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import com.amazonaws.services.schemaregistry.serializers.GlueSchemaRegistryKafkaSerializer;
-import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
-import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
-import org.apache.avro.Schema;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 
-import static org.mockito.Mockito.when;
-import org.mockito.Mock;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import org.apache.commons.lang3.RandomStringUtils;
-
-import io.micrometer.core.instrument.Counter;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
-import java.io.File;
-import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import java.time.Duration;
-
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericData;
-import org.apache.kafka.common.errors.SerializationException;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class MskGlueRegistryMultiTypeIT {
     private static final String TEST_USER = "user";
@@ -145,7 +142,6 @@ public class MskGlueRegistryMultiTypeIT {
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
         pipelineDescription = mock(PipelineDescription.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
-        when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
         when(sourceConfig.getSchemaConfig()).thenReturn(schemaConfig);
         when(schemaConfig.getType()).thenReturn(SchemaRegistryType.AWS_GLUE);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
