@@ -121,13 +121,17 @@ public class S3SinkService {
                     codec.writeEvent(event, currentBuffer.getOutputStream());
                     int count = currentBuffer.getEventCount() + 1;
                     currentBuffer.setEventCount(count);
+
+                    if (event.getEventHandle() != null) {
+                        bufferedEventHandles.add(event.getEventHandle());
+                    }
                 } catch (Exception ex) {
+                    if (event.getEventHandle() != null) {
+                        event.getEventHandle().release(false);
+                    }
                     LOG.error("Unable to add event to buffer. Dropping this event.");
                 }
 
-                if (event.getEventHandle() != null) {
-                    bufferedEventHandles.add(event.getEventHandle());
-                }
                 flushToS3IfNeeded();
             }
             flushToS3IfNeeded();

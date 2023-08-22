@@ -485,7 +485,6 @@ class S3SinkServiceTest {
         final OutputStream outputStream = mock(OutputStream.class);
         when(buffer.getOutputStream()).thenReturn(outputStream);
 
-        final S3SinkService s3SinkService = createObjectUnderTest();
 
         List<Record<Event>> records = generateEventRecords(2);
         Event event1 = records.get(0).getData();
@@ -493,12 +492,17 @@ class S3SinkServiceTest {
 
         doThrow(RuntimeException.class).when(codec).writeEvent(event1, outputStream);
 
-        s3SinkService.output(records);
+        createObjectUnderTest().output(records);
 
         InOrder inOrder = inOrder(codec);
         inOrder.verify(codec).start(eq(outputStream), eq(event1), any());
         inOrder.verify(codec).writeEvent(event1, outputStream);
         inOrder.verify(codec).writeEvent(event2, outputStream);
+
+        verify(event1.getEventHandle()).release(false);
+        verify(event1.getEventHandle(), never()).release(true);
+        verify(event2.getEventHandle()).release(true);
+        verify(event2.getEventHandle(), never()).release(false);
     }
 
     @Test
