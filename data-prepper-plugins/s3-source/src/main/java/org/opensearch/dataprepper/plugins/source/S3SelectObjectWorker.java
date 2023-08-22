@@ -11,11 +11,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.commons.io.input.CountingInputStream;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
@@ -98,7 +100,10 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
         this.bucketOwnerProvider = s3ObjectRequest.getBucketOwnerProvider();
     }
 
-    public void parseS3Object(final S3ObjectReference s3ObjectReference, final AcknowledgementSet acknowledgementSet) throws IOException {
+    public void parseS3Object(final S3ObjectReference s3ObjectReference,
+                              final AcknowledgementSet acknowledgementSet,
+                              final SourceCoordinator<S3SourceProgressState> sourceCoordinator,
+                              final String partitionKey) throws IOException {
         try{
             LOG.info("Read S3 object: {}", s3ObjectReference);
             selectObject(s3ObjectReference, acknowledgementSet);
@@ -262,10 +267,14 @@ public class S3SelectObjectWorker implements S3ObjectHandler {
                     Record<Event> eventRecord = new Record<>(JacksonLog.builder().withData(optionalNode.get()).build());
                     try {
                         eventConsumer.accept(eventRecord.getData(), s3ObjectReference);
-                        bufferAccumulator.add(eventRecord);
+                        // Always add record to acknowledgementSet before adding to
+                        // buffer because another thread may take and process
+                        // buffer contents before the event record is added
+                        // to acknowledgement set
                         if (acknowledgementSet != null) {
                             acknowledgementSet.add(eventRecord.getData());
                         }
+                        bufferAccumulator.add(eventRecord);
                     } catch (final Exception ex) {
                         LOG.error("Failed writing S3 objects to buffer due to: {}", ex.getMessage());
                     }

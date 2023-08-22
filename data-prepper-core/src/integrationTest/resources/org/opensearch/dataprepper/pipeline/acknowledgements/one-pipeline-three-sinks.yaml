@@ -7,8 +7,11 @@ pipeline1:
   sink:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: true
 

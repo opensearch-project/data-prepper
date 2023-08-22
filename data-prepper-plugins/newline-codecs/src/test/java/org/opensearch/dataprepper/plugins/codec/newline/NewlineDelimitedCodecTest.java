@@ -13,11 +13,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
+import org.opensearch.dataprepper.model.io.InputFile;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.NoneDecompressionEngine;
+import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
@@ -66,6 +72,39 @@ class NewlineDelimitedCodecTest {
         when(config.getSkipLines()).thenReturn(negativeSkipLines);
 
         assertThrows(IllegalArgumentException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void parse_inputFile() throws IOException {
+        final List<String> linesList = generateLinesAsList(100);
+        final InputStream inputStream = createInputStream(linesList);
+
+        // write inputSteam to a file
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+
+        File testDataFile = File.createTempFile("CsvCodecTest", ".csv");
+        testDataFile.deleteOnExit();
+
+        OutputStream outStream = new FileOutputStream(testDataFile);
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            outStream.write(buffer, 0, bytesRead);
+        }
+        outStream.flush();
+        outStream.close();
+
+        final InputFile inputFile = new LocalInputFile(testDataFile);
+
+        final List<Record<Event>> actualEvents = new ArrayList<>();
+        createObjectUnderTest().parse(inputFile, new NoneDecompressionEngine(), actualEvents::add);
+
+        assertThat(actualEvents.size(), equalTo(100));
+        for (int i = 0; i < actualEvents.size(); i++) {
+            final Record<Event> record = actualEvents.get(i);
+            assertThat(record, notNullValue());
+            assertThat(record.getData(), notNullValue());
+            assertThat(record.getData().get("message", String.class), equalTo(linesList.get(i)));
+        }
     }
 
     @ParameterizedTest

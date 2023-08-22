@@ -10,7 +10,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.codec.InputCodec;
-import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
@@ -52,8 +52,8 @@ public class S3ObjectRequestTest {
     private static final String expression = "select _1 from s3Object";
     @Mock
     private S3SelectSerializationFormatOption serializationFormatOption;
-    @Mock
-    private CompressionEngine compressionEngine;
+
+    private CompressionOption compressionOption = CompressionOption.NONE;
     @Mock
     private BucketOwnerProvider bucketOwnerProvider;
 
@@ -75,7 +75,7 @@ public class S3ObjectRequestTest {
                 compressionType(CompressionType.NONE).
                 s3SelectCSVOption(s3SelectCSVOption).
                 s3SelectJsonOption(s3SelectJsonOption).
-                compressionEngine(compressionEngine).
+                compressionOption(compressionOption).
                 bucketOwnerProvider(bucketOwnerProvider).
                 s3SelectResponseHandlerFactory(s3SelectResponseHandlerFactory).
                 expression(expression).build();
@@ -94,7 +94,7 @@ public class S3ObjectRequestTest {
         assertThat(request.getS3SelectCSVOption().getComments(),equalTo("test"));
         assertThat(request.getS3SelectCSVOption().getQuiteEscape(),equalTo(","));
         assertThat(request.getS3SelectJsonOption(),sameInstance(s3SelectJsonOption));
-        assertThat(request.getCompressionEngine(),sameInstance(compressionEngine));
+        assertThat(request.getCompressionOption(),sameInstance(compressionOption));
         assertThat(request.getBucketOwnerProvider(),sameInstance(bucketOwnerProvider));
     }
 }

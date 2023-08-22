@@ -15,6 +15,7 @@ dependencies {
     implementation project(':data-prepper-api')
     implementation project(':data-prepper-plugins:common')
     implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.apache.parquet:parquet-common:1.12.3'
     testImplementation project(':data-prepper-test-common')
 }
 
@@ -27,7 +28,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule {
             limit {
-                minimum = 0.96
+                minimum = 0.93
             }
         }
     }

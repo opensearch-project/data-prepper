@@ -12,6 +12,7 @@ import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -47,9 +48,10 @@ public class ExtensionPluginConfigurationConverter {
                 new HashMap<>() : pipelinesDataFlowModel.getPipelineExtensions().getExtensionMap();
 
         final Object configuration = convertSettings(extensionPluginConfigurationType,
-                extensionProperties.getOrDefault(rootKey, new HashMap<>()));
+                extensionProperties.get(rootKey));
 
-        final Set<ConstraintViolation<Object>> constraintViolations = validator.validate(configuration);
+        final Set<ConstraintViolation<Object>> constraintViolations = configuration == null ? Collections.emptySet() :
+                validator.validate(configuration);
 
         if (!constraintViolations.isEmpty()) {
             final String violationsString = constraintViolations.stream()
@@ -64,7 +66,6 @@ public class ExtensionPluginConfigurationConverter {
     }
 
     private Object convertSettings(final Class<?> extensionPluginConfigurationType, final Object extensionPlugin) {
-        Objects.requireNonNull(extensionPlugin);
         return objectMapper.convertValue(extensionPlugin, extensionPluginConfigurationType);
     }
 }

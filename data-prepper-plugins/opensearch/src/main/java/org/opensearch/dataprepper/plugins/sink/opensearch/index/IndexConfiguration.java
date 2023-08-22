@@ -9,10 +9,14 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.EnumUtils;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.plugins.sink.opensearch.DistributionVersion;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.FileReader;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3ClientProvider;
 import org.opensearch.dataprepper.plugins.sink.opensearch.s3.S3FileReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.arns.Arn;
 import software.amazon.awssdk.services.s3.S3Client;
 
@@ -22,42 +26,62 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class IndexConfiguration {
+    private static final Logger LOG = LoggerFactory.getLogger(IndexConfiguration.class);
+
     public static final String SETTINGS = "settings";
     public static final String INDEX_ALIAS = "index";
     public static final String INDEX_TYPE = "index_type";
+    public static final String TEMPLATE_TYPE = "template_type";
     public static final String TEMPLATE_FILE = "template_file";
     public static final String NUM_SHARDS = "number_of_shards";
     public static final String NUM_REPLICAS = "number_of_replicas";
     public static final String BULK_SIZE = "bulk_size";
+    public static final String ESTIMATE_BULK_SIZE_USING_COMPRESSION = "estimate_bulk_size_using_compression";
+    public static final String MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = "max_local_compressions_for_estimation";
+    public static final String FLUSH_TIMEOUT = "flush_timeout";
     public static final String DOCUMENT_ID_FIELD = "document_id_field";
+    public static final String DOCUMENT_ID = "document_id";
     public static final String ROUTING_FIELD = "routing_field";
     public static final String ISM_POLICY_FILE = "ism_policy_file";
     public static final long DEFAULT_BULK_SIZE = 5L;
+    public static final boolean DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION = false;
+    public static final int DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION = 2;
+    public static final long DEFAULT_FLUSH_TIMEOUT = 60_000L;
     public static final String ACTION = "action";
     public static final String S3_AWS_REGION = "s3_aws_region";
     public static final String S3_AWS_STS_ROLE_ARN = "s3_aws_sts_role_arn";
+    public static final String S3_AWS_STS_EXTERNAL_ID = "s3_aws_sts_external_id";
     public static final String SERVERLESS = "serverless";
+    public static final String DISTRIBUTION_VERSION = "distribution_version";
     public static final String AWS_OPTION = "aws";
     public static final String DOCUMENT_ROOT_KEY = "document_root_key";
 
     private IndexType indexType;
+    private TemplateType templateType;
     private final String indexAlias;
     private final Map<String, Object> indexTemplate;
     private final String documentIdField;
+    private final String documentId;
     private final String routingField;
     private final long bulkSize;
+    private final boolean estimateBulkSizeUsingCompression;
+    private int maxLocalCompressionsForEstimation;
+    private final long flushTimeout;
     private final Optional<String> ismPolicyFile;
     private final String action;
     private final String s3AwsRegion;
     private final String s3AwsStsRoleArn;
+    private final String s3AwsExternalId;
     private final S3Client s3Client;
     private final boolean serverless;
+    private final DistributionVersion distributionVersion;
     private final String documentRootKey;
 
     private static final String S3_PREFIX = "s3://";
@@ -66,13 +90,16 @@ public class IndexConfiguration {
     @SuppressWarnings("unchecked")
     private IndexConfiguration(final Builder builder) {
         this.serverless = builder.serverless;
+        this.distributionVersion = builder.distributionVersion;
         determineIndexType(builder);
 
         this.s3AwsRegion = builder.s3AwsRegion;
         this.s3AwsStsRoleArn = builder.s3AwsStsRoleArn;
+        this.s3AwsExternalId = builder.s3AwsStsExternalId;
         this.s3Client = builder.s3Client;
 
-        this.indexTemplate = readIndexTemplate(builder.templateFile, indexType);
+        determineTemplateType(builder);
+        this.indexTemplate = readIndexTemplate(builder.templateFile, indexType, templateType);
 
         if (builder.numReplicas > 0) {
             indexTemplate.putIfAbsent(SETTINGS, new HashMap<>());
@@ -94,18 +121,28 @@ public class IndexConfiguration {
         }
         this.indexAlias = indexAlias;
         this.bulkSize = builder.bulkSize;
+        this.estimateBulkSizeUsingCompression = builder.estimateBulkSizeUsingCompression;
+        this.maxLocalCompressionsForEstimation = builder.maxLocalCompressionsForEstimation;
+        this.flushTimeout = builder.flushTimeout;
         this.routingField = builder.routingField;
 
         String documentIdField = builder.documentIdField;
+        String documentId = builder.documentId;
         if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
-            documentIdField = "spanId";
+            documentId = "${spanId}";
         } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
-            documentIdField = "hashId";
+            documentId = "${hashId}";
         }
         this.documentIdField = documentIdField;
+        this.documentId = documentId;
         this.ismPolicyFile = builder.ismPolicyFile;
         this.action = builder.action;
         this.documentRootKey = builder.documentRootKey;
+    }
+
+    private void determineTemplateType(Builder builder) {
+        this.templateType = DistributionVersion.ES6.equals(builder.distributionVersion) ? TemplateType.V1 :
+                (builder.templateType != null ? builder.templateType : TemplateType.V1);
     }
 
     private void determineIndexType(Builder builder) {
@@ -131,6 +168,10 @@ public class IndexConfiguration {
         if(indexType != null) {
             builder = builder.withIndexType(indexType);
         }
+        final String templateType = pluginSetting.getStringOrDefault(TEMPLATE_TYPE, TemplateType.V1.getTypeName());
+        if(templateType != null) {
+            builder = builder.withTemplateType(templateType);
+        }
         final String templateFile = pluginSetting.getStringOrDefault(TEMPLATE_FILE, null);
         if (templateFile != null) {
             builder = builder.withTemplateFile(templateFile);
@@ -139,10 +180,31 @@ public class IndexConfiguration {
         builder = builder.withNumReplicas(pluginSetting.getIntegerOrDefault(NUM_REPLICAS, 0));
         final Long batchSize = pluginSetting.getLongOrDefault(BULK_SIZE, DEFAULT_BULK_SIZE);
         builder = builder.withBulkSize(batchSize);
-        final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
-        if (documentId != null) {
-            builder = builder.withDocumentIdField(documentId);
+        final boolean estimateBulkSizeUsingCompression =
+                pluginSetting.getBooleanOrDefault(ESTIMATE_BULK_SIZE_USING_COMPRESSION, DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION);
+        builder = builder.withEstimateBulkSizeUsingCompression(estimateBulkSizeUsingCompression);
+
+        final int maxLocalCompressionsForEstimation =
+                pluginSetting.getIntegerOrDefault(MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION, DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION);
+        builder = builder.withMaxLocalCompressionsForEstimation(maxLocalCompressionsForEstimation);
+
+        final long flushTimeout = pluginSetting.getLongOrDefault(FLUSH_TIMEOUT, DEFAULT_FLUSH_TIMEOUT);
+        builder = builder.withFlushTimeout(flushTimeout);
+        final String documentIdField = pluginSetting.getStringOrDefault(DOCUMENT_ID_FIELD, null);
+        final String documentId = pluginSetting.getStringOrDefault(DOCUMENT_ID, null);
+
+
+        if (Objects.nonNull(documentIdField) && Objects.nonNull(documentId)) {
+            throw new InvalidPluginConfigurationException("Both document_id_field and document_id cannot be used at the same time. It is preferred to only use document_id as document_id_field is deprecated.");
         }
+
+        if (documentIdField != null) {
+            LOG.warn("document_id_field is deprecated in favor of document_id, and support for document_id_field will be removed in a future major version release.");
+            builder = builder.withDocumentIdField(documentIdField);
+        } else if (documentId != null) {
+            builder = builder.withDocumentId(documentId);
+        }
+
         final String routingField = pluginSetting.getStringOrDefault(ROUTING_FIELD, null);
         if (routingField != null) {
             builder = builder.withRoutingField(routingField);
@@ -157,8 +219,10 @@ public class IndexConfiguration {
             || (builder.ismPolicyFile.isPresent() && builder.ismPolicyFile.get().startsWith(S3_PREFIX))) {
             builder.withS3AwsRegion(pluginSetting.getStringOrDefault(S3_AWS_REGION, DEFAULT_AWS_REGION));
             builder.withS3AWSStsRoleArn(pluginSetting.getStringOrDefault(S3_AWS_STS_ROLE_ARN, null));
+            builder.withS3AWSStsExternalId(pluginSetting.getStringOrDefault(S3_AWS_STS_EXTERNAL_ID, null));
 
-            final S3ClientProvider clientProvider = new S3ClientProvider(builder.s3AwsRegion, builder.s3AwsStsRoleArn);
+            final S3ClientProvider clientProvider = new S3ClientProvider(
+                builder.s3AwsRegion, builder.s3AwsStsRoleArn, builder.s3AwsStsExternalId);
             builder.withS3Client(clientProvider.buildS3Client());
         }
 
@@ -172,11 +236,19 @@ public class IndexConfiguration {
         final String documentRootKey = pluginSetting.getStringOrDefault(DOCUMENT_ROOT_KEY, null);
         builder.withDocumentRootKey(documentRootKey);
 
+        final String distributionVersion = pluginSetting.getStringOrDefault(DISTRIBUTION_VERSION,
+                DistributionVersion.DEFAULT.getVersion());
+        builder.withDistributionVersion(distributionVersion);
+
         return builder.build();
     }
 
     public IndexType getIndexType() {
         return indexType;
+    }
+
+    public TemplateType getTemplateType() {
+        return templateType;
     }
 
     public String getIndexAlias() {
@@ -191,12 +263,26 @@ public class IndexConfiguration {
         return documentIdField;
     }
 
+    public String getDocumentId() { return documentId; }
+
     public String getRoutingField() {
         return routingField;
     }
 
     public long getBulkSize() {
         return bulkSize;
+    }
+
+    public boolean isEstimateBulkSizeUsingCompression() {
+        return estimateBulkSizeUsingCompression;
+    }
+
+    public int getMaxLocalCompressionsForEstimation() {
+        return maxLocalCompressionsForEstimation;
+    }
+
+    public long getFlushTimeout() {
+        return flushTimeout;
     }
 
     public Optional<String> getIsmPolicyFile() {
@@ -215,8 +301,16 @@ public class IndexConfiguration {
         return s3AwsStsRoleArn;
     }
 
+    public String getS3AwsStsExternalId() {
+        return s3AwsExternalId;
+    }
+
     public boolean getServerless() {
         return serverless;
+    }
+
+    public DistributionVersion getDistributionVersion() {
+        return distributionVersion;
     }
 
     public String getDocumentRootKey() {
@@ -230,18 +324,17 @@ public class IndexConfiguration {
      *
      * @param templateFile
      * @param indexType
+     * @param templateType
      * @return
      */
-    private Map<String, Object> readIndexTemplate(final String templateFile, final IndexType indexType) {
+    private Map<String, Object> readIndexTemplate(final String templateFile, final IndexType indexType, TemplateType templateType) {
         try {
             URL templateURL = null;
             InputStream s3TemplateFile = null;
             if (indexType.equals(IndexType.TRACE_ANALYTICS_RAW)) {
-                templateURL = getClass().getClassLoader()
-                        .getResource(IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
+                templateURL = loadExistingTemplate(templateType, IndexConstants.RAW_DEFAULT_TEMPLATE_FILE);
             } else if (indexType.equals(IndexType.TRACE_ANALYTICS_SERVICE_MAP)) {
-                templateURL = getClass().getClassLoader()
-                        .getResource(IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
+                templateURL = loadExistingTemplate(templateType, IndexConstants.SERVICE_MAP_DEFAULT_TEMPLATE_FILE);
             } else if (templateFile != null) {
                 if (templateFile.toLowerCase().startsWith(S3_PREFIX)) {
                     FileReader s3FileReader = new S3FileReader(s3Client);
@@ -264,21 +357,34 @@ public class IndexConfiguration {
         }
     }
 
+    private URL loadExistingTemplate(TemplateType templateType, String predefinedTemplateName) {
+        String resourcePath = templateType == TemplateType.V1 ? predefinedTemplateName : templateType.getTypeName() + "/" + predefinedTemplateName;
+        return getClass().getClassLoader()
+                .getResource(resourcePath);
+    }
+
     public static class Builder {
         private String indexAlias;
         private String indexType;
+        private TemplateType templateType;
         private String templateFile;
         private int numShards;
         private int numReplicas;
         private String routingField;
         private String documentIdField;
+        private String documentId;
         private long bulkSize = DEFAULT_BULK_SIZE;
+        private boolean estimateBulkSizeUsingCompression = DEFAULT_ESTIMATE_BULK_SIZE_USING_COMPRESSION;
+        private int maxLocalCompressionsForEstimation = DEFAULT_MAX_LOCAL_COMPRESSIONS_FOR_ESTIMATION;
+        private long flushTimeout = DEFAULT_FLUSH_TIMEOUT;
         private Optional<String> ismPolicyFile;
         private String action;
         private String s3AwsRegion;
         private String s3AwsStsRoleArn;
+        private String s3AwsStsExternalId;
         private S3Client s3Client;
         private boolean serverless;
+        private DistributionVersion distributionVersion;
         private String documentRootKey;
 
         public Builder withIndexAlias(final String indexAlias) {
@@ -295,6 +401,13 @@ public class IndexConfiguration {
             return this;
         }
 
+        public Builder withTemplateType(final String templateType) {
+            checkArgument(templateType != null, "templateType cannot be null.");
+            checkArgument(!templateType.isEmpty(), "templateType cannot be empty");
+            this.templateType = TemplateType.fromTypeName(templateType);
+            return this;
+        }
+
         public Builder withTemplateFile(final String templateFile) {
             checkArgument(templateFile != null, "templateFile cannot be null.");
             this.templateFile = templateFile;
@@ -302,8 +415,14 @@ public class IndexConfiguration {
         }
 
         public Builder withDocumentIdField(final String documentIdField) {
-            checkNotNull(documentIdField, "documentId field cannot be null");
+            checkNotNull(documentIdField, "document_id_field cannot be null");
             this.documentIdField = documentIdField;
+            return this;
+        }
+
+        public Builder withDocumentId(final String documentId) {
+            checkNotNull(documentId, "document_id cannot be null");
+            this.documentId = documentId;
             return this;
         }
 
@@ -314,6 +433,21 @@ public class IndexConfiguration {
 
         public Builder withBulkSize(final long bulkSize) {
             this.bulkSize = bulkSize;
+            return this;
+        }
+
+        public Builder withEstimateBulkSizeUsingCompression(final boolean estimateBulkSizeUsingCompression) {
+            this.estimateBulkSizeUsingCompression = estimateBulkSizeUsingCompression;
+            return this;
+        }
+
+        public Builder withMaxLocalCompressionsForEstimation(final int maxLocalCompressionsForEstimation) {
+            this.maxLocalCompressionsForEstimation = maxLocalCompressionsForEstimation;
+            return this;
+        }
+
+        public Builder withFlushTimeout(final long flushTimeout) {
+            this.flushTimeout = flushTimeout;
             return this;
         }
 
@@ -357,6 +491,12 @@ public class IndexConfiguration {
             return this;
         }
 
+        public Builder withS3AWSStsExternalId(final String s3AwsStsExternalId) {
+            checkArgument(s3AwsStsExternalId == null || s3AwsStsExternalId.length() <= 1224, "s3AwsStsExternalId length cannot exceed 1224");
+            this.s3AwsStsExternalId = s3AwsStsExternalId;
+            return this;
+        }
+
         public Builder withS3Client(final S3Client s3Client) {
             checkArgument(s3Client != null);
             this.s3Client = s3Client;
@@ -365,6 +505,11 @@ public class IndexConfiguration {
 
         public Builder withServerless(final boolean serverless) {
             this.serverless = serverless;
+            return this;
+        }
+
+        public Builder withDistributionVersion(final String distributionVersion) {
+            this.distributionVersion = DistributionVersion.fromTypeName(distributionVersion);
             return this;
         }
 

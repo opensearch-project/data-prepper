@@ -8,4 +8,5 @@ pipeline1:
     - stdout:
     - in_memory:
         testing_key: PipelinesWithAcksIT
+        acknowledgments: false
 

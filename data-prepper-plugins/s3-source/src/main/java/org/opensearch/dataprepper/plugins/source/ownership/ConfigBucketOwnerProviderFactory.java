@@ -10,7 +10,6 @@ import org.opensearch.dataprepper.plugins.source.SqsQueueUrl;
 import org.opensearch.dataprepper.plugins.source.StsArnRole;
 
 import java.net.MalformedURLException;
-import java.util.Objects;
 
 /**
  * Produces a {@link BucketOwnerProvider} from the S3 source configuration as
@@ -25,8 +24,21 @@ public class ConfigBucketOwnerProviderFactory {
     public BucketOwnerProvider createBucketOwnerProvider(final S3SourceConfig s3SourceConfig) {
         if(s3SourceConfig.isDisableBucketOwnershipValidation())
             return new NoOwnershipBucketOwnerProvider();
+        StaticBucketOwnerProvider staticBucketOwnerProvider = getStaticBucketOwnerProvider(s3SourceConfig);
+
+        if(s3SourceConfig.getBucketOwners() != null && !s3SourceConfig.getBucketOwners().isEmpty()) {
+            return new MappedBucketOwnerProvider(s3SourceConfig.getBucketOwners(), staticBucketOwnerProvider);
+        } else {
+            return staticBucketOwnerProvider;
+        }
+    }
+
+    private StaticBucketOwnerProvider getStaticBucketOwnerProvider(S3SourceConfig s3SourceConfig) {
         final String accountId;
-        if(Objects.nonNull(s3SourceConfig.getSqsOptions()))
+
+        if(s3SourceConfig.getDefaultBucketOwner() != null)
+            accountId = s3SourceConfig.getDefaultBucketOwner();
+        else if(s3SourceConfig.getSqsOptions() != null)
             accountId = extractQueueAccountId(s3SourceConfig);
         else
             accountId = extractStsRoleArnAccountId(s3SourceConfig);

@@ -41,7 +41,10 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
     public DynamoDbSourceCoordinationStore(final DynamoStoreSettings dynamoStoreSettings, final PluginMetrics pluginMetrics) {
         this.dynamoStoreSettings = dynamoStoreSettings;
         this.pluginMetrics = pluginMetrics;
-        this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(dynamoStoreSettings.getRegion(), dynamoStoreSettings.getStsRoleArn());
+        this.dynamoDbClientWrapper = DynamoDbClientWrapper.create(
+            dynamoStoreSettings.getRegion(),
+            dynamoStoreSettings.getStsRoleArn(),
+            dynamoStoreSettings.getStsExternalId());
     }
 
     @Override
@@ -62,6 +65,10 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
                                           final Long closedCount,
                                           final String partitionProgressState) {
         final DynamoDbSourcePartitionItem newPartitionItem = new DynamoDbSourcePartitionItem();
+
+        if (Objects.nonNull(dynamoStoreSettings.getTtl())) {
+            newPartitionItem.setExpirationTime(Instant.now().plus(dynamoStoreSettings.getTtl()).getEpochSecond());
+        }
         newPartitionItem.setSourceIdentifier(sourceIdentifier);
         newPartitionItem.setSourceStatusCombinationKey(String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, sourcePartitionStatus));
         newPartitionItem.setPartitionPriority(Instant.now().toString());
@@ -111,7 +118,7 @@ public class DynamoDbSourceCoordinationStore implements SourceCoordinationStore 
             dynamoDbSourcePartitionItem.setPartitionPriority(updateItem.getPartitionOwnershipTimeout().toString());
         }
 
-        if (SourcePartitionStatus.COMPLETED.equals(updateItem.getSourcePartitionStatus()) && Objects.nonNull(dynamoStoreSettings.getTtl())) {
+        if (Objects.nonNull(dynamoStoreSettings.getTtl())) {
             dynamoDbSourcePartitionItem.setExpirationTime(Instant.now().plus(dynamoStoreSettings.getTtl()).getEpochSecond());
         }
 

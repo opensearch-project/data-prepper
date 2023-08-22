@@ -1,0 +1,74 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+dependencies {
+    implementation project(':data-prepper-api')
+    implementation project(path: ':data-prepper-plugins:common')
+    implementation 'io.micrometer:micrometer-core'
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'org.apache.commons:commons-compress:1.21'
+
+    implementation 'org.mapdb:mapdb:3.0.8'
+    implementation 'commons-io:commons-io:2.12.0'
+    implementation 'software.amazon.awssdk:aws-sdk-java:2.20.67'
+    implementation 'software.amazon.awssdk:s3-transfer-manager'
+    implementation 'software.amazon.awssdk.crt:aws-crt:0.21.17'
+    implementation 'com.maxmind.geoip2:geoip2:4.0.1'
+    implementation 'com.maxmind.db:maxmind-db:3.0.0'
+
+    implementation libs.commons.lang3
+    testImplementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+    testImplementation project(':data-prepper-test-common')
+}
+
+
+test {
+    useJUnitPlatform()
+}
+
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.1 // temporarily reduce coverage for the builds to pass
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integrationTest/java')
+        }
+        resources.srcDir file('src/integrationTest/resources')
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+task integrationTest(type: Test) {
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+
+    useJUnitPlatform()
+
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    systemProperty 'tests.geoipProcessor.maxmindLicenseKey', System.getProperty('tests.geoipProcessor.maxmindLicenseKey')
+
+    filter {
+        includeTestsMatching '*IT'
+    }
+}

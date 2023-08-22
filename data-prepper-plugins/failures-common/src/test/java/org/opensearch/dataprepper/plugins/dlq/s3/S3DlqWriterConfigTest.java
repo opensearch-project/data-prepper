@@ -7,12 +7,14 @@ package org.opensearch.dataprepper.plugins.dlq.s3;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.lang.reflect.Field;
+import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -42,11 +44,30 @@ public class S3DlqWriterConfigTest {
     }
 
     @ParameterizedTest
+    @CsvSource({"bucket-name, bucket-name", "s3://bucket-name, bucket-name"})
+    public void getS3BucketNameShouldReturnCorrectBucketName(final String bucketName, final String expectedBucketName) throws NoSuchFieldException, IllegalAccessException {
+        final S3DlqWriterConfig config = new S3DlqWriterConfig();
+        reflectivelySetField(config, "bucket", bucketName);
+        assertThat(config.getBucket(), is(equalTo(expectedBucketName)));
+    }
+
+    @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"", "arn:aws:iam::123456789012:role/some-role"})
     public void getS3ClientWithValidStsRoleArn(final String stsRoleArn) throws NoSuchFieldException, IllegalAccessException {
         final S3DlqWriterConfig config = new S3DlqWriterConfig();
         reflectivelySetField(config, "stsRoleArn", stsRoleArn);
+        final S3Client s3Client = config.getS3Client();
+        assertThat(s3Client, is(notNullValue()));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", "arn:aws:iam::123456789012:role/some-role"})
+    public void getS3ClientWithValidStsRoleArnAndExternalId(final String stsRoleArn) throws NoSuchFieldException, IllegalAccessException {
+        final S3DlqWriterConfig config = new S3DlqWriterConfig();
+        reflectivelySetField(config, "stsRoleArn", stsRoleArn);
+        reflectivelySetField(config, "stsExternalId", UUID.randomUUID().toString());
         final S3Client s3Client = config.getS3Client();
         assertThat(s3Client, is(notNullValue()));
     }

@@ -24,6 +24,7 @@ public class DynamoStoreSettings {
     private final String tableName;
     private final String region;
     private final String stsRoleArn;
+    private final String stsExternalId;
     private final Duration ttl;
 
 
@@ -35,6 +36,7 @@ public class DynamoStoreSettings {
     public DynamoStoreSettings(@JsonProperty("table_name") final String tableName,
                                @JsonProperty("region") final String region,
                                @JsonProperty("sts_role_arn") final String stsRoleArn,
+                               @JsonProperty("sts_external_id") final String stsExternalId,
                                @JsonProperty("skip_table_creation") final Boolean skipTableCreation,
                                @JsonProperty("provisioned_read_capacity_units") final Long provisionedReadCapacityUnits,
                                @JsonProperty("provisioned_write_capacity_units") final Long provisionedWriteCapacityUnits,
@@ -45,6 +47,7 @@ public class DynamoStoreSettings {
         this.tableName = tableName;
         this.region = region;
         this.stsRoleArn = stsRoleArn;
+        this.stsExternalId = stsExternalId;
         this.ttl = ttl;
 
         if (Objects.nonNull(skipTableCreation)) {
@@ -70,6 +73,10 @@ public class DynamoStoreSettings {
 
     public String getStsRoleArn() {
         return stsRoleArn;
+    }
+
+    public String getStsExternalId() {
+        return stsExternalId;
     }
 
     public Long getProvisionedReadCapacityUnits() {

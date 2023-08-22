@@ -40,6 +40,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
     private final String pointer;
     private final String parseWhen;
     private final List<String> tagsOnFailure;
+    private final boolean overwriteIfDestinationExists;
 
     private final ExpressionEvaluator expressionEvaluator;
 
@@ -54,6 +55,7 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
         pointer = parseJsonProcessorConfig.getPointer();
         parseWhen = parseJsonProcessorConfig.getParseWhen();
         tagsOnFailure = parseJsonProcessorConfig.getTagsOnFailure();
+        overwriteIfDestinationExists = parseJsonProcessorConfig.getOverwriteIfDestinationExists();
         this.expressionEvaluator = expressionEvaluator;
     }
 
@@ -64,34 +66,37 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
         final boolean doUsePointer = Objects.nonNull(pointer);
 
         for (final Record<Event> record : records) {
-            final Event event = record.getData();
 
-            if (Objects.nonNull(parseWhen) && !expressionEvaluator.evaluateConditional(parseWhen, event)) {
-                continue;
-            }
+                final Event event = record.getData();
+                try {
+                    if (Objects.nonNull(parseWhen) && !expressionEvaluator.evaluateConditional(parseWhen, event)) {
+                        continue;
+                    }
 
-            final String message = event.get(source, String.class);
-            if (Objects.isNull(message)) {
-                continue;
-            }
+                    final String message = event.get(source, String.class);
+                    if (Objects.isNull(message)) {
+                        continue;
+                    }
+                    final TypeReference<HashMap<String, Object>> hashMapTypeReference = new TypeReference<HashMap<String, Object>>() {
+                    };
+                    Map<String, Object> parsedJson = objectMapper.readValue(message, hashMapTypeReference);
 
-            try {
-                final TypeReference<HashMap<String, Object>> hashMapTypeReference = new TypeReference<HashMap<String, Object>>() {};
-                Map<String, Object> parsedJson = objectMapper.readValue(message, hashMapTypeReference);
+                    if (doUsePointer) {
+                        parsedJson = parseUsingPointer(event, parsedJson, pointer, doWriteToRoot);
+                    }
 
-                if (doUsePointer) {
-                    parsedJson = parseUsingPointer(event, parsedJson, pointer, doWriteToRoot);
+                    if (doWriteToRoot) {
+                        writeToRoot(event, parsedJson);
+                    } else if (overwriteIfDestinationExists || !event.containsKey(destination)) {
+                        event.put(destination, parsedJson);
+                    }
+                } catch (final JsonProcessingException jsonException) {
+                    event.getMetadata().addTags(tagsOnFailure);
+                    LOG.error(EVENT, "An exception occurred due to invalid JSON while reading event [{}]", event, jsonException);
+                } catch (final Exception e) {
+                    event.getMetadata().addTags(tagsOnFailure);
+                    LOG.error(EVENT, "An exception occurred while using the parse_json processor on Event [{}]", event, e);
                 }
-
-                if (doWriteToRoot) {
-                    writeToRoot(event, parsedJson);
-                } else {
-                    event.put(destination, parsedJson);
-                }
-            } catch (final JsonProcessingException jsonException) {
-                event.getMetadata().addTags(tagsOnFailure);
-                LOG.error(EVENT, "An exception occurred due to invalid JSON while reading event [{}]", event, jsonException);
-            }
         }
         return records;
     }
@@ -166,7 +171,9 @@ public class ParseJsonProcessor extends AbstractProcessor<Record<Event>, Record<
 
     private void writeToRoot(final Event event, final Map<String, Object> parsedJson) {
         for (Map.Entry<String, Object> entry : parsedJson.entrySet()) {
-            event.put(entry.getKey(), entry.getValue());
+            if (overwriteIfDestinationExists || !event.containsKey(entry.getKey())) {
+                event.put(entry.getKey(), entry.getValue());
+            }
         }
     }
 }

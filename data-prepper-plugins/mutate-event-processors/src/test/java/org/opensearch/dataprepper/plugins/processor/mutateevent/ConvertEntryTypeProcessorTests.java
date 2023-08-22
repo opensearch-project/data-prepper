@@ -22,10 +22,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,8 +53,9 @@ public class ConvertEntryTypeProcessorTests {
 
     @BeforeEach
     private void setup() {
-        when(mockConfig.getKey()).thenReturn(TEST_KEY);
-        when(mockConfig.getConvertWhen()).thenReturn(null);
+        lenient().when(mockConfig.getKey()).thenReturn(TEST_KEY);
+        lenient().when(mockConfig.getKeys()).thenReturn(null);
+        lenient().when(mockConfig.getConvertWhen()).thenReturn(null);
     }
 
     private Record<Event> getMessage(String message, String key, Object value) {
@@ -101,11 +104,17 @@ public class ConvertEntryTypeProcessorTests {
     }
 
     @Test
-    void testIntegerConvertEntryTypeProcessorWithInvalidType() {
-        Map<String, String> testValue = Map.of("key", "value");
-        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+    void testMapToStringConvertEntryTypeProcessorWithInvalidTypeWillAddTags() {
+        final Map<String, String> testValue = Map.of("key", "value");
+        final List<String> tags = List.of("convert_failed");
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("string"));
+        when(mockConfig.getTagsOnFailure()).thenReturn(tags);
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
-        assertThrows(IllegalArgumentException.class, () -> executeAndGetProcessedEvent(testValue));
+        Event event = executeAndGetProcessedEvent(testValue);
+
+        assertThat(event.get(TEST_KEY, Object.class), equalTo(testValue));
+        assertThat(event.getMetadata().getTags().size(), equalTo(1));
+        assertThat(event.getMetadata().getTags(), containsInAnyOrder(tags.toArray()));
     }
 
     @Test
@@ -176,11 +185,17 @@ public class ConvertEntryTypeProcessorTests {
     }
 
     @Test
-    void testInvalidConvertEntryTypeProcessor() {
-        Double testDoubleValue = (double)123.789;
+    void testDoubleToIntegerConvertEntryTypeProcessorWillAddTags() {
+        final Double testDoubleValue = 123.789;
+        final List<String> tags = List.of("convert_failed");
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        when(mockConfig.getTagsOnFailure()).thenReturn(tags);
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
-        assertThrows(IllegalArgumentException.class, () -> executeAndGetProcessedEvent(testDoubleValue));
+        Event event = executeAndGetProcessedEvent(testDoubleValue);
+
+        assertThat(event.get(TEST_KEY, Object.class), equalTo(123.789));
+        assertThat(event.getMetadata().getTags().size(), equalTo(1));
+        assertThat(event.getMetadata().getTags(), containsInAnyOrder(tags.toArray()));
     }
 
     @Test
@@ -195,5 +210,43 @@ public class ConvertEntryTypeProcessorTests {
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
         Event event = executeAndGetProcessedEvent(record);
         assertThat(event.get(TEST_KEY, Integer.class), equalTo(testValue));
+    }
+
+    @Test
+    void testMultipleKeysConvertEntryTypeProcessor() {
+        Integer testValue = 123;
+        String expectedValue = testValue.toString();
+        String testKey1 = UUID.randomUUID().toString();
+        String testKey2 = UUID.randomUUID().toString();
+        when(mockConfig.getKey()).thenReturn(null);
+        when(mockConfig.getKeys()).thenReturn(List.of(testKey1, testKey2));
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("string"));
+        final Map<String, Object> testData = new HashMap();
+        testData.put("message", "testMessage");
+        testData.put(testKey1, testValue);
+        testData.put(testKey2, testValue);
+        Record record = buildRecordWithEvent(testData);
+        typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
+        Event event = executeAndGetProcessedEvent(record);
+        assertThat(event.get(testKey1, String.class), equalTo(expectedValue));
+        assertThat(event.get(testKey2, String.class), equalTo(expectedValue));
+    }
+
+    @Test
+    void testKeyAndKeysBothNullConvertEntryTypeProcessor() {
+        when(mockConfig.getKey()).thenReturn(null);
+        assertThrows(IllegalArgumentException.class, () -> new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator));
+    }
+
+    @Test
+    void testKeyAndKeysBothDefinedConvertEntryTypeProcessor() {
+        when(mockConfig.getKeys()).thenReturn(Collections.singletonList(TEST_KEY));
+        assertThrows(IllegalArgumentException.class, () -> new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator));
+    }
+
+    @Test
+    void testEmptyKeyConvertEntryTypeProcessor() {
+        when(mockConfig.getKey()).thenReturn("");
+        assertThrows(IllegalArgumentException.class, () -> new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator));
     }
 }

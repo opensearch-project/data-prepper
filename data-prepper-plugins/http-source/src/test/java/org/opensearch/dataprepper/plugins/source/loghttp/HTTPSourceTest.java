@@ -6,7 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.loghttp;
 
 import com.linecorp.armeria.common.HttpHeaderNames;
-import org.opensearch.dataprepper.compression.CompressionOption;
+import org.opensearch.dataprepper.HttpRequestExceptionHandler;
 import org.opensearch.dataprepper.metrics.MetricNames;
 import org.opensearch.dataprepper.metrics.MetricsTestUtil;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.log.Log;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import com.linecorp.armeria.client.ClientFactory;
 import com.linecorp.armeria.client.ResponseTimeoutException;
 import com.linecorp.armeria.client.WebClient;
@@ -146,13 +147,13 @@ class HTTPSourceTest {
                         .add(LogHTTPService.SUCCESS_REQUESTS).toString());
         requestTimeoutsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(RequestExceptionHandler.REQUEST_TIMEOUTS).toString());
+                        .add(HttpRequestExceptionHandler.REQUEST_TIMEOUTS).toString());
         badRequestsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(RequestExceptionHandler.BAD_REQUESTS).toString());
+                        .add(HttpRequestExceptionHandler.BAD_REQUESTS).toString());
         requestsTooLargeMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
-                        .add(RequestExceptionHandler.REQUESTS_TOO_LARGE).toString());
+                        .add(HttpRequestExceptionHandler.REQUESTS_TOO_LARGE).toString());
         rejectedRequestsMeasurements = MetricsTestUtil.getMeasurementList(
                 new StringJoiner(MetricNames.DELIMITER).add(metricNamePrefix)
                         .add(LogThrottlingRejectHandler.REQUESTS_REJECTED).toString());

@@ -1,0 +1,10 @@
+acknowledgments: false
+queue_urls:
+  - https://sqs.us-east-1.amazonaws.com/123099425585/dp
+  - https://sqs.us-east-1.amazonaws.com/123099425585/dp1
+batch_size: 10
+number_of_threads: 5
+aws:
+  sts_region: us-east-1
+  sts_role_arn: arn:aws:iam::278936200144:role/aos-role
+  sts_header_overrides: {"test":"test"}

@@ -5,8 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.source.otellogs;
 
-import io.grpc.Status;
-import io.grpc.StatusException;
+import com.linecorp.armeria.server.ServiceRequestContext;
 import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -23,7 +22,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.exceptions.BadRequestException;
+import org.opensearch.dataprepper.exceptions.BufferWriteException;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
@@ -40,11 +42,13 @@ import java.util.concurrent.TimeoutException;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -65,20 +69,12 @@ public class OTelLogsGrpcServiceTest {
     @Mock
     Counter requestsReceivedCounter;
     @Mock
-    Counter timeoutCounter;
-    @Mock
     StreamObserver responseObserver;
     @Mock
     Buffer buffer;
 
     @Mock
     Counter successRequestsCounter;
-    @Mock
-    Counter badRequestsCounter;
-    @Mock
-    Counter requestsTooLargeCounter;
-    @Mock
-    Counter internalServerErrorCounter;
     @Mock
     DistributionSummary payloadSizeSummary;
     @Mock
@@ -88,15 +84,14 @@ public class OTelLogsGrpcServiceTest {
     OTelProtoCodec.OTelProtoDecoder mockOTelProtoDecoder;
     @Mock
     PluginMetrics mockPluginMetrics;
+    @Mock
+    private ServiceRequestContext serviceRequestContext;
 
     @Captor
     ArgumentCaptor<Record> recordCaptor;
 
     @Captor
     ArgumentCaptor<Collection<Record<OpenTelemetryLog>>> recordsCaptor;
-
-    @Captor
-    ArgumentCaptor<StatusException> statusExceptionArgumentCaptor;
 
     private OTelLogsGrpcService objectUnderTest;
 
@@ -108,10 +103,6 @@ public class OTelLogsGrpcServiceTest {
         mockPluginMetrics = mock(PluginMetrics.class);
 
         when(mockPluginMetrics.counter(OTelLogsGrpcService.REQUESTS_RECEIVED)).thenReturn(requestsReceivedCounter);
-        when(mockPluginMetrics.counter(OTelLogsGrpcService.REQUEST_TIMEOUTS)).thenReturn(timeoutCounter);
-        when(mockPluginMetrics.counter(OTelLogsGrpcService.BAD_REQUESTS)).thenReturn(badRequestsCounter);
-        when(mockPluginMetrics.counter(OTelLogsGrpcService.REQUESTS_TOO_LARGE)).thenReturn(requestsTooLargeCounter);
-        when(mockPluginMetrics.counter(OTelLogsGrpcService.INTERNAL_SERVER_ERROR)).thenReturn(internalServerErrorCounter);
         when(mockPluginMetrics.counter(OTelLogsGrpcService.SUCCESS_REQUESTS)).thenReturn(successRequestsCounter);
         when(mockPluginMetrics.summary(OTelLogsGrpcService.PAYLOAD_SIZE)).thenReturn(payloadSizeSummary);
         when(mockPluginMetrics.timer(OTelLogsGrpcService.REQUEST_PROCESS_DURATION)).thenReturn(requestProcessDuration);
@@ -119,21 +110,24 @@ public class OTelLogsGrpcServiceTest {
             invocation.<Runnable>getArgument(0).run();
             return null;
         }).when(requestProcessDuration).record(ArgumentMatchers.<Runnable>any());
+
+        when(serviceRequestContext.isTimedOut()).thenReturn(false);
     }
 
     @Test
     public void export_responseObserverOnCompleted() throws Exception {
         objectUnderTest = generateOTelLogsGrpcService(new OTelProtoCodec.OTelProtoDecoder());
-        objectUnderTest.export(LOGS_REQUEST, responseObserver);
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            objectUnderTest.export(LOGS_REQUEST, responseObserver);
+        }
 
         verify(buffer, times(1)).writeAll(recordsCaptor.capture(), anyInt());
         verify(responseObserver, times(1)).onNext(ExportLogsServiceResponse.newBuilder().build());
         verify(responseObserver, times(1)).onCompleted();
         verify(requestsReceivedCounter, times(1)).increment();
         verify(successRequestsCounter, times(1)).increment();
-        verifyNoInteractions(badRequestsCounter);
-        verifyNoInteractions(requestsTooLargeCounter);
-        verifyNoInteractions(timeoutCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(LOGS_REQUEST.getSerializedSize()));
@@ -147,23 +141,19 @@ public class OTelLogsGrpcServiceTest {
         objectUnderTest = generateOTelLogsGrpcService(new OTelProtoCodec.OTelProtoDecoder());
         doThrow(new TimeoutException()).when(buffer).writeAll(any(Collection.class), anyInt());
 
-        objectUnderTest.export(LOGS_REQUEST, responseObserver);
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            assertThrows(BufferWriteException.class, () -> objectUnderTest.export(LOGS_REQUEST, responseObserver));
+        }
 
         verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
-        verify(responseObserver, times(0)).onNext(any());
-        verify(responseObserver, times(0)).onCompleted();
-        verify(responseObserver, times(1)).onError(statusExceptionArgumentCaptor.capture());
-        verify(timeoutCounter, times(1)).increment();
+        verifyNoInteractions(responseObserver);
         verify(requestsReceivedCounter, times(1)).increment();
         verifyNoInteractions(successRequestsCounter);
-        verifyNoInteractions(badRequestsCounter);
-        verifyNoInteractions(requestsTooLargeCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(LOGS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
-        StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.RESOURCE_EXHAUSTED.getCode()));
     }
 
     @Test
@@ -172,24 +162,20 @@ public class OTelLogsGrpcServiceTest {
         final RuntimeException testException = new RuntimeException(testMessage);
         when(mockOTelProtoDecoder.parseExportLogsServiceRequest(any())).thenThrow(testException);
         objectUnderTest = generateOTelLogsGrpcService(mockOTelProtoDecoder);
-        objectUnderTest.export(LOGS_REQUEST, responseObserver);
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            assertThrows(BadRequestException.class, () -> objectUnderTest.export(LOGS_REQUEST, responseObserver));
+        }
 
         verifyNoInteractions(buffer);
-        verify(responseObserver, times(0)).onNext(ExportLogsServiceResponse.newBuilder().build());
-        verify(responseObserver, times(0)).onCompleted();
-        verify(responseObserver, times(1)).onError(statusExceptionArgumentCaptor.capture());
+        verifyNoInteractions(responseObserver);
         verify(requestsReceivedCounter, times(1)).increment();
-        verify(badRequestsCounter, times(1)).increment();
         verifyNoInteractions(successRequestsCounter);
-        verifyNoInteractions(requestsTooLargeCounter);
-        verifyNoInteractions(timeoutCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(LOGS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
-
-        StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.INVALID_ARGUMENT.getCode()));
     }
 
     @Test
@@ -197,23 +183,20 @@ public class OTelLogsGrpcServiceTest {
         final String testMessage = "test message";
         doThrow(new SizeOverflowException(testMessage)).when(buffer).writeAll(any(Collection.class), anyInt());
         objectUnderTest = generateOTelLogsGrpcService(new OTelProtoCodec.OTelProtoDecoder());
-        objectUnderTest.export(LOGS_REQUEST, responseObserver);
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            assertThrows(BufferWriteException.class, () -> objectUnderTest.export(LOGS_REQUEST, responseObserver));
+        }
 
         verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
-        verify(responseObserver, times(0)).onNext(any());
-        verify(responseObserver, times(0)).onCompleted();
-        verify(responseObserver, times(1)).onError(statusExceptionArgumentCaptor.capture());
+        verifyNoInteractions(responseObserver);
         verify(requestsReceivedCounter, times(1)).increment();
-        verify(requestsTooLargeCounter, times(1)).increment();
-        verifyNoInteractions(timeoutCounter);
         verifyNoInteractions(successRequestsCounter);
-        verifyNoInteractions(badRequestsCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(LOGS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
-        StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.RESOURCE_EXHAUSTED.getCode()));
     }
 
     @Test
@@ -221,23 +204,20 @@ public class OTelLogsGrpcServiceTest {
         final String testMessage = "test message";
         doThrow(new IOException(testMessage)).when(buffer).writeAll(any(Collection.class), anyInt());
         objectUnderTest = generateOTelLogsGrpcService(new OTelProtoCodec.OTelProtoDecoder());
-        objectUnderTest.export(LOGS_REQUEST, responseObserver);
+
+        try (MockedStatic<ServiceRequestContext> mockedStatic = mockStatic(ServiceRequestContext.class)) {
+            mockedStatic.when(ServiceRequestContext::current).thenReturn(serviceRequestContext);
+            assertThrows(BufferWriteException.class, () -> objectUnderTest.export(LOGS_REQUEST, responseObserver));
+        }
 
         verify(buffer, times(1)).writeAll(any(Collection.class), anyInt());
-        verify(responseObserver, times(0)).onNext(any());
-        verify(responseObserver, times(0)).onCompleted();
-        verify(responseObserver, times(1)).onError(statusExceptionArgumentCaptor.capture());
+        verifyNoInteractions(responseObserver);
         verify(requestsReceivedCounter, times(1)).increment();
-        verifyNoInteractions(requestsTooLargeCounter);
-        verifyNoInteractions(timeoutCounter);
         verifyNoInteractions(successRequestsCounter);
-        verifyNoInteractions(badRequestsCounter);
         final ArgumentCaptor<Double> payloadLengthCaptor = ArgumentCaptor.forClass(Double.class);
         verify(payloadSizeSummary, times(1)).record(payloadLengthCaptor.capture());
         assertThat(payloadLengthCaptor.getValue().intValue(), equalTo(LOGS_REQUEST.getSerializedSize()));
         verify(requestProcessDuration, times(1)).record(ArgumentMatchers.<Runnable>any());
-        StatusException capturedStatusException = statusExceptionArgumentCaptor.getValue();
-        assertThat(capturedStatusException.getStatus().getCode(), equalTo(Status.INTERNAL.getCode()));
     }
 
 

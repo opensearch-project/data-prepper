@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.model.event;
 
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,7 @@ import java.util.Map;
  * {@link org.opensearch.dataprepper.model.sink.Sink} and {@link org.opensearch.dataprepper.model.source.Source} will be extended to support
  * the new internal model. The use of {@link org.opensearch.dataprepper.model.record.Record}s will be deprecated in 2.0.
  * <p>
+ *
  * @since 1.2
  */
 public interface Event extends Serializable {
@@ -25,7 +28,7 @@ public interface Event extends Serializable {
     /**
      * Adds or updates the key with a given value in the Event
      *
-     * @param key where the value will be set
+     * @param key   where the value will be set
      * @param value value to set the key to
      * @since 1.2
      */
@@ -34,9 +37,9 @@ public interface Event extends Serializable {
     /**
      * Retrieves the given key from the Event
      *
-     * @param key the value to retrieve from
+     * @param key   the value to retrieve from
      * @param clazz the return type of the value
-     * @param <T> The type
+     * @param <T>   The type
      * @return T a clazz object from the key
      * @since 1.2
      */
@@ -45,9 +48,9 @@ public interface Event extends Serializable {
     /**
      * Retrieves the given key from the Event as a List
      *
-     * @param key the value to retrieve from
+     * @param key   the value to retrieve from
      * @param clazz the return type of elements in the list
-     * @param <T> The type
+     * @param <T>   The type
      * @return {@literal List<T>} a list of clazz elements
      * @since 1.2
      */
@@ -55,6 +58,7 @@ public interface Event extends Serializable {
 
     /**
      * Deletes the given key from the Event
+     *
      * @param key the field to be deleted
      * @since 1.2
      */
@@ -62,6 +66,7 @@ public interface Event extends Serializable {
 
     /**
      * Generates a serialized Json string of the entire Event
+     *
      * @return Json string of the event
      * @since 1.2
      */
@@ -69,6 +74,7 @@ public interface Event extends Serializable {
 
     /**
      * Gets a serialized Json string of the specific key in the Event
+     *
      * @param key the field to be returned
      * @return Json string of the field
      * @since 2.2
@@ -77,6 +83,7 @@ public interface Event extends Serializable {
 
     /**
      * Retrieves the EventMetadata
+     *
      * @return EventMetadata for the event
      * @since 1.2
      */
@@ -84,6 +91,7 @@ public interface Event extends Serializable {
 
     /**
      * Checks if the key exists.
+     *
      * @param key name of the key to look for
      * @return returns true if the key exists, otherwise false
      * @since 1.2
@@ -92,6 +100,7 @@ public interface Event extends Serializable {
 
     /**
      * Checks if the value stored for the key is list
+     *
      * @param key name of the key to look for
      * @return returns true if the key is a list, otherwise false
      * @since 1.2
@@ -106,12 +115,23 @@ public interface Event extends Serializable {
 
     /**
      * Returns formatted parts of the input string replaced by their values in the event
+     *
      * @param format input format
      * @return returns a string with no formatted parts, returns null if no value is found
      * @throws RuntimeException if the input string is not properly formatted
      * @since 2.1
      */
     String formatString(final String format);
+
+    /**
+     * Returns formatted parts of the input string replaced by their values in the event or the values from the result
+     * of a Data Prepper expression
+     * @param format input format
+     * @return returns a string with no formatted parts, returns null if no value is found
+     * @throws RuntimeException if the input string is not properly formatted
+     * @since 2.1
+     */
+    String formatString(String format, ExpressionEvaluator expressionEvaluator);
 
     /**
      * Returns event handle
@@ -123,8 +143,14 @@ public interface Event extends Serializable {
 
     JsonStringBuilder jsonBuilder();
 
-    public abstract class JsonStringBuilder {
+    abstract class JsonStringBuilder {
         private String tagsKey;
+
+        private String rootKey;
+
+        private List<String> includeKeys;
+
+        private List<String> excludeKeys;
 
         /**
          * @param key key to be used for tags
@@ -137,11 +163,65 @@ public interface Event extends Serializable {
         }
 
         /**
+         * @param rootKey key to be used for tags
+         * @return JsonStringString with tags included
+         * @since 2.4
+         */
+        public JsonStringBuilder rootKey(String rootKey) {
+            this.rootKey = rootKey;
+            return this;
+        }
+
+        /**
+         * @param includeKeys A list of keys to be retained
+         * @return JsonStringString with retained keys only
+         * @since 2.4
+         */
+        public JsonStringBuilder includeKeys(List<String> includeKeys) {
+            this.includeKeys = includeKeys;
+            return this;
+        }
+
+        /**
+         * @param excludeKeys A list of keys to be excluded
+         * @return JsonStringString without excluded keys
+         * @since 2.4
+         */
+        public JsonStringBuilder excludeKeys(List<String> excludeKeys) {
+            this.excludeKeys = excludeKeys;
+            return this;
+        }
+
+        /**
          * @return key used for tags
          * @since 2.3
          */
         public String getTagsKey() {
             return tagsKey;
+        }
+
+        /**
+         * @return root key
+         * @since 2.4
+         */
+        public String getRootKey() {
+            return rootKey;
+        }
+
+        /**
+         * @return a list of keys to be retrained.
+         * @since 2.4
+         */
+        public List<String> getIncludeKeys() {
+            return includeKeys;
+        }
+
+        /**
+         * @return a list of keys to be excluded
+         * @since 2.4
+         */
+        public List<String> getExcludeKeys() {
+            return excludeKeys;
         }
 
         /**

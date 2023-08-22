@@ -10,9 +10,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.codec.InputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
-import org.opensearch.dataprepper.plugins.source.compression.GZipCompressionEngine;
-import org.opensearch.dataprepper.plugins.source.compression.NoneCompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
@@ -86,7 +84,7 @@ class S3ObjectWorkerIT {
         when(s3ObjectPluginMetrics.getS3ObjectEventsSummary()).thenReturn(distributionSummary);
         when(s3ObjectPluginMetrics.getS3ObjectSizeProcessedSummary()).thenReturn(distributionSummary);
         when(s3ObjectPluginMetrics.getS3ObjectReadTimer()).thenReturn(timer);
-
+        when(s3ObjectPluginMetrics.getS3ObjectNoRecordsFound()).thenReturn(counter);
 
         bucketOwnerProvider = b -> Optional.empty();
     }
@@ -109,11 +107,11 @@ class S3ObjectWorkerIT {
                 .when(buffer).writeAll(anyCollection(), anyInt());
     }
 
-    private S3ObjectWorker createObjectUnderTest(final InputCodec codec, final int numberOfRecordsToAccumulate, final CompressionEngine compressionEngine) {
+    private S3ObjectWorker createObjectUnderTest(final InputCodec codec, final int numberOfRecordsToAccumulate, final CompressionOption compressionOption) {
         final S3ObjectRequest request = new S3ObjectRequest.Builder(buffer, numberOfRecordsToAccumulate,
                 Duration.ofMillis(TIMEOUT_IN_MILLIS), s3ObjectPluginMetrics).bucketOwnerProvider(bucketOwnerProvider)
                 .eventConsumer(eventMetadataModifier).codec(codec).s3Client(s3Client)
-                .compressionEngine(compressionEngine).build();
+                .compressionOption(compressionOption).build();
         return new S3ObjectWorker(request);
     }
 
@@ -127,8 +125,8 @@ class S3ObjectWorkerIT {
 
         final String key = getKeyString(recordsGenerator, numberOfRecords, shouldCompress);
 
-        final CompressionEngine compressionEngine = shouldCompress ? new GZipCompressionEngine() : new NoneCompressionEngine();
-        final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, compressionEngine);
+        final CompressionOption compressionOption = shouldCompress ? CompressionOption.GZIP : CompressionOption.NONE;
+        final S3ObjectWorker objectUnderTest = createObjectUnderTest(recordsGenerator.getCodec(), numberOfRecordsToAccumulate, compressionOption);
 
         s3ObjectGenerator.write(numberOfRecords, key, recordsGenerator, shouldCompress);
         stubBufferWriter(recordsGenerator::assertEventIsCorrect, key);
@@ -149,15 +147,18 @@ class S3ObjectWorkerIT {
 
     private void parseObject(final String key, final S3ObjectWorker objectUnderTest) throws IOException {
         final S3ObjectReference s3ObjectReference = S3ObjectReference.bucketAndKey(bucket, key).build();
-        objectUnderTest.parseS3Object(s3ObjectReference, null);
+        objectUnderTest.parseS3Object(s3ObjectReference, null, null, null);
     }
 
     static class IntegrationTestArguments implements ArgumentsProvider {
 
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
-            final List<RecordsGenerator> recordsGenerators = List.of(new NewlineDelimitedRecordsGenerator(), new JsonRecordsGenerator(),
-                    new CsvRecordsGenerator());
+            final List<RecordsGenerator> recordsGenerators = List.of(
+                    new NewlineDelimitedRecordsGenerator(),
+                    new JsonRecordsGenerator(),
+                    new CsvRecordsGenerator(),
+                    new ParquetRecordsGenerator());
             final List<Integer> numberOfRecordsList = List.of(0, 1, 25, 500, 5000);
             final List<Integer> recordsToAccumulateList = List.of(1, 100, 1000);
             final List<Boolean> booleanList = List.of(Boolean.TRUE, Boolean.FALSE);
@@ -170,7 +171,7 @@ class S3ObjectWorkerIT {
                                     .stream()
                                     .flatMap(accumulate -> booleanList
                                             .stream()
-                                            .map(shouldCompress -> arguments(recordsGenerator, records, accumulate, shouldCompress))
+                                            .map(shouldCompress -> arguments(recordsGenerator, records, accumulate, shouldCompress && recordsGenerator.canCompress()))
                                     )));
         }
     }

@@ -59,6 +59,11 @@ public class CsvProcessor extends AbstractProcessor<Record<Event>, Record<Event>
             final Event event = record.getData();
 
             final String message = event.get(config.getSource(), String.class);
+
+            if (Objects.isNull(message)) {
+                continue;
+            }
+
             final boolean userDidSpecifyHeaderEventKey = Objects.nonNull(config.getColumnNamesSourceKey());
             final boolean thisEventHasHeaderSource = userDidSpecifyHeaderEventKey && event.containsKey(config.getColumnNamesSourceKey());
 

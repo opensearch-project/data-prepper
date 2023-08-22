@@ -17,6 +17,7 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.opensearch.dataprepper.plugins.hasher.IdentificationKeysHasher;
 
 import java.time.Duration;
 import java.util.List;
@@ -47,7 +48,7 @@ public class AggregateActionSynchronizerTest {
     private AggregateGroup aggregateGroup;
 
     @Mock
-    private AggregateIdentificationKeysHasher.IdentificationKeysMap identificationKeysMap;
+    private IdentificationKeysHasher.IdentificationKeysMap identificationKeysMap;
 
     @Mock
     private AggregateActionResponse aggregateActionResponse;

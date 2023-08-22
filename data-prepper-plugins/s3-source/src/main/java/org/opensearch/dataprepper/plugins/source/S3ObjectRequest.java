@@ -8,7 +8,7 @@ import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.codec.InputCodec;
-import org.opensearch.dataprepper.plugins.source.compression.CompressionEngine;
+import org.opensearch.dataprepper.plugins.codec.CompressionOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectCSVOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectJsonOption;
 import org.opensearch.dataprepper.plugins.source.configuration.S3SelectSerializationFormatOption;
@@ -29,7 +29,7 @@ public class S3ObjectRequest {
     private final S3SelectSerializationFormatOption serializationFormatOption;
     private final S3AsyncClient s3AsyncClient;
     private final S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
-    private final CompressionEngine compressionEngine;
+    private final CompressionOption compressionOption;
     private final BucketOwnerProvider bucketOwnerProvider;
     private final InputCodec codec;
     private final BiConsumer<Event, S3ObjectReference> eventConsumer;
@@ -42,7 +42,7 @@ public class S3ObjectRequest {
 
     private S3ObjectRequest(Builder builder) {
         this.buffer = builder.buffer;
-        this.numberOfRecordsToAccumulate =builder.numberOfRecordsToAccumulate;
+        this.numberOfRecordsToAccumulate = builder.numberOfRecordsToAccumulate;
 
         this.bufferTimeout = builder.bufferTimeout;
         this.s3ObjectPluginMetrics = builder.s3ObjectPluginMetrics;
@@ -50,7 +50,7 @@ public class S3ObjectRequest {
         this.serializationFormatOption = builder.serializationFormatOption;
         this.s3AsyncClient =builder.s3AsyncClient;
         this.s3SelectResponseHandlerFactory = builder.s3SelectResponseHandlerFactory;
-        this.compressionEngine = builder.compressionEngine;
+        this.compressionOption = builder.compressionOption;
         this.bucketOwnerProvider = builder.bucketOwnerProvider;
         this.codec = builder.codec;
         this.eventConsumer = builder.eventConsumer;
@@ -93,8 +93,8 @@ public class S3ObjectRequest {
         return s3SelectResponseHandlerFactory;
     }
 
-    public CompressionEngine getCompressionEngine() {
-        return compressionEngine;
+    public CompressionOption getCompressionOption() {
+        return compressionOption;
     }
 
     public BucketOwnerProvider getBucketOwnerProvider() {
@@ -139,7 +139,7 @@ public class S3ObjectRequest {
         private S3SelectSerializationFormatOption serializationFormatOption;
         private S3AsyncClient s3AsyncClient;
         private S3SelectResponseHandlerFactory s3SelectResponseHandlerFactory;
-        private CompressionEngine compressionEngine;
+        private CompressionOption compressionOption;
         private InputCodec codec;
         private BiConsumer<Event, S3ObjectReference> eventConsumer;
         private S3Client s3Client;
@@ -183,8 +183,8 @@ public class S3ObjectRequest {
             return this;
         }
 
-        public Builder compressionEngine(CompressionEngine compressionEngine) {
-            this.compressionEngine = compressionEngine;
+        public Builder compressionOption(CompressionOption compressionOption) {
+            this.compressionOption = compressionOption;
             return this;
         }
 

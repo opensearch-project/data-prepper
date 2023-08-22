@@ -10,6 +10,7 @@ import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
 import org.opensearch.dataprepper.model.record.Record;
@@ -55,7 +56,11 @@ public class AddEntryProcessor extends AbstractProcessor<Record<Event>, Record<E
                     if (!Objects.isNull(entry.getValueExpression())) {
                         value = expressionEvaluator.evaluate(entry.getValueExpression(), recordEvent);
                     } else if (!Objects.isNull(entry.getFormat())) {
-                        value = recordEvent.formatString(entry.getFormat());
+                        try {
+                            value = recordEvent.formatString(entry.getFormat());
+                        } catch (final EventKeyNotFoundException e) {
+                            value = null;
+                        }
                     } else {
                         value = entry.getValue();
                     }

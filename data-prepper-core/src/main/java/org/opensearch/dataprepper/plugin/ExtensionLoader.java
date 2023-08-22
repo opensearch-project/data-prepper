@@ -71,7 +71,7 @@ public class ExtensionLoader {
                 .replace("$", "");
     }
 
-    private static class NoArgumentsArgumentsContext implements PluginArgumentsContext {
+    protected static class NoArgumentsArgumentsContext implements PluginArgumentsContext {
         @Override
         public Object[] createArguments(final Class<?>[] parameterTypes) {
             if(parameterTypes.length != 0) {
@@ -81,17 +81,17 @@ public class ExtensionLoader {
         }
     }
 
-    private static class SingleConfigArgumentArgumentsContext implements PluginArgumentsContext {
+    protected static class SingleConfigArgumentArgumentsContext implements PluginArgumentsContext {
         private final Object extensionPluginConfiguration;
 
         SingleConfigArgumentArgumentsContext(final Object extensionPluginConfiguration) {
-            Objects.requireNonNull(extensionPluginConfiguration);
             this.extensionPluginConfiguration = extensionPluginConfiguration;
         }
 
         @Override
         public Object[] createArguments(Class<?>[] parameterTypes) {
-            if (parameterTypes.length != 1 && !parameterTypes[0].equals(extensionPluginConfiguration.getClass())) {
+            if (parameterTypes.length != 1 && (Objects.nonNull(extensionPluginConfiguration) &&
+                    !parameterTypes[0].equals(extensionPluginConfiguration.getClass()))) {
                 throw new InvalidPluginDefinitionException(String.format(
                         "Single %s argument is permitted for extensions constructors.",
                         extensionPluginConfiguration.getClass()));

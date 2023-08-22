@@ -3,13 +3,11 @@ log-pipeline:
     kafka:
       bootstrap_servers:
         - 127.0.0.1:9093
-      auth_type: plaintext
       topics:
         - name: my-topic-2
-          group_name: kafka-consumer-group-2
-          group_id: DPKafkaProj-2
+          group_id: my-test-group
         - name: my-topic-1
-          group_id: DPKafkaProj-1
+          group_id: my-test-group
       schema:
         registry_url: http://localhost:8081/
         version: 1

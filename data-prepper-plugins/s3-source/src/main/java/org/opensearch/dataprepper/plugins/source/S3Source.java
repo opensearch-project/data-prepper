@@ -87,6 +87,8 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
                 s3SourceConfig.getBufferTimeout(), s3ObjectPluginMetrics);
         final BiConsumer<Event, S3ObjectReference> eventMetadataModifier = new EventMetadataModifier(
                 s3SourceConfig.getMetadataRootKey());
+        final S3ObjectDeleteWorker s3ObjectDeleteWorker = new S3ObjectDeleteWorker(s3ClientBuilderFactory.getS3Client(), pluginMetrics);
+
         if (s3SelectOptional.isPresent()) {
             S3SelectCSVOption csvOption = (s3SelectOptional.get().getS3SelectCSVOption() != null) ?
                     s3SelectOptional.get().getS3SelectCSVOption() : new S3SelectCSVOption();
@@ -112,7 +114,7 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
                     .codec(codec)
                     .eventConsumer(eventMetadataModifier)
                     .s3Client(s3ClientBuilderFactory.getS3Client())
-                    .compressionEngine(s3SourceConfig.getCompression().getEngine())
+                    .compressionOption(s3SourceConfig.getCompression())
                     .build();
             s3Handler = new S3ObjectWorker(s3ObjectRequest);
         }
@@ -122,15 +124,20 @@ public class S3Source implements Source<Record<Event>>, UsesSourceCoordination {
             sqsService.start();
         }
         if(s3ScanScanOptional.isPresent()) {
-            s3ScanService = new S3ScanService(s3SourceConfig,s3ClientBuilderFactory,s3Handler,bucketOwnerProvider, sourceCoordinator);
+            s3ScanService = new S3ScanService(s3SourceConfig, s3ClientBuilderFactory, s3Handler, bucketOwnerProvider, sourceCoordinator, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
             s3ScanService.start();
         }
     }
 
     @Override
     public void stop() {
-        sqsService.stop();
-        if (Objects.nonNull(sourceCoordinator)) {
+
+        if (Objects.nonNull(sqsService)) {
+            sqsService.stop();
+        }
+
+        if (Objects.nonNull(s3ScanService) && Objects.nonNull(sourceCoordinator)) {
+            s3ScanService.stop();
             sourceCoordinator.giveUpPartitions();
         }
     }

@@ -61,7 +61,7 @@ public class DynamoDbClientFactoryTest {
             when(dynamoDbClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(dynamoDbClientBuilder);
             when(dynamoDbClientBuilder.build()).thenReturn(dynamoDbClient);
 
-            final DynamoDbClient provideDynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, null);
+            final DynamoDbClient provideDynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, null, null);
 
             assertThat(provideDynamoDbClient, equalTo(dynamoDbClient));
         }
@@ -107,7 +107,7 @@ public class DynamoDbClientFactoryTest {
             when(dynamoDbClientBuilder.overrideConfiguration(any(ClientOverrideConfiguration.class))).thenReturn(dynamoDbClientBuilder);
             when(dynamoDbClientBuilder.build()).thenReturn(dynamoDbClient);
 
-            final DynamoDbClient providedDynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn);
+            final DynamoDbClient providedDynamoDbClient = DynamoDbClientFactory.provideDynamoDbClient(region, stsRoleArn, null);
 
             assertThat(providedDynamoDbClient, equalTo(dynamoDbClient));
         }

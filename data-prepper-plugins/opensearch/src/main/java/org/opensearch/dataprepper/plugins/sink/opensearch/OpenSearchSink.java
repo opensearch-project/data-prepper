@@ -5,22 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
-import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
-import org.opensearch.dataprepper.metrics.MetricNames;
-import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
-import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
-import org.opensearch.dataprepper.model.configuration.PluginModel;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.failures.DlqObject;
-import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.sink.AbstractSink;
-import org.opensearch.dataprepper.model.sink.Sink;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -32,11 +16,34 @@ import org.opensearch.client.opensearch.core.BulkRequest;
 import org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import org.opensearch.client.opensearch.core.bulk.CreateOperation;
 import org.opensearch.client.opensearch.core.bulk.IndexOperation;
+import org.opensearch.client.transport.TransportOptions;
 import org.opensearch.common.unit.ByteSizeUnit;
+import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.expression.ExpressionEvaluationException;
+import org.opensearch.dataprepper.expression.ExpressionEvaluator;
+import org.opensearch.dataprepper.metrics.MetricNames;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
+import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
+import org.opensearch.dataprepper.model.configuration.PluginModel;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.model.event.exceptions.EventKeyNotFoundException;
+import org.opensearch.dataprepper.model.failures.DlqObject;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.AbstractSink;
+import org.opensearch.dataprepper.model.sink.Sink;
+import org.opensearch.dataprepper.plugins.dlq.DlqProvider;
+import org.opensearch.dataprepper.plugins.dlq.DlqWriter;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.AccumulatingBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapper;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkApiWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkAction;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.BulkOperationWriter;
-import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingCompressedBulkRequest;
+import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.JavaClientAccumulatingUncompressedBulkRequest;
 import org.opensearch.dataprepper.plugins.sink.opensearch.bulk.SerializedJson;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperation;
 import org.opensearch.dataprepper.plugins.sink.opensearch.dlq.FailedBulkOperationConverter;
@@ -45,9 +52,10 @@ import org.opensearch.dataprepper.plugins.sink.opensearch.index.ClusterSettingsP
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.DocumentBuilder;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManager;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexManagerFactory;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapper;
+import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexTemplateAPIWrapperFactory;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexType;
 import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateStrategy;
-import org.opensearch.dataprepper.plugins.sink.opensearch.index.TemplateType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,11 +65,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
-import java.util.function.Supplier;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static org.opensearch.dataprepper.logging.DataPrepperMarkers.SENSITIVE;
@@ -85,9 +96,12 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private IndexManager indexManager;
   private Supplier<AccumulatingBulkRequest> bulkRequestSupplier;
   private BulkRetryStrategy bulkRetryStrategy;
+  private BulkApiWrapper bulkApiWrapper;
   private final long bulkSize;
+  private final long flushTimeout;
   private final IndexType indexType;
   private final String documentIdField;
+  private final String documentId;
   private final String routingField;
   private final String action;
   private final String documentRootKey;
@@ -102,17 +116,25 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
   private ObjectMapper objectMapper;
   private volatile boolean initialized;
   private PluginSetting pluginSetting;
+  private final SinkContext sinkContext;
+  private final ExpressionEvaluator expressionEvaluator;
 
   private FailedBulkOperationConverter failedBulkOperationConverter;
 
   private DlqProvider dlqProvider;
+  private final ConcurrentHashMap<Long, AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest>> bulkRequestMap;
+  private final ConcurrentHashMap<Long, Long> lastFlushTimeMap;
 
   @DataPrepperPluginConstructor
   public OpenSearchSink(final PluginSetting pluginSetting,
                         final PluginFactory pluginFactory,
+                        final SinkContext sinkContext,
+                        final ExpressionEvaluator expressionEvaluator,
                         final AwsCredentialsSupplier awsCredentialsSupplier) {
     super(pluginSetting, Integer.MAX_VALUE, INITIALIZE_RETRY_WAIT_TIME_MS);
     this.awsCredentialsSupplier = awsCredentialsSupplier;
+    this.sinkContext = sinkContext != null ? sinkContext : new SinkContext(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
+    this.expressionEvaluator = expressionEvaluator;
     bulkRequestTimer = pluginMetrics.timer(BULKREQUEST_LATENCY);
     bulkRequestErrorsCounter = pluginMetrics.counter(BULKREQUEST_ERRORS);
     dynamicIndexDroppedEvents = pluginMetrics.counter(DYNAMIC_INDEX_DROPPED_EVENTS);
@@ -120,8 +142,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
     this.openSearchSinkConfig = OpenSearchSinkConfiguration.readESConfig(pluginSetting);
     this.bulkSize = ByteSizeUnit.MB.toBytes(openSearchSinkConfig.getIndexConfiguration().getBulkSize());
+    this.flushTimeout = openSearchSinkConfig.getIndexConfiguration().getFlushTimeout();
     this.indexType = openSearchSinkConfig.getIndexConfiguration().getIndexType();
     this.documentIdField = openSearchSinkConfig.getIndexConfiguration().getDocumentIdField();
+    this.documentId = openSearchSinkConfig.getIndexConfiguration().getDocumentId();
     this.routingField = openSearchSinkConfig.getIndexConfiguration().getRoutingField();
     this.action = openSearchSinkConfig.getIndexConfiguration().getAction();
     this.documentRootKey = openSearchSinkConfig.getIndexConfiguration().getDocumentRootKey();
@@ -131,6 +155,8 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     this.initialized = false;
     this.lock = new ReentrantLock(true);
     this.pluginSetting = pluginSetting;
+    this.bulkRequestMap = new ConcurrentHashMap<>();
+    this.lastFlushTimeMap = new ConcurrentHashMap<>();
 
     final Optional<PluginModel> dlqConfig = openSearchSinkConfig.getRetryConfiguration().getDlq();
     if (dlqConfig.isPresent()) {
@@ -166,7 +192,10 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     restHighLevelClient = openSearchSinkConfig.getConnectionConfiguration().createClient(awsCredentialsSupplier);
     openSearchClient = openSearchSinkConfig.getConnectionConfiguration().createOpenSearchClient(restHighLevelClient, awsCredentialsSupplier);
     configuredIndexAlias = openSearchSinkConfig.getIndexConfiguration().getIndexAlias();
-    final TemplateStrategy templateStrategy = TemplateType.V1.createTemplateStrategy(openSearchClient);
+    final IndexTemplateAPIWrapper indexTemplateAPIWrapper = IndexTemplateAPIWrapperFactory.getWrapper(
+            openSearchSinkConfig.getIndexConfiguration(), openSearchClient);
+    final TemplateStrategy templateStrategy = openSearchSinkConfig.getIndexConfiguration().getTemplateType()
+            .createTemplateStrategy(indexTemplateAPIWrapper);
     indexManager = indexManagerFactory.getIndexManager(indexType, openSearchClient, restHighLevelClient,
             openSearchSinkConfig, templateStrategy, configuredIndexAlias);
     final String dlqFile = openSearchSinkConfig.getRetryConfiguration().getDlqFile();
@@ -180,11 +209,28 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     }
     indexManager.setupIndex();
 
-    bulkRequestSupplier = () -> new JavaClientAccumulatingBulkRequest(new BulkRequest.Builder());
+    final boolean isEstimateBulkSizeUsingCompression = openSearchSinkConfig.getIndexConfiguration().isEstimateBulkSizeUsingCompression();
+    final boolean isRequestCompressionEnabled = openSearchSinkConfig.getConnectionConfiguration().isRequestCompressionEnabled();
+    if (isEstimateBulkSizeUsingCompression && isRequestCompressionEnabled) {
+      final int maxLocalCompressionsForEstimation = openSearchSinkConfig.getIndexConfiguration().getMaxLocalCompressionsForEstimation();
+      bulkRequestSupplier = () -> new JavaClientAccumulatingCompressedBulkRequest(new BulkRequest.Builder(), bulkSize, maxLocalCompressionsForEstimation);
+    } else if (isEstimateBulkSizeUsingCompression) {
+      LOG.warn("Estimate bulk request size using compression was enabled but request compression is disabled. " +
+              "Estimating bulk request size without compression.");
+      bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+    } else {
+      bulkRequestSupplier = () -> new JavaClientAccumulatingUncompressedBulkRequest(new BulkRequest.Builder());
+    }
+
     final int maxRetries = openSearchSinkConfig.getRetryConfiguration().getMaxRetries();
+    final OpenSearchClient filteringOpenSearchClient = openSearchClient.withTransportOptions(
+            TransportOptions.builder()
+                    .setParameter("filter_path", "errors,took,items.*.error,items.*.status,items.*._index,items.*._id")
+                    .build());
+    bulkApiWrapper = BulkApiWrapperFactory.getWrapper(openSearchSinkConfig.getIndexConfiguration(), filteringOpenSearchClient);
     bulkRetryStrategy = new BulkRetryStrategy(
-            bulkRequest -> openSearchClient.bulk(bulkRequest.getRequest()),
-            this::logFailure,
+            bulkRequest -> bulkApiWrapper.bulk(bulkRequest.getRequest()),
+            this::logFailureForBulkRequests,
             pluginMetrics,
             maxRetries,
             bulkRequestSupplier,
@@ -202,11 +248,16 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
 
   @Override
   public void doOutput(final Collection<Record<Event>> records) {
-    if (records.isEmpty()) {
-      return;
+    final long threadId = Thread.currentThread().getId();
+    if (!bulkRequestMap.containsKey(threadId)) {
+      bulkRequestMap.put(threadId, bulkRequestSupplier.get());
+    }
+    if (!lastFlushTimeMap.containsKey(threadId)) {
+      lastFlushTimeMap.put(threadId, System.currentTimeMillis());
     }
 
-    AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestSupplier.get();
+    AccumulatingBulkRequest<BulkOperationWrapper, BulkRequest> bulkRequest = bulkRequestMap.get(threadId);
+    long lastFlushTime = lastFlushTimeMap.get(threadId);
 
     for (final Record<Event> record : records) {
       final Event event = record.getData();
@@ -215,9 +266,17 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final Optional<String> routing = document.getRoutingField();
       String indexName = configuredIndexAlias;
       try {
-          indexName = indexManager.getIndexName(event.formatString(indexName));
-      } catch (IOException e) {
+          indexName = indexManager.getIndexName(event.formatString(indexName, expressionEvaluator));
+      } catch (IOException | EventKeyNotFoundException e) {
+          LOG.error("There was an exception when constructing the index name. Check the dlq if configured to see details about the affected Event: {}", e.getMessage());
           dynamicIndexDroppedEvents.increment();
+          logFailureForDlqObjects(List.of(DlqObject.builder()
+                  .withEventHandle(event.getEventHandle())
+                  .withFailedData(FailedDlqData.builder().withDocument(event.toJsonString()).withIndex(indexName).withMessage(e.getMessage()).build())
+                  .withPluginName(pluginSetting.getName())
+                  .withPipelineName(pluginSetting.getPipelineName())
+                  .withPluginId(pluginSetting.getName())
+                  .build()), e);
           continue;
       }
 
@@ -257,23 +316,40 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
       final long estimatedBytesBeforeAdd = bulkRequest.estimateSizeInBytesWithDocument(bulkOperationWrapper);
       if (bulkSize >= 0 && estimatedBytesBeforeAdd >= bulkSize && bulkRequest.getOperationsCount() > 0) {
         flushBatch(bulkRequest);
+        lastFlushTime = System.currentTimeMillis();
         bulkRequest = bulkRequestSupplier.get();
       }
       bulkRequest.addOperation(bulkOperationWrapper);
     }
 
-    // Flush the remaining requests
-    if (bulkRequest.getOperationsCount() > 0) {
+    // Flush the remaining requests if flush timeout expired
+    if (System.currentTimeMillis() - lastFlushTime > flushTimeout && bulkRequest.getOperationsCount() > 0) {
       flushBatch(bulkRequest);
+      lastFlushTime = System.currentTimeMillis();
+      bulkRequest = bulkRequestSupplier.get();
     }
 
+    bulkRequestMap.put(threadId, bulkRequest);
+    lastFlushTimeMap.put(threadId, lastFlushTime);
   }
 
   private SerializedJson getDocument(final Event event) {
-    String docId = (documentIdField != null) ? event.get(documentIdField, String.class) : null;
+
+    String docId = null;
+
+    if (Objects.nonNull(documentIdField)) {
+      docId = event.get(documentIdField, String.class);
+    } else if (Objects.nonNull(documentId)) {
+      try {
+        docId = event.formatString(documentId, expressionEvaluator);
+      } catch (final ExpressionEvaluationException | EventKeyNotFoundException e) {
+        LOG.error("Unable to construct document_id with format {}, the document_id will be generated by OpenSearch", documentId, e);
+      }
+    }
+
     String routing = (routingField != null) ? event.get(routingField, String.class) : null;
 
-    final String document = DocumentBuilder.build(event, documentRootKey);
+    final String document = DocumentBuilder.build(event, documentRootKey, sinkContext.getTagsTargetKey(), sinkContext.getIncludeKeys(), sinkContext.getExcludeKeys());
 
     return SerializedJson.fromStringAndOptionals(document, docId, routing);
   }
@@ -292,19 +368,23 @@ public class OpenSearchSink extends AbstractSink<Record<Event>> {
     });
   }
 
-  private void logFailure(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
+  private void logFailureForBulkRequests(final List<FailedBulkOperation> failedBulkOperations, final Throwable failure) {
 
     final List<DlqObject> dlqObjects = failedBulkOperations.stream()
         .map(failedBulkOperationConverter::convertToDlqObject)
         .collect(Collectors.toList());
 
+    logFailureForDlqObjects(dlqObjects, failure);
+  }
+
+  private void logFailureForDlqObjects(final List<DlqObject> dlqObjects, final Throwable failure) {
     if (dlqFileWriter != null) {
       dlqObjects.forEach(dlqObject -> {
         final FailedDlqData failedDlqData = (FailedDlqData) dlqObject.getFailedData();
         final String message = failure == null ? failedDlqData.getMessage() : failure.getMessage();
         try {
           dlqFileWriter.write(String.format("{\"Document\": [%s], \"failure\": %s}\n",
-              BulkOperationWriter.dlqObjectToString(dlqObject), message));
+                  BulkOperationWriter.dlqObjectToString(dlqObject), message));
           dlqObject.releaseEventHandle(true);
         } catch (final IOException e) {
           LOG.error(SENSITIVE, "DLQ failure for Document[{}]", dlqObject.getFailedData(), e);

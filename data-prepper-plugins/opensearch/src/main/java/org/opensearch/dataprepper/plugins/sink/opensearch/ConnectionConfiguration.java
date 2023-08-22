@@ -58,6 +58,7 @@ import java.util.Optional;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 
 public class ConnectionConfiguration {
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
@@ -78,9 +79,11 @@ public class ConnectionConfiguration {
   public static final String AWS_SIGV4 = "aws_sigv4";
   public static final String AWS_REGION = "aws_region";
   public static final String AWS_STS_ROLE_ARN = "aws_sts_role_arn";
+  public static final String AWS_STS_EXTERNAL_ID = "aws_sts_external_id";
   public static final String AWS_STS_HEADER_OVERRIDES = "aws_sts_header_overrides";
   public static final String PROXY = "proxy";
   public static final String SERVERLESS = "serverless";
+  public static final String REQUEST_COMPRESSION_ENABLED = "enable_request_compression";
 
   /**
    * The valid port range per https://tools.ietf.org/html/rfc6335.
@@ -98,10 +101,12 @@ public class ConnectionConfiguration {
   private final boolean awsSigv4;
   private final String awsRegion;
   private final String awsStsRoleArn;
+  private final String awsStsExternalId;
   private final Map<String, String> awsStsHeaderOverrides;
   private final Optional<String> proxy;
   private final String pipelineName;
   private final boolean serverless;
+  private final boolean requestCompressionEnabled;
 
   List<String> getHosts() {
     return hosts;
@@ -147,6 +152,10 @@ public class ConnectionConfiguration {
     return serverless;
   }
 
+  boolean isRequestCompressionEnabled() {
+    return requestCompressionEnabled;
+  }
+
   private ConnectionConfiguration(final Builder builder) {
     this.hosts = builder.hosts;
     this.username = builder.username;
@@ -158,9 +167,11 @@ public class ConnectionConfiguration {
     this.awsSigv4 = builder.awsSigv4;
     this.awsRegion = builder.awsRegion;
     this.awsStsRoleArn = builder.awsStsRoleArn;
+    this.awsStsExternalId = builder.awsStsExternalId;
     this.awsStsHeaderOverrides = builder.awsStsHeaderOverrides;
     this.proxy = builder.proxy;
     this.serverless = builder.serverless;
+    this.requestCompressionEnabled = builder.requestCompressionEnabled;
     this.pipelineName = builder.pipelineName;
   }
 
@@ -194,6 +205,7 @@ public class ConnectionConfiguration {
         builder.withAwsSigv4(true);
         builder.withAwsRegion((String)(awsOption.getOrDefault(AWS_REGION.substring(4), DEFAULT_AWS_REGION)));
         builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
+        builder.withAWSStsExternalId((String)(awsOption.getOrDefault(AWS_STS_EXTERNAL_ID.substring(4), null)));
         builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
         builder.withServerless((Boolean)awsOption.getOrDefault(SERVERLESS, false));
     } else {
@@ -208,6 +220,7 @@ public class ConnectionConfiguration {
       builder.withAwsSigv4(true);
       builder.withAwsRegion(pluginSetting.getStringOrDefault(AWS_REGION, DEFAULT_AWS_REGION));
       builder.withAWSStsRoleArn(pluginSetting.getStringOrDefault(AWS_STS_ROLE_ARN, null));
+      builder.withAWSStsExternalId(pluginSetting.getStringOrDefault(AWS_STS_EXTERNAL_ID, null));
       builder.withAwsStsHeaderOverrides(pluginSetting.getTypedMap(AWS_STS_HEADER_OVERRIDES, String.class, String.class));
     }
 
@@ -221,6 +234,13 @@ public class ConnectionConfiguration {
     }
     final String proxy = pluginSetting.getStringOrDefault(PROXY, null);
     builder = builder.withProxy(proxy);
+
+    final String distributionVersionName = pluginSetting.getStringOrDefault(DISTRIBUTION_VERSION,
+            DistributionVersion.DEFAULT.getVersion());
+    final DistributionVersion distributionVersion = DistributionVersion.fromTypeName(distributionVersionName);
+    final boolean requestCompressionEnabled = pluginSetting.getBooleanOrDefault(
+            REQUEST_COMPRESSION_ENABLED, !DistributionVersion.ES6.equals(distributionVersion));
+    builder = builder.withRequestCompressionEnabled(requestCompressionEnabled);
 
     return builder.build();
   }
@@ -278,10 +298,11 @@ public class ConnectionConfiguration {
 
   private AwsCredentialsOptions createAwsCredentialsOptions() {
     final AwsCredentialsOptions awsCredentialsOptions = AwsCredentialsOptions.builder()
-            .withStsRoleArn(awsStsRoleArn)
-            .withRegion(awsRegion)
-            .withStsHeaderOverrides(awsStsHeaderOverrides)
-            .build();
+        .withStsRoleArn(awsStsRoleArn)
+        .withStsExternalId(awsStsExternalId)
+        .withRegion(awsRegion)
+        .withStsHeaderOverrides(awsStsHeaderOverrides)
+        .build();
     return awsCredentialsOptions;
   }
 
@@ -364,12 +385,18 @@ public class ConnectionConfiguration {
       final AwsCredentialsOptions awsCredentialsOptions = createAwsCredentialsOptions();
       final AwsCredentialsProvider credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
       final String serviceName = serverless ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME;
+
+      final AwsSdk2TransportOptions.Builder transportOptions = AwsSdk2TransportOptions.builder()
+              .setCredentials(credentialsProvider)
+              .setMapper(new PreSerializedJsonpMapper());
+
+      if (!isRequestCompressionEnabled()) {
+        // Disable compression for all requests
+        transportOptions.setRequestCompressionSize(Integer.MAX_VALUE);
+      }
+
       return new AwsSdk2Transport(createSdkHttpClient(), HttpHost.create(hosts.get(0)).getHostName(),
-              serviceName, Region.of(awsRegion),
-              AwsSdk2TransportOptions.builder()
-                      .setCredentials(credentialsProvider)
-                      .setMapper(new PreSerializedJsonpMapper())
-                      .build());
+              serviceName, Region.of(awsRegion), transportOptions.build());
     } else {
       return new RestClientTransport(
               restHighLevelClient.getLowLevelClient(), new PreSerializedJsonpMapper());
@@ -439,10 +466,12 @@ public class ConnectionConfiguration {
     private boolean awsSigv4;
     private String awsRegion;
     private String awsStsRoleArn;
+    private String awsStsExternalId;
     private Map<String, String> awsStsHeaderOverrides;
     private Optional<String> proxy = Optional.empty();
     private String pipelineName;
     private boolean serverless;
+    private boolean requestCompressionEnabled;
 
     private void validateStsRoleArn(final String awsStsRoleArn) {
       final Arn arn = getArn(awsStsRoleArn);
@@ -524,6 +553,12 @@ public class ConnectionConfiguration {
       return this;
     }
 
+    public Builder withAWSStsExternalId(final String awsStsExternalId) {
+      checkArgument(awsStsExternalId == null || awsStsExternalId.length() <= 1224, "awsStsExternalId length cannot exceed 1224");
+      this.awsStsExternalId = awsStsExternalId;
+      return this;
+    }
+
     public Builder withAwsStsHeaderOverrides(final Map<String, String> headerOverrides) {
       if(headerOverrides != null && !headerOverrides.isEmpty()) {
         this.awsStsHeaderOverrides = headerOverrides;
@@ -543,6 +578,11 @@ public class ConnectionConfiguration {
 
     public Builder withServerless(boolean serverless) {
       this.serverless = serverless;
+      return this;
+    }
+
+    public Builder withRequestCompressionEnabled(final boolean requestCompressionEnabled) {
+      this.requestCompressionEnabled = requestCompressionEnabled;
       return this;
     }
 

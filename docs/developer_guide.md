@@ -157,9 +157,22 @@ issue to request that a previous change be backported.
 Documentation is very important for users of Data Prepper and contributors. We are using the
 following conventions for documentation.
 
-1. Document features in markdown. Plugins should have detailed documentation in a `README.md` file in the plugin project directory. Documentation for all of Data Prepper should be included in the [Data Prepper documentation](https://opensearch.org/docs/latest/data-prepper/index/).
-2. Provide Javadocs for all public classes, methods, and fields. Plugins need not follow this guidance since their classes are generally not exposed.
-3. Avoid commenting within code, unless it is required to understand that code.
+1. Document features in the OpenSearch [documentation-website](https://github.com/opensearch-project/documentation-website). This makes the documentation available at https://opensearch.org/docs/latest/data-prepper.
+2. Document any development guidance in this repository in markdown. In particular, for plugins, use the `README.md` file within the plugin project to note anything developers should keep in mind.
+3. Provide Javadocs for all public classes, methods, and fields. Plugins need not follow this guidance since their classes are generally not exposed.
+4. Avoid commenting within code, unless it is required to understand that code.
+
+#### Documentation Process
+
+When you submit a feature PR, please be sure to also submit a new "Documentation issue" 
+[issue in the documentation-website](https://github.com/opensearch-project/documentation-website/issues/new/choose) project.
+
+Please include in this feature a link to the GitHub issue which has information on the feature.
+This GitHub issue will often have sample configurations and explanations of the options available to users.
+Please also provide any additional guidance for the team doing the documentation.
+Please include a link to that documentation issue in the PR you created for Data Prepper.
+
+You are also welcome to submit a PR directly in the [documentation-website](https://github.com/opensearch-project/documentation-website).
 
 ### Code
 

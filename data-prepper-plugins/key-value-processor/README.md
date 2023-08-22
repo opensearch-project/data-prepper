@@ -39,6 +39,19 @@ When run, the processor will parse the message into the following output:
 * `field_split_characters` - A string of characters to split between key/value pairs. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * Default: `&`
   * Note: This cannot be defined at the same time as `field_delimiter_regex`
+* `include_keys` - An array specifying the keys which should be added to parse. By default, all keys will be added.
+  * Default: `[]`
+  * Example: `include_keys` is `["key2"]`. `key1=value1&key2=value2` will parse into `{"key2": "value2"}`
+* `exclude_keys` - An array specifying the parsed keys which should not be added to the event. By default no keys will be excluded.
+  * Default: `[]`
+  * Example: `exclude_keys` is `["key2"]`. `key1=value1&key2=value2` will parse into `{"key1": "value1"}`
+* `default_values` - A hash specifying the default keys and their values which should be added to the event in case these keys do not exist in the source field being parsed.
+  * Default: `{}`
+  * Example: `default_values` is `{"defaultkey": "defaultvalue"}`. `key1=value1` will parse into `{"key1": "value1", "defaultkey": "defaultvalue"}`
+  * If the default key already exists in the message, the value is not changed.
+  * Example: `default_values` is `{"value1": "abc"}`. `key1=value1` will parse into `{"key1": "value1"}`
+  * It should be noted that the include_keys filter will be applied to the message first, and then default keys.
+  * Example: `include_keys` is `["key1"]`, and `default_keys` is `{"key2": "value2"}`. `key1=value1&key2=abc` will parse into `{"key1": "value1", "key2": "value2"}`
 * `key_value_delimiter_regex` - A regex specifying the delimiter between a key and a value. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default.
   * Note: This cannot be defined at the same time as `value_split_characters`
@@ -58,6 +71,24 @@ When run, the processor will parse the message into the following output:
   * There is no default
   * Cannot be an empty string
   * Example: `delete_value_regex` is `"\s"`. `{"key1=value1 "}` will parse into `{"key1": "value1"}`
+* `transform_key` - Change keys to lowercase, uppercase, or all capitals.
+  * Default is an empty string (no transformation)
+  * Example: `transform_key` is `lowercase`. `{"Key1=value1"}` will parse into `{"key1": "value1"}`
+  * Example: `transform_key` is `uppercase`. `{"key1=value1"}` will parse into `{"Key1": "value1"}`
+  * Example: `transform_key` is `capitalize`. `{"key1=value1"}` will parse into `{"KEY1": "value1"}`
+* `whitespace` - Specify whether to be lenient or strict with the acceptance of unnecessary whitespace surrounding the configured value-split sequence.
+  * Default: `lenient`
+  * Example: `whitespace` is `"lenient"`. `{"key1  =  value1"}` will parse into `{"key1  ": "  value1"}`
+  * Example: `whitespace` is `"strict"`. `{"key1  =  value1"}` will parse into `{"key1": "value1"}`
+* `skip_duplicate_values` - A boolean option for removing duplicate key/value pairs. When set to true, only one unique key/value pair will be preserved.
+  * Default: `false`
+  * Example: `skip_duplicate_values` is `false`. `{"key1=value1&key1=value1"}` will parse into `{"key1": ["value1", "value1"]}`
+  * Example: `skip_duplicate_values` is `true`. `{"key1=value1&key1=value1"}` will parse into `{"key1": "value1"}`
+* `remove_brackets` - Specify whether to treat square brackets, angle brackets, and parentheses as value "wrappers" that should be removed from the value.
+  * Default: `false`
+  * Example: `remove_brackets` is `true`. `{"key1=(value1)"}` will parse into `{"key1": value1}`
+  * Example: `remove_brackets` is `false`. `{"key1=(value1)"}` will parse into `{"key1": "(value1)"}`
+  * In the case of a key-value pair with a brackets and a split character, the splitting will take priority over `remove_brackets=true`. `{key1=(value1&value2)}` will parse into `{"key1":"value1","value2)":null}`
 
 ## Developer Guide
 This plugin is compatible with Java 14. See

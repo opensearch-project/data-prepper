@@ -22,8 +22,10 @@ class S3ClientProviderTest {
     void test_random_region_and_role_should_create_s3client() {
         final String awsRegion = UUID.randomUUID().toString();
         final String awsStsRoleArn = UUID.randomUUID().toString();
+        final String awsExternalId = UUID.randomUUID().toString();
 
-        final S3ClientProvider s3ClientProvider = new S3ClientProvider(awsRegion, awsStsRoleArn);
+        final S3ClientProvider s3ClientProvider =
+            new S3ClientProvider(awsRegion, awsStsRoleArn, awsExternalId);
 
         final S3Client s3Client = s3ClientProvider.buildS3Client();
 
@@ -34,8 +36,9 @@ class S3ClientProviderTest {
     void test_random_region_and_null_role_should_create_s3client_with_DefaultCredentialsProvider() {
         final String awsRegion = UUID.randomUUID().toString();
         final String awsStsRoleArn = null;
+        final String externalId = null;
 
-        final S3ClientProvider s3ClientProvider = new S3ClientProvider(awsRegion, awsStsRoleArn);
+        final S3ClientProvider s3ClientProvider = new S3ClientProvider(awsRegion, awsStsRoleArn, externalId);
 
         final S3Client s3Client = s3ClientProvider.buildS3Client();
 

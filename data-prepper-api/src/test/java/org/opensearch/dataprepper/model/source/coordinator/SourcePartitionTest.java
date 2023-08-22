@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.model.source.coordinator;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Random;
 import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -31,15 +32,18 @@ public class SourcePartitionTest {
     void sourcePartitionBuilder_returns_expected_SourcePartition() {
         final String partitionKey = UUID.randomUUID().toString();
         final String partitionState = UUID.randomUUID().toString();
+        final Long partitionClosedCount = new Random().nextLong();
 
         final SourcePartition<String> sourcePartition = SourcePartition.builder(String.class)
                 .withPartitionKey(partitionKey)
                 .withPartitionState(partitionState)
+                .withPartitionClosedCount(partitionClosedCount)
                 .build();
 
         assertThat(sourcePartition, notNullValue());
         assertThat(sourcePartition.getPartitionKey(), equalTo(partitionKey));
         assertThat(sourcePartition.getPartitionState().isPresent(), equalTo(true));
         assertThat(sourcePartition.getPartitionState().get(), equalTo(partitionState));
+        assertThat(sourcePartition.getPartitionClosedCount(), equalTo(partitionClosedCount));
     }
 }

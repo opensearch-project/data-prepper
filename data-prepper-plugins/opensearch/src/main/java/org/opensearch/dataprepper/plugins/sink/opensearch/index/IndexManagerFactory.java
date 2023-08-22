@@ -91,7 +91,8 @@ public class IndexManagerFactory {
                 if (ismPolicyFile.get().startsWith(S3_PREFIX)) {
                     final String s3AwsRegion = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsRegion();
                     final String s3AwsStsRoleArn = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsStsRoleArn();
-                    final S3ClientProvider clientProvider = new S3ClientProvider(s3AwsRegion, s3AwsStsRoleArn);
+                    final String s3AwsStsExternalId = openSearchSinkConfiguration.getIndexConfiguration().getS3AwsStsExternalId();
+                    final S3ClientProvider clientProvider = new S3ClientProvider(s3AwsRegion, s3AwsStsRoleArn, s3AwsStsExternalId);
                     s3Client = clientProvider.buildS3Client();
                 }
                 final String indexPolicyName = getIndexPolicyName();
