@@ -5,8 +5,8 @@
 package org.opensearch.dataprepper.plugins.source.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * Class consists the s3 select options.
@@ -24,7 +24,7 @@ public class S3SelectOptions {
 	private String expressionType = DEFAULT_EXPRESSION_TYPE;
 
 	@JsonProperty("input_serialization")
-	@NotBlank(message = "input serialization format cannot be null or empty")
+	@NotNull
 	private S3SelectSerializationFormatOption s3SelectSerializationFormatOption;
 
 	@JsonProperty("compression_type")
