@@ -5,55 +5,55 @@
 
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.opensearch.dataprepper.model.CheckpointState;
-import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.PluginSetting;
-import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.model.event.Event;
-import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
-import io.micrometer.core.instrument.Counter;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.any;
-import static org.hamcrest.Matchers.hasEntry;
-import static org.hamcrest.MatcherAssert.assertThat;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.mockito.Mock;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
+import org.opensearch.dataprepper.model.CheckpointState;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
+import org.opensearch.dataprepper.model.buffer.Buffer;
+import org.opensearch.dataprepper.model.configuration.PluginSetting;
+import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.plugins.buffer.blockingbuffer.BlockingBuffer;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;  
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -123,7 +123,6 @@ public class KafkaSourceCustomConsumerTest {
 
     public KafkaSourceCustomConsumer createObjectUnderTest(String schemaType, boolean acknowledgementsEnabled) {
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(acknowledgementsEnabled);
-        when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
         return new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topicConfig, schemaType, acknowledgementSetManager, topicMetrics);
     }
 
@@ -144,6 +143,7 @@ public class KafkaSourceCustomConsumerTest {
         consumer = createObjectUnderTest("plaintext", false);
 
         try {
+            consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
             consumer.consumeRecords();
         } catch (Exception e){}
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
@@ -179,6 +179,7 @@ public class KafkaSourceCustomConsumerTest {
         consumer = createObjectUnderTest("plaintext", true);
 
         try {
+            consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
             consumer.consumeRecords();
         } catch (Exception e){}
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
@@ -223,6 +224,7 @@ public class KafkaSourceCustomConsumerTest {
         consumer = createObjectUnderTest("plaintext", true);
 
         try {
+            consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testPartition)));
             consumer.consumeRecords();
         } catch (Exception e){}
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
@@ -263,6 +265,7 @@ public class KafkaSourceCustomConsumerTest {
         when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("json", false);
 
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testJsonPartition)));
         consumer.consumeRecords();
         final Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
         ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());

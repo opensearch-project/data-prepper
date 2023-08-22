@@ -4,38 +4,42 @@
  */
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
+import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
+import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.Range;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.consumer.CommitFailedException;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.avro.generic.GenericRecord;
-import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.model.buffer.SizeOverflowException;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
-import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,16 +49,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
-import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
-import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
-import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
-import org.apache.commons.lang3.Range;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * * A utility class which will handle the core Kafka consumer operation.
  */
 public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceListener {
+
     private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceCustomConsumer.class);
     private static final Long COMMIT_OFFSET_INTERVAL_MS = 300000L;
     private static final int DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE = 1;
@@ -71,14 +72,16 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private final JsonFactory jsonFactory = new JsonFactory();
     private Map<TopicPartition, OffsetAndMetadata> offsetsToCommit;
+    private Map<TopicPartition, Long> ownedPartitionsEpoch;
     private Set<TopicPartition> partitionsToReset;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final Map<Integer, TopicPartitionCommitTracker> partitionCommitTrackerMap;
-    private List<Map<TopicPartition, Range<Long>>> acknowledgedOffsets;
+    private List<Map<TopicPartition, CommitOffsetRange>> acknowledgedOffsets;
     private final boolean acknowledgementsEnabled;
     private final Duration acknowledgementsTimeout;
     private final KafkaTopicMetrics topicMetrics;
     private long metricsUpdatedTime;
+    private final AtomicInteger numberOfAcksPending;
 
     public KafkaSourceCustomConsumer(final KafkaConsumer consumer,
                                      final AtomicBoolean shutdownInProgress,
@@ -96,11 +99,12 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         this.topicMetrics = topicMetrics;
         this.topicMetrics.register(consumer);
         this.offsetsToCommit = new HashMap<>();
+        this.ownedPartitionsEpoch = new HashMap<>();
         this.metricsUpdatedTime = Instant.now().getEpochSecond();
         this.acknowledgedOffsets = new ArrayList<>();
-        this.acknowledgementsTimeout = sourceConfig.getAcknowledgementsTimeout();
+        this.acknowledgementsTimeout = Duration.ofSeconds(Integer.MAX_VALUE);
         // If the timeout value is different from default value, then enable acknowledgements automatically.
-        this.acknowledgementsEnabled = sourceConfig.getAcknowledgementsEnabled() || acknowledgementsTimeout != KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT;
+        this.acknowledgementsEnabled = sourceConfig.getAcknowledgementsEnabled();
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.partitionCommitTrackerMap = new HashMap<>();
         this.partitionsToReset = Collections.synchronizedSet(new HashSet<>());
@@ -108,6 +112,12 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         Duration bufferTimeout = Duration.ofSeconds(1);
         this.bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, bufferTimeout);
         this.lastCommitTime = System.currentTimeMillis();
+        this.numberOfAcksPending = new AtomicInteger(0);
+    }
+
+    private long getCurrentTimeNanos() {
+        Instant now = Instant.now();
+        return now.getEpochSecond()*1000000000+now.getNano();
     }
 
     public void updateOffsetsToCommit(final TopicPartition partition, final OffsetAndMetadata offsetAndMetadata, Range<Long> offsetRange) {
@@ -122,21 +132,24 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         }
     }
 
-    private AcknowledgementSet createAcknowledgementSet(Map<TopicPartition, Range<Long>> offsets) {
+    private AcknowledgementSet createAcknowledgementSet(Map<TopicPartition, CommitOffsetRange> offsets) {
         AcknowledgementSet acknowledgementSet =
-            acknowledgementSetManager.create((result) -> {
-                if (result == true) {
-                    topicMetrics.getNumberOfPositiveAcknowledgements().increment();
-                    synchronized(acknowledgedOffsets) {
-                        acknowledgedOffsets.add(offsets);
+                acknowledgementSetManager.create((result) -> {
+                    numberOfAcksPending.decrementAndGet();
+                    if (result == true) {
+                        topicMetrics.getNumberOfPositiveAcknowledgements().increment();
+                        synchronized(this) {
+                            acknowledgedOffsets.add(offsets);
+                        }
+                    } else {
+                        topicMetrics.getNumberOfNegativeAcknowledgements().increment();
+                        synchronized(this) {
+                            offsets.forEach((partition, offsetRange) -> {
+                                partitionsToReset.add(partition);
+                            });
+                        }
                     }
-                } else {
-                    topicMetrics.getNumberOfNegativeAcknowledgements().increment();
-                    offsets.forEach((partition, offsetRange) -> {
-                        partitionsToReset.add(partition);
-                    });
-                }
-            }, acknowledgementsTimeout);
+                }, acknowledgementsTimeout);
         return acknowledgementSet;
     }
 
@@ -144,7 +157,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         try {
             ConsumerRecords<String, T> records = consumer.poll(topicConfig.getThreadWaitingTime().toMillis()/2);
             if (Objects.nonNull(records) && !records.isEmpty() && records.count() > 0) {
-                Map<TopicPartition, Range<Long>> offsets = new HashMap<>();
+                Map<TopicPartition, CommitOffsetRange> offsets = new HashMap<>();
                 AcknowledgementSet acknowledgementSet = null;
                 if (acknowledgementsEnabled) {
                     acknowledgementSet = createAcknowledgementSet(offsets);
@@ -152,9 +165,12 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                 iterateRecordPartitions(records, acknowledgementSet, offsets);
                 if (!acknowledgementsEnabled) {
                     offsets.forEach((partition, offsetRange) ->
-                        updateOffsetsToCommit(partition, new OffsetAndMetadata(offsetRange.getMaximum() + 1), offsetRange));
+                            updateOffsetsToCommit(partition,
+                                    new OffsetAndMetadata(offsetRange.getOffsets().getMaximum() + 1),
+                                    offsetRange.getOffsets()));
                 } else {
                     acknowledgementSet.complete();
+                    numberOfAcksPending.incrementAndGet();
                 }
             }
         } catch (AuthenticationException e) {
@@ -163,7 +179,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             Thread.sleep(10000);
         } catch (RecordDeserializationException e) {
             LOG.warn("Deserialization error - topic {} partition {} offset {}",
-                     e.topicPartition().topic(), e.topicPartition().partition(), e.offset());
+                    e.topicPartition().topic(), e.topicPartition().partition(), e.offset());
             if (e.getCause() instanceof AWSSchemaRegistryException) {
                 LOG.warn("AWSSchemaRegistryException: {}. Retrying after 30 seconds", e.getMessage());
                 Thread.sleep(30000);
@@ -183,8 +199,10 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                     if (Objects.isNull(offsetAndMetadata)) {
                         consumer.seek(partition, 0L);
                     } else {
+                        LOG.info("Seeking partition {} to {}", partition, offsetAndMetadata.offset());
                         consumer.seek(partition, offsetAndMetadata);
                     }
+                    partitionCommitTrackerMap.remove(partition.partition());
                 } catch (Exception e) {
                     LOG.error("Failed to seek to last committed offset upon negative acknowledgement {}", partition, e);
                 }
@@ -194,34 +212,39 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     }
 
     void processAcknowledgedOffsets() {
-        synchronized(acknowledgedOffsets) {
-            acknowledgedOffsets.forEach(offsets -> {
-                offsets.forEach((partition, offsetRange) -> {
+
+        acknowledgedOffsets.forEach(offsets -> {
+            offsets.forEach((partition, offsetRange) -> {
+
+                if (getPartitionEpoch(partition) == offsetRange.getEpoch()) {
                     try {
                         int partitionId = partition.partition();
                         if (!partitionCommitTrackerMap.containsKey(partitionId)) {
                             OffsetAndMetadata committedOffsetAndMetadata = consumer.committed(partition);
                             Long committedOffset = Objects.nonNull(committedOffsetAndMetadata) ? committedOffsetAndMetadata.offset() : null;
+                            LOG.info("Tracking offsets for partition{} starting with committedOffset {}", partition,
+                                    committedOffset);
                             partitionCommitTrackerMap.put(partitionId, new TopicPartitionCommitTracker(partition, committedOffset));
                         }
-                        OffsetAndMetadata offsetAndMetadata = partitionCommitTrackerMap.get(partitionId).addCompletedOffsets(offsetRange);
-                        updateOffsetsToCommit(partition, offsetAndMetadata, offsetRange);
+                        OffsetAndMetadata offsetAndMetadata =
+                                partitionCommitTrackerMap.get(partitionId).addCompletedOffsets(offsetRange.getOffsets());
+                        updateOffsetsToCommit(partition, offsetAndMetadata, offsetRange.getOffsets());
                     } catch (Exception e) {
                         LOG.error("Failed committed offsets upon positive acknowledgement {}", partition, e);
                     }
-                });
+                }
             });
-            acknowledgedOffsets.clear();
-        }
+        });
+        acknowledgedOffsets.clear();
     }
 
-    private void commitOffsets() {
+    private void commitOffsets(boolean forceCommit) {
         if (topicConfig.getAutoCommit()) {
             return;
         }
         processAcknowledgedOffsets();
         long currentTimeMillis = System.currentTimeMillis();
-        if ((currentTimeMillis - lastCommitTime) < topicConfig.getCommitInterval().toMillis()) {
+        if (!forceCommit && (currentTimeMillis - lastCommitTime) < topicConfig.getCommitInterval().toMillis()) {
             return;
         }
         synchronized (offsetsToCommit) {
@@ -229,12 +252,12 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                 return;
             }
             try {
-                consumer.commitSync();
-                offsetsToCommit.clear();
-                lastCommitTime = currentTimeMillis;
-            } catch (CommitFailedException e) {
+                consumer.commitSync(offsetsToCommit);
+            } catch (Exception e) {
                 LOG.error("Failed to commit offsets in topic {}", topicName, e);
             }
+            offsetsToCommit.clear();
+            lastCommitTime = currentTimeMillis;
         }
     }
 
@@ -244,15 +267,27 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
 
     @Override
     public void run() {
-        consumer.subscribe(Arrays.asList(topicName));
+        consumer.subscribe(Arrays.asList(topicName), this);
+        Set<TopicPartition> partitions = consumer.assignment();
+        synchronized (ownedPartitionsEpoch) {
+            final long currentEpoch = getCurrentTimeNanos();
+            partitions.forEach((partition) -> {
+                final OffsetAndMetadata offsetAndMetadata = consumer.committed(partition);
+                LOG.info("Starting consumer with topic partition ({}) offset {}", partition, offsetAndMetadata);
+                ownedPartitionsEpoch.put(partition, currentEpoch);
+            });
+        }
+
         boolean retryingAfterException = false;
         while (!shutdownInProgress.get()) {
             try {
                 if (retryingAfterException) {
                     Thread.sleep(10000);
                 }
-                resetOffsets();
-                commitOffsets();
+                synchronized(this) {
+                    commitOffsets(false);
+                    resetOffsets();
+                }
                 consumeRecords();
                 topicMetrics.update(consumer);
                 retryingAfterException = false;
@@ -260,6 +295,10 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                 LOG.error("Error while reading the records from the topic {}. Retry after 10 seconds", topicName, exp);
                 retryingAfterException = true;
             }
+        }
+        LOG.info("Shutting down, number of acks pending = {}", numberOfAcksPending.get());
+        synchronized(this) {
+            commitOffsets(true);
         }
     }
 
@@ -314,9 +353,15 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         return new Record<Event>(event);
     }
 
-    private <T> void iterateRecordPartitions(ConsumerRecords<String, T> records, final AcknowledgementSet acknowledgementSet, Map<TopicPartition, Range<Long>> offsets) throws Exception {
+    private <T> void iterateRecordPartitions(ConsumerRecords<String, T> records, final AcknowledgementSet acknowledgementSet,
+                                             Map<TopicPartition, CommitOffsetRange> offsets) throws Exception {
         for (TopicPartition topicPartition : records.partitions()) {
-            List<Record<Event>> kafkaRecords = new ArrayList<>();
+            final long partitionEpoch = getPartitionEpoch(topicPartition);
+            if (partitionEpoch == 0) {
+                LOG.info("Skipping partition {}, lost ownership", topicPartition);
+                continue;
+            }
+
             List<ConsumerRecord<String, T>> partitionRecords = records.records(topicPartition);
             for (ConsumerRecord<String, T> consumerRecord : partitionRecords) {
                 Record<Event> record = getRecord(consumerRecord, topicPartition.partition());
@@ -339,10 +384,11 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
                     }
                 }
             }
+
             long lastOffset = partitionRecords.get(partitionRecords.size() - 1).offset();
             long firstOffset = partitionRecords.get(0).offset();
             Range<Long> offsetRange = Range.between(firstOffset, lastOffset);
-            offsets.put(topicPartition, offsetRange);
+            offsets.put(topicPartition, new CommitOffsetRange(offsetRange, partitionEpoch));
         }
     }
 
@@ -353,16 +399,43 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     public void shutdownConsumer(){
         consumer.wakeup();
     }
+
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        for (TopicPartition topicPartition : partitions) {
-            synchronized(partitionsToReset) {
-                partitionsToReset.add(topicPartition);
+        synchronized(this) {
+            final long epoch = getCurrentTimeNanos();
+            for (TopicPartition topicPartition : partitions) {
+                if (ownedPartitionsEpoch.containsKey(topicPartition)) {
+                    LOG.info("Partition {} already owned", topicPartition);
+                    continue;
+                }
+                final OffsetAndMetadata offsetAndMetadata = consumer.committed(topicPartition);
+                LOG.info("Assigned new partition {}, committed offset: {}",topicPartition,
+                        Objects.isNull(offsetAndMetadata) ? 0 : offsetAndMetadata.offset());
+
+                partitionCommitTrackerMap.remove(topicPartition.partition());
+                ownedPartitionsEpoch.put(topicPartition, epoch);
             }
         }
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        synchronized(this) {
+            commitOffsets(true);
+            for (TopicPartition topicPartition : partitions) {
+                if (!ownedPartitionsEpoch.containsKey(topicPartition)) {
+                    LOG.info("Partition {} not owned ", topicPartition);
+                    continue;
+                }
+                LOG.info("Revoked partition {}", topicPartition);
+                ownedPartitionsEpoch.remove(topicPartition);
+                partitionCommitTrackerMap.remove(topicPartition.partition());
+            }
+        }
+    }
+
+    private long getPartitionEpoch(final TopicPartition topicPartition) {
+        return ownedPartitionsEpoch.getOrDefault(topicPartition, 0L);
     }
 }
