@@ -173,7 +173,7 @@ class S3SinkServiceIT {
 
     void configureNewLineCodec() {
         codec = new NdjsonOutputCodec(ndjsonOutputConfig);
-        keyGenerator = new KeyGenerator(s3SinkConfig, codec);
+        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE));
     }
 
     @Test
@@ -356,7 +356,7 @@ class S3SinkServiceIT {
         parquetOutputCodecConfig.setSchema(parseSchema().toString());
         parquetOutputCodecConfig.setPathPrefix(PATH_PREFIX);
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
-        keyGenerator = new KeyGenerator(s3SinkConfig, codec);
+        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE));
     }
 
     private Collection<Record<Event>> getRecordList() {

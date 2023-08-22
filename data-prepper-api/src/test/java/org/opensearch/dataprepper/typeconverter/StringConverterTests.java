@@ -63,6 +63,7 @@ public class StringConverterTests {
         final String strConstant = "testString";
         assertThat(converter.convert(strConstant), equalTo(strConstant));
     }
+
     @Test
     void testInvalidStringConversion() {
         StringConverter converter = new StringConverter();

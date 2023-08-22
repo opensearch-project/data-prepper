@@ -19,7 +19,7 @@ public class AvroAutoSchemaGenerator {
     private Schema autoGenerateRecordSchema(final Map<String, Object> eventData, OutputCodecContext codecContext, String typeName) {
         SchemaBuilder.FieldAssembler<Schema> fieldsAssembler = SchemaBuilder.record(typeName).fields();
         for (final String key : eventData.keySet()) {
-            if (codecContext != null && codecContext.getExcludeKeys().contains(key)) {
+            if (codecContext != null && codecContext.shouldNotIncludeKey(key)) {
                 continue;
             }
             Schema schemaForValue = createSchemaForValue(key, eventData.get(key), codecContext);
