@@ -23,6 +23,7 @@ import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.locks.Lock;
@@ -49,7 +50,7 @@ public class S3SinkService {
     private Buffer currentBuffer;
     private final int maxEvents;
     private final ByteCount maxBytes;
-    private final long maxCollectionDuration;
+    private final Duration maxCollectionDuration;
     private final String bucket;
     private final int maxRetries;
     private final Counter objectsSucceededCounter;
@@ -59,6 +60,7 @@ public class S3SinkService {
     private final DistributionSummary s3ObjectSizeSummary;
     private final OutputCodecContext codecContext;
     private final KeyGenerator keyGenerator;
+    private final Duration retrySleepTime;
 
     /**
      * @param s3SinkConfig  s3 sink related configuration.
@@ -68,20 +70,22 @@ public class S3SinkService {
      * @param pluginMetrics metrics.
      */
     public S3SinkService(final S3SinkConfig s3SinkConfig, final BufferFactory bufferFactory,
-                         final OutputCodec codec, final OutputCodecContext codecContext, final S3Client s3Client, final KeyGenerator keyGenerator, final PluginMetrics pluginMetrics) {
+                         final OutputCodec codec, final OutputCodecContext codecContext, final S3Client s3Client, final KeyGenerator keyGenerator,
+                         final Duration retrySleepTime, final PluginMetrics pluginMetrics) {
         this.s3SinkConfig = s3SinkConfig;
         this.bufferFactory = bufferFactory;
         this.codec = codec;
         this.s3Client = s3Client;
         this.codecContext = codecContext;
         this.keyGenerator = keyGenerator;
+        this.retrySleepTime = retrySleepTime;
         reentrantLock = new ReentrantLock();
 
         bufferedEventHandles = new LinkedList<>();
 
         maxEvents = s3SinkConfig.getThresholdOptions().getEventCount();
         maxBytes = s3SinkConfig.getThresholdOptions().getMaximumSize();
-        maxCollectionDuration = s3SinkConfig.getThresholdOptions().getEventCollectTimeOut().getSeconds();
+        maxCollectionDuration = s3SinkConfig.getThresholdOptions().getEventCollectTimeOut();
 
         bucket = s3SinkConfig.getBucketName();
         maxRetries = s3SinkConfig.getMaxUploadRetries();
@@ -108,28 +112,32 @@ public class S3SinkService {
         try {
             for (Record<Event> record : records) {
 
-                if (currentBuffer.getEventCount() == 0) {
-                    final Event eventForSchemaAutoGenerate = record.getData();
-                    codec.start(currentBuffer.getOutputStream(), eventForSchemaAutoGenerate, codecContext);
-                }
-
                 final Event event = record.getData();
-                codec.writeEvent(event, currentBuffer.getOutputStream());
-                int count = currentBuffer.getEventCount() + 1;
-                currentBuffer.setEventCount(count);
+                try {
+                    if (currentBuffer.getEventCount() == 0) {
+                        codec.start(currentBuffer.getOutputStream(), event, codecContext);
+                    }
 
-                if (event.getEventHandle() != null) {
-                    bufferedEventHandles.add(event.getEventHandle());
+                    codec.writeEvent(event, currentBuffer.getOutputStream());
+                    int count = currentBuffer.getEventCount() + 1;
+                    currentBuffer.setEventCount(count);
+
+                    if (event.getEventHandle() != null) {
+                        bufferedEventHandles.add(event.getEventHandle());
+                    }
+                } catch (Exception ex) {
+                    if (event.getEventHandle() != null) {
+                        event.getEventHandle().release(false);
+                    }
+                    LOG.error("Unable to add event to buffer. Dropping this event.");
                 }
+
                 flushToS3IfNeeded();
             }
-        } catch (IOException e) {
-            LOG.error("Exception while write event into buffer :", e);
+            flushToS3IfNeeded();
+        } finally {
+            reentrantLock.unlock();
         }
-
-        flushToS3IfNeeded();
-
-        reentrantLock.unlock();
     }
 
     private void releaseEventHandles(final boolean result) {
@@ -191,7 +199,7 @@ public class S3SinkService {
                 }
 
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(retrySleepTime.toMillis());
                 } catch (final InterruptedException ex) {
                     LOG.warn("Interrupted while backing off before retrying S3 upload", ex);
                 }

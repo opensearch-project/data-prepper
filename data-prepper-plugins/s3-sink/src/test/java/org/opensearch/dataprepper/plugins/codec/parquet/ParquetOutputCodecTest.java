@@ -23,7 +23,6 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -183,21 +182,6 @@ public class ParquetOutputCodecTest {
 
         assertThat(actualException.getMessage(), notNullValue());
         assertThat(actualException.getMessage(), containsString(invalidFieldName));
-    }
-
-    @Test
-    @Disabled("This feature is not present anyway. But, this test case may be quite correct because it does not account for auto-schema generation.")
-    public void test_s3SchemaValidity() throws IOException {
-        config = new ParquetOutputCodecConfig();
-        config.setSchema(createStandardSchema().toString());
-        config.setSchemaBucket("test");
-        config.setSchemaRegion("test");
-        config.setFileKey("test");
-        ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
-        assertThat(parquetOutputCodec.checkS3SchemaValidity(), equalTo(Boolean.TRUE));
-        ParquetOutputCodec parquetOutputCodecFalse = createObjectUnderTest();
-        assertThrows(IOException.class, () ->
-                parquetOutputCodecFalse.checkS3SchemaValidity());
     }
 
     private static Event createEventRecord(final Map<String, Object> eventData) {

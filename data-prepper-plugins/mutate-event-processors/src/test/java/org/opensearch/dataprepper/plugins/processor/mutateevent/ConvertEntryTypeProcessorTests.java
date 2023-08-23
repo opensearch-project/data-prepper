@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -103,11 +104,17 @@ public class ConvertEntryTypeProcessorTests {
     }
 
     @Test
-    void testIntegerConvertEntryTypeProcessorWithInvalidType() {
-        Map<String, String> testValue = Map.of("key", "value");
-        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+    void testMapToStringConvertEntryTypeProcessorWithInvalidTypeWillAddTags() {
+        final Map<String, String> testValue = Map.of("key", "value");
+        final List<String> tags = List.of("convert_failed");
+        when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("string"));
+        when(mockConfig.getTagsOnFailure()).thenReturn(tags);
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
-        assertThrows(IllegalArgumentException.class, () -> executeAndGetProcessedEvent(testValue));
+        Event event = executeAndGetProcessedEvent(testValue);
+
+        assertThat(event.get(TEST_KEY, Object.class), equalTo(testValue));
+        assertThat(event.getMetadata().getTags().size(), equalTo(1));
+        assertThat(event.getMetadata().getTags(), containsInAnyOrder(tags.toArray()));
     }
 
     @Test
@@ -178,11 +185,17 @@ public class ConvertEntryTypeProcessorTests {
     }
 
     @Test
-    void testInvalidConvertEntryTypeProcessor() {
-        Double testDoubleValue = (double)123.789;
+    void testDoubleToIntegerConvertEntryTypeProcessorWillAddTags() {
+        final Double testDoubleValue = 123.789;
+        final List<String> tags = List.of("convert_failed");
         when(mockConfig.getType()).thenReturn(TargetType.fromOptionValue("integer"));
+        when(mockConfig.getTagsOnFailure()).thenReturn(tags);
         typeConversionProcessor = new ConvertEntryTypeProcessor(pluginMetrics, mockConfig, expressionEvaluator);
-        assertThrows(IllegalArgumentException.class, () -> executeAndGetProcessedEvent(testDoubleValue));
+        Event event = executeAndGetProcessedEvent(testDoubleValue);
+
+        assertThat(event.get(TEST_KEY, Object.class), equalTo(123.789));
+        assertThat(event.getMetadata().getTags().size(), equalTo(1));
+        assertThat(event.getMetadata().getTags(), containsInAnyOrder(tags.toArray()));
     }
 
     @Test

@@ -9,6 +9,7 @@ import org.apache.commons.lang3.time.StopWatch;
 import org.opensearch.dataprepper.plugins.codec.parquet.S3OutputStream;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 public class MultipartBuffer implements Buffer {
@@ -40,8 +41,8 @@ public class MultipartBuffer implements Buffer {
         return eventCount;
     }
 
-    public long getDuration() {
-        return watch.getTime(TimeUnit.SECONDS);
+    public Duration getDuration() {
+        return Duration.ofMillis(watch.getTime(TimeUnit.MILLISECONDS));
     }
 
     /**

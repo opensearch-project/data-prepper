@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -68,8 +69,8 @@ public class LocalFileBuffer implements Buffer {
     }
 
     @Override
-    public long getDuration(){
-        return watch.getTime(TimeUnit.SECONDS);
+    public Duration getDuration(){
+        return Duration.ofMillis(watch.getTime(TimeUnit.MILLISECONDS));
     }
 
     /**

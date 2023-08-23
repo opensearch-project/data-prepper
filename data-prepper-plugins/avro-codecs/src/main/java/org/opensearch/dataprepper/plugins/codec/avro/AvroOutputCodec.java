@@ -52,12 +52,6 @@ public class AvroOutputCodec implements OutputCodec {
 
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
-        } else if (config.getFileLocation() != null) {
-            schema = AvroSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
-        } else if (config.getSchemaRegistryUrl() != null) {
-            schema = parseSchema(AvroSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
-        } else if (checkS3SchemaValidity()) {
-            schema = AvroSchemaParserFromS3.parseSchema(config);
         }
     }
 
@@ -117,9 +111,5 @@ public class AvroOutputCodec implements OutputCodec {
             LOG.error("Unable to parse Schema from Schema String provided.", e);
             throw new RuntimeException("There is an error in the schema: " + e.getMessage());
         }
-    }
-
-    private boolean checkS3SchemaValidity() {
-        return config.getBucketName() != null && config.getFileKey() != null && config.getRegion() != null;
     }
 }

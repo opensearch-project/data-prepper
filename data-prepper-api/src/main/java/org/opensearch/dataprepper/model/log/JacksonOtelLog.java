@@ -109,19 +109,21 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
 
     @Override
     public String toJsonString() {
-        final ObjectNode attributesNode = (ObjectNode) getJsonNode().get("attributes");
-        final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
-        if (attributesNode != null) {
+        Object anyAttributes = getJsonNode().get("attributes");
+        if(anyAttributes instanceof ObjectNode) {
+            final ObjectNode flattenedJsonNode = getJsonNode().deepCopy();
             flattenedJsonNode.remove("attributes");
-            for (Iterator<Map.Entry<String, JsonNode>> it = attributesNode.fields(); it.hasNext(); ) {
+
+            for (Iterator<Map.Entry<String, JsonNode>> it = ((ObjectNode) anyAttributes).fields(); it.hasNext(); ) {
                 Map.Entry<String, JsonNode> entry = it.next();
                 String field = entry.getKey();
                 if (!flattenedJsonNode.has(field)) {
                     flattenedJsonNode.set(field, entry.getValue());
                 }
             }
+            return flattenedJsonNode.toString();
         }
-        return flattenedJsonNode.toString();
+        return super.toJsonString();
     }
     /**
      * Builder for creating {@link JacksonLog}.
