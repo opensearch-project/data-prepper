@@ -42,6 +42,7 @@ public class HttpSinkAwsServiceTest {
         when(awsAuthenticationOptions.getAwsStsRoleArn()).thenReturn("arn:aws:iam::1234567890:role/app-test");
         when(awsAuthenticationOptions.getAwsStsExternalId()).thenReturn("test");
         when(awsAuthenticationOptions.getAwsRegion()).thenReturn(Region.of("ap-south-1"));
+        when(awsAuthenticationOptions.getServiceName()).thenReturn("lambda");
         when(awsAuthenticationOptions.getAwsStsHeaderOverrides()).thenReturn(new HashMap<>());
         when(httpSinkConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationOptions);
         when(awsCredentialsSupplier.getProvider(Mockito.any())).thenReturn(awsCredentialsProvider);

@@ -120,6 +120,7 @@ pipeline:
         aws:
           region: "us-east-2"
           sts_role_arn: "arn:aws:iam::1234567890:role/data-prepper-s3source-execution-role"
+          service_name: lambda
         threshold:
           event_count: 5
           event_collect_timeout: PT2M
@@ -142,7 +143,7 @@ pipeline:
 * `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
 * `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
 * `sts_external_id` (Optional): An optional external ID to use when assuming an IAM role.
-
+* `service_name` The AWS service name to who endpoint we are connecting to. Default: execute-api, Example: lambda, apigateway
 ### Threshold
 * event_count => The event_count size should be between 0 and 10000000
 * maximum_size => The size of byte capacity, Default is 50mb

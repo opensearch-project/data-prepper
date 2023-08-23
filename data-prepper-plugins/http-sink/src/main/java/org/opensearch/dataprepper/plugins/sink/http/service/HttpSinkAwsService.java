@@ -18,15 +18,16 @@ public class HttpSinkAwsService {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpSinkAwsService.class);
     public static final String AWS_SIGV4 = "aws_sigv4";
-    private static final String AOS_SERVICE_NAME = "http-endpoint";
 
     public static void  attachSigV4(final HttpSinkConfiguration httpSinkConfiguration, final HttpClientBuilder httpClientBuilder, final AwsCredentialsSupplier awsCredentialsSupplier) {
         LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
         final Aws4Signer aws4Signer = Aws4Signer.create();
         final AwsCredentialsOptions awsCredentialsOptions = createAwsCredentialsOptions(httpSinkConfiguration);
         final AwsCredentialsProvider credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
-        httpClientBuilder.addRequestInterceptorLast(new AwsRequestSigningApacheInterceptor(AOS_SERVICE_NAME, aws4Signer,
+        httpClientBuilder.addRequestInterceptorLast(new AwsRequestSigningApacheInterceptor(httpSinkConfiguration.getAwsAuthenticationOptions().getServiceName(), aws4Signer,
                 credentialsProvider, httpSinkConfiguration.getAwsAuthenticationOptions().getAwsRegion()));
+        LOG.info(httpClientBuilder.toString());
+
     }
 
     private static AwsCredentialsOptions createAwsCredentialsOptions(final HttpSinkConfiguration httpSinkConfiguration) {
