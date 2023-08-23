@@ -26,8 +26,6 @@ public class HttpSinkAwsService {
         final AwsCredentialsProvider credentialsProvider = awsCredentialsSupplier.getProvider(awsCredentialsOptions);
         httpClientBuilder.addRequestInterceptorLast(new AwsRequestSigningApacheInterceptor(httpSinkConfiguration.getAwsAuthenticationOptions().getServiceName(), aws4Signer,
                 credentialsProvider, httpSinkConfiguration.getAwsAuthenticationOptions().getAwsRegion()));
-        LOG.info(httpClientBuilder.toString());
-
     }
 
     private static AwsCredentialsOptions createAwsCredentialsOptions(final HttpSinkConfiguration httpSinkConfiguration) {
