@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.aws.api.SecretsSupplier;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 
 import java.util.Optional;
@@ -17,32 +16,35 @@ import static org.hamcrest.MatcherAssert.assertThat;
 @ExtendWith(MockitoExtension.class)
 class AwsSecretExtensionProviderTest {
     @Mock
-    private AwsSecretsSupplier awsSecretsSupplier;
+    private PluginConfigValueTranslator pluginConfigValueTranslator;
 
     @Mock
     private ExtensionProvider.Context context;
 
     private AwsSecretExtensionProvider createObjectUnderTest() {
-        return new AwsSecretExtensionProvider(awsSecretsSupplier);
+        return new AwsSecretExtensionProvider(pluginConfigValueTranslator);
     }
 
     @Test
-    void supportedClass_returns_AwsSecretsSupplier() {
-        assertThat(createObjectUnderTest().supportedClass(), equalTo(SecretsSupplier.class));
+    void supportedClass_returns_PluginConfigValueTranslator() {
+        assertThat(createObjectUnderTest().supportedClass(), equalTo(PluginConfigValueTranslator.class));
     }
 
     @Test
-    void provideInstance_returns_the_AwsSecretsSupplier_from_the_constructor() {
+    void provideInstance_returns_the_PluginConfigValueTranslator_from_the_constructor() {
         final AwsSecretExtensionProvider objectUnderTest = createObjectUnderTest();
 
-        final Optional<SecretsSupplier> optionalSecretsSupplier = objectUnderTest.provideInstance(context);
-        assertThat(optionalSecretsSupplier, notNullValue());
-        assertThat(optionalSecretsSupplier.isPresent(), equalTo(true));
-        assertThat(optionalSecretsSupplier.get(), equalTo(awsSecretsSupplier));
+        final Optional<PluginConfigValueTranslator> optionalPluginConfigValueTranslator =
+                objectUnderTest.provideInstance(context);
+        assertThat(optionalPluginConfigValueTranslator, notNullValue());
+        assertThat(optionalPluginConfigValueTranslator.isPresent(), equalTo(true));
+        assertThat(optionalPluginConfigValueTranslator.get(), equalTo(pluginConfigValueTranslator));
 
-        final Optional<SecretsSupplier> anotherOptionalSecretsSupplier = objectUnderTest.provideInstance(context);
-        assertThat(anotherOptionalSecretsSupplier, notNullValue());
-        assertThat(anotherOptionalSecretsSupplier.isPresent(), equalTo(true));
-        assertThat(anotherOptionalSecretsSupplier.get(), sameInstance(optionalSecretsSupplier.get()));
+        final Optional<PluginConfigValueTranslator> anotherOptionalPluginConfigValueTranslator =
+                objectUnderTest.provideInstance(context);
+        assertThat(anotherOptionalPluginConfigValueTranslator, notNullValue());
+        assertThat(anotherOptionalPluginConfigValueTranslator.isPresent(), equalTo(true));
+        assertThat(anotherOptionalPluginConfigValueTranslator.get(), sameInstance(
+                anotherOptionalPluginConfigValueTranslator.get()));
     }
 }

@@ -1,23 +1,22 @@
 package org.opensearch.dataprepper.plugins.aws;
 
-import org.opensearch.dataprepper.aws.api.SecretsSupplier;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 
 import java.util.Optional;
 
-public class AwsSecretExtensionProvider implements ExtensionProvider<SecretsSupplier> {
-    private final SecretsSupplier secretsSupplier;
+public class AwsSecretExtensionProvider implements ExtensionProvider<PluginConfigValueTranslator> {
+    private final PluginConfigValueTranslator pluginConfigValueTranslator;
 
-    AwsSecretExtensionProvider(final SecretsSupplier secretsSupplier) {
-        this.secretsSupplier = secretsSupplier;
+    AwsSecretExtensionProvider(final PluginConfigValueTranslator pluginConfigValueTranslator) {
+        this.pluginConfigValueTranslator = pluginConfigValueTranslator;
     }
     @Override
-    public Optional<SecretsSupplier> provideInstance(Context context) {
-        return Optional.of(secretsSupplier);
+    public Optional<PluginConfigValueTranslator> provideInstance(Context context) {
+        return Optional.of(pluginConfigValueTranslator);
     }
 
     @Override
-    public Class<SecretsSupplier> supportedClass() {
-        return SecretsSupplier.class;
+    public Class<PluginConfigValueTranslator> supportedClass() {
+        return PluginConfigValueTranslator.class;
     }
 }
