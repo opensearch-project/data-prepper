@@ -84,4 +84,10 @@ class AwsSecretsSupplierTest {
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(secretsManagerException);
         assertThrows(ResourceNotFoundException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig));
     }
+
+    @Test
+    void testConstructorWithSecretStringParsingFailure() {
+        when(getSecretValueResponse.secretString()).thenReturn("{");
+        assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig));
+    }
 }

@@ -42,10 +42,6 @@ public class AwsSecretManagerConfiguration {
         return Region.of(awsRegion);
     }
 
-    public String getAwsStsRoleArn() {
-        return awsStsRoleArn;
-    }
-
     public SecretsManagerClient createSecretManagerClient() {
         return SecretsManagerClient.builder()
                 .credentialsProvider(authenticateAwsConfiguration())

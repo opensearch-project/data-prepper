@@ -8,6 +8,8 @@ import jakarta.validation.Validator;
 import org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -82,6 +84,7 @@ class AwsSecretManagerConfigurationTest {
                 "/test-aws-secret-manager-configuration-default.yaml");
         final AwsSecretManagerConfiguration awsSecretManagerConfiguration = OBJECT_MAPPER.readValue(
                 inputStream, AwsSecretManagerConfiguration.class);
+        assertThat(awsSecretManagerConfiguration.getAwsSecretName(), equalTo("test-secret"));
         when(secretsManagerClientBuilder.region(any(Region.class))).thenReturn(secretsManagerClientBuilder);
         when(secretsManagerClientBuilder.credentialsProvider(any(AwsCredentialsProvider.class)))
                 .thenReturn(secretsManagerClientBuilder);
@@ -102,6 +105,7 @@ class AwsSecretManagerConfigurationTest {
                 "/test-aws-secret-manager-configuration-with-sts.yaml");
         final AwsSecretManagerConfiguration awsSecretManagerConfiguration = OBJECT_MAPPER.readValue(
                 inputStream, AwsSecretManagerConfiguration.class);
+        assertThat(awsSecretManagerConfiguration.getAwsSecretName(), equalTo("test-secret"));
         when(secretsManagerClientBuilder.region(any(Region.class))).thenReturn(secretsManagerClientBuilder);
         when(secretsManagerClientBuilder.credentialsProvider(any(AwsCredentialsProvider.class)))
                 .thenReturn(secretsManagerClientBuilder);
@@ -116,10 +120,14 @@ class AwsSecretManagerConfigurationTest {
         assertThat(awsCredentialsProvider, instanceOf(StsAssumeRoleCredentialsProvider.class));
     }
 
-    @Test
-    void testCreateSecretManagerClientWithInvalidStsRoleArn() throws IOException {
-        final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(
-                "/test-aws-secret-manager-configuration-invalid-sts.yaml");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/test-aws-secret-manager-configuration-invalid-sts-1.yaml",
+            "/test-aws-secret-manager-configuration-invalid-sts-2.yaml",
+            "/test-aws-secret-manager-configuration-invalid-sts-3.yaml"
+    })
+    void testCreateSecretManagerClientWithInvalidStsRoleArn(final String testFileName) throws IOException {
+        final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(testFileName);
         final AwsSecretManagerConfiguration awsSecretManagerConfiguration = OBJECT_MAPPER.readValue(
                 inputStream, AwsSecretManagerConfiguration.class);
         try (final MockedStatic<SecretsManagerClient> secretsManagerClientMockedStatic = mockStatic(
