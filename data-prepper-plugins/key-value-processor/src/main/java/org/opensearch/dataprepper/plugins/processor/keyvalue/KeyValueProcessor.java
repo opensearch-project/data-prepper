@@ -75,8 +75,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             if (keyValueProcessorConfig.getRecursive()) {
                 if (fieldDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("While recursive is true,
-                    the set field delimiter regex cannot contain brackets while you are trying to recurse.");
+                    throw new IllegalArgumentException("While recursive is true, the set field delimiter regex cannot contain brackets while you are trying to recurse.");
                 }
             }
         } else {
@@ -86,8 +85,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             } else {
                 if (keyValueProcessorConfig.getRecursive()
                     && keyValueProcessorConfig.getFieldSplitCharacters().length() != 1) {
-                    throw new IllegalArgumentException("While recursive is true,
-                the set field split characters is limited to one character only.");
+                    throw new IllegalArgumentException("While recursive is true, the set field split characters is limited to one character only.");
                 }
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getFieldSplitCharacters());
             }
@@ -96,8 +94,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             if (keyValueProcessorConfig.getRecursive()) {
                 if (fieldDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("While recursive is true,
-                    the set field split characters cannot contain brackets while you are trying to recurse.");
+                    throw new IllegalArgumentException("While recursive is true, the set field split characters cannot contain brackets while you are trying to recurse.");
                 }
             }
         }
@@ -115,8 +112,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             if (keyValueProcessorConfig.getRecursive()) {
                 if (keyValueDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("While recursive is true,
-                    the set key value delimiter regex cannot contain brackets while you are trying to recurse.");
+                    throw new IllegalArgumentException("While recursive is true, the set key value delimiter regex cannot contain brackets while you are trying to recurse.");
                 }
             }
         } else {
@@ -126,8 +122,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             } else {
                 if (keyValueProcessorConfig.getRecursive()
                     && keyValueProcessorConfig.getValueSplitCharacters().length() != 1) {
-                    throw new IllegalArgumentException("While recursive is true,
-                    the set value split characters is limited to one character only.");
+                    throw new IllegalArgumentException("While recursive is true, the set value split characters is limited to one character only.");
                 }
 
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
@@ -137,8 +132,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             if (keyValueProcessorConfig.getRecursive()) {
                 if (keyValueDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("While recursive is true,
-                    the set value split characters cannot contain brackets while you are trying to recurse.");
+                    throw new IllegalArgumentException("While recursive is true, the set value split characters cannot contain brackets while you are trying to recurse.");
                 }
             }
         }
@@ -236,6 +230,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     @Override
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
+        final ObjectMapper mapper = new ObjectMapper();
+
         for(final Record<Event> record : records) {
             final Map<String, Object> outputMap = new HashMap<>();
             final Event recordEvent = record.getData();
@@ -243,7 +239,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
             if (keyValueProcessorConfig.getRecursive()) {
-                private final ObjectMapper mapper = new ObjectMapper();
                 try {
                     JsonNode recursedTree = recurse(groupsRaw, mapper);
                     outputMap.putAll(createRecursedMap(recursedTree, mapper));
@@ -281,7 +276,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
             }
 
-            if (bracketStack.isEmpty() && fieldDelimiterPattern.matcher(input.charAt(i).matches())) {
+            if (bracketStack.isEmpty() && fieldDelimiterPattern.matcher(String.valueOf(input.charAt(i))).matches()) {
                 String pair = input.substring(pairStart, i);
                 pairs.add(pair);
                 pairStart = i + 1;
@@ -302,7 +297,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             bracketStack.clear();
 
             for (int i = 0; i < pair.length(); i++) {
-                if (bracketStack.isEmpty() && keyValueDelimiterPattern.matcher(pair.charAt(i).matches())) {
+                if (bracketStack.isEmpty() && keyValueDelimiterPattern.matcher(String.valueOf(pair.charAt(i))).matches()) {
                     keyString = pair.substring(keyStart, i).stripTrailing();
                     valueStart = i + 1;
                     while(pair.charAt(valueStart) == whitespaceChar) {
