@@ -24,8 +24,11 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -108,6 +111,8 @@ public class S3SinkService {
             return;
         }
 
+        List<Event> failedEvents = new ArrayList<>();
+        Exception sampleException = null;
         reentrantLock.lock();
         try {
             for (Record<Event> record : records) {
@@ -126,10 +131,11 @@ public class S3SinkService {
                         bufferedEventHandles.add(event.getEventHandle());
                     }
                 } catch (Exception ex) {
-                    if (event.getEventHandle() != null) {
-                        event.getEventHandle().release(false);
+                    if(sampleException == null) {
+                        sampleException = ex;
                     }
-                    LOG.error("Unable to add event to buffer. Dropping this event.");
+
+                    failedEvents.add(event);
                 }
 
                 flushToS3IfNeeded();
@@ -137,6 +143,15 @@ public class S3SinkService {
             flushToS3IfNeeded();
         } finally {
             reentrantLock.unlock();
+        }
+
+        if(!failedEvents.isEmpty()) {
+            failedEvents
+                    .stream()
+                    .map(Event::getEventHandle)
+                    .filter(Objects::nonNull)
+                    .forEach(eventHandle -> eventHandle.release(false));
+            LOG.error("Unable to add {} events to buffer. Dropping these events. Sample exception provided.", failedEvents.size(), sampleException);
         }
     }
 
