@@ -5,12 +5,7 @@ import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 
-import java.util.Map;
-
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -20,21 +15,8 @@ class PipelinesDataflowModelParserTest {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(TestDataProvider.VALID_MULTIPLE_PIPELINE_CONFIG_FILE);
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
-        assertThat(actualPipelinesDataFlowModel.getPipelineExtensions(), nullValue());
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
-    }
-
-    @Test
-    void parseConfiguration_with_pipeline_extensions() {
-        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(TestDataProvider.VALID_PIPELINE_WITH_TEST_EXTENSION_FILE);
-        final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
-        assertThat(actualPipelinesDataFlowModel.getPipelines().keySet().size(), equalTo(1));
-        assertThat(actualPipelinesDataFlowModel.getPipelineExtensions(), notNullValue());
-        final Map<String, Object> extensionMap = actualPipelinesDataFlowModel.getPipelineExtensions().getExtensionMap();
-        assertThat(extensionMap.containsKey("test_extension"), is(true));
-        assertThat(extensionMap.get("test_extension"), equalTo(Map.of("test_attribute", "test_string")));
     }
 
     @Test

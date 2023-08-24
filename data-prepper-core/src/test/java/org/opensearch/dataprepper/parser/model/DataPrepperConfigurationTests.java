@@ -58,6 +58,7 @@ public class DataPrepperConfigurationTests {
         final DataPrepperConfiguration dataPrepperConfiguration =
                 makeConfig(TestDataProvider.VALID_DATA_PREPPER_SOME_DEFAULT_CONFIG_FILE);
         Assert.assertEquals(DataPrepperConfiguration.DEFAULT_CONFIG.getServerPort(), dataPrepperConfiguration.getServerPort());
+        Assert.assertNull(dataPrepperConfiguration.getPipelineExtensions());
     }
 
     @Test
@@ -261,5 +262,17 @@ public class DataPrepperConfigurationTests {
         final DataPrepperConfiguration config = makeConfig("src/test/resources/valid_data_prepper_config_with_pipeline_shutdown.yml");
         assertThat(config, notNullValue());
         assertThat(config.getPipelineShutdown(), equalTo(PipelineShutdownOption.ON_ALL_PIPELINE_FAILURES));
+    }
+
+    @Test
+    void testConfigWithTestExtension() throws IOException {
+        final DataPrepperConfiguration dataPrepperConfiguration = makeConfig(
+                TestDataProvider.VALID_DATA_PREPPER_CONFIG_WITH_TEST_EXTENSION_FILE);
+
+        assertThat(dataPrepperConfiguration, notNullValue());
+        assertThat(dataPrepperConfiguration.getPipelineExtensions(), notNullValue());
+        assertThat(dataPrepperConfiguration.getPipelineExtensions().getExtensionMap(), equalTo(
+                Map.of("test_extension", Map.of("test_attribute", "test_string"))
+        ));
     }
 }

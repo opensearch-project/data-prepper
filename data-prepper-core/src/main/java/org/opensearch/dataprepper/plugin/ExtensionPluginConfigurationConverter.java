@@ -5,9 +5,9 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
-import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
+import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -21,14 +21,14 @@ import java.util.stream.Collectors;
 
 @Named
 public class ExtensionPluginConfigurationConverter {
-    private final PipelinesDataFlowModel pipelinesDataFlowModel;
+    private final DataPrepperConfiguration dataPrepperConfiguration;
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
     @Inject
-    public ExtensionPluginConfigurationConverter(final PipelinesDataFlowModel pipelinesDataFlowModel,
+    public ExtensionPluginConfigurationConverter(final DataPrepperConfiguration dataPrepperConfiguration,
                                                  final Validator validator) {
-        this.pipelinesDataFlowModel = pipelinesDataFlowModel;
+        this.dataPrepperConfiguration = dataPrepperConfiguration;
 
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
@@ -44,8 +44,8 @@ public class ExtensionPluginConfigurationConverter {
         Objects.requireNonNull(extensionPluginConfigurationType);
         Objects.requireNonNull(rootKey);
 
-        final Map<String, Object> extensionProperties = pipelinesDataFlowModel.getPipelineExtensions() == null?
-                new HashMap<>() : pipelinesDataFlowModel.getPipelineExtensions().getExtensionMap();
+        final Map<String, Object> extensionProperties = dataPrepperConfiguration.getPipelineExtensions() == null?
+                new HashMap<>() : dataPrepperConfiguration.getPipelineExtensions().getExtensionMap();
 
         final Object configuration = convertSettings(extensionPluginConfigurationType,
                 extensionProperties.get(rootKey));

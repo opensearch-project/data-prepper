@@ -20,9 +20,9 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.EventFactory;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
+import org.opensearch.dataprepper.parser.config.DataPrepperAppConfiguration;
 import org.opensearch.dataprepper.parser.config.FileStructurePathProvider;
 import org.opensearch.dataprepper.parser.config.PipelineParserConfiguration;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
 import org.opensearch.dataprepper.plugins.TestPluginUsingExtensionWithConfig;
@@ -56,8 +56,6 @@ public class ExtensionsIT {
     @Mock
     private RouterFactory routerFactory;
     @Mock
-    private DataPrepperConfiguration dataPrepperConfiguration;
-    @Mock
     private CircuitBreakerManager circuitBreakerManager;
     @Mock
     private EventFactory eventFactory;
@@ -87,12 +85,16 @@ public class ExtensionsIT {
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
 
         when(fileStructurePathProvider.getPipelineConfigFileLocation()).thenReturn(
-                "src/test/resources/valid_pipeline_with_test_extension.yml"
+                "src/test/resources/valid_pipeline.yml"
         );
+        when(fileStructurePathProvider.getDataPrepperConfigFileLocation()).thenReturn(
+                "src/test/resources/valid_data_prepper_config_with_test_extension.yml"
+        );
+
         coreContext.registerBean(FileStructurePathProvider.class, () -> fileStructurePathProvider);
         coreContext.registerBean(PeerForwarderProvider.class, () -> peerForwarderProvider);
         coreContext.registerBean(RouterFactory.class, () -> routerFactory);
-        coreContext.registerBean(DataPrepperConfiguration.class, () -> dataPrepperConfiguration);
+        coreContext.registerBean(DataPrepperAppConfiguration.class, DataPrepperAppConfiguration::new);
         coreContext.registerBean(CircuitBreakerManager.class, () -> circuitBreakerManager);
         coreContext.registerBean(EventFactory.class, () -> eventFactory);
         coreContext.registerBean(AcknowledgementSetManager.class, () -> acknowledgementSetManager);
