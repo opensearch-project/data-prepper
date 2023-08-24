@@ -536,7 +536,7 @@ public class KeyValueProcessorTests {
         final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
 
         assertThat(parsed_message.size(), equalTo(1));
-        assertThatKeyEquals(parsed_message, "Key1", "value1");
+        assertThatKeyEquals(parsed_message, "KEY1", "value1");
     }
 
     @Test
@@ -548,7 +548,7 @@ public class KeyValueProcessorTests {
         final LinkedHashMap<String, Object> parsedMessage = getLinkedHashMap(editedRecords);
 
         assertThat(parsedMessage.size(), equalTo(1));
-        assertThatKeyEquals(parsedMessage, "KEY1", "value1");
+        assertThatKeyEquals(parsedMessage, "Key1", "value1");
     }
 
     @Test
@@ -684,8 +684,8 @@ public class KeyValueProcessorTests {
         expectedValueMap.put("item1-subitem2", "item1-subitem2-value");
 
         assertThat(parsed_message.size(), equalTo(2));
-        assertThatKeyEquals(parsed_message, "ITEM1", expectedValueMap);
-        assertThatKeyEquals(parsed_message, "ITEM2", "item2-value");
+        assertThatKeyEquals(parsed_message, "Item1", expectedValueMap);
+        assertThatKeyEquals(parsed_message, "Item2", "item2-value");
     }
 
     @Test

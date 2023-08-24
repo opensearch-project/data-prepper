@@ -74,8 +74,8 @@ When run, the processor will parse the message into the following output:
 * `transform_key` - Change keys to lowercase, uppercase, or all capitals.
   * Default is an empty string (no transformation)
   * Example: `transform_key` is `lowercase`. `{"Key1=value1"}` will parse into `{"key1": "value1"}`
-  * Example: `transform_key` is `uppercase`. `{"key1=value1"}` will parse into `{"Key1": "value1"}`
-  * Example: `transform_key` is `capitalize`. `{"key1=value1"}` will parse into `{"KEY1": "value1"}`
+  * Example: `transform_key` is `capitalize`. `{"key1=value1"}` will parse into `{"Key1": "value1"}`
+  * Example: `transform_key` is `uppercase`. `{"key1=value1"}` will parse into `{"KEY1": "value1"}`
 * `whitespace` - Specify whether to be lenient or strict with the acceptance of unnecessary whitespace surrounding the configured value-split sequence.
   * Default: `lenient`
   * Example: `whitespace` is `"lenient"`. `{"key1  =  value1"}` will parse into `{"key1  ": "  value1"}`
@@ -97,7 +97,7 @@ When run, the processor will parse the message into the following output:
   * Any other configurations specified will only be applied on the OUTER keys.
   * While `recursive` is `true`, `remove_brackets` cannot also be `true`.
   * While `recursive` is `true`, `skip_duplicate_values` will always be `true`.
-  * While `recursive` is `true`, `whitespace` will always be `"lenient"`.
+  * While `recursive` is `true`, `whitespace` will always be `"strict"`.
 
 ## Developer Guide
 This plugin is compatible with Java 14. See

@@ -55,6 +55,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final String whitespaceStrict = "strict";
     private final String whitespaceLenient = "lenient";
     private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
+    final String delimiterBracketCheck = "[\\[\\]()<>]";
     private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
 
     @DataPrepperPluginConstructor
@@ -72,10 +73,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             }
 
             if (keyValueProcessorConfig.getRecursive()) {
-                for (char c : keyValueProcessorConfig.getFieldDelimiterRegex().toCharArray()) {
-                    if (bracketSet.contains(String.valueOf(c))) {
-                        throw new IllegalArgumentException("The set field delimiter regex cannot contain brackets while you are trying to recurse.");
-                    }
+                if (Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex()).matcher(delimiterBracketCheck).matches()) {
+                    throw new IllegalArgumentException("The set field delimiter regex cannot contain brackets while you are trying to recurse.");
+                }
+                if (keyValueProcessorConfig.getFieldDelimiterRegex().length() != 1) {
+                    throw new IllegalArgumentException("The set field delimiter is limited to one character only.");
                 }
             }
 
@@ -85,14 +87,17 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             if (keyValueProcessorConfig.getFieldSplitCharacters().isEmpty()) {
                 regex = KeyValueProcessorConfig.DEFAULT_FIELD_SPLIT_CHARACTERS;
             } else {
+                if (keyValueProcessorConfig.getRecursive()) {
+                    if (keyValueProcessorConfig.getFieldSplitCharacters().length() != 1) {
+                        throw new IllegalArgumentException("The set field split characters is limited to one character only.");
+                    }
+                }
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getFieldSplitCharacters());
             }
 
             if (keyValueProcessorConfig.getRecursive()) {
-                for (char c : regex.toCharArray()) {
-                    if (bracketSet.contains(String.valueOf(c))) {
-                        throw new IllegalArgumentException("The set field split characters cannot contain brackets while you are trying to recurse.");
-                    }
+                if (Pattern.compile(regex).matcher(delimiterBracketCheck).matches()) {
+                    throw new IllegalArgumentException("The set field split characters cannot contain brackets while you are trying to recurse.");
                 }
             }
 
@@ -109,27 +114,32 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             }
 
             if (keyValueProcessorConfig.getRecursive()) {
-                for (char c : keyValueProcessorConfig.getKeyValueDelimiterRegex().toCharArray()) {
-                    if (bracketSet.contains(String.valueOf(c))) {
-                        throw new IllegalArgumentException("The set key value delimiter regex cannot contain brackets while you are trying to recurse.");
-                    }
+                if (Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex()).matcher(delimiterBracketCheck).matches()) {
+                    throw new IllegalArgumentException("The set key value delimiter regex cannot contain brackets while you are trying to recurse.");
+                }
+                if (keyValueProcessorConfig.getKeyValueDelimiterRegex().length() != 1) {
+                    throw new IllegalArgumentException("The set key value delimiter regex is limited to one character only.");
                 }
             }
 
             keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
         } else {
             String regex;
-            if(keyValueProcessorConfig.getValueSplitCharacters().isEmpty()) {
+            if (keyValueProcessorConfig.getValueSplitCharacters().isEmpty()) {
                 regex = KeyValueProcessorConfig.DEFAULT_VALUE_SPLIT_CHARACTERS;
             } else {
+                if (keyValueProcessorConfig.getRecursive()) {
+                    if (keyValueProcessorConfig.getValueSplitCharacters().length() != 1) {
+                        throw new IllegalArgumentException("The set value split characters is limited to one character only.");
+                    }
+                }
+
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
             }
 
             if (keyValueProcessorConfig.getRecursive()) {
-                for (char c : regex.toCharArray()) {
-                    if (bracketSet.contains(String.valueOf(c))) {
-                        throw new IllegalArgumentException("The set value split characters cannot contain brackets while you are trying to recurse.");
-                    }
+                if (Pattern.compile(regex).matcher(delimiterBracketCheck).matches()) {
+                    throw new IllegalArgumentException("The set value split characters cannot contain brackets while you are trying to recurse.");
                 }
             }
 
@@ -231,7 +241,6 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         for(final Record<Event> record : records) {
             final Map<String, Object> outputMap = new HashMap<>();
-            final Map<String, Object> parsedMap = new HashMap<>();
             final Event recordEvent = record.getData();
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
@@ -248,17 +257,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 outputMap.putAll(createNonRecursedMap(groups));
             }
 
-            executeConfigs(outputMap, parsedMap);
+            final Map<String, Object> processedMap = executeConfigs(outputMap);
 
-            for (Map.Entry<String,Object> pair : defaultValuesMap.entrySet()) {
-                if (parsedMap.containsKey(pair.getKey())) {
-                    LOG.debug("Skipping already included default key: '{}'", pair.getKey());
-                    continue;
-                }
-                parsedMap.put(pair.getKey(), pair.getValue());
-            }
-
-            recordEvent.put(keyValueProcessorConfig.getDestination(), parsedMap);
+            recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap);
         }
 
         return records;
@@ -286,7 +287,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             if (bracketStack.isEmpty() && input.charAt(i) == fieldDelimiterPattern.toString().charAt(0)) {
                 String pair = input.substring(pairStart, i);
                 pairs.add(pair);
-                pairStart = i + fieldDelimiterPattern.toString().length();
+                pairStart = i + 1;
             }
         }
 
@@ -305,7 +306,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             for (int i = 0; i < pair.length(); i++) {
                 if (bracketStack.isEmpty() && pair.charAt(i) == keyValueDelimiterPattern.toString().charAt(0)) {
                     keyString = pair.substring(keyStart, i).stripTrailing();
-                    valueStart = i + keyValueDelimiterPattern.toString().length();
+                    valueStart = i + 1;
                     while(pair.charAt(valueStart) == ' ') {
                         valueStart++;
                     }
@@ -318,19 +319,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 LOG.debug("Unsuccessful match: '{}'", keyString);
                 valueString = keyValueProcessorConfig.getNonMatchValue().toString().stripLeading();
             } else if (bracketMap.containsKey(pair.charAt(valueStart))) {
-                bracketStack.push(pair.charAt(valueStart));
-                valueStart++;
-
-                for (int i = valueStart + 1; i < pair.length(); i++) {
-                    if (bracketMap.containsValue(pair.charAt(i))) {
-                        if (bracketMap.get(bracketStack.peek()) == pair.charAt(i)) {
-                            valueEnd = i;
-                            bracketStack.pop();
-                            valueString = pair.substring(valueStart, valueEnd).stripLeading();
-                            JsonNode child = ((ObjectNode) root).put(keyString, recurse(valueString, mapper));
-                        }
-                    }
-                }  
+                if (pair.charAt(pair.length() - 1) == bracketMap.get(pair.charAt(valueStart))) {
+                    valueStart++;
+                    valueEnd = pair.length() - 1;
+                    valueString = pair.substring(valueStart, valueEnd).stripLeading();
+                    JsonNode child = ((ObjectNode) root).put(keyString, recurse(valueString, mapper));
+                } 
             } else {
                 valueString = pair.substring(valueStart).stripLeading();
                 ObjectNode child = ((ObjectNode)root).put(keyString, valueString);
@@ -396,7 +390,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return nonRecursedMap;
     }
 
-    private void executeConfigs(Map<String, Object> map, Map<String, Object> parsed) {
+    private Map<String, Object> executeConfigs(Map<String, Object> map) {
+        Map<String, Object> processed = new HashMap<>();
+
         for (Map.Entry<String, Object> entry : map.entrySet()) {
             String key = entry.getKey();
             Object value = entry.getValue();
@@ -441,8 +437,18 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
             }
 
-            addKeyValueToMap(parsed, key, value);
+            addKeyValueToMap(processed, key, value);
         }
+
+        for (Map.Entry<String,Object> pair : defaultValuesMap.entrySet()) {
+            if (processed.containsKey(pair.getKey())) {
+                LOG.debug("Skipping already included default key: '{}'", pair.getKey());
+                continue;
+            }
+            processed.put(pair.getKey(), pair.getValue());
+        }
+
+        return processed;
     }
 
     private String[] trimWhitespace(String key, Object value) {
@@ -453,45 +459,47 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private String transformKey(String key) {
         if (keyValueProcessorConfig.getTransformKey().equals(lowercaseKey)) {
             key = key.toLowerCase();
-        } else if (keyValueProcessorConfig.getTransformKey().equals(uppercaseKey)) {
-            key = key.substring(0, 1).toUpperCase() + key.substring(1);
         } else if (keyValueProcessorConfig.getTransformKey().equals(capitalizeKey)) {
+            key = key.substring(0, 1).toUpperCase() + key.substring(1);
+        } else if (keyValueProcessorConfig.getTransformKey().equals(uppercaseKey)) {
             key = key.toUpperCase();
         }
         return key;
     }
 
     private void addKeyValueToMap(final Map<String, Object> parsedMap, final String key, Object value) {
+        Object processedValue = value;
+
         if (value instanceof List) {
             List<?> valueAsList = (List<?>) value;
             if (valueAsList.size() == 1) {
-                value = valueAsList.get(0);
+                processedValue = valueAsList.get(0);
             }
         }
 
         if(!parsedMap.containsKey(key)) {
-            parsedMap.put(key, value);
+            parsedMap.put(key, processedValue);
             return;
         }
 
         if (parsedMap.get(key) instanceof List) {
             if (keyValueProcessorConfig.getSkipDuplicateValues()) {
-                if (((List<Object>) parsedMap.get(key)).contains(value)) {
+                if (((List<Object>) parsedMap.get(key)).contains(processedValue)) {
                     return;
                 }
             }
 
-            ((List<Object>) parsedMap.get(key)).add(value);
+            ((List<Object>) parsedMap.get(key)).add(processedValue);
         } else {
             if (keyValueProcessorConfig.getSkipDuplicateValues()) {
-                if (parsedMap.containsValue(value)) {
+                if (parsedMap.containsValue(processedValue)) {
                     return;
                 }
             }
 
             final LinkedList<Object> combinedList = new LinkedList<>();
             combinedList.add(parsedMap.get(key));
-            combinedList.add(value);
+            combinedList.add(processedValue);
 
             parsedMap.replace(key, combinedList);
         }
