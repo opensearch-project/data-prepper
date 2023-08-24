@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -167,6 +168,9 @@ public class ScanObjectWorker implements Runnable{
                 sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey());
                 deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
             }
+        } catch (final NoSuchKeyException e) {
+            LOG.warn("Object {} from bucket {} could not be found, marking this object as complete and continuing processing", objectKey, bucket);
+            sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey());
         } catch (final PartitionNotOwnedException | PartitionNotFoundException | PartitionUpdateException e) {
             LOG.warn("S3 scan object worker received an exception from the source coordinator. There is a potential for duplicate data from {}, giving up partition and getting next partition: {}", objectKey, e.getMessage());
             sourceCoordinator.giveUpPartitions();
