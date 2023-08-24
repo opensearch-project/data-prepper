@@ -4,23 +4,24 @@ on:
   workflow_dispatch:
     inputs:
       release-major-tag:
-        description: 'Whether to create major tag of docker image or not. This will create a tag such as 2.3 which points to this version.'
+        description: 'Whether to create major tag of docker image or not. This will create a tag such as 2 which points to this version.'
         required: true
         type: boolean
       release-latest-tag:
         description: >
-          'Whether to create latest tag of docker image or not. This will update the latest tag to point to this version. You should set this when releasing the latest version, but not patches to old versions.'
+          Whether to create latest tag of docker image or not. This will update the latest tag to point to this version. You should set this when releasing the latest version, but not patches to old versions.
         required: true
         type: boolean
 
 permissions:
   id-token: write
   contents: write
+  issues: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
 
     steps:
     - name: Set up JDK
@@ -109,7 +110,7 @@ jobs:
 
   promote:
     runs-on: ubuntu-latest
-    if: success() || failure()
+    if: ${{ (success() || failure()) && needs.build.result == 'success' }}
     needs: [build, validate-docker, validate-archive]
     permissions:
       contents: write
