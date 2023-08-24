@@ -52,9 +52,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -75,6 +77,18 @@ public class ParquetOutputCodecTest {
 
     private ParquetOutputCodec createObjectUnderTest() {
         return new ParquetOutputCodec(config);
+    }
+
+    @Test
+    void constructor_throws_if_schema_is_invalid() {
+        String invalidSchema = createStandardSchema().toString().replaceAll(",", ";");
+        config.setSchema(invalidSchema);
+
+        RuntimeException actualException = assertThrows(RuntimeException.class, this::createObjectUnderTest);
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), containsString(invalidSchema));
+        assertThat(actualException.getMessage(), containsString("was expecting comma"));
     }
 
     @ParameterizedTest
@@ -164,7 +178,7 @@ public class ParquetOutputCodecTest {
     }
 
     @Test
-    void writeEvent_includes_record_when_field_does_not_exist() throws IOException {
+    void writeEvent_includes_record_when_field_does_not_exist_in_user_supplied_schema() throws IOException {
         config.setSchema(createStandardSchema().toString());
         when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
         final Event eventWithInvalidField = mock(Event.class);
@@ -189,6 +203,25 @@ public class ParquetOutputCodecTest {
             assertThat(expectedMap, Matchers.equalTo(actualMap));
             index++;
         }
+    }
+
+    @Test
+    void writeEvent_throws_exception_when_field_does_not_exist_in_auto_schema() throws IOException {
+        config.setSchema(null);
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+        final Event eventWithInvalidField = mock(Event.class);
+        final String invalidFieldName = UUID.randomUUID().toString();
+        when(eventWithInvalidField.toMap()).thenReturn(Collections.singletonMap(invalidFieldName, UUID.randomUUID().toString()));
+        final ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+        objectUnderTest.start(outputStream, createEventRecord(generateRecords(1).get(0)), codecContext);
+
+        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), containsString(invalidFieldName));
     }
 
     private static Event createEventRecord(final Map<String, Object> eventData) {

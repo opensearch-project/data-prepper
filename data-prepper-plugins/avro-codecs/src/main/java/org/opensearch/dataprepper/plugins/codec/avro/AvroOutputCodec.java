@@ -11,6 +11,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 import org.opensearch.dataprepper.avro.AvroAutoSchemaGenerator;
 import org.opensearch.dataprepper.avro.AvroEventConverter;
+import org.opensearch.dataprepper.avro.EventDefinedAvroEventConverter;
+import org.opensearch.dataprepper.avro.SchemaDefinedAvroEventConverter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
@@ -47,11 +49,13 @@ public class AvroOutputCodec implements OutputCodec {
         Objects.requireNonNull(config);
         this.config = config;
 
-        avroEventConverter = new AvroEventConverter();
         avroAutoSchemaGenerator = new AvroAutoSchemaGenerator();
 
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
+            avroEventConverter = new SchemaDefinedAvroEventConverter();
+        } else {
+            avroEventConverter = new EventDefinedAvroEventConverter();
         }
     }
 
@@ -94,7 +98,7 @@ public class AvroOutputCodec implements OutputCodec {
         } else {
             data = event.toMap();
         }
-        final GenericRecord avroRecord = avroEventConverter.convertEventDataToAvro(schema, data);
+        final GenericRecord avroRecord = avroEventConverter.convertEventDataToAvro(schema, data, codecContext);
         dataFileWriter.append(avroRecord);
     }
 

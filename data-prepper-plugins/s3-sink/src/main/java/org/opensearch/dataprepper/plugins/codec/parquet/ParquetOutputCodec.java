@@ -13,6 +13,8 @@ import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.opensearch.dataprepper.avro.AvroAutoSchemaGenerator;
 import org.opensearch.dataprepper.avro.AvroEventConverter;
+import org.opensearch.dataprepper.avro.EventDefinedAvroEventConverter;
+import org.opensearch.dataprepper.avro.SchemaDefinedAvroEventConverter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
@@ -43,8 +45,14 @@ public class ParquetOutputCodec implements OutputCodec {
         Objects.requireNonNull(config);
         this.config = config;
 
-        avroEventConverter = new AvroEventConverter();
         avroAutoSchemaGenerator = new AvroAutoSchemaGenerator();
+
+        if (config.getSchema() != null) {
+            schema = parseSchema(config.getSchema());
+            avroEventConverter = new SchemaDefinedAvroEventConverter();
+        } else {
+            avroEventConverter = new EventDefinedAvroEventConverter();
+        }
     }
 
     @Override
@@ -60,7 +68,9 @@ public class ParquetOutputCodec implements OutputCodec {
         PositionOutputStream s3OutputStream = (PositionOutputStream) outputStream;
         CompressionCodecName compressionCodecName = CompressionConverter.convertCodec(((S3OutputCodecContext) codecContext).getCompressionOption());
         this.codecContext = codecContext;
-        buildSchemaAndKey(event);
+        if (schema == null) {
+            schema = buildInlineSchemaFromEvent(event);
+        }
         final S3OutputFile s3OutputFile = new S3OutputFile(s3OutputStream);
         buildWriter(s3OutputFile, compressionCodecName);
     }
@@ -68,14 +78,6 @@ public class ParquetOutputCodec implements OutputCodec {
     @Override
     public boolean isCompressionInternal() {
         return true;
-    }
-
-    void buildSchemaAndKey(final Event event) throws IOException {
-        if (config.getSchema() != null) {
-            schema = parseSchema(config.getSchema());
-        } else {
-            schema = buildInlineSchemaFromEvent(event);
-        }
     }
 
     public Schema buildInlineSchemaFromEvent(final Event event) throws IOException {
@@ -104,7 +106,7 @@ public class ParquetOutputCodec implements OutputCodec {
         } else {
             modifiedEvent = event;
         }
-        GenericRecord parquetRecord = avroEventConverter.convertEventDataToAvro(schema, modifiedEvent.toMap());
+        GenericRecord parquetRecord = avroEventConverter.convertEventDataToAvro(schema, modifiedEvent.toMap(), codecContext);
         writer.write(parquetRecord);
     }
 
