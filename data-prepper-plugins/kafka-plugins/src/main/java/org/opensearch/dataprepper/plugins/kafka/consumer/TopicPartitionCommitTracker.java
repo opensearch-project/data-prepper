@@ -5,26 +5,48 @@
 
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-
 import org.apache.commons.lang3.Range;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class TopicPartitionCommitTracker {
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaSourceCustomConsumer.class);
     private long committedOffset;
+    private long committedRecordCount;
+    private long initialOffset;
     private final TopicPartition topicPartition;
     private final Map<Long, Range<Long>> offsetMaxMap;
     private final Map<Long, Range<Long>> offsetMinMap;
 
-    public TopicPartitionCommitTracker(final TopicPartition topicPartition, Long committedOffset) {
+    public TopicPartitionCommitTracker(final TopicPartition topicPartition, final Long initialOffset) {
         this.topicPartition = topicPartition;
-        this.committedOffset = Objects.nonNull(committedOffset) ? committedOffset-1 : -1L;
+        this.initialOffset = initialOffset;
+        LOG.info("Created commit tracker for partition: {}, initialOffset: {}", topicPartition, initialOffset);
+
+        this.committedOffset = initialOffset-1L;
+        this.committedRecordCount = 0;
         this.offsetMaxMap = new HashMap<>();
         this.offsetMinMap = new HashMap<>();
         this.offsetMaxMap.put(this.committedOffset, Range.between(this.committedOffset, this.committedOffset));
+    }
+
+    public long getInitialOffset() {
+        return initialOffset;
+    }
+
+    public long getCommittedOffset() {
+        return committedOffset;
+    }
+
+    public long getCommittedRecordCount() {
+        long count = committedRecordCount;
+        committedRecordCount = 0;
+        return count;
     }
 
     public TopicPartitionCommitTracker(final String topic, final int partition, Long committedOffset) {
@@ -68,6 +90,7 @@ public class TopicPartitionCommitTracker {
             Long maxValue = offsetMinMap.get(committedOffset).getMaximum();
             if (maxValue != committedOffset) {
                 offsetMinMap.remove(committedOffset);
+                committedRecordCount += (maxValue - committedOffset);
                 committedOffset = maxValue;
                 offsetMaxMap.put(committedOffset, Range.between(committedOffset, committedOffset));
                 return new OffsetAndMetadata(committedOffset + 1);
