@@ -11,7 +11,6 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.processor.AbstractProcessor;
 import org.opensearch.dataprepper.model.processor.Processor;
-import org.opensearch.dataprepper.model.event.JacksonEvent;
 import org.opensearch.dataprepper.model.record.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,36 +71,35 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new PatternSyntaxException("field_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getFieldDelimiterRegex(), -1);
             }
 
+            fieldDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex());
+
             if (keyValueProcessorConfig.getRecursive()) {
-                if (Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex()).matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("The set field delimiter regex cannot contain brackets while you are trying to recurse.");
-                }
-                if (keyValueProcessorConfig.getFieldDelimiterRegex().length() != 1) {
-                    throw new IllegalArgumentException("The set field delimiter is limited to one character only.");
+                if (fieldDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
+                    throw new IllegalArgumentException("While recursive is true,
+                    the set field delimiter regex cannot contain brackets while you are trying to recurse.");
                 }
             }
-
-            fieldDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getFieldDelimiterRegex());
         } else {
             String regex;
             if (keyValueProcessorConfig.getFieldSplitCharacters().isEmpty()) {
                 regex = KeyValueProcessorConfig.DEFAULT_FIELD_SPLIT_CHARACTERS;
             } else {
-                if (keyValueProcessorConfig.getRecursive()) {
-                    if (keyValueProcessorConfig.getFieldSplitCharacters().length() != 1) {
-                        throw new IllegalArgumentException("The set field split characters is limited to one character only.");
-                    }
+                if (keyValueProcessorConfig.getRecursive()
+                    && keyValueProcessorConfig.getFieldSplitCharacters().length() != 1) {
+                    throw new IllegalArgumentException("While recursive is true,
+                the set field split characters is limited to one character only.");
                 }
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getFieldSplitCharacters());
             }
 
+            fieldDelimiterPattern = Pattern.compile(regex);
+
             if (keyValueProcessorConfig.getRecursive()) {
-                if (Pattern.compile(regex).matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("The set field split characters cannot contain brackets while you are trying to recurse.");
+                if (fieldDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
+                    throw new IllegalArgumentException("While recursive is true,
+                    the set field split characters cannot contain brackets while you are trying to recurse.");
                 }
             }
-
-            fieldDelimiterPattern = Pattern.compile(regex);
         }
 
         if(keyValueProcessorConfig.getKeyValueDelimiterRegex() != null
@@ -113,37 +111,36 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 throw new PatternSyntaxException("key_value_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getKeyValueDelimiterRegex(), -1);
             }
 
+            keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
+
             if (keyValueProcessorConfig.getRecursive()) {
-                if (Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex()).matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("The set key value delimiter regex cannot contain brackets while you are trying to recurse.");
-                }
-                if (keyValueProcessorConfig.getKeyValueDelimiterRegex().length() != 1) {
-                    throw new IllegalArgumentException("The set key value delimiter regex is limited to one character only.");
+                if (keyValueDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
+                    throw new IllegalArgumentException("While recursive is true,
+                    the set key value delimiter regex cannot contain brackets while you are trying to recurse.");
                 }
             }
-
-            keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
         } else {
             String regex;
             if (keyValueProcessorConfig.getValueSplitCharacters().isEmpty()) {
                 regex = KeyValueProcessorConfig.DEFAULT_VALUE_SPLIT_CHARACTERS;
             } else {
-                if (keyValueProcessorConfig.getRecursive()) {
-                    if (keyValueProcessorConfig.getValueSplitCharacters().length() != 1) {
-                        throw new IllegalArgumentException("The set value split characters is limited to one character only.");
-                    }
+                if (keyValueProcessorConfig.getRecursive()
+                    && keyValueProcessorConfig.getValueSplitCharacters().length() != 1) {
+                    throw new IllegalArgumentException("While recursive is true,
+                    the set value split characters is limited to one character only.");
                 }
 
                 regex = buildRegexFromCharacters(keyValueProcessorConfig.getValueSplitCharacters());
             }
 
+            keyValueDelimiterPattern = Pattern.compile(regex);
+
             if (keyValueProcessorConfig.getRecursive()) {
-                if (Pattern.compile(regex).matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("The set value split characters cannot contain brackets while you are trying to recurse.");
+                if (keyValueDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
+                    throw new IllegalArgumentException("While recursive is true,
+                    the set value split characters cannot contain brackets while you are trying to recurse.");
                 }
             }
-
-            keyValueDelimiterPattern = Pattern.compile(regex);
         }
 
         if (!validateRegex(keyValueProcessorConfig.getDeleteKeyRegex())) {
@@ -246,7 +243,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             final String[] groups = fieldDelimiterPattern.split(groupsRaw, 0);
 
             if (keyValueProcessorConfig.getRecursive()) {
-                ObjectMapper mapper = new ObjectMapper();
+                private final ObjectMapper mapper = new ObjectMapper();
                 try {
                     JsonNode recursedTree = recurse(groupsRaw, mapper);
                     outputMap.putAll(createRecursedMap(recursedTree, mapper));
@@ -284,7 +281,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 }
             }
 
-            if (bracketStack.isEmpty() && input.charAt(i) == fieldDelimiterPattern.toString().charAt(0)) {
+            if (bracketStack.isEmpty() && fieldDelimiterPattern.matcher(input.charAt(i).matches())) {
                 String pair = input.substring(pairStart, i);
                 pairs.add(pair);
                 pairStart = i + 1;
@@ -300,14 +297,15 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             int valueEnd = -1;
             String keyString = "";
             String valueString;
+            final Character whitespaceChar = ' ';
 
             bracketStack.clear();
 
             for (int i = 0; i < pair.length(); i++) {
-                if (bracketStack.isEmpty() && pair.charAt(i) == keyValueDelimiterPattern.toString().charAt(0)) {
+                if (bracketStack.isEmpty() && keyValueDelimiterPattern.matcher(pair.charAt(i).matches())) {
                     keyString = pair.substring(keyStart, i).stripTrailing();
                     valueStart = i + 1;
-                    while(pair.charAt(valueStart) == ' ') {
+                    while(pair.charAt(valueStart) == whitespaceChar) {
                         valueStart++;
                     }
                     break;
