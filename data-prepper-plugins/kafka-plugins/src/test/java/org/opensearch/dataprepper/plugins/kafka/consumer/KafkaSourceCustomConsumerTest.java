@@ -156,6 +156,8 @@ public class KafkaSourceCustomConsumerTest {
             Assertions.assertEquals(topicPartition.topic(), topic);
             Assertions.assertEquals(offsetAndMetadata.offset(), 2L);
         });
+        Assertions.assertEquals(consumer.getNumRecordsCommitted(), 2L);
+
 
         for (Record<Event> record: bufferedRecords) {
             Event event = record.getData();
@@ -214,6 +216,8 @@ public class KafkaSourceCustomConsumerTest {
             Assertions.assertEquals(topicPartition.topic(), topic);
             Assertions.assertEquals(offsetAndMetadata.offset(), 2L);
         });
+        // This counter should not be incremented with acknowledgements
+        Assertions.assertEquals(consumer.getNumRecordsCommitted(), 0L);
     }
 
     @Test
@@ -276,6 +280,7 @@ public class KafkaSourceCustomConsumerTest {
             Assertions.assertEquals(topicPartition.topic(), topic);
             Assertions.assertEquals(offsetAndMetadata.offset(), 102L);
         });
+        Assertions.assertEquals(consumer.getNumRecordsCommitted(), 2L);
 
         for (Record<Event> record: bufferedRecords) {
             Event event = record.getData();
@@ -309,3 +314,4 @@ public class KafkaSourceCustomConsumerTest {
     }
 
 }
+

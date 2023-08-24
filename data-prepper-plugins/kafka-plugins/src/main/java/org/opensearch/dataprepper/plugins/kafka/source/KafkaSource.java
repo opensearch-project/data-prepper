@@ -62,7 +62,6 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -98,8 +97,8 @@ public class KafkaSource implements Source<Record<Event>> {
     private static CachedSchemaRegistryClient schemaRegistryClient;
     private GlueSchemaRegistryKafkaDeserializer glueDeserializer;
     private StringDeserializer stringDeserializer;
-    private final Map<TopicConfig, ExecutorService> topicExecutorService;
-    private final Map<TopicConfig, KafkaSourceCustomConsumer> topicConsumer;
+    private final List<ExecutorService> allTopicExecutorServices;
+    private final List<KafkaSourceCustomConsumer> allTopicConsumers;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
@@ -111,9 +110,9 @@ public class KafkaSource implements Source<Record<Event>> {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.stringDeserializer = new StringDeserializer();
-        shutdownInProgress = new AtomicBoolean(false);
-        topicExecutorService = new HashMap<>();
-        topicConsumer = new HashMap<>();
+        this.shutdownInProgress = new AtomicBoolean(false);
+        this.allTopicExecutorServices = new ArrayList<>();
+        this.allTopicConsumers = new ArrayList<>();
     }
 
     @Override
@@ -128,6 +127,8 @@ public class KafkaSource implements Source<Record<Event>> {
             try {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
+                allTopicExecutorServices.add(executorService);
+
                 IntStream.range(0, numWorkers).forEach(index -> {
                     switch (schema) {
                         case JSON:
@@ -147,10 +148,9 @@ public class KafkaSource implements Source<Record<Event>> {
                             break;
                     }
                     consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, topicMetrics);
-                    executorService.submit(consumer);
+                    allTopicConsumers.add(consumer);
 
-                    topicExecutorService.put(topic, executorService);
-                    topicConsumer.put(topic, consumer);
+                    executorService.submit(consumer);
                 });
             } catch (Exception e) {
                 if (e instanceof BrokerNotAvailableException ||
@@ -168,18 +168,21 @@ public class KafkaSource implements Source<Record<Event>> {
     @Override
     public void stop() {
         shutdownInProgress.set(true);
-        LOG.info("Shutting down Consumers...");
-        sourceConfig.getTopics().forEach(topic -> {
-            stopConsumer(topicExecutorService.get(topic), topicConsumer.get(topic));
-        });
-        LOG.info("Consumer shutdown successfully...");
+        final long shutdownWaitTime = calculateLongestThreadWaitingTime();
+
+        LOG.info("Shutting down {} Executor services", allTopicExecutorServices.size());
+        allTopicExecutorServices.forEach(executor -> stopExecutor(executor, shutdownWaitTime));
+
+        LOG.info("Closing {} consumers", allTopicConsumers.size());
+        allTopicConsumers.forEach(consumer -> consumer.closeConsumer());
+
+        LOG.info("Kafka source shutdown successfully...");
     }
 
-    public void stopConsumer(final ExecutorService executorService, final KafkaSourceCustomConsumer consumer) {
+    public void stopExecutor(final ExecutorService executorService, final long shutdownWaitTime) {
         executorService.shutdown();
         try {
-            if (!executorService.awaitTermination(
-                    calculateLongestThreadWaitingTime(), TimeUnit.SECONDS)) {
+            if (!executorService.awaitTermination(shutdownWaitTime, TimeUnit.SECONDS)) {
                 LOG.info("Consumer threads are waiting for shutting down...");
                 executorService.shutdownNow();
             }
@@ -190,7 +193,6 @@ public class KafkaSource implements Source<Record<Event>> {
                 Thread.currentThread().interrupt();
             }
         }
-        consumer.closeConsumer();
     }
 
     private long calculateLongestThreadWaitingTime() {
