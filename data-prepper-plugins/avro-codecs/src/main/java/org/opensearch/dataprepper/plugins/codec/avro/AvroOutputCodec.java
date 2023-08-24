@@ -94,7 +94,7 @@ public class AvroOutputCodec implements OutputCodec {
         } else {
             data = event.toMap();
         }
-        final GenericRecord avroRecord = avroEventConverter.convertEventDataToAvro(schema, data, codecContext);
+        final GenericRecord avroRecord = avroEventConverter.convertEventDataToAvro(schema, data);
         dataFileWriter.append(avroRecord);
     }
 

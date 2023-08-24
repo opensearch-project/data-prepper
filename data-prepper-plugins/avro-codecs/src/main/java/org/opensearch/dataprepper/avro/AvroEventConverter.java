@@ -3,7 +3,6 @@ package org.opensearch.dataprepper.avro;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.util.List;
 import java.util.Map;
@@ -25,32 +24,27 @@ public class AvroEventConverter {
     }
 
     public GenericRecord convertEventDataToAvro(final Schema schema,
-                                                final Map<String, Object> eventData,
-                                                OutputCodecContext codecContext) {
+                                                final Map<String, Object> eventData) {
         final GenericRecord avroRecord = new GenericData.Record(schema);
-        for (final String key : eventData.keySet()) {
-            if (codecContext != null && codecContext.shouldNotIncludeKey(key)) {
-                continue;
-            }
-            final Schema.Field field = schema.getField(key);
-            if (field == null) {
-                throw new RuntimeException("The event has a key ('" + key + "') which is not included in the schema.");
-            }
-            final Object value = schemaMapper(field, eventData.get(key), codecContext);
+
+        for (Schema.Field field : schema.getFields()) {
+            String key = field.name();
+            final Object value = schemaMapper(field, eventData.get(key));
             avroRecord.put(key, value);
         }
+
         return avroRecord;
     }
 
-    private Object schemaMapper(final Schema.Field field, final Object rawValue, OutputCodecContext codecContext) {
+    private Object schemaMapper(final Schema.Field field, final Object rawValue) {
         Schema providedSchema = schemaChooser.chooseSchema(field.schema());
 
         if (providedSchema.getType() == Schema.Type.RECORD && rawValue instanceof Map) {
-            return convertEventDataToAvro(providedSchema, (Map<String, Object>) rawValue, codecContext);
+            return convertEventDataToAvro(providedSchema, (Map<String, Object>) rawValue);
         } else if (providedSchema.getType() == Schema.Type.ARRAY && rawValue instanceof List) {
-            GenericData.Array<String> avroArray =
-                    new GenericData.Array<>(((List<String>) rawValue).size(), providedSchema);
-            for (String element : ((List<String>) rawValue)) {
+            GenericData.Array<Object> avroArray =
+                    new GenericData.Array<>(((List<?>) rawValue).size(), providedSchema);
+            for (Object element : ((List<?>) rawValue)) {
                 avroArray.add(element);
             }
             return avroArray;

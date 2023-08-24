@@ -207,18 +207,41 @@ public class AvroOutputCodecTest {
 
     @Test
     void writeEvent_throws_exception_when_field_does_not_exist() throws IOException {
-        final Event eventWithInvalidField = mock(Event.class);
         final String invalidFieldName = UUID.randomUUID().toString();
-        when(eventWithInvalidField.toMap()).thenReturn(Collections.singletonMap(invalidFieldName, UUID.randomUUID().toString()));
+
+        Map<String, Object> mapWithInvalid = generateRecords(1).get(0);
+        mapWithInvalid.put(invalidFieldName, UUID.randomUUID().toString());
+        final Event eventWithInvalidField = mock(Event.class);
+        when(eventWithInvalidField.toMap()).thenReturn(mapWithInvalid);
+
         final AvroOutputCodec objectUnderTest = createObjectUnderTest();
 
         outputStream = new ByteArrayOutputStream();
         objectUnderTest.start(outputStream, null, new OutputCodecContext());
 
-        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
+        objectUnderTest.writeEvent(eventWithInvalidField, outputStream);
+        objectUnderTest.complete(outputStream);
 
-        assertThat(actualException.getMessage(), notNullValue());
-        assertThat(actualException.getMessage(), containsString(invalidFieldName));
+        final List<GenericRecord> actualAvroRecords = createAvroRecordsList(outputStream);
+        assertThat(actualAvroRecords.size(), equalTo(1));
+
+        int count = 0;
+        for (final GenericRecord actualRecord : actualAvroRecords) {
+
+            assertThat(actualRecord, notNullValue());
+            assertThat(actualRecord.getSchema(), notNullValue());
+
+            List<Schema.Field> fields = actualRecord.getSchema().getFields();
+            assertThat(fields.size(), equalTo(TOTAL_TOP_LEVEL_FIELDS));
+            for (Schema.Field field : fields) {
+                Object actualValue = actualRecord.get(field.name());
+                assertThat(actualValue, notNullValue());
+            }
+            count++;
+        }
+
+        assertThat(count, equalTo(1));
+
     }
 
     @Test

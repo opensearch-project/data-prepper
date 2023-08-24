@@ -104,7 +104,7 @@ public class ParquetOutputCodec implements OutputCodec {
         } else {
             modifiedEvent = event;
         }
-        GenericRecord parquetRecord = avroEventConverter.convertEventDataToAvro(schema, modifiedEvent.toMap(), codecContext);
+        GenericRecord parquetRecord = avroEventConverter.convertEventDataToAvro(schema, modifiedEvent.toMap());
         writer.write(parquetRecord);
     }
 

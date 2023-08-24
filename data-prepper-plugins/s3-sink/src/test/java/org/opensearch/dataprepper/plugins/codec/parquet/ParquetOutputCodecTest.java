@@ -52,11 +52,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -166,22 +164,31 @@ public class ParquetOutputCodecTest {
     }
 
     @Test
-    void writeEvent_throws_exception_when_field_does_not_exist() throws IOException {
+    void writeEvent_includes_record_when_field_does_not_exist() throws IOException {
         config.setSchema(createStandardSchema().toString());
         when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
         final Event eventWithInvalidField = mock(Event.class);
         final String invalidFieldName = UUID.randomUUID().toString();
-        when(eventWithInvalidField.toMap()).thenReturn(Collections.singletonMap(invalidFieldName, UUID.randomUUID().toString()));
+        Map<String, Object> mapWithInvalid = generateRecords(1).get(0);
+        mapWithInvalid.put(invalidFieldName, UUID.randomUUID().toString());
+        when(eventWithInvalidField.toMap()).thenReturn(mapWithInvalid);
         final ParquetOutputCodec objectUnderTest = createObjectUnderTest();
 
         final File tempFile = new File(tempDirectory, FILE_NAME);
         LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
         objectUnderTest.start(outputStream, null, codecContext);
 
-        final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
+        objectUnderTest.writeEvent(eventWithInvalidField, outputStream);
 
-        assertThat(actualException.getMessage(), notNullValue());
-        assertThat(actualException.getMessage(), containsString(invalidFieldName));
+        objectUnderTest.closeWriter(outputStream, tempFile);
+        List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
+        int index = 0;
+        for (final Map<String, Object> actualMap : actualRecords) {
+            assertThat(actualMap, notNullValue());
+            Map expectedMap = generateRecords(1).get(index);
+            assertThat(expectedMap, Matchers.equalTo(actualMap));
+            index++;
+        }
     }
 
     private static Event createEventRecord(final Map<String, Object> eventData) {
