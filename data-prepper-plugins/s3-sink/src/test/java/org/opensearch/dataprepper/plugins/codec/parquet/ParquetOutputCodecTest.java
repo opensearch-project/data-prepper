@@ -79,6 +79,18 @@ public class ParquetOutputCodecTest {
         return new ParquetOutputCodec(config);
     }
 
+    @Test
+    void constructor_throws_if_schema_is_invalid() {
+        String invalidSchema = createStandardSchema().toString().replaceAll(",", ";");
+        config.setSchema(invalidSchema);
+
+        RuntimeException actualException = assertThrows(RuntimeException.class, this::createObjectUnderTest);
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), containsString(invalidSchema));
+        assertThat(actualException.getMessage(), containsString("was expecting comma"));
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 10, 100})
     void test_happy_case(final int numberOfRecords) throws Exception {
@@ -166,8 +178,36 @@ public class ParquetOutputCodecTest {
     }
 
     @Test
-    void writeEvent_throws_exception_when_field_does_not_exist() throws IOException {
+    void writeEvent_includes_record_when_field_does_not_exist_in_user_supplied_schema() throws IOException {
         config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+        final Event eventWithInvalidField = mock(Event.class);
+        final String invalidFieldName = UUID.randomUUID().toString();
+        Map<String, Object> mapWithInvalid = generateRecords(1).get(0);
+        mapWithInvalid.put(invalidFieldName, UUID.randomUUID().toString());
+        when(eventWithInvalidField.toMap()).thenReturn(mapWithInvalid);
+        final ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        objectUnderTest.writeEvent(eventWithInvalidField, outputStream);
+
+        objectUnderTest.closeWriter(outputStream, tempFile);
+        List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
+        int index = 0;
+        for (final Map<String, Object> actualMap : actualRecords) {
+            assertThat(actualMap, notNullValue());
+            Map expectedMap = generateRecords(1).get(index);
+            assertThat(expectedMap, Matchers.equalTo(actualMap));
+            index++;
+        }
+    }
+
+    @Test
+    void writeEvent_throws_exception_when_field_does_not_exist_in_auto_schema() throws IOException {
+        config.setSchema(null);
         when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
         final Event eventWithInvalidField = mock(Event.class);
         final String invalidFieldName = UUID.randomUUID().toString();
@@ -176,7 +216,7 @@ public class ParquetOutputCodecTest {
 
         final File tempFile = new File(tempDirectory, FILE_NAME);
         LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
-        objectUnderTest.start(outputStream, null, codecContext);
+        objectUnderTest.start(outputStream, createEventRecord(generateRecords(1).get(0)), codecContext);
 
         final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
 
