@@ -189,6 +189,27 @@ public class OpenSearchAccessorTest {
     }
 
     @Test
+    void create_pit_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final String indexName = UUID.randomUUID().toString();
+        final String keepAlive = UUID.randomUUID().toString();
+
+        final CreatePointInTimeRequest createPointInTimeRequest = mock(CreatePointInTimeRequest.class);
+        when(createPointInTimeRequest.getIndex()).thenReturn(indexName);
+        when(createPointInTimeRequest.getKeepAlive()).thenReturn(keepAlive);
+
+        final OpenSearchException openSearchException = mock(OpenSearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(openSearchException.response()).thenReturn(errorResponse);
+
+        when(openSearchClient.createPit(any(CreatePitRequest.class))).thenThrow(openSearchException);
+
+        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+    }
+
+    @Test
     void create_scroll_with_exception_for_scroll_limit_throws_SearchContextLimitException() throws IOException {
         final String indexName = UUID.randomUUID().toString();
         final String scrollTime = UUID.randomUUID().toString();
@@ -255,6 +276,50 @@ public class OpenSearchAccessorTest {
         final SearchAccessor objectUnderTest = createObjectUnderTest();
 
         assertThrows(IndexNotFoundException.class, () -> objectUnderTest.searchWithoutSearchContext(noSearchContextSearchRequest));
+    }
+
+    @Test
+    void create_scroll_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final String indexName = UUID.randomUUID().toString();
+        final String scrollTime = UUID.randomUUID().toString();
+        final Integer size = new Random().nextInt(10);
+
+        final CreateScrollRequest createScrollRequest = mock(CreateScrollRequest.class);
+        when(createScrollRequest.getIndex()).thenReturn(indexName);
+        when(createScrollRequest.getScrollTime()).thenReturn(scrollTime);
+        when(createScrollRequest.getSize()).thenReturn(size);
+
+        final OpenSearchException openSearchException = mock(OpenSearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(openSearchException.response()).thenReturn(errorResponse);
+
+        when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(openSearchException);
+
+        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+    }
+
+    @Test
+    void searchWithoutSearchContext_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final Integer paginationSize = new Random().nextInt();
+        final String index = UUID.randomUUID().toString();
+
+        final NoSearchContextSearchRequest noSearchContextSearchRequest = mock(NoSearchContextSearchRequest.class);
+        when(noSearchContextSearchRequest.getPaginationSize()).thenReturn(paginationSize);
+        when(noSearchContextSearchRequest.getIndex()).thenReturn(index);
+
+        final OpenSearchException openSearchException = mock(OpenSearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(openSearchException.response()).thenReturn(errorResponse);
+
+        when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(openSearchException);
+
+        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().searchWithoutSearchContext(noSearchContextSearchRequest));
     }
 
     @Test
