@@ -11,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
@@ -49,10 +50,13 @@ public class OpenSearchSourceTest {
     private Buffer<Record<Event>> buffer;
 
     @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
     private SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
 
     private OpenSearchSource createObjectUnderTest() {
-        return new OpenSearchSource(openSearchSourceConfiguration, awsCredentialsSupplier);
+        return new OpenSearchSource(openSearchSourceConfiguration, awsCredentialsSupplier, acknowledgementSetManager);
     }
 
     @Test
@@ -75,7 +79,7 @@ public class OpenSearchSourceTest {
             openSearchClientFactoryMockedStatic.when(() -> OpenSearchClientFactory.create(awsCredentialsSupplier)).thenReturn(openSearchClientFactory);
             searchAccessorStrategyMockedStatic.when(() -> SearchAccessorStrategy.create(openSearchSourceConfiguration, openSearchClientFactory)).thenReturn(searchAccessorStrategy);
 
-            openSearchServiceMockedStatic.when(() -> OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer))
+            openSearchServiceMockedStatic.when(() -> OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager))
                     .thenReturn(openSearchService);
 
             objectUnderTest.start(buffer);

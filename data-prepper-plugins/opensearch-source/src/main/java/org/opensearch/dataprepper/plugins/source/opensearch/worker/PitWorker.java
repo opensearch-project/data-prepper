@@ -4,7 +4,10 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -30,7 +33,10 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
@@ -56,16 +62,20 @@ public class PitWorker implements SearchWorker, Runnable {
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
 
+    private final AcknowledgementSetManager acknowledgementSetManager;
+
     public PitWorker(final SearchAccessor searchAccessor,
                      final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                      final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
                      final BufferAccumulator<Record<Event>> bufferAccumulator,
-                     final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier) {
+                     final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier,
+                     final AcknowledgementSetManager acknowledgementSetManager) {
         this.searchAccessor = searchAccessor;
         this.sourceCoordinator = sourceCoordinator;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.bufferAccumulator = bufferAccumulator;
         this.openSearchIndexPartitionCreationSupplier = openSearchIndexPartitionCreationSupplier;
+        this.acknowledgementSetManager = acknowledgementSetManager;
     }
 
     @Override
@@ -85,12 +95,17 @@ public class PitWorker implements SearchWorker, Runnable {
                 }
 
                 try {
-                    processIndex(indexPartition.get());
 
-                    sourceCoordinator.closePartition(
-                            indexPartition.get().getPartitionKey(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
+                    final Pair<AcknowledgementSet, CompletableFuture<Boolean>> acknowledgementSet = createAcknowledgmentSet(
+                            acknowledgementSetManager,
+                            openSearchSourceConfiguration,
+                            sourceCoordinator,
+                            indexPartition.get());
+
+                    processIndex(indexPartition.get(), acknowledgementSet.getLeft());
+
+                    completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet.getLeft(), acknowledgementSet.getRight(),
+                            indexPartition.get(), sourceCoordinator);
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
                     LOG.warn("PitWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
                     sourceCoordinator.giveUpPartitions();
@@ -122,7 +137,8 @@ public class PitWorker implements SearchWorker, Runnable {
         }
     }
 
-    private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition) {
+    private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition,
+                              final AcknowledgementSet acknowledgementSet) {
         final String indexName = openSearchIndexPartition.getPartitionKey();
         Optional<OpenSearchIndexProgressState> openSearchIndexProgressStateOptional = openSearchIndexPartition.getPartitionState();
 
@@ -160,6 +176,9 @@ public class PitWorker implements SearchWorker, Runnable {
 
             searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {
                 try {
+                    if (Objects.nonNull(acknowledgementSet)) {
+                        acknowledgementSet.add(record.getData());
+                    }
                     bufferAccumulator.add(record);
                 } catch (Exception e) {
                     LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
