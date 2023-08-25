@@ -1,4 +1,4 @@
-package org.opensearch.dataprepper.model.configuration;
+package org.opensearch.dataprepper.parser.model;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;

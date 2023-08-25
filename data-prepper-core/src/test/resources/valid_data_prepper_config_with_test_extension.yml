@@ -1,3 +1,4 @@
 ssl: false
-test_extension:
-  test_attribute: test_string
+pipeline_extensions:
+  test_extension:
+    test_attribute: test_string
