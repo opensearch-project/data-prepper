@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.configuration.ObjectKeyOptions;
 
 import java.time.LocalDateTime;
@@ -18,8 +17,10 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.TimeZone;
+import java.util.UUID;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +33,7 @@ class KeyGeneratorTest {
     private S3SinkConfig s3SinkConfig;
 
     @Mock
-    private OutputCodec outputCodec;
+    private ExtensionProvider extensionProvider;
 
     @Mock
     private ObjectKeyOptions objectKeyOptions;
@@ -44,7 +45,7 @@ class KeyGeneratorTest {
     }
 
     private KeyGenerator createObjectUnderTest() {
-        return new KeyGenerator(s3SinkConfig, outputCodec);
+        return new KeyGenerator(s3SinkConfig, extensionProvider);
     }
 
     @Test
@@ -73,5 +74,16 @@ class KeyGeneratorTest {
         assertNotNull(key);
         assertThat(key, true);
         assertThat(key, key.contains(pathPrefix + dateString));
+    }
+
+    @Test
+    void generateKey_ends_with_extension() {
+        String extension = UUID.randomUUID().toString();
+        when(extensionProvider.getExtension()).thenReturn(extension);
+        String pathPrefix = "events/";
+        when(s3SinkConfig.getObjectKeyOptions().getPathPrefix()).thenReturn(pathPrefix);
+        String key = createObjectUnderTest().generateKey();
+        assertThat(key, notNullValue());
+        assertThat(key, key.endsWith("." + extension));
     }
 }

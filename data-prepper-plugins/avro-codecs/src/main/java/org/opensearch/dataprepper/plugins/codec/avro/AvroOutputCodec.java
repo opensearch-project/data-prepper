@@ -11,6 +11,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 import org.opensearch.dataprepper.avro.AvroAutoSchemaGenerator;
 import org.opensearch.dataprepper.avro.AvroEventConverter;
+import org.opensearch.dataprepper.avro.EventDefinedAvroEventConverter;
+import org.opensearch.dataprepper.avro.SchemaDefinedAvroEventConverter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
@@ -47,17 +49,13 @@ public class AvroOutputCodec implements OutputCodec {
         Objects.requireNonNull(config);
         this.config = config;
 
-        avroEventConverter = new AvroEventConverter();
         avroAutoSchemaGenerator = new AvroAutoSchemaGenerator();
 
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
-        } else if (config.getFileLocation() != null) {
-            schema = AvroSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
-        } else if (config.getSchemaRegistryUrl() != null) {
-            schema = parseSchema(AvroSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
-        } else if (checkS3SchemaValidity()) {
-            schema = AvroSchemaParserFromS3.parseSchema(config);
+            avroEventConverter = new SchemaDefinedAvroEventConverter();
+        } else {
+            avroEventConverter = new EventDefinedAvroEventConverter();
         }
     }
 
@@ -117,9 +115,5 @@ public class AvroOutputCodec implements OutputCodec {
             LOG.error("Unable to parse Schema from Schema String provided.", e);
             throw new RuntimeException("There is an error in the schema: " + e.getMessage());
         }
-    }
-
-    private boolean checkS3SchemaValidity() {
-        return config.getBucketName() != null && config.getFileKey() != null && config.getRegion() != null;
     }
 }

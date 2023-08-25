@@ -11,9 +11,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -61,7 +63,8 @@ class LocalFileBufferTest {
         }
         assertThat(localFileBuffer.getSize(), greaterThan(1l));
         assertThat(localFileBuffer.getEventCount(), equalTo(55));
-        assertThat(localFileBuffer.getDuration(), equalTo(0L));
+        assertThat(localFileBuffer.getDuration(), notNullValue());
+        assertThat(localFileBuffer.getDuration(), greaterThanOrEqualTo(Duration.ZERO));
         localFileBuffer.flushAndCloseStream();
         localFileBuffer.removeTemporaryFile();
         assertFalse(tempFile.exists(), "The temp file has not been deleted.");
@@ -71,7 +74,8 @@ class LocalFileBufferTest {
     void test_without_write_events_into_buffer() {
         assertThat(localFileBuffer.getSize(), equalTo(0L));
         assertThat(localFileBuffer.getEventCount(), equalTo(0));
-        assertThat(localFileBuffer.getDuration(), equalTo(0L));
+        assertThat(localFileBuffer.getDuration(), notNullValue());
+        assertThat(localFileBuffer.getDuration(), greaterThanOrEqualTo(Duration.ZERO));
         localFileBuffer.flushAndCloseStream();
         localFileBuffer.removeTemporaryFile();
         assertFalse(tempFile.exists(), "The temp file has not been deleted.");
@@ -87,7 +91,8 @@ class LocalFileBufferTest {
         }
         assertThat(localFileBuffer.getSize(), greaterThan(1l));
         assertThat(localFileBuffer.getEventCount(), equalTo(55));
-        assertThat(localFileBuffer.getDuration(), greaterThanOrEqualTo(0L));
+        assertThat(localFileBuffer.getDuration(), notNullValue());
+        assertThat(localFileBuffer.getDuration(), greaterThanOrEqualTo(Duration.ZERO));
 
         when(keySupplier.get()).thenReturn(KEY);
         when(bucketSupplier.get()).thenReturn(BUCKET_NAME);

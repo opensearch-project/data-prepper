@@ -60,7 +60,27 @@ public class OutputCodecContext {
         return excludeKeys;
     }
 
+    /**
+     * Returns true if the key should be included according to the values of
+     * {@link #getExcludeKeys()} and {@link #getIncludeKeys()}.
+     *
+     * @param key The key to include or exclude.
+     * @return True if included; false if excluded.
+     */
     public boolean shouldIncludeKey(String key) {
         return inclusionPredicate.test(key);
+    }
+
+    /**
+     * Returns true if the key should not be included according to the values of
+     * {@link #getExcludeKeys()} and {@link #getIncludeKeys()}.
+     * <p>
+     * This version may be helpful for unit testing since mocks of it would return false by default.
+     *
+     * @param key The key to include or exclude.
+     * @return True if excluded; false if included.
+     */
+    public boolean shouldNotIncludeKey(String key) {
+        return !inclusionPredicate.test(key);
     }
 }

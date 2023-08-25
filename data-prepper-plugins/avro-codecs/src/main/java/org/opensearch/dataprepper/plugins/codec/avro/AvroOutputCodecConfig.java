@@ -5,69 +5,36 @@
 package org.opensearch.dataprepper.plugins.codec.avro;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 
 /**
  * Configuration class for {@link AvroOutputCodec}.
  */
 public class AvroOutputCodecConfig {
-
     @JsonProperty("schema")
     private String schema;
 
-    @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
-    @JsonProperty("schema_file_location")
-    private String fileLocation;
+    @JsonProperty("auto_schema")
+    private boolean autoSchema;
 
-    @Valid
-    @Size(max = 0, message = "Schema from schema registry is not supported.")
-    @JsonProperty("schema_registry_url")
-    private String schemaRegistryUrl;
-
-    @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
-    @JsonProperty("region")
-    private String region;
-
-    @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
-    @JsonProperty("bucket_name")
-    private String bucketName;
-
-    @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
-    @JsonProperty("file_key")
-    private String fileKey;
+    @AssertTrue(message = "The Avro codec requires either defining a schema or setting auto_schema to true to automatically generate a schema.")
+    boolean isSchemaOrAutoSchemaDefined() {
+        return schema != null ^ autoSchema;
+    }
 
     public String getSchema() {
         return schema;
     }
 
-    public void setSchema(String schema) {
+    void setSchema(final String schema) {
         this.schema = schema;
     }
 
-    public String getFileLocation() {
-        return fileLocation;
+    public boolean isAutoSchema() {
+        return autoSchema;
     }
 
-    public String getSchemaRegistryUrl() {
-        return schemaRegistryUrl;
+    void setAutoSchema(final boolean autoSchema) {
+        this.autoSchema = autoSchema;
     }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public String getBucketName() {
-        return bucketName;
-    }
-
-    public String getFileKey() {
-        return fileKey;
-    }
-
-
 }

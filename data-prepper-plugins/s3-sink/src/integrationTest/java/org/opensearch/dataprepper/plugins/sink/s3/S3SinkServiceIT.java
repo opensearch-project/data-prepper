@@ -173,7 +173,7 @@ class S3SinkServiceIT {
 
     void configureNewLineCodec() {
         codec = new NdjsonOutputCodec(ndjsonOutputConfig);
-        keyGenerator = new KeyGenerator(s3SinkConfig, codec);
+        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE));
     }
 
     @Test
@@ -242,7 +242,7 @@ class S3SinkServiceIT {
 
     private S3SinkService createObjectUnderTest() {
         OutputCodecContext codecContext = new OutputCodecContext("Tag", Collections.emptyList(), Collections.emptyList());
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, keyGenerator, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics);
     }
 
     private int gets3ObjectCount() {
@@ -354,9 +354,8 @@ class S3SinkServiceIT {
     private void configureParquetCodec() {
         parquetOutputCodecConfig = new ParquetOutputCodecConfig();
         parquetOutputCodecConfig.setSchema(parseSchema().toString());
-        parquetOutputCodecConfig.setPathPrefix(PATH_PREFIX);
         codec = new ParquetOutputCodec(parquetOutputCodecConfig);
-        keyGenerator = new KeyGenerator(s3SinkConfig, codec);
+        keyGenerator = new KeyGenerator(s3SinkConfig, StandardExtensionProvider.create(codec, CompressionOption.NONE));
     }
 
     private Collection<Record<Event>> getRecordList() {

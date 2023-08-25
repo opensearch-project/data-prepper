@@ -23,7 +23,6 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -78,6 +77,18 @@ public class ParquetOutputCodecTest {
 
     private ParquetOutputCodec createObjectUnderTest() {
         return new ParquetOutputCodec(config);
+    }
+
+    @Test
+    void constructor_throws_if_schema_is_invalid() {
+        String invalidSchema = createStandardSchema().toString().replaceAll(",", ";");
+        config.setSchema(invalidSchema);
+
+        RuntimeException actualException = assertThrows(RuntimeException.class, this::createObjectUnderTest);
+
+        assertThat(actualException.getMessage(), notNullValue());
+        assertThat(actualException.getMessage(), containsString(invalidSchema));
+        assertThat(actualException.getMessage(), containsString("was expecting comma"));
     }
 
     @ParameterizedTest
@@ -167,8 +178,36 @@ public class ParquetOutputCodecTest {
     }
 
     @Test
-    void writeEvent_throws_exception_when_field_does_not_exist() throws IOException {
+    void writeEvent_includes_record_when_field_does_not_exist_in_user_supplied_schema() throws IOException {
         config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+        final Event eventWithInvalidField = mock(Event.class);
+        final String invalidFieldName = UUID.randomUUID().toString();
+        Map<String, Object> mapWithInvalid = generateRecords(1).get(0);
+        mapWithInvalid.put(invalidFieldName, UUID.randomUUID().toString());
+        when(eventWithInvalidField.toMap()).thenReturn(mapWithInvalid);
+        final ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        objectUnderTest.writeEvent(eventWithInvalidField, outputStream);
+
+        objectUnderTest.closeWriter(outputStream, tempFile);
+        List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
+        int index = 0;
+        for (final Map<String, Object> actualMap : actualRecords) {
+            assertThat(actualMap, notNullValue());
+            Map expectedMap = generateRecords(1).get(index);
+            assertThat(expectedMap, Matchers.equalTo(actualMap));
+            index++;
+        }
+    }
+
+    @Test
+    void writeEvent_throws_exception_when_field_does_not_exist_in_auto_schema() throws IOException {
+        config.setSchema(null);
         when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
         final Event eventWithInvalidField = mock(Event.class);
         final String invalidFieldName = UUID.randomUUID().toString();
@@ -177,27 +216,12 @@ public class ParquetOutputCodecTest {
 
         final File tempFile = new File(tempDirectory, FILE_NAME);
         LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
-        objectUnderTest.start(outputStream, null, codecContext);
+        objectUnderTest.start(outputStream, createEventRecord(generateRecords(1).get(0)), codecContext);
 
         final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
 
         assertThat(actualException.getMessage(), notNullValue());
         assertThat(actualException.getMessage(), containsString(invalidFieldName));
-    }
-
-    @Test
-    @Disabled("This feature is not present anyway. But, this test case may be quite correct because it does not account for auto-schema generation.")
-    public void test_s3SchemaValidity() throws IOException {
-        config = new ParquetOutputCodecConfig();
-        config.setSchema(createStandardSchema().toString());
-        config.setSchemaBucket("test");
-        config.setSchemaRegion("test");
-        config.setFileKey("test");
-        ParquetOutputCodec parquetOutputCodec = new ParquetOutputCodec(config);
-        assertThat(parquetOutputCodec.checkS3SchemaValidity(), equalTo(Boolean.TRUE));
-        ParquetOutputCodec parquetOutputCodecFalse = createObjectUnderTest();
-        assertThrows(IOException.class, () ->
-                parquetOutputCodecFalse.checkS3SchemaValidity());
     }
 
     private static Event createEventRecord(final Map<String, Object> eventData) {
