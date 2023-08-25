@@ -5,9 +5,6 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.MatcherAssert.assertThat;
-
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -21,9 +18,16 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.function.Supplier;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,8 +58,34 @@ class InMemoryBufferTest {
         }
         assertThat(inMemoryBuffer.getSize(), greaterThanOrEqualTo(54110L));
         assertThat(inMemoryBuffer.getEventCount(), equalTo(MAX_EVENTS));
-        assertThat(inMemoryBuffer.getDuration(), greaterThanOrEqualTo(0L));
+        assertThat(inMemoryBuffer.getDuration(), notNullValue());
+        assertThat(inMemoryBuffer.getDuration(), greaterThanOrEqualTo(Duration.ZERO));
 
+    }
+
+    @Test
+    void getDuration_provides_duration_within_expected_range() throws IOException, InterruptedException {
+        Instant startTime = Instant.now();
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        Instant endTime = Instant.now();
+
+
+        while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
+            OutputStream outputStream = inMemoryBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = inMemoryBuffer.getEventCount() +1;
+            inMemoryBuffer.setEventCount(eventCount);
+        }
+        Thread.sleep(100);
+
+        Instant durationCheckpointTime = Instant.now();
+        Duration duration = inMemoryBuffer.getDuration();
+        assertThat(duration, notNullValue());
+
+        Duration upperBoundDuration = Duration.between(startTime, durationCheckpointTime).truncatedTo(ChronoUnit.MILLIS);
+        Duration lowerBoundDuration = Duration.between(endTime, durationCheckpointTime).truncatedTo(ChronoUnit.MILLIS);
+        assertThat(duration, greaterThanOrEqualTo(lowerBoundDuration));
+        assertThat(duration, lessThanOrEqualTo(upperBoundDuration));
     }
 
     @Test

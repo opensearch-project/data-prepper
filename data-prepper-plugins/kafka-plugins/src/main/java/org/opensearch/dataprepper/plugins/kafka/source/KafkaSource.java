@@ -5,34 +5,34 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
+import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.schemaregistry.client.CachedSchemaRegistryClient;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import io.confluent.kafka.serializers.KafkaJsonDeserializer;
 import kafka.common.BrokerEndPointNotAvailableException;
 import org.apache.avro.generic.GenericRecord;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.confluent.kafka.serializers.KafkaAvroDeserializer;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.KafkaAdminClient;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.errors.BrokerNotAvailableException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
-import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
@@ -44,11 +44,8 @@ import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsum
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
-import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
-
-import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
-
+import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,25 +54,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.util.Map;
-import java.util.List;
-import java.util.Objects;
-import java.util.Comparator;
-import java.util.Properties;
-import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.concurrent.Executors;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.stream.IntStream;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.IntStream;
 
 /**
  * The starting point of the Kafka-source plugin and the Kafka consumer
@@ -100,6 +97,8 @@ public class KafkaSource implements Source<Record<Event>> {
     private static CachedSchemaRegistryClient schemaRegistryClient;
     private GlueSchemaRegistryKafkaDeserializer glueDeserializer;
     private StringDeserializer stringDeserializer;
+    private final List<ExecutorService> allTopicExecutorServices;
+    private final List<KafkaSourceCustomConsumer> allTopicConsumers;
 
     @DataPrepperPluginConstructor
     public KafkaSource(final KafkaSourceConfig sourceConfig,
@@ -111,7 +110,9 @@ public class KafkaSource implements Source<Record<Event>> {
         this.acknowledgementSetManager = acknowledgementSetManager;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.stringDeserializer = new StringDeserializer();
-        shutdownInProgress = new AtomicBoolean(false);
+        this.shutdownInProgress = new AtomicBoolean(false);
+        this.allTopicExecutorServices = new ArrayList<>();
+        this.allTopicConsumers = new ArrayList<>();
     }
 
     @Override
@@ -126,6 +127,8 @@ public class KafkaSource implements Source<Record<Event>> {
             try {
                 int numWorkers = topic.getWorkers();
                 executorService = Executors.newFixedThreadPool(numWorkers);
+                allTopicExecutorServices.add(executorService);
+
                 IntStream.range(0, numWorkers).forEach(index -> {
                     switch (schema) {
                         case JSON:
@@ -145,6 +148,8 @@ public class KafkaSource implements Source<Record<Event>> {
                             break;
                     }
                     consumer = new KafkaSourceCustomConsumer(kafkaConsumer, shutdownInProgress, buffer, sourceConfig, topic, schemaType, acknowledgementSetManager, topicMetrics);
+                    allTopicConsumers.add(consumer);
+
                     executorService.submit(consumer);
                 });
             } catch (Exception e) {
@@ -162,12 +167,22 @@ public class KafkaSource implements Source<Record<Event>> {
 
     @Override
     public void stop() {
-        LOG.info("Shutting down Consumers...");
         shutdownInProgress.set(true);
+        final long shutdownWaitTime = calculateLongestThreadWaitingTime();
+
+        LOG.info("Shutting down {} Executor services", allTopicExecutorServices.size());
+        allTopicExecutorServices.forEach(executor -> stopExecutor(executor, shutdownWaitTime));
+
+        LOG.info("Closing {} consumers", allTopicConsumers.size());
+        allTopicConsumers.forEach(consumer -> consumer.closeConsumer());
+
+        LOG.info("Kafka source shutdown successfully...");
+    }
+
+    public void stopExecutor(final ExecutorService executorService, final long shutdownWaitTime) {
         executorService.shutdown();
         try {
-            if (!executorService.awaitTermination(
-                    calculateLongestThreadWaitingTime(), TimeUnit.SECONDS)) {
+            if (!executorService.awaitTermination(shutdownWaitTime, TimeUnit.SECONDS)) {
                 LOG.info("Consumer threads are waiting for shutting down...");
                 executorService.shutdownNow();
             }
@@ -178,7 +193,6 @@ public class KafkaSource implements Source<Record<Event>> {
                 Thread.currentThread().interrupt();
             }
         }
-        LOG.info("Consumer shutdown successfully...");
     }
 
     private long calculateLongestThreadWaitingTime() {
@@ -270,7 +284,6 @@ public class KafkaSource implements Source<Record<Event>> {
                 // the schemaType to PLAINTEXT
                 LOG.error("GET request failed while fetching the schema registry. Defaulting to schema type PLAINTEXT");
                 return MessageFormat.PLAINTEXT.toString();
-
             }
         } catch (IOException e) {
             LOG.error("An error while fetching the schema registry details : ", e);

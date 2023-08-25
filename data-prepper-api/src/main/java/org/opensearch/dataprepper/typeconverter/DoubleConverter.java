@@ -19,6 +19,6 @@ public class DoubleConverter implements TypeConverter<Double> {
         if (source instanceof Boolean) {
             return (double)(((Boolean)source) ? 1.0 : 0.0);
         }
-        throw new IllegalArgumentException("Unsupported type conversion");
+        throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }
 }

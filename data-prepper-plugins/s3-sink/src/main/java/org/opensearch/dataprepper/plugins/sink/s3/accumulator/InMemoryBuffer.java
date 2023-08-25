@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -50,8 +51,8 @@ public class InMemoryBuffer implements Buffer {
         return eventCount;
     }
 
-    public long getDuration() {
-        return watch.getTime(TimeUnit.SECONDS);
+    public Duration getDuration() {
+        return Duration.ofMillis(watch.getTime(TimeUnit.MILLISECONDS));
     }
 
     /**

@@ -5,16 +5,15 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3;
 
-import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.ObjectKey;
 
 public class KeyGenerator {
     private final S3SinkConfig s3SinkConfig;
-    private final OutputCodec outputCodec;
+    private final ExtensionProvider extensionProvider;
 
-    public KeyGenerator(S3SinkConfig s3SinkConfig, OutputCodec outputCodec) {
+    public KeyGenerator(S3SinkConfig s3SinkConfig, ExtensionProvider extensionProvider) {
         this.s3SinkConfig = s3SinkConfig;
-        this.outputCodec = outputCodec;
+        this.extensionProvider = extensionProvider;
     }
 
     /**
@@ -24,7 +23,7 @@ public class KeyGenerator {
      */
     String generateKey() {
         final String pathPrefix = ObjectKey.buildingPathPrefix(s3SinkConfig);
-        final String namePattern = ObjectKey.objectFileName(s3SinkConfig, outputCodec.getExtension());
+        final String namePattern = ObjectKey.objectFileName(s3SinkConfig, extensionProvider.getExtension());
         return (!pathPrefix.isEmpty()) ? pathPrefix + namePattern : namePattern;
     }
 }
