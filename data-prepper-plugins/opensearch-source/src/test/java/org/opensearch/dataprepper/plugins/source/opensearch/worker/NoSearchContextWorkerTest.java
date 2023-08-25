@@ -12,6 +12,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -34,6 +36,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -42,12 +46,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS;
 
 @ExtendWith(MockitoExtension.class)
 public class NoSearchContextWorkerTest {
@@ -67,15 +74,19 @@ public class NoSearchContextWorkerTest {
     @Mock
     private BufferAccumulator<Record<Event>> bufferAccumulator;
 
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
     private ExecutorService executorService;
 
     @BeforeEach
     void setup() {
         executorService = Executors.newSingleThreadExecutor();
+        lenient().when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
     }
 
     private NoSearchContextWorker createObjectUnderTest() {
-        return new NoSearchContextWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
+        return new NoSearchContextWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager);
     }
 
     @Test
@@ -177,5 +188,78 @@ public class NoSearchContextWorkerTest {
         assertThat(noSearchContextSearchRequests.get(1).getIndex(), equalTo(partitionKey));
         assertThat(noSearchContextSearchRequests.get(1).getPaginationSize(), equalTo(2));
         assertThat(noSearchContextSearchRequests.get(1).getSearchAfter(), equalTo(searchWithSearchAfterResults.getNextSearchAfter()));
+    }
+
+    @Test
+    void run_with_getNextPartition_with_acknowledgments_processes_and_closes_that_partition() throws Exception {
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
+        doAnswer(a -> {
+            numEventsAdded.getAndSet(numEventsAdded.get() + 1);
+            return null;
+        }).when(acknowledgementSet).add(any());
+
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(true);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS)));
+        when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(true);
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final SearchWithSearchAfterResults searchWithSearchAfterResults = mock(SearchWithSearchAfterResults.class);
+        when(searchWithSearchAfterResults.getNextSearchAfter()).thenReturn(Collections.singletonList(UUID.randomUUID().toString()));
+        when(searchWithSearchAfterResults.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class), mock(Event.class)))
+                .thenReturn(List.of(mock(Event.class))).thenReturn(List.of(mock(Event.class)));
+
+        final ArgumentCaptor<NoSearchContextSearchRequest> searchRequestArgumentCaptor = ArgumentCaptor.forClass(NoSearchContextSearchRequest.class);
+        when(searchAccessor.searchWithoutSearchContext(searchRequestArgumentCaptor.capture())).thenReturn(searchWithSearchAfterResults);
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
+
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getJobCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getRate()).thenReturn(Duration.ZERO);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        doNothing().when(sourceCoordinator).closePartition(partitionKey,
+                Duration.ZERO, 1);
+
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(future.isCancelled(), equalTo(true));
+
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        verify(searchAccessor, times(2)).searchWithoutSearchContext(any(NoSearchContextSearchRequest.class));
+        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), any(OpenSearchIndexProgressState.class));
+
+        final List<NoSearchContextSearchRequest> noSearchContextSearchRequests = searchRequestArgumentCaptor.getAllValues();
+        assertThat(noSearchContextSearchRequests.size(), equalTo(2));
+        assertThat(noSearchContextSearchRequests.get(0), notNullValue());
+        assertThat(noSearchContextSearchRequests.get(0).getIndex(), equalTo(partitionKey));
+        assertThat(noSearchContextSearchRequests.get(0).getPaginationSize(), equalTo(2));
+        assertThat(noSearchContextSearchRequests.get(0).getSearchAfter(), equalTo(null));
+
+        assertThat(noSearchContextSearchRequests.get(1), notNullValue());
+        assertThat(noSearchContextSearchRequests.get(1).getIndex(), equalTo(partitionKey));
+        assertThat(noSearchContextSearchRequests.get(1).getPaginationSize(), equalTo(2));
+        assertThat(noSearchContextSearchRequests.get(1).getSearchAfter(), equalTo(searchWithSearchAfterResults.getNextSearchAfter()));
+
+        verify(acknowledgementSet).complete();
     }
 }
