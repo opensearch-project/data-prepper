@@ -85,9 +85,6 @@ public class S3SinkIT {
     private static final Logger LOG = LoggerFactory.getLogger(S3SinkIT.class);
     private static final Random RANDOM = new Random();
 
-    static final int MEDIUM_OBJECT_SIZE = 50 * 500;
-    static final int LARGE_OBJECT_SIZE = 500 * 2_000;
-
     private static List<String> reusableRandomStrings;
 
     @Mock
@@ -176,27 +173,31 @@ public class S3SinkIT {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(IntegrationTestArguments.class)
-    void test(final OutputScenario outputScenario, final BufferTypeOptions bufferTypeOptions, final CompressionScenario compressionScenario, final int batchSize, final int numberOfBatches) throws IOException {
+    @ArgumentsSource(BufferCombinationsArguments.class)
+    @ArgumentsSource(CodecArguments.class)
+    void test(final OutputScenario outputScenario,
+              final BufferTypeOptions bufferTypeOptions,
+              final CompressionScenario compressionScenario,
+              final SizeCombination sizeCombination) throws IOException {
 
-        String testRun = outputScenario + "-" + bufferTypeOptions + "-" + compressionScenario + "-" + batchSize + "-" + numberOfBatches;
+        String testRun = outputScenario + "-" + bufferTypeOptions + "-" + compressionScenario + "-" + sizeCombination.getBatchSize() + "-" + sizeCombination.getNumberOfBatches();
         final String pathPrefix = pathPrefixForTestSuite + testRun;
         when(objectKeyOptions.getPathPrefix()).thenReturn(pathPrefix + "/");
 
         when(pluginFactory.loadPlugin(eq(OutputCodec.class), any())).thenReturn(outputScenario.getCodec());
         when(s3SinkConfig.getBufferType()).thenReturn(bufferTypeOptions);
         when(s3SinkConfig.getCompression()).thenReturn(compressionScenario.getCompressionOption());
-        int expectedTotalSize = batchSize * numberOfBatches;
+        int expectedTotalSize = sizeCombination.getTotalSize();
         when(thresholdOptions.getEventCount()).thenReturn(expectedTotalSize);
 
         final S3Sink objectUnderTest = createObjectUnderTest();
 
-        final int maxEventDataToSample = 5000;
+        final int maxEventDataToSample = 2000;
         final List<Map<String, Object>> sampleEventData = new ArrayList<>(maxEventDataToSample);
-        for (int batchNumber = 0; batchNumber < numberOfBatches; batchNumber++) {
+        for (int batchNumber = 0; batchNumber < sizeCombination.getNumberOfBatches(); batchNumber++) {
             final int currentBatchNumber = batchNumber;
-            final List<Record<Event>> events = IntStream.range(0, batchSize)
-                    .mapToObj(sequence -> generateEventData((currentBatchNumber+1) * (sequence+1)))
+            final List<Record<Event>> events = IntStream.range(0, sizeCombination.getBatchSize())
+                    .mapToObj(sequence -> generateEventData((currentBatchNumber + 1) * (sequence + 1)))
                     .peek(data -> {
                         if (sampleEventData.size() < maxEventDataToSample)
                             sampleEventData.add(data);
@@ -213,7 +214,7 @@ public class S3SinkIT {
 
         final ListObjectsV2Response listObjectsResponse = s3Client.listObjectsV2(ListObjectsV2Request.builder()
                 .bucket(bucketName)
-                .prefix(pathPrefix)
+                .prefix(pathPrefix + "/")
                 .build());
 
         assertThat(listObjectsResponse.contents(), notNullValue());
@@ -281,7 +282,13 @@ public class S3SinkIT {
         return eventDataMap;
     }
 
-    static class IntegrationTestArguments implements ArgumentsProvider {
+
+    /**
+     * These tests focus on various size combinations for various buffers.
+     * It should cover all the buffers with some different size combinations.
+     * But, only needs a sample of codecs.
+     */
+    static class BufferCombinationsArguments implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
             final List<BufferScenario> bufferScenarios = List.of(
@@ -298,31 +305,58 @@ public class S3SinkIT {
                     new GZipCompressionScenario(),
                     new SnappyCompressionScenario()
             );
-            final List<Integer> numberOfRecordsPerBatchList = List.of(
-                    1,
-                    500
-            );
-            final List<Integer> numberOfBatchesList = List.of(
-                    1,
-                    50,
-                    1_000
+            final List<SizeCombination> sizeCombinations = List.of(
+                    SizeCombination.EXACTLY_ONE,
+                    SizeCombination.MEDIUM_SMALLER,
+                    SizeCombination.LARGE
             );
 
-            return outputScenarios
-                    .stream()
-                    .flatMap(outputScenario -> bufferScenarios
-                            .stream()
-                            .filter(bufferScenario -> !outputScenario.getIncompatibleBufferTypes().contains(bufferScenario.getBufferType()))
-                            .flatMap(bufferScenario -> compressionScenarios
-                                    .stream()
-                                    .flatMap(compressionScenario -> numberOfRecordsPerBatchList
-                                            .stream()
-                                            .flatMap(batchRecordCount -> numberOfBatchesList
-                                                    .stream()
-                                                    .filter(batchCount -> batchCount * batchRecordCount <= bufferScenario.getMaximumNumberOfEvents())
-                                                    .map(batchCount -> arguments(outputScenario, bufferScenario.getBufferType(), compressionScenario, batchRecordCount, batchCount))
-                                            ))));
+            return generateCombinedArguments(bufferScenarios, outputScenarios, compressionScenarios, sizeCombinations);
         }
+    }
+
+    /**
+     * Should test all codecs. It only varies some other conditions slightly.
+     */
+    static class CodecArguments implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
+            final List<BufferScenario> bufferScenarios = List.of(
+                    new InMemoryBufferScenario(),
+                    new MultiPartBufferScenario()
+            );
+            final List<OutputScenario> outputScenarios = List.of(
+                    new NdjsonOutputScenario()
+            );
+            final List<CompressionScenario> compressionScenarios = List.of(
+                    new NoneCompressionScenario(),
+                    new GZipCompressionScenario()
+            );
+            final List<SizeCombination> sizeCombinations = List.of(
+                    SizeCombination.MEDIUM_LARGER
+            );
+
+            return generateCombinedArguments(bufferScenarios, outputScenarios, compressionScenarios, sizeCombinations);
+        }
+    }
+
+    private static Stream<? extends Arguments> generateCombinedArguments(
+            final List<BufferScenario> bufferScenarios,
+            final List<OutputScenario> outputScenarios,
+            final List<CompressionScenario> compressionScenarios,
+            final List<SizeCombination> sizeCombinations) {
+        return outputScenarios
+                .stream()
+                .flatMap(outputScenario -> bufferScenarios
+                        .stream()
+                        .filter(bufferScenario -> !outputScenario.getIncompatibleBufferTypes().contains(bufferScenario.getBufferType()))
+                        .flatMap(bufferScenario -> compressionScenarios
+                                .stream()
+                                .flatMap(compressionScenario -> sizeCombinations
+                                        .stream()
+                                        .filter(sizeCombination -> sizeCombination.getTotalSize() <= bufferScenario.getMaximumNumberOfEvents())
+                                        .map(sizeCombination -> arguments(outputScenario, bufferScenario.getBufferType(), compressionScenario, sizeCombination))
+                                )));
     }
 
     private static String reusableRandomString() {
