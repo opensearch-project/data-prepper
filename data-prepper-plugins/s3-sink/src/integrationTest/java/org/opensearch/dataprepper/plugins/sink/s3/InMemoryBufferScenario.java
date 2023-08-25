@@ -15,6 +15,6 @@ public class InMemoryBufferScenario implements BufferScenario {
 
     @Override
     public int getMaximumNumberOfEvents() {
-        return SizeCombination.MEDIUM_LARGER.getTotalSize();
+        return SizeCombination.LARGE.getTotalSize();
     }
 }

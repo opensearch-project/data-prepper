@@ -164,6 +164,8 @@ public class S3SinkService {
     }
 
     private void flushToS3IfNeeded() {
+        LOG.trace("Flush to S3 check: currentBuffer.size={}, currentBuffer.events={}, currentBuffer.duration={}",
+                currentBuffer.getSize(), currentBuffer.getEventCount(), currentBuffer.getDuration());
         if (ThresholdCheck.checkThresholdExceed(currentBuffer, maxEvents, maxBytes, maxCollectionDuration)) {
             try {
                 codec.complete(currentBuffer.getOutputStream());
