@@ -20,17 +20,17 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
-import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
 import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
+import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 @DataPrepperPlugin(name = "parquet", pluginType = OutputCodec.class, pluginConfigurationType = ParquetOutputCodecConfig.class)
-public class ParquetOutputCodec implements OutputCodec {
+public class ParquetOutputCodec implements OutputCodec, BufferedCodec {
     private static final String PARQUET = "parquet";
     private final ParquetOutputCodecConfig config;
     private static Schema schema;
@@ -38,6 +38,7 @@ public class ParquetOutputCodec implements OutputCodec {
     private final AvroAutoSchemaGenerator avroAutoSchemaGenerator;
     private ParquetWriter<GenericRecord> writer;
     private OutputCodecContext codecContext;
+    private boolean isClosed = false;
 
 
     @DataPrepperPluginConstructor
@@ -96,6 +97,7 @@ public class ParquetOutputCodec implements OutputCodec {
                 .withSchema(schema)
                 .withCompressionCodec(compressionCodecName)
                 .build();
+        isClosed = false;
     }
 
     @Override
@@ -112,13 +114,7 @@ public class ParquetOutputCodec implements OutputCodec {
 
     @Override
     public synchronized void complete(final OutputStream outputStream) throws IOException {
-        writer.close();
-    }
-
-    public void closeWriter(final OutputStream outputStream, File file) throws IOException {
-        final LocalInputFile inputFile = new LocalInputFile(file);
-        byte[] byteBuffer = inputFile.newStream().readAllBytes();
-        outputStream.write(byteBuffer);
+        isClosed = true;
         writer.close();
     }
 
@@ -129,5 +125,16 @@ public class ParquetOutputCodec implements OutputCodec {
 
     static Schema parseSchema(final String schemaString) {
         return new Schema.Parser().parse(schemaString);
+    }
+
+    @Override
+    public Optional<Long> getSize() {
+        if(writer == null)
+            return Optional.of(0L);
+
+        if(isClosed)
+            return Optional.empty();
+
+        return Optional.of(writer.getDataSize());
     }
 }
