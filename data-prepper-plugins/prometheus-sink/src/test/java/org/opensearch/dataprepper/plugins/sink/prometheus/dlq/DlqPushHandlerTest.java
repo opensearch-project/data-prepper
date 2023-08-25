@@ -4,9 +4,11 @@
  */
 package org.opensearch.dataprepper.plugins.sink.prometheus.dlq;
 
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
@@ -54,6 +56,18 @@ public class DlqPushHandlerTest {
 
     private DlqWriter dlqWriter;
 
+    private PluginMetrics pluginMetrics;
+
+    private  Counter dlqS3RecordsSuccessCounter;
+    private  Counter dlqS3RecordsFailedCounter;
+    private  Counter dlqS3RequestSuccessCounter;
+    private  Counter dlqS3RequestFailedCounter;
+
+    private  Counter dlqFileRecordsSuccessCounter;
+    private  Counter dlqFileRecordsFailedCounter;
+    private  Counter dlqFileRequestSuccessCounter;
+    private  Counter dlqFileRequestFailedCounter;
+
     @BeforeEach
     public void setUp() throws Exception{
         this.pluginFactory = mock(PluginFactory.class);
@@ -61,6 +75,25 @@ public class DlqPushHandlerTest {
         this.awsAuthenticationOptions =  mock(AwsAuthenticationOptions.class);
         this.dlqProvider = mock(DlqProvider.class);
         this.dlqWriter = mock(DlqWriter.class);
+        this.pluginMetrics = mock(PluginMetrics.class);
+        this.dlqS3RecordsSuccessCounter = mock(Counter.class);
+        this.dlqS3RecordsFailedCounter = mock(Counter.class);
+        this.dlqS3RequestSuccessCounter = mock(Counter.class);
+        this.dlqS3RequestFailedCounter = mock(Counter.class);
+        this.dlqFileRecordsSuccessCounter = mock(Counter.class);
+        this.dlqFileRecordsFailedCounter = mock(Counter.class);
+        this.dlqFileRequestSuccessCounter = mock(Counter.class);
+        this.dlqFileRequestFailedCounter = mock(Counter.class);
+        when(pluginMetrics.counter(DlqPushHandler.S3_DLQ_RECORDS_SUCCESS)).thenReturn(dlqS3RecordsSuccessCounter);
+        when(pluginMetrics.counter(DlqPushHandler.S3_DLQ_RECORDS_FAILED)).thenReturn(dlqS3RecordsFailedCounter);
+        when(pluginMetrics.counter(DlqPushHandler.S3_DLQ_REQUEST_SUCCESS)).thenReturn(dlqS3RequestSuccessCounter);
+        when(pluginMetrics.counter(DlqPushHandler.S3_DLQ_REQUEST_FAILED)).thenReturn(dlqS3RequestFailedCounter);
+        when(pluginMetrics.counter(DlqPushHandler.FILE_DLQ_RECORDS_SUCCESS)).thenReturn(dlqFileRecordsSuccessCounter);
+        when(pluginMetrics.counter(DlqPushHandler.FILE_DLQ_RECORDS_FAILED)).thenReturn(dlqFileRecordsFailedCounter);
+        when(pluginMetrics.counter(DlqPushHandler.FILE_DLQ_REQUEST_SUCCESS)).thenReturn(dlqFileRequestSuccessCounter);
+        when(pluginMetrics.counter(DlqPushHandler.FILE_DLQ_REQUEST_FAILED)).thenReturn(dlqFileRequestFailedCounter);
+
+
     }
 
     @Test
@@ -74,7 +107,7 @@ public class DlqPushHandlerTest {
         when(dlqProvider.getDlqWriter(Mockito.anyString())).thenReturn(Optional.of(dlqWriter));
         doNothing().when(dlqWriter).write(anyList(), anyString(), anyString());
         FailedDlqData failedDlqData = FailedDlqData.builder().build();
-        dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE);
+        dlqPushHandler = new DlqPushHandler(null,pluginFactory, BUCKET_VALUE, ROLE, REGION,KEY_PATH_PREFIX_VALUE, pluginMetrics);
 
         PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, props);
         pluginSetting.setPipelineName(PIPELINE_NAME);
@@ -87,7 +120,7 @@ public class DlqPushHandlerTest {
     public void perform_for_dlq_local_file_success(){
 
         FailedDlqData failedDlqData = FailedDlqData.builder().build();
-        dlqPushHandler = new DlqPushHandler(DLQ_FILE,pluginFactory,null, ROLE, REGION,null);
+        dlqPushHandler = new DlqPushHandler(DLQ_FILE,pluginFactory,null, ROLE, REGION,null, pluginMetrics);
 
         PluginSetting pluginSetting = new PluginSetting(S3_PLUGIN_NAME, null);
         pluginSetting.setPipelineName(PIPELINE_NAME);

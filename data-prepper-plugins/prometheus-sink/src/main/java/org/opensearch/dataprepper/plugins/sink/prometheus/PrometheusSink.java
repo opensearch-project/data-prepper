@@ -51,19 +51,23 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
                     final AwsCredentialsSupplier awsCredentialsSupplier) {
         super(pluginSetting);
         this.sinkInitialized = Boolean.FALSE;
-        this.dlqPushHandler = new DlqPushHandler(prometheusSinkConfiguration.getDlqFile(), pluginFactory,
-                String.valueOf(prometheusSinkConfiguration.getDlqPluginSetting().get(BUCKET)),
-                prometheusSinkConfiguration.getDlqStsRoleARN()
-                ,prometheusSinkConfiguration.getDlqStsRegion(),
-                String.valueOf(prometheusSinkConfiguration.getDlqPluginSetting().get(KEY_PATH)));
-
+        if (prometheusSinkConfiguration.getDlqFile() != null) {
+            this.dlqPushHandler = new DlqPushHandler(prometheusSinkConfiguration.getDlqFile(), pluginFactory,
+                    null, null, null, null, pluginMetrics);
+        }else {
+            this.dlqPushHandler = new DlqPushHandler(prometheusSinkConfiguration.getDlqFile(), pluginFactory,
+                    String.valueOf(prometheusSinkConfiguration.getDlqPluginSetting().get(BUCKET)),
+                    prometheusSinkConfiguration.getDlqStsRoleARN()
+                    , prometheusSinkConfiguration.getDlqStsRegion(),
+                    String.valueOf(prometheusSinkConfiguration.getDlqPluginSetting().get(KEY_PATH)), pluginMetrics);
+        }
         final HttpRequestRetryStrategy httpRequestRetryStrategy = new DefaultHttpRequestRetryStrategy(prometheusSinkConfiguration.getMaxUploadRetries(),
                 TimeValue.of(prometheusSinkConfiguration.getHttpRetryInterval()));
 
         final HttpClientBuilder httpClientBuilder = HttpClients.custom()
                 .setRetryStrategy(httpRequestRetryStrategy);
 
-        if(prometheusSinkConfiguration.isAwsSigv4() && prometheusSinkConfiguration.isValidAWSUrl()){
+        if(prometheusSinkConfiguration.getAwsAuthenticationOptions().isAwsSigv4() && prometheusSinkConfiguration.isValidAWSUrl()){
             PrometheusSinkAwsService.attachSigV4(prometheusSinkConfiguration, httpClientBuilder, awsCredentialsSupplier);
         }
         this.prometheusSinkService = new PrometheusSinkService(

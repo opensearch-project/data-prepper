@@ -72,8 +72,6 @@ pipeline:
 
 - `scope` (Optional) : This scope limit an application's access to a user's account.
 
-- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Default to `false`.
-
 - `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details. SigV4 is enabled by default when this option is used. If this option is present, `aws_` options are not expected to be present. If any of `aws_` options are present along with this, error is thrown.
 
 - `custom_header` (Optional) : A Map<String, List<String> for custom headers such as AWS Sagemaker etc
@@ -113,7 +111,6 @@ pipeline:
         acm_certificate_arn:
         custom_header:
           header: ["value"]
-        aws_sigv4: false
         dlq_file : <dlq file with full path>
         dlq:
           s3:
@@ -122,6 +119,7 @@ pipeline:
         aws:
           region: "us-east-2"
           sts_role_arn: "arn:aws:iam::1234567890:role/data-prepper-s3source-execution-role"
+          sigv4: false
         max_retries: 5
 ```
 
@@ -141,6 +139,7 @@ pipeline:
 * `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
 * `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
 * `sts_external_id` (Optional): An optional external ID to use when assuming an IAM role.
+* `sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Default to `false`.
 
 ### End-to-End acknowledgements
 

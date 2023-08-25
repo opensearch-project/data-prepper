@@ -57,7 +57,6 @@ public class PrometheusSinkConfigurationTest {
             "          sts_external_id: \"test-external-id\"\n" +
             "          sts_header_overrides: {\"test\": test }\n" +
             "        max_retries: 5\n" +
-            "        aws_sigv4: true\n" +
             "        custom_header:\n" +
             "          X-Amzn-SageMaker-Custom-Attributes: [\"test-attribute\"]\n" +
             "          X-Amzn-SageMaker-Target-Model: [\"test-target-model\"]\n" +
@@ -99,10 +98,6 @@ public class PrometheusSinkConfigurationTest {
         assertThat(new PrometheusSinkConfiguration().isSsl(), equalTo(false));
     }
 
-    @Test
-    void default_awsSigv4_test() {
-        assertThat(new PrometheusSinkConfiguration().isAwsSigv4(), equalTo(false));
-    }
 
     @Test
     void get_ssl_certificate_file_test() {

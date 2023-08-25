@@ -84,7 +84,7 @@ public class PrometheusSinkServiceIT {
         this.dlqPushHandler = new DlqPushHandler(prometheusSinkConfiguration.getDlqFile(), pluginFactory,
                 "bucket",
                 "arn", "region",
-                "keypath");
+                "keypath", pluginMetrics);
 
         HttpClientBuilder httpClientBuilder = HttpClients.custom();
 

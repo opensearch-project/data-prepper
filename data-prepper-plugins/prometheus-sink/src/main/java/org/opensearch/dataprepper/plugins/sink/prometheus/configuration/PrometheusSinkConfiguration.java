@@ -76,9 +76,6 @@ public class PrometheusSinkConfiguration {
     @JsonProperty("ssl_key_file")
     private String sslKeyFile;
 
-    @JsonProperty("aws_sigv4")
-    private boolean awsSigv4;
-
     @JsonProperty("max_retries")
     private int maxUploadRetries = DEFAULT_UPLOAD_RETRIES;
 
@@ -208,10 +205,6 @@ public class PrometheusSinkConfiguration {
 
     public String getSslKeyFile() {
         return sslKeyFile;
-    }
-
-    public boolean isAwsSigv4() {
-        return awsSigv4;
     }
 
     public int getMaxUploadRetries() {

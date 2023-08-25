@@ -80,8 +80,7 @@ public class PrometheusSinkServiceTest {
             "        max_retries: 5\n" +
             "        encoding: snappy\n" +
             "        content-type: \"application/octet-stream\"\n" +
-            "        remote-write-version: 0.1.0\n" +
-            "        aws_sigv4: false\n";
+            "        remote-write-version: 0.1.0\n";
 
     private PrometheusSinkConfiguration prometheusSinkConfiguration;
 

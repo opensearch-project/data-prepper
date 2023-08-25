@@ -60,8 +60,7 @@ public class HttpClientSSLConnectionManager {
     private SSLContext getCAStrategy(final InputStream certificate) {
         try {
             CertificateFactory factory = CertificateFactory.getInstance("X.509");
-            Certificate trustedCa;
-            trustedCa = factory.generateCertificate(certificate);
+            Certificate trustedCa = factory.generateCertificate(certificate);
             KeyStore trustStore = KeyStore.getInstance("pkcs12");
             trustStore.load(null, null);
             trustStore.setCertificateEntry("ca", trustedCa);

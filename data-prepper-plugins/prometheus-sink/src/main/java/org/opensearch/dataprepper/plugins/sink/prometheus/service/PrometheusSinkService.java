@@ -170,21 +170,23 @@ public class PrometheusSinkService {
                     } else {
                         LOG.error("No valid Event type found");
                     }
-                    bytes = message.toByteArray();
-                }
-                if (event.getEventHandle() != null) {
-                    this.bufferedEventHandles.add(event.getEventHandle());
-                }
-                HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(bytes);
+                    if( message.toByteArray() != null)
+                        bytes = message.toByteArray();
+                    }
+                    if (event.getEventHandle() != null) {
+                        this.bufferedEventHandles.add(event.getEventHandle());
+                    }
+                if(bytes != null){
+                    HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(bytes);
 
-                if (failedHttpEndPointResponses != null) {
-                    logFailedData(failedHttpEndPointResponses);
-                    releaseEventHandles(Boolean.FALSE);
-                } else {
-                    LOG.info("data pushed to the end point successfully");
-                    releaseEventHandles(Boolean.TRUE);
-                }
-            });
+                    if (failedHttpEndPointResponses != null) {
+                        logFailedData(failedHttpEndPointResponses);
+                        releaseEventHandles(Boolean.FALSE);
+                    } else {
+                        LOG.info("data pushed to the end point successfully");
+                        releaseEventHandles(Boolean.TRUE);
+                    }
+                }});
 
         }finally {
             reentrantLock.unlock();

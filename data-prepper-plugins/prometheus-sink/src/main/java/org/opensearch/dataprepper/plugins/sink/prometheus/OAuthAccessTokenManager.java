@@ -33,10 +33,11 @@ public class OAuthAccessTokenManager {
             bearerTokenOptions.setRefreshToken(accessTokenObj.getRefreshToken());
             bearerTokenOptions.setAccessToken(accessTokenObj.getAccessToken());
             bearerTokenOptions.setTokenExpired(accessTokenObj.getExpiresIn());
+            return bearerTokenOptions.getAccessToken();
         }catch (Exception e) {
             LOG.info("Exception : "+ e.getMessage() );
         }
-        return bearerTokenOptions.getAccessToken();
+       return "";
     }
 
 
