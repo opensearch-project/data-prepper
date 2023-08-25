@@ -55,7 +55,14 @@ This includes building the artifacts, testing, drafting a GitHub release, and pr
 
 The release build will create a new GitHub issue requesting to release the project.
 This needs two maintainers to approve.
-Once approved, the release build will be promoted to production.
+To approve, load [Data Prepper issues](https://github.com/opensearch-project/data-prepper/issues).
+Look for and open a new issue starting with _Manual approval required for workflow_.
+Verify that the metadata looks correct and that we want to release.
+Add a new comment on the issue with the word _approve_ or _approved_ in it.
+(See the issue for all allowed words)
+Once approved by two maintainers, the release build will be promoted to production.
+
+You can also deny a release by using _deny_ or _denied_ in the comment.
 
 **NOTE** The smoke tests currently report a build failure, even when they succeed. Thus, you need to manually verify the output.
 
