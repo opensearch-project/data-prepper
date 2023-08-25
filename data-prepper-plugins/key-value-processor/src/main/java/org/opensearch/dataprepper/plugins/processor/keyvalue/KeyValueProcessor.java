@@ -56,11 +56,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
     final String delimiterBracketCheck = "[\\[\\]()<>]";
     private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
+    private final List<String> tagOnFailure;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
         super(pluginMetrics);
         this.keyValueProcessorConfig = keyValueProcessorConfig;
+
+        tagOnFailure = keyValueProcessorConfig.getTagOnFailure();
 
         if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {

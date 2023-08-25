@@ -30,6 +30,7 @@ public class KeyValueProcessorConfig {
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
     static final boolean DEFAULT_REMOVE_BRACKETS = false;
     static final boolean DEFAULT_RECURSIVE = false;
+    static final List<String> DEFAULT_TAG_ON_FAILURE = new ArrayList<>(Arrays.asList("keyvalueprocessor_failure"));
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -94,6 +95,9 @@ public class KeyValueProcessorConfig {
     @JsonProperty("recursive")
     @NotNull
     private boolean recursive = DEFAULT_RECURSIVE;
+
+    @JsonProperty("tag_on_failure")
+    private List<String> tagOnFailure = DEFAULT_TAG_ON_FAILURE;
 
     @JsonProperty("overwrite_if_destination_exists")
     private boolean overwriteIfDestinationExists = true;
@@ -168,6 +172,10 @@ public class KeyValueProcessorConfig {
 
     public boolean getRecursive() {
         return recursive;
+    }
+
+    public List<String> getTagOnFailure() {
+        return tagOnFailure;
     }
 
     public boolean getOverwriteIfDestinationExists() {
