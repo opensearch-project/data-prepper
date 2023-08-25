@@ -62,12 +62,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         super(pluginMetrics);
         this.keyValueProcessorConfig = keyValueProcessorConfig;
 
-        if(keyValueProcessorConfig.getFieldDelimiterRegex() != null
+        if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {
-            if(keyValueProcessorConfig.getFieldSplitCharacters() != null
+            if (keyValueProcessorConfig.getFieldSplitCharacters() != null
                 && !keyValueProcessorConfig.getFieldSplitCharacters().isEmpty()) {
                 throw new IllegalArgumentException("field_delimiter_regex and field_split_characters cannot both be defined.");
-            } else if(!validateRegex(keyValueProcessorConfig.getFieldDelimiterRegex())) {
+            } else if (!validateRegex(keyValueProcessorConfig.getFieldDelimiterRegex())) {
                 throw new PatternSyntaxException("field_delimiter_regex is not a valid regex string", keyValueProcessorConfig.getFieldDelimiterRegex(), -1);
             }
 
@@ -92,16 +92,15 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             fieldDelimiterPattern = Pattern.compile(regex);
 
-            if (keyValueProcessorConfig.getRecursive()) {
-                if (fieldDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("While recursive is true, the set field split characters cannot contain brackets while you are trying to recurse.");
-                }
+            if (keyValueProcessorConfig.getRecursive()
+                && fieldDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
+                throw new IllegalArgumentException("While recursive is true, the set field split characters cannot contain brackets while you are trying to recurse.");
             }
         }
 
-        if(keyValueProcessorConfig.getKeyValueDelimiterRegex() != null
+        if (keyValueProcessorConfig.getKeyValueDelimiterRegex() != null
                 && !keyValueProcessorConfig.getKeyValueDelimiterRegex().isEmpty()) {
-            if(keyValueProcessorConfig.getValueSplitCharacters() != null
+            if (keyValueProcessorConfig.getValueSplitCharacters() != null
                 && !keyValueProcessorConfig.getValueSplitCharacters().isEmpty()) {
                 throw new IllegalArgumentException("key_value_delimiter_regex and value_split_characters cannot both be defined.");
             } else if (!validateRegex(keyValueProcessorConfig.getKeyValueDelimiterRegex())) {
@@ -110,10 +109,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             keyValueDelimiterPattern = Pattern.compile(keyValueProcessorConfig.getKeyValueDelimiterRegex());
 
-            if (keyValueProcessorConfig.getRecursive()) {
-                if (keyValueDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("While recursive is true, the set key value delimiter regex cannot contain brackets while you are trying to recurse.");
-                }
+            if (keyValueProcessorConfig.getRecursive()
+                && keyValueDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
+                throw new IllegalArgumentException("While recursive is true, the set key value delimiter regex cannot contain brackets while you are trying to recurse.");
             }
         } else {
             String regex;
@@ -130,10 +128,9 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             keyValueDelimiterPattern = Pattern.compile(regex);
 
-            if (keyValueProcessorConfig.getRecursive()) {
-                if (keyValueDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
-                    throw new IllegalArgumentException("While recursive is true, the set value split characters cannot contain brackets while you are trying to recurse.");
-                }
+            if (keyValueProcessorConfig.getRecursive()
+                && keyValueDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
+                throw new IllegalArgumentException("While recursive is true, the set value split characters cannot contain brackets while you are trying to recurse.");
             }
         }
 
@@ -188,7 +185,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         char[] splitters = s.toCharArray();
         StringBuilder regexedFieldSplitCharacters = new StringBuilder();
         for(char c : splitters) {
-            if(Objects.equals(c, '\\')) {
+            if (Objects.equals(c, '\\')) {
                 regexedFieldSplitCharacters.append(c);
             } else {
                 regexedFieldSplitCharacters.append(c).append('|');
@@ -202,7 +199,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
     private boolean validateRegex(final String pattern)
     {
-        if(pattern != null && !Objects.equals(pattern, "")) {
+        if (pattern != null && !Objects.equals(pattern, "")) {
             try {
                 Pattern.compile(pattern);
             } catch (PatternSyntaxException e) {
@@ -257,7 +254,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         return records;
     }
 
-    private ObjectNode recurse(String input, ObjectMapper mapper) {
+    private ObjectNode recurse(final String input, final ObjectMapper mapper) {
         Stack<Character> bracketStack = new Stack<Character>();
         Map<Character, Character> bracketMap = initBracketMap();
         int pairStart = 0;
@@ -400,12 +397,12 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                 continue;
             }
 
-            if(keyValueProcessorConfig.getDeleteKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteKeyRegex(), "")) {
+            if (keyValueProcessorConfig.getDeleteKeyRegex() != null && !Objects.equals(keyValueProcessorConfig.getDeleteKeyRegex(), "")) {
                 key = key.replaceAll(keyValueProcessorConfig.getDeleteKeyRegex(), "");
             }
             key = keyValueProcessorConfig.getPrefix() + key;
 
-            if(value != null
+            if (value != null
                     && value instanceof String
                     && keyValueProcessorConfig.getDeleteValueRegex() != null
                     && !Objects.equals(keyValueProcessorConfig.getDeleteValueRegex(), "")) {
@@ -470,7 +467,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
             }
         }
 
-        if(!parsedMap.containsKey(key)) {
+        if (!parsedMap.containsKey(key)) {
             parsedMap.put(key, processedValue);
             return;
         }
