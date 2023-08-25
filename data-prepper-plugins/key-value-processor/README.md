@@ -90,6 +90,9 @@ When run, the processor will parse the message into the following output:
   * Example: `remove_brackets` is `false`. `{"key1=(value1)"}` will parse into `{"key1": "(value1)"}`
   * In the case of a key-value pair with a brackets and a split character, the splitting will take priority over `remove_brackets=true`. `{key1=(value1&value2)}` will parse into `{"key1":"value1","value2)":null}`
 
+* `tag_on_failure` - When a kv operation causes a runtime exception to be thrown within the processor, the operation is safely aborted without crashing the processor, and the event is tagged with the provided value.
+  * Default: `["keyvalueprocessor_failure"]`
+
 ## Developer Guide
 This plugin is compatible with Java 14. See
 - [CONTRIBUTING](https://github.com/opensearch-project/data-prepper/blob/main/CONTRIBUTING.md)

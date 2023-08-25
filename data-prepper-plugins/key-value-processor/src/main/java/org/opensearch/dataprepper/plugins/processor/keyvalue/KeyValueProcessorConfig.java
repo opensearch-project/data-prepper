@@ -29,6 +29,7 @@ public class KeyValueProcessorConfig {
     static final String DEFAULT_WHITESPACE = "lenient";
     static final boolean DEFAULT_SKIP_DUPLICATE_VALUES = false;
     static final boolean DEFAULT_REMOVE_BRACKETS = false;
+    static final List<String> DEFAULT_TAG_ON_FAILURE = new ArrayList<>(Arrays.asList("keyvalueprocessor_failure"));
 
     @NotEmpty
     private String source = DEFAULT_SOURCE;
@@ -90,6 +91,9 @@ public class KeyValueProcessorConfig {
     @JsonProperty("remove_brackets")
     @NotNull
     private boolean removeBrackets = DEFAULT_REMOVE_BRACKETS;
+
+    @JsonProperty("tag_on_failure")
+    private List<String> tagOnFailure = DEFAULT_TAG_ON_FAILURE;
 
     public String getSource() {
         return source;
@@ -157,5 +161,9 @@ public class KeyValueProcessorConfig {
 
     public boolean getRemoveBrackets() {
         return removeBrackets;
+    }
+
+    public List<String> getTagOnFailure() {
+        return tagOnFailure;
     }
 }
