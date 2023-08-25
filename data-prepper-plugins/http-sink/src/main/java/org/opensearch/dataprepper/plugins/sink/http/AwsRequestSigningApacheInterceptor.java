@@ -15,16 +15,14 @@ package org.opensearch.dataprepper.plugins.sink.http;
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.EntityDetails;
-import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.NameValuePair;
-import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.HttpRequestInterceptor;
-import org.apache.hc.core5.http.io.entity.BasicHttpEntity;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.net.URIBuilder;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.AwsSignerExecutionAttribute;
 import software.amazon.awssdk.core.interceptor.ExecutionAttributes;
@@ -147,7 +145,14 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
         requestBuilder.headers(headerArrayToMap(request.getHeaders()));
 
         ExecutionAttributes attributes = new ExecutionAttributes();
-        attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentialsProvider.resolveCredentials());
+        // TODO: below line are for testing, remove later
+        AwsCredentials awsCredentials = null;
+        String accessKey = "accessKey";
+        String secretKey = "secretKey";
+        //awsCredentials = AwsBasicCredentials.create(accessKey, secretKey);
+
+        awsCredentials = awsCredentialsProvider.resolveCredentials();
+        attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentials);
         attributes.putAttribute(AwsSignerExecutionAttribute.SERVICE_SIGNING_NAME, service);
         attributes.putAttribute(AwsSignerExecutionAttribute.SIGNING_REGION, region);
 
@@ -156,7 +161,7 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
 
         // Now copy everything back
         request.setHeaders(mapToHeaderArray(signedRequest.headers()));
-        if (request instanceof ClassicHttpRequest) {
+        /* if (request instanceof ClassicHttpRequest) {
             ClassicHttpRequest classicHttpRequest =
                     (ClassicHttpRequest) request;
             if (classicHttpRequest.getEntity() != null) {
@@ -165,7 +170,7 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
                         .newStream(), ContentType.APPLICATION_JSON);
                 classicHttpRequest.setEntity(basicHttpEntity);
             }
-        }
+        } */
     }
 
     private URI buildUri(final HttpContext context, URIBuilder uriBuilder) throws IOException {

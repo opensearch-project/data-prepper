@@ -8,6 +8,7 @@ import io.micrometer.core.instrument.Counter;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
+import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
@@ -232,7 +233,7 @@ public class HttpSinkService {
         HttpEndPointResponse httpEndPointResponses = null;
         final ClassicRequestBuilder classicHttpRequestBuilder =
                 httpAuthOptions.get(httpSinkConfiguration.getUrl()).getClassicHttpRequestBuilder();
-        classicHttpRequestBuilder.setEntity(new String(currentBufferData));
+        classicHttpRequestBuilder.setEntity(currentBufferData, ContentType.APPLICATION_JSON);
         try {
            if(AuthTypeOptions.BEARER_TOKEN.equals(httpSinkConfiguration.getAuthType()))
                accessTokenIfExpired(httpSinkConfiguration.getAuthentication().getBearerTokenOptions().getTokenExpired(),httpSinkConfiguration.getUrl());
@@ -310,6 +311,10 @@ public class HttpSinkService {
         if(Objects.nonNull(httpSinkConfiguration.getCustomHeaderOptions()))
             addCustomHeaders(classicRequestBuilder,httpSinkConfiguration.getCustomHeaderOptions());
 
+        if(httpSinkConfiguration.isAwsSigv4() && httpSinkConfiguration.isValidAWSUrl()){
+            classicRequestBuilder.addHeader("x-amz-content-sha256","required");
+        }
+        
         if(Objects.nonNull(proxyUrlString)) {
             httpClientBuilder.setProxy(HttpSinkUtil.getHttpHostByURL(HttpSinkUtil.getURLByUrlString(proxyUrlString)));
             LOG.info("sending data via proxy {}",proxyUrlString);
