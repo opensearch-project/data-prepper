@@ -103,6 +103,7 @@ When run, the processor will parse the message into the following output:
 
 * `tag_on_failure` - When a kv operation causes a runtime exception to be thrown within the processor, the operation is safely aborted without crashing the processor, and the event is tagged with the provided value.
   * Default: `["keyvalueprocessor_failure"]`
+  * Example: in the case of a runtime exception, the output will be `{"message": "some input message", "tags": ["keyvalueprocessor_failure"]}`
 
 ## Developer Guide
 This plugin is compatible with Java 14. See
