@@ -9,4 +9,3 @@ It is not a project and instead holds release notes and change logs for Data Pre
 ## Performing a Release
 
 See [RELEASING.md](../RELEASING.md) for instructions to follow for any release.
-
