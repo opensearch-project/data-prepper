@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +106,17 @@ public class AvroOutputCodec implements OutputCodec {
     @Override
     public String getExtension() {
         return AVRO;
+    }
+
+    @Override
+    public void validateAgainstCodecContext(OutputCodecContext outputCodecContext) {
+        if (config.isAutoSchema())
+            return;
+
+        if ((outputCodecContext.getIncludeKeys() != null && !outputCodecContext.getIncludeKeys().isEmpty()) ||
+                (outputCodecContext.getExcludeKeys() != null && !outputCodecContext.getExcludeKeys().isEmpty())) {
+            throw new InvalidPluginConfigurationException("Providing a user-defined schema and using sink include or exclude keys is not an allowed configuration.");
+        }
     }
 
     Schema parseSchema(final String schemaString) {
