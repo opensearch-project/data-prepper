@@ -23,6 +23,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 public class OutputCodecTest {
     @Test
@@ -30,6 +31,17 @@ public class OutputCodecTest {
         OutputCodec objectUnderTest = mock(OutputCodec.class, InvocationOnMock::callRealMethod);
 
         assertThat(objectUnderTest.isCompressionInternal(), equalTo(false));
+    }
+
+    @Test
+    void validateAgainstCodecContext_does_not_throw_or_interact_with_outputCodecContext() {
+        OutputCodec objectUnderTest = mock(OutputCodec.class, InvocationOnMock::callRealMethod);
+
+        OutputCodecContext outputCodecContext = mock(OutputCodecContext.class);
+
+        objectUnderTest.validateAgainstCodecContext(outputCodecContext);
+
+        verifyNoInteractions(outputCodecContext);
     }
 
     @Test

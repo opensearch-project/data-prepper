@@ -74,6 +74,8 @@ public interface OutputCodec {
         return false;
     }
 
+    default void validateAgainstCodecContext(OutputCodecContext outputCodecContext) { }
+
     default Event addTagsToEvent(Event event, String tagsTargetKey) throws JsonProcessingException {
         String eventJsonString = event.jsonBuilder().includeTags(tagsTargetKey).toJsonString();
         Map<String, Object> eventData = objectMapper.readValue(eventJsonString, new TypeReference<>() {
