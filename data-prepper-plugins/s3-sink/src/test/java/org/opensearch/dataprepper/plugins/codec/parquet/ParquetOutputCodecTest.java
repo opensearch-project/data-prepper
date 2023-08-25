@@ -23,6 +23,7 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -32,6 +33,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.fs.LocalFilePositionOutputStream;
 import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
@@ -62,6 +65,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 @ExtendWith(MockitoExtension.class)
 public class ParquetOutputCodecTest {
@@ -349,6 +353,119 @@ public class ParquetOutputCodecTest {
         assertThat(actualSizeOptional.isPresent(), equalTo(true));
         assertThat(actualSizeOptional.get(), greaterThanOrEqualTo(roughMultiplierMin * writeCount));
         assertThat(actualSizeOptional.get(), lessThanOrEqualTo(roughMultiplierMax * writeCount));
+    }
+
+
+    @Nested
+    class ValidateWithSchema {
+        private OutputCodecContext codecContext;
+        private List<String> keys;
+
+        @BeforeEach
+        void setUp() {
+            config.setSchema(createStandardSchemaNullable().toString());
+            codecContext = mock(OutputCodecContext.class);
+            keys = List.of(UUID.randomUUID().toString());
+        }
+
+        @Test
+        void validateAgainstCodecContext_throws_when_user_defined_schema_and_includeKeys_non_empty() {
+            when(codecContext.getIncludeKeys()).thenReturn(keys);
+
+            ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+            assertThrows(InvalidPluginConfigurationException.class, () -> objectUnderTest.validateAgainstCodecContext(codecContext));
+        }
+
+        @Test
+        void validateAgainstCodecContext_throws_when_user_defined_schema_and_excludeKeys_non_empty() {
+            when(codecContext.getExcludeKeys()).thenReturn(keys);
+
+            ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+            assertThrows(InvalidPluginConfigurationException.class, () -> objectUnderTest.validateAgainstCodecContext(codecContext));
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_includeKeys_isNull() {
+            when(codecContext.getIncludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_includeKeys_isEmpty() {
+            when(codecContext.getIncludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_excludeKeys_isNull() {
+            when(codecContext.getExcludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_excludeKeys_isEmpty() {
+            when(codecContext.getExcludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+    }
+
+    @Nested
+    class ValidateWithAutoSchema {
+        private OutputCodecContext codecContext;
+        private List<String> keys;
+
+        @BeforeEach
+        void setUp() {
+            config.setAutoSchema(true);
+            codecContext = mock(OutputCodecContext.class, withSettings().lenient());
+            keys = List.of(UUID.randomUUID().toString());
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_non_empty() {
+            when(codecContext.getIncludeKeys()).thenReturn(keys);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_non_empty() {
+            when(codecContext.getExcludeKeys()).thenReturn(keys);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_isNull() {
+            when(codecContext.getIncludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_isEmpty() {
+            when(codecContext.getIncludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_isNull() {
+            when(codecContext.getExcludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_isEmpty() {
+            when(codecContext.getExcludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
     }
 
     private static Event createEventRecord(final Map<String, Object> eventData) {

@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
 import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
@@ -121,6 +122,17 @@ public class ParquetOutputCodec implements OutputCodec, BufferedCodec {
     @Override
     public String getExtension() {
         return PARQUET;
+    }
+
+    @Override
+    public void validateAgainstCodecContext(OutputCodecContext outputCodecContext) {
+        if (config.isAutoSchema())
+            return;
+
+        if ((outputCodecContext.getIncludeKeys() != null && !outputCodecContext.getIncludeKeys().isEmpty()) ||
+                (outputCodecContext.getExcludeKeys() != null && !outputCodecContext.getExcludeKeys().isEmpty())) {
+            throw new InvalidPluginConfigurationException("Providing a user-defined schema and using sink include or exclude keys is not an allowed configuration.");
+        }
     }
 
     static Schema parseSchema(final String schemaString) {
