@@ -47,6 +47,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -56,6 +57,8 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -105,7 +108,7 @@ public class ParquetOutputCodecTest {
             final Event event = createEventRecord(inputMap);
             parquetOutputCodec.writeEvent(event, outputStream);
         }
-        parquetOutputCodec.closeWriter(outputStream, tempFile);
+        parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
         for (final Map<String, Object> actualMap : actualRecords) {
@@ -131,7 +134,7 @@ public class ParquetOutputCodecTest {
             final Event event = createEventRecord(inputMap);
             parquetOutputCodec.writeEvent(event, outputStream);
         }
-        parquetOutputCodec.closeWriter(outputStream, tempFile);
+        parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
         for (final Map<String, Object> actualMap : actualRecords) {
@@ -157,7 +160,7 @@ public class ParquetOutputCodecTest {
             final Event event = createEventRecord(inputMap);
             parquetOutputCodec.writeEvent(event, outputStream);
         }
-        parquetOutputCodec.closeWriter(outputStream, tempFile);
+        parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
         for (final Map<String, Object> actualMap : actualRecords) {
@@ -194,7 +197,7 @@ public class ParquetOutputCodecTest {
 
         objectUnderTest.writeEvent(eventWithInvalidField, outputStream);
 
-        objectUnderTest.closeWriter(outputStream, tempFile);
+        objectUnderTest.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
         for (final Map<String, Object> actualMap : actualRecords) {
@@ -222,6 +225,130 @@ public class ParquetOutputCodecTest {
 
         assertThat(actualException.getMessage(), notNullValue());
         assertThat(actualException.getMessage(), containsString(invalidFieldName));
+    }
+
+    @Test
+    void getSize_returns_0_after_construction() {
+        config.setSchema(createStandardSchema().toString());
+
+        Optional<Long> actualSizeOptional = createObjectUnderTest().getSize();
+
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(true));
+        assertThat(actualSizeOptional.get(), equalTo(0L));
+    }
+
+    @Test
+    void getSize_returns_0_when_first_started() throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start(outputStream, null, codecContext);
+        Optional<Long> actualSizeOptional = objectUnderTest.getSize();
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(true));
+        assertThat(actualSizeOptional.get(), equalTo(0L));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10})
+    void getSize_returns_non_zero_after_writes(int writeCount) throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        List<Map<String, Object>> records = generateRecords(writeCount);
+
+        final long roughMultiplierMin = 100;
+        final long roughMultiplierMax = 200;
+
+        ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        for (Map<String, Object> record : records) {
+            Event event = createEventRecord(record);
+            objectUnderTest.writeEvent(event, outputStream);
+        }
+
+        Optional<Long> actualSizeOptional = objectUnderTest.getSize();
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(true));
+        assertThat(actualSizeOptional.get(), greaterThanOrEqualTo(roughMultiplierMin * writeCount));
+        assertThat(actualSizeOptional.get(), lessThanOrEqualTo(roughMultiplierMax * writeCount));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10})
+    void getSize_returns_empty_after_close(int writeCount) throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        List<Map<String, Object>> records = generateRecords(writeCount);
+
+        ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        for (Map<String, Object> record : records) {
+            Event event = createEventRecord(record);
+            objectUnderTest.writeEvent(event, outputStream);
+        }
+
+        objectUnderTest.complete(outputStream);
+
+        Optional<Long> actualSizeOptional = objectUnderTest.getSize();
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(false));
+    }
+
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10})
+    void getSize_returns_non_zero_after_close_and_new_writes(int writeCount) throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+
+        File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        List<Map<String, Object>> records = generateRecords(writeCount);
+
+        final long roughMultiplierMin = 100;
+        final long roughMultiplierMax = 200;
+
+        ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        for (Map<String, Object> record : records) {
+            Event event = createEventRecord(record);
+            objectUnderTest.writeEvent(event, outputStream);
+        }
+
+        objectUnderTest.complete(outputStream);
+
+        tempFile = new File(tempDirectory, FILE_NAME);
+        outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        for (Map<String, Object> record : records) {
+            Event event = createEventRecord(record);
+            objectUnderTest.writeEvent(event, outputStream);
+        }
+
+        Optional<Long> actualSizeOptional = objectUnderTest.getSize();
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(true));
+        assertThat(actualSizeOptional.get(), greaterThanOrEqualTo(roughMultiplierMin * writeCount));
+        assertThat(actualSizeOptional.get(), lessThanOrEqualTo(roughMultiplierMax * writeCount));
     }
 
     private static Event createEventRecord(final Map<String, Object> eventData) {
