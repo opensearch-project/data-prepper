@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.ErrorCause;
+import org.opensearch.client.opensearch._types.ErrorResponse;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.ClearScrollRequest;
 import org.opensearch.client.opensearch.core.ClearScrollResponse;
@@ -29,6 +30,7 @@ import org.opensearch.client.opensearch.core.pit.DeletePitRequest;
 import org.opensearch.client.opensearch.core.pit.DeletePitResponse;
 import org.opensearch.client.opensearch.core.search.Hit;
 import org.opensearch.client.opensearch.core.search.HitsMetadata;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
@@ -36,6 +38,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeletePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.DeleteScrollRequest;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.NoSearchContextSearchRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchPointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchScrollRequest;
@@ -57,6 +60,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.INDEX_NOT_FOUND_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.PIT_RESOURCE_LIMIT_ERROR_TYPE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE;
 
@@ -160,6 +164,27 @@ public class OpenSearchAccessorTest {
     }
 
     @Test
+    void create_pit_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final String indexName = UUID.randomUUID().toString();
+        final String keepAlive = UUID.randomUUID().toString();
+
+        final CreatePointInTimeRequest createPointInTimeRequest = mock(CreatePointInTimeRequest.class);
+        when(createPointInTimeRequest.getIndex()).thenReturn(indexName);
+        when(createPointInTimeRequest.getKeepAlive()).thenReturn(keepAlive);
+
+        final OpenSearchException openSearchException = mock(OpenSearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(openSearchException.response()).thenReturn(errorResponse);
+
+        when(openSearchClient.createPit(any(CreatePitRequest.class))).thenThrow(openSearchException);
+
+        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+    }
+
+    @Test
     void create_scroll_with_exception_for_scroll_limit_throws_SearchContextLimitException() throws IOException {
         final String indexName = UUID.randomUUID().toString();
         final String scrollTime = UUID.randomUUID().toString();
@@ -176,6 +201,50 @@ public class OpenSearchAccessorTest {
         when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
         assertThrows(SearchContextLimitException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+    }
+
+    @Test
+    void create_scroll_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final String indexName = UUID.randomUUID().toString();
+        final String scrollTime = UUID.randomUUID().toString();
+        final Integer size = new Random().nextInt(10);
+
+        final CreateScrollRequest createScrollRequest = mock(CreateScrollRequest.class);
+        when(createScrollRequest.getIndex()).thenReturn(indexName);
+        when(createScrollRequest.getScrollTime()).thenReturn(scrollTime);
+        when(createScrollRequest.getSize()).thenReturn(size);
+
+        final OpenSearchException openSearchException = mock(OpenSearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(openSearchException.response()).thenReturn(errorResponse);
+
+        when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(openSearchException);
+
+        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+    }
+
+    @Test
+    void searchWithoutSearchContext_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final Integer paginationSize = new Random().nextInt();
+        final String index = UUID.randomUUID().toString();
+
+        final NoSearchContextSearchRequest noSearchContextSearchRequest = mock(NoSearchContextSearchRequest.class);
+        when(noSearchContextSearchRequest.getPaginationSize()).thenReturn(paginationSize);
+        when(noSearchContextSearchRequest.getIndex()).thenReturn(index);
+
+        final OpenSearchException openSearchException = mock(OpenSearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(openSearchException.response()).thenReturn(errorResponse);
+
+        when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(openSearchException);
+
+        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().searchWithoutSearchContext(noSearchContextSearchRequest));
     }
 
     @Test

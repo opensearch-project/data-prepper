@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.Instant;
@@ -14,9 +15,16 @@ import java.util.Objects;
 
 public class OpenSearchIndexProgressState {
 
+    @JsonInclude(JsonInclude.Include. NON_NULL)
     private String pitId;
+
+    @JsonInclude(JsonInclude.Include. NON_NULL)
     private Long pitCreationTime;
+
+    @JsonInclude(JsonInclude.Include. NON_NULL)
     private Long keepAlive;
+
+    @JsonInclude(JsonInclude.Include. NON_NULL)
     private List<String> searchAfter;
 
     public OpenSearchIndexProgressState() {
