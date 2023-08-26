@@ -26,6 +26,8 @@ import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.producer.ProducerWorker;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.yaml.snakeyaml.Yaml;
@@ -187,5 +189,24 @@ public class KafkasinkTest {
     public void isReadyTest() {
         ReflectionTestUtils.setField(kafkaSink, "sinkInitialized", true);
         assertEquals(true, kafkaSink.isReady());
+    }
+
+    @Test
+    public void doOutputTestForAutoTopicCreate() {
+
+        TopicConfig topicConfig = mock(TopicConfig.class);
+        when(topicConfig.isCreate()).thenReturn(true);
+
+        SchemaConfig schemaConfig = mock(SchemaConfig.class);
+        when(schemaConfig.isCreate()).thenReturn(true);
+        when(schemaConfig.getRegistryURL()).thenReturn("http://localhost:8085");
+        when(schemaConfig.getInlineSchema()).thenReturn("{ \"type\": \"record\", \"name\": \"Person\", \"fields\": [{ \"name\": \"Year\", \"type\": \"string\" } ] }");
+
+        ReflectionTestUtils.setField(kafkaSinkConfig, "schemaConfig", schemaConfig);
+        ReflectionTestUtils.setField(kafkaSinkConfig, "topic", topicConfig);
+
+        when(executorService.submit(any(ProducerWorker.class))).thenReturn(futureTask);
+        final Collection records = Arrays.asList(new Record(event));
+        assertThrows(RuntimeException.class, () -> spySink.doOutput(records));
     }
 }

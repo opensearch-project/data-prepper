@@ -45,11 +45,6 @@ public class AuthenticationPropertyConfigurer {
 
     private static final String SASL_SSL_PROTOCOL = "SASL_SSL";
 
-    private static final String SSL_ENDPOINT_IDENTIFICATION = "ssl.endpoint.identification.algorithm";
-
-    private static final String USER_INFO = "USER_INFO";
-
-
     public static void setSaslPlainTextProperties(final PlainTextAuthConfig plainTextAuthConfig,
                                                   final Properties properties) {
 
