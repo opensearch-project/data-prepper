@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaTopicMetrics;
+import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,6 +85,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private long metricsUpdatedTime;
     private final AtomicInteger numberOfAcksPending;
     private long numRecordsCommitted = 0;
+    private final LogRateLimiter errLogRateLimiter;
 
     public KafkaSourceCustomConsumer(final KafkaConsumer consumer,
                                      final AtomicBoolean shutdownInProgress,
@@ -114,6 +116,7 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         this.bufferAccumulator = BufferAccumulator.create(buffer, DEFAULT_NUMBER_OF_RECORDS_TO_ACCUMULATE, bufferTimeout);
         this.lastCommitTime = System.currentTimeMillis();
         this.numberOfAcksPending = new AtomicInteger(0);
+        this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
     }
 
     private long getCurrentTimeNanos() {
@@ -153,7 +156,8 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
 
     public <T> void consumeRecords() throws Exception {
         try {
-            ConsumerRecords<String, T> records = consumer.poll(topicConfig.getThreadWaitingTime().toMillis()/2);
+            ConsumerRecords<String, T> records =
+                    consumer.poll(Duration.ofMillis(topicConfig.getThreadWaitingTime().toMillis()/2));
             if (Objects.nonNull(records) && !records.isEmpty() && records.count() > 0) {
                 Map<TopicPartition, CommitOffsetRange> offsets = new HashMap<>();
                 AcknowledgementSet acknowledgementSet = null;
@@ -176,17 +180,40 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             topicMetrics.getNumberOfPollAuthErrors().increment();
             Thread.sleep(10000);
         } catch (RecordDeserializationException e) {
-            LOG.warn("Deserialization error - topic {} partition {} offset {}",
-                    e.topicPartition().topic(), e.topicPartition().partition(), e.offset());
+
+            LOG.warn("Deserialization error - topic {} partition {} offset {}. Error message: {}",
+                    e.topicPartition().topic(), e.topicPartition().partition(), e.offset(), e.getMessage());
             if (e.getCause() instanceof AWSSchemaRegistryException) {
-                LOG.warn("AWSSchemaRegistryException: {}. Retrying after 30 seconds", e.getMessage());
+                LOG.warn("Retrying after 30 seconds");
                 Thread.sleep(30000);
             } else {
-                LOG.warn("Seeking past the error record", e);
-                consumer.seek(e.topicPartition(), e.offset()+1);
+                LOG.warn("Seeking past the error record");
+                consumer.seek(e.topicPartition(), e.offset() + 1);
+
+                // Update failed record offset in commitTracker because we are not
+                // processing it and seeking past the error record.
+                // Note: partitionCommitTrackerMap may not have the partition if this is
+                // ths first set of records that hit deserialization error
+                if (acknowledgementsEnabled && partitionCommitTrackerMap.containsKey(e.topicPartition().partition())) {
+                    addAcknowledgedOffsets(e.topicPartition(), Range.of(e.offset(), e.offset()));
+                }
             }
+
             topicMetrics.getNumberOfDeserializationErrors().increment();
         }
+    }
+
+    private void addAcknowledgedOffsets(final TopicPartition topicPartition, final Range<Long> offsetRange) {
+        final int partitionId = topicPartition.partition();
+        final TopicPartitionCommitTracker commitTracker = partitionCommitTrackerMap.get(partitionId);
+
+        if (Objects.isNull(commitTracker) && errLogRateLimiter.isAllowed(System.currentTimeMillis())) {
+            LOG.error("Commit tracker not found for TopicPartition: {}", topicPartition);
+        }
+
+        final OffsetAndMetadata offsetAndMetadata =
+                partitionCommitTrackerMap.get(partitionId).addCompletedOffsets(offsetRange);
+        updateOffsetsToCommit(topicPartition, offsetAndMetadata);
     }
 
     private void resetOffsets() {
@@ -211,19 +238,11 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     }
 
     void processAcknowledgedOffsets() {
-
         acknowledgedOffsets.forEach(offsets -> {
             offsets.forEach((partition, offsetRange) -> {
                 if (getPartitionEpoch(partition) == offsetRange.getEpoch()) {
                     try {
-                        int partitionId = partition.partition();
-                        if (partitionCommitTrackerMap.containsKey(partitionId)) {
-                            final OffsetAndMetadata offsetAndMetadata =
-                                    partitionCommitTrackerMap.get(partitionId).addCompletedOffsets(offsetRange.getOffsets());
-                            updateOffsetsToCommit(partition, offsetAndMetadata);
-                        } else {
-                            LOG.error("Commit tracker not found for topic: {} partition: {}", partition.topic(), partitionId);
-                        }
+                        addAcknowledgedOffsets(partition, offsetRange.getOffsets());
                     } catch (Exception e) {
                         LOG.error("Failed committed offsets upon positive acknowledgement {}", partition, e);
                     }
@@ -236,9 +255,8 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
     private void updateCommitCountMetric(final TopicPartition topicPartition, final OffsetAndMetadata offsetAndMetadata) {
         if (acknowledgementsEnabled) {
             final TopicPartitionCommitTracker commitTracker = partitionCommitTrackerMap.get(topicPartition.partition());
-            if (Objects.isNull(commitTracker)) {
-                LOG.error("Commit tracker not found for topic: {} partition: {}",
-                        topicPartition.topic(), topicPartition.partition());
+            if (Objects.isNull(commitTracker) && errLogRateLimiter.isAllowed(System.currentTimeMillis())) {
+                LOG.error("Commit tracker not found for TopicPartition: {}", topicPartition);
                 return;
             }
             topicMetrics.getNumberOfRecordsCommitted().increment(commitTracker.getCommittedRecordCount());
@@ -374,7 +392,9 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         for (TopicPartition topicPartition : records.partitions()) {
             final long partitionEpoch = getPartitionEpoch(topicPartition);
             if (acknowledgementsEnabled && partitionEpoch == 0) {
-                //ToDo: Add metric
+                if (errLogRateLimiter.isAllowed(System.currentTimeMillis())) {
+                    LOG.error("Lost ownership of partition {}", topicPartition);
+                }
                 continue;
             }
 
