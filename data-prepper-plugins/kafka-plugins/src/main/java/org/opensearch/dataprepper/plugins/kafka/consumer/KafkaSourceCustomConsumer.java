@@ -4,7 +4,6 @@
  */
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
-import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
 import com.amazonaws.services.schemaregistry.serializers.json.JsonDataWithSchema;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -37,6 +36,7 @@ import org.opensearch.dataprepper.plugins.kafka.util.LogRateLimiter;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.glue.model.AccessDeniedException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -52,6 +52,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.apache.commons.lang3.exception.ExceptionUtils.getRootCause;
 
 /**
  * * A utility class which will handle the core Kafka consumer operation.
@@ -180,11 +182,10 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
             topicMetrics.getNumberOfPollAuthErrors().increment();
             Thread.sleep(10000);
         } catch (RecordDeserializationException e) {
-
             LOG.warn("Deserialization error - topic {} partition {} offset {}. Error message: {}",
                     e.topicPartition().topic(), e.topicPartition().partition(), e.offset(), e.getMessage());
-            if (e.getCause() instanceof AWSSchemaRegistryException) {
-                LOG.warn("Retrying after 30 seconds");
+            if (getRootCause(e) instanceof AccessDeniedException) {
+                LOG.warn("AccessDenied for AWSGlue schema registry, retrying after 30 seconds");
                 Thread.sleep(30000);
             } else {
                 LOG.warn("Seeking past the error record");
