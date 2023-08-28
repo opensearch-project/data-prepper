@@ -1,0 +1,8 @@
+pipeline_extensions:
+  test_extension:
+    test_attribute: test_string
+entry-pipeline:
+  source:
+    random:
+  sink:
+    - stdout:

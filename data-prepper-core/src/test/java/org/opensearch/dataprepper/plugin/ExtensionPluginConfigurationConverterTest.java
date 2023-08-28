@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.opensearch.dataprepper.parser.model.PipelineExtensions;
+import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.plugins.test.TestExtension;
 import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
 
@@ -34,7 +34,7 @@ class ExtensionPluginConfigurationConverterTest {
     @Mock
     private Validator validator;
     @Mock
-    private DataPrepperConfiguration dataPrepperConfiguration;
+    private PipelinesDataFlowModel pipelinesDataFlowModel;
     @Mock
     private PipelineExtensions pipelineExtensions;
     @Mock
@@ -45,7 +45,7 @@ class ExtensionPluginConfigurationConverterTest {
     @BeforeEach
     void setUp() {
         objectUnderTest = new ExtensionPluginConfigurationConverter(
-                dataPrepperConfiguration, validator);
+                pipelinesDataFlowModel, validator);
     }
 
     @Test
@@ -63,7 +63,7 @@ class ExtensionPluginConfigurationConverterTest {
     @Test
     void convert_with_test_extension_with_config() {
         when(validator.validate(any())).thenReturn(Collections.emptySet());
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
+        when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final String rootKey = "test_extension";
         final String testValue = "test_value";
         when(pipelineExtensions.getExtensionMap()).thenReturn(Map.of(
@@ -76,7 +76,7 @@ class ExtensionPluginConfigurationConverterTest {
 
     @Test
     void convert_with_null_rootKey_value_should_return_null() {
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
+        when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final String rootKey = "test_extension";
         when(pipelineExtensions.getExtensionMap()).thenReturn(Collections.emptyMap());
         final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKey);
@@ -85,7 +85,7 @@ class ExtensionPluginConfigurationConverterTest {
 
     @Test
     void convert_should_throw_exception_when_there_are_constraint_violations() {
-        when(dataPrepperConfiguration.getPipelineExtensions()).thenReturn(pipelineExtensions);
+        when(pipelinesDataFlowModel.getPipelineExtensions()).thenReturn(pipelineExtensions);
         final String rootKey = UUID.randomUUID().toString();
         when(pipelineExtensions.getExtensionMap()).thenReturn(Map.of(rootKey, Collections.emptyMap()));
         final String errorMessage = UUID.randomUUID().toString();

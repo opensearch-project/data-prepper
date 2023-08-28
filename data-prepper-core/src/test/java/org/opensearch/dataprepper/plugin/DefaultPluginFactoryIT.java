@@ -8,9 +8,9 @@ package org.opensearch.dataprepper.plugin;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.plugins.TestPlugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetMana
 @ExtendWith(MockitoExtension.class)
 class DefaultPluginFactoryIT {
     @Mock
-    private DataPrepperConfiguration dataPrepperConfiguration;
+    private PipelinesDataFlowModel pipelinesDataFlowModel;
     private String pluginName;
     private String pipelineName;
 
@@ -60,7 +60,7 @@ class DefaultPluginFactoryIT {
         coreContext.scan(DefaultAcknowledgementSetManager.class.getPackage().getName());
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.register(PluginBeanFactoryProvider.class);
-        coreContext.registerBean(DataPrepperConfiguration.class, () -> dataPrepperConfiguration);
+        coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();
 
         return coreContext.getBean(DefaultPluginFactory.class);
