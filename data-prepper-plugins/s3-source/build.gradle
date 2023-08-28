@@ -48,10 +48,6 @@ dependencies {
     testImplementation project(':data-prepper-plugins:parquet-codecs')
     testImplementation 'org.apache.avro:avro:1.11.0'
     testImplementation 'org.apache.hadoop:hadoop-common:3.3.5'
-    testImplementation 'org.apache.hadoop:hadoop-hdfs-client:3.3.5'
-    testImplementation 'org.apache.hadoop:hadoop-yarn-client:3.3.5'
-    testImplementation 'org.apache.hadoop:hadoop-yarn-common:3.3.5'
-    testImplementation 'org.apache.hadoop:hadoop-mapreduce-client-core:3.3.5'
     testImplementation 'org.apache.parquet:parquet-avro:1.12.3'
     testImplementation 'org.apache.parquet:parquet-column:1.12.3'
     testImplementation 'org.apache.parquet:parquet-common:1.12.3'
