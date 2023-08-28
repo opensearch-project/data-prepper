@@ -15,6 +15,7 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionU
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
@@ -63,40 +64,55 @@ public class ScrollWorker implements SearchWorker {
     @Override
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
-            final Optional<SourcePartition<OpenSearchIndexProgressState>> indexPartition = sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier);
-
-            if (indexPartition.isEmpty()) {
-                try {
-                    Thread.sleep(STANDARD_BACKOFF_MILLIS);
-                    continue;
-                } catch (final InterruptedException e) {
-                    LOG.info("The PitWorker was interrupted while sleeping after acquiring no indices to process, stopping processing");
-                    return;
-                }
-            }
 
             try {
-                processIndex(indexPartition.get());
 
-                sourceCoordinator.closePartition(
-                        indexPartition.get().getPartitionKey(),
-                        openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
-                        openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
-            } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
-                LOG.warn("ScrollWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
-                sourceCoordinator.giveUpPartitions();
-            } catch (final SearchContextLimitException e) {
-                LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
-                        indexPartition.get().getPartitionKey(), BACKOFF_ON_SCROLL_LIMIT_REACHED.getSeconds(), e.getMessage());
-                sourceCoordinator.giveUpPartitions();
+                final Optional<SourcePartition<OpenSearchIndexProgressState>> indexPartition = sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier);
+
+                if (indexPartition.isEmpty()) {
+                    try {
+                        Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                        continue;
+                    } catch (final InterruptedException e) {
+                        LOG.info("The ScrollWorker was interrupted while sleeping after acquiring no indices to process, stopping processing");
+                        return;
+                    }
+                }
+
                 try {
-                    Thread.sleep(BACKOFF_ON_SCROLL_LIMIT_REACHED.toMillis());
+                    processIndex(indexPartition.get());
+
+                    sourceCoordinator.closePartition(
+                            indexPartition.get().getPartitionKey(),
+                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
+                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
+                } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
+                    LOG.warn("ScrollWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
+                    sourceCoordinator.giveUpPartitions();
+                } catch (final SearchContextLimitException e) {
+                    LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
+                            indexPartition.get().getPartitionKey(), BACKOFF_ON_SCROLL_LIMIT_REACHED.getSeconds(), e.getMessage());
+                    sourceCoordinator.giveUpPartitions();
+                    try {
+                        Thread.sleep(BACKOFF_ON_SCROLL_LIMIT_REACHED.toMillis());
+                    } catch (final InterruptedException ex) {
+                        return;
+                    }
+                } catch (final IndexNotFoundException e){
+                    LOG.warn("{}, marking index as complete and continuing processing", e.getMessage());
+                    sourceCoordinator.completePartition(indexPartition.get().getPartitionKey());
+                } catch (final RuntimeException e) {
+                    LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
+                    sourceCoordinator.giveUpPartitions();
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception while trying to get index to process with scroll, backing off and retrying", e);
+                try {
+                    Thread.sleep(STANDARD_BACKOFF_MILLIS);
                 } catch (final InterruptedException ex) {
+                    LOG.info("The ScrollWorker was interrupted before backing off and retrying, stopping processing");
                     return;
                 }
-            } catch (final RuntimeException e) {
-                LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
-                sourceCoordinator.giveUpPartitions();
             }
         }
     }
