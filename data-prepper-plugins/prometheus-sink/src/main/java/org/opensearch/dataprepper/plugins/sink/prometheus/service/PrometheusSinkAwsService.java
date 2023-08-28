@@ -18,7 +18,7 @@ public class PrometheusSinkAwsService {
 
     private static final Logger LOG = LoggerFactory.getLogger(PrometheusSinkAwsService.class);
     public static final String AWS_SIGV4 = "aws_sigv4";
-    private static final String AOS_SERVICE_NAME = "execute-api";  // TODO : aps
+    private static final String AOS_SERVICE_NAME = "aps";
 
     public static void  attachSigV4(final PrometheusSinkConfiguration prometheusSinkConfiguration, final HttpClientBuilder httpClientBuilder, final AwsCredentialsSupplier awsCredentialsSupplier) {
         LOG.info("{} is set, will sign requests using AWSRequestSigningApacheInterceptor", AWS_SIGV4);
