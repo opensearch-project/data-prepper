@@ -15,16 +15,16 @@ import java.util.Objects;
 
 public class OpenSearchIndexProgressState {
 
-    @JsonInclude(JsonInclude.Include. NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String pitId;
 
-    @JsonInclude(JsonInclude.Include. NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Long pitCreationTime;
 
-    @JsonInclude(JsonInclude.Include. NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private Long keepAlive;
 
-    @JsonInclude(JsonInclude.Include. NON_NULL)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<String> searchAfter;
 
     public OpenSearchIndexProgressState() {

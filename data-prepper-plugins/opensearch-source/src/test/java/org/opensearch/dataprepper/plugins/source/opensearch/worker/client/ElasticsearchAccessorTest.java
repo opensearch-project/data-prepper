@@ -159,7 +159,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.openPointInTime(any(OpenPointInTimeRequest.class))).thenThrow(elasticsearchException);
 
-        assertThrows(SearchContextLimitException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(SearchContextLimitException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -180,7 +182,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.openPointInTime(any(OpenPointInTimeRequest.class))).thenThrow(exception);
 
-        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -199,7 +203,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        assertThrows(SearchContextLimitException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(SearchContextLimitException.class, () -> objectUnderTest.createScroll(createScrollRequest));
     }
 
     @Test
@@ -222,7 +228,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.createScroll(createScrollRequest));
     }
 
     @Test
@@ -243,7 +251,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().searchWithoutSearchContext(noSearchContextSearchRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.searchWithoutSearchContext(noSearchContextSearchRequest));
     }
 
     @Test
@@ -262,7 +272,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.openPointInTime(any(OpenPointInTimeRequest.class))).thenThrow(openSearchException);
 
-        assertThrows(ElasticsearchException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(ElasticsearchException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -280,7 +292,8 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        assertThrows(ElasticsearchException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+        assertThrows(ElasticsearchException.class, () -> objectUnderTest.createScroll(createScrollRequest));
     }
 
     @Test
@@ -294,7 +307,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.openPointInTime(any(OpenPointInTimeRequest.class))).thenThrow(IOException.class);
 
-        assertThrows(RuntimeException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(RuntimeException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -313,7 +328,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        final RuntimeException exceptionThrown = assertThrows(RuntimeException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        final RuntimeException exceptionThrown = assertThrows(RuntimeException.class, () -> objectUnderTest.createScroll(createScrollRequest));
         assertThat(exceptionThrown instanceof SearchContextLimitException, equalTo(false));
     }
 

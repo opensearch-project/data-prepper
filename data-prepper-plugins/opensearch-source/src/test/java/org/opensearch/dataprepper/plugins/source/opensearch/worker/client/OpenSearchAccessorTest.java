@@ -160,7 +160,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.createPit(any(CreatePitRequest.class))).thenThrow(openSearchException);
 
-        assertThrows(SearchContextLimitException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(SearchContextLimitException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -181,7 +183,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.createPit(any(CreatePitRequest.class))).thenThrow(openSearchException);
 
-        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -200,7 +204,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        assertThrows(SearchContextLimitException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(SearchContextLimitException.class, () -> objectUnderTest.createScroll(createScrollRequest));
     }
 
     @Test
@@ -223,7 +229,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(openSearchException);
 
-        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.createScroll(createScrollRequest));
     }
 
     @Test
@@ -244,7 +252,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(openSearchException);
 
-        assertThrows(IndexNotFoundException.class, () -> createObjectUnderTest().searchWithoutSearchContext(noSearchContextSearchRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.searchWithoutSearchContext(noSearchContextSearchRequest));
     }
 
     @Test
@@ -263,7 +273,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.createPit(any(CreatePitRequest.class))).thenThrow(openSearchException);
 
-        assertThrows(OpenSearchException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(OpenSearchException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -281,7 +293,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        assertThrows(OpenSearchException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(OpenSearchException.class, () -> objectUnderTest.createScroll(createScrollRequest));
     }
 
     @Test
@@ -295,7 +309,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.createPit(any(CreatePitRequest.class))).thenThrow(IOException.class);
 
-        assertThrows(RuntimeException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(RuntimeException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -314,7 +330,9 @@ public class OpenSearchAccessorTest {
 
         when(openSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        final RuntimeException exceptionThrown = assertThrows(RuntimeException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        final RuntimeException exceptionThrown = assertThrows(RuntimeException.class, () -> objectUnderTest.createScroll(createScrollRequest));
         assertThat(exceptionThrown instanceof SearchContextLimitException, equalTo(false));
     }
 
