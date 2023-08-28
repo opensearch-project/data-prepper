@@ -68,7 +68,7 @@ pipeline:
 
 - `scope` (Optional) : This scope limit an application's access to a user's account.
 
-- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Default to `false`.
+- `aws_sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Default to `false`. For aws_sigv4, we don't need any auth_type or ssl
 
 - `aws` (Optional) : AWS configurations. See [AWS Configuration](#aws_configuration) for details. SigV4 is enabled by default when this option is used. If this option is present, `aws_` options are not expected to be present. If any of `aws_` options are present along with this, error is thrown.
 
