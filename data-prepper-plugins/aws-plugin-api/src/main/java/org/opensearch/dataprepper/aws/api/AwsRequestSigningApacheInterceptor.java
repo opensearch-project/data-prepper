@@ -12,19 +12,20 @@
  */
 package org.opensearch.dataprepper.aws.api;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.EntityDetails;
-import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.NameValuePair;
-import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.HttpRequestInterceptor;
-import org.apache.hc.core5.http.io.entity.BasicHttpEntity;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.net.URIBuilder;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.AwsSignerExecutionAttribute;
 import software.amazon.awssdk.core.interceptor.ExecutionAttributes;
@@ -45,6 +46,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 
+import static org.apache.http.protocol.HttpCoreContext.HTTP_TARGET_HOST;
+
 /**
  * An {@link HttpRequestInterceptor} that signs requests using any AWS {@link Signer}
  * and {@link AwsCredentialsProvider}.
@@ -63,11 +66,6 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
      * Constant to check if host is the endpoint
      */
     private static final String HOST = "host";
-
-    /**
-     *  Attribute name of a HttpHost object that represents the connection target.
-     */
-    private static final String HTTP_TARGET_HOST = "http.target_host";
 
     /**
      * The service that we're connecting to.
@@ -149,8 +147,11 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
         requestBuilder.rawQueryParameters(nvpToMapParams(uriBuilder.getQueryParams()));
         requestBuilder.headers(headerArrayToMap(request.getHeaders()));
 
+        AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
+
         ExecutionAttributes attributes = new ExecutionAttributes();
-        attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentialsProvider.resolveCredentials());
+        AwsCredentials awsCredentials = AwsBasicCredentials.create(credentials.getAWSAccessKeyId(), credentials.getAWSSecretKey());
+        attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentials);
         attributes.putAttribute(AwsSignerExecutionAttribute.SERVICE_SIGNING_NAME, service);
         attributes.putAttribute(AwsSignerExecutionAttribute.SIGNING_REGION, region);
 
@@ -159,16 +160,6 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
 
         // Now copy everything back
         request.setHeaders(mapToHeaderArray(signedRequest.headers()));
-        if (request instanceof ClassicHttpRequest) {
-            ClassicHttpRequest classicHttpRequest =
-                    (ClassicHttpRequest) request;
-            if (classicHttpRequest.getEntity() != null) {
-                HttpEntity basicHttpEntity = new BasicHttpEntity(signedRequest.contentStreamProvider()
-                        .orElseThrow(() -> new IllegalStateException("There must be content"))
-                        .newStream(), ContentType.APPLICATION_JSON);
-                classicHttpRequest.setEntity(basicHttpEntity);
-            }
-        }
     }
 
     private URI buildUri(final HttpContext context, URIBuilder uriBuilder) throws IOException {

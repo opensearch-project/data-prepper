@@ -373,6 +373,10 @@ public class PrometheusSinkService {
         if(Objects.nonNull(prometheusSinkConfiguration.getCustomHeaderOptions()))
             addCustomHeaders(classicRequestBuilder,prometheusSinkConfiguration.getCustomHeaderOptions());
 
+        if(prometheusSinkConfiguration.getAwsAuthenticationOptions().isAwsSigv4() && prometheusSinkConfiguration.isValidAWSUrl()){
+            classicRequestBuilder.addHeader("x-amz-content-sha256","required");
+        }
+
         if(Objects.nonNull(proxyUrlString)) {
             httpClientBuilder.setProxy(PrometheusSinkUtil.getHttpHostByURL(PrometheusSinkUtil.getURLByUrlString(proxyUrlString)));
             LOG.info("sending data via proxy {}",proxyUrlString);
