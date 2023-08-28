@@ -14,6 +14,8 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
+import org.opensearch.dataprepper.plugins.aws.PluginConfigValueTranslator;
+import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Named;
 import java.time.Duration;
@@ -28,13 +30,17 @@ import java.util.stream.Collectors;
  * and converting it to the plugin model type which should be denoted by {@link DataPrepperPlugin#pluginConfigurationType()}
  */
 @Named
+@DependsOn({"extensionsApplier"})
 class PluginConfigurationConverter {
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
-    PluginConfigurationConverter(final Validator validator) {
+    PluginConfigurationConverter(final Validator validator,
+                                 final PluginConfigValueTranslator pluginConfigValueTranslator) {
         final SimpleModule simpleModule = new SimpleModule();
         simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
+        simpleModule.addDeserializer(
+                String.class, new DataPrepperStringContextualDeserializer(pluginConfigValueTranslator));
 
         this.objectMapper = new ObjectMapper()
                 .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)

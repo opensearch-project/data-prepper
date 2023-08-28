@@ -12,6 +12,7 @@ import jakarta.validation.Path;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opensearch.dataprepper.plugins.aws.PluginConfigValueTranslator;
 
 import java.util.Collections;
 import java.util.UUID;
@@ -32,6 +33,7 @@ import static org.mockito.Mockito.mock;
 class PluginConfigurationConverterTest {
     private PluginSetting pluginSetting;
     private Validator validator;
+    private PluginConfigValueTranslator pluginConfigValueTranslator;
 
     static class TestConfiguration {
         @SuppressWarnings("unused")
@@ -47,10 +49,12 @@ class PluginConfigurationConverterTest {
         pluginSetting = mock(PluginSetting.class);
 
         validator = mock(Validator.class);
+
+        pluginConfigValueTranslator = mock(PluginConfigValueTranslator.class);
     }
 
     private PluginConfigurationConverter createObjectUnderTest() {
-        return new PluginConfigurationConverter(validator);
+        return new PluginConfigurationConverter(validator, pluginConfigValueTranslator);
     }
 
     @Test
