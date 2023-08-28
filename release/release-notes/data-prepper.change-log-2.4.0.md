@@ -1,9 +1,133 @@
 
+* __Fix for kafka source issue #3264 (aws glue excetion handling) (#3265) (#3266)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Sun, 27 Aug 2023 15:37:31 -0500
+
+    EAD -&gt; refs/heads/2.4, tag: refs/tags/2.4.0, refs/remotes/upstream/2.4
+    (cherry picked from commit d908c40ad946625ef9b183466a9c55ce8033dbb8)
+     Co-authored-by: Hardeep Singh &lt;mzhrde@amazon.com&gt;
+
+* __Fix for kafka source issue #3247 (offset commit stops on deserialization error) (#3260) (#3262)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 25 Aug 2023 17:18:11 -0700
+
+
+    Signed-off-by: Hardeep Singh &lt;mzhrde@amazon.com&gt;
+    (cherry picked from commit 8114ab40e75c0471bf47b9e78e35f3d4fd11e6a2)
+     Co-authored-by: Hardeep Singh &lt;mzhrde@amazon.com&gt;
+
+* __Disallow the combination of a user-defined schema and include/exclude keys (#3254) (#3261)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 25 Aug 2023 16:10:12 -0700
+
+
+    Disallow the combination of a user-defined schema and include/exclude keys in
+    the Parquet/Avro sink codecs. Resolves #3253.
+     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 01981a0d07169d359bbf63a1bd03b2a107335239)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Fixes build broken by RELEASING.md spotless check. (#3258) (#3259)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 25 Aug 2023 15:41:53 -0700
+
+
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 1bcf9f6f5a437802722212cbaebff13253c0f3d4)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Adds a RELEASING.md file to the root of the project (#3251) (#3257)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 25 Aug 2023 14:19:11 -0700
+
+
+    Adds a RELEASING.md file to the root of the project. This has updated
+    instructions for the new release workflow. Resolves #3108.
+     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 1eec63f169a2cba3d32a5cab2cd5349c49a570c6)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Fixes a bug with the S3 parquet codec which was not calculating size correctly. Require the parquet codec only with in_memory which is how it is buffering data. Some debugging help. (#3249) (#3256)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 25 Aug 2023 14:18:07 -0700
+
+
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 7914e93b345cec3969e828ca082d246c7c067b37)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Improve the S3 sink integration tests combinations. The tests are now more consistent and avoid some redundant tests, thus also running faster. Sets up to have fewer combinations while testing all codecs. (#3199) (#3248)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Fri, 25 Aug 2023 10:17:34 -0700
+
+
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit f9f37299ce1f39e090752c8864255203df1ed798)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Behavioral change to Avro codecs and schema handling (#3238) (#3245)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 24 Aug 2023 14:47:33 -0700
+
+
+    Change the behavior of Avro-based codecs. When a schema is defined, rely on the
+    schema rather than the incoming event. If the schema is auto-generated, then
+    the incoming event data must continue to match. Fix Avro arrays which were only
+    supporting arrays of strings previously.
+     Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit f17e8338225aefab9d0241d1b540fdd2face2d81)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Batch the errors writing to the S3 sink to reduce the number of errors reported. (#3242) (#3244)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 24 Aug 2023 14:47:05 -0700
+
+
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 2cca4b187c706fd3ab079b422c96c53bfb8b9b40)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Catch when no object exists and mark as completed in s3 scan (#3241) (#3243)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 24 Aug 2023 14:19:40 -0700
+
+
+    Signed-off-by: Taylor Gray &lt;tylgry@amazon.com&gt;
+    (cherry picked from commit c2fc9495c09ba936994f58ff8dbbd94330a03582)
+     Co-authored-by: Taylor Gray &lt;tylgry@amazon.com&gt;
+
+* __Fix for kafka source not committing offsets issue #3231 (#3232) (#3239)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Thu, 24 Aug 2023 13:30:58 -0700
+
+
+    Signed-off-by: Hardeep Singh &lt;mzhrde@amazon.com&gt;
+    (cherry picked from commit 89e8f3945607499a292d59c1e9fc1ccbbf5b2218)
+     Co-authored-by: Hardeep Singh &lt;mzhrde@amazon.com&gt;
+
+* __Removes @cmanning09 from the CODEOWNERS file to allow the release build to proceed. (#3225) (#3227)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 23 Aug 2023 15:48:59 -0700
+
+
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit a4df0bd80e2d47dd8b5392bccb39587307bc544b)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
+* __Improvements in the release.yml GitHub Action: Better conditional to fail the promote if the build fails, increased the timeout, added the issues write permissions, string literal correction. (#3224) (#3226)__
+
+    [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 23 Aug 2023 14:27:09 -0700
+
+
+    Signed-off-by: David Venable &lt;dlv@amazon.com&gt;
+    (cherry picked from commit 2cd9e693365d41a79d0d9850a963a2823dfef0e3)
+     Co-authored-by: David Venable &lt;dlv@amazon.com&gt;
+
 * __Add 2.4 release notes (#3220) (#3222)__
 
     [opensearch-trigger-bot[bot]](mailto:98922864+opensearch-trigger-bot[bot]@users.noreply.github.com) - Wed, 23 Aug 2023 09:16:00 -0500
-    
-    EAD -&gt; refs/heads/2.4, refs/remotes/upstream/2.4
+
+
     Signed-off-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
     (cherry picked from commit 990497a91c5df9d45cc71b1ed96f33ec0cd7f6e4)
      Co-authored-by: Asif Sohail Mohammed &lt;nsifmoh@amazon.com&gt;
