@@ -139,7 +139,7 @@ pipeline:
 * `sts_role_arn` (Optional) : The STS role to assume for requests to AWS. Defaults to null, which will use the [standard SDK behavior for credentials](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/credentials.html).
 * `sts_header_overrides` (Optional): A map of header overrides to make when assuming the IAM role for the sink plugin.
 * `sts_external_id` (Optional): An optional external ID to use when assuming an IAM role.
-* `sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Default to `false`.
+* `sigv4`: A boolean flag to sign the HTTP request with AWS credentials. Default to `false`. For aws_sigv4, we don't need any auth_type or ssl
 
 ### End-to-End acknowledgements
 
