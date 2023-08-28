@@ -149,5 +149,16 @@ public class JacksonOtelLogTest {
         String expected = String.format(file, TEST_TIME_KEY1, TEST_KEY2);
         JSONAssert.assertEquals(expected, actual, false);
     }
+
+    @Test
+    public void test_non_object_attributes_toJsonString_serializes_as_is() {
+        JacksonOtelLog testLog = JacksonOtelLog.builder()
+                .withAttributes(Map.of("key", "value"))
+                .build();
+        assertThat(testLog.toJsonString(), equalTo("{\"key\":\"value\"}"));
+
+        testLog.put("attributes", "a string");
+        assertThat(testLog.toJsonString(), equalTo("{\"attributes\":\"a string\"}"));
+    }
 }
 

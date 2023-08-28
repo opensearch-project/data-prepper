@@ -6,6 +6,7 @@
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
 import java.io.OutputStream;
+import java.time.Duration;
 
 /**
  * A buffer can hold data before flushing it to S3.
@@ -18,7 +19,7 @@ public interface Buffer {
     long getSize();
     int getEventCount();
 
-    long getDuration();
+    Duration getDuration();
 
     void flushToS3();
 

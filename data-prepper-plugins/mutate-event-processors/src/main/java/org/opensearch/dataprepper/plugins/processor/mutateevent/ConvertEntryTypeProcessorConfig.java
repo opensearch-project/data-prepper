@@ -26,6 +26,9 @@ public class ConvertEntryTypeProcessorConfig  {
     @JsonProperty("null_values")
     private List<String> nullValues;
 
+    @JsonProperty("tags_on_failure")
+    private List<String> tagsOnFailure;
+
     public String getKey() {
         return key;
     }
@@ -40,5 +43,9 @@ public class ConvertEntryTypeProcessorConfig  {
 
     public Optional<List<String>> getNullValues(){
         return Optional.ofNullable(nullValues);
+    }
+
+    public List<String> getTagsOnFailure() {
+        return tagsOnFailure;
     }
 }

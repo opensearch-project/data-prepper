@@ -22,6 +22,6 @@ public class BooleanConverter implements TypeConverter<Boolean> {
         if (source instanceof Boolean) {
             return (Boolean)source;
         }
-        throw new IllegalArgumentException("Unsupported type conversion");
+        throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }
 }

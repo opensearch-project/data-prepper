@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -54,6 +55,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -133,7 +135,7 @@ class S3SinkServiceTest {
     }
 
     private S3SinkService createObjectUnderTest() {
-        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, keyGenerator, pluginMetrics);
+        return new S3SinkService(s3SinkConfig, bufferFactory, codec, codecContext, s3Client, keyGenerator, Duration.ofMillis(100), pluginMetrics);
     }
 
     @Test
@@ -469,6 +471,38 @@ class S3SinkServiceTest {
         for (EventHandle eventHandle : eventHandles2) {
             verify(eventHandle).release(true);
         }
+    }
+
+    @Test
+    void output_will_skip_and_drop_failed_records() throws IOException {
+        bufferFactory = mock(BufferFactory.class);
+        final Buffer buffer = mock(Buffer.class);
+        when(bufferFactory.getBuffer(any(S3Client.class), any(), any())).thenReturn(buffer);
+
+        final long objectSize = random.nextInt(1_000_000) + 10_000;
+        when(buffer.getSize()).thenReturn(objectSize);
+
+        final OutputStream outputStream = mock(OutputStream.class);
+        when(buffer.getOutputStream()).thenReturn(outputStream);
+
+
+        List<Record<Event>> records = generateEventRecords(2);
+        Event event1 = records.get(0).getData();
+        Event event2 = records.get(1).getData();
+
+        doThrow(RuntimeException.class).when(codec).writeEvent(event1, outputStream);
+
+        createObjectUnderTest().output(records);
+
+        InOrder inOrder = inOrder(codec);
+        inOrder.verify(codec).start(eq(outputStream), eq(event1), any());
+        inOrder.verify(codec).writeEvent(event1, outputStream);
+        inOrder.verify(codec).writeEvent(event2, outputStream);
+
+        verify(event1.getEventHandle()).release(false);
+        verify(event1.getEventHandle(), never()).release(true);
+        verify(event2.getEventHandle()).release(true);
+        verify(event2.getEventHandle(), never()).release(false);
     }
 
     @Test

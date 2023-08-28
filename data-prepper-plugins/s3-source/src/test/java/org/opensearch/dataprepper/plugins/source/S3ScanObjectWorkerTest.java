@@ -27,6 +27,7 @@ import org.opensearch.dataprepper.plugins.source.configuration.S3ScanSchedulingO
 import org.opensearch.dataprepper.plugins.source.ownership.BucketOwnerProvider;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -47,10 +48,10 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
 
 @ExtendWith(MockitoExtension.class)
@@ -273,6 +274,26 @@ class S3ScanObjectWorkerTest {
         given(sourceCoordinator.getNextPartition(any(S3ScanPartitionCreationSupplier.class))).willReturn(Optional.empty());
         final ScanObjectWorker objectUnderTest = createObjectUnderTest();
         objectUnderTest.runWithoutInfiniteLoop();
+    }
+
+    @Test
+    void partitionIsCompleted_when_NoObjectKeyException_is_thrown_from_process_object() throws IOException {
+        final String bucket = UUID.randomUUID().toString();
+        final String objectKey = UUID.randomUUID().toString();
+        final String partitionKey = bucket + "|" + objectKey;
+
+
+        final SourcePartition<S3SourceProgressState> partitionToProcess = SourcePartition.builder(S3SourceProgressState.class).withPartitionKey(partitionKey).build();
+
+        given(sourceCoordinator.getNextPartition(any(Function.class))).willReturn(Optional.of(partitionToProcess));
+
+        final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
+        doThrow(NoSuchKeyException.class).when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
+        doNothing().when(sourceCoordinator).completePartition(partitionKey);
+
+        createObjectUnderTest().runWithoutInfiniteLoop();
+
+        verifyNoMoreInteractions(sourceCoordinator);
     }
 
     static Stream<Class> exceptionProvider() {

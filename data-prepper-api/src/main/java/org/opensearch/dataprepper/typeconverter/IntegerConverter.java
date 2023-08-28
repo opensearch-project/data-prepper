@@ -19,6 +19,6 @@ public class IntegerConverter implements TypeConverter<Integer> {
         if (source instanceof Integer) {
             return (Integer)source;
         }
-        throw new IllegalArgumentException("Unsupported type conversion");
+        throw new IllegalArgumentException("Unsupported type conversion. Source class: " + source.getClass());
     }
 }

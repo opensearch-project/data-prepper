@@ -5,52 +5,50 @@
 
 package org.opensearch.dataprepper.plugins.kafka.source;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
+import io.micrometer.core.instrument.Counter;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
+import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventMetadata;
-import org.opensearch.dataprepper.acknowledgements.DefaultAcknowledgementSetManager;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
+import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaKeyMode;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
-import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
-import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 
-import static org.mockito.Mockito.when;
-import org.mockito.Mock;
-import static org.mockito.Mockito.mock;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.CoreMatchers.equalTo;
-import org.apache.commons.lang3.RandomStringUtils;
-
-import io.micrometer.core.instrument.Counter;
-import java.util.List;
-import java.util.Map;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import java.time.Duration;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class KafkaSourceJsonTypeIT {
     private static final int TEST_ID = 123456;
@@ -104,7 +102,6 @@ public class KafkaSourceJsonTypeIT {
         acknowledgementSetManager = new DefaultAcknowledgementSetManager(executor);
         pipelineDescription = mock(PipelineDescription.class);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(false);
-        when(sourceConfig.getAcknowledgementsTimeout()).thenReturn(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT);
         when(sourceConfig.getSchemaConfig()).thenReturn(null);
         when(pluginMetrics.counter(anyString())).thenReturn(counter);
         when(pipelineDescription.getPipelineName()).thenReturn("testPipeline");
@@ -144,7 +141,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
-        
+
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
@@ -206,7 +203,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(true);
         kafkaSource = createObjectUnderTest();
-        
+
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
@@ -343,7 +340,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
-        
+
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
@@ -403,7 +400,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
-        
+
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
@@ -465,7 +462,7 @@ public class KafkaSourceJsonTypeIT {
         KafkaProducer producer = new KafkaProducer(props);
         for (int i = 0; i < numRecords; i++) {
             String value = "{\"name\":\"testName"+i+"\", \"id\":"+(TEST_ID+i)+", \"status\":true}";
-            ProducerRecord<String, String> record = 
+            ProducerRecord<String, String> record =
                 new ProducerRecord<>(topicName, testKey, value);
             producer.send(record);
             try {

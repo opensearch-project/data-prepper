@@ -48,6 +48,8 @@ dependencies {
     implementation 'org.apache.kafka:connect-json:3.4.0'
     implementation 'com.github.fge:json-schema-validator:2.2.14'
     implementation 'commons-collections:commons-collections:3.2.2'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:apache-client'
 
 
 }
@@ -89,6 +91,9 @@ task integrationTest(type: Test) {
     systemProperty 'tests.kafka.glue_avro_schema_name', System.getProperty('tests.kafka.glue_avro_schema_name')
     systemProperty 'tests.msk.region', System.getProperty('tests.msk.region')
     systemProperty 'tests.msk.arn', System.getProperty('tests.msk.arn')
+    systemProperty 'tests.kafka.confluent.registry_url', System.getProperty('tests.kafka.confluent.registry_url')
+    systemProperty 'tests.kafka.authconfig.username', System.getProperty('tests.kafka.authconfig.username')
+    systemProperty 'tests.kafka.authconfig.password', System.getProperty('tests.kafka.authconfig.password')
 
     filter {
         includeTestsMatching '*IT'
