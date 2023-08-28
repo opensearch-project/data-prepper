@@ -24,6 +24,7 @@ dependencies {
     implementation 'com.github.scribejava:scribejava-core:8.3.3'
     implementation project(path: ':data-prepper-core')
     implementation project(':data-prepper-plugins:parse-json-processor')
+    implementation 'com.amazonaws:aws-java-sdk-sts:1.12.395'
     testImplementation project(':data-prepper-test-common')
 }
 

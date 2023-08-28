@@ -12,6 +12,8 @@
  */
 package org.opensearch.dataprepper.plugins.sink.http;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import org.apache.hc.core5.http.HttpRequest;
 import org.apache.hc.core5.http.ClassicHttpRequest;
 import org.apache.hc.core5.http.EntityDetails;
@@ -22,6 +24,7 @@ import org.apache.hc.core5.http.HttpRequestInterceptor;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.net.URIBuilder;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.AwsSignerExecutionAttribute;
@@ -144,14 +147,10 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
         requestBuilder.rawQueryParameters(nvpToMapParams(uriBuilder.getQueryParams()));
         requestBuilder.headers(headerArrayToMap(request.getHeaders()));
 
-        ExecutionAttributes attributes = new ExecutionAttributes();
-        // TODO: below line are for testing, remove later
-        AwsCredentials awsCredentials = null;
-        String accessKey = "accessKey";
-        String secretKey = "secretKey";
-        //awsCredentials = AwsBasicCredentials.create(accessKey, secretKey);
+        AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
 
-        awsCredentials = awsCredentialsProvider.resolveCredentials();
+        ExecutionAttributes attributes = new ExecutionAttributes();
+        AwsCredentials awsCredentials = AwsBasicCredentials.create(credentials.getAWSAccessKeyId(), credentials.getAWSSecretKey());
         attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentials);
         attributes.putAttribute(AwsSignerExecutionAttribute.SERVICE_SIGNING_NAME, service);
         attributes.putAttribute(AwsSignerExecutionAttribute.SIGNING_REGION, region);
@@ -161,16 +160,6 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
 
         // Now copy everything back
         request.setHeaders(mapToHeaderArray(signedRequest.headers()));
-        /* if (request instanceof ClassicHttpRequest) {
-            ClassicHttpRequest classicHttpRequest =
-                    (ClassicHttpRequest) request;
-            if (classicHttpRequest.getEntity() != null) {
-                HttpEntity basicHttpEntity = new BasicHttpEntity(signedRequest.contentStreamProvider()
-                        .orElseThrow(() -> new IllegalStateException("There must be content"))
-                        .newStream(), ContentType.APPLICATION_JSON);
-                classicHttpRequest.setEntity(basicHttpEntity);
-            }
-        } */
     }
 
     private URI buildUri(final HttpContext context, URIBuilder uriBuilder) throws IOException {
