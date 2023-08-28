@@ -24,8 +24,6 @@ import org.apache.hc.core5.http.HttpRequestInterceptor;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.net.URIBuilder;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.AwsSignerExecutionAttribute;
 import software.amazon.awssdk.core.interceptor.ExecutionAttributes;
@@ -148,10 +146,8 @@ public final class AwsRequestSigningApacheInterceptor implements HttpRequestInte
         requestBuilder.headers(headerArrayToMap(request.getHeaders()));
 
         AWSCredentials credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
-
         ExecutionAttributes attributes = new ExecutionAttributes();
-        AwsCredentials awsCredentials = AwsBasicCredentials.create(credentials.getAWSAccessKeyId(), credentials.getAWSSecretKey());
-        attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentials);
+        attributes.putAttribute(AwsSignerExecutionAttribute.AWS_CREDENTIALS, awsCredentialsProvider.resolveCredentials());
         attributes.putAttribute(AwsSignerExecutionAttribute.SERVICE_SIGNING_NAME, service);
         attributes.putAttribute(AwsSignerExecutionAttribute.SIGNING_REGION, region);
 
