@@ -9,11 +9,8 @@ repositories {
 
 dependencies {
     implementation project(':data-prepper-api')
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
-    implementation 'org.apache.parquet:parquet-common:1.12.3'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    implementation 'com.fasterxml.jackson.core:jackson-annotations'
+    implementation 'org.apache.parquet:parquet-common:1.13.1'
     testImplementation project(':data-prepper-plugins:common')
 }
 
