@@ -1,17 +1,13 @@
 package org.opensearch.dataprepper.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 
 import javax.inject.Inject;
 import javax.inject.Named;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
