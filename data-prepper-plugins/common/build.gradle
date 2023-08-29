@@ -20,7 +20,7 @@ dependencies {
     implementation 'org.reflections:reflections:0.10.2'
     implementation 'io.micrometer:micrometer-core'
     testImplementation testLibs.junit.vintage
-    implementation 'org.apache.parquet:parquet-common:1.12.3'
+    implementation 'org.apache.parquet:parquet-common:1.13.1'
     implementation 'org.xerial.snappy:snappy-java:1.1.10.3'
     testImplementation project(':data-prepper-plugins:blocking-buffer')
     testImplementation 'commons-io:commons-io:2.12.0'
