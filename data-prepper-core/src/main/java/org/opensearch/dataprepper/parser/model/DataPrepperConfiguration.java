@@ -90,7 +90,7 @@ public class DataPrepperConfiguration {
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig,
             @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig,
             @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown,
-            @JsonProperty("pipeline_extensions")
+            @JsonProperty("extensions")
             @JsonInclude(JsonInclude.Include.NON_NULL)
             @JsonSetter(nulls = Nulls.SKIP)
             final PipelineExtensions pipelineExtensions) {
