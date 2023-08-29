@@ -29,6 +29,9 @@ public class AwsAuthenticationConfiguration {
     @Size(max = 5, message = "sts_header_overrides supports a maximum of 5 headers to override")
     private Map<String, String> awsStsHeaderOverrides;
 
+    @JsonProperty("serverless")
+    private Boolean serverless = false;
+
     public String getAwsStsRoleArn() {
         return awsStsRoleArn;
     }
@@ -43,6 +46,10 @@ public class AwsAuthenticationConfiguration {
 
     public Map<String, String> getAwsStsHeaderOverrides() {
         return awsStsHeaderOverrides;
+    }
+
+    public Boolean isServerlessCollection() {
+        return serverless;
     }
 }
 
