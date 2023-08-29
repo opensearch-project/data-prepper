@@ -92,7 +92,7 @@ public interface OpenTelemetryLog extends Log {
      * Gets the severity text of this log event.
      *
      * @return the severity number encoded as Integer
-     * @since 2.4
+     * @since 2.5
      */
     String getSeverityText();
 

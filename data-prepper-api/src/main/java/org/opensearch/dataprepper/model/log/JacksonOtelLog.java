@@ -273,7 +273,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          *
          * @param severityText sets the severity text of this log event
          * @return the builder
-         * @since 2.4
+         * @since 2.5
          */
         public Builder withSeverityText(final String severityText) {
             data.put(SEVERITY_TEXT_KEY, severityText);
