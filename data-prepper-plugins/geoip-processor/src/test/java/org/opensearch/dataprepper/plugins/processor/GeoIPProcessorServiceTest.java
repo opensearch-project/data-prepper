@@ -36,7 +36,7 @@ class GeoIPProcessorServiceTest {
 
     private static final String S3_URL = "https://mybucket10012023.s3.amazonaws.com/GeoLite2/";
     private static final String URL = "https://download.maxmind.com/app/geoip_download?edition_" +
-            "id=GeoLite2-ASN&license_key=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&suffix=tar.gz";
+            "id=GeoLite2-ASN&suffix=tar.gz";
     private static final String PATH = "./src/test/resources/mmdb-file/geo-lite2";
     private static final String S3_REGION = "us-east-1";
     public static final int REFRESH_SCHEDULE = 10;

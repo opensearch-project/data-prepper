@@ -71,7 +71,7 @@ class DbSourceIdentificationTest {
         DatabasePathURLConfig databasePathURLConfig2 = new DatabasePathURLConfig();
         ReflectivelySetField.setField(DatabasePathURLConfig.class,
                 databasePathURLConfig2, "url", "https://download.maxmind.com/app/geoip_download?" +
-                        "edition_id=GeoLite2-ASN&license_key=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&suffix=tar.gz");
+                        "edition_id=GeoLite2-ASN&suffix=tar.gz");
         List<DatabasePathURLConfig> urlList = List.of(databasePathURLConfig2);
         DBSourceOptions dbSourceOptions = DbSourceIdentification.getDatabasePathType(urlList);
         Assertions.assertNotNull(dbSourceOptions);
