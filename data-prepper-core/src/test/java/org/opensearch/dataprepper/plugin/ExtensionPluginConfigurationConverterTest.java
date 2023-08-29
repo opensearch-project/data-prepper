@@ -1,5 +1,6 @@
 package org.opensearch.dataprepper.plugin;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Path;
 import jakarta.validation.Validator;
@@ -40,12 +41,13 @@ class ExtensionPluginConfigurationConverterTest {
     @Mock
     private ConstraintViolation<Object> constraintViolation;
 
+    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().objectMapper();
     private ExtensionPluginConfigurationConverter objectUnderTest;
 
     @BeforeEach
     void setUp() {
         objectUnderTest = new ExtensionPluginConfigurationConverter(
-                dataPrepperConfiguration, validator);
+                dataPrepperConfiguration, validator, objectMapper);
     }
 
     @Test

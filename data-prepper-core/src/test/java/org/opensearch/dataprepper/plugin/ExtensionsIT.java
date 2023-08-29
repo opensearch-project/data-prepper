@@ -99,6 +99,7 @@ public class ExtensionsIT {
         coreContext.registerBean(EventFactory.class, () -> eventFactory);
         coreContext.registerBean(AcknowledgementSetManager.class, () -> acknowledgementSetManager);
         coreContext.registerBean(SourceCoordinatorFactory.class, () -> sourceCoordinatorFactory);
+        coreContext.registerBean(ObjectMapperConfiguration.class, ObjectMapperConfiguration::new);
         coreContext.registerBean(ObjectMapper.class, () -> new ObjectMapper(new YAMLFactory()));
         coreContext.register(PipelineParserConfiguration.class);
         coreContext.refresh();

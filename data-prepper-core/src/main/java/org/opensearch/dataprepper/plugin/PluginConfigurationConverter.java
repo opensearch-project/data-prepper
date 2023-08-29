@@ -32,14 +32,10 @@ class PluginConfigurationConverter {
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
-    PluginConfigurationConverter(final Validator validator) {
-        final SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
-
-        this.objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .registerModule(simpleModule);
-
+    PluginConfigurationConverter(final Validator validator,
+                                 @Named("pluginConfigObjectMapper")
+                                 final ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         this.validator = validator;
     }
 

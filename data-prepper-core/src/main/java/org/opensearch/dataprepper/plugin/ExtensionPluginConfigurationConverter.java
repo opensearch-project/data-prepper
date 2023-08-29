@@ -27,16 +27,11 @@ public class ExtensionPluginConfigurationConverter {
 
     @Inject
     public ExtensionPluginConfigurationConverter(final DataPrepperConfiguration dataPrepperConfiguration,
-                                                 final Validator validator) {
+                                                 final Validator validator,
+                                                 @Named("pluginConfigObjectMapper")
+                                                 final ObjectMapper objectMapper) {
         this.dataPrepperConfiguration = dataPrepperConfiguration;
-
-        final SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
-
-        this.objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .registerModule(simpleModule);
-
+        this.objectMapper = objectMapper;
         this.validator = validator;
     }
 
