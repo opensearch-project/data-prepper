@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConf
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreateScrollResponse;
@@ -196,6 +197,36 @@ public class ScrollWorkerTest {
 
         verifyNoMoreInteractions(searchAccessor);
         verify(sourceCoordinator).giveUpPartitions();
+        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+    }
+
+
+    @Test
+    void run_completes_partitions_createScroll_throws_IndexNotFoundException() throws InterruptedException {
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        when(searchAccessor.createScroll(any(CreateScrollRequest.class))).thenThrow(IndexNotFoundException.class);
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition))
+                .thenReturn(Optional.empty());
+
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(future.isCancelled(), equalTo(true));
+
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        verifyNoMoreInteractions(searchAccessor);
+        verify(sourceCoordinator).completePartition(partitionKey);
         verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
     }
 

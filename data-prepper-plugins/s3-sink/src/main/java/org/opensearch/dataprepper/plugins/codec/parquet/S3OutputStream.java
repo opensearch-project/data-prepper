@@ -6,6 +6,8 @@ package org.opensearch.dataprepper.plugins.codec.parquet;
 
 
 import org.apache.parquet.io.PositionOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
@@ -23,6 +25,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 public class S3OutputStream extends PositionOutputStream {
+    private static final Logger LOG = LoggerFactory.getLogger(S3OutputStream.class);
 
     /**
      * Default chunk size is 10MB
@@ -148,6 +151,8 @@ public class S3OutputStream extends PositionOutputStream {
                         .build();
             }
 
+            LOG.debug("Completing S3 multipart upload with {} parts.", completedParts.length);
+
             CompletedMultipartUpload completedMultipartUpload = CompletedMultipartUpload.builder()
                     .parts(completedParts)
                     .build();
@@ -185,19 +190,25 @@ public class S3OutputStream extends PositionOutputStream {
                     .build();
             CreateMultipartUploadResponse multipartUpload = s3Client.createMultipartUpload(uploadRequest);
             uploadId = multipartUpload.uploadId();
+
+            LOG.debug("Created multipart upload {} bucket='{}',key='{}'.", uploadId, bucket, key);
         }
     }
 
     private void uploadPart() {
+        int partNumber = etags.size() + 1;
         UploadPartRequest uploadRequest = UploadPartRequest.builder()
                 .bucket(bucket)
                 .key(key)
                 .uploadId(uploadId)
-                .partNumber(etags.size() + 1)
+                .partNumber(partNumber)
                 .contentLength((long) position)
                 .build();
         RequestBody requestBody = RequestBody.fromInputStream(new ByteArrayInputStream(buf, 0, position),
                 position);
+
+        LOG.debug("Writing {} bytes to S3 multipart part number {}.", buf.length, partNumber);
+
         UploadPartResponse uploadPartResponse = s3Client.uploadPart(uploadRequest, requestBody);
         etags.add(uploadPartResponse.eTag());
     }

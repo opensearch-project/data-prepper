@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConf
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.NoSearchContextSearchRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchWithSearchAfterResults;
 
@@ -38,9 +39,12 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -86,6 +90,36 @@ public class NoSearchContextWorkerTest {
         assertThat(future.isCancelled(), equalTo(true));
 
         assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+    }
+
+    @Test
+    void run_when_search_without_search_context_throws_index_not_found_exception_completes_the_partition() throws InterruptedException {
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition))
+                .thenReturn(Optional.empty());
+
+        when(searchAccessor.searchWithoutSearchContext(any(NoSearchContextSearchRequest.class))).thenThrow(IndexNotFoundException.class);
+
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(future.isCancelled(), equalTo(true));
+
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        verify(sourceCoordinator).completePartition(partitionKey);
+        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
     }
 
     @Test

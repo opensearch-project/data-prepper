@@ -21,6 +21,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConf
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
@@ -256,6 +257,32 @@ public class PitWorkerTest {
 
         verify(searchAccessor, never()).deletePit(any(DeletePointInTimeRequest.class));
         verify(sourceCoordinator).giveUpPartitions();
+        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+    }
+
+    @Test
+    void run_completes_partitions_when_createPit_throws_IndexNotFoundException() throws InterruptedException {
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+        when(sourcePartition.getPartitionState()).thenReturn(Optional.empty());
+
+        when(searchAccessor.createPit(any(CreatePointInTimeRequest.class))).thenThrow(IndexNotFoundException.class);
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition))
+                .thenReturn(Optional.empty());
+
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(future.isCancelled(), equalTo(true));
+
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        verify(searchAccessor, never()).deletePit(any(DeletePointInTimeRequest.class));
+        verify(sourceCoordinator).completePartition(partitionKey);
         verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
     }
 }

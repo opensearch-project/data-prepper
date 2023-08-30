@@ -16,6 +16,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgr
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
@@ -70,40 +71,53 @@ public class PitWorker implements SearchWorker, Runnable {
     @Override
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
-            final Optional<SourcePartition<OpenSearchIndexProgressState>> indexPartition = sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier);
+            try {
+                final Optional<SourcePartition<OpenSearchIndexProgressState>> indexPartition = sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier);
 
-            if (indexPartition.isEmpty()) {
+                if (indexPartition.isEmpty()) {
+                    try {
+                        Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                        continue;
+                    } catch (final InterruptedException e) {
+                        LOG.info("The PitWorker was interrupted while sleeping after acquiring no indices to process, stopping processing");
+                        return;
+                    }
+                }
+
+                try {
+                    processIndex(indexPartition.get());
+
+                    sourceCoordinator.closePartition(
+                            indexPartition.get().getPartitionKey(),
+                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
+                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
+                } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
+                    LOG.warn("PitWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
+                    sourceCoordinator.giveUpPartitions();
+                } catch (final SearchContextLimitException e) {
+                    LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
+                            indexPartition.get().getPartitionKey(), BACKOFF_ON_PIT_LIMIT_REACHED.getSeconds(), e.getMessage());
+                    sourceCoordinator.giveUpPartitions();
+                    try {
+                        Thread.sleep(BACKOFF_ON_PIT_LIMIT_REACHED.toMillis());
+                    } catch (final InterruptedException ex) {
+                        return;
+                    }
+                } catch (final IndexNotFoundException e){
+                    LOG.warn("{}, marking index as complete and continuing processing", e.getMessage());
+                    sourceCoordinator.completePartition(indexPartition.get().getPartitionKey());
+                } catch (final RuntimeException e) {
+                    LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
+                    sourceCoordinator.giveUpPartitions();
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception while trying to get index to process with PIT, backing off and retrying", e);
                 try {
                     Thread.sleep(STANDARD_BACKOFF_MILLIS);
-                    continue;
-                } catch (final InterruptedException e) {
-                    LOG.info("The PitWorker was interrupted while sleeping after acquiring no indices to process, stopping processing");
-                    return;
-                }
-            }
-
-            try {
-                processIndex(indexPartition.get());
-
-                sourceCoordinator.closePartition(
-                        indexPartition.get().getPartitionKey(),
-                        openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
-                        openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
-            } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
-                LOG.warn("PitWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
-                sourceCoordinator.giveUpPartitions();
-            } catch (final SearchContextLimitException e) {
-                LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
-                        indexPartition.get().getPartitionKey(), BACKOFF_ON_PIT_LIMIT_REACHED.getSeconds(), e.getMessage());
-                sourceCoordinator.giveUpPartitions();
-                try {
-                    Thread.sleep(BACKOFF_ON_PIT_LIMIT_REACHED.toMillis());
                 } catch (final InterruptedException ex) {
+                    LOG.info("The PitWorker was interrupted before backing off and retrying, stopping processing");
                     return;
                 }
-            } catch (final RuntimeException e) {
-                LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
-                sourceCoordinator.giveUpPartitions();
             }
         }
     }
@@ -137,27 +151,22 @@ public class PitWorker implements SearchWorker, Runnable {
 
         // todo: Pass query and sort options from SearchConfiguration to the search request
         do {
-            try {
-                searchWithSearchAfterResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
-                        .withPitId(openSearchIndexProgressState.getPitId())
-                        .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
-                        .withPaginationSize(searchConfiguration.getBatchSize())
-                        .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchWithSearchAfterResults))
-                        .build());
+            searchWithSearchAfterResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
+                    .withPitId(openSearchIndexProgressState.getPitId())
+                    .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
+                    .withPaginationSize(searchConfiguration.getBatchSize())
+                    .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchWithSearchAfterResults))
+                    .build());
 
-                searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {
-                    try {
-                        bufferAccumulator.add(record);
-                    } catch (Exception e) {
-                        LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
-                                record.getData().getMetadata().getAttribute(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME),
-                                record.getData().getMetadata().getAttribute(INDEX_METADATA_ATTRIBUTE_NAME), e.getMessage());
-                    }
-                });
-            } catch (final Exception e) {
-                LOG.error("Received an exception while searching with PIT for index '{}'", indexName);
-                throw new RuntimeException(e);
-            }
+            searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {
+                try {
+                    bufferAccumulator.add(record);
+                } catch (Exception e) {
+                    LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
+                            record.getData().getMetadata().getAttribute(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME),
+                            record.getData().getMetadata().getAttribute(INDEX_METADATA_ATTRIBUTE_NAME), e.getMessage());
+                }
+            });
 
             openSearchIndexProgressState.setSearchAfter(searchWithSearchAfterResults.getNextSearchAfter());
             openSearchIndexProgressState.setKeepAlive(Duration.ofMillis(openSearchIndexProgressState.getKeepAlive()).plus(EXTEND_KEEP_ALIVE_DURATION).toMillis());

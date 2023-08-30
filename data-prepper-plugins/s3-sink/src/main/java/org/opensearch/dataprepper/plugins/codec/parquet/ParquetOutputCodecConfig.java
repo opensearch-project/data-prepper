@@ -5,111 +5,34 @@
 package org.opensearch.dataprepper.plugins.codec.parquet;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
 
 public class ParquetOutputCodecConfig {
-
-    private static final String DEFAULT_OBJECT_NAME_PATTERN = "events-%{yyyy-MM-dd'T'hh-mm-ss}";
-
     @JsonProperty("schema")
     private String schema;
 
-    @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
-    @JsonProperty("schema_file_location")
-    private String fileLocation;
+    @JsonProperty("auto_schema")
+    private boolean autoSchema;
 
-    @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
-    @JsonProperty("schema_bucket")
-    private String schemaBucket;
-
-    @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
-    @JsonProperty("file_key")
-    private String fileKey;
-
-    @Valid
-    @Size(max = 0, message = "Schema from file is not supported.")
-    @JsonProperty("schema_region")
-    private String schemaRegion;
-
-    @JsonProperty("path_prefix")
-    @NotNull
-    @Valid
-    private String pathPrefix;
-
-    @Valid
-    @Size(max = 0, message = "Schema from Schema Registry is not supported.")
-    @JsonProperty("schema_registry_url")
-    private String schemaRegistryUrl;
-
-    public String getFileLocation() {
-        return fileLocation;
-    }
-
-    public void setSchema(String schema) {
-        this.schema = schema;
+    @AssertTrue(message = "The Parquet codec requires either defining a schema or setting auto_schema to true to automatically generate a schema.")
+    boolean isSchemaOrAutoSchemaDefined() {
+        return schema != null ^ autoSchema;
     }
 
     public String getSchema() {
         return schema;
     }
 
-    public String getSchemaRegistryUrl() {
-        return schemaRegistryUrl;
+    public void setSchema(final String schema) {
+        this.schema = schema;
     }
 
-    public String getPathPrefix() {
-        return pathPrefix;
+    public boolean isAutoSchema() {
+        return autoSchema;
     }
 
-    /**
-     * Read s3 object index file pattern configuration.
-     *
-     * @return default object name pattern.
-     */
-    public String getNamePattern() {
-        return DEFAULT_OBJECT_NAME_PATTERN;
+    void setAutoSchema(final boolean autoSchema) {
+        this.autoSchema = autoSchema;
     }
-
-    public void setPathPrefix(String pathPrefix) {
-        this.pathPrefix = pathPrefix;
-    }
-
-    public String getSchemaBucket() {
-        return schemaBucket;
-    }
-
-    public String getFileKey() {
-        return fileKey;
-    }
-
-    public String getSchemaRegion() {
-        return schemaRegion;
-    }
-
-    public void setFileKey(String fileKey) {
-        this.fileKey = fileKey;
-    }
-
-    public void setSchemaBucket(String schemaBucket) {
-        this.schemaBucket = schemaBucket;
-    }
-
-    public void setSchemaRegion(String schemaRegion) {
-        this.schemaRegion = schemaRegion;
-    }
-
-    public void setFileLocation(String fileLocation) {
-        this.fileLocation = fileLocation;
-    }
-
-    public void setSchemaRegistryUrl(String schemaRegistryUrl) {
-        this.schemaRegistryUrl = schemaRegistryUrl;
-    }
-
 }
 

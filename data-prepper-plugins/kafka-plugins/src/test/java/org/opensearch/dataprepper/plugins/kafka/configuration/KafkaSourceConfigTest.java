@@ -11,12 +11,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.util.List;
-import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
-import java.time.Duration;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
@@ -66,7 +65,6 @@ class KafkaSourceConfigTest {
 	@Test
 	void test_topics_not_null(){
 		assertEquals(false, kafkaSourceConfig.getAcknowledgementsEnabled());
-		assertEquals(KafkaSourceConfig.DEFAULT_ACKNOWLEDGEMENTS_TIMEOUT, kafkaSourceConfig.getAcknowledgementsTimeout());
 		assertThat(kafkaSourceConfig.getTopics(), notNullValue());
 	}
 
@@ -81,10 +79,7 @@ class KafkaSourceConfigTest {
 		assertEquals("127.0.0.1:9092", kafkaSourceConfig.getBootStrapServers());
 		assertEquals(Collections.singletonList(topicConfig), kafkaSourceConfig.getTopics());
         setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsEnabled", true);
-        Duration testTimeout = Duration.ofSeconds(10);
-        setField(KafkaSourceConfig.class, kafkaSourceConfig, "acknowledgementsTimeout", testTimeout);
 		assertEquals(true, kafkaSourceConfig.getAcknowledgementsEnabled());
-		assertEquals(testTimeout, kafkaSourceConfig.getAcknowledgementsTimeout());
 		assertEquals(EncryptionType.SSL, kafkaSourceConfig.getEncryptionConfig().getType());
         setField(KafkaSourceConfig.EncryptionConfig.class, encryptionConfig, "type", EncryptionType.NONE);
 		assertEquals(EncryptionType.NONE, encryptionConfig.getType());

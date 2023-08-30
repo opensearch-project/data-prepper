@@ -49,7 +49,7 @@ public class ParquetOutputScenario implements OutputScenario {
 
     @Override
     public Set<BufferTypeOptions> getIncompatibleBufferTypes() {
-        return Set.of(BufferTypeOptions.LOCALFILE, BufferTypeOptions.INMEMORY);
+        return Set.of(BufferTypeOptions.LOCALFILE, BufferTypeOptions.MULTI_PART);
     }
 
     @Override

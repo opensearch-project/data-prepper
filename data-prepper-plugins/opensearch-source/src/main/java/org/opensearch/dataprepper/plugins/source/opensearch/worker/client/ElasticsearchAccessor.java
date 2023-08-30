@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
@@ -58,6 +59,7 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchAccessor.class);
 
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
+    static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
 
     private final ElasticsearchClient elasticsearchClient;
     private final SearchContextType searchContextType;
@@ -84,6 +86,10 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
             if (isDueToPitLimitExceeded(e)) {
                 throw new SearchContextLimitException(String.format("There was an error creating a new point in time for index '%s': %s", createPointInTimeRequest.getIndex(),
                         e.error().causedBy().reason()));
+            }
+
+            if (isDueToNoIndexFound(e)) {
+                throw new IndexNotFoundException(String.format("The index '%s' could not be found and may have been deleted", createPointInTimeRequest.getIndex()));
             }
             LOG.error("There was an error creating a point in time for Elasticsearch: ", e);
             throw e;
@@ -144,6 +150,10 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                     .size(createScrollRequest.getSize())
                     .index(createScrollRequest.getIndex())), ObjectNode.class);
         } catch (final ElasticsearchException e) {
+            if (isDueToNoIndexFound(e)) {
+                throw new IndexNotFoundException(String.format("The index '%s' could not be found and may have been deleted", createScrollRequest.getIndex()));
+            }
+
             LOG.error("There was an error creating a scroll context for Elasticsearch: ", e);
             throw e;
         } catch (final IOException e) {
@@ -237,6 +247,12 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
                     .withDocuments(documents)
                     .withNextSearchAfter(nextSearchAfter)
                     .build();
+        } catch (final ElasticsearchException e) {
+            if (isDueToNoIndexFound(e)) {
+                throw new IndexNotFoundException(String.format("The index '%s' could not be found and may have been deleted", searchRequest.index()));
+            }
+
+            throw e;
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }
@@ -245,6 +261,11 @@ public class ElasticsearchAccessor implements SearchAccessor, ClusterClientFacto
     private boolean isDueToPitLimitExceeded(final ElasticsearchException e) {
         return Objects.nonNull(e.error()) && Objects.nonNull(e.error().causedBy()) && Objects.nonNull(e.error().causedBy().type())
                 && PIT_RESOURCE_LIMIT_ERROR_TYPE.equals(e.error().causedBy().type());
+    }
+
+    private boolean isDueToNoIndexFound(final ElasticsearchException e) {
+        return Objects.nonNull(e.response()) && Objects.nonNull(e.response().error()) && Objects.nonNull(e.response().error().type())
+                && INDEX_NOT_FOUND_EXCEPTION.equals(e.response().error().type());
     }
 
     private boolean isDueToScrollLimitExceeded(final IOException e) {

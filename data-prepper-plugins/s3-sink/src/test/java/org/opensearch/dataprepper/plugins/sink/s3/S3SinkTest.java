@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.sink.s3;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
@@ -15,6 +16,7 @@ import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
 import org.opensearch.dataprepper.model.record.Record;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.SinkContext;
 import org.opensearch.dataprepper.model.types.ByteCount;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
@@ -28,14 +30,19 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.sameInstance;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class S3SinkTest {
-
     public static final int MAX_EVENTS = 100;
     public static final int MAX_RETRIES = 5;
     public static final String BUCKET_NAME = "dataprepper";
@@ -51,6 +58,7 @@ class S3SinkTest {
     private PluginFactory pluginFactory;
     private AwsCredentialsSupplier awsCredentialsSupplier;
     private SinkContext sinkContext;
+    private OutputCodec codec;
 
     @BeforeEach
     void setUp() {
@@ -59,7 +67,7 @@ class S3SinkTest {
         sinkContext = mock(SinkContext.class);
         ThresholdOptions thresholdOptions = mock(ThresholdOptions.class);
         AwsAuthenticationOptions awsAuthenticationOptions = mock(AwsAuthenticationOptions.class);
-        OutputCodec codec = mock(OutputCodec.class);
+        codec = mock(OutputCodec.class);
         ObjectKeyOptions objectKeyOptions = mock(ObjectKeyOptions.class);
         pluginSetting = mock(PluginSetting.class);
         PluginModel pluginModel = mock(PluginModel.class);
@@ -110,5 +118,27 @@ class S3SinkTest {
         s3Sink.doInitialize();
         Collection<Record<Event>> records = new ArrayList<>();
         s3Sink.doOutput(records);
+    }
+
+    @Test
+    void constructor_should_call_codec_validateAgainstCodecContext_with_context() {
+        createObjectUnderTest();
+
+        ArgumentCaptor<OutputCodecContext> outputCodecContextArgumentCaptor = ArgumentCaptor.forClass(OutputCodecContext.class);
+        verify(codec).validateAgainstCodecContext(outputCodecContextArgumentCaptor.capture());
+
+        OutputCodecContext actualCodecContext = outputCodecContextArgumentCaptor.getValue();
+
+        assertThat(actualCodecContext, instanceOf(S3OutputCodecContext.class));
+    }
+
+    @Test
+    void constructor_should_throw_if_codec_validateAgainstCodecContext_throws() {
+        RuntimeException codecException = mock(RuntimeException.class);
+
+        doThrow(codecException).when(codec).validateAgainstCodecContext(any());
+
+        RuntimeException actualException = assertThrows(RuntimeException.class, () -> createObjectUnderTest());
+        assertThat(actualException, sameInstance(codecException));
     }
 }
