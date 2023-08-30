@@ -6,7 +6,10 @@ import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+<<<<<<< HEAD
 import static org.hamcrest.CoreMatchers.nullValue;
+=======
+>>>>>>> main
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
