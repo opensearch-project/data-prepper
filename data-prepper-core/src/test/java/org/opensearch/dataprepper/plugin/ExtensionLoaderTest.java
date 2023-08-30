@@ -5,24 +5,32 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.apache.commons.lang3.stream.Streams;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
+import org.opensearch.dataprepper.plugins.test.TestExtensionConfig;
+import org.opensearch.dataprepper.plugins.test.TestExtensionWithConfig;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,12 +45,16 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ExtensionLoaderTest {
     @Mock
+    private ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
+    @Mock
     private ExtensionClassProvider extensionClassProvider;
     @Mock
     private PluginCreator pluginCreator;
+    @Captor
+    private ArgumentCaptor<PluginArgumentsContext> pluginArgumentsContextArgumentCaptor;
 
     private ExtensionLoader createObjectUnderTest() {
-        return new ExtensionLoader(extensionClassProvider, pluginCreator);
+        return new ExtensionLoader(extensionPluginConfigurationConverter, extensionClassProvider, pluginCreator);
     }
 
     @Test
@@ -70,6 +82,34 @@ class ExtensionLoaderTest {
 
         final List<? extends ExtensionPlugin> extensionPlugins = createObjectUnderTest().loadExtensions();
 
+        assertThat(extensionPlugins, notNullValue());
+        assertThat(extensionPlugins.size(), equalTo(1));
+        assertThat(extensionPlugins.get(0), equalTo(expectedPlugin));
+    }
+
+    @ParameterizedTest
+    @MethodSource("validExtensionConfigs")
+    void loadExtensions_returns_single_extension_with_config_for_single_plugin_class(
+            final TestExtensionConfig testExtensionConfig) {
+        when(extensionClassProvider.loadExtensionPluginClasses())
+                .thenReturn(Collections.singleton(TestExtensionWithConfig.class));
+
+        final TestExtensionWithConfig expectedPlugin = mock(TestExtensionWithConfig.class);
+        final String expectedPluginName = "test_extension_with_config";
+        when(extensionPluginConfigurationConverter.convert(eq(TestExtensionConfig.class),
+                eq("test_extension"))).thenReturn(testExtensionConfig);
+        when(pluginCreator.newPluginInstance(
+                eq(TestExtensionWithConfig.class),
+                any(PluginArgumentsContext.class),
+                eq(expectedPluginName)))
+                .thenReturn(expectedPlugin);
+
+        final List<? extends ExtensionPlugin> extensionPlugins = createObjectUnderTest().loadExtensions();
+
+        verify(pluginCreator).newPluginInstance(eq(TestExtensionWithConfig.class),
+                pluginArgumentsContextArgumentCaptor.capture(), eq(expectedPluginName));
+        assertThat(pluginArgumentsContextArgumentCaptor.getValue(), instanceOf(
+                ExtensionLoader.SingleConfigArgumentArgumentsContext.class));
         assertThat(extensionPlugins, notNullValue());
         assertThat(extensionPlugins.size(), equalTo(1));
         assertThat(extensionPlugins.get(0), equalTo(expectedPlugin));
@@ -176,6 +216,12 @@ class ExtensionLoaderTest {
     })
     void classNameToPluginName_returns_name_split_by_uppercase(final String input, final String expected) {
         assertThat(ExtensionLoader.classNameToPluginName(input), equalTo(expected));
+    }
+
+    private static Stream<Arguments>  validExtensionConfigs() {
+        return Streams.of(
+                Arguments.of(new TestExtensionConfig()),
+                null);
     }
 
     private interface TestExtension1 extends ExtensionPlugin {
