@@ -100,11 +100,7 @@ public class PipelinesDataflowModelParser {
                 .flatMap(pipelines -> pipelines.entrySet().stream())
                 .collect(Collectors.toUnmodifiableMap(
                         Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (exisstingValue, newValue) -> {
-                            throw new ParseException(
-                                    "Duplicate pipeline names across pipeline configuration files are not allowed.");
-                        }
+                        Map.Entry::getValue
                 ));
         return new PipelinesDataFlowModel(pipelinesDataFlowModelMap);
     }

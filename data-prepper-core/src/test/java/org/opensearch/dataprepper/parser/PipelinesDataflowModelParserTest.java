@@ -51,16 +51,6 @@ class PipelinesDataflowModelParserTest {
     }
 
     @Test
-    void parseConfiguration_from_directory_with_duplicate_multi_pipelines_in_multiple_files_should_throw() {
-        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
-                new PipelinesDataflowModelParser(TestDataProvider.DUPLICATE_MULTI_FILE_PIPELINE_DIRECTOTRY);
-        final ParseException actualException = assertThrows(
-                ParseException.class, pipelinesDataflowModelParser::parseConfiguration);
-        assertThat(actualException.getMessage(),
-                equalTo("Duplicate pipeline names across pipeline configuration files are not allowed."));
-    }
-
-    @Test
     void parseConfiguration_from_directory_with_single_file_creates_the_correct_model() {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(TestDataProvider.SINGLE_FILE_PIPELINE_DIRECTOTRY);
