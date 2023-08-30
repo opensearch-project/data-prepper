@@ -1,0 +1,7 @@
+duplicate-pipeline:
+  source:
+    random:
+  buffer:
+    bounded_blocking: #to check non object nodes for plugins
+  sink:
+    - stdout:

@@ -44,6 +44,7 @@ public class TestDataProvider {
     public static final String MISSING_NAME_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_name_multiple_pipeline_configuration.yml";
     public static final String MISSING_PIPELINE_MULTIPLE_PIPELINE_CONFIG_FILE = "src/test/resources/missing_pipeline_multiple_pipeline_configuration.yml";
     public static final String MULTI_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/multi-pipelines";
+    public static final String DUPLICATE_MULTI_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/duplicate-multi-pipelines";
     public static final String SINGLE_FILE_PIPELINE_DIRECTOTRY = "src/test/resources/single-pipeline";
     public static final String EMPTY_PIPELINE_DIRECTOTRY = "src/test/resources/no-pipelines";
     public static final String VALID_MULTIPLE_SINKS_CONFIG_FILE = "src/test/resources/valid_multiple_sinks.yml";
