@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
+import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,9 +15,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.SequenceInputStream;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -35,18 +35,8 @@ public class PipelinesDataflowModelParser {
     }
 
     public PipelinesDataFlowModel parseConfiguration() {
-        try (final InputStream mergedPipelineConfigurationFiles = mergePipelineConfigurationFiles()) {
-            final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(mergedPipelineConfigurationFiles,
-                    PipelinesDataFlowModel.class);
-
-            final DataPrepperVersion version = pipelinesDataFlowModel.getDataPrepperVersion();
-            validateDataPrepperVersion(version);
-
-            return pipelinesDataFlowModel;
-        } catch (IOException e) {
-            LOG.error("Failed to parse the configuration file {}", pipelineConfigurationFileLocation);
-            throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
-        }
+        final List<PipelinesDataFlowModel> pipelinesDataFlowModels = parsePipelineConfigurationFiles();
+        return mergePipelinesDataModels(pipelinesDataFlowModels);
     }
 
     private void validateDataPrepperVersion(final DataPrepperVersion version) {
@@ -57,38 +47,61 @@ public class PipelinesDataflowModelParser {
         }
     }
 
-    private InputStream mergePipelineConfigurationFiles() throws IOException {
+    private List<PipelinesDataFlowModel> parsePipelineConfigurationFiles() {
         final File configurationLocation = new File(pipelineConfigurationFileLocation);
 
         if (configurationLocation.isFile()) {
-            return new FileInputStream(configurationLocation);
+            return Stream.of(configurationLocation).map(this::parsePipelineConfigurationFile)
+                    .filter(Objects::nonNull).collect(Collectors.toList());
         } else if (configurationLocation.isDirectory()) {
             FileFilter yamlFilter = pathname -> (pathname.getName().endsWith(".yaml") || pathname.getName().endsWith(".yml"));
-            List<InputStream> configurationFiles = Stream.of(configurationLocation.listFiles(yamlFilter))
-                    .map(file -> {
-                        InputStream inputStream;
-                        try {
-                            inputStream = new FileInputStream(file);
-                            LOG.info("Reading pipeline configuration from {}", file.getName());
-                        } catch (FileNotFoundException e) {
-                            inputStream = null;
-                            LOG.warn("Pipeline configuration file {} not found", file.getName());
-                        }
-                        return inputStream;
-                    })
+            List<PipelinesDataFlowModel> pipelinesDataFlowModels = Stream.of(configurationLocation.listFiles(yamlFilter))
+                    .map(this::parsePipelineConfigurationFile)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
-            if (configurationFiles.isEmpty()) {
+            if (pipelinesDataFlowModels.isEmpty()) {
                 LOG.error("Pipelines configuration file not found at {}", pipelineConfigurationFileLocation);
                 throw new ParseException(
                         format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
             }
 
-            return new SequenceInputStream(Collections.enumeration(configurationFiles));
+            return pipelinesDataFlowModels;
         } else {
             LOG.error("Pipelines configuration file not found at {}", pipelineConfigurationFileLocation);
             throw new ParseException(format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
         }
+    }
+
+    private PipelinesDataFlowModel parsePipelineConfigurationFile(final File pipelineConfigurationFile) {
+        try (final InputStream mergedPipelineConfigurationFiles = new FileInputStream(pipelineConfigurationFile)) {
+            LOG.info("Reading pipeline configuration from {}", pipelineConfigurationFile.getName());
+            final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(mergedPipelineConfigurationFiles,
+                    PipelinesDataFlowModel.class);
+
+            final DataPrepperVersion version = pipelinesDataFlowModel.getDataPrepperVersion();
+            validateDataPrepperVersion(version);
+
+            return pipelinesDataFlowModel;
+        } catch (IOException e) {
+            if (e instanceof FileNotFoundException) {
+                LOG.warn("Pipeline configuration file {} not found", pipelineConfigurationFile.getName());
+                return null;
+            }
+            LOG.error("Failed to parse the configuration file {}", pipelineConfigurationFileLocation);
+            throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
+        }
+    }
+
+    private PipelinesDataFlowModel mergePipelinesDataModels(
+            final List<PipelinesDataFlowModel> pipelinesDataFlowModels) {
+        final Map<String, PipelineModel> pipelinesDataFlowModelMap = pipelinesDataFlowModels.stream()
+                .map(PipelinesDataFlowModel::getPipelines)
+                .flatMap(pipelines -> pipelines.entrySet().stream())
+                .collect(Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue
+                ));
+        return new PipelinesDataFlowModel(pipelinesDataFlowModelMap);
     }
 }

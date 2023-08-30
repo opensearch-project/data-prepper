@@ -6,6 +6,7 @@ import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -46,6 +47,7 @@ class PipelinesDataflowModelParserTest {
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+        assertThat(actualPipelinesDataFlowModel.getDataPrepperVersion(), nullValue());
     }
 
     @Test
