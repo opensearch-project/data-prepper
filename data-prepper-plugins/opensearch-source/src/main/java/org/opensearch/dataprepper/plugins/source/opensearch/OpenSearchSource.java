@@ -4,6 +4,7 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -22,15 +23,18 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
 
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     private SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
     private OpenSearchService openSearchService;
 
     @DataPrepperPluginConstructor
     public OpenSearchSource(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
-                            final AwsCredentialsSupplier awsCredentialsSupplier) {
+                            final AwsCredentialsSupplier awsCredentialsSupplier,
+                            final AcknowledgementSetManager acknowledgementSetManager) {
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
+        this.acknowledgementSetManager = acknowledgementSetManager;
 
         openSearchSourceConfiguration.validateAwsConfigWithUsernameAndPassword();
     }
@@ -50,8 +54,13 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
 
         final SearchAccessor searchAccessor = searchAccessorStrategy.getSearchAccessor();
 
-        openSearchService = OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer);
+        openSearchService = OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager);
         openSearchService.start();
+    }
+
+    @Override
+    public boolean areAcknowledgementsEnabled() {
+        return openSearchSourceConfiguration.isAcknowledgmentsEnabled();
     }
 
     @Override

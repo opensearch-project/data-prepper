@@ -141,7 +141,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
-        
+
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
@@ -203,7 +203,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         when(sourceConfig.getAcknowledgementsEnabled()).thenReturn(true);
         kafkaSource = createObjectUnderTest();
-        
+
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
@@ -340,7 +340,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
-        
+
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
@@ -400,7 +400,7 @@ public class KafkaSourceJsonTypeIT {
         when(sourceConfig.getTopics()).thenReturn(List.of(jsonTopic));
         when(sourceConfig.getAuthConfig()).thenReturn(null);
         kafkaSource = createObjectUnderTest();
-        
+
         Properties props = new Properties();
         props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         AtomicBoolean created = new AtomicBoolean(false);
@@ -462,7 +462,7 @@ public class KafkaSourceJsonTypeIT {
         KafkaProducer producer = new KafkaProducer(props);
         for (int i = 0; i < numRecords; i++) {
             String value = "{\"name\":\"testName"+i+"\", \"id\":"+(TEST_ID+i)+", \"status\":true}";
-            ProducerRecord<String, String> record = 
+            ProducerRecord<String, String> record =
                 new ProducerRecord<>(topicName, testKey, value);
             producer.send(record);
             try {

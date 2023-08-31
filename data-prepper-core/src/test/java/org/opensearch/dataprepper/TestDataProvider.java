@@ -77,6 +77,7 @@ public class TestDataProvider {
     public static final String VALID_PEER_FORWARDER_CONFIG_FILE = "src/test/resources/valid_peer_forwarder_config.yml";
     public static final String VALID_PEER_FORWARDER_CONFIG_WITH_DRAIN_TIMEOUT_FILE = "src/test/resources/valid_peer_forwarder_config_with_drain_timeout.yml";
     public static final String VALID_PEER_FORWARDER_CONFIG_WITH_ISO8601_DRAIN_TIMEOUT_FILE = "src/test/resources/valid_peer_forwarder_config_with_iso8601_drain_timeout.yml";
+    public static final String VALID_DATA_PREPPER_CONFIG_WITH_TEST_EXTENSION_FILE = "src/test/resources/valid_data_prepper_config_with_test_extension.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_PORT_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_port_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_THREAD_COUNT_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_thread_count_config.yml";
     public static final String INVALID_PEER_FORWARDER_WITH_CONNECTION_CONFIG_FILE = "src/test/resources/invalid_peer_forwarder_with_connection_config.yml";

@@ -39,6 +39,7 @@ public class JacksonOtelLogTest {
     private static final String TEST_TRACE_ID = "1234";
     private static final String TEST_SPAN_ID = "4321";
     private static final Integer TEST_SEVERITY_NUMBER = 2;
+    private static final String TEST_SEVERITY_TEXT = "severity";
     private static final Integer TEST_DROPPED_ATTRIBUTES_COUNT = 4;
     private static final Object TEST_BODY = Map.of("log", "message");
 
@@ -57,6 +58,7 @@ public class JacksonOtelLogTest {
                 .withTraceId(TEST_TRACE_ID)
                 .withSpanId(TEST_SPAN_ID)
                 .withSeverityNumber(TEST_SEVERITY_NUMBER)
+                .withSeverityText(TEST_SEVERITY_TEXT)
                 .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
                 .withBody(TEST_BODY);
 
@@ -103,6 +105,12 @@ public class JacksonOtelLogTest {
     public void testGetSpanId() {
         final String spanId = log.getSpanId();
         assertThat(spanId, is(equalTo(TEST_SPAN_ID)));
+    }
+
+    @Test
+    public void testGetServerityText() {
+        final String severityText = log.getSeverityText();
+        assertThat(severityText, is(equalTo(TEST_SEVERITY_TEXT)));
     }
 
     @Test

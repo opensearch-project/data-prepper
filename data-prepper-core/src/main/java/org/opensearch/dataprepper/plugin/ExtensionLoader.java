@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginDefinitionException;
 
@@ -12,28 +13,47 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Named
 public class ExtensionLoader {
+    private final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter;
     private final ExtensionClassProvider extensionClassProvider;
     private final PluginCreator pluginCreator;
 
     @Inject
     ExtensionLoader(
+            final ExtensionPluginConfigurationConverter extensionPluginConfigurationConverter,
             final ExtensionClassProvider extensionClassProvider,
             final PluginCreator pluginCreator) {
+        this.extensionPluginConfigurationConverter = extensionPluginConfigurationConverter;
         this.extensionClassProvider = extensionClassProvider;
         this.pluginCreator = pluginCreator;
     }
 
     List<? extends ExtensionPlugin> loadExtensions() {
-        final PluginArgumentsContext pluginArgumentsContext = new NoArgumentsArgumentsContext();
-
         return extensionClassProvider.loadExtensionPluginClasses()
                 .stream()
-                .map(extensionClass -> pluginCreator.newPluginInstance(extensionClass, pluginArgumentsContext, convertClassToName(extensionClass)))
+                .map(extensionClass -> {
+                    final PluginArgumentsContext pluginArgumentsContext = getConstructionContext(extensionClass);
+                    return pluginCreator.newPluginInstance(extensionClass, pluginArgumentsContext, convertClassToName(extensionClass));
+                })
                 .collect(Collectors.toList());
+    }
+
+    private PluginArgumentsContext getConstructionContext(final Class<?> extensionPluginClass) {
+        final DataPrepperExtensionPlugin pluginAnnotation = extensionPluginClass.getAnnotation(
+                DataPrepperExtensionPlugin.class);
+        if (pluginAnnotation == null) {
+            return new NoArgumentsArgumentsContext();
+        } else {
+            final Class<?> pluginConfigurationType = pluginAnnotation.modelType();
+            final String rootKey = pluginAnnotation.rootKey();
+            final Object configuration = extensionPluginConfigurationConverter.convert(
+                    pluginConfigurationType, rootKey);
+            return new SingleConfigArgumentArgumentsContext(configuration);
+        }
     }
 
     private String convertClassToName(final Class<? extends ExtensionPlugin> extensionClass) {
@@ -51,13 +71,32 @@ public class ExtensionLoader {
                 .replace("$", "");
     }
 
-    private static class NoArgumentsArgumentsContext implements PluginArgumentsContext {
+    protected static class NoArgumentsArgumentsContext implements PluginArgumentsContext {
         @Override
         public Object[] createArguments(final Class<?>[] parameterTypes) {
             if(parameterTypes.length != 0) {
                 throw new InvalidPluginDefinitionException("No arguments are permitted for extensions constructors.");
             }
             return new Object[0];
+        }
+    }
+
+    protected static class SingleConfigArgumentArgumentsContext implements PluginArgumentsContext {
+        private final Object extensionPluginConfiguration;
+
+        SingleConfigArgumentArgumentsContext(final Object extensionPluginConfiguration) {
+            this.extensionPluginConfiguration = extensionPluginConfiguration;
+        }
+
+        @Override
+        public Object[] createArguments(Class<?>[] parameterTypes) {
+            if (parameterTypes.length != 1 && (Objects.nonNull(extensionPluginConfiguration) &&
+                    !parameterTypes[0].equals(extensionPluginConfiguration.getClass()))) {
+                throw new InvalidPluginDefinitionException(String.format(
+                        "Single %s argument is permitted for extensions constructors.",
+                        extensionPluginConfiguration.getClass()));
+            }
+            return new Object[] { extensionPluginConfiguration };
         }
     }
 }

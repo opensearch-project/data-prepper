@@ -23,6 +23,7 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -32,6 +33,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
+import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.plugins.fs.LocalFilePositionOutputStream;
 import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
@@ -47,6 +50,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -56,9 +60,12 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 @ExtendWith(MockitoExtension.class)
 public class ParquetOutputCodecTest {
@@ -105,7 +112,7 @@ public class ParquetOutputCodecTest {
             final Event event = createEventRecord(inputMap);
             parquetOutputCodec.writeEvent(event, outputStream);
         }
-        parquetOutputCodec.closeWriter(outputStream, tempFile);
+        parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
         for (final Map<String, Object> actualMap : actualRecords) {
@@ -131,7 +138,7 @@ public class ParquetOutputCodecTest {
             final Event event = createEventRecord(inputMap);
             parquetOutputCodec.writeEvent(event, outputStream);
         }
-        parquetOutputCodec.closeWriter(outputStream, tempFile);
+        parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
         for (final Map<String, Object> actualMap : actualRecords) {
@@ -157,7 +164,7 @@ public class ParquetOutputCodecTest {
             final Event event = createEventRecord(inputMap);
             parquetOutputCodec.writeEvent(event, outputStream);
         }
-        parquetOutputCodec.closeWriter(outputStream, tempFile);
+        parquetOutputCodec.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
         for (final Map<String, Object> actualMap : actualRecords) {
@@ -194,7 +201,7 @@ public class ParquetOutputCodecTest {
 
         objectUnderTest.writeEvent(eventWithInvalidField, outputStream);
 
-        objectUnderTest.closeWriter(outputStream, tempFile);
+        objectUnderTest.complete(outputStream);
         List<Map<String, Object>> actualRecords = createParquetRecordsList(new ByteArrayInputStream(tempFile.toString().getBytes()));
         int index = 0;
         for (final Map<String, Object> actualMap : actualRecords) {
@@ -222,6 +229,243 @@ public class ParquetOutputCodecTest {
 
         assertThat(actualException.getMessage(), notNullValue());
         assertThat(actualException.getMessage(), containsString(invalidFieldName));
+    }
+
+    @Test
+    void getSize_returns_0_after_construction() {
+        config.setSchema(createStandardSchema().toString());
+
+        Optional<Long> actualSizeOptional = createObjectUnderTest().getSize();
+
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(true));
+        assertThat(actualSizeOptional.get(), equalTo(0L));
+    }
+
+    @Test
+    void getSize_returns_0_when_first_started() throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start(outputStream, null, codecContext);
+        Optional<Long> actualSizeOptional = objectUnderTest.getSize();
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(true));
+        assertThat(actualSizeOptional.get(), equalTo(0L));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10})
+    void getSize_returns_non_zero_after_writes(int writeCount) throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        List<Map<String, Object>> records = generateRecords(writeCount);
+
+        final long roughMultiplierMin = 100;
+        final long roughMultiplierMax = 200;
+
+        ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        for (Map<String, Object> record : records) {
+            Event event = createEventRecord(record);
+            objectUnderTest.writeEvent(event, outputStream);
+        }
+
+        Optional<Long> actualSizeOptional = objectUnderTest.getSize();
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(true));
+        assertThat(actualSizeOptional.get(), greaterThanOrEqualTo(roughMultiplierMin * writeCount));
+        assertThat(actualSizeOptional.get(), lessThanOrEqualTo(roughMultiplierMax * writeCount));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10})
+    void getSize_returns_empty_after_close(int writeCount) throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+
+        final File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        List<Map<String, Object>> records = generateRecords(writeCount);
+
+        ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        for (Map<String, Object> record : records) {
+            Event event = createEventRecord(record);
+            objectUnderTest.writeEvent(event, outputStream);
+        }
+
+        objectUnderTest.complete(outputStream);
+
+        Optional<Long> actualSizeOptional = objectUnderTest.getSize();
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(false));
+    }
+
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 10})
+    void getSize_returns_non_zero_after_close_and_new_writes(int writeCount) throws IOException {
+        config.setSchema(createStandardSchema().toString());
+        when(codecContext.getCompressionOption()).thenReturn(CompressionOption.NONE);
+
+        File tempFile = new File(tempDirectory, FILE_NAME);
+        LocalFilePositionOutputStream outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        List<Map<String, Object>> records = generateRecords(writeCount);
+
+        final long roughMultiplierMin = 100;
+        final long roughMultiplierMax = 200;
+
+        ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        for (Map<String, Object> record : records) {
+            Event event = createEventRecord(record);
+            objectUnderTest.writeEvent(event, outputStream);
+        }
+
+        objectUnderTest.complete(outputStream);
+
+        tempFile = new File(tempDirectory, FILE_NAME);
+        outputStream = LocalFilePositionOutputStream.create(tempFile);
+
+        objectUnderTest.start(outputStream, null, codecContext);
+
+        for (Map<String, Object> record : records) {
+            Event event = createEventRecord(record);
+            objectUnderTest.writeEvent(event, outputStream);
+        }
+
+        Optional<Long> actualSizeOptional = objectUnderTest.getSize();
+        assertThat(actualSizeOptional, notNullValue());
+        assertThat(actualSizeOptional.isPresent(), equalTo(true));
+        assertThat(actualSizeOptional.get(), greaterThanOrEqualTo(roughMultiplierMin * writeCount));
+        assertThat(actualSizeOptional.get(), lessThanOrEqualTo(roughMultiplierMax * writeCount));
+    }
+
+
+    @Nested
+    class ValidateWithSchema {
+        private OutputCodecContext codecContext;
+        private List<String> keys;
+
+        @BeforeEach
+        void setUp() {
+            config.setSchema(createStandardSchemaNullable().toString());
+            codecContext = mock(OutputCodecContext.class);
+            keys = List.of(UUID.randomUUID().toString());
+        }
+
+        @Test
+        void validateAgainstCodecContext_throws_when_user_defined_schema_and_includeKeys_non_empty() {
+            when(codecContext.getIncludeKeys()).thenReturn(keys);
+
+            ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+            assertThrows(InvalidPluginConfigurationException.class, () -> objectUnderTest.validateAgainstCodecContext(codecContext));
+        }
+
+        @Test
+        void validateAgainstCodecContext_throws_when_user_defined_schema_and_excludeKeys_non_empty() {
+            when(codecContext.getExcludeKeys()).thenReturn(keys);
+
+            ParquetOutputCodec objectUnderTest = createObjectUnderTest();
+            assertThrows(InvalidPluginConfigurationException.class, () -> objectUnderTest.validateAgainstCodecContext(codecContext));
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_includeKeys_isNull() {
+            when(codecContext.getIncludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_includeKeys_isEmpty() {
+            when(codecContext.getIncludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_excludeKeys_isNull() {
+            when(codecContext.getExcludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_excludeKeys_isEmpty() {
+            when(codecContext.getExcludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+    }
+
+    @Nested
+    class ValidateWithAutoSchema {
+        private OutputCodecContext codecContext;
+        private List<String> keys;
+
+        @BeforeEach
+        void setUp() {
+            config.setAutoSchema(true);
+            codecContext = mock(OutputCodecContext.class, withSettings().lenient());
+            keys = List.of(UUID.randomUUID().toString());
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_non_empty() {
+            when(codecContext.getIncludeKeys()).thenReturn(keys);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_non_empty() {
+            when(codecContext.getExcludeKeys()).thenReturn(keys);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_isNull() {
+            when(codecContext.getIncludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_isEmpty() {
+            when(codecContext.getIncludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_isNull() {
+            when(codecContext.getExcludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_isEmpty() {
+            when(codecContext.getExcludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
     }
 
     private static Event createEventRecord(final Map<String, Object> eventData) {

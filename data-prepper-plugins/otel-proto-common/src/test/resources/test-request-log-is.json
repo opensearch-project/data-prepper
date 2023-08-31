@@ -13,6 +13,7 @@
       "logRecords": [{
         "timeUnixNano": "1590328800000000000",
         "severityNumber": "SEVERITY_NUMBER_DEBUG",
+        "severityText": "Severity value",
         "body": {
           "stringValue": "Log value"
         },

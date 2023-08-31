@@ -32,6 +32,9 @@ public class OpenSearchSourceConfiguration {
     @JsonProperty("disable_authentication")
     private Boolean disableAuthentication = false;
 
+    @JsonProperty("acknowledgments")
+    private Boolean acknowledgments = false;
+
     @JsonProperty("connection")
     @Valid
     private ConnectionConfiguration connectionConfiguration = new ConnectionConfiguration();
@@ -65,6 +68,10 @@ public class OpenSearchSourceConfiguration {
     }
 
     public Boolean isAuthenticationDisabled() { return disableAuthentication; }
+
+    public Boolean isAcknowledgmentsEnabled() {
+        return acknowledgments;
+    }
 
     public ConnectionConfiguration getConnectionConfiguration() {
         return connectionConfiguration;

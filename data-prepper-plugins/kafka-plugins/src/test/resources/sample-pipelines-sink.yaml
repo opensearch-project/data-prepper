@@ -15,6 +15,7 @@ log-pipeline :
         serde_format: plaintext
         topic:
            name: plaintext_test_topic
+           is_topic_create: false
         producer_properties:
           buffer_memory: 10mb
           compression_type: gzip
