@@ -23,6 +23,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasKey;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -34,6 +35,7 @@ class PipelinesDataFlowModelTest {
     private static final String RESOURCE_PATH_WITH_ROUTES = "/pipelines_data_flow_routes.yaml";
     private static final String RESOURCE_PATH_WITH_SHORT_HAND_VERSION = "/pipeline_with_short_hand_version.yaml";
     private static final String RESOURCE_PATH_WITH_VERSION = "/pipeline_with_version.yaml";
+    private static final String RESOURCE_PATH_WITH_EXTENSION = "/pipeline_with_extension.yaml";
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -118,6 +120,7 @@ class PipelinesDataFlowModelTest {
         final String pipelineName = "test-pipeline";
 
         assertThat(actualModel, notNullValue());
+        assertThat(actualModel.getPipelineExtensions(), nullValue());
         assertThat(actualModel.getPipelines(), notNullValue());
         assertThat(actualModel.getPipelines().size(), equalTo(1));
         assertThat(actualModel.getPipelines(), hasKey(pipelineName));
@@ -246,5 +249,16 @@ class PipelinesDataFlowModelTest {
         final DataPrepperVersion version = actualModel.getDataPrepperVersion();
         assertThat(version.getMajorVersion(), is(equalTo(2)));
         assertThat(version.getMinorVersion(), is(equalTo(Optional.empty())));
+    }
+
+    @Test
+    void deserialize_PipelinesDataFlowModel_with_extension() throws IOException {
+        final InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH_WITH_EXTENSION);
+
+        final PipelinesDataFlowModel actualModel = objectMapper.readValue(inputStream, PipelinesDataFlowModel.class);
+
+        assertThat(actualModel, notNullValue());
+        assertThat(actualModel.getPipelineExtensions(), notNullValue());
+        assertThat(actualModel.getPipelineExtensions().getExtensionMap().containsKey("test_extension"), is(true));
     }
 }
