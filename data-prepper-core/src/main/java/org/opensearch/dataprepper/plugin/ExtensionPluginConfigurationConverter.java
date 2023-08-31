@@ -4,13 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
-import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;

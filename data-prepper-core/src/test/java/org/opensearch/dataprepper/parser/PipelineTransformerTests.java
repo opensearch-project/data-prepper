@@ -62,6 +62,8 @@ class PipelineTransformerTests {
     private PeerForwarderProvider peerForwarderProvider;
 
     @Mock
+    private PipelinesDataFlowModel pipelinesDataFlowModel;
+    @Mock
     private RouterFactory routerFactory;
 
     @Mock
@@ -99,6 +101,7 @@ class PipelineTransformerTests {
 
         coreContext.scan(DefaultPluginFactory.class.getPackage().getName());
         coreContext.registerBean(DataPrepperConfiguration.class, () -> dataPrepperConfiguration);
+        coreContext.registerBean(PipelinesDataFlowModel.class, () -> pipelinesDataFlowModel);
         coreContext.refresh();
         pluginFactory = coreContext.getBean(DefaultPluginFactory.class);
     }
