@@ -29,4 +29,9 @@ final class SizeCombination {
     public int getNumberOfBatches() {
         return numberOfBatches;
     }
+
+    @Override
+    public String toString() {
+        return "batchSize=" + batchSize +",batches=" + numberOfBatches;
+    }
 }

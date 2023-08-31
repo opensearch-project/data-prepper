@@ -9,14 +9,10 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
-import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 
 import javax.inject.Named;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -32,14 +28,10 @@ class PluginConfigurationConverter {
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
-    PluginConfigurationConverter(final Validator validator) {
-        final SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
-
-        this.objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .registerModule(simpleModule);
-
+    PluginConfigurationConverter(final Validator validator,
+                                 @Named("pluginConfigObjectMapper")
+                                 final ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         this.validator = validator;
     }
 

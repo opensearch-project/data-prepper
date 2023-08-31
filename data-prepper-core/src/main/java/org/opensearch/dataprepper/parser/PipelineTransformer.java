@@ -5,13 +5,9 @@
 
 package org.opensearch.dataprepper.parser;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
 import org.opensearch.dataprepper.model.annotations.SingleThread;
 import org.opensearch.dataprepper.model.buffer.Buffer;
-import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.peerforwarder.RequiresPeerForwarding;
@@ -37,15 +33,7 @@ import org.opensearch.dataprepper.sourcecoordination.SourceCoordinatorFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileFilter;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.SequenceInputStream;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -53,18 +41,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 
 @SuppressWarnings("rawtypes")
-public class PipelineParser {
-    private static final Logger LOG = LoggerFactory.getLogger(PipelineParser.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper(new YAMLFactory())
-            .enable(DeserializationFeature.FAIL_ON_READING_DUP_TREE_KEY);
+public class PipelineTransformer {
+    private static final Logger LOG = LoggerFactory.getLogger(PipelineTransformer.class);
     private static final String PIPELINE_TYPE = "pipeline";
     private static final String ATTRIBUTE_NAME = "name";
-    private final String pipelineConfigurationFileLocation;
+    private final PipelinesDataFlowModel pipelinesDataFlowModel;
     private final RouterFactory routerFactory;
     private final DataPrepperConfiguration dataPrepperConfiguration;
     private final CircuitBreakerManager circuitBreakerManager;
@@ -75,16 +60,16 @@ public class PipelineParser {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final SourceCoordinatorFactory sourceCoordinatorFactory;
 
-    public PipelineParser(final String pipelineConfigurationFileLocation,
-                          final PluginFactory pluginFactory,
-                          final PeerForwarderProvider peerForwarderProvider,
-                          final RouterFactory routerFactory,
-                          final DataPrepperConfiguration dataPrepperConfiguration,
-                          final CircuitBreakerManager circuitBreakerManager,
-                          final EventFactory eventFactory,
-                          final AcknowledgementSetManager acknowledgementSetManager,
-                          final SourceCoordinatorFactory sourceCoordinatorFactory) {
-        this.pipelineConfigurationFileLocation = pipelineConfigurationFileLocation;
+    public PipelineTransformer(final PipelinesDataFlowModel pipelinesDataFlowModel,
+                               final PluginFactory pluginFactory,
+                               final PeerForwarderProvider peerForwarderProvider,
+                               final RouterFactory routerFactory,
+                               final DataPrepperConfiguration dataPrepperConfiguration,
+                               final CircuitBreakerManager circuitBreakerManager,
+                               final EventFactory eventFactory,
+                               final AcknowledgementSetManager acknowledgementSetManager,
+                               final SourceCoordinatorFactory sourceCoordinatorFactory) {
+        this.pipelinesDataFlowModel = pipelinesDataFlowModel;
         this.pluginFactory = Objects.requireNonNull(pluginFactory);
         this.peerForwarderProvider = Objects.requireNonNull(peerForwarderProvider);
         this.routerFactory = routerFactory;
@@ -95,82 +80,25 @@ public class PipelineParser {
         this.sourceCoordinatorFactory = sourceCoordinatorFactory;
     }
 
-    /**
-     * Parses the configuration file into Pipeline
-     */
-    public Map<String, Pipeline> parseConfiguration() {
-        try (final InputStream mergedPipelineConfigurationFiles = mergePipelineConfigurationFiles()) {
-            final PipelinesDataFlowModel pipelinesDataFlowModel = OBJECT_MAPPER.readValue(mergedPipelineConfigurationFiles,
-                    PipelinesDataFlowModel.class);
+    public Map<String, Pipeline> transformConfiguration() {
+        final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> new PipelineConfiguration(entry.getValue())
+                ));
+        final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
 
-            final DataPrepperVersion version = pipelinesDataFlowModel.getDataPrepperVersion();
-            validateDataPrepperVersion(version);
-
-            final Map<String, PipelineConfiguration> pipelineConfigurationMap = pipelinesDataFlowModel.getPipelines().entrySet()
-                    .stream()
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> new PipelineConfiguration(entry.getValue())
-                    ));
-            final List<String> allPipelineNames = PipelineConfigurationValidator.validateAndGetPipelineNames(pipelineConfigurationMap);
-
-            // LinkedHashMap to preserve insertion order
-            final Map<String, Pipeline> pipelineMap = new LinkedHashMap<>();
-            pipelineConfigurationMap.forEach((pipelineName, configuration) ->
-                    configuration.updateCommonPipelineConfiguration(pipelineName));
-            for (String pipelineName : allPipelineNames) {
-                if (!pipelineMap.containsKey(pipelineName) && pipelineConfigurationMap.containsKey(pipelineName)) {
-                    buildPipelineFromConfiguration(pipelineName, pipelineConfigurationMap, pipelineMap);
-                }
+        // LinkedHashMap to preserve insertion order
+        final Map<String, Pipeline> pipelineMap = new LinkedHashMap<>();
+        pipelineConfigurationMap.forEach((pipelineName, configuration) ->
+                configuration.updateCommonPipelineConfiguration(pipelineName));
+        for (String pipelineName : allPipelineNames) {
+            if (!pipelineMap.containsKey(pipelineName) && pipelineConfigurationMap.containsKey(pipelineName)) {
+                buildPipelineFromConfiguration(pipelineName, pipelineConfigurationMap, pipelineMap);
             }
-            return pipelineMap;
-        } catch (IOException e) {
-            LOG.error("Failed to parse the configuration file {}", pipelineConfigurationFileLocation);
-            throw new ParseException(format("Failed to parse the configuration file %s", pipelineConfigurationFileLocation), e);
         }
-    }
-
-    private void validateDataPrepperVersion(final DataPrepperVersion version) {
-        if (Objects.nonNull(version) && !DataPrepperVersion.getCurrentVersion().compatibleWith(version)) {
-            LOG.error("The version: {} is not compatible with the current version: {}", version, DataPrepperVersion.getCurrentVersion());
-            throw new ParseException(format("The version: %s is not compatible with the current version: %s",
-                version, DataPrepperVersion.getCurrentVersion()));
-        }
-    }
-
-    private InputStream mergePipelineConfigurationFiles() throws IOException {
-        final File configurationLocation = new File(pipelineConfigurationFileLocation);
-
-        if (configurationLocation.isFile()) {
-            return new FileInputStream(configurationLocation);
-        } else if (configurationLocation.isDirectory()) {
-            FileFilter yamlFilter = pathname -> (pathname.getName().endsWith(".yaml") || pathname.getName().endsWith(".yml"));
-            List<InputStream> configurationFiles = Stream.of(configurationLocation.listFiles(yamlFilter))
-                    .map(file -> {
-                        InputStream inputStream;
-                        try {
-                            inputStream = new FileInputStream(file);
-                            LOG.info("Reading pipeline configuration from {}", file.getName());
-                        } catch (FileNotFoundException e) {
-                            inputStream = null;
-                            LOG.warn("Pipeline configuration file {} not found", file.getName());
-                        }
-                        return inputStream;
-                    })
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-
-            if (configurationFiles.isEmpty()) {
-                LOG.error("Pipelines configuration file not found at {}", pipelineConfigurationFileLocation);
-                throw new ParseException(
-                        format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
-            }
-
-            return new SequenceInputStream(Collections.enumeration(configurationFiles));
-        } else {
-            LOG.error("Pipelines configuration file not found at {}", pipelineConfigurationFileLocation);
-            throw new ParseException(format("Pipelines configuration file not found at %s", pipelineConfigurationFileLocation));
-        }
+        return pipelineMap;
     }
 
     private void buildPipelineFromConfiguration(

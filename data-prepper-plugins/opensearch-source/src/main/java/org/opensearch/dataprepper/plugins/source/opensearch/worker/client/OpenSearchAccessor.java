@@ -26,6 +26,7 @@ import org.opensearch.client.opensearch.core.search.Pit;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventType;
 import org.opensearch.dataprepper.model.event.JacksonEvent;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
@@ -58,6 +59,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchAccessor.class);
 
     static final String PIT_RESOURCE_LIMIT_ERROR_TYPE = "rejected_execution_exception";
+    static final String INDEX_NOT_FOUND_EXCEPTION = "index_not_found_exception";
     static final String SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE = "Trying to create too many scroll contexts";
 
     private final OpenSearchClient openSearchClient;
@@ -84,6 +86,10 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
             if (isDueToPitLimitExceeded(e)) {
                 throw new SearchContextLimitException(String.format("There was an error creating a new point in time for index '%s': %s", createPointInTimeRequest.getIndex(),
                         e.error().causedBy().reason()));
+            }
+
+            if (isDueToNoIndexFound(e)) {
+                throw new IndexNotFoundException(String.format("The index '%s' could not be found and may have been deleted", createPointInTimeRequest.getIndex()));
             }
             LOG.error("There was an error creating a point in time for OpenSearch: ", e);
             throw e;
@@ -141,6 +147,9 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
                     .size(createScrollRequest.getSize())
                     .index(createScrollRequest.getIndex())), ObjectNode.class);
         } catch (final OpenSearchException e) {
+            if (isDueToNoIndexFound(e)) {
+                throw new IndexNotFoundException(String.format("The index '%s' could not be found and may have been deleted", createScrollRequest.getIndex()));
+            }
             LOG.error("There was an error creating a scroll context for OpenSearch: ", e);
             throw e;
         } catch (final IOException e) {
@@ -229,6 +238,12 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
                 && PIT_RESOURCE_LIMIT_ERROR_TYPE.equals(e.error().causedBy().type());
     }
 
+    private boolean isDueToNoIndexFound(final OpenSearchException e) {
+        return Objects.nonNull(e.response()) && Objects.nonNull(e.response().error()) && Objects.nonNull(e.response().error().type())
+                && INDEX_NOT_FOUND_EXCEPTION.equals(e.response().error().type());
+    }
+
+
     private boolean isDueToScrollLimitExceeded(final IOException e) {
         return e.getMessage().contains(SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE);
     }
@@ -247,6 +262,12 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
                     .withDocuments(documents)
                     .withNextSearchAfter(nextSearchAfter)
                     .build();
+        } catch (final OpenSearchException e) {
+            LOG.error(e.getMessage());
+            if (isDueToNoIndexFound(e)) {
+                throw new IndexNotFoundException(String.format("The index '%s' could not be found and may have been deleted", searchRequest.index()));
+            }
+            throw e;
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }

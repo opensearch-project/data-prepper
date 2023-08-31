@@ -174,12 +174,14 @@ public class S3SinkIT {
 
     @ParameterizedTest
     @ArgumentsSource(BufferCombinationsArguments.class)
+    @ArgumentsSource(LargerBufferCombinationsArguments.class)
     @ArgumentsSource(CodecArguments.class)
     void test(final OutputScenario outputScenario,
-              final BufferTypeOptions bufferTypeOptions,
+              final BufferScenario bufferScenario,
               final CompressionScenario compressionScenario,
               final SizeCombination sizeCombination) throws IOException {
 
+        BufferTypeOptions bufferTypeOptions = bufferScenario.getBufferType();
         String testRun = outputScenario + "-" + bufferTypeOptions + "-" + compressionScenario + "-" + sizeCombination.getBatchSize() + "-" + sizeCombination.getNumberOfBatches();
         final String pathPrefix = pathPrefixForTestSuite + testRun;
         when(objectKeyOptions.getPathPrefix()).thenReturn(pathPrefix + "/");
@@ -307,11 +309,33 @@ public class S3SinkIT {
             );
             final List<SizeCombination> sizeCombinations = List.of(
                     SizeCombination.EXACTLY_ONE,
-                    SizeCombination.MEDIUM_SMALLER,
-                    SizeCombination.LARGE
+                    SizeCombination.MEDIUM_SMALLER
             );
 
             return generateCombinedArguments(bufferScenarios, outputScenarios, compressionScenarios, sizeCombinations);
+        }
+    }
+
+    /**
+     * Some large file combinations are important to test, but large files can make the tests run a long time and
+     * result in running out of memory. So this {@link ArgumentsProvider} attempts to get some particular large
+     * file scenarios.
+     * <p>
+     * Testing larger files is particularly important for {@link MultiPartBufferScenario} because it has a minimum
+     * upload size of 10MB. So if the size is below that, the test only covers one part. Also, Parquet can take a
+     * larger size combination because it is an efficient format.
+     */
+    static class LargerBufferCombinationsArguments implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(final ExtensionContext context) {
+            return Stream.of(
+                    arguments(new ParquetOutputScenario(), new InMemoryBufferScenario(), new NoneCompressionScenario(), SizeCombination.LARGE), // 13.9 MB
+                    arguments(new ParquetOutputScenario(), new InMemoryBufferScenario(), new GZipCompressionScenario(), SizeCombination.LARGE), // 8.9 MB
+                    arguments(new ParquetOutputScenario(), new InMemoryBufferScenario(), new SnappyCompressionScenario(), SizeCombination.LARGE), // 12.6 MB
+                    arguments(new NdjsonOutputScenario(), new MultiPartBufferScenario(), new NoneCompressionScenario(), SizeCombination.LARGE),  // 105.7 MB
+                    arguments(new NdjsonOutputScenario(), new MultiPartBufferScenario(), new GZipCompressionScenario(), SizeCombination.LARGE), // 35.5 MB
+                    arguments(new NdjsonOutputScenario(), new MultiPartBufferScenario(), new SnappyCompressionScenario(), SizeCombination.LARGE) // 70.6 MB
+            );
         }
     }
 
@@ -355,7 +379,7 @@ public class S3SinkIT {
                                 .flatMap(compressionScenario -> sizeCombinations
                                         .stream()
                                         .filter(sizeCombination -> sizeCombination.getTotalSize() <= bufferScenario.getMaximumNumberOfEvents())
-                                        .map(sizeCombination -> arguments(outputScenario, bufferScenario.getBufferType(), compressionScenario, sizeCombination))
+                                        .map(sizeCombination -> arguments(outputScenario, bufferScenario, compressionScenario, sizeCombination))
                                 )));
     }
 

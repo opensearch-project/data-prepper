@@ -56,6 +56,7 @@ public class OpenSearchClientFactory {
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchClientFactory.class);
 
     private static final String AOS_SERVICE_NAME = "es";
+    private static final String AOSS_SERVICE_NAME = "aoss";
 
     private final AwsCredentialsSupplier awsCredentialsSupplier;
 
@@ -96,9 +97,13 @@ public class OpenSearchClientFactory {
                 .withStsHeaderOverrides(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsHeaderOverrides())
                 .build());
 
+        final boolean isServerlessCollection = Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) &&
+                openSearchSourceConfiguration.getAwsAuthenticationOptions().isServerlessCollection();
+
         return new AwsSdk2Transport(createSdkHttpClient(openSearchSourceConfiguration),
                 HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
-                AOS_SERVICE_NAME, openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
+                isServerlessCollection ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME,
+                openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
                 AwsSdk2TransportOptions.builder()
                         .setCredentials(awsCredentialsProvider)
                         .setMapper(new JacksonJsonpMapper())

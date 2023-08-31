@@ -33,6 +33,7 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     protected static final String SPAN_ID_KEY = "spanId";
     protected static final String TRACE_ID_KEY = "traceId";
     protected static final String SEVERITY_NUMBER_KEY = "severityNumber";
+    protected static final String SEVERITY_TEXT_KEY = "severityText";
     protected static final String DROPPED_ATTRIBUTES_COUNT_KEY = "droppedAttributesCount";
 
 
@@ -85,6 +86,11 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
     @Override
     public Integer getSeverityNumber() {
         return this.get(SEVERITY_NUMBER_KEY, Integer.class);
+    }
+
+    @Override
+    public String getSeverityText() {
+        return this.get(SEVERITY_TEXT_KEY, String.class);
     }
 
     @Override
@@ -259,6 +265,18 @@ public class JacksonOtelLog extends JacksonEvent implements OpenTelemetryLog {
          */
         public Builder withSeverityNumber(final Integer severityNumber) {
             data.put(SEVERITY_NUMBER_KEY, severityNumber);
+            return getThis();
+        }
+
+        /**
+         * Sets the severity text of this log event
+         *
+         * @param severityText sets the severity text of this log event
+         * @return the builder
+         * @since 2.5
+         */
+        public Builder withSeverityText(final String severityText) {
+            data.put(SEVERITY_TEXT_KEY, severityText);
             return getThis();
         }
 

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.s3.accumulator;
 
+import org.apache.parquet.io.PositionOutputStream;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -123,6 +125,55 @@ class InMemoryBufferTest {
 
         assertThat(actualException, Matchers.equalTo(sdkClientException));
     }
+
+    @Test
+    void getOutputStream_is_PositionOutputStream() {
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+
+        assertThat(inMemoryBuffer.getOutputStream(), instanceOf(PositionOutputStream.class));
+    }
+
+    @Test
+    void getOutputStream_getPos_equals_written_size() throws IOException {
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+
+        while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
+            OutputStream outputStream = inMemoryBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = inMemoryBuffer.getEventCount() +1;
+            inMemoryBuffer.setEventCount(eventCount);
+        }
+
+        PositionOutputStream outputStream = (PositionOutputStream) inMemoryBuffer.getOutputStream();
+        assertThat(outputStream.getPos(), equalTo((long) MAX_EVENTS * 1000));
+
+        assertThat(inMemoryBuffer.getOutputStream(), instanceOf(PositionOutputStream.class));
+    }
+
+    @Test
+    void getSize_across_multiple_in_sequence() throws IOException {
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+
+        while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
+            OutputStream outputStream = inMemoryBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = inMemoryBuffer.getEventCount() +1;
+            inMemoryBuffer.setEventCount(eventCount);
+        }
+        assertThat(inMemoryBuffer.getSize(), equalTo((long) MAX_EVENTS * 1000));
+
+        inMemoryBuffer = new InMemoryBuffer(s3Client, bucketSupplier, keySupplier);
+        assertThat(inMemoryBuffer.getSize(), equalTo(0L));
+
+        while (inMemoryBuffer.getEventCount() < MAX_EVENTS) {
+            OutputStream outputStream = inMemoryBuffer.getOutputStream();
+            outputStream.write(generateByteArray());
+            int eventCount = inMemoryBuffer.getEventCount() +1;
+            inMemoryBuffer.setEventCount(eventCount);
+        }
+        assertThat(inMemoryBuffer.getSize(), equalTo((long) MAX_EVENTS * 1000));
+    }
+
 
     private byte[] generateByteArray() {
         byte[] bytes = new byte[1000];

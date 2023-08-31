@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.kafka.consumer;
 
+import com.amazonaws.services.schemaregistry.exception.AWSSchemaRegistryException;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
@@ -13,6 +15,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +53,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -106,6 +108,7 @@ public class KafkaSourceCustomConsumerTest {
         when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(counter);
         when(topicMetrics.getNumberOfNegativeAcknowledgements()).thenReturn(counter);
         when(topicMetrics.getNumberOfRecordsCommitted()).thenReturn(counter);
+        when(topicMetrics.getNumberOfDeserializationErrors()).thenReturn(counter);
         when(topicConfig.getThreadWaitingTime()).thenReturn(Duration.ofSeconds(1));
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.PLAINTEXT);
         when(topicConfig.getAutoCommit()).thenReturn(false);
@@ -138,8 +141,8 @@ public class KafkaSourceCustomConsumerTest {
     @Test
     public void testPlainTextConsumeRecords() throws InterruptedException {
         String topic = topicConfig.getName();
-        consumerRecords = createPlainTextRecords(topic);
-        when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("plaintext", false);
 
         try {
@@ -176,8 +179,8 @@ public class KafkaSourceCustomConsumerTest {
     @Test
     public void testPlainTextConsumeRecordsWithAcknowledgements() throws InterruptedException {
         String topic = topicConfig.getName();
-        consumerRecords = createPlainTextRecords(topic);
-        when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("plaintext", true);
 
         try {
@@ -205,7 +208,7 @@ public class KafkaSourceCustomConsumerTest {
         }
         // Wait for acknowledgement callback function to run
         try {
-            Thread.sleep(10000);
+            Thread.sleep(100);
         } catch (Exception e){}
 
         consumer.processAcknowledgedOffsets();
@@ -223,8 +226,8 @@ public class KafkaSourceCustomConsumerTest {
     @Test
     public void testPlainTextConsumeRecordsWithNegativeAcknowledgements() throws InterruptedException {
         String topic = topicConfig.getName();
-        consumerRecords = createPlainTextRecords(topic);
-        when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
+        consumerRecords = createPlainTextRecords(topic, 0L);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("plaintext", true);
 
         try {
@@ -252,7 +255,7 @@ public class KafkaSourceCustomConsumerTest {
         }
         // Wait for acknowledgement callback function to run
         try {
-            Thread.sleep(10000);
+            Thread.sleep(100);
         } catch (Exception e){}
 
         consumer.processAcknowledgedOffsets();
@@ -266,7 +269,7 @@ public class KafkaSourceCustomConsumerTest {
         when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON);
         when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
         consumerRecords = createJsonRecords(topic);
-        when(kafkaConsumer.poll(anyLong())).thenReturn(consumerRecords);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
         consumer = createObjectUnderTest("json", false);
 
         consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testJsonPartition)));
@@ -296,10 +299,144 @@ public class KafkaSourceCustomConsumerTest {
         }
     }
 
-    private ConsumerRecords createPlainTextRecords(String topic) {
+    @Test
+    public void testJsonDeserializationErrorWithAcknowledgements() throws Exception {
+        String topic = topicConfig.getName();
+        final ObjectMapper mapper = new ObjectMapper();
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON);
+        when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
+
+        consumer = createObjectUnderTest("json", true);
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testJsonPartition)));
+
+        // Send one json record
         Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
-        ConsumerRecord<String, String> record1 = new ConsumerRecord<>(topic, testPartition, 0L, testKey1, testValue1);
-        ConsumerRecord<String, String> record2 = new ConsumerRecord<>(topic, testPartition, 1L, testKey2, testValue2);
+        ConsumerRecord<String, JsonNode> record1 = new ConsumerRecord<>(topic, testJsonPartition, 100L, testKey1, mapper.convertValue(testMap1, JsonNode.class));
+        records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1));
+        consumerRecords = new ConsumerRecords(records);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer.consumeRecords();
+
+        // Send non-json record that results in deser exception
+        RecordDeserializationException exc = new RecordDeserializationException(new TopicPartition(topic, testJsonPartition),
+                101L, "Deserializedation exception", new JsonParseException("Json parse exception"));
+        when(kafkaConsumer.poll(any(Duration.class))).thenThrow(exc);
+        consumer.consumeRecords();
+
+        // Send one more json record
+        ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 102L, testKey2,
+                mapper.convertValue(testMap2, JsonNode.class));
+        records.clear();
+        records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record2));
+        consumerRecords = new ConsumerRecords(records);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer.consumeRecords();
+
+        Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(2, bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 0);
+
+        for (Record<Event> record: bufferedRecords) {
+            Event event = record.getData();
+            Map<String, Object> eventMap = event.toMap();
+            String kafkaKey = event.get("kafka_key", String.class);
+            assertTrue(kafkaKey.equals(testKey1) || kafkaKey.equals(testKey2));
+            if (kafkaKey.equals(testKey1)) {
+                testMap1.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
+            }
+            if (kafkaKey.equals(testKey2)) {
+                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
+            }
+            event.getEventHandle().release(true);
+        }
+        // Wait for acknowledgement callback function to run
+        try {
+            Thread.sleep(100);
+        } catch (Exception e){}
+
+        consumer.processAcknowledgedOffsets();
+        offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 1);
+        offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
+            Assertions.assertEquals(topicPartition.partition(), testJsonPartition);
+            Assertions.assertEquals(topicPartition.topic(), topic);
+            Assertions.assertEquals(103L, offsetAndMetadata.offset());
+        });
+    }
+
+    @Test
+    public void testAwsGlueErrorWithAcknowledgements() throws Exception {
+        String topic = topicConfig.getName();
+        final ObjectMapper mapper = new ObjectMapper();
+        when(topicConfig.getSerdeFormat()).thenReturn(MessageFormat.JSON);
+        when(topicConfig.getKafkaKeyMode()).thenReturn(KafkaKeyMode.INCLUDE_AS_FIELD);
+
+        consumer = createObjectUnderTest("json", true);
+        consumer.onPartitionsAssigned(List.of(new TopicPartition(topic, testJsonPartition)));
+
+        // Send one json record
+        Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
+        ConsumerRecord<String, JsonNode> record1 = new ConsumerRecord<>(topic, testJsonPartition, 100L, testKey1, mapper.convertValue(testMap1, JsonNode.class));
+        records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1));
+        consumerRecords = new ConsumerRecords(records);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer.consumeRecords();
+
+        // Send non-json record that results in deser exception
+        RecordDeserializationException exc = new RecordDeserializationException(new TopicPartition(topic, testJsonPartition),
+                101L, "Deserializedation exception", new AWSSchemaRegistryException("AWS glue parse exception"));
+        when(kafkaConsumer.poll(any(Duration.class))).thenThrow(exc);
+        consumer.consumeRecords();
+
+        // Send one more json record
+        ConsumerRecord<String, JsonNode> record2 = new ConsumerRecord<>(topic, testJsonPartition, 102L, testKey2,
+                mapper.convertValue(testMap2, JsonNode.class));
+        records.clear();
+        records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record2));
+        consumerRecords = new ConsumerRecords(records);
+        when(kafkaConsumer.poll(any(Duration.class))).thenReturn(consumerRecords);
+        consumer.consumeRecords();
+
+        Map.Entry<Collection<Record<Event>>, CheckpointState> bufferRecords = buffer.read(1000);
+        ArrayList<Record<Event>> bufferedRecords = new ArrayList<>(bufferRecords.getKey());
+        Assertions.assertEquals(2, bufferedRecords.size());
+        Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 0);
+
+        for (Record<Event> record: bufferedRecords) {
+            Event event = record.getData();
+            Map<String, Object> eventMap = event.toMap();
+            String kafkaKey = event.get("kafka_key", String.class);
+            assertTrue(kafkaKey.equals(testKey1) || kafkaKey.equals(testKey2));
+            if (kafkaKey.equals(testKey1)) {
+                testMap1.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
+            }
+            if (kafkaKey.equals(testKey2)) {
+                testMap2.forEach((k, v) -> assertThat(eventMap, hasEntry(k,v)));
+            }
+            event.getEventHandle().release(true);
+        }
+        // Wait for acknowledgement callback function to run
+        try {
+            Thread.sleep(100);
+        } catch (Exception e){}
+
+        consumer.processAcknowledgedOffsets();
+        offsetsToCommit = consumer.getOffsetsToCommit();
+        Assertions.assertEquals(offsetsToCommit.size(), 1);
+        offsetsToCommit.forEach((topicPartition, offsetAndMetadata) -> {
+            Assertions.assertEquals(topicPartition.partition(), testJsonPartition);
+            Assertions.assertEquals(topicPartition.topic(), topic);
+            Assertions.assertEquals(103L, offsetAndMetadata.offset());
+        });
+    }
+
+    private ConsumerRecords createPlainTextRecords(String topic, final long startOffset) {
+        Map<TopicPartition, List<ConsumerRecord>> records = new HashMap<>();
+        ConsumerRecord<String, String> record1 = new ConsumerRecord<>(topic, testPartition, startOffset, testKey1, testValue1);
+        ConsumerRecord<String, String> record2 = new ConsumerRecord<>(topic, testPartition, startOffset+1, testKey2, testValue2);
         records.put(new TopicPartition(topic, testPartition), Arrays.asList(record1, record2));
         return new ConsumerRecords(records);
     }
@@ -312,6 +449,6 @@ public class KafkaSourceCustomConsumerTest {
         records.put(new TopicPartition(topic, testJsonPartition), Arrays.asList(record1, record2));
         return new ConsumerRecords(records);
     }
-
 }
+
 

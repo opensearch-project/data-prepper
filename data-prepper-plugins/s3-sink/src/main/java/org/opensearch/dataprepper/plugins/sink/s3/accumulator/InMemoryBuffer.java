@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 public class InMemoryBuffer implements Buffer {
 
     private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private static final ByteArrayPositionOutputStream byteArrayPositionOutputStream = new ByteArrayPositionOutputStream(byteArrayOutputStream);
     private final S3Client s3Client;
     private final Supplier<String> bucketSupplier;
     private final Supplier<String> keySupplier;
@@ -86,6 +87,6 @@ public class InMemoryBuffer implements Buffer {
 
     @Override
     public OutputStream getOutputStream() {
-        return byteArrayOutputStream;
+        return byteArrayPositionOutputStream;
     }
 }
