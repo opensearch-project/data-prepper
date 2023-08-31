@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchVersionInfo;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -17,7 +18,9 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchVersionInfo;
 import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.client.util.MissingRequiredPropertyException;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.configuration.AwsAuthenticationConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 
@@ -188,5 +191,55 @@ public class SearchAccessStrategyTest {
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.NONE));
+    }
+
+    @Test
+    void serverless_flag_true_defaults_to_search_context_type_none() {
+
+        final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
+        when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(true);
+        when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationConfiguration);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+
+        assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.NONE));
+    }
+
+    @Test
+    void serverless_flag_true_throws_InvalidPluginConfiguration_if_search_context_type_is_point_in_time() {
+
+        final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
+        when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(true);
+        when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationConfiguration);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.POINT_IN_TIME);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final SearchAccessorStrategy objectUnderTest = createObjectUnderTest();
+
+        assertThrows(InvalidPluginConfigurationException.class, objectUnderTest::getSearchAccessor);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"NONE", "SCROLL"})
+    void serverless_flag_true_uses_search_context_type_from_config(final String searchContextType) {
+
+        final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
+        when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(true);
+        when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationConfiguration);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.valueOf(searchContextType));
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
+
+        assertThat(searchAccessor, notNullValue());
+        assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.valueOf(searchContextType)));
     }
 }

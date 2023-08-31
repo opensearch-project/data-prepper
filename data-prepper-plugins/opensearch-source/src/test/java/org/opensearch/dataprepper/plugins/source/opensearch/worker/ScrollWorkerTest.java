@@ -12,6 +12,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -37,6 +39,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -45,7 +49,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -53,6 +59,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.ScrollWorker.SCROLL_TIME_PER_BATCH;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS;
 
 @ExtendWith(MockitoExtension.class)
 public class ScrollWorkerTest {
@@ -72,15 +79,19 @@ public class ScrollWorkerTest {
     @Mock
     private BufferAccumulator<Record<Event>> bufferAccumulator;
 
+    @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
     private ExecutorService executorService;
 
     @BeforeEach
     void setup() {
         executorService = Executors.newSingleThreadExecutor();
+        lenient().when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
     }
 
     private ScrollWorker createObjectUnderTest() {
-        return new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
+        return new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager);
     }
 
     @Test
@@ -170,6 +181,97 @@ public class ScrollWorkerTest {
         final DeleteScrollRequest deleteScrollRequest = deleteRequestArgumentCaptor.getValue();
         assertThat(deleteScrollRequest, notNullValue());
         assertThat(deleteScrollRequest.getScrollId(), equalTo(scrollId));
+    }
+
+    @Test
+    void run_with_getNextPartition_with_acknowledgments_creates_and_deletes_scroll_and_closes_that_partition() throws Exception {
+        final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
+        AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
+        doAnswer(a -> {
+            numEventsAdded.getAndSet(numEventsAdded.get() + 1);
+            return null;
+        }).when(acknowledgementSet).add(any());
+
+        doAnswer(invocation -> {
+            Consumer<Boolean> consumer = invocation.getArgument(0);
+            consumer.accept(true);
+            return acknowledgementSet;
+        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS)));
+        when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(true);
+
+        final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
+        final String partitionKey = UUID.randomUUID().toString();
+        when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
+
+        final String scrollId = UUID.randomUUID().toString();
+        final ArgumentCaptor<CreateScrollRequest> requestArgumentCaptor = ArgumentCaptor.forClass(CreateScrollRequest.class);
+        final CreateScrollResponse createScrollResponse = mock(CreateScrollResponse.class);
+        when(createScrollResponse.getScrollId()).thenReturn(scrollId);
+        when(createScrollResponse.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class)));
+        when(searchAccessor.createScroll(requestArgumentCaptor.capture())).thenReturn(createScrollResponse);
+
+        final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
+        when(searchConfiguration.getBatchSize()).thenReturn(2);
+        when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
+
+        final SearchScrollResponse searchScrollResponse = mock(SearchScrollResponse.class);
+        when(searchScrollResponse.getScrollId()).thenReturn(scrollId);
+        when(searchScrollResponse.getDocuments()).thenReturn(List.of(mock(Event.class), mock(Event.class)))
+                .thenReturn(List.of(mock(Event.class), mock(Event.class))).thenReturn(List.of(mock(Event.class))).thenReturn(List.of(mock(Event.class)));
+
+        final ArgumentCaptor<SearchScrollRequest> searchScrollRequestArgumentCaptor = ArgumentCaptor.forClass(SearchScrollRequest.class);
+        when(searchAccessor.searchWithScroll(searchScrollRequestArgumentCaptor.capture())).thenReturn(searchScrollResponse);
+
+        doNothing().when(bufferAccumulator).add(any(Record.class));
+        doNothing().when(bufferAccumulator).flush();
+
+        final ArgumentCaptor<DeleteScrollRequest> deleteRequestArgumentCaptor = ArgumentCaptor.forClass(DeleteScrollRequest.class);
+        doNothing().when(searchAccessor).deleteScroll(deleteRequestArgumentCaptor.capture());
+
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
+
+        final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
+        when(schedulingParameterConfiguration.getJobCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getRate()).thenReturn(Duration.ZERO);
+        when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
+
+        doNothing().when(sourceCoordinator).closePartition(partitionKey,
+                Duration.ZERO, 1);
+
+
+        final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
+        Thread.sleep(100);
+        executorService.shutdown();
+        future.cancel(true);
+        assertThat(future.isCancelled(), equalTo(true));
+
+        assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
+
+        final CreateScrollRequest createScrollRequest = requestArgumentCaptor.getValue();
+        assertThat(createScrollRequest, notNullValue());
+        assertThat(createScrollRequest.getSize(), equalTo(2));
+        assertThat(createScrollRequest.getIndex(), equalTo(partitionKey));
+        assertThat(createScrollRequest.getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
+
+        verify(searchAccessor, times(2)).searchWithScroll(any(SearchScrollRequest.class));
+        verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), eq(null));
+
+        final List<SearchScrollRequest> searchScrollRequests = searchScrollRequestArgumentCaptor.getAllValues();
+        assertThat(searchScrollRequests.size(), equalTo(2));
+        assertThat(searchScrollRequests.get(0), notNullValue());
+        assertThat(searchScrollRequests.get(0).getScrollId(), equalTo(scrollId));
+        assertThat(searchScrollRequests.get(0).getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
+
+        assertThat(searchScrollRequests.get(1), notNullValue());
+        assertThat(searchScrollRequests.get(1).getScrollId(), equalTo(scrollId));
+        assertThat(searchScrollRequests.get(1).getScrollTime(), equalTo(SCROLL_TIME_PER_BATCH));
+
+
+        final DeleteScrollRequest deleteScrollRequest = deleteRequestArgumentCaptor.getValue();
+        assertThat(deleteScrollRequest, notNullValue());
+        assertThat(deleteScrollRequest.getScrollId(), equalTo(scrollId));
+
+        verify(acknowledgementSet).complete();
     }
 
     @Test

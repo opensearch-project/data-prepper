@@ -252,6 +252,7 @@ public class OTelProtoCodec {
                             .withTraceId(OTelProtoCodec.convertByteStringToString(log.getTraceId()))
                             .withSpanId(OTelProtoCodec.convertByteStringToString(log.getSpanId()))
                             .withSeverityNumber(log.getSeverityNumberValue())
+                            .withSeverityText(log.getSeverityText())
                             .withDroppedAttributesCount(log.getDroppedAttributesCount())
                             .withBody(OTelProtoCodec.convertAnyValue(log.getBody()))
                             .build())

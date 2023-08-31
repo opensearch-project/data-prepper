@@ -4,7 +4,10 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -29,7 +32,10 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
@@ -48,17 +54,20 @@ public class ScrollWorker implements SearchWorker {
     private final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
+    private final AcknowledgementSetManager acknowledgementSetManager;
 
     public ScrollWorker(final SearchAccessor searchAccessor,
                         final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                         final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
                         final BufferAccumulator<Record<Event>> bufferAccumulator,
-                        final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier) {
+                        final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier,
+                        final AcknowledgementSetManager acknowledgementSetManager) {
         this.searchAccessor = searchAccessor;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.sourceCoordinator = sourceCoordinator;
         this.bufferAccumulator = bufferAccumulator;
         this.openSearchIndexPartitionCreationSupplier = openSearchIndexPartitionCreationSupplier;
+        this.acknowledgementSetManager = acknowledgementSetManager;
     }
 
     @Override
@@ -80,12 +89,16 @@ public class ScrollWorker implements SearchWorker {
                 }
 
                 try {
-                    processIndex(indexPartition.get());
+                    final Pair<AcknowledgementSet, CompletableFuture<Boolean>> acknowledgementSet = createAcknowledgmentSet(
+                            acknowledgementSetManager,
+                            openSearchSourceConfiguration,
+                            sourceCoordinator,
+                            indexPartition.get());
 
-                    sourceCoordinator.closePartition(
-                            indexPartition.get().getPartitionKey(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
+                    processIndex(indexPartition.get(), acknowledgementSet.getLeft());
+
+                    completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet.getLeft(), acknowledgementSet.getRight(),
+                            indexPartition.get(), sourceCoordinator);
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
                     LOG.warn("ScrollWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
                     sourceCoordinator.giveUpPartitions();
@@ -117,7 +130,8 @@ public class ScrollWorker implements SearchWorker {
         }
     }
 
-    private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition) {
+    private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition,
+                              final AcknowledgementSet acknowledgementSet) {
         final String indexName = openSearchIndexPartition.getPartitionKey();
 
         final Integer batchSize = openSearchSourceConfiguration.getSearchConfiguration().getBatchSize();
@@ -128,7 +142,7 @@ public class ScrollWorker implements SearchWorker {
                 .withIndex(indexName)
                 .build());
 
-        writeDocumentsToBuffer(createScrollResponse.getDocuments());
+        writeDocumentsToBuffer(createScrollResponse.getDocuments(), acknowledgementSet);
 
         SearchScrollResponse searchScrollResponse = null;
 
@@ -140,7 +154,7 @@ public class ScrollWorker implements SearchWorker {
                             .withScrollTime(SCROLL_TIME_PER_BATCH)
                             .build());
 
-                    writeDocumentsToBuffer(searchScrollResponse.getDocuments());
+                    writeDocumentsToBuffer(searchScrollResponse.getDocuments(), acknowledgementSet);
                     sourceCoordinator.saveProgressStateForPartition(indexName, null);
                 } catch (final Exception e) {
                     deleteScroll(createScrollResponse.getScrollId());
@@ -158,9 +172,13 @@ public class ScrollWorker implements SearchWorker {
         }
     }
 
-    private void writeDocumentsToBuffer(final List<Event> documents) {
+    private void writeDocumentsToBuffer(final List<Event> documents,
+                                        final AcknowledgementSet acknowledgementSet) {
         documents.stream().map(Record::new).forEach(record -> {
             try {
+                if (Objects.nonNull(acknowledgementSet)) {
+                    acknowledgementSet.add(record.getData());
+                }
                 bufferAccumulator.add(record);
             } catch (Exception e) {
                 LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
