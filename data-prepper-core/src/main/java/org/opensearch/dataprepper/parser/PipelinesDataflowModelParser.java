@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
+import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.slf4j.Logger;
@@ -102,6 +103,10 @@ public class PipelinesDataflowModelParser {
                         Map.Entry::getKey,
                         Map.Entry::getValue
                 ));
+        final List<PipelineExtensions> pipelineExtensionsList = pipelinesDataFlowModels.stream()
+                .map(PipelinesDataFlowModel::getPipelineExtensions)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
         return new PipelinesDataFlowModel(pipelinesDataFlowModelMap);
     }
 }

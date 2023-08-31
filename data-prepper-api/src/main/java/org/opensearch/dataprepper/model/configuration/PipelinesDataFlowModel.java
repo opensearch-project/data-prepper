@@ -49,6 +49,12 @@ public class PipelinesDataFlowModel {
         this.pipelines = pipelines;
     }
 
+    public PipelinesDataFlowModel(final PipelineExtensions pipelineExtensions,
+                                  final Map<String, PipelineModel> pipelines) {
+        this.pipelineExtensions = pipelineExtensions;
+        this.pipelines = pipelines;
+    }
+
     public PipelinesDataFlowModel(final DataPrepperVersion version, final Map<String, PipelineModel> pipelines) {
         this.version = version;
         this.pipelines = pipelines;
