@@ -13,11 +13,24 @@ subprojects {
     apply plugin: 'de.undercouch.download'
     apply plugin: 'distribution'
 
+    configurations {
+        allDependencyJarsFromMain {
+            canBeConsumed = false
+            canBeResolved = true
+        }
+    }
+
     dependencies {
         /* required to resolve below issue with aws sdk
           JAXB is unavailable. Will fallback to SDK implementation which may be less performant
          */
         implementation 'javax.xml.bind:jaxb-api:2.3.1'
+
+        /**
+         * Creates a configuration on the data-prepper-main runtimeClasspath.
+         * https://docs.gradle.org/current/userguide/cross_project_publications.html
+         */
+        allDependencyJarsFromMain(project(path: ':data-prepper-main', configuration: 'allDependencyJars'))
     }
 
     ext {
@@ -111,14 +124,14 @@ subprojects {
                 dependsOn tarTask.name
                 file = tarTask.archiveFile.get().asFile.absolutePath
                 bucket = awsS3Bucket
-                key = "${destinationKeyPath}/${tarTask.archiveName}"
+                key = "${destinationKeyPath}/${tarTask.archiveFileName.get()}"
             }
 
             tasks.create(name: "upload${platformWithArchitecture}TarWithJDKToS3", type: S3Upload) {
                 dependsOn tarWithJDKTask.name
                 file = tarWithJDKTask.archiveFile.get().asFile.absolutePath
                 bucket = awsS3Bucket
-                key = "${destinationKeyPath}/${tarWithJDKTask.archiveName}"
+                key = "${destinationKeyPath}/${tarWithJDKTask.archiveFileName.get()}"
             }
         }
 
@@ -135,7 +148,9 @@ CopySpec archiveToTar() {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         into('lib') {
             from project(':data-prepper-main').jar.archivePath
-            from project(':data-prepper-main').configurations.runtimeClasspath
+            from configurations.runtimeClasspath
+            //from allDependencyJarsFromMain(project(path: ':data-prepper-main', configuration: 'allDependencyJars')).runtimeClasspath
+            //from project(':data-prepper-main').configurations.allDependencyJars
             fileMode 0755
         }
         into('examples') {
