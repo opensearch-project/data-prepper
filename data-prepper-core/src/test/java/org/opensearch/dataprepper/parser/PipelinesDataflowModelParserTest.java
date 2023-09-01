@@ -34,7 +34,7 @@ class PipelinesDataflowModelParserTest {
                 equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         assertThat(actualPipelinesDataFlowModel.getPipelineExtensions(), notNullValue());
         assertThat(actualPipelinesDataFlowModel.getPipelineExtensions().getExtensionMap(), equalTo(
-                Map.of("test_extension", Map.of("test_attribute", "test_string"))
+                Map.of("test_extension", Map.of("test_attribute", "test_string_1"))
         ));
     }
 
