@@ -48,12 +48,11 @@ import org.xerial.snappy.Snappy;
 
 import java.io.IOException;
 
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.List;
@@ -172,10 +171,10 @@ public class PrometheusSinkService {
                     }
                     if( message.toByteArray() != null)
                         bytes = message.toByteArray();
-                    }
-                    if (event.getEventHandle() != null) {
-                        this.bufferedEventHandles.add(event.getEventHandle());
-                    }
+                }
+                if (event.getEventHandle() != null) {
+                    this.bufferedEventHandles.add(event.getEventHandle());
+                }
                 if(bytes != null){
                     HttpEndPointResponse failedHttpEndPointResponses = pushToEndPoint(bytes);
 
@@ -255,11 +254,15 @@ public class PrometheusSinkService {
     }
 
     private static long getTimeStampVal(final String time) {
-        final LocalDateTime localDateTimeParse = LocalDateTime.parse(time,
-                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'"));
-        final LocalDateTime localDateTime = LocalDateTime.parse(localDateTimeParse.toString());
-        final ZonedDateTime zdt = ZonedDateTime.of(localDateTime, ZoneId.systemDefault());
-        return zdt.toInstant().toEpochMilli();
+        long timeStampVal = 0;
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        try {
+            Date date = sdf.parse(time);
+            timeStampVal = date.getTime();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return timeStampVal;
     }
 
     /**
