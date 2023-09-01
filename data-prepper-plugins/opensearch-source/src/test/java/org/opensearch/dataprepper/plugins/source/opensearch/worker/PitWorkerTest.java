@@ -5,12 +5,16 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -22,6 +26,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgr
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
@@ -36,6 +41,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -84,16 +90,35 @@ public class PitWorkerTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @Mock
+    private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    @Mock
+    private Counter documentsProcessedCounter;
+
+    @Mock
+    private Counter indicesProcessedCounter;
+
+    @Mock
+    private Counter processingErrorsCounter;
+
+    @Mock
+    private Timer indexProcessingTimeTimer;
+
     private ExecutorService executorService;
 
     @BeforeEach
-    void setup() {
+    void setup() throws Exception {
         executorService = Executors.newSingleThreadExecutor();
         lenient().when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
+        lenient().when(openSearchSourcePluginMetrics.getDocumentsProcessedCounter()).thenReturn(documentsProcessedCounter);
+        lenient().when(openSearchSourcePluginMetrics.getIndicesProcessedCounter()).thenReturn(indicesProcessedCounter);
+        lenient().when(openSearchSourcePluginMetrics.getProcessingErrorsCounter()).thenReturn(processingErrorsCounter);
+        lenient().when(openSearchSourcePluginMetrics.getIndexProcessingTimeTimer()).thenReturn(indexProcessingTimeTimer);
     }
 
     private PitWorker createObjectUnderTest() {
-        return new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager);
+        return new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
     }
 
     @Test
@@ -112,6 +137,8 @@ public class PitWorkerTest {
 
     @Test
     void run_with_getNextPartition_with_non_empty_partition_creates_and_deletes_pit_and_closes_that_partition() throws Exception {
+        mockTimerCallable();
+
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -188,10 +215,15 @@ public class PitWorkerTest {
         assertThat(deletePointInTimeRequest.getPitId(), equalTo(pitId));
 
         verifyNoInteractions(acknowledgementSetManager);
+
+        verify(documentsProcessedCounter, times(3)).increment();
+        verify(indicesProcessedCounter).increment();
+        verifyNoInteractions(processingErrorsCounter);
     }
 
     @Test
     void run_with_acknowledgments_enabled_creates_and_deletes_pit_and_closes_that_partition() throws Exception {
+        mockTimerCallable();
 
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
@@ -283,10 +315,16 @@ public class PitWorkerTest {
         assertThat(deletePointInTimeRequest.getPitId(), equalTo(pitId));
 
         verify(acknowledgementSet).complete();
+
+        verify(documentsProcessedCounter, times(3)).increment();
+        verify(indicesProcessedCounter).increment();
+        verifyNoInteractions(processingErrorsCounter);
     }
 
     @Test
     void run_with_getNextPartition_with_valid_existing_point_in_time_does_not_create_another_point_in_time() throws Exception {
+        mockTimerCallable();
+
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -342,10 +380,16 @@ public class PitWorkerTest {
         verify(searchAccessor, never()).createPit(any(CreatePointInTimeRequest.class));
         verify(searchAccessor, times(2)).searchWithPit(any(SearchPointInTimeRequest.class));
         verify(sourceCoordinator, times(2)).saveProgressStateForPartition(eq(partitionKey), eq(openSearchIndexProgressState));
+
+        verify(documentsProcessedCounter, times(3)).increment();
+        verify(indicesProcessedCounter).increment();
+        verifyNoInteractions(processingErrorsCounter);
     }
 
     @Test
-    void run_gives_up_partitions_and_waits_when_createPit_throws_SearchContextLimitException() throws InterruptedException {
+    void run_gives_up_partitions_and_waits_when_createPit_throws_SearchContextLimitException() throws Exception {
+        mockTimerCallable();
+
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -353,7 +397,7 @@ public class PitWorkerTest {
 
         when(searchAccessor.createPit(any(CreatePointInTimeRequest.class))).thenThrow(SearchContextLimitException.class);
 
-        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition));
+        when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
@@ -367,10 +411,16 @@ public class PitWorkerTest {
         verify(searchAccessor, never()).deletePit(any(DeletePointInTimeRequest.class));
         verify(sourceCoordinator).giveUpPartitions();
         verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+
+        verifyNoInteractions(documentsProcessedCounter);
+        verifyNoInteractions(indicesProcessedCounter);
+        verify(processingErrorsCounter).increment();
     }
 
     @Test
-    void run_completes_partitions_when_createPit_throws_IndexNotFoundException() throws InterruptedException {
+    void run_completes_partitions_when_createPit_throws_IndexNotFoundException() throws Exception {
+        mockTimerCallable();
+
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -393,5 +443,20 @@ public class PitWorkerTest {
         verify(searchAccessor, never()).deletePit(any(DeletePointInTimeRequest.class));
         verify(sourceCoordinator).completePartition(partitionKey);
         verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+
+        verifyNoInteractions(documentsProcessedCounter);
+        verifyNoInteractions(indicesProcessedCounter);
+        verifyNoInteractions(processingErrorsCounter);
+    }
+
+    private void mockTimerCallable() throws Exception {
+        when(indexProcessingTimeTimer.recordCallable(ArgumentMatchers.<Callable<Void>>any())).thenAnswer(
+                (Answer<Void>) invocation -> {
+                    final Object[] args = invocation.getArguments();
+                    @SuppressWarnings("unchecked")
+                    final Callable<Void> callable = (Callable<Void>) args[0];
+                    return callable.call();
+                }
+        );
     }
 }

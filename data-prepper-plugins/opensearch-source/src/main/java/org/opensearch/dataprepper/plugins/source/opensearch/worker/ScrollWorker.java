@@ -17,6 +17,7 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionN
 import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionUpdateException;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
@@ -55,19 +56,22 @@ public class ScrollWorker implements SearchWorker {
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
 
     public ScrollWorker(final SearchAccessor searchAccessor,
                         final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                         final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
                         final BufferAccumulator<Record<Event>> bufferAccumulator,
                         final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier,
-                        final AcknowledgementSetManager acknowledgementSetManager) {
+                        final AcknowledgementSetManager acknowledgementSetManager,
+                        final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
         this.searchAccessor = searchAccessor;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.sourceCoordinator = sourceCoordinator;
         this.bufferAccumulator = bufferAccumulator;
         this.openSearchIndexPartitionCreationSupplier = openSearchIndexPartitionCreationSupplier;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.openSearchSourcePluginMetrics = openSearchSourcePluginMetrics;
     }
 
     @Override
@@ -95,10 +99,15 @@ public class ScrollWorker implements SearchWorker {
                             sourceCoordinator,
                             indexPartition.get());
 
-                    processIndex(indexPartition.get(), acknowledgementSet.getLeft());
+                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().recordCallable(() -> {
+                        processIndex(indexPartition.get(), acknowledgementSet.getLeft());
+                        return null;
+                    });
 
                     completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet.getLeft(), acknowledgementSet.getRight(),
                             indexPartition.get(), sourceCoordinator);
+
+                    openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
                     LOG.warn("ScrollWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
                     sourceCoordinator.giveUpPartitions();
@@ -106,6 +115,7 @@ public class ScrollWorker implements SearchWorker {
                     LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
                             indexPartition.get().getPartitionKey(), BACKOFF_ON_SCROLL_LIMIT_REACHED.getSeconds(), e.getMessage());
                     sourceCoordinator.giveUpPartitions();
+                    openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                     try {
                         Thread.sleep(BACKOFF_ON_SCROLL_LIMIT_REACHED.toMillis());
                     } catch (final InterruptedException ex) {
@@ -117,9 +127,11 @@ public class ScrollWorker implements SearchWorker {
                 } catch (final RuntimeException e) {
                     LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
                     sourceCoordinator.giveUpPartitions();
+                    openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 }
             } catch (final Exception e) {
                 LOG.error("Received an exception while trying to get index to process with scroll, backing off and retrying", e);
+                openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 try {
                     Thread.sleep(STANDARD_BACKOFF_MILLIS);
                 } catch (final InterruptedException ex) {
@@ -168,6 +180,7 @@ public class ScrollWorker implements SearchWorker {
         try {
             bufferAccumulator.flush();
         } catch (final Exception e) {
+            openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
             LOG.error("Failed flushing remaining OpenSearch documents to buffer due to: {}", e.getMessage());
         }
     }
@@ -180,7 +193,9 @@ public class ScrollWorker implements SearchWorker {
                     acknowledgementSet.add(record.getData());
                 }
                 bufferAccumulator.add(record);
+                openSearchSourcePluginMetrics.getDocumentsProcessedCounter().increment();
             } catch (Exception e) {
+                openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
                         record.getData().getMetadata().getAttribute(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME),
                         record.getData().getMetadata().getAttribute(INDEX_METADATA_ATTRIBUTE_NAME), e.getMessage());
