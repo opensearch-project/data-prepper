@@ -90,6 +90,28 @@ class PipelinesDataFlowModelTest {
     }
 
     @Test
+    void testSerializing_PipelinesDataFlowModel_skip_null_pipelineExtensions() throws JsonProcessingException {
+        String pipelineName = "test-pipeline";
+
+        final PluginModel source = new PluginModel("testSource", (Map<String, Object>) null);
+        final List<PluginModel> processors = Collections.singletonList(new PluginModel("testProcessor", (Map<String, Object>) null));
+        final List<SinkModel> sinks = Collections.singletonList(new SinkModel("testSink", Collections.emptyList(), null, Collections.emptyList(), Collections.emptyList(), null));
+        final PipelineModel pipelineModel = new PipelineModel(source, null, processors, null, sinks, 8, 50);
+
+        final PipelinesDataFlowModel pipelinesDataFlowModel = new PipelinesDataFlowModel(
+                (PipelineExtensions) null, Collections.singletonMap(pipelineName, pipelineModel));
+
+        final String serializedString = objectMapper.writeValueAsString(pipelinesDataFlowModel);
+
+        InputStream inputStream = this.getClass().getResourceAsStream(RESOURCE_PATH);
+
+        final String expectedYaml = PluginModelTests.convertInputStreamToString(inputStream);
+
+        assertThat(serializedString, notNullValue());
+        assertThat(serializedString, equalTo(expectedYaml));
+    }
+
+    @Test
     void testSerializing_PipelinesDataFlowModel_empty_Plugins_with_nonEmpty_delay_and_workers_and_route() throws JsonProcessingException {
         String pipelineName = "test-pipeline";
 
