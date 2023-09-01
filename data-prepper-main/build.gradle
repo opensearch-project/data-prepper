@@ -27,3 +27,21 @@ jar {
                 'Main-Class': 'org.opensearch.dataprepper.DataPrepperExecute')
     }
 }
+
+configurations {
+  allDependencyJars {
+      canBeConsumed = true
+      canBeResolved = true
+      extendsFrom runtimeClasspath
+  }
+}
+
+artifacts {
+    /**
+     * Shares a configuration which has all the necessary dependencies and can be used
+     * as part of the release to load all dependencies.
+     * https://docs.gradle.org/current/userguide/cross_project_publications.html
+     */
+    allDependencyJars(jar)
+}
+
