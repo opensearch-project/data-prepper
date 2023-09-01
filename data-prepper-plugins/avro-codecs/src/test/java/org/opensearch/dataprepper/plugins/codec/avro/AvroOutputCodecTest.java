@@ -12,11 +12,13 @@ import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.log.JacksonLog;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 
 import java.io.ByteArrayInputStream;
@@ -41,6 +43,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
 public class AvroOutputCodecTest {
     private static final String EXPECTED_SCHEMA_STRING = "{\"type\":\"record\",\"name\":\"Event\",\"fields\":" +
@@ -206,20 +209,64 @@ public class AvroOutputCodecTest {
     }
 
     @Test
-    void writeEvent_throws_exception_when_field_does_not_exist() throws IOException {
-        final Event eventWithInvalidField = mock(Event.class);
+    void writeEvent_accepts_event_when_field_does_not_exist_in_user_defined_schema() throws IOException {
         final String invalidFieldName = UUID.randomUUID().toString();
-        when(eventWithInvalidField.toMap()).thenReturn(Collections.singletonMap(invalidFieldName, UUID.randomUUID().toString()));
+
+        Map<String, Object> mapWithInvalid = generateRecords(1).get(0);
+        mapWithInvalid.put(invalidFieldName, UUID.randomUUID().toString());
+        final Event eventWithInvalidField = mock(Event.class);
+        when(eventWithInvalidField.toMap()).thenReturn(mapWithInvalid);
+
         final AvroOutputCodec objectUnderTest = createObjectUnderTest();
 
         outputStream = new ByteArrayOutputStream();
         objectUnderTest.start(outputStream, null, new OutputCodecContext());
+
+        objectUnderTest.writeEvent(eventWithInvalidField, outputStream);
+        objectUnderTest.complete(outputStream);
+
+        final List<GenericRecord> actualAvroRecords = createAvroRecordsList(outputStream);
+        assertThat(actualAvroRecords.size(), equalTo(1));
+
+        int count = 0;
+        for (final GenericRecord actualRecord : actualAvroRecords) {
+
+            assertThat(actualRecord, notNullValue());
+            assertThat(actualRecord.getSchema(), notNullValue());
+
+            List<Schema.Field> fields = actualRecord.getSchema().getFields();
+            assertThat(fields.size(), equalTo(TOTAL_TOP_LEVEL_FIELDS));
+            for (Schema.Field field : fields) {
+                Object actualValue = actualRecord.get(field.name());
+                assertThat(actualValue, notNullValue());
+            }
+            count++;
+        }
+
+        assertThat(count, equalTo(1));
+    }
+
+    @Test
+    void writeEvent_throws_exception_when_field_does_not_exist_in_auto_schema() throws IOException {
+        config.setSchema(null);
+        final String invalidFieldName = UUID.randomUUID().toString();
+
+        Map<String, Object> mapWithInvalid = generateRecords(1).get(0);
+        mapWithInvalid.put(invalidFieldName, UUID.randomUUID().toString());
+        final Event eventWithInvalidField = mock(Event.class);
+        when(eventWithInvalidField.toMap()).thenReturn(mapWithInvalid);
+
+        final AvroOutputCodec objectUnderTest = createObjectUnderTest();
+
+        outputStream = new ByteArrayOutputStream();
+        objectUnderTest.start(outputStream, createEventRecord(generateRecords(1).get(0)), new OutputCodecContext());
 
         final RuntimeException actualException = assertThrows(RuntimeException.class, () -> objectUnderTest.writeEvent(eventWithInvalidField, outputStream));
 
         assertThat(actualException.getMessage(), notNullValue());
         assertThat(actualException.getMessage(), containsString(invalidFieldName));
     }
+
 
     @Test
     public void testInlineSchemaBuilder() throws IOException {
@@ -230,6 +277,117 @@ public class AvroOutputCodecTest {
         assertThat(actualSchema, equalTo(expectedSchema));
     }
 
+    @Nested
+    class ValidateWithSchema {
+        private OutputCodecContext codecContext;
+        private List<String> keys;
+
+        @BeforeEach
+        void setUp() {
+            config.setSchema(createStandardSchemaNullable().toString());
+            codecContext = mock(OutputCodecContext.class);
+            keys = List.of(UUID.randomUUID().toString());
+        }
+
+        @Test
+        void validateAgainstCodecContext_throws_when_user_defined_schema_and_includeKeys_non_empty() {
+            when(codecContext.getIncludeKeys()).thenReturn(keys);
+
+            AvroOutputCodec objectUnderTest = createObjectUnderTest();
+            assertThrows(InvalidPluginConfigurationException.class, () -> objectUnderTest.validateAgainstCodecContext(codecContext));
+        }
+
+        @Test
+        void validateAgainstCodecContext_throws_when_user_defined_schema_and_excludeKeys_non_empty() {
+            when(codecContext.getExcludeKeys()).thenReturn(keys);
+
+            AvroOutputCodec objectUnderTest = createObjectUnderTest();
+            assertThrows(InvalidPluginConfigurationException.class, () -> objectUnderTest.validateAgainstCodecContext(codecContext));
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_includeKeys_isNull() {
+            when(codecContext.getIncludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_includeKeys_isEmpty() {
+            when(codecContext.getIncludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_excludeKeys_isNull() {
+            when(codecContext.getExcludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_user_defined_schema_and_excludeKeys_isEmpty() {
+            when(codecContext.getExcludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+    }
+
+    @Nested
+    class ValidateWithAutoSchema {
+        private OutputCodecContext codecContext;
+        private List<String> keys;
+
+        @BeforeEach
+        void setUp() {
+            config.setAutoSchema(true);
+            codecContext = mock(OutputCodecContext.class, withSettings().lenient());
+            keys = List.of(UUID.randomUUID().toString());
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_non_empty() {
+            when(codecContext.getIncludeKeys()).thenReturn(keys);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_non_empty() {
+            when(codecContext.getExcludeKeys()).thenReturn(keys);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_isNull() {
+            when(codecContext.getIncludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_includeKeys_isEmpty() {
+            when(codecContext.getIncludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_isNull() {
+            when(codecContext.getExcludeKeys()).thenReturn(null);
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+
+        @Test
+        void validateAgainstCodecContext_is_ok_when_auto_schema_and_excludeKeys_isEmpty() {
+            when(codecContext.getExcludeKeys()).thenReturn(Collections.emptyList());
+
+            createObjectUnderTest().validateAgainstCodecContext(codecContext);
+        }
+    }
 
     private static Event createEventRecord(final Map<String, Object> eventData) {
         return JacksonLog.builder().withData(eventData).build();

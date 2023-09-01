@@ -9,16 +9,11 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
-import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
-import org.opensearch.dataprepper.plugins.aws.PluginConfigValueTranslator;
 import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Named;
-import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
@@ -36,16 +31,9 @@ class PluginConfigurationConverter {
     private final Validator validator;
 
     PluginConfigurationConverter(final Validator validator,
-                                 final PluginConfigValueTranslator pluginConfigValueTranslator) {
-        final SimpleModule simpleModule = new SimpleModule();
-        simpleModule.addDeserializer(Duration.class, new DataPrepperDurationDeserializer());
-        simpleModule.addDeserializer(
-                String.class, new DataPrepperStringContextualDeserializer(pluginConfigValueTranslator));
-
-        this.objectMapper = new ObjectMapper()
-                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
-                .registerModule(simpleModule);
-
+                                 @Named("pluginConfigObjectMapper")
+                                 final ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         this.validator = validator;
     }
 

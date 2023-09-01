@@ -36,6 +36,12 @@ public class TopicConfig {
     static final Integer DEFAULT_NUM_OF_WORKERS = 2;
     static final Duration DEFAULT_HEART_BEAT_INTERVAL_DURATION = Duration.ofSeconds(5);
 
+
+    private static final Integer DEFAULT_NUM_OF_PARTITIONS = 1;
+    private static final Short DEFAULT_REPLICATION_FACTOR = 1;
+    private static final Long DEFAULT_RETENTION_PERIOD=604800000L;
+
+
     @JsonProperty("name")
     @NotNull
     @Valid
@@ -106,6 +112,22 @@ public class TopicConfig {
     @Valid
     @Size(min = 1)
     private Duration heartBeatInterval= DEFAULT_HEART_BEAT_INTERVAL_DURATION;
+
+    @JsonProperty("is_topic_create")
+    private Boolean isTopicCreate =Boolean.FALSE;
+
+    @JsonProperty("number_of_partitions")
+    private Integer numberOfPartions = DEFAULT_NUM_OF_PARTITIONS;
+
+    @JsonProperty("replication_factor")
+    private Short replicationFactor = DEFAULT_REPLICATION_FACTOR;
+
+    @JsonProperty("retention_period")
+    private Long retentionPeriod=DEFAULT_RETENTION_PERIOD;
+
+    public Long getRetentionPeriod() {
+        return retentionPeriod;
+    }
 
     public String getGroupId() {
         return groupId;
@@ -233,6 +255,18 @@ public class TopicConfig {
 
     public KafkaKeyMode getKafkaKeyMode() {
         return kafkaKeyMode;
+    }
+
+    public Boolean isCreate() {
+        return isTopicCreate;
+    }
+
+    public Integer getNumberOfPartions() {
+        return numberOfPartions;
+    }
+
+    public Short getReplicationFactor() {
+        return replicationFactor;
     }
 
 }

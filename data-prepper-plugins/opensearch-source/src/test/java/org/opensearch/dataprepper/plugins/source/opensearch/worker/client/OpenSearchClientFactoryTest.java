@@ -106,6 +106,7 @@ public class OpenSearchClientFactoryTest {
         final String stsRoleArn = "arn:aws:iam::123456789012:role/my-role";
         when(awsAuthenticationConfiguration.getAwsStsRoleArn()).thenReturn(stsRoleArn);
         when(awsAuthenticationConfiguration.getAwsStsHeaderOverrides()).thenReturn(Collections.emptyMap());
+        when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(false);
         when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationConfiguration);
 
         final ArgumentCaptor<AwsCredentialsOptions> awsCredentialsOptionsArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsOptions.class);
@@ -154,5 +155,33 @@ public class OpenSearchClientFactoryTest {
         verifyNoInteractions(awsCredentialsSupplier);
         verify(openSearchSourceConfiguration, never()).getUsername();
         verify(openSearchSourceConfiguration, never()).getPassword();
+    }
+
+    @Test
+    void provideOpenSearchClient_with_aws_auth_and_serverless_flag_true() {
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+
+        final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
+        when(awsAuthenticationConfiguration.getAwsRegion()).thenReturn(Region.US_EAST_1);
+        final String stsRoleArn = "arn:aws:iam::123456789012:role/my-role";
+        when(awsAuthenticationConfiguration.getAwsStsRoleArn()).thenReturn(stsRoleArn);
+        when(awsAuthenticationConfiguration.getAwsStsHeaderOverrides()).thenReturn(Collections.emptyMap());
+        when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(true);
+        when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationConfiguration);
+
+        final ArgumentCaptor<AwsCredentialsOptions> awsCredentialsOptionsArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsOptions.class);
+        final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(awsCredentialsOptionsArgumentCaptor.capture())).thenReturn(awsCredentialsProvider);
+
+        final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
+        assertThat(openSearchClient, notNullValue());
+
+        final AwsCredentialsOptions awsCredentialsOptions = awsCredentialsOptionsArgumentCaptor.getValue();
+        assertThat(awsCredentialsOptions, notNullValue());
+        assertThat(awsCredentialsOptions.getRegion(), equalTo(Region.US_EAST_1));
+        assertThat(awsCredentialsOptions.getStsHeaderOverrides(), equalTo(Collections.emptyMap()));
+        assertThat(awsCredentialsOptions.getStsRoleArn(), equalTo(stsRoleArn));
     }
 }

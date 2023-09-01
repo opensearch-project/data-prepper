@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.aws;
 
 import org.opensearch.dataprepper.aws.api.SecretsSupplier;
+import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,5 +28,10 @@ public class AwsSecretsPluginConfigValueTranslator implements PluginConfigValueT
         } else {
             return value;
         }
+    }
+
+    @Override
+    public String getKey() {
+        return null;
     }
 }

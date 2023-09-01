@@ -1,6 +1,7 @@
 package org.opensearch.dataprepper.plugins.aws;
 
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
+import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 import java.util.Optional;
 

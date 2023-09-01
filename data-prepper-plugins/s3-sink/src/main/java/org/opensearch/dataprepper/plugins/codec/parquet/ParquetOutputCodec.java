@@ -13,35 +13,33 @@ import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.opensearch.dataprepper.avro.AvroAutoSchemaGenerator;
 import org.opensearch.dataprepper.avro.AvroEventConverter;
+import org.opensearch.dataprepper.avro.EventDefinedAvroEventConverter;
+import org.opensearch.dataprepper.avro.SchemaDefinedAvroEventConverter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
-import org.opensearch.dataprepper.plugins.fs.LocalInputFile;
-import org.opensearch.dataprepper.plugins.s3keyindex.S3ObjectIndexUtility;
 import org.opensearch.dataprepper.plugins.sink.s3.S3OutputCodecContext;
+import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
+import java.util.Optional;
 
 @DataPrepperPlugin(name = "parquet", pluginType = OutputCodec.class, pluginConfigurationType = ParquetOutputCodecConfig.class)
-public class ParquetOutputCodec implements OutputCodec {
+public class ParquetOutputCodec implements OutputCodec, BufferedCodec {
+    private static final String PARQUET = "parquet";
     private final ParquetOutputCodecConfig config;
     private static Schema schema;
     private final AvroEventConverter avroEventConverter;
     private final AvroAutoSchemaGenerator avroAutoSchemaGenerator;
     private ParquetWriter<GenericRecord> writer;
     private OutputCodecContext codecContext;
-    private static final String PARQUET = "parquet";
-
-    private static final String TIME_PATTERN_REGULAR_EXPRESSION = "\\%\\{.*?\\}";
-    private static final Pattern SIMPLE_DURATION_PATTERN = Pattern.compile(TIME_PATTERN_REGULAR_EXPRESSION);
-    private String key;
+    private boolean isClosed = false;
 
 
     @DataPrepperPluginConstructor
@@ -49,8 +47,14 @@ public class ParquetOutputCodec implements OutputCodec {
         Objects.requireNonNull(config);
         this.config = config;
 
-        avroEventConverter = new AvroEventConverter();
         avroAutoSchemaGenerator = new AvroAutoSchemaGenerator();
+
+        if (config.getSchema() != null) {
+            schema = parseSchema(config.getSchema());
+            avroEventConverter = new SchemaDefinedAvroEventConverter();
+        } else {
+            avroEventConverter = new EventDefinedAvroEventConverter();
+        }
     }
 
     @Override
@@ -66,7 +70,9 @@ public class ParquetOutputCodec implements OutputCodec {
         PositionOutputStream s3OutputStream = (PositionOutputStream) outputStream;
         CompressionCodecName compressionCodecName = CompressionConverter.convertCodec(((S3OutputCodecContext) codecContext).getCompressionOption());
         this.codecContext = codecContext;
-        buildSchemaAndKey(event);
+        if (schema == null) {
+            schema = buildInlineSchemaFromEvent(event);
+        }
         final S3OutputFile s3OutputFile = new S3OutputFile(s3OutputStream);
         buildWriter(s3OutputFile, compressionCodecName);
     }
@@ -74,21 +80,6 @@ public class ParquetOutputCodec implements OutputCodec {
     @Override
     public boolean isCompressionInternal() {
         return true;
-    }
-
-    void buildSchemaAndKey(final Event event) throws IOException {
-        if (config.getSchema() != null) {
-            schema = parseSchema(config.getSchema());
-        } else if (config.getFileLocation() != null) {
-            schema = ParquetSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
-        } else if (config.getSchemaRegistryUrl() != null) {
-            schema = parseSchema(ParquetSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
-        } else if (checkS3SchemaValidity()) {
-            schema = ParquetSchemaParserFromS3.parseSchema(config);
-        } else {
-            schema = buildInlineSchemaFromEvent(event);
-        }
-        key = generateKey();
     }
 
     public Schema buildInlineSchemaFromEvent(final Event event) throws IOException {
@@ -107,6 +98,7 @@ public class ParquetOutputCodec implements OutputCodec {
                 .withSchema(schema)
                 .withCompressionCodec(compressionCodecName)
                 .build();
+        isClosed = false;
     }
 
     @Override
@@ -123,13 +115,7 @@ public class ParquetOutputCodec implements OutputCodec {
 
     @Override
     public synchronized void complete(final OutputStream outputStream) throws IOException {
-        writer.close();
-    }
-
-    public void closeWriter(final OutputStream outputStream, File file) throws IOException {
-        final LocalInputFile inputFile = new LocalInputFile(file);
-        byte[] byteBuffer = inputFile.newStream().readAllBytes();
-        outputStream.write(byteBuffer);
+        isClosed = true;
         writer.close();
     }
 
@@ -138,45 +124,29 @@ public class ParquetOutputCodec implements OutputCodec {
         return PARQUET;
     }
 
+    @Override
+    public void validateAgainstCodecContext(OutputCodecContext outputCodecContext) {
+        if (config.isAutoSchema())
+            return;
+
+        if ((outputCodecContext.getIncludeKeys() != null && !outputCodecContext.getIncludeKeys().isEmpty()) ||
+                (outputCodecContext.getExcludeKeys() != null && !outputCodecContext.getExcludeKeys().isEmpty())) {
+            throw new InvalidPluginConfigurationException("Providing a user-defined schema and using sink include or exclude keys is not an allowed configuration.");
+        }
+    }
+
     static Schema parseSchema(final String schemaString) {
         return new Schema.Parser().parse(schemaString);
     }
 
-    /**
-     * Generate the s3 object path prefix and object file name.
-     *
-     * @return object key path.
-     */
-    protected String generateKey() {
-        final String pathPrefix = buildObjectPath(config.getPathPrefix());
-        final String namePattern = buildObjectFileName(config.getNamePattern());
-        return (!pathPrefix.isEmpty()) ? pathPrefix + namePattern : namePattern;
-    }
+    @Override
+    public Optional<Long> getSize() {
+        if(writer == null)
+            return Optional.of(0L);
 
-    private static String buildObjectPath(final String pathPrefix) {
-        final StringBuilder s3ObjectPath = new StringBuilder();
-        if (pathPrefix != null && !pathPrefix.isEmpty()) {
-            String[] pathPrefixList = pathPrefix.split("\\/");
-            for (final String prefixPath : pathPrefixList) {
-                if (SIMPLE_DURATION_PATTERN.matcher(prefixPath).find()) {
-                    s3ObjectPath.append(S3ObjectIndexUtility.getObjectPathPrefix(prefixPath)).append("/");
-                } else {
-                    s3ObjectPath.append(prefixPath).append("/");
-                }
-            }
-        }
-        return s3ObjectPath.toString();
-    }
+        if(isClosed)
+            return Optional.empty();
 
-    private String buildObjectFileName(final String configNamePattern) {
-        return S3ObjectIndexUtility.getObjectNameWithDateTimeId(configNamePattern) + "." + getExtension();
-    }
-
-    boolean checkS3SchemaValidity() {
-        if (config.getSchemaBucket() != null && config.getFileKey() != null && config.getSchemaRegion() != null) {
-            return true;
-        } else {
-            return false;
-        }
+        return Optional.of(writer.getDataSize());
     }
 }

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.deser.ContextualDeserializer;
 import com.fasterxml.jackson.databind.deser.std.StringDeserializer;
-import org.opensearch.dataprepper.plugins.aws.PluginConfigValueTranslator;
+import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;

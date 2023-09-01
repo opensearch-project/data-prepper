@@ -5,6 +5,7 @@ import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
+import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 @DataPrepperExtensionPlugin(modelType = AwsSecretPluginConfig.class, rootKey = "aws_secrets")
 public class AwsSecretPlugin implements ExtensionPlugin {

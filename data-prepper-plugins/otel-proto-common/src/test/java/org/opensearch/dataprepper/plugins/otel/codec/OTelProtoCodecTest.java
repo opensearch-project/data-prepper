@@ -444,6 +444,7 @@ public class OTelProtoCodecTest {
             assertThat(logRecord.getDroppedAttributesCount(), is(3));
             assertThat(logRecord.getSchemaUrl(), is("schemaurl"));
             assertThat(logRecord.getSeverityNumber(), is(5));
+            assertThat(logRecord.getSeverityText(), is("Severity value"));
             assertThat(logRecord.getTraceId(), is("ba1a1c23b4093b63"));
             assertThat(logRecord.getSpanId(), is("2cc83ac90ebc469c"));
             Map<String, Object> mergedAttributes = logRecord.getAttributes();

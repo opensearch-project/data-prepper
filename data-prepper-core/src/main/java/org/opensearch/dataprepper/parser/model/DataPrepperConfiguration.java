@@ -11,6 +11,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.annotation.Nulls;
+import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
@@ -90,7 +91,7 @@ public class DataPrepperConfiguration {
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig,
             @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig,
             @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown,
-            @JsonProperty("pipeline_extensions")
+            @JsonProperty("extensions")
             @JsonInclude(JsonInclude.Include.NON_NULL)
             @JsonSetter(nulls = Nulls.SKIP)
             final PipelineExtensions pipelineExtensions) {

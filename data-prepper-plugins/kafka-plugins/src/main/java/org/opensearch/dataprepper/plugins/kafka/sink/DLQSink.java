@@ -18,9 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.StringJoiner;
 
@@ -52,7 +50,7 @@ public class DLQSink {
                 .withPipelineName(pluginSetting.getPipelineName())
                 .withFailedData(failedData)
                 .build();
-        logFailureForDlqObjects(dlqWriter, List.of(dlqObject), e);
+        logFailureForDlqObjects(dlqWriter, List.of(dlqObject));
     }
 
     private DlqWriter getDlqWriter() {
@@ -64,7 +62,6 @@ public class DLQSink {
     }
 
     private DlqProvider getDlqProvider(final PluginFactory pluginFactory, final KafkaSinkConfig kafkaSinkConfig) {
-        final Map<String, Object> props = new HashMap<>();
         kafkaSinkConfig.setDlqConfig(pluginSetting);
         final Optional<PluginModel> dlq = kafkaSinkConfig.getDlq();
         if (dlq.isPresent()) {
@@ -77,7 +74,7 @@ public class DLQSink {
         return null;
     }
 
-    private void logFailureForDlqObjects(final DlqWriter dlqWriter, final List<DlqObject> dlqObjects, final Throwable failure) {
+    private void logFailureForDlqObjects(final DlqWriter dlqWriter, final List<DlqObject> dlqObjects) {
         try {
             dlqWriter.write(dlqObjects, pluginSetting.getPipelineName(), pluginSetting.getName());
             dlqObjects.forEach((dlqObject) -> {

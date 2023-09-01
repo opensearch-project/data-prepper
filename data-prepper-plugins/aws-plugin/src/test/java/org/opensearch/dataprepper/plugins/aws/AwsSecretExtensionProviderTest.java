@@ -5,6 +5,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
+import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 import java.util.Optional;
 

@@ -607,11 +607,12 @@ public class JacksonEvent implements Event {
                 List<String> valueList = new ArrayList<>();
 
                 node.properties().forEach(entry -> {
-                    String keyPath = path + SEPARATOR + entry.getKey();
+                    String keyPath = trimKey(path + SEPARATOR + entry.getKey());
                     // Track whether the key is found in the filter list.
                     // Different behaviours between include and exclude action.
                     boolean found = false;
                     for (String key : filterKeys) {
+                        key = trimKey(key);
                         if (keyPath.equals(key)) {
                             found = true;
                             // To keep the order.

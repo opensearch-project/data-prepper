@@ -11,10 +11,13 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumWriter;
 import org.opensearch.dataprepper.avro.AvroAutoSchemaGenerator;
 import org.opensearch.dataprepper.avro.AvroEventConverter;
+import org.opensearch.dataprepper.avro.EventDefinedAvroEventConverter;
+import org.opensearch.dataprepper.avro.SchemaDefinedAvroEventConverter;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.event.Event;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,17 +50,13 @@ public class AvroOutputCodec implements OutputCodec {
         Objects.requireNonNull(config);
         this.config = config;
 
-        avroEventConverter = new AvroEventConverter();
         avroAutoSchemaGenerator = new AvroAutoSchemaGenerator();
 
         if (config.getSchema() != null) {
             schema = parseSchema(config.getSchema());
-        } else if (config.getFileLocation() != null) {
-            schema = AvroSchemaParser.parseSchemaFromJsonFile(config.getFileLocation());
-        } else if (config.getSchemaRegistryUrl() != null) {
-            schema = parseSchema(AvroSchemaParserFromSchemaRegistry.getSchemaType(config.getSchemaRegistryUrl()));
-        } else if (checkS3SchemaValidity()) {
-            schema = AvroSchemaParserFromS3.parseSchema(config);
+            avroEventConverter = new SchemaDefinedAvroEventConverter();
+        } else {
+            avroEventConverter = new EventDefinedAvroEventConverter();
         }
     }
 
@@ -109,6 +108,17 @@ public class AvroOutputCodec implements OutputCodec {
         return AVRO;
     }
 
+    @Override
+    public void validateAgainstCodecContext(OutputCodecContext outputCodecContext) {
+        if (config.isAutoSchema())
+            return;
+
+        if ((outputCodecContext.getIncludeKeys() != null && !outputCodecContext.getIncludeKeys().isEmpty()) ||
+                (outputCodecContext.getExcludeKeys() != null && !outputCodecContext.getExcludeKeys().isEmpty())) {
+            throw new InvalidPluginConfigurationException("Providing a user-defined schema and using sink include or exclude keys is not an allowed configuration.");
+        }
+    }
+
     Schema parseSchema(final String schemaString) {
         try {
             Objects.requireNonNull(schemaString);
@@ -117,9 +127,5 @@ public class AvroOutputCodec implements OutputCodec {
             LOG.error("Unable to parse Schema from Schema String provided.", e);
             throw new RuntimeException("There is an error in the schema: " + e.getMessage());
         }
-    }
-
-    private boolean checkS3SchemaValidity() {
-        return config.getBucketName() != null && config.getFileKey() != null && config.getRegion() != null;
     }
 }
