@@ -1,11 +1,16 @@
 package org.opensearch.dataprepper.parser;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.dataprepper.TestDataProvider;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 
+import java.util.Map;
+
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -18,6 +23,19 @@ class PipelinesDataflowModelParserTest {
         final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+    }
+
+    @Test
+    void parseConfiguration_with_valid_pipelines_and_extensions() {
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(TestDataProvider.VALID_PIPELINE_CONFIG_FILE_WITH_EXTENSIONS);
+        final PipelinesDataFlowModel actualPipelinesDataFlowModel = pipelinesDataflowModelParser.parseConfiguration();
+        assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
+                equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
+        assertThat(actualPipelinesDataFlowModel.getPipelineExtensions(), notNullValue());
+        assertThat(actualPipelinesDataFlowModel.getPipelineExtensions().getExtensionMap(), equalTo(
+                Map.of("test_extension", Map.of("test_attribute", "test_string"))
+        ));
     }
 
     @Test
@@ -48,6 +66,22 @@ class PipelinesDataflowModelParserTest {
         assertThat(actualPipelinesDataFlowModel.getPipelines().keySet(),
                 equalTo(TestDataProvider.VALID_MULTIPLE_PIPELINE_NAMES));
         assertThat(actualPipelinesDataFlowModel.getDataPrepperVersion(), nullValue());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            TestDataProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_EXTENSIONS_DIRECTOTRY,
+            TestDataProvider.MULTI_FILE_PIPELINE_WITH_SINGLE_PIPELINE_EXTENSIONS_DIRECTOTRY
+    })
+    void parseConfiguration_from_directory_with_multiple_files_and_pipeline_extensions_should_throw() {
+        final PipelinesDataflowModelParser pipelinesDataflowModelParser =
+                new PipelinesDataflowModelParser(
+                        TestDataProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_EXTENSIONS_DIRECTOTRY);
+        final ParseException actualException = assertThrows(
+                ParseException.class, pipelinesDataflowModelParser::parseConfiguration);
+        assertThat(actualException.getMessage(), equalTo(
+                "Pipeline extensions and configurations must all be defined in a single YAML file " +
+                        "if pipeline_extensions is configured."));
     }
 
     @Test
