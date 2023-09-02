@@ -9,6 +9,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.HttpResponseInterceptor;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -36,6 +37,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.configuration.Connec
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 
@@ -165,10 +167,36 @@ public class OpenSearchClientFactory {
                 new BasicHeader("Content-type", "application/json")
         });
 
-        attachBasicAuth(restClientBuilder, openSearchSourceConfiguration);
+        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions())) {
+            attachSigV4ForElasticsearchClient(restClientBuilder, openSearchSourceConfiguration);
+        } else {
+            attachBasicAuth(restClientBuilder, openSearchSourceConfiguration);
+        }
         setConnectAndSocketTimeout(restClientBuilder, openSearchSourceConfiguration);
 
         return restClientBuilder.build();
+    }
+
+    private void attachSigV4ForElasticsearchClient(final org.elasticsearch.client.RestClientBuilder restClientBuilder,
+                                                   final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+        final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
+                .withRegion(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion())
+                .withStsRoleArn(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn())
+                .withStsExternalId(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsExternalId())
+                .withStsHeaderOverrides(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsHeaderOverrides())
+                .build());
+        final Aws4Signer aws4Signer = Aws4Signer.create();
+        final HttpRequestInterceptor httpRequestInterceptor = new AwsRequestSigningApacheInterceptor(AOS_SERVICE_NAME, aws4Signer,
+                awsCredentialsProvider, openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion());
+        restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> {
+            httpClientBuilder.addInterceptorLast(httpRequestInterceptor);
+            attachSSLContext(httpClientBuilder, openSearchSourceConfiguration);
+            httpClientBuilder.addInterceptorLast(
+                    (HttpResponseInterceptor)
+                            (response, context) ->
+                                    response.addHeader("X-Elastic-Product", "Elasticsearch"));
+            return httpClientBuilder;
+        });
     }
 
     private void attachBasicAuth(final RestClientBuilder restClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {

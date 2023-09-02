@@ -98,6 +98,7 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                             indexPartition.get(), sourceCoordinator);
 
                     openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
+                    LOG.info("Completed processing for index: '{}'", indexPartition.get().getPartitionKey());
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
                     LOG.warn("The search_after worker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
                     sourceCoordinator.giveUpPartitions();
@@ -125,6 +126,8 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
     private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition,
                               final AcknowledgementSet acknowledgementSet) {
         final String indexName = openSearchIndexPartition.getPartitionKey();
+        LOG.info("Started processing for index: '{}'", indexName);
+
         Optional<OpenSearchIndexProgressState> openSearchIndexProgressStateOptional = openSearchIndexPartition.getPartitionState();
 
         if (openSearchIndexProgressStateOptional.isEmpty()) {
