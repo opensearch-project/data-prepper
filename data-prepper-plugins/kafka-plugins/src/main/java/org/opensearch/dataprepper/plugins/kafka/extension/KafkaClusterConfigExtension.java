@@ -12,18 +12,18 @@ import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@DataPrepperExtensionPlugin(modelType = KafkaClusterExtensionConfig.class, rootKey = "kafka_cluster_config")
-public class KafkaClusterExtensionWithConfig implements ExtensionPlugin {
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterExtensionWithConfig.class);
+@DataPrepperExtensionPlugin(modelType = KafkaClusterConfig.class, rootKey = "kafka_cluster_config")
+public class KafkaClusterConfigExtension implements ExtensionPlugin {
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterConfigExtension.class);
     private DefaultKafkaClusterConfigSupplier defaultKafkaClusterConfigSupplier;
 
     @DataPrepperPluginConstructor
-    public KafkaClusterExtensionWithConfig(final KafkaClusterExtensionConfig kafkaClusterExtensionConfig) {
-        this.defaultKafkaClusterConfigSupplier = new DefaultKafkaClusterConfigSupplier(kafkaClusterExtensionConfig);
+    public KafkaClusterConfigExtension(final KafkaClusterConfig kafkaClusterConfig) {
+        this.defaultKafkaClusterConfigSupplier = new DefaultKafkaClusterConfigSupplier(kafkaClusterConfig);
     }
     @Override
     public void apply(ExtensionPoints extensionPoints) {
         LOG.info("Applying Kafka Cluster Config Extension.");
-        extensionPoints.addExtensionProvider(new KafkaClusterExtensionConfigProvider(this.defaultKafkaClusterConfigSupplier));
+        extensionPoints.addExtensionProvider(new KafkaClusterConfigProvider(this.defaultKafkaClusterConfigSupplier));
     }
 }

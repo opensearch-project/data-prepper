@@ -7,33 +7,33 @@ package org.opensearch.dataprepper.plugins.kafka.extension;
 
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 
 import java.util.List;
 
 public class DefaultKafkaClusterConfigSupplier implements KafkaClusterConfigSupplier {
-    private KafkaClusterExtensionConfig kafkaClusterExtensionConfig;
-    public DefaultKafkaClusterConfigSupplier(KafkaClusterExtensionConfig kafkaClusterExtensionConfig) {
-        this.kafkaClusterExtensionConfig = kafkaClusterExtensionConfig;
+    private KafkaClusterConfig kafkaClusterConfig;
+    public DefaultKafkaClusterConfigSupplier(KafkaClusterConfig kafkaClusterConfig) {
+        this.kafkaClusterConfig = kafkaClusterConfig;
     }
 
     @Override
     public List<String> getBootStrapServers() {
-        return kafkaClusterExtensionConfig.getBootStrapServers();
+        return kafkaClusterConfig.getBootStrapServers();
     }
 
     @Override
     public AuthConfig getAuthConfig() {
-        return kafkaClusterExtensionConfig.getAuthConfig();
+        return kafkaClusterConfig.getAuthConfig();
     }
 
     @Override
     public AwsConfig getAwsConfig() {
-        return kafkaClusterExtensionConfig.getAwsConfig();
+        return kafkaClusterConfig.getAwsConfig();
     }
 
     @Override
-    public KafkaSourceConfig.EncryptionConfig getEncryptionConfig() {
-        return kafkaClusterExtensionConfig.getEncryptionConfig();
+    public EncryptionConfig getEncryptionConfig() {
+        return kafkaClusterConfig.getEncryptionConfig();
     }
 }

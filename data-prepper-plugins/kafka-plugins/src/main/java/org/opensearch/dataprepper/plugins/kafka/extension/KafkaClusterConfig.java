@@ -9,11 +9,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 
 import java.util.List;
 
-public class KafkaClusterExtensionConfig {
+public class KafkaClusterConfig {
     @JsonProperty("bootstrap_servers")
     private List<String> bootstrapServers;
 
@@ -22,7 +22,7 @@ public class KafkaClusterExtensionConfig {
     private AuthConfig authConfig;
 
     @JsonProperty("encryption")
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+    private EncryptionConfig encryptionConfig;
 
     @JsonProperty("aws")
     @Valid
@@ -40,7 +40,7 @@ public class KafkaClusterExtensionConfig {
         return awsConfig;
     }
 
-    public KafkaSourceConfig.EncryptionConfig getEncryptionConfig() {
+    public EncryptionConfig getEncryptionConfig() {
         return encryptionConfig;
     }
 }

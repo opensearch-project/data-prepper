@@ -10,6 +10,9 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
@@ -26,11 +29,17 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.time.Duration;
 
@@ -43,7 +52,7 @@ class KafkaSourceTest {
     private KafkaSourceConfig sourceConfig;
 
     @Mock
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+    private EncryptionConfig encryptionConfig;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -75,7 +84,7 @@ class KafkaSourceTest {
     @BeforeEach
     void setUp() throws Exception {
         sourceConfig = mock(KafkaSourceConfig.class);
-        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        encryptionConfig = mock(EncryptionConfig.class);
         pipelineDescription = mock(PipelineDescription.class);
         pluginMetrics = mock(PluginMetrics.class);
         acknowledgementSetManager = mock(AcknowledgementSetManager.class);
@@ -138,5 +147,55 @@ class KafkaSourceTest {
         assertTrue(Objects.nonNull(kafkaSource));
         kafkaSource.start(buffer);
         assertTrue(Objects.nonNull(kafkaSource.getConsumer()));
+    }
+
+    @Test
+    void test_updateConfig_using_kafkaClusterConfigExtension() {
+        final List<String> bootstrapServers = List.of("localhost:9092");
+        final AuthConfig authConfig = mock(AuthConfig.class);
+        final AwsConfig awsConfig = mock(AwsConfig.class);
+        final EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
+        doNothing().when(sourceConfig).setBootStrapServers(bootstrapServers);
+        doNothing().when(sourceConfig).setAuthConfig(any());
+        doNothing().when(sourceConfig).setAwsConfig(any());
+        doNothing().when(sourceConfig).setEncryptionConfig(any());
+        when(sourceConfig.getAuthConfig()).thenReturn(null);
+        when(sourceConfig.getAwsConfig()).thenReturn(null);
+        when(sourceConfig.getEncryptionConfigRaw()).thenReturn(null);
+        when(sourceConfig.getBootStrapServers()).thenReturn(null);
+        when(kafkaClusterConfigSupplier.getBootStrapServers()).thenReturn(bootstrapServers);
+        when(kafkaClusterConfigSupplier.getAuthConfig()).thenReturn(authConfig);
+        when(kafkaClusterConfigSupplier.getAwsConfig()).thenReturn(awsConfig);
+        when(kafkaClusterConfigSupplier.getEncryptionConfig()).thenReturn(encryptionConfig);
+        kafkaSource = createObjectUnderTest();
+        verify(sourceConfig).setBootStrapServers(bootstrapServers);
+        verify(sourceConfig).setAuthConfig(authConfig);
+        verify(sourceConfig).setAwsConfig(awsConfig);
+        verify(sourceConfig).setEncryptionConfig(encryptionConfig);
+    }
+
+    @Test
+    void test_updateConfig_not_using_kafkaClusterConfigExtension() {
+        final List<String> bootstrapServers = List.of("localhost:9092");
+        final AuthConfig authConfig = mock(AuthConfig.class);
+        final AwsConfig awsConfig = mock(AwsConfig.class);
+        final EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
+        doNothing().when(sourceConfig).setBootStrapServers(any());
+        doNothing().when(sourceConfig).setAuthConfig(any());
+        doNothing().when(sourceConfig).setAwsConfig(any());
+        doNothing().when(sourceConfig).setEncryptionConfig(any());
+        when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
+        when(sourceConfig.getAwsConfig()).thenReturn(awsConfig);
+        when(sourceConfig.getEncryptionConfigRaw()).thenReturn(encryptionConfig);
+        when(sourceConfig.getBootStrapServers()).thenReturn(String.join(",", bootstrapServers));
+        when(kafkaClusterConfigSupplier.getBootStrapServers()).thenReturn(bootstrapServers);
+        when(kafkaClusterConfigSupplier.getAuthConfig()).thenReturn(authConfig);
+        when(kafkaClusterConfigSupplier.getAwsConfig()).thenReturn(awsConfig);
+        when(kafkaClusterConfigSupplier.getEncryptionConfig()).thenReturn(encryptionConfig);
+        kafkaSource = createObjectUnderTest();
+        verify(sourceConfig, never()).setBootStrapServers(bootstrapServers);
+        verify(sourceConfig, never()).setAuthConfig(authConfig);
+        verify(sourceConfig, never()).setAwsConfig(awsConfig);
+        verify(sourceConfig, never()).setEncryptionConfig(encryptionConfig);
     }
 }

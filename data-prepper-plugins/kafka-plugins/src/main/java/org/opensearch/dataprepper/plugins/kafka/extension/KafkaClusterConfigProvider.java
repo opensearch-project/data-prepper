@@ -9,10 +9,10 @@ import org.opensearch.dataprepper.model.plugin.ExtensionProvider;
 
 import java.util.Optional;
 
-public class KafkaClusterExtensionConfigProvider implements ExtensionProvider<KafkaClusterConfigSupplier> {
+public class KafkaClusterConfigProvider implements ExtensionProvider<KafkaClusterConfigSupplier> {
     private final KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
 
-    public KafkaClusterExtensionConfigProvider(KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
+    public KafkaClusterConfigProvider(KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
         this.kafkaClusterConfigSupplier = kafkaClusterConfigSupplier;
     }
 
