@@ -110,6 +110,10 @@ public class KafkaSourceConfig {
         return encryptionConfig;
     }
 
+    public EncryptionConfig getEncryptionConfigRaw() {
+        return encryptionConfig;
+    }
+
     public AwsConfig getAwsConfig() {
         return awsConfig;
     }
@@ -117,4 +121,23 @@ public class KafkaSourceConfig {
     public void setAuthConfig(AuthConfig authConfig) {
         this.authConfig = authConfig;
     }
+
+    public void setAwsConfig(AwsConfig awsConfig) {
+        this.awsConfig = awsConfig;
+    }
+
+    public void setEncryptionConfig(EncryptionConfig encryptionConfig) {
+        this.encryptionConfig = encryptionConfig;
+    }
+
+//    @Override
+//    public void validate() {
+//        boolean saslConfigValid = Stream.of(
+//                authConfig.getSaslAuthConfig().getAwsIamAuthConfig(),
+//                authConfig.getSaslAuthConfig().getPlainTextAuthConfig(),
+//                authConfig.getSaslAuthConfig().getOAuthConfig()).filter(n -> n != null).count() == 1;
+//        if (!saslConfigValid) {
+//            throw new IllegalArgumentException("");
+//        }
+//    }
 }
