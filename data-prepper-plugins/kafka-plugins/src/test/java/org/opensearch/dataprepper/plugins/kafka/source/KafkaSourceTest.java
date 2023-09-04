@@ -14,6 +14,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
+import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 
@@ -62,10 +63,13 @@ class KafkaSourceTest {
     @Mock
     private Buffer<Record<Event>> buffer;
 
+    @Mock
+    private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
+
     private static final String TEST_GROUP_ID = "testGroupId";
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier);
     }
 
     @BeforeEach

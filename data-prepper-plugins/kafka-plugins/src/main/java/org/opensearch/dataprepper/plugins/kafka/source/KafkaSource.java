@@ -41,6 +41,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
 import org.opensearch.dataprepper.plugins.kafka.consumer.KafkaSourceCustomConsumer;
+import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.ClientDNSLookupType;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceJsonDeserializer;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
@@ -104,7 +105,8 @@ public class KafkaSource implements Source<Record<Event>> {
     public KafkaSource(final KafkaSourceConfig sourceConfig,
                        final PluginMetrics pluginMetrics,
                        final AcknowledgementSetManager acknowledgementSetManager,
-                       final PipelineDescription pipelineDescription) {
+                       final PipelineDescription pipelineDescription,
+                       final KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
         this.sourceConfig = sourceConfig;
         this.pluginMetrics = pluginMetrics;
         this.acknowledgementSetManager = acknowledgementSetManager;
@@ -113,6 +115,7 @@ public class KafkaSource implements Source<Record<Event>> {
         this.shutdownInProgress = new AtomicBoolean(false);
         this.allTopicExecutorServices = new ArrayList<>();
         this.allTopicConsumers = new ArrayList<>();
+        this.updateConfig(kafkaClusterConfigSupplier);
     }
 
     @Override
@@ -484,5 +487,22 @@ public class KafkaSource implements Source<Record<Event>> {
             maskedString.append('*');
         }
         return maskedString.append(serverIP.substring(maskedLength)).toString();
+    }
+
+    private void updateConfig(final KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
+        if (kafkaClusterConfigSupplier != null) {
+            if (sourceConfig.getBootStrapServers() == null) {
+                sourceConfig.setBootStrapServers(kafkaClusterConfigSupplier.getBootStrapServers());
+            }
+            if (sourceConfig.getAuthConfig() == null) {
+                sourceConfig.setAuthConfig(kafkaClusterConfigSupplier.getAuthConfig());
+            }
+            if (sourceConfig.getAwsConfig() == null) {
+                sourceConfig.setAwsConfig(kafkaClusterConfigSupplier.getAwsConfig());
+            }
+            if (sourceConfig.getEncryptionConfigRaw() == null) {
+                sourceConfig.setEncryptionConfig(kafkaClusterConfigSupplier.getEncryptionConfig());
+            }
+        }
     }
 }

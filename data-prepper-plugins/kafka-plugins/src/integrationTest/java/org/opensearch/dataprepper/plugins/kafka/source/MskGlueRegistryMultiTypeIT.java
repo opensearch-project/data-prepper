@@ -39,6 +39,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.MskBrokerConnectio
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaRegistryType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.TopicConfig;
+import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 
 import java.io.File;
 import java.io.IOException;
@@ -99,6 +100,9 @@ public class MskGlueRegistryMultiTypeIT {
     @Mock
     private KafkaSourceConfig.EncryptionConfig encryptionConfig;
 
+    @Mock
+    private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
+
     private KafkaSource kafkaSource;
     private TopicConfig jsonTopic;
     private TopicConfig avroTopic;
@@ -124,7 +128,7 @@ public class MskGlueRegistryMultiTypeIT {
 
 
     public KafkaSource createObjectUnderTest() {
-        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription);
+        return new KafkaSource(sourceConfig, pluginMetrics, acknowledgementSetManager, pipelineDescription, kafkaClusterConfigSupplier);
     }
 
     @BeforeEach
