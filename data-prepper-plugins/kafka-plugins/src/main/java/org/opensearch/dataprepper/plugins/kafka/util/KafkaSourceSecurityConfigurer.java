@@ -119,9 +119,9 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static void setOauthProperties(final KafkaSourceConfig kafkaSourConfig,
+    public static void setOauthProperties(final KafkaClusterAuthConfig kafkaClusterAuthConfig,
                                           final Properties properties) {
-        final OAuthConfig oAuthConfig = kafkaSourConfig.getAuthConfig().getSaslAuthConfig().getOAuthConfig();
+        final OAuthConfig oAuthConfig = kafkaClusterAuthConfig.getAuthConfig().getSaslAuthConfig().getOAuthConfig();
         final String oauthClientId = oAuthConfig.getOauthClientId();
         final String oauthClientSecret = oAuthConfig.getOauthClientSecret();
         final String oauthLoginServer = oAuthConfig.getOauthLoginServer();
@@ -156,9 +156,11 @@ public class KafkaSourceSecurityConfigurer {
         String jass_config = String.format(OAUTH_JAASCONFIG, oauthClientId, oauthClientSecret, oauthLoginScope, oauthLoginServer,
                 oauthLoginEndpoint, oauthLoginGrantType, oauthLoginScope, oauthAuthorizationToken, instrospect_properties);
 
-        if ("USER_INFO".equalsIgnoreCase(kafkaSourConfig.getSchemaConfig().getBasicAuthCredentialsSource())) {
-            final String apiKey = kafkaSourConfig.getSchemaConfig().getSchemaRegistryApiKey();
-            final String apiSecret = kafkaSourConfig.getSchemaConfig().getSchemaRegistryApiSecret();
+        if (kafkaClusterAuthConfig instanceof KafkaSourceConfig &&
+                "USER_INFO".equalsIgnoreCase(((KafkaSourceConfig) kafkaClusterAuthConfig).getSchemaConfig().getBasicAuthCredentialsSource())) {
+            final SchemaConfig schemaConfig = ((KafkaSourceConfig) kafkaClusterAuthConfig).getSchemaConfig();
+            final String apiKey = schemaConfig.getSchemaRegistryApiKey();
+            final String apiSecret = schemaConfig.getSchemaRegistryApiSecret();
             final String extensionLogicalCluster = oAuthConfig.getExtensionLogicalCluster();
             final String extensionIdentityPoolId = oAuthConfig.getExtensionIdentityPoolId();
             properties.put(REGISTRY_BASIC_AUTH_USER_INFO, apiKey + ":" + apiSecret);
@@ -247,15 +249,15 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static void setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
-        final AwsConfig awsConfig = sourceConfig.getAwsConfig();
-        final AuthConfig authConfig = sourceConfig.getAuthConfig();
-        final EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
+    public static void setAuthProperties(Properties properties, final KafkaClusterAuthConfig kafkaClusterAuthConfig, final Logger LOG) {
+        final AwsConfig awsConfig = kafkaClusterAuthConfig.getAwsConfig();
+        final AuthConfig authConfig = kafkaClusterAuthConfig.getAuthConfig();
+        final EncryptionConfig encryptionConfig = kafkaClusterAuthConfig.getEncryptionConfig();
         final EncryptionType encryptionType = encryptionConfig.getType();
 
         credentialsProvider = DefaultCredentialsProvider.create();
 
-        String bootstrapServers = sourceConfig.getBootStrapServers();
+        String bootstrapServers = kafkaClusterAuthConfig.getBootStrapServers();
         AwsIamAuthConfig awsIamAuthConfig = null;
         if (Objects.nonNull(authConfig)) {
             AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();
@@ -273,7 +275,7 @@ public class KafkaSourceSecurityConfigurer {
                     setAwsIamAuthProperties(properties, awsIamAuthConfig, awsConfig);
                     bootstrapServers = getBootStrapServersForMsk(awsIamAuthConfig, awsConfig, LOG);
                 } else if (Objects.nonNull(saslAuthConfig.getOAuthConfig())) {
-                    setOauthProperties(sourceConfig, properties);
+                    setOauthProperties(kafkaClusterAuthConfig, properties);
                 } else if (Objects.nonNull(plainTextAuthConfig)) {
                     setPlainTextAuthProperties(properties, plainTextAuthConfig, encryptionType);
                 } else {

@@ -1,0 +1,54 @@
+log-pipeline:
+  source:
+    kafka_connect:
+      worker_properties:
+        group_id: test-group
+        config_storage_topic: test-configs
+        offset_storage_topic: test-offsets
+        status_storage_topic: test-status
+        key_converter: test-converter #optional default is org.apache.kafka.connect.json.JsonConverter
+        key_converter_schemas_enable: false #optional and default is false
+        key_converter_schema_registry_url: http://testhost:8081/ #optional
+        value_converter: test-converter #optional default is org.apache.kafka.connect.json.JsonConverter
+        value_converter_schemas_enable: false #optional and default is false
+        value_converter_schema_registry_url: http://testhost:8082/ #optional
+        offset_storage_partitions: 2 #optional and default is 25
+        offset_flush_interval_ms: 6000 #optional and default is 60000 (60s)
+        offset_flush_timeout_ms: 500 #optional and default is 5000 (5s)
+        status_storage_partitions: 1 #optional and default is 5
+        heartbeat_interval_ms: 300 #optional and default is 3000 (3s)
+        session_timeout_ms: 3000 #optional and default is 30000 (30s)
+        producer_client_rack: testhost
+        consumer_client_rack: testhost
+        listeners:
+          - testhost:123
+      mysql:
+        hostname: localhost
+        credentials:
+          type: plaintext
+          username: debezium
+          password: dbz
+        tables:
+          - topic_prefix: prefix1
+            table_name: inventory.customers
+      mongodb:
+        hostname: localhost
+        credentials:
+          type: plaintext
+          username: debezium
+          password: dbz
+        collections:
+          - topic_prefix: prefix1
+            collection_name: test.customers
+      postgresql:
+        hostname: localhost
+        credentials:
+          type: plaintext
+          username: debezium
+          password: dbz
+        tables:
+          - topic_prefix: psql
+            database_name: postgres
+            table_name: public.customers
+  sink:
+    - noop:
