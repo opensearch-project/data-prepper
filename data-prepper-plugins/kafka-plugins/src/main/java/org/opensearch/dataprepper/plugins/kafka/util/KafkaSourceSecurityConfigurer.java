@@ -7,6 +7,7 @@ package org.opensearch.dataprepper.plugins.kafka.util;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
@@ -30,7 +31,6 @@ import software.amazon.awssdk.regions.Region;
 import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
 import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
 import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
-import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
 import software.amazon.awssdk.services.glue.model.Compatibility;
 
 import org.slf4j.Logger;
@@ -250,7 +250,7 @@ public class KafkaSourceSecurityConfigurer {
     public static void setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
         final AwsConfig awsConfig = sourceConfig.getAwsConfig();
         final AuthConfig authConfig = sourceConfig.getAuthConfig();
-        final KafkaSourceConfig.EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
+        final EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
         final EncryptionType encryptionType = encryptionConfig.getType();
 
         credentialsProvider = DefaultCredentialsProvider.create();

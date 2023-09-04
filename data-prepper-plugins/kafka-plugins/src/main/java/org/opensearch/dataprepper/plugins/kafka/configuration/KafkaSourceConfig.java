@@ -19,21 +19,6 @@ import java.util.Objects;
  */
 
 public class KafkaSourceConfig {
-    public class EncryptionConfig {
-        @JsonProperty("type")
-        private EncryptionType type = EncryptionType.SSL;
-
-        @JsonProperty("insecure")
-        private boolean insecure = false;
-
-        public EncryptionType getType() {
-            return type;
-        }
-
-        public boolean getInsecure() {
-            return insecure;
-        }
-    }
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
