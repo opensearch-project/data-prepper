@@ -39,6 +39,8 @@ dependencyResolutionManagement {
             library('bouncycastle-bcpkix', 'org.bouncycastle', 'bcpkix-jdk18on').versionRef('bouncycastle')
             version('guava', '32.1.2-jre')
             library('guava-core', 'com.google.guava', 'guava').versionRef('guava')
+            version('reflections', '0.9.12')
+            library('reflections-core', 'org.reflections', 'reflections').versionRef('reflections')
             library('commons-lang3', 'org.apache.commons', 'commons-lang3').version('3.13.0')
             library('commons-io', 'commons-io', 'commons-io').version('2.13.0')
             library('commons-codec', 'commons-codec', 'commons-codec').version('1.16.0')
@@ -139,6 +141,7 @@ include 'data-prepper-plugins:buffer-common'
 include 'data-prepper-plugins:sqs-source'
 include 'data-prepper-plugins:cloudwatch-logs'
 include 'data-prepper-plugins:http-sink'
+include 'data-prepper-plugins:kafka-connect-plugins'
 include 'data-prepper-plugins:sns-sink'
 include 'data-prepper-plugins:prometheus-sink'
 include 'data-prepper-plugins:dissect-processor'

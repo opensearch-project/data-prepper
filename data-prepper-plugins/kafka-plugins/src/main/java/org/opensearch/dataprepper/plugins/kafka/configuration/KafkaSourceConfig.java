@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.opensearch.dataprepper.plugins.kafka.util.KafkaClusterAuthConfig;
 
 import java.util.List;
 import java.util.Objects;
@@ -18,7 +19,7 @@ import java.util.Objects;
  * pipelines.yaml
  */
 
-public class KafkaSourceConfig {
+public class KafkaSourceConfig implements KafkaClusterAuthConfig {
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootStrapServers;
