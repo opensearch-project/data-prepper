@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,8 +30,6 @@ public class WorkerProperties {
     private static final String DEFAULT_CONFIG_STORAGE_TOPIC = "config-storage-topic";
     private static final String DEFAULT_OFFSET_STORAGE_TOPIC = "offset-storage-topic";
     private static final String DEFAULT_STATUS_STORAGE_TOPIC = "status-storage-topic";
-    private static final long CONNECTOR_TIMEOUT_MS = 30000L; // 30 seconds
-    private static final long CONNECT_TIMEOUT_MS = 60000L; // 60 seconds
     private final Integer offsetStorageReplicationFactor = -1;
     private final Integer configStorageReplicationFactor = -1;
     private final Integer statusStorageReplicationFactor = -1;
@@ -57,10 +60,6 @@ public class WorkerProperties {
     private Long heartBeatIntervalMs = HEARTBEAT_INTERVAL_MS;
     @JsonProperty("session_timeout_ms")
     private Long sessionTimeoutMs = SESSION_TIMEOUT_MS;
-    @JsonProperty("connect_timeout_ms")
-    private Long connectTimeoutMs = CONNECT_TIMEOUT_MS;
-    @JsonProperty("connector_timeout_ms")
-    private Long connectorTimeoutMs = CONNECTOR_TIMEOUT_MS;
     private List<String> listeners = DEFAULT_LISTENERS;
     private String producerClientRack;
     private String consumerClientRack;
@@ -127,14 +126,6 @@ public class WorkerProperties {
 
     public String getConsumerClientRack() {
         return consumerClientRack;
-    }
-
-    public Long getConnectTimeoutMs() {
-        return connectTimeoutMs;
-    }
-
-    public Long getConnectorTimeoutMs() {
-        return connectorTimeoutMs;
     }
 
     public String getBootstrapServers() {

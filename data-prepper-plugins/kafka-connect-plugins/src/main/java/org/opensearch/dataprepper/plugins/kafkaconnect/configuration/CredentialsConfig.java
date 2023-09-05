@@ -40,20 +40,11 @@ public class CredentialsConfig {
                 this.username = secretMap.get("username");
                 this.password = secretMap.get("password");
                 return;
-            case IAM:
-                if (username == null || region == null) {
-                    throw new IllegalArgumentException("username and region must be set for aws credential type");
-                }
-                this.username = username;
-                this.password = "";
-                return;
             default:
                 throw new IllegalArgumentException("unsupported credential type.");
 
         }
     }
-
-//    public
 
     private Map<String, String> getSecretValueMap(String stsRoleArn, String region, String secretId) {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -76,9 +67,7 @@ public class CredentialsConfig {
 
     public enum CredentialType {
         PLAINTEXT("plaintext"),
-        SECRET_MANAGER("secret_manager"),
-        IAM("iam");
-
+        SECRET_MANAGER("secret_manager");
         private static final Map<String, CredentialType> OPTIONS_MAP = Arrays.stream(CredentialType.values())
                 .collect(Collectors.toMap(
                         value -> value.type,

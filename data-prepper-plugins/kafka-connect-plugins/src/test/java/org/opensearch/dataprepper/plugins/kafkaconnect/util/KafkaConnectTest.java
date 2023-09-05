@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafkaconnect.util;
 
 import org.apache.kafka.connect.connector.policy.ConnectorClientConfigOverridePolicy;
@@ -11,6 +16,7 @@ import org.apache.kafka.connect.runtime.distributed.DistributedConfig;
 import org.apache.kafka.connect.runtime.distributed.DistributedHerder;
 import org.apache.kafka.connect.runtime.distributed.NotLeaderException;
 import org.apache.kafka.connect.runtime.isolation.Plugins;
+import org.apache.kafka.connect.runtime.rest.ConnectRestServer;
 import org.apache.kafka.connect.runtime.rest.RestClient;
 import org.apache.kafka.connect.runtime.rest.RestServer;
 import org.apache.kafka.connect.runtime.rest.entities.ConnectorInfo;
@@ -56,7 +62,8 @@ import static org.mockito.Mockito.when;
 public class KafkaConnectTest {
     private static final String TEST_PIPELINE_NAME = "test";
     private static final WorkerProperties DEFAULT_WORDER_PROPERTY = new WorkerProperties();
-
+    private static final long TEST_CONNECTOR_TIMEOUT_MS = 30000L; // 30 seconds
+    private static final long TEST_CONNECT_TIMEOUT_MS = 60000L; // 60 seconds
     @Mock
     private KafkaConnectMetrics kafkaConnectMetrics;
 
@@ -86,11 +93,17 @@ public class KafkaConnectTest {
         ConnectorStateInfo runningState = new ConnectorStateInfo("newConnector", new ConnectorStateInfo.ConnectorState("RUNNING", "worker", "msg"), new ArrayList<>(), ConnectorType.SOURCE);
         lenient().when(distributedHerder.connectorStatus(any())).thenReturn(runningState);
         lenient().doAnswer(invocation -> {
+            Callback<Map<String, String>> callback = invocation.getArgument(1);
+            // Simulate a successful completion
+            callback.onCompletion(null, null);
+            return null;
+        }).when(distributedHerder).connectorConfig(any(), any(Callback.class));
+        lenient().doAnswer(invocation -> {
             Callback<Herder.Created<ConnectorInfo>> callback = invocation.getArgument(3);
             // Simulate a successful completion
             callback.onCompletion(null, null);
             return null;
-        }).when(distributedHerder).putConnectorConfig(any(), any(), eq(false), any(Callback.class));
+        }).when(distributedHerder).putConnectorConfig(any(String.class), any(Map.class), any(Boolean.class), any(Callback.class));
         lenient().doAnswer(invocation -> {
             Callback<Herder.Created<ConnectorInfo>> callback = invocation.getArgument(1);
             // Simulate a successful completion
@@ -101,11 +114,11 @@ public class KafkaConnectTest {
 
     @Test
     void testInitializeKafkaConnectWithSingletonForSamePipeline() {
-        final KafkaConnect kafkaConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics);
-        final KafkaConnect sameConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics);
+        final KafkaConnect kafkaConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT_MS, TEST_CONNECTOR_TIMEOUT_MS);
+        final KafkaConnect sameConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT_MS, TEST_CONNECTOR_TIMEOUT_MS);
         assertThat(sameConnect, is(kafkaConnect));
         final String anotherPipeline = "anotherPipeline";
-        final KafkaConnect anotherKafkaConnect = KafkaConnect.getPipelineInstance(anotherPipeline, pluginMetrics);
+        final KafkaConnect anotherKafkaConnect = KafkaConnect.getPipelineInstance(anotherPipeline, pluginMetrics, TEST_CONNECT_TIMEOUT_MS, TEST_CONNECTOR_TIMEOUT_MS);
         assertThat(anotherKafkaConnect, not(kafkaConnect));
     }
 
@@ -118,7 +131,7 @@ public class KafkaConnectTest {
         });
              MockedConstruction<RestClient> mockedRestClient = mockConstruction(RestClient.class);
              MockedConstruction<DistributedHerder> mockedHerder = mockConstruction(DistributedHerder.class);
-             MockedConstruction<RestServer> mockedRestServer = mockConstruction(RestServer.class, (mock, context) -> {
+             MockedConstruction<ConnectRestServer> mockedRestServer = mockConstruction(ConnectRestServer.class, (mock, context) -> {
                  when(mock.advertisedUrl()).thenReturn(URI.create("localhost:9002"));
              });
              MockedConstruction<Plugins> mockedPlugin = mockConstruction(Plugins.class, (mock, context) -> {
@@ -137,7 +150,7 @@ public class KafkaConnectTest {
                  doNothing().when(mock).configure(any());
              })
         ) {
-            final KafkaConnect kafkaConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics);
+            final KafkaConnect kafkaConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT_MS, TEST_CONNECTOR_TIMEOUT_MS);
             kafkaConnect.initialize(workerProps);
         }
     }
@@ -175,7 +188,7 @@ public class KafkaConnectTest {
         try (MockedStatic<Clock> mockedStatic = mockStatic(Clock.class)) {
             final Clock clock = mock(Clock.class);
             mockedStatic.when(() -> Clock.systemUTC()).thenReturn(clock);
-            when(clock.millis()).thenReturn(0L).thenReturn(KafkaConnect.CONNECT_TIMEOUT_MS + 1);
+            when(clock.millis()).thenReturn(0L).thenReturn(TEST_CONNECT_TIMEOUT_MS + 1);
             final KafkaConnect kafkaConnect = new KafkaConnect(distributedHerder, rest, connect, kafkaConnectMetrics);
             assertThrows(RuntimeException.class, kafkaConnect::start);
             verify(rest).initializeServer();
@@ -212,14 +225,34 @@ public class KafkaConnectTest {
         final Map<String, String> newConnectorConfig = new HashMap<>();
         when(newConnector.getName()).thenReturn(newConnectorName);
         when(newConnector.getConfig()).thenReturn(newConnectorConfig);
-        when(newConnector.getAllowReplace()).thenReturn(false);
         when(distributedHerder.connectors()).thenReturn(List.of(oldConnectorName));
 
         final KafkaConnect kafkaConnect = new KafkaConnect(distributedHerder, rest, connect, kafkaConnectMetrics);
         kafkaConnect.addConnectors(List.of(newConnector));
         kafkaConnect.start();
-        verify(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(false), any(Callback.class));
+        verify(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(true), any(Callback.class));
         verify(distributedHerder).deleteConnectorConfig(eq(oldConnectorName), any(Callback.class));
+    }
+
+    @Test
+    void testInitConnectorsWithoutConnectorConfigChange() {
+        final Connector newConnector = mock(Connector.class);
+        final String newConnectorName = "newConnector";
+        final Map<String, String> newConnectorConfig = new HashMap<>();
+        when(newConnector.getName()).thenReturn(newConnectorName);
+        when(newConnector.getConfig()).thenReturn(newConnectorConfig);
+        when(newConnector.getAllowReplace()).thenReturn(false);
+        doAnswer(invocation -> {
+            Callback<Map<String, String>> callback = invocation.getArgument(1);
+            // Simulate a successful completion
+            callback.onCompletion(null, newConnectorConfig);
+            return null;
+        }).when(distributedHerder).connectorConfig(any(), any(Callback.class));
+
+        final KafkaConnect kafkaConnect = new KafkaConnect(distributedHerder, rest, connect, kafkaConnectMetrics);
+        kafkaConnect.addConnectors(List.of(newConnector));
+        kafkaConnect.start();
+        verify(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(false), any(Callback.class));
     }
 
     @Test
@@ -257,7 +290,6 @@ public class KafkaConnectTest {
         final Map<String, String> newConnectorConfig = new HashMap<>();
         when(newConnector.getName()).thenReturn(newConnectorName);
         when(newConnector.getConfig()).thenReturn(newConnectorConfig);
-        when(newConnector.getAllowReplace()).thenReturn(false);
         final KafkaConnect kafkaConnect = new KafkaConnect(distributedHerder, rest, connect, kafkaConnectMetrics);
         kafkaConnect.addConnectors(List.of(newConnector));
         // RuntimeException should be thrown
@@ -265,20 +297,20 @@ public class KafkaConnectTest {
             Callback<Herder.Created<ConnectorInfo>> callback = invocation.getArgument(3);
             callback.onCompletion(new RuntimeException(), null);
             return null;
-        }).when(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(false), any(Callback.class));
+        }).when(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(true), any(Callback.class));
         assertThrows(RuntimeException.class, kafkaConnect::start);
         // NotLeaderException or NotFoundException should be ignored.
         doAnswer(invocation -> {
             Callback<Herder.Created<ConnectorInfo>> callback = invocation.getArgument(3);
             callback.onCompletion(new NotLeaderException("not leader", "leaderUrl"), null);
             return null;
-        }).when(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(false), any(Callback.class));
+        }).when(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(true), any(Callback.class));
         kafkaConnect.start();
         doAnswer(invocation -> {
             Callback<Herder.Created<ConnectorInfo>> callback = invocation.getArgument(3);
             callback.onCompletion(new AlreadyExistsException("Already added"), null);
             return null;
-        }).when(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(false), any(Callback.class));
+        }).when(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(true), any(Callback.class));
         kafkaConnect.start();
     }
 
@@ -290,18 +322,17 @@ public class KafkaConnectTest {
         final Map<String, String> newConnectorConfig = new HashMap<>();
         when(newConnector.getName()).thenReturn(newConnectorName);
         when(newConnector.getConfig()).thenReturn(newConnectorConfig);
-        when(newConnector.getAllowReplace()).thenReturn(false);
         when(distributedHerder.connectorStatus(eq(newConnectorName))).thenReturn(null);
 
         try (MockedStatic<Clock> mockedStatic = mockStatic(Clock.class)) {
             final Clock clock = mock(Clock.class);
             mockedStatic.when(() -> Clock.systemUTC()).thenReturn(clock);
-            when(clock.millis()).thenReturn(0L).thenReturn(0L).thenReturn(0L).thenReturn(0L).thenReturn(KafkaConnect.CONNECTOR_TIMEOUT_MS + 1);
+            when(clock.millis()).thenReturn(0L).thenReturn(0L).thenReturn(0L).thenReturn(0L).thenReturn(TEST_CONNECTOR_TIMEOUT_MS + 1);
             final KafkaConnect kafkaConnect = new KafkaConnect(distributedHerder, rest, connect, kafkaConnectMetrics);
             kafkaConnect.addConnectors(List.of(newConnector));
             assertThrows(RuntimeException.class, kafkaConnect::start);
             verify(distributedHerder, times(1)).connectorStatus(any());
-            verify(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(false), any(Callback.class));
+            verify(distributedHerder).putConnectorConfig(eq(newConnectorName), eq(newConnectorConfig), eq(true), any(Callback.class));
             verify(clock, times(5)).millis();
         }
     }
