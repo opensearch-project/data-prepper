@@ -2,7 +2,7 @@
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink.opensearch;
+package org.opensearch.dataprepper.aws.api;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntityEnclosingRequest;
@@ -40,7 +40,7 @@ import static org.apache.http.protocol.HttpCoreContext.HTTP_TARGET_HOST;
  * An {@link HttpRequestInterceptor} that signs requests using any AWS {@link Signer}
  * and {@link AwsCredentialsProvider}.
  */
-final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor {
+public final class AwsRequestSigningApache4Interceptor implements HttpRequestInterceptor {
 
     /**
      * Constant to check content-length
@@ -82,10 +82,10 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
      * @param awsCredentialsProvider source of AWS credentials for signing
      * @param region signing region
      */
-    public AwsRequestSigningApacheInterceptor(final String service,
-                                              final Signer signer,
-                                              final AwsCredentialsProvider awsCredentialsProvider,
-                                              final Region region) {
+    public AwsRequestSigningApache4Interceptor(final String service,
+                                               final Signer signer,
+                                               final AwsCredentialsProvider awsCredentialsProvider,
+                                               final Region region) {
         this.service = Objects.requireNonNull(service);
         this.signer =  Objects.requireNonNull(signer);
         this.awsCredentialsProvider =  Objects.requireNonNull(awsCredentialsProvider);
@@ -99,10 +99,10 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
      * @param awsCredentialsProvider source of AWS credentials for signing
      * @param region signing region
      */
-    public AwsRequestSigningApacheInterceptor(final String service,
-                                              final Signer signer,
-                                              final AwsCredentialsProvider awsCredentialsProvider,
-                                              final String region) {
+    public AwsRequestSigningApache4Interceptor(final String service,
+                                               final Signer signer,
+                                               final AwsCredentialsProvider awsCredentialsProvider,
+                                               final String region) {
         this(service, signer, awsCredentialsProvider, Region.of(region));
     }
 

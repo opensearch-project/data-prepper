@@ -1,6 +1,7 @@
 
 dependencies {
     implementation 'software.amazon.awssdk:auth'
+    implementation 'software.amazon.awssdk:apache-client'
 }
 
 test {
