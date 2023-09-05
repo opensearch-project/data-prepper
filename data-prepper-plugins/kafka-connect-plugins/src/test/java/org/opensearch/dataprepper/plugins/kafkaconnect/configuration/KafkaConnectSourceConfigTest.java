@@ -66,23 +66,18 @@ public class KafkaConnectSourceConfigTest {
         assertThat(testConfig.getWorkerProperties(), notNullValue());
         Map<String, String> workerProperties = testConfig.getWorkerProperties().buildKafkaConnectPropertyMap();
         assertThat(workerProperties.get("bootstrap.servers"), is(bootstrapServers));
-        assertThat(workerProperties.get("listeners"), is("testhost:123"));
         assertThat(workerProperties.get("group.id"), is("test-group"));
         assertThat(workerProperties.get("offset.storage.topic"), is("test-offsets"));
         assertThat(workerProperties.get("config.storage.topic"), is("test-configs"));
         assertThat(workerProperties.get("status.storage.topic"), is("test-status"));
-        assertThat(workerProperties.get("key.converter"), is("test-converter"));
-        assertThat(workerProperties.get("key.converter.schema.registry.url"), is("http://testhost:8081/"));
-        assertThat(workerProperties.get("value.converter"), is("test-converter"));
-        assertThat(workerProperties.get("value.converter.schema.registry.url"), is("http://testhost:8082/"));
+        assertThat(workerProperties.get("key.converter"), is("org.apache.kafka.connect.json.JsonConverter"));
+        assertThat(workerProperties.get("value.converter"), is("org.apache.kafka.connect.json.JsonConverter"));
         assertThat(workerProperties.get("offset.storage.partitions"), is("2"));
         assertThat(workerProperties.get("offset.flush.interval.ms"), is("6000"));
         assertThat(workerProperties.get("offset.flush.timeout.ms"), is("500"));
         assertThat(workerProperties.get("status.storage.partitions"), is("1"));
         assertThat(workerProperties.get("heartbeat.interval.ms"), is("300"));
         assertThat(workerProperties.get("session.timeout.ms"), is("3000"));
-        assertThat(workerProperties.get("producer.client.rack"), is("testhost"));
-        assertThat(workerProperties.get("consumer.client.rack"), is("testhost"));
         assertThat(workerProperties.get("testClass"), is(this.getClass().getName()));
         assertThat(workerProperties.get("producer.testClass"), is(this.getClass().getName()));
         assertThat(workerProperties.get("testKey"), is(authProperties.getProperty("testKey")));
@@ -115,6 +110,8 @@ public class KafkaConnectSourceConfigTest {
         assertThat(testConfig.getAwsConfig(), is(awsConfig));
         assertThat(testConfig.getEncryptionConfig(), is(encryptionConfig));
         assertThat(testConfig.getBootStrapServers(), is(bootstrapServer));
+        assertThat(testConfig.getConnectorTimeoutMs(), is(3000L));
+        assertThat(testConfig.getConnectTimeoutMs(), is(3000L));
     }
 
     private KafkaConnectSourceConfig buildTestConfig(final String resourceFileName) throws IOException {

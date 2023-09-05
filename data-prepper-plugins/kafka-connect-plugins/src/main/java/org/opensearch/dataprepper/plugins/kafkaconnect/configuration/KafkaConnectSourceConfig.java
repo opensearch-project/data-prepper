@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,6 +17,8 @@ import java.util.List;
 import java.util.Properties;
 
 public class KafkaConnectSourceConfig implements KafkaClusterAuthConfig {
+    private static final long CONNECTOR_TIMEOUT_MS = 30000L; // 30 seconds
+    private static final long CONNECT_TIMEOUT_MS = 60000L; // 60 seconds
     @JsonProperty("mysql")
     private MySQLConfig mysql;
 
@@ -24,10 +31,24 @@ public class KafkaConnectSourceConfig implements KafkaClusterAuthConfig {
     @JsonProperty("worker_properties")
     private WorkerProperties workerProperties = new WorkerProperties();
 
+    @JsonProperty("connect_timeout_ms")
+    private Long connectTimeoutMs = CONNECT_TIMEOUT_MS;
+
+    @JsonProperty("connector_timeout_ms")
+    private Long connectorTimeoutMs = CONNECTOR_TIMEOUT_MS;
+
     private String bootstrapServers;
     private AuthConfig authConfig;
     private EncryptionConfig encryptionConfig;
     private AwsConfig awsConfig;
+
+    public Long getConnectTimeoutMs() {
+        return connectTimeoutMs;
+    }
+
+    public Long getConnectorTimeoutMs() {
+        return connectorTimeoutMs;
+    }
 
     public void setBootstrapServers(final String bootstrapServers) {
         this.bootstrapServers = bootstrapServers;

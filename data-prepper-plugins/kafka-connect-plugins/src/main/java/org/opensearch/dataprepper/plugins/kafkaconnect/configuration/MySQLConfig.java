@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -10,30 +15,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 public class MySQLConfig extends ConnectorConfig {
     public static final String CONNECTOR_CLASS = "io.debezium.connector.mysql.MySqlConnector";
     private static final String SCHEMA_HISTORY_PRODUCER_PREFIX = "schema.history.internal.producer.";
     private static final String SCHEMA_HISTORY_CONSUMER_PREFIX = "schema.history.internal.consumer.";
-    private static class TableConfig {
-        @JsonProperty("topic_prefix")
-        @NotNull
-        private String topicPrefix;
-
-        @JsonProperty("table_name")
-        @NotNull
-        private String tableName;
-
-        public String getTableName() {
-            return tableName;
-        }
-
-        public String getTopicPrefix() {
-            return topicPrefix;
-        }
-    }
     private static final String TOPIC_DEFAULT_PARTITIONS = "10";
     private static final String TOPIC_DEFAULT_REPLICATION_FACTOR = "-1";
     private static final String SCHEMA_HISTORY = "schemahistory";
@@ -41,33 +28,28 @@ public class MySQLConfig extends ConnectorConfig {
     private static final String DEFAULT_PORT = "3306";
     private static final int MIN_ID = 1;
     private static final int MAX_ID = 10000;
-    private Random random = new Random();
-
     private String bootstrapServers;
     private Properties authProperties;
-
     @JsonProperty("hostname")
     @NotNull
     private String hostname;
-
     @JsonProperty("port")
     private String port = DEFAULT_PORT;
-
     @JsonProperty("credentials")
     private CredentialsConfig credentialsConfig;
-
     @JsonProperty("snapshot_mode")
     private String snapshotMode = DEFAULT_SNAPSHOT_MODE;
-
     @JsonProperty("tables")
     private List<TableConfig> tables = new ArrayList<>();
+
+    public String getBootstrapServers() {
+        return bootstrapServers;
+    }
 
     public void setBootstrapServers(final String bootstrapServers) {
         this.bootstrapServers = bootstrapServers;
     }
-    public String getBootstrapServers() {
-        return bootstrapServers;
-    }
+
     public void setAuthProperty(Properties authProperties) {
         this.authProperties = authProperties;
     }
@@ -76,13 +58,13 @@ public class MySQLConfig extends ConnectorConfig {
     public List<Connector> buildConnectors() {
         return tables.stream().map(table -> {
             final String connectorName = table.getTopicPrefix() + "." + table.getTableName();
-            final Map<String, String> config = buildConfig(table);
+            final Map<String, String> config = buildConfig(table, connectorName);
             return new Connector(connectorName, config, this.forceUpdate);
         }).collect(Collectors.toList());
     }
 
-    private Map<String, String> buildConfig(final TableConfig table) {
-        int databaseServerId = random.nextInt(MAX_ID - MIN_ID + 1) + MAX_ID;
+    private Map<String, String> buildConfig(final TableConfig table, final String connectorName) {
+        int databaseServerId = Math.abs(connectorName.hashCode());
         Map<String, String> config = new HashMap<>();
         if (authProperties != null) {
             authProperties.forEach((k, v) -> {
@@ -113,5 +95,23 @@ public class MySQLConfig extends ConnectorConfig {
         config.put("schema.history.internal.kafka.topic", String.join(".", List.of(table.getTopicPrefix(), table.getTableName(), SCHEMA_HISTORY)));
         config.put("database.server.id", Integer.toString(databaseServerId));
         return config;
+    }
+
+    private static class TableConfig {
+        @JsonProperty("topic_prefix")
+        @NotNull
+        private String topicPrefix;
+
+        @JsonProperty("table_name")
+        @NotNull
+        private String tableName;
+
+        public String getTableName() {
+            return tableName;
+        }
+
+        public String getTopicPrefix() {
+            return topicPrefix;
+        }
     }
 }

@@ -56,8 +56,6 @@ import static org.apache.kafka.clients.CommonClientConfigs.CLIENT_ID_CONFIG;
  * Unique with single instance for each pipeline.
  */
 public class KafkaConnect {
-    public static final long CONNECTOR_TIMEOUT_MS = 30000L; // 30 seconds
-    public static final long CONNECT_TIMEOUT_MS = 60000L; // 60 seconds
     private static final Logger LOG = LoggerFactory.getLogger(KafkaConnect.class);
     private static volatile Map<String, KafkaConnect> instanceMap = new HashMap<>();
     private static final long RETRY_INTERVAL_MS = 3000L; // 3 seconds
@@ -69,10 +67,16 @@ public class KafkaConnect {
     private DistributedHerder herder;
     private RestServer rest;
     private Connect connect;
+    private final long connectTimeoutMs; // 60 seconds
+    private final long connectorTimeoutMs; // 30 seconds
 
-    private KafkaConnect(final PluginMetrics pluginMetrics) {
+    private KafkaConnect(final PluginMetrics pluginMetrics,
+                         final long connectTimeoutMs,
+                         final long connectorTimeoutMs) {
         this.connectorMap = new HashMap<>();
         this.kafkaConnectMetrics = new KafkaConnectMetrics(pluginMetrics);
+        this.connectTimeoutMs = connectTimeoutMs;
+        this.connectorTimeoutMs = connectorTimeoutMs;
     }
 
     /**
@@ -87,14 +91,18 @@ public class KafkaConnect {
         this.rest = rest;
         this.connect = connect;
         this.kafkaConnectMetrics = kafkaConnectMetrics;
+        this.connectTimeoutMs = 60000L;
+        this.connectorTimeoutMs = 30000L;
     }
 
     public static KafkaConnect getPipelineInstance(final String pipelineName,
-                                                   final PluginMetrics pluginMetrics) {
+                                                   final PluginMetrics pluginMetrics,
+                                                   final long connectTimeoutMs,
+                                                   final long connectorTimeoutMs) {
         KafkaConnect instance = instanceMap.get(pipelineName);
         if (instance == null) {
             synchronized (KafkaConnect.class) {
-                instance = new KafkaConnect(pluginMetrics);
+                instance = new KafkaConnect(pluginMetrics, connectTimeoutMs, connectorTimeoutMs);
                 instanceMap.put(pipelineName, instance);
             }
         }
@@ -105,7 +113,6 @@ public class KafkaConnect {
         DistributedConfig config = new DistributedConfig(workerProps);
         RestClient restClient = new RestClient(config);
         this.rest = new ConnectRestServer(config.rebalanceTimeout(), restClient, workerProps);
-//        this.rest = new RestServer(config, restClient);
         this.herder = initHerder(workerProps, config, restClient);
         this.connect = new Connect(herder, (ConnectRestServer) rest);
     }
@@ -216,7 +223,7 @@ public class KafkaConnect {
     private void waitForConnectRunning() throws InterruptedException {
         long startTime = clock.millis();
         boolean isRunning = false;
-        while (clock.millis() - startTime < CONNECT_TIMEOUT_MS) {
+        while (clock.millis() - startTime < connectTimeoutMs) {
             LOG.info("Waiting Kafka Connect running");
             isRunning = this.connect.isRunning();
             if (isRunning) break;
@@ -247,19 +254,27 @@ public class KafkaConnect {
         CountDownLatch connectorLatch = new CountDownLatch(connectorMap.size());
         List<String> exceptionMessages = new ArrayList<>();
         connectorMap.forEach((connectorName, connector) -> {
-            herder.putConnectorConfig(connectorName, connector.getConfig(), connector.getAllowReplace(), (error, result) -> {
-                if (error != null) {
-                    if (error instanceof NotLeaderException || error instanceof AlreadyExistsException) {
-                        LOG.info(error.getMessage());
-                    } else {
-                        LOG.error("Failed to put connector config: {}", connectorName);
-                        exceptionMessages.add(error.getMessage());
-                    }
+            herder.connectorConfig(connectorName, (e, config) -> {
+                boolean shouldUpdate;
+                if (config == null) {
+                    shouldUpdate = true;
                 } else {
-                    // Handle the successful registration
-                    LOG.info("Success put connector config: {}", connectorName);
+                    shouldUpdate = connector.getAllowReplace() || (!config.equals(connector.getConfig()));
                 }
-                connectorLatch.countDown();
+                herder.putConnectorConfig(connectorName, connector.getConfig(), shouldUpdate, (error, result) -> {
+                    if (error != null) {
+                        if (error instanceof NotLeaderException || error instanceof AlreadyExistsException) {
+                            LOG.info(error.getMessage());
+                        } else {
+                            LOG.error("Failed to put connector config: {}", connectorName);
+                            exceptionMessages.add(error.getMessage());
+                        }
+                    } else {
+                        // Handle the successful registration
+                        LOG.info("Success put connector config: {}", connectorName);
+                    }
+                    connectorLatch.countDown();
+                });
             });
         });
         // Block and wait for all tasks to complete
@@ -319,7 +334,7 @@ public class KafkaConnect {
         connectorNames.parallelStream().forEach(connectorName -> {
             long startTime = clock.millis();
             boolean isRunning = false;
-            while (clock.millis() - startTime < CONNECTOR_TIMEOUT_MS) {
+            while (clock.millis() - startTime < connectorTimeoutMs) {
                 try {
                     ConnectorStateInfo info = herder.connectorStatus(connectorName);
                     if ("RUNNING".equals(info.connector().state())) {

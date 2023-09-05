@@ -34,6 +34,8 @@ public class KafkaConnectMetrics {
     );
     private static final String SOURCE_TASK_METRICS_NAME = "source-task-metrics";
     private static final List<String> SOURCE_TASK_METRICS_LIST = List.of(
+            "source-record-write-total",
+            "source-record-write-rate",
             "source-record-poll-total",
             "source-record-poll-rate",
             "source-record-active-count-max",

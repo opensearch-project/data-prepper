@@ -47,7 +47,11 @@ public class KafkaConnectSource implements Source<Record<Object>> {
         this.sourceConfig = sourceConfig;
         this.pipelineName = pipelineDescription.getPipelineName();
         this.updateConfig(kafkaClusterConfigSupplier);
-        kafkaConnect = KafkaConnect.getPipelineInstance(pipelineName, pluginMetrics);
+        kafkaConnect = KafkaConnect.getPipelineInstance(
+                pipelineName,
+                pluginMetrics,
+                sourceConfig.getConnectTimeoutMs(),
+                sourceConfig.getConnectorTimeoutMs());
     }
 
     @Override
