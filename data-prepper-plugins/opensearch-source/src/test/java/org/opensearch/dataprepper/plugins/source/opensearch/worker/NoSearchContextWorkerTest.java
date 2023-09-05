@@ -11,10 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.stubbing.Answer;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
@@ -37,7 +35,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -84,7 +81,7 @@ public class NoSearchContextWorkerTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
-    @Mock
+    @Mock(lenient = true)
     private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
 
     @Mock
@@ -105,10 +102,10 @@ public class NoSearchContextWorkerTest {
     void setup() {
         executorService = Executors.newSingleThreadExecutor();
         lenient().when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
-        lenient().when(openSearchSourcePluginMetrics.getDocumentsProcessedCounter()).thenReturn(documentsProcessedCounter);
-        lenient().when(openSearchSourcePluginMetrics.getIndicesProcessedCounter()).thenReturn(indicesProcessedCounter);
-        lenient().when(openSearchSourcePluginMetrics.getProcessingErrorsCounter()).thenReturn(processingErrorsCounter);
-        lenient().when(openSearchSourcePluginMetrics.getIndexProcessingTimeTimer()).thenReturn(indexProcessingTimeTimer);
+        when(openSearchSourcePluginMetrics.getDocumentsProcessedCounter()).thenReturn(documentsProcessedCounter);
+        when(openSearchSourcePluginMetrics.getIndicesProcessedCounter()).thenReturn(indicesProcessedCounter);
+        when(openSearchSourcePluginMetrics.getProcessingErrorsCounter()).thenReturn(processingErrorsCounter);
+        when(openSearchSourcePluginMetrics.getIndexProcessingTimeTimer()).thenReturn(indexProcessingTimeTimer);
     }
 
     private NoSearchContextWorker createObjectUnderTest() {
@@ -306,14 +303,10 @@ public class NoSearchContextWorkerTest {
         verifyNoInteractions(processingErrorsCounter);
     }
 
-    private void mockTimerCallable() throws Exception {
-        when(indexProcessingTimeTimer.recordCallable(ArgumentMatchers.<Callable<Void>>any())).thenAnswer(
-                (Answer<Void>) invocation -> {
-                    final Object[] args = invocation.getArguments();
-                    @SuppressWarnings("unchecked")
-                    final Callable<Void> callable = (Callable<Void>) args[0];
-                    return callable.call();
-                }
-        );
+    private void mockTimerCallable() {
+        doAnswer(a -> {
+            a.<Runnable>getArgument(0).run();
+            return null;
+        }).when(indexProcessingTimeTimer).record(any(Runnable.class));
     }
 }

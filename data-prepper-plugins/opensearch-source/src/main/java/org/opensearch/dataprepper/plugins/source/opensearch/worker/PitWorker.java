@@ -106,10 +106,7 @@ public class PitWorker implements SearchWorker, Runnable {
                             sourceCoordinator,
                             indexPartition.get());
 
-                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().recordCallable(() -> {
-                        processIndex(indexPartition.get(), acknowledgementSet.getLeft());
-                        return null;
-                    });
+                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet.getLeft()));
 
                     completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet.getLeft(), acknowledgementSet.getRight(),
                             indexPartition.get(), sourceCoordinator);
