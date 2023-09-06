@@ -5,6 +5,8 @@
 
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +24,7 @@ import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgr
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
@@ -56,6 +59,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.ScrollWorker.SCROLL_TIME_PER_BATCH;
@@ -82,16 +86,35 @@ public class ScrollWorkerTest {
     @Mock
     private AcknowledgementSetManager acknowledgementSetManager;
 
+    @Mock(lenient = true)
+    private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    @Mock
+    private Counter documentsProcessedCounter;
+
+    @Mock
+    private Counter indicesProcessedCounter;
+
+    @Mock
+    private Counter processingErrorsCounter;
+
+    @Mock
+    private Timer indexProcessingTimeTimer;
+
     private ExecutorService executorService;
 
     @BeforeEach
     void setup() {
         executorService = Executors.newSingleThreadExecutor();
         lenient().when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(false);
+        when(openSearchSourcePluginMetrics.getDocumentsProcessedCounter()).thenReturn(documentsProcessedCounter);
+        when(openSearchSourcePluginMetrics.getIndicesProcessedCounter()).thenReturn(indicesProcessedCounter);
+        when(openSearchSourcePluginMetrics.getProcessingErrorsCounter()).thenReturn(processingErrorsCounter);
+        when(openSearchSourcePluginMetrics.getIndexProcessingTimeTimer()).thenReturn(indexProcessingTimeTimer);
     }
 
     private ScrollWorker createObjectUnderTest() {
-        return new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager);
+        return new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
     }
 
     @Test
@@ -110,6 +133,8 @@ public class ScrollWorkerTest {
 
     @Test
     void run_with_getNextPartition_with_non_empty_partition_creates_and_deletes_scroll_and_closes_that_partition() throws Exception {
+        mockTimerCallable();
+
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -181,10 +206,16 @@ public class ScrollWorkerTest {
         final DeleteScrollRequest deleteScrollRequest = deleteRequestArgumentCaptor.getValue();
         assertThat(deleteScrollRequest, notNullValue());
         assertThat(deleteScrollRequest.getScrollId(), equalTo(scrollId));
+
+        verify(documentsProcessedCounter, times(5)).increment();
+        verify(indicesProcessedCounter).increment();
+        verifyNoInteractions(processingErrorsCounter);
     }
 
     @Test
     void run_with_getNextPartition_with_acknowledgments_creates_and_deletes_scroll_and_closes_that_partition() throws Exception {
+        mockTimerCallable();
+
         final AcknowledgementSet acknowledgementSet = mock(AcknowledgementSet.class);
         AtomicReference<Integer> numEventsAdded = new AtomicReference<>(0);
         doAnswer(a -> {
@@ -272,10 +303,16 @@ public class ScrollWorkerTest {
         assertThat(deleteScrollRequest.getScrollId(), equalTo(scrollId));
 
         verify(acknowledgementSet).complete();
+
+        verify(documentsProcessedCounter, times(5)).increment();
+        verify(indicesProcessedCounter).increment();
+        verifyNoInteractions(processingErrorsCounter);
     }
 
     @Test
-    void run_gives_up_partitions_and_waits_when_createScroll_throws_SearchContextLimitException() throws InterruptedException {
+    void run_gives_up_partitions_and_waits_when_createScroll_throws_SearchContextLimitException() throws Exception {
+        mockTimerCallable();
+
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -300,11 +337,17 @@ public class ScrollWorkerTest {
         verifyNoMoreInteractions(searchAccessor);
         verify(sourceCoordinator).giveUpPartitions();
         verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+
+        verifyNoInteractions(documentsProcessedCounter);
+        verifyNoInteractions(indicesProcessedCounter);
+        verify(processingErrorsCounter).increment();
     }
 
 
     @Test
-    void run_completes_partitions_createScroll_throws_IndexNotFoundException() throws InterruptedException {
+    void run_completes_partitions_createScroll_throws_IndexNotFoundException() throws Exception {
+        mockTimerCallable();
+
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
         final String partitionKey = UUID.randomUUID().toString();
         when(sourcePartition.getPartitionKey()).thenReturn(partitionKey);
@@ -330,6 +373,17 @@ public class ScrollWorkerTest {
         verifyNoMoreInteractions(searchAccessor);
         verify(sourceCoordinator).completePartition(partitionKey);
         verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+
+        verifyNoInteractions(documentsProcessedCounter);
+        verifyNoInteractions(indicesProcessedCounter);
+        verifyNoInteractions(processingErrorsCounter);
+    }
+
+    private void mockTimerCallable() {
+        doAnswer(a -> {
+            a.<Runnable>getArgument(0).run();
+            return null;
+        }).when(indexProcessingTimeTimer).record(any(Runnable.class));
     }
 
 }

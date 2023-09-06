@@ -22,6 +22,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.NoSearchContextWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker;
@@ -66,6 +67,9 @@ public class OpenSearchServiceTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
+    private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    @Mock
     private SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
 
     @Mock
@@ -93,7 +97,7 @@ public class OpenSearchServiceTest {
              })) {
             executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor).thenReturn(scheduledExecutorService);
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, openSearchSourceConfiguration.getSearchConfiguration().getBatchSize(), BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            return OpenSearchService.createOpenSearchService(openSearchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager);
+            return OpenSearchService.createOpenSearchService(openSearchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager, openSearchSourcePluginMetrics);
         }
     }
 
