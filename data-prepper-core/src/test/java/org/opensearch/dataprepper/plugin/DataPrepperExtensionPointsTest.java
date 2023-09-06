@@ -41,12 +41,17 @@ class DataPrepperExtensionPointsTest {
     private GenericApplicationContext sharedApplicationContext;
 
     @Mock(lenient = true)
+    private GenericApplicationContext coreApplicationContext;
+
+    @Mock(lenient = true)
     private ExtensionProvider extensionProvider;
 
     private Class extensionClass;
 
     @BeforeEach
     void setUp() {
+        when(pluginBeanFactoryProvider.getCoreApplicationContext())
+                .thenReturn(coreApplicationContext);
         when(pluginBeanFactoryProvider.getSharedPluginApplicationContext())
                 .thenReturn(sharedApplicationContext);
 
@@ -69,6 +74,17 @@ class DataPrepperExtensionPointsTest {
     @Test
     void constructor_throws_if_provider_getSharedPluginApplicationContext_is_null() {
         reset(pluginBeanFactoryProvider);
+        when(pluginBeanFactoryProvider.getCoreApplicationContext())
+                .thenReturn(coreApplicationContext);
+
+        assertThrows(NullPointerException.class, this::createObjectUnderTest);
+    }
+
+    @Test
+    void constructor_throws_if_provider_getCoreApplicationContext_is_null() {
+        reset(pluginBeanFactoryProvider);
+        when(pluginBeanFactoryProvider.getSharedPluginApplicationContext())
+                .thenReturn(sharedApplicationContext);
 
         assertThrows(NullPointerException.class, this::createObjectUnderTest);
     }
@@ -78,16 +94,31 @@ class DataPrepperExtensionPointsTest {
         createObjectUnderTest().addExtensionProvider(extensionProvider);
 
         verify(sharedApplicationContext).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
+        verify(coreApplicationContext).registerBean(eq(extensionClass), any(Supplier.class), any(BeanDefinitionCustomizer.class));
     }
 
     @Test
     void addExtensionProvider_should_registerBean_which_calls_provideInstance() {
         createObjectUnderTest().addExtensionProvider(extensionProvider);
 
+        verifyRegisterBeanWithProvideInstance(sharedApplicationContext);
+        verifyRegisterBeanWithProvideInstance(coreApplicationContext);
+    }
+
+    @Test
+    void addExtensionProvider_should_registerBean_as_prototype() {
+        createObjectUnderTest().addExtensionProvider(extensionProvider);
+
+        verifyRegisterBeanAsPrototype(sharedApplicationContext);
+        verifyRegisterBeanAsPrototype(coreApplicationContext);
+    }
+
+    private void verifyRegisterBeanWithProvideInstance(final GenericApplicationContext applicationContext) {
+        reset(extensionProvider);
         final ArgumentCaptor<Supplier<Object>> supplierArgumentCaptor =
                 ArgumentCaptor.forClass(Supplier.class);
 
-        verify(sharedApplicationContext).registerBean(eq(extensionClass), supplierArgumentCaptor.capture(), any(BeanDefinitionCustomizer.class));
+        verify(applicationContext).registerBean(eq(extensionClass), supplierArgumentCaptor.capture(), any(BeanDefinitionCustomizer.class));
 
         final Supplier<Object> extensionProviderSupplier = supplierArgumentCaptor.getValue();
 
@@ -105,14 +136,11 @@ class DataPrepperExtensionPointsTest {
         verify(extensionProvider).provideInstance(any());
     }
 
-    @Test
-    void addExtensionProvider_should_registerBean_as_prototype() {
-        createObjectUnderTest().addExtensionProvider(extensionProvider);
-
+    private void verifyRegisterBeanAsPrototype(final GenericApplicationContext applicationContext) {
         final ArgumentCaptor<BeanDefinitionCustomizer> beanDefinitionCustomizerArgumentCaptor =
                 ArgumentCaptor.forClass(BeanDefinitionCustomizer.class);
 
-        verify(sharedApplicationContext).registerBean(eq(extensionClass), any(Supplier.class), beanDefinitionCustomizerArgumentCaptor.capture());
+        verify(applicationContext).registerBean(eq(extensionClass), any(Supplier.class), beanDefinitionCustomizerArgumentCaptor.capture());
 
         final BeanDefinitionCustomizer beanDefinitionCustomizer = beanDefinitionCustomizerArgumentCaptor.getValue();
 

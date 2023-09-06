@@ -25,11 +25,11 @@ import static org.mockito.Mockito.verify;
 
 class PluginBeanFactoryProviderTest {
 
-    private ApplicationContext context;
+    private GenericApplicationContext context;
 
     @BeforeEach
     void setUp() {
-        context = mock(ApplicationContext.class);
+        context = mock(GenericApplicationContext.class);
     }
 
     private PluginBeanFactoryProvider createObjectUnderTest() {
@@ -54,7 +54,7 @@ class PluginBeanFactoryProviderTest {
 
     @Test
     void testPluginBeanFactoryProviderRequiresParentContext() {
-        context = mock(ApplicationContext.class);
+        context = mock(GenericApplicationContext.class);
 
         assertThrows(NullPointerException.class, () -> createObjectUnderTest());
     }

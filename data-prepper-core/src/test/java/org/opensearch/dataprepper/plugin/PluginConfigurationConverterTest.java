@@ -33,7 +33,7 @@ import static org.mockito.Mockito.mock;
 class PluginConfigurationConverterTest {
     private PluginSetting pluginSetting;
     private Validator validator;
-    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().pluginConfigObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().extensionPluginConfigObjectMapper();
 
     static class TestConfiguration {
         @SuppressWarnings("unused")

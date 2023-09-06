@@ -13,6 +13,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -30,12 +31,12 @@ class AwsSecretsPluginConfigValueTranslatorTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "$[[]]",
-            "$[[aws_secrets.my_secret]]",
-            "$[[aws_secrets.invalid secret name.secret_key]]"
+            "",
+            "my_secret",
+            "invalid secret id with space.secret_key"
     })
     void testTranslateInputNoMatch(final String input) {
-        assertThat(objectUnderTest.translate(input), equalTo(input));
+        assertThrows(IllegalArgumentException.class, () -> objectUnderTest.translate(input));
     }
 
     @Test
@@ -43,7 +44,7 @@ class AwsSecretsPluginConfigValueTranslatorTest {
         final String testSecretName = "valid@secret-manager_name";
         final String testSecretKey = UUID.randomUUID().toString();
         final String testSecretValue = UUID.randomUUID().toString();
-        final String input = String.format("$[[aws_secrets.%s.%s]]", testSecretName, testSecretKey);
+        final String input = String.format("%s.%s", testSecretName, testSecretKey);
         when(secretsSupplier.retrieveValue(eq(testSecretName), eq(testSecretKey))).thenReturn(testSecretValue);
         assertThat(objectUnderTest.translate(input), equalTo(testSecretValue));
     }
