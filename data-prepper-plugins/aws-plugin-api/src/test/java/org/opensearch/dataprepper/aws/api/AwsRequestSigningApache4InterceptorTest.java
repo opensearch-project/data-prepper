@@ -67,6 +67,51 @@ public class AwsRequestSigningApache4InterceptorTest {
     }
 
     @Test
+    void IOException_is_thrown_when_buildURI_throws_exception() {
+        final RequestLine requestLine = mock(RequestLine.class);
+        when(requestLine.getMethod()).thenReturn("GET");
+        when(requestLine.getUri()).thenReturn("http://localhost?param=test");
+        when(httpRequest.getRequestLine()).thenReturn(requestLine);
+
+        when(httpContext.getAttribute(HttpCoreContext.HTTP_TARGET_HOST)).thenThrow(RuntimeException.class);
+
+        final AwsRequestSigningApache4Interceptor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IOException.class, () -> objectUnderTest.process(httpRequest, httpContext));
+    }
+
+    @Test
+    void empty_contentStreamProvider_throws_IllegalStateException() throws IOException {
+        final RequestLine requestLine = mock(RequestLine.class);
+        when(requestLine.getMethod()).thenReturn("GET");
+        when(requestLine.getUri()).thenReturn("http://localhost?param=test");
+        when(httpRequest.getRequestLine()).thenReturn(requestLine);
+        when(httpRequest.getAllHeaders()).thenReturn(new BasicHeader[]{
+                new BasicHeader("test-name", "test-value"),
+                new BasicHeader("content-length", "0")
+        });
+
+        final HttpEntity httpEntity = mock(HttpEntity.class);
+        final InputStream inputStream = mock(InputStream.class);
+        when(httpEntity.getContent()).thenReturn(inputStream);
+
+        when((httpRequest).getEntity()).thenReturn(httpEntity);
+
+        final HttpHost httpHost = HttpHost.create("http://localhost?param=test");
+        when(httpContext.getAttribute(HttpCoreContext.HTTP_TARGET_HOST)).thenReturn(httpHost);
+
+        final SdkHttpFullRequest signedRequest = mock(SdkHttpFullRequest.class);
+        when(signedRequest.headers()).thenReturn(Map.of("test-name", List.of("test-value")));
+        when(signedRequest.contentStreamProvider()).thenReturn(Optional.empty());
+        when(signer.sign(any(SdkHttpFullRequest.class), any(ExecutionAttributes.class)))
+                .thenReturn(signedRequest);
+
+        final AwsRequestSigningApache4Interceptor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IllegalStateException.class, () -> objectUnderTest.process(httpRequest, httpContext));
+    }
+
+    @Test
     void testHappyPath() throws IOException {
         final RequestLine requestLine = mock(RequestLine.class);
         when(requestLine.getMethod()).thenReturn("GET");

@@ -169,7 +169,7 @@ public final class AwsRequestSigningApache4Interceptor implements HttpRequestInt
             }
 
             return uriBuilder.build();
-        } catch (URISyntaxException e) {
+        } catch (final Exception e) {
             throw new IOException("Invalid URI", e);
         }
     }
