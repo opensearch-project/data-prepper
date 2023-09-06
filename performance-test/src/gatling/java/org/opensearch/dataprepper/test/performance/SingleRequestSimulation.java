@@ -10,16 +10,17 @@ import io.gatling.javaapi.core.CoreDsl;
 import io.gatling.javaapi.core.ScenarioBuilder;
 import io.gatling.javaapi.core.Simulation;
 import io.gatling.javaapi.http.HttpDsl;
+import org.opensearch.dataprepper.test.performance.tools.PathTarget;
 import org.opensearch.dataprepper.test.performance.tools.Protocol;
 
 public class SingleRequestSimulation extends Simulation {
     ChainBuilder sendSingleLogFile = CoreDsl.exec(
             HttpDsl.http("Post log")
-                    .post("/log/ingest")
+                    .post(PathTarget.getPath())
                     .body(CoreDsl.ElFileBody("bodies/singleLog.json"))
                     .asJson()
                     .check(HttpDsl.status().is(200), CoreDsl.responseTimeInMillis().lt(200))
-            );
+    );
 
     ScenarioBuilder basicScenario = CoreDsl.scenario("Post static json log file")
             .exec(sendSingleLogFile);

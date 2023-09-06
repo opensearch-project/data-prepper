@@ -20,7 +20,7 @@ public final class Chain {
     public static ChainBuilder sendApacheCommonLogPostRequest(final String name, final int batchSize) {
         return CoreDsl.exec(
                 HttpDsl.http(name)
-                        .post("/log/ingest")
+                        .post(PathTarget.getPath())
                         .body(CoreDsl.StringBody(Templates.apacheCommonLogTemplate(batchSize))));
     }
 }
