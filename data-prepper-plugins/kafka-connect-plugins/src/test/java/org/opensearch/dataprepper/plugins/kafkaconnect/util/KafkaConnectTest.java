@@ -31,7 +31,7 @@ import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.WorkerProperties;
+import org.opensearch.dataprepper.plugins.kafkaconnect.extension.WorkerProperties;
 import org.opensearch.dataprepper.plugins.kafkaconnect.meter.KafkaConnectMetrics;
 
 import java.net.URI;

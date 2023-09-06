@@ -1,0 +1,8 @@
+extensions:
+  kafka_connect_config:
+    worker_properties:
+      group_id: test-group
+      client_id: test-client
+      config_storage_topic: test-configs
+      offset_storage_topic: test-offsets
+      status_storage_topic: test-status

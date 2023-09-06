@@ -7,16 +7,16 @@ package org.opensearch.dataprepper.plugins.kafkaconnect.source;
 
 import org.apache.kafka.connect.runtime.WorkerConfig;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
-import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.configuration.PipelineDescription;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
-import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.KafkaConnectSourceConfig;
-import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.WorkerProperties;
+import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.ConnectorConfig;
+import org.opensearch.dataprepper.plugins.kafkaconnect.extension.KafkaConnectConfig;
+import org.opensearch.dataprepper.plugins.kafkaconnect.extension.KafkaConnectConfigSupplier;
+import org.opensearch.dataprepper.plugins.kafkaconnect.extension.WorkerProperties;
 import org.opensearch.dataprepper.plugins.kafkaconnect.util.Connector;
 import org.opensearch.dataprepper.plugins.kafkaconnect.util.KafkaConnect;
 import org.slf4j.Logger;
@@ -27,43 +27,46 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
- * The starting point of the debezium-source.
- * The debezium engine is configured and runs async here.
+ * The abstraction of the kafka connect source.
+ * The kafka connect and connectors are configured and runs async here.
  */
-
 @SuppressWarnings("deprecation")
-@DataPrepperPlugin(name = "kafka_connect", pluginType = Source.class, pluginConfigurationType = KafkaConnectSourceConfig.class)
-public class KafkaConnectSource implements Source<Record<Object>> {
+public abstract class KafkaConnectSource implements Source<Record<Object>> {
     private static final Logger LOG = LoggerFactory.getLogger(KafkaConnectSource.class);
-    private final KafkaConnectSourceConfig sourceConfig;
+    private final ConnectorConfig connectorConfig;
+    private final KafkaConnectConfig kafkaConnectConfig;
     private final String pipelineName;
     private KafkaConnect kafkaConnect;
 
-    @DataPrepperPluginConstructor
-    public KafkaConnectSource(final KafkaConnectSourceConfig sourceConfig,
+    public KafkaConnectSource(final ConnectorConfig connectorConfig,
                               final PluginMetrics pluginMetrics,
                               final PipelineDescription pipelineDescription,
-                              final KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
-        this.sourceConfig = sourceConfig;
+                              final KafkaClusterConfigSupplier kafkaClusterConfigSupplier,
+                              final KafkaConnectConfigSupplier kafkaConnectConfigSupplier) {
+        if (kafkaClusterConfigSupplier == null || kafkaConnectConfigSupplier == null) {
+            throw new IllegalArgumentException("Extensions: KafkaClusterConfig and KafkaConnectConfig cannot be null");
+        }
+        this.connectorConfig = connectorConfig;
         this.pipelineName = pipelineDescription.getPipelineName();
+        this.kafkaConnectConfig = kafkaConnectConfigSupplier.getConfig();
         this.updateConfig(kafkaClusterConfigSupplier);
-        kafkaConnect = KafkaConnect.getPipelineInstance(
+        this.kafkaConnect = KafkaConnect.getPipelineInstance(
                 pipelineName,
                 pluginMetrics,
-                sourceConfig.getConnectTimeoutMs(),
-                sourceConfig.getConnectorTimeoutMs());
+                kafkaConnectConfig.getConnectTimeoutMs(),
+                kafkaConnectConfig.getConnectorTimeoutMs());
     }
 
     @Override
     public void start(Buffer<Record<Object>> buffer) {
         LOG.info("Starting Kafka Connect Source for pipeline: {}", pipelineName);
         // Please make sure buildWokerProperties is always first to execute.
-        final WorkerProperties workerProperties = this.sourceConfig.getWorkerProperties();
+        final WorkerProperties workerProperties = this.kafkaConnectConfig.getWorkerProperties();
         Map<String, String> workerProps = workerProperties.buildKafkaConnectPropertyMap();
         if (workerProps.get(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG) == null || workerProps.get(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG).isEmpty()) {
             throw new IllegalArgumentException("Bootstrap Servers cannot be null or empty");
         }
-        final List<Connector> connectors = this.sourceConfig.getConnectors();
+        final List<Connector> connectors = this.connectorConfig.buildConnectors();
         kafkaConnect.addConnectors(connectors);
         kafkaConnect.initialize(workerProps);
         kafkaConnect.start();
@@ -76,22 +79,23 @@ public class KafkaConnectSource implements Source<Record<Object>> {
     }
 
     private void updateConfig(final KafkaClusterConfigSupplier kafkaClusterConfigSupplier) {
-        if (kafkaClusterConfigSupplier != null) {
-            if (sourceConfig.getBootStrapServers() == null && kafkaClusterConfigSupplier.getBootStrapServers() != null) {
-                this.sourceConfig.setBootstrapServers(String.join(",", kafkaClusterConfigSupplier.getBootStrapServers()));
-            }
-            if (sourceConfig.getAuthConfig() == null) {
-                sourceConfig.setAuthConfig(kafkaClusterConfigSupplier.getAuthConfig());
-            }
-            if (sourceConfig.getAwsConfig() == null) {
-                sourceConfig.setAwsConfig(kafkaClusterConfigSupplier.getAwsConfig());
-            }
-            if (sourceConfig.getEncryptionConfig() == null) {
-                sourceConfig.setEncryptionConfig(kafkaClusterConfigSupplier.getEncryptionConfig());
-            }
+        if (kafkaConnectConfig.getBootStrapServers() == null) {
+            this.kafkaConnectConfig.setBootstrapServers(kafkaClusterConfigSupplier.getBootStrapServers());
+        }
+        if (kafkaConnectConfig.getAuthConfig() == null) {
+            kafkaConnectConfig.setAuthConfig(kafkaClusterConfigSupplier.getAuthConfig());
+        }
+        if (kafkaConnectConfig.getAwsConfig() == null) {
+            kafkaConnectConfig.setAwsConfig(kafkaClusterConfigSupplier.getAwsConfig());
+        }
+        if (kafkaConnectConfig.getEncryptionConfig() == null) {
+            kafkaConnectConfig.setEncryptionConfig(kafkaClusterConfigSupplier.getEncryptionConfig());
         }
         Properties authProperties = new Properties();
-        KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, sourceConfig, LOG);
-        this.sourceConfig.setAuthProperty(authProperties);
+        KafkaSourceSecurityConfigurer.setAuthProperties(authProperties, kafkaConnectConfig, LOG);
+        this.kafkaConnectConfig.setAuthProperties(authProperties);
+        // Update Connector Config
+        this.connectorConfig.setBootstrapServers(kafkaConnectConfig.getBootStrapServers());
+        this.connectorConfig.setAuthProperties(authProperties);
     }
 }

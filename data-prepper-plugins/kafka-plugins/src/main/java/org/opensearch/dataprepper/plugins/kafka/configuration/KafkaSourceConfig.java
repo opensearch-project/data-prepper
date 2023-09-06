@@ -115,15 +115,4 @@ public class KafkaSourceConfig implements KafkaClusterAuthConfig {
     public void setEncryptionConfig(EncryptionConfig encryptionConfig) {
         this.encryptionConfig = encryptionConfig;
     }
-
-//    @Override
-//    public void validate() {
-//        boolean saslConfigValid = Stream.of(
-//                authConfig.getSaslAuthConfig().getAwsIamAuthConfig(),
-//                authConfig.getSaslAuthConfig().getPlainTextAuthConfig(),
-//                authConfig.getSaslAuthConfig().getOAuthConfig()).filter(n -> n != null).count() == 1;
-//        if (!saslConfigValid) {
-//            throw new IllegalArgumentException("");
-//        }
-//    }
 }

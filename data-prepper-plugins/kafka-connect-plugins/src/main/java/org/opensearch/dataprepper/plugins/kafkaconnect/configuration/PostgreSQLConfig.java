@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -14,80 +19,26 @@ import java.util.stream.Collectors;
 
 public class PostgreSQLConfig extends ConnectorConfig {
     public static final String CONNECTOR_CLASS = "io.debezium.connector.postgresql.PostgresConnector";
-    private static class TableConfig {
-        @JsonProperty("database_name")
-        @NotNull
-        private String databaseName;
-
-        @JsonProperty("topic_prefix")
-        @NotNull
-        private String topicPrefix;
-
-        @JsonProperty("table_name")
-        @NotNull
-        private String tableName;
-
-        public String getDatabaseName() {
-            return databaseName;
-        }
-
-        public String getTableName() {
-            return tableName;
-        }
-
-        public String getTopicPrefix() {
-            return topicPrefix;
-        }
-    }
-
-    public enum PluginName {
-        DECODERBUFS("decoderbufs"),
-        PGOUTPUT("pgoutput");
-
-        private static final Map<String, PostgreSQLConfig.PluginName> OPTIONS_MAP = Arrays.stream(PostgreSQLConfig.PluginName.values())
-                .collect(Collectors.toMap(
-                        value -> value.type,
-                        value -> value
-                ));
-
-        private final String type;
-
-        PluginName(final String type) {
-            this.type = type;
-        }
-
-        @JsonCreator
-        public static PostgreSQLConfig.PluginName fromTypeValue(final String type) {
-            return OPTIONS_MAP.get(type.toLowerCase());
-        }
-    }
-
     private static final String TOPIC_DEFAULT_PARTITIONS = "10";
     private static final String TOPIC_DEFAULT_REPLICATION_FACTOR = "-1";
     private static final String DEFAULT_PORT = "5432";
     private static final String DEFAULT_SNAPSHOT_MODE = "initial";
     private static final PluginName DEFAULT_DECODING_PLUGIN = PluginName.PGOUTPUT; // default plugin for Aurora PostgreSQL
-
     @JsonProperty("hostname")
     @NotNull
     private String hostname;
-
     @JsonProperty("port")
     private String port = DEFAULT_PORT;
-
     /**
      * The name of the PostgreSQL logical decoding plug-in installed on the PostgreSQL server.
      * Supported values are decoderbufs, and pgoutput.
      */
     @JsonProperty("plugin_name")
     private PluginName pluginName = DEFAULT_DECODING_PLUGIN;
-
     @JsonProperty("credentials")
     private CredentialsConfig credentialsConfig;
-
     @JsonProperty("snapshot_mode")
     private String snapshotMode = DEFAULT_SNAPSHOT_MODE;
-
     @JsonProperty("tables")
     private List<TableConfig> tables = new ArrayList<>();
 
@@ -115,5 +66,53 @@ public class PostgreSQLConfig extends ConnectorConfig {
         config.put("database.dbname", tableName.getDatabaseName());
         config.put("table.include.list", tableName.getTableName());
         return config;
+    }
+
+    public enum PluginName {
+        DECODERBUFS("decoderbufs"),
+        PGOUTPUT("pgoutput");
+
+        private static final Map<String, PostgreSQLConfig.PluginName> OPTIONS_MAP = Arrays.stream(PostgreSQLConfig.PluginName.values())
+                .collect(Collectors.toMap(
+                        value -> value.type,
+                        value -> value
+                ));
+
+        private final String type;
+
+        PluginName(final String type) {
+            this.type = type;
+        }
+
+        @JsonCreator
+        public static PostgreSQLConfig.PluginName fromTypeValue(final String type) {
+            return OPTIONS_MAP.get(type.toLowerCase());
+        }
+    }
+
+    private static class TableConfig {
+        @JsonProperty("database_name")
+        @NotNull
+        private String databaseName;
+
+        @JsonProperty("topic_prefix")
+        @NotNull
+        private String topicPrefix;
+
+        @JsonProperty("table_name")
+        @NotNull
+        private String tableName;
+
+        public String getDatabaseName() {
+            return databaseName;
+        }
+
+        public String getTableName() {
+            return tableName;
+        }
+
+        public String getTopicPrefix() {
+            return topicPrefix;
+        }
     }
 }
