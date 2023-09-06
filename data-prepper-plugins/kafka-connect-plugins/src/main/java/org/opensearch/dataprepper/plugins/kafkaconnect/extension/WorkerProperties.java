@@ -3,14 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
+package org.opensearch.dataprepper.plugins.kafkaconnect.extension;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -25,8 +23,8 @@ public class WorkerProperties {
     private static final Integer STATUS_STORAGE_PARTITIONS = 5;
     private static final Long HEARTBEAT_INTERVAL_MS = 3000L;
     private static final Long SESSION_TIMEOUT_MS = 30000L;
-    private static final List<String> DEFAULT_LISTENERS = Collections.singletonList("http://:8083");
     private static final String DEFAULT_GROUP_ID = "localGroup";
+    private static final String DEFAULT_CLIENT_ID = "localClient";
     private static final String DEFAULT_CONFIG_STORAGE_TOPIC = "config-storage-topic";
     private static final String DEFAULT_OFFSET_STORAGE_TOPIC = "offset-storage-topic";
     private static final String DEFAULT_STATUS_STORAGE_TOPIC = "status-storage-topic";
@@ -47,7 +45,7 @@ public class WorkerProperties {
     @JsonProperty("status_storage_topic")
     private String statusStorageTopic = DEFAULT_STATUS_STORAGE_TOPIC;
     @JsonProperty("client_id")
-    private String clientId;
+    private String clientId = DEFAULT_CLIENT_ID;
     @JsonProperty("offset_storage_partitions")
     private Integer offsetStoragePartitions = OFFSET_STORAGE_PARTITIONS;
     @JsonProperty("offset_flush_interval_ms")
@@ -60,9 +58,6 @@ public class WorkerProperties {
     private Long heartBeatIntervalMs = HEARTBEAT_INTERVAL_MS;
     @JsonProperty("session_timeout_ms")
     private Long sessionTimeoutMs = SESSION_TIMEOUT_MS;
-    private List<String> listeners = DEFAULT_LISTENERS;
-    private String producerClientRack;
-    private String consumerClientRack;
     private String keyConverterSchemaRegistryUrl;
     private String valueConverterSchemaRegistryUrl;
     private String bootstrapServers;
@@ -116,18 +111,6 @@ public class WorkerProperties {
         return sessionTimeoutMs;
     }
 
-    public List<String> getListeners() {
-        return listeners;
-    }
-
-    public String getProducerClientRack() {
-        return producerClientRack;
-    }
-
-    public String getConsumerClientRack() {
-        return consumerClientRack;
-    }
-
     public String getBootstrapServers() {
         return bootstrapServers;
     }
@@ -168,7 +151,7 @@ public class WorkerProperties {
         return statusStorageReplicationFactor;
     }
 
-    public void setAuthProperty(Properties authProperties) {
+    public void setAuthProperties(Properties authProperties) {
         this.authProperties = authProperties;
     }
 
@@ -190,7 +173,7 @@ public class WorkerProperties {
                 workerProps.put(producerPrefix + k, v.toString());
             });
         }
-        workerProps.put(WorkerConfig.BOOTSTRAP_SERVERS_CONFIG, this.getBootstrapServers());
+        workerProps.put("bootstrap.servers", this.getBootstrapServers());
         workerProps.put("group.id", this.getGroupId());
         workerProps.put("client.id", this.getClientId());
         workerProps.put("offset.storage.topic", this.getOffsetStorageTopic());
@@ -199,28 +182,22 @@ public class WorkerProperties {
         workerProps.put("config.storage.replication.factor", this.getConfigStorageReplicationFactor().toString());
         workerProps.put("status.storage.topic", this.getStatusStorageTopic());
         workerProps.put("status.storage.replication.factor", this.getStatusStorageReplicationFactor().toString());
-        workerProps.put(WorkerConfig.KEY_CONVERTER_CLASS_CONFIG, this.getKeyConverter());
+        workerProps.put("key.converter", this.getKeyConverter());
         workerProps.put("key.converter.schemas.enable", this.getKeyConverterSchemasEnable());
         if (this.getKeyConverterSchemaRegistryUrl() != null) {
             workerProps.put("key.converter.schema.registry.url", this.getKeyConverterSchemaRegistryUrl());
         }
-        workerProps.put(WorkerConfig.VALUE_CONVERTER_CLASS_CONFIG, this.getValueConverter());
+        workerProps.put("value.converter", this.getValueConverter());
         workerProps.put("value.converter.schemas.enable", this.getValueConverterSchemasEnable());
         if (this.getValueConverterSchemaRegistryUrl() != null) {
             workerProps.put("value.converter.schema.registry.url", this.getValueConverterSchemaRegistryUrl());
         }
         workerProps.put("offset.storage.partitions", this.getOffsetStoragePartitions().toString());
         workerProps.put("offset.flush.interval.ms", this.getOffsetFlushIntervalMs().toString());
-        workerProps.put(WorkerConfig.OFFSET_COMMIT_TIMEOUT_MS_CONFIG, this.getOffsetFlushTimeoutMs().toString());
+        workerProps.put("offset.flush.timeout.ms", this.getOffsetFlushTimeoutMs().toString());
         workerProps.put("status.storage.partitions", this.getStatusStoragePartitions().toString());
         workerProps.put("heartbeat.interval.ms", this.getHeartBeatIntervalMs().toString());
         workerProps.put("session.timeout.ms", this.getSessionTimeoutMs().toString());
-        if (this.getProducerClientRack() != null) {
-            workerProps.put("producer.client.rack", this.getProducerClientRack());
-        }
-        if (this.getConsumerClientRack() != null) {
-            workerProps.put("consumer.client.rack", this.getConsumerClientRack());
-        }
         return workerProps;
     }
 }

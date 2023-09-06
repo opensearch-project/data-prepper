@@ -1,48 +1,46 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.plugins.kafkaconnect.util.SecretManagerHelper;
 
-import java.util.Arrays;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class CredentialsConfig {
-    // PlainText
     private final String username;
     private final String password;
 
     @JsonCreator
-    public CredentialsConfig(@JsonProperty("type") final CredentialType type,
-                             @JsonProperty("username") final String username,
-                             @JsonProperty("password") final String password,
-                             @JsonProperty("sts_role_arn") final String stsRoleArn,
-                             @JsonProperty("region") final String region,
-                             @JsonProperty("secretId") final String secretId) {
-        switch (type) {
-            case PLAINTEXT:
-                if (username == null || password == null) {
-                    throw new IllegalArgumentException("user and password must be set for plaintext credential type");
-                }
-                this.username = username;
-                this.password = password;
-                return;
-            case SECRET_MANAGER:
-                if (secretId == null || region == null) {
-                    throw new IllegalArgumentException("secretId and region must be set for aws credential type");
-                }
-                final Map<String, String> secretMap = this.getSecretValueMap(stsRoleArn, region, secretId);
-                if (!secretMap.containsKey("username") || !secretMap.containsKey("password")) {
-                    throw new RuntimeException("username or password missing in secret manager.");
-                }
-                this.username = secretMap.get("username");
-                this.password = secretMap.get("password");
-                return;
-            default:
-                throw new IllegalArgumentException("unsupported credential type.");
-
+    public CredentialsConfig(@JsonProperty("plaintext") final PlainText plainText,
+                             @JsonProperty("secret_manager") final SecretManager secretManager) {
+        if (plainText != null && secretManager != null) {
+            throw new IllegalArgumentException("plaintext and secret_manager cannot both be set");
+        }
+        if (plainText != null) {
+            if (plainText.username == null || plainText.password == null) {
+                throw new IllegalArgumentException("user and password must be set for plaintext credentials");
+            }
+            this.username = plainText.username;
+            this.password = plainText.password;
+        } else if (secretManager != null) {
+            if (secretManager.secretId == null || secretManager.region == null) {
+                throw new IllegalArgumentException("secretId and region must be set for aws credential type");
+            }
+            final Map<String, String> secretMap = this.getSecretValueMap(secretManager.stsRoleArn, secretManager.region, secretManager.secretId);
+            if (!secretMap.containsKey("username") || !secretMap.containsKey("password")) {
+                throw new RuntimeException("username or password missing in secret manager.");
+            }
+            this.username = secretMap.get("username");
+            this.password = secretMap.get("password");
+        } else {
+            throw new IllegalArgumentException("plaintext or secret_manager must be set");
         }
     }
 
@@ -50,8 +48,7 @@ public class CredentialsConfig {
         ObjectMapper objectMapper = new ObjectMapper();
         try {
             final String secretValue = SecretManagerHelper.getSecretValue(stsRoleArn, region, secretId);
-            Map<String, String> secretValueMap = objectMapper.readValue(secretValue, Map.class);
-            return secretValueMap;
+            return objectMapper.readValue(secretValue, new TypeReference<>() {});
         } catch (Exception e) {
             throw new RuntimeException("Failed to get credentials.", e);
         }
@@ -65,24 +62,30 @@ public class CredentialsConfig {
         return password;
     }
 
-    public enum CredentialType {
-        PLAINTEXT("plaintext"),
-        SECRET_MANAGER("secret_manager");
-        private static final Map<String, CredentialType> OPTIONS_MAP = Arrays.stream(CredentialType.values())
-                .collect(Collectors.toMap(
-                        value -> value.type,
-                        value -> value
-                ));
-
-        private final String type;
-
-        CredentialType(final String type) {
-            this.type = type;
-        }
+    static class PlainText {
+        private String username;
+        private String password;
 
         @JsonCreator
-        public static CredentialType fromTypeValue(final String type) {
-            return OPTIONS_MAP.get(type.toLowerCase());
+        public PlainText(@JsonProperty("username") String username,
+                         @JsonProperty("password") String password) {
+            this.username = username;
+            this.password = password;
+        }
+    }
+
+    static class SecretManager {
+        private String region;
+        private String secretId;
+        private String stsRoleArn;
+
+        @JsonCreator
+        public SecretManager(@JsonProperty("sts_role_arn") String stsRoleArn,
+                             @JsonProperty("region") String region,
+                             @JsonProperty("secretId") String secretId) {
+            this.stsRoleArn = stsRoleArn;
+            this.region = region;
+            this.secretId = secretId;
         }
     }
 }

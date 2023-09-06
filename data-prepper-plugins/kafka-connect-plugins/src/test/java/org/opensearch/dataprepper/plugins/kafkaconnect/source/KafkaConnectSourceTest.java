@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafkaconnect.source;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -16,8 +21,10 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.extension.KafkaClusterConfigSupplier;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaSourceSecurityConfigurer;
-import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.KafkaConnectSourceConfig;
-import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.WorkerProperties;
+import org.opensearch.dataprepper.plugins.kafkaconnect.configuration.MySQLConfig;
+import org.opensearch.dataprepper.plugins.kafkaconnect.extension.KafkaConnectConfig;
+import org.opensearch.dataprepper.plugins.kafkaconnect.extension.KafkaConnectConfigSupplier;
+import org.opensearch.dataprepper.plugins.kafkaconnect.extension.WorkerProperties;
 import org.opensearch.dataprepper.plugins.kafkaconnect.util.KafkaConnect;
 
 import java.util.Collections;
@@ -40,7 +47,10 @@ public class KafkaConnectSourceTest {
     private KafkaConnectSource kafkaConnectSource;
 
     @Mock
-    private KafkaConnectSourceConfig sourceConfig;
+    private MySQLConfig mySQLConfig;
+
+    @Mock
+    private KafkaConnectConfig kafkaConnectConfig;
 
     @Mock
     private PluginMetrics pluginMetrics;
@@ -57,19 +67,23 @@ public class KafkaConnectSourceTest {
     @Mock
     private KafkaClusterConfigSupplier kafkaClusterConfigSupplier;
 
+    @Mock
+    private KafkaConnectConfigSupplier kafkaConnectConfigSupplier;
+
     private String bootstrapServers = "localhost:9092";
 
     public KafkaConnectSource createSourceUnderTest() {
-        return new KafkaConnectSource(sourceConfig, pluginMetrics, pipelineDescription, kafkaClusterConfigSupplier);
+        return new MySQLSource(mySQLConfig, pluginMetrics, pipelineDescription, kafkaClusterConfigSupplier, kafkaConnectConfigSupplier);
     }
 
     @BeforeEach
-    void setUp() throws Exception {
+    void setUp() {
         WorkerProperties workerProperties = new WorkerProperties();
         workerProperties.setBootstrapServers(bootstrapServers);
-        sourceConfig = mock(KafkaConnectSourceConfig.class);
-        lenient().when(sourceConfig.getWorkerProperties()).thenReturn(workerProperties);
-        lenient().when(sourceConfig.getConnectors()).thenReturn(Collections.emptyList());
+        kafkaConnectConfigSupplier = mock(KafkaConnectConfigSupplier.class);
+        lenient().when(kafkaConnectConfigSupplier.getConfig()).thenReturn(kafkaConnectConfig);
+        lenient().when(kafkaConnectConfig.getWorkerProperties()).thenReturn(workerProperties);
+        lenient().when(mySQLConfig.buildConnectors()).thenReturn(Collections.emptyList());
 
         pipelineDescription = mock(PipelineDescription.class);
         lenient().when(pipelineDescription.getPipelineName()).thenReturn(TEST_PIPELINE_NAME);
@@ -105,7 +119,7 @@ public class KafkaConnectSourceTest {
     void testStartKafkaConnectSourceError() {
         WorkerProperties workerProperties = new WorkerProperties();
         workerProperties.setBootstrapServers(null);
-        lenient().when(sourceConfig.getWorkerProperties()).thenReturn(workerProperties);
+        lenient().when(kafkaConnectConfig.getWorkerProperties()).thenReturn(workerProperties);
         try (MockedStatic<KafkaConnect> mockedStatic = mockStatic(KafkaConnect.class);
              MockedStatic<KafkaSourceSecurityConfigurer> mockedSecurityConfigurer = mockStatic(KafkaSourceSecurityConfigurer.class)) {
             mockedSecurityConfigurer.when(() -> KafkaSourceSecurityConfigurer.setAuthProperties(any(), any(), any())).thenAnswer((Answer<Void>) invocation -> null);
@@ -123,14 +137,14 @@ public class KafkaConnectSourceTest {
         final AuthConfig authConfig = mock(AuthConfig.class);
         final AwsConfig awsConfig = mock(AwsConfig.class);
         final EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
-        doNothing().when(sourceConfig).setBootstrapServers(any());
-        doNothing().when(sourceConfig).setAuthConfig(any());
-        doNothing().when(sourceConfig).setAwsConfig(any());
-        doNothing().when(sourceConfig).setEncryptionConfig(any());
-        when(sourceConfig.getAuthConfig()).thenReturn(null);
-        when(sourceConfig.getAwsConfig()).thenReturn(null);
-        when(sourceConfig.getEncryptionConfig()).thenReturn(null);
-        when(sourceConfig.getBootStrapServers()).thenReturn(null);
+        doNothing().when(kafkaConnectConfig).setBootstrapServers(any());
+        doNothing().when(kafkaConnectConfig).setAuthConfig(any());
+        doNothing().when(kafkaConnectConfig).setAwsConfig(any());
+        doNothing().when(kafkaConnectConfig).setEncryptionConfig(any());
+        when(kafkaConnectConfig.getAuthConfig()).thenReturn(null);
+        when(kafkaConnectConfig.getAwsConfig()).thenReturn(null);
+        when(kafkaConnectConfig.getEncryptionConfig()).thenReturn(null);
+        when(kafkaConnectConfig.getBootStrapServers()).thenReturn(null);
         when(kafkaClusterConfigSupplier.getBootStrapServers()).thenReturn(bootstrapServers);
         when(kafkaClusterConfigSupplier.getAuthConfig()).thenReturn(authConfig);
         when(kafkaClusterConfigSupplier.getAwsConfig()).thenReturn(awsConfig);
@@ -138,10 +152,10 @@ public class KafkaConnectSourceTest {
         try (MockedStatic<KafkaSourceSecurityConfigurer> mockedStatic = mockStatic(KafkaSourceSecurityConfigurer.class)) {
             mockedStatic.when(() -> KafkaSourceSecurityConfigurer.setAuthProperties(any(), any(), any())).thenAnswer((Answer<Void>) invocation -> null);
             kafkaConnectSource = createSourceUnderTest();
-            verify(sourceConfig).setBootstrapServers(String.join(",", bootstrapServers));
-            verify(sourceConfig).setAuthConfig(authConfig);
-            verify(sourceConfig).setAwsConfig(awsConfig);
-            verify(sourceConfig).setEncryptionConfig(encryptionConfig);
+            verify(kafkaConnectConfig).setBootstrapServers(bootstrapServers);
+            verify(kafkaConnectConfig).setAuthConfig(authConfig);
+            verify(kafkaConnectConfig).setAwsConfig(awsConfig);
+            verify(kafkaConnectConfig).setEncryptionConfig(encryptionConfig);
         }
     }
 
@@ -151,21 +165,21 @@ public class KafkaConnectSourceTest {
         final AuthConfig authConfig = mock(AuthConfig.class);
         final AwsConfig awsConfig = mock(AwsConfig.class);
         final EncryptionConfig encryptionConfig = mock(EncryptionConfig.class);
-        lenient().doNothing().when(sourceConfig).setBootstrapServers(any());
-        lenient().doNothing().when(sourceConfig).setAuthConfig(any());
-        lenient().doNothing().when(sourceConfig).setAwsConfig(any());
-        lenient().doNothing().when(sourceConfig).setEncryptionConfig(any());
-        lenient().when(sourceConfig.getAuthConfig()).thenReturn(authConfig);
-        lenient().when(sourceConfig.getAwsConfig()).thenReturn(awsConfig);
-        lenient().when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
-        lenient().when(sourceConfig.getBootStrapServers()).thenReturn(String.join(",", bootstrapServers));
+        lenient().doNothing().when(kafkaConnectConfig).setBootstrapServers(any());
+        lenient().doNothing().when(kafkaConnectConfig).setAuthConfig(any());
+        lenient().doNothing().when(kafkaConnectConfig).setAwsConfig(any());
+        lenient().doNothing().when(kafkaConnectConfig).setEncryptionConfig(any());
+        lenient().when(kafkaConnectConfig.getAuthConfig()).thenReturn(authConfig);
+        lenient().when(kafkaConnectConfig.getAwsConfig()).thenReturn(awsConfig);
+        lenient().when(kafkaConnectConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
+        lenient().when(kafkaConnectConfig.getBootStrapServers()).thenReturn(String.join(",", bootstrapServers));
         try (MockedStatic<KafkaSourceSecurityConfigurer> mockedStatic = mockStatic(KafkaSourceSecurityConfigurer.class)) {
             mockedStatic.when(() -> KafkaSourceSecurityConfigurer.setAuthProperties(any(), any(), any())).thenAnswer((Answer<Void>) invocation -> null);
             kafkaConnectSource = createSourceUnderTest();
-            verify(sourceConfig, never()).setBootstrapServers(any());
-            verify(sourceConfig, never()).setAuthConfig(any());
-            verify(sourceConfig, never()).setAwsConfig(any());
-            verify(sourceConfig, never()).setEncryptionConfig(any());
+            verify(kafkaConnectConfig, never()).setBootstrapServers(any());
+            verify(kafkaConnectConfig, never()).setAuthConfig(any());
+            verify(kafkaConnectConfig, never()).setAwsConfig(any());
+            verify(kafkaConnectConfig, never()).setEncryptionConfig(any());
         }
     }
 }

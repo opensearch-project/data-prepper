@@ -26,10 +26,7 @@ public class MySQLConfig extends ConnectorConfig {
     private static final String SCHEMA_HISTORY = "schemahistory";
     private static final String DEFAULT_SNAPSHOT_MODE = "initial";
     private static final String DEFAULT_PORT = "3306";
-    private static final int MIN_ID = 1;
-    private static final int MAX_ID = 10000;
-    private String bootstrapServers;
-    private Properties authProperties;
+
     @JsonProperty("hostname")
     @NotNull
     private String hostname;
@@ -42,18 +39,6 @@ public class MySQLConfig extends ConnectorConfig {
     @JsonProperty("tables")
     private List<TableConfig> tables = new ArrayList<>();
 
-    public String getBootstrapServers() {
-        return bootstrapServers;
-    }
-
-    public void setBootstrapServers(final String bootstrapServers) {
-        this.bootstrapServers = bootstrapServers;
-    }
-
-    public void setAuthProperty(Properties authProperties) {
-        this.authProperties = authProperties;
-    }
-
     @Override
     public List<Connector> buildConnectors() {
         return tables.stream().map(table -> {
@@ -65,7 +50,8 @@ public class MySQLConfig extends ConnectorConfig {
 
     private Map<String, String> buildConfig(final TableConfig table, final String connectorName) {
         int databaseServerId = Math.abs(connectorName.hashCode());
-        Map<String, String> config = new HashMap<>();
+        final Map<String, String> config = new HashMap<>();
+        final Properties authProperties = this.getAuthProperties();
         if (authProperties != null) {
             authProperties.forEach((k, v) -> {
                 if (k == WorkerConfig.BOOTSTRAP_SERVERS_CONFIG) {

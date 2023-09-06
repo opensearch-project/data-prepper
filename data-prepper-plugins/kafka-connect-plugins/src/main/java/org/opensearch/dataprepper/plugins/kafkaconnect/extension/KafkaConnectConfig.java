@@ -3,30 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
+package org.opensearch.dataprepper.plugins.kafkaconnect.extension;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaClusterAuthConfig;
-import org.opensearch.dataprepper.plugins.kafkaconnect.util.Connector;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 
-public class KafkaConnectSourceConfig implements KafkaClusterAuthConfig {
+public class KafkaConnectConfig implements KafkaClusterAuthConfig {
     private static final long CONNECTOR_TIMEOUT_MS = 30000L; // 30 seconds
     private static final long CONNECT_TIMEOUT_MS = 60000L; // 60 seconds
-    @JsonProperty("mysql")
-    private MySQLConfig mysql;
-
-    @JsonProperty("postgresql")
-    private PostgreSQLConfig postgresql;
-
-    @JsonProperty("mongodb")
-    private MongoDBConfig mongodb;
 
     @JsonProperty("worker_properties")
     private WorkerProperties workerProperties = new WorkerProperties();
@@ -37,7 +28,9 @@ public class KafkaConnectSourceConfig implements KafkaClusterAuthConfig {
     @JsonProperty("connector_timeout_ms")
     private Long connectorTimeoutMs = CONNECTOR_TIMEOUT_MS;
 
-    private String bootstrapServers;
+    @JsonProperty("bootstrap_servers")
+    private List<String> bootstrapServers;
+
     private AuthConfig authConfig;
     private EncryptionConfig encryptionConfig;
     private AwsConfig awsConfig;
@@ -50,19 +43,15 @@ public class KafkaConnectSourceConfig implements KafkaClusterAuthConfig {
         return connectorTimeoutMs;
     }
 
-    public void setBootstrapServers(final String bootstrapServers) {
+    public void setBootstrapServers(final List<String> bootstrapServers) {
         this.bootstrapServers = bootstrapServers;
-        this.workerProperties.setBootstrapServers(bootstrapServers);
-        if (this.mysql != null) {
-            this.mysql.setBootstrapServers(bootstrapServers);
+        if (Objects.nonNull(bootstrapServers)) {
+            this.workerProperties.setBootstrapServers(String.join(",", bootstrapServers));;
         }
     }
 
-    public void setAuthProperty(final Properties authProperties) {
-        this.workerProperties.setAuthProperty(authProperties);
-        if (this.mysql != null) {
-            this.mysql.setAuthProperty(authProperties);
-        }
+    public void setAuthProperties(final Properties authProperties) {
+        this.workerProperties.setAuthProperties(authProperties);
     }
 
     public void setAuthConfig(AuthConfig authConfig) {
@@ -79,20 +68,6 @@ public class KafkaConnectSourceConfig implements KafkaClusterAuthConfig {
 
     public WorkerProperties getWorkerProperties() {
         return workerProperties;
-    }
-
-    public List<Connector> getConnectors() {
-        List<Connector> connectors = new ArrayList<>();
-        if (this.mysql != null) {
-            connectors.addAll(this.mysql.buildConnectors());
-        }
-        if (this.postgresql != null) {
-            connectors.addAll(this.postgresql.buildConnectors());
-        }
-        if (this.mongodb != null) {
-            connectors.addAll(this.mongodb.buildConnectors());
-        }
-        return connectors;
     }
 
     @Override
@@ -112,6 +87,9 @@ public class KafkaConnectSourceConfig implements KafkaClusterAuthConfig {
 
     @Override
     public String getBootStrapServers() {
-        return bootstrapServers;
+        if (Objects.nonNull(bootstrapServers)) {
+            return String.join(",", bootstrapServers);
+        }
+        return null;
     }
 }

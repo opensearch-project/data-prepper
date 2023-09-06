@@ -1,3 +1,8 @@
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 package org.opensearch.dataprepper.plugins.kafkaconnect.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -12,45 +17,21 @@ import java.util.stream.Collectors;
 
 public class MongoDBConfig extends ConnectorConfig {
     public static final String CONNECTOR_CLASS = "io.debezium.connector.mongodb.MongoDbConnector";
-    private static class CollectionConfig {
-        @JsonProperty("topic_prefix")
-        @NotNull
-        private String topicPrefix;
-
-        @JsonProperty("collection_name")
-        @NotNull
-        private String collectionName;
-
-        public String getCollectionName() {
-            return collectionName;
-        }
-
-        public String getTopicPrefix() {
-            return topicPrefix;
-        }
-    }
     private static final String MONGODB_CONNECTION_STRING_FORMAT = "mongodb://%s:%s/?replicaSet=rs0&directConnection=true";
     private static final String DEFAULT_PORT = "27017";
     private static final String DEFAULT_SNAPSHOT_MODE = "initial";
-
     private static final Boolean SSL_ENABLED = false;
-
     @JsonProperty("hostname")
     @NotNull
     private String hostname;
-
     @JsonProperty("port")
     private String port = DEFAULT_PORT;
-
     @JsonProperty("credentials")
     private CredentialsConfig credentialsConfig;
-
     @JsonProperty("snapshot_mode")
     private String snapshotMode = DEFAULT_SNAPSHOT_MODE;
-
     @JsonProperty("collections")
     private List<CollectionConfig> collections = new ArrayList<>();
-
     @JsonProperty("ssl")
     private Boolean ssl = SSL_ENABLED;
 
@@ -74,5 +55,23 @@ public class MongoDBConfig extends ConnectorConfig {
         config.put("collection.include.list", collection.getCollectionName());
         config.put("mongodb.ssl.enabled", ssl.toString());
         return config;
+    }
+
+    private static class CollectionConfig {
+        @JsonProperty("topic_prefix")
+        @NotNull
+        private String topicPrefix;
+
+        @JsonProperty("collection_name")
+        @NotNull
+        private String collectionName;
+
+        public String getCollectionName() {
+            return collectionName;
+        }
+
+        public String getTopicPrefix() {
+            return topicPrefix;
+        }
     }
 }

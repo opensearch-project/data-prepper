@@ -1,7 +1,0 @@
-log-pipeline:
-  source:
-    kafka_connect:
-      worker_properties:
-        group_id: "group"
-  sink:
-    - stdout:

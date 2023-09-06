@@ -12,7 +12,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import java.util.List;
 
 public class DefaultKafkaClusterConfigSupplier implements KafkaClusterConfigSupplier {
-    private KafkaClusterConfig kafkaClusterConfig;
+    private final KafkaClusterConfig kafkaClusterConfig;
     public DefaultKafkaClusterConfigSupplier(KafkaClusterConfig kafkaClusterConfig) {
         this.kafkaClusterConfig = kafkaClusterConfig;
     }
