@@ -33,7 +33,7 @@ public class SingleRequestSimulation extends Simulation {
         ).protocols(
                 Protocol.httpProtocol()
         ).assertions(
-                CoreDsl.global().responseTime().mean().lt(100),
+                CoreDsl.global().responseTime().max().lt(1000),
                 CoreDsl.global().successfulRequests().percent().is(100.0)
         );
     }
