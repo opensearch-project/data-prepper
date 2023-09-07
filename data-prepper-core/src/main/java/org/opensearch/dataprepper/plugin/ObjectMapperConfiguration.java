@@ -17,7 +17,8 @@ import java.util.Set;
 @Named
 public class ObjectMapperConfiguration {
     static final Set<Class> TRANSLATE_VALUE_SUPPORTED_JAVA_TYPES = Set.of(
-            String.class, Number.class, Boolean.class, Duration.class, Enum.class, Character.class);
+            String.class, Number.class, Long.class, Short.class, Integer.class, Double.class, Float.class,
+            Boolean.class, Duration.class, Enum.class, Character.class);
 
     @Bean(name = "extensionPluginConfigObjectMapper")
     ObjectMapper extensionPluginConfigObjectMapper() {
