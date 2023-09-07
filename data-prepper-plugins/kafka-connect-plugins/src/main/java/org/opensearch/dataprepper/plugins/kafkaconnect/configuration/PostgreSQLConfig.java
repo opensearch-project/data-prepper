@@ -70,7 +70,7 @@ public class PostgreSQLConfig extends ConnectorConfig {
         config.put("transforms.unwrap.type", "io.debezium.transforms.ExtractNewRecordState");
         config.put("transforms.unwrap.drop.tombstones", "true");
         config.put("transforms.unwrap.delete.handling.mode", "rewrite");
-        config.put("transforms.unwrap.add.fields", "op,rs,collection,source.ts_ms,source.db,source.snapshot,ts_ms");
+        config.put("transforms.unwrap.add.fields", "op,table,source.ts_ms,source.db,source.snapshot,ts_ms");
         return config;
     }
 
