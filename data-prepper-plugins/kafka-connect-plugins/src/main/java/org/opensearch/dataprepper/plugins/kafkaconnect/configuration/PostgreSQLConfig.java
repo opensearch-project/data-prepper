@@ -65,6 +65,12 @@ public class PostgreSQLConfig extends ConnectorConfig {
         config.put("topic.prefix", tableName.getTopicPrefix());
         config.put("database.dbname", tableName.getDatabaseName());
         config.put("table.include.list", tableName.getTableName());
+        // Non-configurable properties used to transform CDC data before sending to Kafka.
+        config.put("transforms", "unwrap");
+        config.put("transforms.unwrap.type", "io.debezium.transforms.ExtractNewRecordState");
+        config.put("transforms.unwrap.drop.tombstones", "true");
+        config.put("transforms.unwrap.delete.handling.mode", "rewrite");
+        config.put("transforms.unwrap.add.fields", "op,rs,collection,source.ts_ms,source.db,source.snapshot,ts_ms");
         return config;
     }
 
