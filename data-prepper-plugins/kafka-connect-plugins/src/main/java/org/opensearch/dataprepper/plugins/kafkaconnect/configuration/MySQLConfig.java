@@ -80,6 +80,12 @@ public class MySQLConfig extends ConnectorConfig {
         config.put("schema.history.internal.kafka.bootstrap.servers", this.getBootstrapServers());
         config.put("schema.history.internal.kafka.topic", String.join(".", List.of(table.getTopicPrefix(), table.getTableName(), SCHEMA_HISTORY)));
         config.put("database.server.id", Integer.toString(databaseServerId));
+        // Non-configurable properties used to transform CDC data before sending to Kafka.
+        config.put("transforms", "unwrap");
+        config.put("transforms.unwrap.type", "io.debezium.transforms.ExtractNewRecordState");
+        config.put("transforms.unwrap.drop.tombstones", "true");
+        config.put("transforms.unwrap.delete.handling.mode", "rewrite");
+        config.put("transforms.unwrap.add.fields", "op,rs,collection,source.ts_ms,source.db,source.snapshot,ts_ms");
         return config;
     }
 

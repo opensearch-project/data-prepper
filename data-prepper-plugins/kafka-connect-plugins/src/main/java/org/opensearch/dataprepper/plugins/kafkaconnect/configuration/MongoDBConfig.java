@@ -54,6 +54,12 @@ public class MongoDBConfig extends ConnectorConfig {
         config.put("topic.prefix", collection.getTopicPrefix());
         config.put("collection.include.list", collection.getCollectionName());
         config.put("mongodb.ssl.enabled", ssl.toString());
+        // Non-configurable properties used to transform CDC data before sending to Kafka.
+        config.put("transforms", "unwrap");
+        config.put("transforms.unwrap.type", "io.debezium.connector.mongodb.transforms.ExtractNewDocumentState");
+        config.put("transforms.unwrap.drop.tombstones", "true");
+        config.put("transforms.unwrap.delete.handling.mode", "rewrite");
+        config.put("transforms.unwrap.add.fields", "op,rs,collection,source.ts_ms,source.db,source.snapshot,ts_ms");
         return config;
     }
 
