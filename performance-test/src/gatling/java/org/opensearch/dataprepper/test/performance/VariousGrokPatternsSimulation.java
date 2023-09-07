@@ -61,6 +61,7 @@ public class VariousGrokPatternsSimulation extends Simulation {
             .during(testDuration)
             .on(sendMultipleGrokPatterns);
 
+    public VariousGrokPatternsSimulation()
     {
         setUp(sendMultipleGrokPatternsScenario.injectOpen(
                 CoreDsl.rampUsers(rampUsers).during(rampUpTime)

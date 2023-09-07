@@ -22,6 +22,7 @@ public class FixedClientSimulation extends Simulation {
             .during(duration)
             .on(Chain.sendApacheCommonLogPostRequest("Post logs with large batch", largeBatchSize));
 
+    public FixedClientSimulation()
     {
         setUp(fixedScenario.injectOpen(CoreDsl.atOnceUsers(users)))
                 .protocols(Protocol.httpProtocol())

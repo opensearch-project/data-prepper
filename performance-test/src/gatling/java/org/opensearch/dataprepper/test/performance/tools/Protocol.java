@@ -38,6 +38,7 @@ public final class Protocol {
     private static HttpProtocolBuilder httpProtocol(final String protocol, final String host, final Integer port) {
         return HttpDsl.http
                 .baseUrl(asUrl(protocol, host, port))
+                .sign(SignerProvider.getSigner())
                 .acceptHeader("application/json")
                 .header("Content-Type", "application/json");
     }

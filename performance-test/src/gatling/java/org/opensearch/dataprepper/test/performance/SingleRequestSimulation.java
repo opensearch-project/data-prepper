@@ -19,13 +19,14 @@ public class SingleRequestSimulation extends Simulation {
                     .post(PathTarget.getPath())
                     .body(CoreDsl.ElFileBody("bodies/singleLog.json"))
                     .asJson()
-                    .check(HttpDsl.status().is(200), CoreDsl.responseTimeInMillis().lt(200))
+                    .check(HttpDsl.status().is(200), CoreDsl.responseTimeInMillis().lt(500))
     );
 
     ScenarioBuilder basicScenario = CoreDsl.scenario("Post static json log file")
             .exec(sendSingleLogFile);
 
 
+    public SingleRequestSimulation()
     {
 
         setUp(

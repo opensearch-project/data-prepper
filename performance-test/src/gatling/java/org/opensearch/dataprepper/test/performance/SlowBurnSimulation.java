@@ -23,6 +23,7 @@ public class SlowBurnSimulation extends Simulation {
             .forever()
             .on(Chain.sendApacheCommonLogPostRequest("Post logs with large batch", largeBatchSize));
 
+    public SlowBurnSimulation()
     {
         setUp(
                 rampUpScenario.injectOpen(
