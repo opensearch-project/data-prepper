@@ -4,7 +4,10 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch.worker;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSet;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
@@ -15,7 +18,9 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionU
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
@@ -29,7 +34,10 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.INDEX_METADATA_ATTRIBUTE_NAME;
 
@@ -55,61 +63,95 @@ public class PitWorker implements SearchWorker, Runnable {
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
 
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
     public PitWorker(final SearchAccessor searchAccessor,
                      final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                      final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
                      final BufferAccumulator<Record<Event>> bufferAccumulator,
-                     final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier) {
+                     final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier,
+                     final AcknowledgementSetManager acknowledgementSetManager,
+                     final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
         this.searchAccessor = searchAccessor;
         this.sourceCoordinator = sourceCoordinator;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.bufferAccumulator = bufferAccumulator;
         this.openSearchIndexPartitionCreationSupplier = openSearchIndexPartitionCreationSupplier;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.openSearchSourcePluginMetrics = openSearchSourcePluginMetrics;
     }
 
     @Override
     public void run() {
         while (!Thread.currentThread().isInterrupted()) {
-            final Optional<SourcePartition<OpenSearchIndexProgressState>> indexPartition = sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier);
+            try {
+                final Optional<SourcePartition<OpenSearchIndexProgressState>> indexPartition = sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier);
 
-            if (indexPartition.isEmpty()) {
+                if (indexPartition.isEmpty()) {
+                    try {
+                        Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                        continue;
+                    } catch (final InterruptedException e) {
+                        LOG.info("The PitWorker was interrupted while sleeping after acquiring no indices to process, stopping processing");
+                        return;
+                    }
+                }
+
+                try {
+
+                    final Pair<AcknowledgementSet, CompletableFuture<Boolean>> acknowledgementSet = createAcknowledgmentSet(
+                            acknowledgementSetManager,
+                            openSearchSourceConfiguration,
+                            sourceCoordinator,
+                            indexPartition.get());
+
+                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet.getLeft()));
+
+                    completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet.getLeft(), acknowledgementSet.getRight(),
+                            indexPartition.get(), sourceCoordinator);
+
+                    openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
+                    LOG.info("Completed processing for index: '{}'", indexPartition.get().getPartitionKey());
+                } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
+                    LOG.warn("PitWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
+                    sourceCoordinator.giveUpPartitions();
+                } catch (final SearchContextLimitException e) {
+                    LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
+                            indexPartition.get().getPartitionKey(), BACKOFF_ON_PIT_LIMIT_REACHED.getSeconds(), e.getMessage());
+                    sourceCoordinator.giveUpPartitions();
+                    openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
+                    try {
+                        Thread.sleep(BACKOFF_ON_PIT_LIMIT_REACHED.toMillis());
+                    } catch (final InterruptedException ex) {
+                        return;
+                    }
+                } catch (final IndexNotFoundException e){
+                    LOG.warn("{}, marking index as complete and continuing processing", e.getMessage());
+                    sourceCoordinator.completePartition(indexPartition.get().getPartitionKey());
+                } catch (final RuntimeException e) {
+                    LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
+                    sourceCoordinator.giveUpPartitions();
+                    openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
+                }
+            } catch (final Exception e) {
+                LOG.error("Received an exception while trying to get index to process with PIT, backing off and retrying", e);
+                openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 try {
                     Thread.sleep(STANDARD_BACKOFF_MILLIS);
-                    continue;
-                } catch (final InterruptedException e) {
-                    LOG.info("The PitWorker was interrupted while sleeping after acquiring no indices to process, stopping processing");
-                    return;
-                }
-            }
-
-            try {
-                processIndex(indexPartition.get());
-
-                sourceCoordinator.closePartition(
-                        indexPartition.get().getPartitionKey(),
-                        openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
-                        openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
-            } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
-                LOG.warn("PitWorker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
-                sourceCoordinator.giveUpPartitions();
-            } catch (final SearchContextLimitException e) {
-                LOG.warn("Received SearchContextLimitExceeded exception for index {}. Giving up index and waiting {} seconds before retrying: {}",
-                        indexPartition.get().getPartitionKey(), BACKOFF_ON_PIT_LIMIT_REACHED.getSeconds(), e.getMessage());
-                sourceCoordinator.giveUpPartitions();
-                try {
-                    Thread.sleep(BACKOFF_ON_PIT_LIMIT_REACHED.toMillis());
                 } catch (final InterruptedException ex) {
+                    LOG.info("The PitWorker was interrupted before backing off and retrying, stopping processing");
                     return;
                 }
-            } catch (final RuntimeException e) {
-                LOG.error("Unknown exception while processing index '{}':", indexPartition.get().getPartitionKey(), e);
-                sourceCoordinator.giveUpPartitions();
             }
         }
     }
 
-    private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition) {
+    private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition,
+                              final AcknowledgementSet acknowledgementSet) {
         final String indexName = openSearchIndexPartition.getPartitionKey();
+
+        LOG.info("Starting processing for index: '{}'", indexName);
         Optional<OpenSearchIndexProgressState> openSearchIndexProgressStateOptional = openSearchIndexPartition.getPartitionState();
 
         if (openSearchIndexProgressStateOptional.isEmpty()) {
@@ -137,27 +179,27 @@ public class PitWorker implements SearchWorker, Runnable {
 
         // todo: Pass query and sort options from SearchConfiguration to the search request
         do {
-            try {
-                searchWithSearchAfterResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
-                        .withPitId(openSearchIndexProgressState.getPitId())
-                        .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
-                        .withPaginationSize(searchConfiguration.getBatchSize())
-                        .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchWithSearchAfterResults))
-                        .build());
+            searchWithSearchAfterResults = searchAccessor.searchWithPit(SearchPointInTimeRequest.builder()
+                    .withPitId(openSearchIndexProgressState.getPitId())
+                    .withKeepAlive(EXTEND_KEEP_ALIVE_TIME)
+                    .withPaginationSize(searchConfiguration.getBatchSize())
+                    .withSearchAfter(getSearchAfter(openSearchIndexProgressState, searchWithSearchAfterResults))
+                    .build());
 
-                searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {
-                    try {
-                        bufferAccumulator.add(record);
-                    } catch (Exception e) {
-                        LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
-                                record.getData().getMetadata().getAttribute(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME),
-                                record.getData().getMetadata().getAttribute(INDEX_METADATA_ATTRIBUTE_NAME), e.getMessage());
+            searchWithSearchAfterResults.getDocuments().stream().map(Record::new).forEach(record -> {
+                try {
+                    if (Objects.nonNull(acknowledgementSet)) {
+                        acknowledgementSet.add(record.getData());
                     }
-                });
-            } catch (final Exception e) {
-                LOG.error("Received an exception while searching with PIT for index '{}'", indexName);
-                throw new RuntimeException(e);
-            }
+                    bufferAccumulator.add(record);
+                    openSearchSourcePluginMetrics.getDocumentsProcessedCounter().increment();
+                } catch (Exception e) {
+                    openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
+                    LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
+                            record.getData().getMetadata().getAttribute(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME),
+                            record.getData().getMetadata().getAttribute(INDEX_METADATA_ATTRIBUTE_NAME), e.getMessage());
+                }
+            });
 
             openSearchIndexProgressState.setSearchAfter(searchWithSearchAfterResults.getNextSearchAfter());
             openSearchIndexProgressState.setKeepAlive(Duration.ofMillis(openSearchIndexProgressState.getKeepAlive()).plus(EXTEND_KEEP_ALIVE_DURATION).toMillis());
@@ -167,6 +209,7 @@ public class PitWorker implements SearchWorker, Runnable {
         try {
             bufferAccumulator.flush();
         } catch (final Exception e) {
+            openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
             LOG.error("Failed flushing remaining OpenSearch documents to buffer due to: {}", e.getMessage());
         }
 

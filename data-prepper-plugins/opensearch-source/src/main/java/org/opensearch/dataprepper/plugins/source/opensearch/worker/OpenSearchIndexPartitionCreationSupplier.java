@@ -110,7 +110,7 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
         final List<OpenSearchIndex> includedIndices = indexParametersConfiguration.getIncludedIndices();
         final List<OpenSearchIndex> excludedIndices = indexParametersConfiguration.getExcludedIndices();
 
-        final boolean matchesIncludedPattern = includedIndices.isEmpty() || doesIndexMatchPattern(includedIndices, indexName);
+        final boolean matchesIncludedPattern = (Objects.isNull(includedIndices) || includedIndices.isEmpty()) || doesIndexMatchPattern(includedIndices, indexName);
         final boolean matchesExcludePattern = doesIndexMatchPattern(excludedIndices, indexName);
 
 

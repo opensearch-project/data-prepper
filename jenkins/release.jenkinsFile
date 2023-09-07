@@ -241,7 +241,7 @@ pipeline {
                             fileTypes = ['-javadoc.jar', '.jar', '.pom', '-sources.jar', '.module']
                             checksums = ['', '.md5', '.sha1', '.sha256', '.sha512']
 
-                            downloadArtifacts()
+                            downloadArtifacts("$VERSION")
                         }
                     }
                 }
@@ -281,13 +281,13 @@ pipeline {
     }
 }
 
-def downloadArtifacts() {
+def downloadArtifacts(version) {
     dir('maven') {
         for (artifact in artifacts) {
-            sh "mkdir -p ${group}/${artifact}/${VERSION}"
+            sh "mkdir -p ${group}/${artifact}/${version}"
             for (fileType in fileTypes) {
                 for (checksum in checksums) {
-                    sh "curl -sSL ${mavenPath}/${group}/${artifact}/${VERSION}/${artifact}-${VERSION}${fileType}${checksum} -o ${group}/${artifact}/${VERSION}/${artifact}-${VERSION}${fileType}${checksum}"
+                    sh "curl -sSL ${mavenPath}/${group}/${artifact}/${version}/${artifact}-${version}${fileType}${checksum} -o ${group}/${artifact}/${version}/${artifact}-${version}${fileType}${checksum}"
                 }
             }
         }

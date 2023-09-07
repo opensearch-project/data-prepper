@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import jakarta.validation.ConstraintViolation;
@@ -32,6 +33,7 @@ import static org.mockito.Mockito.mock;
 class PluginConfigurationConverterTest {
     private PluginSetting pluginSetting;
     private Validator validator;
+    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().objectMapper();
 
     static class TestConfiguration {
         @SuppressWarnings("unused")
@@ -50,7 +52,7 @@ class PluginConfigurationConverterTest {
     }
 
     private PluginConfigurationConverter createObjectUnderTest() {
-        return new PluginConfigurationConverter(validator);
+        return new PluginConfigurationConverter(validator, objectMapper);
     }
 
     @Test

@@ -6,8 +6,10 @@
 package org.opensearch.dataprepper.parser.config;
 
 import org.opensearch.dataprepper.breaker.CircuitBreakerManager;
+import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.opensearch.dataprepper.model.plugin.PluginFactory;
-import org.opensearch.dataprepper.parser.PipelineParser;
+import org.opensearch.dataprepper.parser.PipelineTransformer;
+import org.opensearch.dataprepper.parser.PipelinesDataflowModelParser;
 import org.opensearch.dataprepper.parser.model.DataPrepperConfiguration;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderProvider;
 import org.opensearch.dataprepper.pipeline.router.RouterFactory;
@@ -21,8 +23,8 @@ import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManag
 public class PipelineParserConfiguration {
 
     @Bean
-    public PipelineParser pipelineParser(
-            final FileStructurePathProvider fileStructurePathProvider,
+    public PipelineTransformer pipelineParser(
+            final PipelinesDataFlowModel pipelinesDataFlowModel,
             final PluginFactory pluginFactory,
             final PeerForwarderProvider peerForwarderProvider,
             final RouterFactory routerFactory,
@@ -32,7 +34,7 @@ public class PipelineParserConfiguration {
             final AcknowledgementSetManager acknowledgementSetManager,
             final SourceCoordinatorFactory sourceCoordinatorFactory
             ) {
-        return new PipelineParser(fileStructurePathProvider.getPipelineConfigFileLocation(),
+        return new PipelineTransformer(pipelinesDataFlowModel,
                 pluginFactory,
                 peerForwarderProvider,
                 routerFactory,
@@ -41,5 +43,17 @@ public class PipelineParserConfiguration {
                 eventFactory,
                 acknowledgementSetManager,
                 sourceCoordinatorFactory);
+    }
+
+    @Bean
+    public PipelinesDataflowModelParser pipelinesDataflowModelParser(
+            final FileStructurePathProvider fileStructurePathProvider) {
+        return new PipelinesDataflowModelParser(fileStructurePathProvider.getPipelineConfigFileLocation());
+    }
+
+    @Bean
+    public PipelinesDataFlowModel pipelinesDataFlowModel(
+            final PipelinesDataflowModelParser pipelinesDataflowModelParser) {
+        return pipelinesDataflowModelParser.parseConfiguration();
     }
 }

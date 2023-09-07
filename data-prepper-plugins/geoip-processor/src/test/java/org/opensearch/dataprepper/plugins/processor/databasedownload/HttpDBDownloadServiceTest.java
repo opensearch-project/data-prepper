@@ -27,7 +27,7 @@ class HttpDBDownloadServiceTest {
         DatabasePathURLConfig databasePathURLConfig1 = new DatabasePathURLConfig();
         ReflectivelySetField.setField(DatabasePathURLConfig.class,
                 databasePathURLConfig1, "url", "https://download.maxmind.com/app/geoip_download?" +
-                        "edition_id=GeoLite2-ASN&license_key=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&suffix=tar.gz");
+                        "edition_id=GeoLite2-ASN&suffix=tar.gz");
         List<DatabasePathURLConfig> config = new ArrayList<>();
         config.add(databasePathURLConfig1);
         downloadThroughUrl = createObjectUnderTest();

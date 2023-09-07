@@ -15,12 +15,14 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SchedulingParameterConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.NoSearchContextWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker;
@@ -62,6 +64,12 @@ public class OpenSearchServiceTest {
     private BufferAccumulator<Record<Event>> bufferAccumulator;
 
     @Mock
+    private AcknowledgementSetManager acknowledgementSetManager;
+
+    @Mock
+    private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    @Mock
     private SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
 
     @Mock
@@ -89,7 +97,7 @@ public class OpenSearchServiceTest {
              })) {
             executorsMockedStatic.when(Executors::newSingleThreadScheduledExecutor).thenReturn(scheduledExecutorService);
             bufferAccumulatorMockedStatic.when(() -> BufferAccumulator.create(buffer, openSearchSourceConfiguration.getSearchConfiguration().getBatchSize(), BUFFER_TIMEOUT)).thenReturn(bufferAccumulator);
-            return OpenSearchService.createOpenSearchService(openSearchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer);
+            return OpenSearchService.createOpenSearchService(openSearchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager, openSearchSourcePluginMetrics);
         }
     }
 

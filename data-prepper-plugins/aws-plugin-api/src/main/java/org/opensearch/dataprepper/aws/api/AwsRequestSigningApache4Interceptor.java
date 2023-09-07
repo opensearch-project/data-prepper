@@ -1,16 +1,8 @@
 /*
- * Copyright OpenSearch Contributors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with
- * the License. A copy of the License is located at
- *
- * http://aws.amazon.com/apache2.0
- *
- * or in the "license" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
- * CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
- * and limitations under the License.
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
  */
-package org.opensearch.dataprepper.plugins.sink.opensearch;
+package org.opensearch.dataprepper.aws.api;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntityEnclosingRequest;
@@ -48,7 +40,7 @@ import static org.apache.http.protocol.HttpCoreContext.HTTP_TARGET_HOST;
  * An {@link HttpRequestInterceptor} that signs requests using any AWS {@link Signer}
  * and {@link AwsCredentialsProvider}.
  */
-final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor {
+public final class AwsRequestSigningApache4Interceptor implements HttpRequestInterceptor {
 
     /**
      * Constant to check content-length
@@ -90,10 +82,10 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
      * @param awsCredentialsProvider source of AWS credentials for signing
      * @param region signing region
      */
-    public AwsRequestSigningApacheInterceptor(final String service,
-                                              final Signer signer,
-                                              final AwsCredentialsProvider awsCredentialsProvider,
-                                              final Region region) {
+    public AwsRequestSigningApache4Interceptor(final String service,
+                                               final Signer signer,
+                                               final AwsCredentialsProvider awsCredentialsProvider,
+                                               final Region region) {
         this.service = Objects.requireNonNull(service);
         this.signer =  Objects.requireNonNull(signer);
         this.awsCredentialsProvider =  Objects.requireNonNull(awsCredentialsProvider);
@@ -107,10 +99,10 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
      * @param awsCredentialsProvider source of AWS credentials for signing
      * @param region signing region
      */
-    public AwsRequestSigningApacheInterceptor(final String service,
-                                              final Signer signer,
-                                              final AwsCredentialsProvider awsCredentialsProvider,
-                                              final String region) {
+    public AwsRequestSigningApache4Interceptor(final String service,
+                                               final Signer signer,
+                                               final AwsCredentialsProvider awsCredentialsProvider,
+                                               final String region) {
         this(service, signer, awsCredentialsProvider, Region.of(region));
     }
 
@@ -177,7 +169,7 @@ final class AwsRequestSigningApacheInterceptor implements HttpRequestInterceptor
             }
 
             return uriBuilder.build();
-        } catch (URISyntaxException e) {
+        } catch (final Exception e) {
             throw new IOException("Invalid URI", e);
         }
     }
