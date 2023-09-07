@@ -5,7 +5,7 @@
 
 plugins {
     id 'java'
-    id 'io.gatling.gradle' version '3.9.0'
+    id 'io.gatling.gradle' version '3.9.5.5'
 }
 
 configurations.all {
