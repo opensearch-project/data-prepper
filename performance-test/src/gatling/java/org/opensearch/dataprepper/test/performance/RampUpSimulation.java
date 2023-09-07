@@ -23,6 +23,7 @@ public class RampUpSimulation extends Simulation {
             .during(peakLoadTime)
             .on(Chain.sendApacheCommonLogPostRequest("Post logs with large batch", largeBatchSize));
 
+    public RampUpSimulation()
     {
         setUp(
                 rampUpScenario.injectOpen(
