@@ -22,7 +22,7 @@ public interface Buffer {
     long getDuration();
 
     byte[] getSinkBufferData() throws IOException;
-    void writeEvent(byte[] bytes) throws IOException;
+
     OutputStream getOutputStream();
 
     void setEventCount(int eventCount);

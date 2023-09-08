@@ -50,19 +50,6 @@ public class InMemoryBuffer implements Buffer {
         return byteArrayOutputStream.toByteArray();
     }
 
-    /**
-     * write byte array to output stream.
-     *
-     * @param bytes byte array.
-     * @throws IOException while writing to output stream fails.
-     */
-    @Override
-    public void writeEvent(byte[] bytes) throws IOException {
-        byteArrayOutputStream.write(bytes);
-        byteArrayOutputStream.write(System.lineSeparator().getBytes());
-        eventCount++;
-    }
-
     @Override
     public OutputStream getOutputStream() {
         return byteArrayOutputStream;
