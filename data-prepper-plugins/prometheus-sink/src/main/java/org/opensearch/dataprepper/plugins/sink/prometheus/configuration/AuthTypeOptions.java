@@ -11,8 +11,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public enum AuthTypeOptions {
-    HTTP_BASIC("http-basic"),
-    BEARER_TOKEN("bearer-token"),
+    HTTP_BASIC("http_basic"),
+    BEARER_TOKEN("bearer_token"),
 
     UNAUTHENTICATED("unauthenticated");
 

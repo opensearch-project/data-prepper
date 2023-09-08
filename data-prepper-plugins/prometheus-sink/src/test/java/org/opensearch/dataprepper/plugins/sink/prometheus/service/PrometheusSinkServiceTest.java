@@ -58,10 +58,10 @@ public class PrometheusSinkServiceTest {
             "        http_method: \"POST\"\n" +
             "        auth_type: \"unauthenticated\"\n" +
             "        authentication:\n" +
-            "          http-basic:\n" +
+            "          http_basic:\n" +
             "            username: \"username\"\n" +
             "            password: \"vip\"\n" +
-            "          bearer-token:\n" +
+            "          bearer_token:\n" +
             "            client_id: 0oaafr4j79segrYGC5d7\n" +
             "            client_secret: fFel-3FutCXAOndezEsOVlght6D6DR4OIt7G5D1_oJ6w0wNoaYtgU17JdyXmGf0M\n" +
             "            token_url: https://localhost/oauth2/default/v1/token\n" +
@@ -79,8 +79,8 @@ public class PrometheusSinkServiceTest {
             "          sts_header_overrides: {\"test\": test }\n" +
             "        max_retries: 5\n" +
             "        encoding: snappy\n" +
-            "        content-type: \"application/octet-stream\"\n" +
-            "        remote-write-version: 0.1.0\n";
+            "        content_type: \"application/octet-stream\"\n" +
+            "        remote_write_version: 0.1.0\n";
 
     private PrometheusSinkConfiguration prometheusSinkConfiguration;
 
@@ -234,7 +234,7 @@ public class PrometheusSinkServiceTest {
     @Test
     void prometheus_sink_service_test_with_single_record_with_basic_authentication() throws NoSuchFieldException, IllegalAccessException, JsonProcessingException {
 
-        final String basicAuthYaml =            "          http-basic:\n" +
+        final String basicAuthYaml =            "          http_basic:\n" +
                 "            username: \"username\"\n" +
                 "            password: \"vip\"\n" ;
         ReflectivelySetField.setField(PrometheusSinkConfiguration.class,prometheusSinkConfiguration,"authentication", objectMapper.readValue(basicAuthYaml, AuthenticationOptions.class));

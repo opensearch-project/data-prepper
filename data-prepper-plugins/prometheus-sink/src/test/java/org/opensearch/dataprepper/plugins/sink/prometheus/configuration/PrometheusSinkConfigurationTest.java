@@ -32,12 +32,12 @@ public class PrometheusSinkConfigurationTest {
             "        url: \"http://localhost:8080/test\"\n" +
             "        proxy: test-proxy\n" +
             "        http_method: \"POST\"\n" +
-            "        auth_type: \"http-basic\"\n" +
+            "        auth_type: \"http_basic\"\n" +
             "        authentication:\n" +
-            "          http-basic:\n" +
+            "          http_basic:\n" +
             "            username: \"username\"\n" +
             "            password: \"vip\"\n" +
-            "          bearer-token:\n" +
+            "          bearer_token:\n" +
             "            client_id: 0oaafr4j79segrYGC5d7\n" +
             "            client_secret: fFel-3FutCXAOndezEsOVlght6D6DR4OIt7G5D1_oJ6w0wNoaYtgU17JdyXmGf0M\n" +
             "            token_url: https://localhost/oauth2/default/v1/token\n" +
@@ -180,7 +180,7 @@ public class PrometheusSinkConfigurationTest {
                         "        http_method: \"POST\"\n" +
                         "        auth_type: \"http-basic\"\n" +
                         "        authentication:\n" +
-                        "          http-basic:\n" +
+                        "          http_basic:\n" +
                         "            username: \"username\"\n" +
                         "            password: \"vip\"\n" +
                         "        ssl: true\n" +

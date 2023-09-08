@@ -113,10 +113,10 @@ public class PrometheusSinkConfiguration {
     @JsonProperty("encoding")
     private String encoding = DEFAULT_ENCODING;
 
-    @JsonProperty("content-type")
+    @JsonProperty("content_type")
     private String contentType = DEFAULT_CONTENT_TYPE;
 
-    @JsonProperty("remote-write-version")
+    @JsonProperty("remote_write_version")
     private String remoteWriteVersion = DEFAULT_REMOTE_WRITE_VERSION;
 
     private boolean sslCertAndKeyFileInS3;

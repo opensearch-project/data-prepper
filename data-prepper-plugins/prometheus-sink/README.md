@@ -22,7 +22,7 @@ pipeline:
   sink:
   - prometheus:
       authentication:
-        http-basic:
+        http_basic:
           username: my-user
           password: my_s3cr3t
 ```
@@ -34,7 +34,7 @@ pipeline:
   sink:
   - prometheus:
       authentication:
-         bearer-token:
+         bearer_token:
             client_id: 0oaafr4j79grYGC5d7
             client_secret: fFel-3FutCXAOndezEsOVlght6D6DR4OIt7G5D1_oJ6YtgU17JdyXmGf0M
             token_url: https://localhost/oauth2/default/v1/token
@@ -48,9 +48,9 @@ pipeline:
 
 - `encoding`  Default is snappy
 
-- `content-type` Default is application/x-protobuf
+- `content_type` Default is application/x-protobuf
 
-- `remote-write-version` : Prometheus Remote.Writer version Version, Default is 0.1.0
+- `remote_write_version` : Prometheus Remote.Writer version Version, Default is 0.1.0
 
 - `proxy`(optional): A String of the address of a forward HTTP proxy. The format is like "<host-name-or-ip>:\<port\>". Examples: "example.com:8100", "http://example.com:8100", "112.112.112.112:8100". Note: port number cannot be omitted.
 
@@ -95,10 +95,10 @@ pipeline:
         http_method: "POST"
         auth_type: "unauthenticated"
         authentication:
-          http-basic:
+          http_basic:
             username: "username"
             password: "password"
-          bearer-token:
+          bearer_token:
             client_id: 0oaafr4j79segd7
             client_secret: fFel-3FutCXAOndezEsOVlghoJ6w0wNoaYtgU17JdyXmGf0M
             token_url: token url
