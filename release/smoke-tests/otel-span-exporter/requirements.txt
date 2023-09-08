@@ -1,9 +1,9 @@
 backoff==1.10.0
-certifi==2022.12.7
+certifi==2023.7.22
 charset-normalizer==2.0.9
 Deprecated==1.2.13
 googleapis-common-protos==1.53.0
-grpcio==1.50.0
+grpcio==1.53.0
 idna==3.3
 opentelemetry-api==1.7.1
 opentelemetry-exporter-otlp==1.7.1

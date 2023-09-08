@@ -5,7 +5,7 @@
 
 plugins {
     id 'java'
-    id 'io.gatling.gradle' version '3.9.0'
+    id 'io.gatling.gradle' version '3.9.5.5'
 }
 
 configurations.all {
@@ -19,6 +19,7 @@ repositories {
 }
 
 dependencies {
+    gatlingImplementation 'software.amazon.awssdk:auth:2.20.67'
     implementation 'com.fasterxml.jackson.core:jackson-core'
     testRuntimeOnly testLibs.junit.engine
 }

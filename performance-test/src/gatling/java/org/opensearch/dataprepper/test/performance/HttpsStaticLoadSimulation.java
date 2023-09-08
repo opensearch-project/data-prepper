@@ -20,6 +20,7 @@ public class HttpsStaticLoadSimulation extends Simulation {
             .during(testDuration)
             .on(Chain.sendApacheCommonLogPostRequest("Average log post request", 20));
 
+    public HttpsStaticLoadSimulation()
     {
         setUp(httpStaticLoad.injectOpen(
                 CoreDsl.rampUsers(10).during(Duration.ofSeconds(10)),

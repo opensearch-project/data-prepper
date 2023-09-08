@@ -11,11 +11,13 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchClientFactory;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessorStrategy;
@@ -53,10 +55,16 @@ public class OpenSearchSourceTest {
     private AcknowledgementSetManager acknowledgementSetManager;
 
     @Mock
+    private PluginMetrics pluginMetrics;
+
+    @Mock
+    private OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    @Mock
     private SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
 
     private OpenSearchSource createObjectUnderTest() {
-        return new OpenSearchSource(openSearchSourceConfiguration, awsCredentialsSupplier, acknowledgementSetManager);
+        return new OpenSearchSource(openSearchSourceConfiguration, awsCredentialsSupplier, acknowledgementSetManager, pluginMetrics);
     }
 
     @Test
@@ -75,11 +83,13 @@ public class OpenSearchSourceTest {
 
         try (final MockedStatic<SearchAccessorStrategy> searchAccessorStrategyMockedStatic = mockStatic(SearchAccessorStrategy.class);
              final MockedStatic<OpenSearchClientFactory> openSearchClientFactoryMockedStatic = mockStatic(OpenSearchClientFactory.class);
+             final MockedStatic<OpenSearchSourcePluginMetrics> openSearchSourcePluginMetricsMockedStatic = mockStatic(OpenSearchSourcePluginMetrics.class);
              final MockedStatic<OpenSearchService> openSearchServiceMockedStatic = mockStatic(OpenSearchService.class)) {
             openSearchClientFactoryMockedStatic.when(() -> OpenSearchClientFactory.create(awsCredentialsSupplier)).thenReturn(openSearchClientFactory);
             searchAccessorStrategyMockedStatic.when(() -> SearchAccessorStrategy.create(openSearchSourceConfiguration, openSearchClientFactory)).thenReturn(searchAccessorStrategy);
+            openSearchSourcePluginMetricsMockedStatic.when(() -> OpenSearchSourcePluginMetrics.create(pluginMetrics)).thenReturn(openSearchSourcePluginMetrics);
 
-            openSearchServiceMockedStatic.when(() -> OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager))
+            openSearchServiceMockedStatic.when(() -> OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager, openSearchSourcePluginMetrics))
                     .thenReturn(openSearchService);
 
             objectUnderTest.start(buffer);

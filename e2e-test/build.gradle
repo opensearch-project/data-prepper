@@ -10,8 +10,15 @@ subprojects {
             gradlePluginPortal()
         }
         dependencies {
-            classpath 'com.bmuschko:gradle-docker-plugin:7.0.0'
+            classpath 'com.bmuschko:gradle-docker-plugin:9.3.2'
         }
+    }
+
+    ext {
+        dataPrepperJarImageFilepath = 'bin/data-prepper/'
+        targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : '11'
+        targetOpenTelemetryVersion = project.hasProperty('openTelemetryVersion') ? project.getProperty('openTelemetryVersion') : "${libs.versions.opentelemetry.get()}"
+        dataPrepperBaseImage = "eclipse-temurin:${targetJavaVersion}-jre"
     }
 
     sourceSets {
@@ -40,17 +47,10 @@ subprojects {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         from project(':data-prepper-main').jar.archivePath
         from project(':data-prepper-main').configurations.runtimeClasspath
-        into("${project.buildDir}/bin/data-prepper")
+        into("${project.buildDir}/docker/${dataPrepperJarImageFilepath}")
     }
 
     dependencies {
         testImplementation testLibs.junit.vintage
-    }
-
-    ext {
-        dataPrepperJarFilepath = "${project.buildDir.name}/bin/data-prepper/"
-        targetJavaVersion = project.hasProperty('endToEndJavaVersion') ? project.getProperty('endToEndJavaVersion') : '11'
-        targetOpenTelemetryVersion = project.hasProperty('openTelemetryVersion') ? project.getProperty('openTelemetryVersion') : "${libs.versions.opentelemetry.get()}"
-        dataPrepperBaseImage = "eclipse-temurin:${targetJavaVersion}-jre"
     }
 }
