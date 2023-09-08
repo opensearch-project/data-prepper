@@ -14,14 +14,26 @@ import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgr
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 
 import java.time.Duration;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import static com.google.common.math.LongMath.pow;
+import static com.google.common.primitives.Longs.min;
+
 public class WorkerCommonUtils {
+    private static final Random RANDOM = new Random();
+
+    static final Duration BACKOFF_ON_EXCEPTION = Duration.ofSeconds(60);
 
     static final int ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS = Integer.MAX_VALUE;
+    static final Duration STARTING_BACKOFF = Duration.ofMillis(2500);
+    static final Duration MAX_BACKOFF = Duration.ofSeconds(60);
+    static final int BACKOFF_RATE = 2;
+    static final Duration MAX_JITTER = Duration.ofSeconds(2);
+    static final Duration MIN_JITTER = Duration.ofSeconds(-2);
 
     static Pair<AcknowledgementSet, CompletableFuture<Boolean>> createAcknowledgmentSet(final AcknowledgementSetManager acknowledgementSetManager,
                                                                                                final OpenSearchSourceConfiguration openSearchSourceConfiguration,
@@ -59,5 +71,10 @@ public class WorkerCommonUtils {
                     openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
                     openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
         }
+    }
+
+    static long calculateLinearBackoffAndJitter(final int retryCount) {
+        final long jitterMillis = MIN_JITTER.toMillis() + RANDOM.nextInt((int) (MAX_JITTER.toMillis() - MIN_JITTER.toMillis() + 1));
+        return min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, retryCount - 1) + jitterMillis, MAX_BACKOFF.toMillis());
     }
 }

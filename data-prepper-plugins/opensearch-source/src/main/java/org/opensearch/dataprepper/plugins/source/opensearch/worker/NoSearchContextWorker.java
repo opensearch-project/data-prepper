@@ -32,6 +32,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.BACKOFF_ON_EXCEPTION;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateLinearBackoffAndJitter;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
@@ -41,8 +43,6 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(NoSearchContextWorker.class);
 
-    private static final int STANDARD_BACKOFF_MILLIS = 30_000;
-
     private final SearchAccessor searchAccessor;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
@@ -50,6 +50,8 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    private int noAvailableIndicesCount = 0;
 
     public NoSearchContextWorker(final SearchAccessor searchAccessor,
                      final OpenSearchSourceConfiguration openSearchSourceConfiguration,
@@ -77,13 +79,15 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
 
                 if (indexPartition.isEmpty()) {
                     try {
-                        Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                        Thread.sleep(calculateLinearBackoffAndJitter(++noAvailableIndicesCount));
                         continue;
                     } catch (final InterruptedException e) {
                         LOG.info("The search_after worker was interrupted while sleeping after acquiring no indices to process, stopping processing");
                         return;
                     }
                 }
+
+                noAvailableIndicesCount = 0;
 
                 try {
                     final Pair<AcknowledgementSet, CompletableFuture<Boolean>> acknowledgementSet = createAcknowledgmentSet(
@@ -114,7 +118,7 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                 openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 LOG.error("Received an exception while trying to get index to process with search_after, backing off and retrying", e);
                 try {
-                    Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                    Thread.sleep(BACKOFF_ON_EXCEPTION.toMillis());
                 } catch (final InterruptedException ex) {
                     LOG.info("The search_after worker was interrupted before backing off and retrying, stopping processing");
                     return;
