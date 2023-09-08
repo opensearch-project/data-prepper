@@ -101,7 +101,7 @@ public class S3ScanPartitionCreationSupplier implements Function<Map<String, Obj
                                                                      final LocalDateTime endDateTime,
                                                                      final Map<String, Object> globalStateMap) {
 
-        Instant mostRecentLastModifiedTimestamp = globalStateMap.containsKey(bucket) ? Instant.parse((String) globalStateMap.get(bucket)) : null;
+        Instant mostRecentLastModifiedTimestamp = globalStateMap.containsKey(bucket) && Objects.nonNull(globalStateMap.get(bucket)) ? Instant.parse((String) globalStateMap.get(bucket)) : null;
         final List<PartitionIdentifier> allPartitionIdentifiers = new ArrayList<>();
         ListObjectsV2Response listObjectsV2Response = null;
         do {
