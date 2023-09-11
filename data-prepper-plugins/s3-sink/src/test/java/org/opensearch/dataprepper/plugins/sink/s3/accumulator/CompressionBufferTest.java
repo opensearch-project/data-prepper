@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Duration;
 import java.util.Random;
 import java.util.UUID;
 
@@ -81,7 +82,7 @@ class CompressionBufferTest {
 
     @Test
     void getDuration_returns_inner_getDuration() {
-        final long duration = random.nextInt(10_000) + 1_000;
+        final Duration duration = Duration.ofMillis(random.nextInt(10_000) + 1_000);
 
         final CompressionBuffer objectUnderTest = createObjectUnderTest();
         when(innerBuffer.getDuration()).thenReturn(duration);

@@ -11,6 +11,7 @@ import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.OpenSearchException;
 import org.opensearch.client.opensearch.core.InfoResponse;
 import org.opensearch.client.util.MissingRequiredPropertyException;
+import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.SearchContextType;
 import org.slf4j.Logger;
@@ -31,7 +32,6 @@ public class SearchAccessorStrategy {
     static final String OPENSEARCH_DISTRIBUTION = "opensearch";
     static final String ELASTICSEARCH_DISTRIBUTION = "elasticsearch";
     static final String ELASTICSEARCH_OSS_BUILD_FLAVOR = "oss";
-    static final String OPENDISTRO_DISTRIUBTION = "opendistro";
 
     private static final String OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF = "2.5.0";
     private static final String ELASTICSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF = "7.10.0";
@@ -59,6 +59,11 @@ public class SearchAccessorStrategy {
     public SearchAccessor getSearchAccessor() {
 
         final OpenSearchClient openSearchClient = openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration);
+
+        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) &&
+                openSearchSourceConfiguration.getAwsAuthenticationOptions().isServerlessCollection()) {
+            return createSearchAccessorForServerlessCollection(openSearchClient);
+        }
 
         InfoResponse infoResponse = null;
 
@@ -102,6 +107,20 @@ public class SearchAccessorStrategy {
         return new ElasticsearchAccessor(elasticsearchClient, searchContextType);
     }
 
+    private SearchAccessor createSearchAccessorForServerlessCollection(final OpenSearchClient openSearchClient) {
+        if (Objects.isNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
+            LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'none', which uses search_after");
+            return new OpenSearchAccessor(openSearchClient, SearchContextType.NONE);
+        } else {
+            if (SearchContextType.POINT_IN_TIME.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
+                throw new InvalidPluginConfigurationException("A search_context_type of point_in_time is not supported for serverless collections");
+            }
+
+            LOG.info("Using search_context_type set in the config: '{}'", openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType().toString().toLowerCase());
+            return new OpenSearchAccessor(openSearchClient, openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType());
+        }
+    }
+
     private void validateSearchContextTypeOverride(final SearchContextType searchContextType, final String distribution, final String version) {
 
         if (searchContextType.equals(SearchContextType.POINT_IN_TIME) && !versionSupportsPointInTime(distribution, version)) {
@@ -142,9 +161,9 @@ public class SearchAccessorStrategy {
     }
 
     private void validateDistribution(final String distribution) {
-        if (!distribution.equals(OPENSEARCH_DISTRIBUTION) && !distribution.startsWith(ELASTICSEARCH_DISTRIBUTION) && !distribution.equals(OPENDISTRO_DISTRIUBTION)) {
-            throw new IllegalArgumentException(String.format("Only %s, %s, or %s distributions are supported at this time. The cluster distribution being used is '%s'",
-                    OPENSEARCH_DISTRIBUTION, OPENDISTRO_DISTRIUBTION, ELASTICSEARCH_DISTRIBUTION, distribution));
+        if (!distribution.equals(OPENSEARCH_DISTRIBUTION) && !distribution.startsWith(ELASTICSEARCH_DISTRIBUTION)) {
+            throw new IllegalArgumentException(String.format("Only %s or %s distributions are supported at this time. The cluster distribution being used is '%s'",
+                    OPENSEARCH_DISTRIBUTION, ELASTICSEARCH_DISTRIBUTION, distribution));
         }
     }
 }

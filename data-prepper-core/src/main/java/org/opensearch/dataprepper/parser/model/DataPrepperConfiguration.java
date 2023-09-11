@@ -7,7 +7,10 @@ package org.opensearch.dataprepper.parser.model;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.parser.config.MetricTagFilter;
 import org.opensearch.dataprepper.peerforwarder.PeerForwarderConfiguration;
@@ -47,6 +50,7 @@ public class DataPrepperConfiguration {
     private PeerForwarderConfiguration peerForwarderConfiguration;
     private Duration processorShutdownTimeout;
     private Duration sinkShutdownTimeout;
+    private PipelineExtensions pipelineExtensions;
 
     public static final DataPrepperConfiguration DEFAULT_CONFIG = new DataPrepperConfiguration();
 
@@ -85,7 +89,11 @@ public class DataPrepperConfiguration {
             final Duration sinkShutdownTimeout,
             @JsonProperty("circuit_breakers") final CircuitBreakerConfig circuitBreakerConfig,
             @JsonProperty("source_coordination") final SourceCoordinationConfig sourceCoordinationConfig,
-            @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown) {
+            @JsonProperty("pipeline_shutdown") final PipelineShutdownOption pipelineShutdown,
+            @JsonProperty("extensions")
+            @JsonInclude(JsonInclude.Include.NON_NULL)
+            @JsonSetter(nulls = Nulls.SKIP)
+            final PipelineExtensions pipelineExtensions) {
         this.authentication = authentication;
         this.circuitBreakerConfig = circuitBreakerConfig;
         this.sourceCoordinationConfig = Objects.isNull(sourceCoordinationConfig)
@@ -111,6 +119,7 @@ public class DataPrepperConfiguration {
         if (this.sinkShutdownTimeout.isNegative()) {
             throw new IllegalArgumentException("sinkShutdownTimeout must be non-negative.");
         }
+        this.pipelineExtensions = pipelineExtensions;
     }
 
     public int getServerPort() {
@@ -213,5 +222,9 @@ public class DataPrepperConfiguration {
 
     public PipelineShutdownOption getPipelineShutdown() {
         return pipelineShutdown;
+    }
+
+    public PipelineExtensions getPipelineExtensions() {
+        return pipelineExtensions;
     }
 }

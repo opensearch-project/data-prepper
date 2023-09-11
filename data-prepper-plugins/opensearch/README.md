@@ -95,7 +95,7 @@ Default is null.
 
 - `index_type` (optional): a String from the list [`custom`, `trace-analytics-raw`, `trace-analytics-service-map`, `management_disabled`], which represents an index type. Defaults to `custom` if `serverless` is `false` in [AWS Configuration](#aws_configuration), otherwise defaults to `management_disabled`. This index_type instructs Sink plugin what type of data it is handling.
 
-- `enable_request_compression` (optional): A boolean that enables or disables request compression when sending requests to OpenSearch. Default is true.
+- `enable_request_compression` (optional): A boolean that enables or disables request compression when sending requests to OpenSearch. For `distribution_version` set to `es6`, default value is `false`, otherwise default value is `true`. 
 
 ```
     APM trace analytics raw span data type example:
@@ -209,7 +209,7 @@ With the `document_root_key` set to `status`. The document structure would be `{
     duration: "15 ms"
 }
 ```
-- `include_keys`: A list of keys to be included (retained). The key in the list can be a valid JSON path, such as 'request/status'. This option can work together with `document_root_key`.
+- `include_keys`: A list of keys to be included (retained). The key in the list cannot contain '/'. This option can work together with `document_root_key`.
 
 For example, If we have the following sample event:
 ```
@@ -224,7 +224,7 @@ For example, If we have the following sample event:
     }
 }
 ```
-if `include_keys` is set to ["status", "metadata/sourceIp"], the document written to OpenSearch would be:
+if `include_keys` is set to ["status", "metadata"], the document written to OpenSearch would be:
 ```
 {
     status: 200,
@@ -256,11 +256,11 @@ For example, If we have the following sample event:
     }
 }
 ```
-if `exclude_keys` is set to ["status", "metadata/sourceIp"], the document written to OpenSearch would be:
+if `exclude_keys` is set to ["message", "status"], the document written to OpenSearch would be:
 ```
 {
-    message: null,
     metadata: {
+        sourceIp: "123.212.49.58",
         destinationIp: "79.54.67.231",
         bytes: 3545,
         duration: "15 ms"

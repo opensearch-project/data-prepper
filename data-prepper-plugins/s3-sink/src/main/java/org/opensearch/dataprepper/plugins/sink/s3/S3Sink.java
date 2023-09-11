@@ -19,13 +19,19 @@ import org.opensearch.dataprepper.model.sink.AbstractSink;
 import org.opensearch.dataprepper.model.sink.OutputCodecContext;
 import org.opensearch.dataprepper.model.sink.Sink;
 import org.opensearch.dataprepper.model.sink.SinkContext;
+import org.opensearch.dataprepper.plugins.codec.parquet.ParquetOutputCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.accumulator.BufferTypeOptions;
+import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CodecBufferFactory;
 import org.opensearch.dataprepper.plugins.sink.s3.accumulator.CompressionBufferFactory;
+import org.opensearch.dataprepper.plugins.sink.s3.codec.BufferedCodec;
 import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
+import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import java.time.Duration;
 import java.util.Collection;
 
 /**
@@ -64,14 +70,25 @@ public class S3Sink extends AbstractSink<Record<Event>> {
         sinkInitialized = Boolean.FALSE;
 
         final S3Client s3Client = ClientFactory.createS3Client(s3SinkConfig, awsCredentialsSupplier);
-        KeyGenerator keyGenerator = new KeyGenerator(s3SinkConfig, codec);
-        final BufferFactory innerBufferFactory = s3SinkConfig.getBufferType().getBufferFactory();
-        final CompressionEngine compressionEngine = s3SinkConfig.getCompression().getCompressionEngine();
+        BufferFactory innerBufferFactory = s3SinkConfig.getBufferType().getBufferFactory();
+        if(codec instanceof ParquetOutputCodec && s3SinkConfig.getBufferType() != BufferTypeOptions.INMEMORY) {
+            throw new InvalidPluginConfigurationException("The Parquet sink codec is an in_memory buffer only.");
+        }
+        if(codec instanceof BufferedCodec) {
+            innerBufferFactory = new CodecBufferFactory(innerBufferFactory, (BufferedCodec) codec);
+        }
+        CompressionOption compressionOption = s3SinkConfig.getCompression();
+        final CompressionEngine compressionEngine = compressionOption.getCompressionEngine();
         bufferFactory = new CompressionBufferFactory(innerBufferFactory, compressionEngine, codec);
 
-        S3OutputCodecContext s3OutputCodecContext = new S3OutputCodecContext(OutputCodecContext.fromSinkContext(sinkContext), s3SinkConfig.getCompression());
+        ExtensionProvider extensionProvider = StandardExtensionProvider.create(codec, compressionOption);
+        KeyGenerator keyGenerator = new KeyGenerator(s3SinkConfig, extensionProvider);
 
-        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, s3OutputCodecContext, s3Client, keyGenerator, pluginMetrics);
+        S3OutputCodecContext s3OutputCodecContext = new S3OutputCodecContext(OutputCodecContext.fromSinkContext(sinkContext), compressionOption);
+
+        codec.validateAgainstCodecContext(s3OutputCodecContext);
+
+        s3SinkService = new S3SinkService(s3SinkConfig, bufferFactory, codec, s3OutputCodecContext, s3Client, keyGenerator, Duration.ofSeconds(5), pluginMetrics);
     }
 
     @Override

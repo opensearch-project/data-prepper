@@ -39,6 +39,7 @@ public class JacksonOtelLogTest {
     private static final String TEST_TRACE_ID = "1234";
     private static final String TEST_SPAN_ID = "4321";
     private static final Integer TEST_SEVERITY_NUMBER = 2;
+    private static final String TEST_SEVERITY_TEXT = "severity";
     private static final Integer TEST_DROPPED_ATTRIBUTES_COUNT = 4;
     private static final Object TEST_BODY = Map.of("log", "message");
 
@@ -57,6 +58,7 @@ public class JacksonOtelLogTest {
                 .withTraceId(TEST_TRACE_ID)
                 .withSpanId(TEST_SPAN_ID)
                 .withSeverityNumber(TEST_SEVERITY_NUMBER)
+                .withSeverityText(TEST_SEVERITY_TEXT)
                 .withDroppedAttributesCount(TEST_DROPPED_ATTRIBUTES_COUNT)
                 .withBody(TEST_BODY);
 
@@ -106,6 +108,12 @@ public class JacksonOtelLogTest {
     }
 
     @Test
+    public void testGetServerityText() {
+        final String severityText = log.getSeverityText();
+        assertThat(severityText, is(equalTo(TEST_SEVERITY_TEXT)));
+    }
+
+    @Test
     public void testGetServerityNumber() {
         final Integer observedTime = log.getSeverityNumber();
         assertThat(observedTime, is(equalTo(TEST_SEVERITY_NUMBER)));
@@ -148,6 +156,17 @@ public class JacksonOtelLogTest {
         String file = IOUtils.toString(this.getClass().getResourceAsStream("/testjson/log.json"));
         String expected = String.format(file, TEST_TIME_KEY1, TEST_KEY2);
         JSONAssert.assertEquals(expected, actual, false);
+    }
+
+    @Test
+    public void test_non_object_attributes_toJsonString_serializes_as_is() {
+        JacksonOtelLog testLog = JacksonOtelLog.builder()
+                .withAttributes(Map.of("key", "value"))
+                .build();
+        assertThat(testLog.toJsonString(), equalTo("{\"key\":\"value\"}"));
+
+        testLog.put("attributes", "a string");
+        assertThat(testLog.toJsonString(), equalTo("{\"attributes\":\"a string\"}"));
     }
 }
 

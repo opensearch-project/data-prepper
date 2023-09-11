@@ -691,37 +691,37 @@ public class JacksonEventTest {
                 .build();
 
         // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
-        List<String> includeKeys1 = Arrays.asList("/foo", "/info");
+        List<String> includeKeys1 = Arrays.asList("foo", "info");
         final String expectedJsonString1 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"}}";
         assertThat(event.jsonBuilder().rootKey(null).includeKeys(includeKeys1).toJsonString(), equalTo(expectedJsonString1));
 
         // Test child node
-        List<String> includeKeys2 = Arrays.asList("/foo", "/info/name");
+        List<String> includeKeys2 = Arrays.asList("foo", "info/name");
         final String expectedJsonString2 = "{\"foo\":\"bar\",\"info\":{\"name\":\"hello\"}}";
         assertThat(event.jsonBuilder().includeKeys(includeKeys2).toJsonString(), equalTo(expectedJsonString2));
 
         // Test array node.
-        List<String> includeKeys3 = Arrays.asList("/foo", "/tags/key");
+        List<String> includeKeys3 = Arrays.asList("foo", "tags/key");
         final String expectedJsonString3 = "{\"foo\":\"bar\",\"tags\":[{\"key\":\"a\"},{\"key\":\"c\"}]}";
         assertThat(event.jsonBuilder().includeKeys(includeKeys3).toJsonString(), equalTo(expectedJsonString3));
 
         // Test some keys not found
-        List<String> includeKeys4 = Arrays.asList("/foo", "/info/age");
+        List<String> includeKeys4 = Arrays.asList("foo", "info/age");
         final String expectedJsonString4 = "{\"foo\":\"bar\",\"info\":{}}";
         assertThat(event.jsonBuilder().includeKeys(includeKeys4).toJsonString(), equalTo(expectedJsonString4));
 
         // Test all keys not found
-        List<String> includeKeys5 = List.of("/hello");
+        List<String> includeKeys5 = List.of("/ello");
         final String expectedJsonString5 = "{}";
         assertThat(event.jsonBuilder().includeKeys(includeKeys5).toJsonString(), equalTo(expectedJsonString5));
 
         // Test working with root node
-        List<String> includeKeys6 = List.of("/name");
+        List<String> includeKeys6 = List.of("name");
         final String expectedJsonString6 = "{\"name\":\"hello\"}";
         assertThat(event.jsonBuilder().rootKey("info").includeKeys(includeKeys6).toJsonString(), equalTo(expectedJsonString6));
 
         // Test working with unknown root node
-        List<String> includeKeys7 = List.of("/name");
+        List<String> includeKeys7 = List.of("name");
         final String expectedJsonString7 = "{}";
         assertThat(event.jsonBuilder().rootKey("hello").includeKeys(includeKeys7).toJsonString(), equalTo(expectedJsonString7));
 
@@ -738,37 +738,37 @@ public class JacksonEventTest {
                 .build();
 
         // Include Keys must start with / and also ordered, This is pre-processed in SinkModel
-        List<String> excludeKeys1 = Arrays.asList("/foo", "/info");
+        List<String> excludeKeys1 = Arrays.asList("foo", "info");
         final String expectedJsonString1 = "{\"id\":1,\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
         assertThat(event.jsonBuilder().rootKey(null).excludeKeys(excludeKeys1).toJsonString(), equalTo(expectedJsonString1));
 
         // Test child node
-        List<String> excludeKeys2 = Arrays.asList("/foo", "/info/name");
+        List<String> excludeKeys2 = Arrays.asList("foo", "info/name");
         final String expectedJsonString2 = "{\"id\":1,\"info\":{\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
         assertThat(event.jsonBuilder().excludeKeys(excludeKeys2).toJsonString(), equalTo(expectedJsonString2));
 
         // Test array node.
-        List<String> excludeKeys3 = Arrays.asList("/foo", "/tags/key");
+        List<String> excludeKeys3 = Arrays.asList("foo", "tags/key");
         final String expectedJsonString3 = "{\"id\":1,\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"value\":\"b\"},{\"value\":\"d\"}]}";
         assertThat(event.jsonBuilder().excludeKeys(excludeKeys3).toJsonString(), equalTo(expectedJsonString3));
 
         // Test some keys not found
-        List<String> excludeKeys4 = Arrays.asList("/foo", "/info/age");
+        List<String> excludeKeys4 = Arrays.asList("foo", "info/age");
         final String expectedJsonString4 = "{\"id\":1,\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
         assertThat(event.jsonBuilder().excludeKeys(excludeKeys4).toJsonString(), equalTo(expectedJsonString4));
 
         // Test all keys not found
-        List<String> excludeKeys5 = List.of("/hello");
+        List<String> excludeKeys5 = List.of("hello");
         final String expectedJsonString5 = "{\"id\":1,\"foo\":\"bar\",\"info\":{\"name\":\"hello\",\"foo\":\"bar\"},\"tags\":[{\"key\":\"a\",\"value\":\"b\"},{\"key\":\"c\",\"value\":\"d\"}]}";
         assertThat(event.jsonBuilder().excludeKeys(excludeKeys5).toJsonString(), equalTo(expectedJsonString5));
 
         // Test working with root node
-        List<String> excludeKeys6 = List.of("/name");
+        List<String> excludeKeys6 = List.of("name");
         final String expectedJsonString6 = "{\"foo\":\"bar\"}";
         assertThat(event.jsonBuilder().rootKey("info").excludeKeys(excludeKeys6).toJsonString(), equalTo(expectedJsonString6));
 
         // Test working with unknown root node
-        List<String> includeKeys7 = List.of("/name");
+        List<String> includeKeys7 = List.of("name");
         final String expectedJsonString7 = "{}";
         assertThat(event.jsonBuilder().rootKey("hello").includeKeys(includeKeys7).toJsonString(), equalTo(expectedJsonString7));
 

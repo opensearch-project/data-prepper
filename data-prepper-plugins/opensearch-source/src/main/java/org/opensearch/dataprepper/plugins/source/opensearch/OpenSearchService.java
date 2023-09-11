@@ -5,10 +5,12 @@
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
 import org.opensearch.dataprepper.buffer.common.BufferAccumulator;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.buffer.Buffer;
 import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.NoSearchContextWorker;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.OpenSearchIndexPartitionCreationSupplier;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.PitWorker;
@@ -40,6 +42,8 @@ public class OpenSearchService {
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
     private final ScheduledExecutorService scheduledExecutorService;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
 
     private SearchWorker searchWorker;
     private ScheduledFuture<?> searchWorkerFuture;
@@ -47,10 +51,13 @@ public class OpenSearchService {
     public static OpenSearchService createOpenSearchService(final SearchAccessor searchAccessor,
                                                             final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
                                                             final OpenSearchSourceConfiguration openSearchSourceConfiguration,
-                                                            final Buffer<Record<Event>> buffer) {
+                                                            final Buffer<Record<Event>> buffer,
+                                                            final AcknowledgementSetManager acknowledgementSetManager,
+                                                            final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
         return new OpenSearchService(
                 searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, Executors.newSingleThreadScheduledExecutor(),
-                BufferAccumulator.create(buffer, openSearchSourceConfiguration.getSearchConfiguration().getBatchSize(), BUFFER_TIMEOUT));
+                BufferAccumulator.create(buffer, openSearchSourceConfiguration.getSearchConfiguration().getBatchSize(), BUFFER_TIMEOUT),
+                acknowledgementSetManager, openSearchSourcePluginMetrics);
     }
 
     private OpenSearchService(final SearchAccessor searchAccessor,
@@ -58,7 +65,9 @@ public class OpenSearchService {
                               final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                               final Buffer<Record<Event>> buffer,
                               final ScheduledExecutorService scheduledExecutorService,
-                              final BufferAccumulator<Record<Event>> bufferAccumulator) {
+                              final BufferAccumulator<Record<Event>> bufferAccumulator,
+                              final AcknowledgementSetManager acknowledgementSetManager,
+                              final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
         this.searchAccessor = searchAccessor;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.buffer = buffer;
@@ -67,18 +76,20 @@ public class OpenSearchService {
         this.openSearchIndexPartitionCreationSupplier = new OpenSearchIndexPartitionCreationSupplier(openSearchSourceConfiguration, (ClusterClientFactory) searchAccessor);
         this.scheduledExecutorService = scheduledExecutorService;
         this.bufferAccumulator = bufferAccumulator;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.openSearchSourcePluginMetrics = openSearchSourcePluginMetrics;
     }
 
     public void start() {
         switch(searchAccessor.getSearchContextType()) {
             case POINT_IN_TIME:
-                searchWorker = new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
+                searchWorker = new PitWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
                 break;
             case SCROLL:
-                searchWorker = new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
+                searchWorker = new ScrollWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
                 break;
             case NONE:
-                searchWorker = new NoSearchContextWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier);
+                searchWorker = new NoSearchContextWorker(searchAccessor, openSearchSourceConfiguration, sourceCoordinator, bufferAccumulator, openSearchIndexPartitionCreationSupplier, acknowledgementSetManager, openSearchSourcePluginMetrics);
                 break;
             default:
                 throw new IllegalArgumentException(

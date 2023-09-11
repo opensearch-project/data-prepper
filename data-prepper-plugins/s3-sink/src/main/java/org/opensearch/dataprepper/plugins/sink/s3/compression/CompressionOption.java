@@ -9,13 +9,14 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public enum CompressionOption {
-    NONE("none", NoneCompressionEngine::new),
-    GZIP("gzip", GZipCompressionEngine::new),
-    SNAPPY("snappy", SnappyCompressionEngine::new);
+    NONE("none", null, NoneCompressionEngine::new),
+    GZIP("gzip", "gz", GZipCompressionEngine::new),
+    SNAPPY("snappy", "snappy", SnappyCompressionEngine::new);
 
     private static final Map<String, CompressionOption> OPTIONS_MAP = Arrays.stream(CompressionOption.values())
             .collect(Collectors.toMap(
@@ -25,9 +26,11 @@ public enum CompressionOption {
 
     private final String option;
 
+    private final String extension;
     private final Supplier<CompressionEngine> compressionEngineSupplier;
-    CompressionOption(final String option, final Supplier<CompressionEngine> compressionEngineSupplier) {
+    CompressionOption(final String option, String extension, final Supplier<CompressionEngine> compressionEngineSupplier) {
         this.option = option.toLowerCase();
+        this.extension = extension;
         this.compressionEngineSupplier = compressionEngineSupplier;
     }
 
@@ -37,6 +40,10 @@ public enum CompressionOption {
 
     public String getOption() {
         return option;
+    }
+
+    public Optional<String> getExtension() {
+        return Optional.ofNullable(extension);
     }
 
     @JsonCreator

@@ -11,6 +11,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -20,6 +21,7 @@ import java.util.function.Supplier;
 public class InMemoryBuffer implements Buffer {
 
     private static final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    private static final ByteArrayPositionOutputStream byteArrayPositionOutputStream = new ByteArrayPositionOutputStream(byteArrayOutputStream);
     private final S3Client s3Client;
     private final Supplier<String> bucketSupplier;
     private final Supplier<String> keySupplier;
@@ -50,8 +52,8 @@ public class InMemoryBuffer implements Buffer {
         return eventCount;
     }
 
-    public long getDuration() {
-        return watch.getTime(TimeUnit.SECONDS);
+    public Duration getDuration() {
+        return Duration.ofMillis(watch.getTime(TimeUnit.MILLISECONDS));
     }
 
     /**
@@ -85,6 +87,6 @@ public class InMemoryBuffer implements Buffer {
 
     @Override
     public OutputStream getOutputStream() {
-        return byteArrayOutputStream;
+        return byteArrayPositionOutputStream;
     }
 }

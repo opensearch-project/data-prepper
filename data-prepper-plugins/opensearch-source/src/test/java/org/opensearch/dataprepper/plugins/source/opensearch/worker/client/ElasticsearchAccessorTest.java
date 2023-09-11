@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.source.opensearch.worker.client;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.ErrorCause;
+import co.elastic.clients.elasticsearch._types.ErrorResponse;
 import co.elastic.clients.elasticsearch.core.ClearScrollRequest;
 import co.elastic.clients.elasticsearch.core.ClearScrollResponse;
 import co.elastic.clients.elasticsearch.core.ClosePointInTimeRequest;
@@ -28,6 +29,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.SearchContextLimitException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeRequest;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.CreatePointInTimeResponse;
@@ -59,6 +61,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.INDEX_NOT_FOUND_EXCEPTION;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.PIT_RESOURCE_LIMIT_ERROR_TYPE;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchAccessor.SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE;
 
@@ -156,7 +159,32 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.openPointInTime(any(OpenPointInTimeRequest.class))).thenThrow(elasticsearchException);
 
-        assertThrows(SearchContextLimitException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(SearchContextLimitException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
+    }
+
+    @Test
+    void create_pit_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final String indexName = UUID.randomUUID().toString();
+        final String keepAlive = UUID.randomUUID().toString();
+
+        final CreatePointInTimeRequest createPointInTimeRequest = mock(CreatePointInTimeRequest.class);
+        when(createPointInTimeRequest.getIndex()).thenReturn(indexName);
+        when(createPointInTimeRequest.getKeepAlive()).thenReturn(keepAlive);
+
+        final ElasticsearchException exception = mock(ElasticsearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(exception.response()).thenReturn(errorResponse);
+
+        when(elasticSearchClient.openPointInTime(any(OpenPointInTimeRequest.class))).thenThrow(exception);
+
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -175,7 +203,57 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        assertThrows(SearchContextLimitException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(SearchContextLimitException.class, () -> objectUnderTest.createScroll(createScrollRequest));
+    }
+
+    @Test
+    void create_scroll_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final String indexName = UUID.randomUUID().toString();
+        final String scrollTime = UUID.randomUUID().toString();
+        final Integer size = new Random().nextInt(10);
+
+        final CreateScrollRequest createScrollRequest = mock(CreateScrollRequest.class);
+        when(createScrollRequest.getIndex()).thenReturn(indexName);
+        when(createScrollRequest.getScrollTime()).thenReturn(scrollTime);
+        when(createScrollRequest.getSize()).thenReturn(size);
+
+        final ElasticsearchException exception = mock(ElasticsearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(exception.response()).thenReturn(errorResponse);
+
+        when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
+
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.createScroll(createScrollRequest));
+    }
+
+    @Test
+    void searchWithoutSearchContext_with_exception_for_index_not_found_throws_IndexNotFoundException() throws IOException {
+        final Integer paginationSize = new Random().nextInt();
+        final String index = UUID.randomUUID().toString();
+
+        final NoSearchContextSearchRequest noSearchContextSearchRequest = mock(NoSearchContextSearchRequest.class);
+        when(noSearchContextSearchRequest.getPaginationSize()).thenReturn(paginationSize);
+        when(noSearchContextSearchRequest.getIndex()).thenReturn(index);
+
+        final ElasticsearchException exception = mock(ElasticsearchException.class);
+        final ErrorResponse errorResponse = mock(ErrorResponse.class);
+        final ErrorCause errorCause = mock(ErrorCause.class);
+        when(errorCause.type()).thenReturn(INDEX_NOT_FOUND_EXCEPTION);
+        when(errorResponse.error()).thenReturn(errorCause);
+        when(exception.response()).thenReturn(errorResponse);
+
+        when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
+
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(IndexNotFoundException.class, () -> objectUnderTest.searchWithoutSearchContext(noSearchContextSearchRequest));
     }
 
     @Test
@@ -194,7 +272,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.openPointInTime(any(OpenPointInTimeRequest.class))).thenThrow(openSearchException);
 
-        assertThrows(ElasticsearchException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(ElasticsearchException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -212,11 +292,12 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        assertThrows(ElasticsearchException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+        assertThrows(ElasticsearchException.class, () -> objectUnderTest.createScroll(createScrollRequest));
     }
 
     @Test
-    void createPit_throws_runtime_exception_throws_IO_Exception() throws IOException {
+    void createPit_throws_runtime_exception_when_IO_Exception_is_thrown() throws IOException {
         final String indexName = UUID.randomUUID().toString();
         final String keepAlive = UUID.randomUUID().toString();
 
@@ -226,7 +307,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.openPointInTime(any(OpenPointInTimeRequest.class))).thenThrow(IOException.class);
 
-        assertThrows(RuntimeException.class, () -> createObjectUnderTest().createPit(createPointInTimeRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        assertThrows(RuntimeException.class, () -> objectUnderTest.createPit(createPointInTimeRequest));
     }
 
     @Test
@@ -245,7 +328,9 @@ public class ElasticsearchAccessorTest {
 
         when(elasticSearchClient.search(any(SearchRequest.class), eq(ObjectNode.class))).thenThrow(exception);
 
-        final RuntimeException exceptionThrown = assertThrows(RuntimeException.class, () -> createObjectUnderTest().createScroll(createScrollRequest));
+        final SearchAccessor objectUnderTest = createObjectUnderTest();
+
+        final RuntimeException exceptionThrown = assertThrows(RuntimeException.class, () -> objectUnderTest.createScroll(createScrollRequest));
         assertThat(exceptionThrown instanceof SearchContextLimitException, equalTo(false));
     }
 

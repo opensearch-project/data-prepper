@@ -9,6 +9,7 @@ import org.opensearch.dataprepper.plugins.sink.s3.compression.CompressionEngine;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Duration;
 import java.util.Objects;
 
 class CompressionBuffer implements Buffer {
@@ -32,7 +33,7 @@ class CompressionBuffer implements Buffer {
     }
 
     @Override
-    public long getDuration() {
+    public Duration getDuration() {
         return innerBuffer.getDuration();
     }
 

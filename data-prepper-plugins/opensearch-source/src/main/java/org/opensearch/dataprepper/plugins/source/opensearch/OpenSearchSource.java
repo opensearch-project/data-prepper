@@ -4,6 +4,8 @@
  */
 package org.opensearch.dataprepper.plugins.source.opensearch;
 
+import org.opensearch.dataprepper.metrics.PluginMetrics;
+import org.opensearch.dataprepper.model.acknowledgements.AcknowledgementSetManager;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.buffer.Buffer;
@@ -13,6 +15,7 @@ import org.opensearch.dataprepper.model.source.Source;
 import org.opensearch.dataprepper.model.source.coordinator.SourceCoordinator;
 import org.opensearch.dataprepper.model.source.coordinator.UsesSourceCoordination;
 import org.opensearch.dataprepper.aws.api.AwsCredentialsSupplier;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.OpenSearchClientFactory;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessorStrategy;
@@ -22,15 +25,21 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
 
     private final AwsCredentialsSupplier awsCredentialsSupplier;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
+    private final AcknowledgementSetManager acknowledgementSetManager;
+    private final PluginMetrics pluginMetrics;
 
     private SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
     private OpenSearchService openSearchService;
 
     @DataPrepperPluginConstructor
     public OpenSearchSource(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
-                            final AwsCredentialsSupplier awsCredentialsSupplier) {
+                            final AwsCredentialsSupplier awsCredentialsSupplier,
+                            final AcknowledgementSetManager acknowledgementSetManager,
+                            final PluginMetrics pluginMetrics) {
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.awsCredentialsSupplier = awsCredentialsSupplier;
+        this.acknowledgementSetManager = acknowledgementSetManager;
+        this.pluginMetrics = pluginMetrics;
 
         openSearchSourceConfiguration.validateAwsConfigWithUsernameAndPassword();
     }
@@ -43,15 +52,22 @@ public class OpenSearchSource implements Source<Record<Event>>, UsesSourceCoordi
         startProcess(openSearchSourceConfiguration, buffer);
     }
 
-    private void startProcess(final OpenSearchSourceConfiguration openSearchSourceConfiguration, final Buffer<Record<Event>> buffer)  {
+    private void startProcess(final OpenSearchSourceConfiguration openSearchSourceConfiguration,
+                              final Buffer<Record<Event>> buffer)  {
 
         final OpenSearchClientFactory openSearchClientFactory = OpenSearchClientFactory.create(awsCredentialsSupplier);
+        final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics = OpenSearchSourcePluginMetrics.create(pluginMetrics);
         final SearchAccessorStrategy searchAccessorStrategy = SearchAccessorStrategy.create(openSearchSourceConfiguration, openSearchClientFactory);
 
         final SearchAccessor searchAccessor = searchAccessorStrategy.getSearchAccessor();
 
-        openSearchService = OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer);
+        openSearchService = OpenSearchService.createOpenSearchService(searchAccessor, sourceCoordinator, openSearchSourceConfiguration, buffer, acknowledgementSetManager, openSearchSourcePluginMetrics);
         openSearchService.start();
+    }
+
+    @Override
+    public boolean areAcknowledgementsEnabled() {
+        return openSearchSourceConfiguration.isAcknowledgmentsEnabled();
     }
 
     @Override

@@ -14,11 +14,11 @@ import java.util.List;
 import java.util.function.Function;
 
 public final class Templates {
-    public static final String APACHE_COMMON_LOG_DATETIME_PATTERN = "d/LLL/uuuu:HH:mm:ss";
-    public static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(APACHE_COMMON_LOG_DATETIME_PATTERN);
+    private static final String APACHE_COMMON_LOG_DATETIME_PATTERN = "dd/LLL/uuuu:HH:mm:ss";
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(APACHE_COMMON_LOG_DATETIME_PATTERN);
 
     public static String now() {
-        return formatter.format(LocalDateTime.now()) + " -0700";
+        return FORMATTER.format(LocalDateTime.now()) + " -0700";
     }
     
     public static Function<Session, String> apacheCommonLogTemplate(final int batchSize) {

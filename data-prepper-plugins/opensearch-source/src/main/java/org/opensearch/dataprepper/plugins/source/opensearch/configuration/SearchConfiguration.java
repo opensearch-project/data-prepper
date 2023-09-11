@@ -21,7 +21,6 @@ public class SearchConfiguration {
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Logger LOG = LoggerFactory.getLogger(SearchConfiguration.class);
 
-    // TODO: Should we default this to NONE and remove the version lookup to determine scroll or point-in-time as the default behavior?
     @JsonProperty("search_context_type")
     private SearchContextType searchContextType;
 
