@@ -21,6 +21,7 @@ public class MongoDBConfig extends ConnectorConfig {
     private static final String DEFAULT_PORT = "27017";
     private static final String DEFAULT_SNAPSHOT_MODE = "initial";
     private static final Boolean SSL_ENABLED = false;
+    private static final String DEFAULT_SNAPSHOT_FETCH_SIZE = "1000";
     @JsonProperty("hostname")
     @NotNull
     private String hostname;
@@ -30,6 +31,8 @@ public class MongoDBConfig extends ConnectorConfig {
     private CredentialsConfig credentialsConfig;
     @JsonProperty("snapshot_mode")
     private String snapshotMode = DEFAULT_SNAPSHOT_MODE;
+    @JsonProperty("snapshot_fetch_size")
+    private String snapshotFetchSize = DEFAULT_SNAPSHOT_FETCH_SIZE;
     @JsonProperty("collections")
     private List<CollectionConfig> collections = new ArrayList<>();
     @JsonProperty("ssl")
@@ -51,6 +54,7 @@ public class MongoDBConfig extends ConnectorConfig {
         config.put("mongodb.user", credentialsConfig.getUsername());
         config.put("mongodb.password", credentialsConfig.getPassword());
         config.put("snapshot.mode", snapshotMode);
+        config.put("snapshot.fetch.size", snapshotFetchSize);
         config.put("topic.prefix", collection.getTopicPrefix());
         config.put("collection.include.list", collection.getCollectionName());
         config.put("mongodb.ssl.enabled", ssl.toString());
