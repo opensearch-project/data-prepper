@@ -73,7 +73,7 @@ public class CloudwatchMetricsSourceTest {
     }
 
     @Test
-    void start_should_read_data_from_cloud_watch_and_push_to_buffer(){
+    void start_with_empty_buffer_test() {
         final BlockingBuffer<Record<Event>> buffer = getBuffer();
         final BufferAccumulator bufferAccumulator = mock(BufferAccumulator.class);
         try (final MockedStatic<BufferAccumulator> bufferAccumulatorMockedStatic = mockStatic(BufferAccumulator.class)) {
