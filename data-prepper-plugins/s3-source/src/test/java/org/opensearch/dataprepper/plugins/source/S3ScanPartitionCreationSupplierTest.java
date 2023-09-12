@@ -147,6 +147,8 @@ public class S3ScanPartitionCreationSupplierTest {
         assertThat(globalStateMap.containsKey(SCAN_COUNT), equalTo(true));
         assertThat(globalStateMap.get(SCAN_COUNT), equalTo(1));
 
+        globalStateMap.put(secondBucket, null);
+
         assertThat(partitionCreationSupplier.apply(globalStateMap), equalTo(Collections.emptyList()));
 
         assertThat(resultingPartitions, notNullValue());
