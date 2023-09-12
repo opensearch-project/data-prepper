@@ -92,6 +92,9 @@ public class HTTPSink extends AbstractSink<Record<Event>> {
 
         final HttpRequestRetryStrategy httpRequestRetryStrategy = new DefaultHttpRequestRetryStrategy(httpSinkConfiguration.getMaxUploadRetries(),
                 TimeValue.of(httpSinkConfiguration.getHttpRetryInterval()));
+        if((!httpSinkConfiguration.isInsecure()) && (httpSinkConfiguration.isHttpUrl())){
+            throw new InvalidPluginConfigurationException ("Cannot configure http url with insecure as false");
+        }
 
         final HttpClientBuilder httpClientBuilder = HttpClients.custom()
                 .setRetryStrategy(httpRequestRetryStrategy);

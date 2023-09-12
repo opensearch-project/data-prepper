@@ -5,12 +5,14 @@
 package org.opensearch.dataprepper.plugins.sink.http.service;
 
 import io.micrometer.core.instrument.Counter;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
+import org.apache.hc.core5.util.Timeout;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.codec.OutputCodec;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
@@ -134,9 +136,8 @@ public class HttpSinkService {
         this.httpPluginSetting = httpPluginSetting;
 		this.oAuthAccessTokenManager = new OAuthAccessTokenManager();
 
-        if (httpSinkConfiguration.isSsl() || httpSinkConfiguration.useAcmCertForSSL()) {
+        if ((!httpSinkConfiguration.isInsecureSkipVerify()) || (httpSinkConfiguration.useAcmCertForSSL())) {
             this.certificateProviderFactory = new CertificateProviderFactory(httpSinkConfiguration);
-            httpSinkConfiguration.validateAndInitializeCertAndKeyFileInS3();
             this.httpClientConnectionManager = new HttpClientSSLConnectionManager()
                     .createHttpClientConnectionManager(httpSinkConfiguration, certificateProviderFactory);
         }
@@ -314,10 +315,13 @@ public class HttpSinkService {
         if(httpSinkConfiguration.isAwsSigv4() && httpSinkConfiguration.isValidAWSUrl()){
             classicRequestBuilder.addHeader("x-amz-content-sha256","required");
         }
-        
+
         if(Objects.nonNull(proxyUrlString)) {
             httpClientBuilder.setProxy(HttpSinkUtil.getHttpHostByURL(HttpSinkUtil.getURLByUrlString(proxyUrlString)));
             LOG.info("sending data via proxy {}",proxyUrlString);
+        }
+        if(httpSinkConfiguration.getRequestTimout() != null) {
+            httpClientBuilder.setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(Timeout.ofMilliseconds(httpSinkConfiguration.getRequestTimout().toMillis())).build());
         }
 
         final HttpAuthOptions.Builder authOptions = new HttpAuthOptions.Builder()

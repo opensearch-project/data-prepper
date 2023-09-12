@@ -37,7 +37,7 @@ class CertificateProviderFactoryTest {
 
     @Test
     void getCertificateProviderFileCertificateProviderSuccess() {
-        when(httpSinkConfiguration.isSsl()).thenReturn(true);
+        when(httpSinkConfiguration.isInsecureSkipVerify()).thenReturn(true);
         when(httpSinkConfiguration.getSslCertificateFile()).thenReturn(TEST_SSL_CERTIFICATE_FILE);
         when(httpSinkConfiguration.getSslKeyFile()).thenReturn(TEST_SSL_KEY_FILE);
 

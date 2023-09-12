@@ -40,10 +40,8 @@ public class HttpClientSSLConnectionManager {
      */
     public HttpClientConnectionManager createHttpClientConnectionManager(final HttpSinkConfiguration sinkConfiguration,
                                                                          final CertificateProviderFactory providerFactory){
-        final CertificateProvider certificateProvider = providerFactory.getCertificateProvider();
-        final org.opensearch.dataprepper.plugins.certificate.model.Certificate certificate = certificateProvider.getCertificate();
         final SSLContext sslContext = sinkConfiguration.getSslCertificateFile() != null ?
-                getCAStrategy(new ByteArrayInputStream(certificate.getCertificate().getBytes(StandardCharsets.UTF_8))) : getTrustAllStrategy();
+                getCAStrategy(new ByteArrayInputStream(providerFactory.getCertificateProvider().getCertificate().getCertificate().getBytes(StandardCharsets.UTF_8))) : getTrustAllStrategy();
         SSLConnectionSocketFactory sslSocketFactory = SSLConnectionSocketFactoryBuilder.create()
                 .setSslContext(sslContext)
                 .build();

@@ -49,7 +49,7 @@ public class HttpSinkConfigurationTest {
             "            token_url: https://localhost/oauth2/default/v1/token\n" +
             "            grant_type: client_credentials\n" +
             "            scope: httpSink\n"+
-            "        ssl: false\n" +
+            "        insecure_skip_verify: true\n" +
             "        dlq_file: \"/your/local/dlq-file\"\n" +
             "        dlq:\n" +
             "          s3:\n" +
@@ -117,7 +117,7 @@ public class HttpSinkConfigurationTest {
 
     @Test
     void default_ssl_test() {
-        assertThat(new HttpSinkConfiguration().isSsl(), equalTo(false));
+        assertThat(new HttpSinkConfiguration().isInsecureSkipVerify(), equalTo(false));
     }
 
     @Test
@@ -226,7 +226,7 @@ public class HttpSinkConfigurationTest {
                         "          http_basic:\n" +
                         "            username: \"username\"\n" +
                         "            password: \"vip\"\n" +
-                        "        ssl: true\n" +
+                        "        insecure_skip_verify: true\n" +
                         "        use_acm_cert_for_ssl: false\n"+
                         "        acm_certificate_arn: acm_cert\n" +
                         "        ssl_certificate_file: \"/full/path/to/certfile.crt\"\n" +

@@ -24,7 +24,7 @@ public class HttpSinkConfiguration {
 
     private static final int DEFAULT_WORKERS = 1;
 
-    static final boolean DEFAULT_SSL = false;
+    static final boolean DEFAULT_INSECURE = false;
 
     private static final String S3_PREFIX = "s3://";
 
@@ -44,6 +44,8 @@ public class HttpSinkConfiguration {
     public static final Duration DEFAULT_HTTP_RETRY_INTERVAL = Duration.ofSeconds(30);
 
     private static final String HTTPS = "https";
+
+    private static final String HTTP = "http";
 
     private static final String AWS_HOST_AMAZONAWS_COM = "amazonaws.com";
 
@@ -120,8 +122,14 @@ public class HttpSinkConfiguration {
     @JsonProperty("acm_cert_issue_time_out_millis")
     private long acmCertIssueTimeOutMillis = DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
 
-    @JsonProperty("ssl")
-    private boolean ssl = DEFAULT_SSL;
+    @JsonProperty("insecure")
+    private boolean insecure = DEFAULT_INSECURE;
+
+    @JsonProperty("insecure_skip_verify")
+    private boolean insecureSkipVerify = DEFAULT_INSECURE;
+
+    @JsonProperty("request_timout")
+    private Duration requestTimout;
 
     @JsonProperty("http_retry_interval")
     private Duration httpRetryInterval = DEFAULT_HTTP_RETRY_INTERVAL;
@@ -133,8 +141,8 @@ public class HttpSinkConfiguration {
         return url;
     }
 
-    public boolean isSsl() {
-        return ssl;
+    public boolean isInsecureSkipVerify() {
+        return insecureSkipVerify;
     }
 
     public Duration getHttpRetryInterval() {
@@ -166,7 +174,7 @@ public class HttpSinkConfiguration {
         if (useAcmCertForSSL) {
             validateSSLArgument(String.format(SSL_IS_ENABLED, useAcmCertForSSL), acmCertificateArn, acmCertificateArn);
             validateSSLArgument(String.format(SSL_IS_ENABLED, useAcmCertForSSL), awsAuthenticationOptions.getAwsRegion().toString(), AWS_REGION);
-        } else if(ssl) {
+        } else if(!insecureSkipVerify) {
             validateSSLCertificateFiles();
             certAndKeyFileInS3 = isSSLCertificateLocatedInS3();
             if (certAndKeyFileInS3) {
@@ -283,4 +291,16 @@ public class HttpSinkConfiguration {
         return dlq != null ? dlq.getPluginSettings() : Map.of();
     }
 
+    public boolean isInsecure() {
+        return insecure;
+    }
+
+    public Duration getRequestTimout() {
+        return requestTimout;
+    }
+
+    public boolean isHttpUrl() {
+        URL parsedUrl = HttpSinkUtil.getURLByUrlString(url);
+        return parsedUrl.getProtocol().equals(HTTP);
+    }
 }

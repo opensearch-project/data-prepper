@@ -60,7 +60,7 @@ public class HttpSinkServiceIT {
             "        auth_type: {1}\n" +
             "        codec:\n" +
             "          json:\n" +
-            "        ssl: false\n" +
+            "        insecure_skip_verify: true\n" +
             "        threshold:\n" +
             "          event_count: 1";
 

@@ -72,7 +72,7 @@ public class HttpSinkServiceTest {
             "            token_url: https://localhost/oauth2/default/v1/token\n" +
             "            grant_type: client_credentials\n" +
             "            scope: httpSink\n"+
-            "        ssl: false\n" +
+            "        insecure_skip_verify: true\n" +
             "        dlq_file: \"/your/local/dlq-file\"\n" +
             "        dlq:\n" +
             "        ssl_certificate_file: \"/full/path/to/certfile.crt\"\n" +
