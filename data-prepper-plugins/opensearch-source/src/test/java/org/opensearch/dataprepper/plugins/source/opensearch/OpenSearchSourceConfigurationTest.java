@@ -35,10 +35,9 @@ public class OpenSearchSourceConfigurationTest {
                 "    - index_name_regex: \"regex\"\n" +
                 "    - index_name_regex: \"regex-two\"\n" +
                 "scheduling:\n" +
-                "  job_count: 3\n" +
+                "  count: 3\n" +
                 "search_options:\n" +
-                "  batch_size: 1000\n" +
-                "  query: \"test\"\n";
+                "  batch_size: 1000\n";
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
         assertThat(sourceConfiguration.getSearchConfiguration(), notNullValue());
@@ -67,10 +66,9 @@ public class OpenSearchSourceConfigurationTest {
                         "    - index_name_regex: \"regex\"\n" +
                         "    - index_name_regex: \"regex-two\"\n" +
                         "scheduling:\n" +
-                        "  job_count: 3\n" +
+                        "  count: 3\n" +
                         "search_options:\n" +
-                        "  batch_size: 1000\n" +
-                        "  query: \"test\"\n";
+                        "  batch_size: 1000\n";
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
         assertThat(sourceConfiguration.getSearchConfiguration(), notNullValue());
@@ -100,10 +98,9 @@ public class OpenSearchSourceConfigurationTest {
                 "  region: \"us-east-1\"\n" +
                 "  sts_role_arn: \"arn:aws:iam::123456789012:role/aos-role\"\n" +
                 "scheduling:\n" +
-                "  job_count: 3\n" +
+                "  count: 3\n" +
                 "search_options:\n" +
-                "  batch_size: 1000\n" +
-                "  query: \"test\"\n";
+                "  batch_size: 1000\n";
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
@@ -131,10 +128,9 @@ public class OpenSearchSourceConfigurationTest {
             "  sts_role_arn: \"arn:aws:iam::123456789012:role/aos-role\"\n" +
             "  sts_external_id: \"some-random-id\"\n" +
             "scheduling:\n" +
-            "  job_count: 3\n" +
+            "  count: 3\n" +
             "search_options:\n" +
-            "  batch_size: 1000\n" +
-            "  query: \"test\"\n";
+            "  batch_size: 1000\n";
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
@@ -166,10 +162,9 @@ public class OpenSearchSourceConfigurationTest {
                 "  region: \"us-east-1\"\n" +
                 "  sts_role_arn: \"arn:aws:iam::123456789012:role/aos-role\"\n" +
                 "scheduling:\n" +
-                "  job_count: 3\n" +
+                "  count: 3\n" +
                 "search_options:\n" +
-                "  batch_size: 1000\n" +
-                "  query: \"test\"\n";
+                "  batch_size: 1000\n";
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 
@@ -188,10 +183,9 @@ public class OpenSearchSourceConfigurationTest {
                         "    - index_name_regex: \"regex\"\n" +
                         "    - index_name_regex: \"regex-two\"\n" +
                         "scheduling:\n" +
-                        "  job_count: 3\n" +
+                        "  count: 3\n" +
                         "search_options:\n" +
-                        "  batch_size: 1000\n" +
-                        "  query: \"test\"\n";
+                        "  batch_size: 1000\n";
 
         final OpenSearchSourceConfiguration sourceConfiguration = objectMapper.readValue(sourceConfigurationYaml, OpenSearchSourceConfiguration.class);
 

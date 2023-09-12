@@ -167,8 +167,8 @@ public class ScrollWorkerTest {
         when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
 
         final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
-        when(schedulingParameterConfiguration.getJobCount()).thenReturn(1);
-        when(schedulingParameterConfiguration.getRate()).thenReturn(Duration.ZERO);
+        when(schedulingParameterConfiguration.getCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
@@ -262,8 +262,8 @@ public class ScrollWorkerTest {
         when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
 
         final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
-        when(schedulingParameterConfiguration.getJobCount()).thenReturn(1);
-        when(schedulingParameterConfiguration.getRate()).thenReturn(Duration.ZERO);
+        when(schedulingParameterConfiguration.getCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,

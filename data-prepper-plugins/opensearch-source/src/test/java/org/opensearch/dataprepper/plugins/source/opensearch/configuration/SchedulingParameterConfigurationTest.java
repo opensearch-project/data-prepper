@@ -23,21 +23,21 @@ public class SchedulingParameterConfigurationTest {
     @Test
     void default_scheduling_configuration() {
         final SchedulingParameterConfiguration schedulingParameterConfiguration = new SchedulingParameterConfiguration();
-        assertThat(schedulingParameterConfiguration.getJobCount(), equalTo(1));
+        assertThat(schedulingParameterConfiguration.getCount(), equalTo(1));
         assertThat(schedulingParameterConfiguration.isStartTimeValid(), equalTo(true));
         assertThat(schedulingParameterConfiguration.getStartTime().isBefore(Instant.now()), equalTo(true));
-        assertThat(schedulingParameterConfiguration.getRate(), equalTo(Duration.ofHours(8)));
+        assertThat(schedulingParameterConfiguration.getInterval(), equalTo(Duration.ofHours(8)));
     }
 
     @Test
     void non_default_scheduling_configuration() throws JsonProcessingException {
         final String schedulingConfigurationYaml =
-                "  job_count: 3\n" +
+                "  count: 3\n" +
                 "  start_time: \"2007-12-03T10:15:30.00Z\"\n";
 
         final SchedulingParameterConfiguration schedulingParameterConfiguration = objectMapper.readValue(schedulingConfigurationYaml, SchedulingParameterConfiguration.class);
 
-        assertThat(schedulingParameterConfiguration.getJobCount(), equalTo(3));
+        assertThat(schedulingParameterConfiguration.getCount(), equalTo(3));
         assertThat(schedulingParameterConfiguration.isStartTimeValid(), equalTo(true));
         assertThat(schedulingParameterConfiguration.getStartTime(), equalTo(Instant.parse("2007-12-03T10:15:30.00Z")));
     }
@@ -45,12 +45,12 @@ public class SchedulingParameterConfigurationTest {
     @Test
     void invalid_start_time_configuration_test() throws JsonProcessingException {
         final String schedulingConfigurationYaml =
-                "  job_count: 3\n" +
+                "  count: 3\n" +
                         "  start_time: \"2007-12-03T10:15:30\"\n";
 
         final SchedulingParameterConfiguration schedulingParameterConfiguration = objectMapper.readValue(schedulingConfigurationYaml, SchedulingParameterConfiguration.class);
 
-        assertThat(schedulingParameterConfiguration.getJobCount(), equalTo(3));
+        assertThat(schedulingParameterConfiguration.getCount(), equalTo(3));
         assertThat(schedulingParameterConfiguration.isStartTimeValid(), equalTo(false));
     }
 }
