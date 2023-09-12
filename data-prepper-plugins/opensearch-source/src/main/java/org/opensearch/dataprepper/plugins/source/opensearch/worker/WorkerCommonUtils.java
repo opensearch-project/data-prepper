@@ -22,6 +22,7 @@ import java.util.concurrent.TimeoutException;
 
 import static com.google.common.math.LongMath.pow;
 import static com.google.common.primitives.Longs.min;
+import static java.lang.Math.max;
 
 public class WorkerCommonUtils {
     private static final Random RANDOM = new Random();
@@ -29,7 +30,7 @@ public class WorkerCommonUtils {
     static final Duration BACKOFF_ON_EXCEPTION = Duration.ofSeconds(60);
 
     static final int ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS = Integer.MAX_VALUE;
-    static final Duration STARTING_BACKOFF = Duration.ofMillis(2500);
+    static final Duration STARTING_BACKOFF = Duration.ofMillis(500);
     static final Duration MAX_BACKOFF = Duration.ofSeconds(60);
     static final int BACKOFF_RATE = 2;
     static final Duration MAX_JITTER = Duration.ofSeconds(2);
@@ -73,8 +74,8 @@ public class WorkerCommonUtils {
         }
     }
 
-    static long calculateLinearBackoffAndJitter(final int retryCount) {
+    static long calculateExponentialBackoffAndJitter(final int retryCount) {
         final long jitterMillis = MIN_JITTER.toMillis() + RANDOM.nextInt((int) (MAX_JITTER.toMillis() - MIN_JITTER.toMillis() + 1));
-        return min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, retryCount - 1) + jitterMillis, MAX_BACKOFF.toMillis());
+        return max(1, min(STARTING_BACKOFF.toMillis() * pow(BACKOFF_RATE, retryCount - 1) + jitterMillis, MAX_BACKOFF.toMillis()));
     }
 }

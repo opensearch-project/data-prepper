@@ -22,7 +22,7 @@ public class WorkerCommonUtilsTest {
     void calculateLinearBackoffAndJitter_returns_expected_backoff_range_for_retryCount(
             final int retryCount, final long minExpectedBackoff, final long maxExpectedBackoff) {
 
-        final long backOffForRetryCount = WorkerCommonUtils.calculateLinearBackoffAndJitter(retryCount);
+        final long backOffForRetryCount = WorkerCommonUtils.calculateExponentialBackoffAndJitter(retryCount);
 
         assertThat(backOffForRetryCount, Matchers.greaterThanOrEqualTo(minExpectedBackoff));
         assertThat(backOffForRetryCount, Matchers.lessThanOrEqualTo(maxExpectedBackoff));
@@ -30,12 +30,12 @@ public class WorkerCommonUtilsTest {
 
     private static Stream<Arguments> retryCountToExpectedBackoffRange() {
         return Stream.of(
-                Arguments.of(1, 500, 4_500),
-                Arguments.of(2, 2_500, 7_500),
-                Arguments.of(3, 8_000, 12_000),
-                Arguments.of(4, 18_000, 22_000),
-                Arguments.of(5, 38_000, 42_000),
-                Arguments.of(6, MAX_BACKOFF.toMillis(), MAX_BACKOFF.toMillis())
+                Arguments.of(1, 1, 2_500),
+                Arguments.of(2, 1, 3_000),
+                Arguments.of(3, 1, 4_000),
+                Arguments.of(4, 2_000, 6_000),
+                Arguments.of(7, 30_000, 34_000),
+                Arguments.of(8, MAX_BACKOFF.toMillis(), MAX_BACKOFF.toMillis())
         );
     }
 

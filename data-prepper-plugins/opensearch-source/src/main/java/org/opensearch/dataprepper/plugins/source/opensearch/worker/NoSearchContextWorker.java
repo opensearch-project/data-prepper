@@ -33,7 +33,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.BACKOFF_ON_EXCEPTION;
-import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateLinearBackoffAndJitter;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateExponentialBackoffAndJitter;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
@@ -79,7 +79,7 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
 
                 if (indexPartition.isEmpty()) {
                     try {
-                        Thread.sleep(calculateLinearBackoffAndJitter(++noAvailableIndicesCount));
+                        Thread.sleep(calculateExponentialBackoffAndJitter(++noAvailableIndicesCount));
                         continue;
                     } catch (final InterruptedException e) {
                         LOG.info("The search_after worker was interrupted while sleeping after acquiring no indices to process, stopping processing");
