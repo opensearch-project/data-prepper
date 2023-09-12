@@ -36,6 +36,7 @@ import org.opensearch.dataprepper.plugins.kafkaconnect.meter.KafkaConnectMetrics
 
 import java.net.URI;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -64,6 +65,8 @@ public class KafkaConnectTest {
     private static final WorkerProperties DEFAULT_WORDER_PROPERTY = new WorkerProperties();
     private static final long TEST_CONNECTOR_TIMEOUT_MS = 30000L; // 30 seconds
     private static final long TEST_CONNECT_TIMEOUT_MS = 60000L; // 60 seconds
+    private static final Duration TEST_CONNECTOR_TIMEOUT = Duration.ofMillis(TEST_CONNECTOR_TIMEOUT_MS);
+    private static final Duration TEST_CONNECT_TIMEOUT = Duration.ofMillis(TEST_CONNECT_TIMEOUT_MS);
     @Mock
     private KafkaConnectMetrics kafkaConnectMetrics;
 
@@ -114,11 +117,11 @@ public class KafkaConnectTest {
 
     @Test
     void testInitializeKafkaConnectWithSingletonForSamePipeline() {
-        final KafkaConnect kafkaConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT_MS, TEST_CONNECTOR_TIMEOUT_MS);
-        final KafkaConnect sameConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT_MS, TEST_CONNECTOR_TIMEOUT_MS);
+        final KafkaConnect kafkaConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT, TEST_CONNECTOR_TIMEOUT);
+        final KafkaConnect sameConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT, TEST_CONNECTOR_TIMEOUT);
         assertThat(sameConnect, is(kafkaConnect));
         final String anotherPipeline = "anotherPipeline";
-        final KafkaConnect anotherKafkaConnect = KafkaConnect.getPipelineInstance(anotherPipeline, pluginMetrics, TEST_CONNECT_TIMEOUT_MS, TEST_CONNECTOR_TIMEOUT_MS);
+        final KafkaConnect anotherKafkaConnect = KafkaConnect.getPipelineInstance(anotherPipeline, pluginMetrics, TEST_CONNECT_TIMEOUT, TEST_CONNECTOR_TIMEOUT);
         assertThat(anotherKafkaConnect, not(kafkaConnect));
     }
 
@@ -150,7 +153,7 @@ public class KafkaConnectTest {
                  doNothing().when(mock).configure(any());
              })
         ) {
-            final KafkaConnect kafkaConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT_MS, TEST_CONNECTOR_TIMEOUT_MS);
+            final KafkaConnect kafkaConnect = KafkaConnect.getPipelineInstance(TEST_PIPELINE_NAME, pluginMetrics, TEST_CONNECT_TIMEOUT, TEST_CONNECTOR_TIMEOUT);
             kafkaConnect.initialize(workerProps);
         }
     }

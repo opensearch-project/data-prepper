@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -71,12 +72,12 @@ public class KafkaConnect {
     private final long connectorTimeoutMs; // 30 seconds
 
     private KafkaConnect(final PluginMetrics pluginMetrics,
-                         final long connectTimeoutMs,
-                         final long connectorTimeoutMs) {
+                         final Duration connectTimeout,
+                         final Duration connectorTimeout) {
         this.connectorMap = new HashMap<>();
         this.kafkaConnectMetrics = new KafkaConnectMetrics(pluginMetrics);
-        this.connectTimeoutMs = connectTimeoutMs;
-        this.connectorTimeoutMs = connectorTimeoutMs;
+        this.connectTimeoutMs = connectTimeout.toMillis();
+        this.connectorTimeoutMs = connectorTimeout.toMillis();
     }
 
     /**
@@ -97,12 +98,12 @@ public class KafkaConnect {
 
     public static KafkaConnect getPipelineInstance(final String pipelineName,
                                                    final PluginMetrics pluginMetrics,
-                                                   final long connectTimeoutMs,
-                                                   final long connectorTimeoutMs) {
+                                                   final Duration connectTimeout,
+                                                   final Duration connectorTimeout) {
         KafkaConnect instance = instanceMap.get(pipelineName);
         if (instance == null) {
             synchronized (KafkaConnect.class) {
-                instance = new KafkaConnect(pluginMetrics, connectTimeoutMs, connectorTimeoutMs);
+                instance = new KafkaConnect(pluginMetrics, connectTimeout, connectorTimeout);
                 instanceMap.put(pipelineName, instance);
             }
         }

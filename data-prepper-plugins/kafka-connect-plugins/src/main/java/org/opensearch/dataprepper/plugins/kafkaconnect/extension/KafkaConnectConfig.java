@@ -11,6 +11,7 @@ import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.KafkaClusterAuthConfig;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -22,11 +23,11 @@ public class KafkaConnectConfig implements KafkaClusterAuthConfig {
     @JsonProperty("worker_properties")
     private WorkerProperties workerProperties = new WorkerProperties();
 
-    @JsonProperty("connect_timeout_ms")
-    private Long connectTimeoutMs = CONNECT_TIMEOUT_MS;
+    @JsonProperty("connect_start_timeout")
+    private Duration connectStartTimeout = Duration.ofMillis(CONNECT_TIMEOUT_MS);
 
-    @JsonProperty("connector_timeout_ms")
-    private Long connectorTimeoutMs = CONNECTOR_TIMEOUT_MS;
+    @JsonProperty("connector_start_timeout")
+    private Duration connectorStartTimeout = Duration.ofMillis(CONNECTOR_TIMEOUT_MS);
 
     @JsonProperty("bootstrap_servers")
     private List<String> bootstrapServers;
@@ -35,12 +36,12 @@ public class KafkaConnectConfig implements KafkaClusterAuthConfig {
     private EncryptionConfig encryptionConfig;
     private AwsConfig awsConfig;
 
-    public Long getConnectTimeoutMs() {
-        return connectTimeoutMs;
+    public Duration getConnectStartTimeout() {
+        return connectStartTimeout;
     }
 
-    public Long getConnectorTimeoutMs() {
-        return connectorTimeoutMs;
+    public Duration getConnectorStartTimeout() {
+        return connectorStartTimeout;
     }
 
     public void setBootstrapServers(final List<String> bootstrapServers) {

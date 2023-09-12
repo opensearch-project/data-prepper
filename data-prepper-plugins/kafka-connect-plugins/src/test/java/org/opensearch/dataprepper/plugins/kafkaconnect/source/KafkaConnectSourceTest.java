@@ -100,7 +100,7 @@ public class KafkaConnectSourceTest {
             doNothing().when(kafkaConnect).start();
             doNothing().when(kafkaConnect).stop();
             // Set up the mock behavior for the static method getInstance()
-            mockedStatic.when(() -> KafkaConnect.getPipelineInstance(any(), any(), anyLong(), anyLong())).thenReturn(kafkaConnect);
+            mockedStatic.when(() -> KafkaConnect.getPipelineInstance(any(), any(), any(), any())).thenReturn(kafkaConnect);
             kafkaConnectSource = createSourceUnderTest();
             kafkaConnectSource.start(buffer);
             verify(kafkaConnect).addConnectors(any());
@@ -125,7 +125,7 @@ public class KafkaConnectSourceTest {
             mockedSecurityConfigurer.when(() -> KafkaSourceSecurityConfigurer.setAuthProperties(any(), any(), any())).thenAnswer((Answer<Void>) invocation -> null);
             kafkaConnect = mock(KafkaConnect.class);
             // Set up the mock behavior for the static method getInstance()
-            mockedStatic.when(() -> KafkaConnect.getPipelineInstance(any(), any(), anyLong(), anyLong())).thenReturn(kafkaConnect);
+            mockedStatic.when(() -> KafkaConnect.getPipelineInstance(any(), any(), any(), any())).thenReturn(kafkaConnect);
             kafkaConnectSource = createSourceUnderTest();
             assertThrows(IllegalArgumentException.class, () -> kafkaConnectSource.start(buffer));
         }

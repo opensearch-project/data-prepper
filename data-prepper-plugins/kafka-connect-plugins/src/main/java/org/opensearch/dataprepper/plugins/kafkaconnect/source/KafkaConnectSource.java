@@ -53,8 +53,8 @@ public abstract class KafkaConnectSource implements Source<Record<Object>> {
         this.kafkaConnect = KafkaConnect.getPipelineInstance(
                 pipelineName,
                 pluginMetrics,
-                kafkaConnectConfig.getConnectTimeoutMs(),
-                kafkaConnectConfig.getConnectorTimeoutMs());
+                kafkaConnectConfig.getConnectStartTimeout(),
+                kafkaConnectConfig.getConnectorStartTimeout());
     }
 
     @Override
