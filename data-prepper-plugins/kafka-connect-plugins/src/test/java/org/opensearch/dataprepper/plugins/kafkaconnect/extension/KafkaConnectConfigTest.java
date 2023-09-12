@@ -65,8 +65,8 @@ public class KafkaConnectConfigTest {
         assertThat(testConfig.getAwsConfig(), is(awsConfig));
         assertThat(testConfig.getEncryptionConfig(), is(encryptionConfig));
         assertThat(testConfig.getBootStrapServers(), is(String.join(",", bootstrapServer)));
-        assertThat(testConfig.getConnectorTimeoutMs(), is(3000L));
-        assertThat(testConfig.getConnectTimeoutMs(), is(3000L));
+        assertThat(testConfig.getConnectorStartTimeout().getSeconds(), is(3L));
+        assertThat(testConfig.getConnectStartTimeout().getSeconds(), is(3L));
     }
 
     @Test
@@ -105,8 +105,8 @@ public class KafkaConnectConfigTest {
     public void test_config_default_worker_properties() throws IOException {
         KafkaConnectConfig testConfig = makeConfig("src/test/resources/sample-data-prepper-config-with-default-kafka-connect-config-extension.yaml");
         assertThat(testConfig, notNullValue());
-        assertThat(testConfig.getConnectTimeoutMs(), is(60000L));
-        assertThat(testConfig.getConnectorTimeoutMs(), is(30000L));
+        assertThat(testConfig.getConnectStartTimeout().getSeconds(), is(60L));
+        assertThat(testConfig.getConnectorStartTimeout().getSeconds(), is(30L));
         assertThat(testConfig.getBootStrapServers(), nullValue());
         WorkerProperties testWorkerProperties = testConfig.getWorkerProperties();
         assertThat(testWorkerProperties, notNullValue());

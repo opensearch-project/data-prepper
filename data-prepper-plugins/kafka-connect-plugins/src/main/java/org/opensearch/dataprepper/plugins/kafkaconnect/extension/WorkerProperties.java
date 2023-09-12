@@ -8,6 +8,7 @@ package org.opensearch.dataprepper.plugins.kafkaconnect.extension;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.kafka.connect.runtime.WorkerConfig;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -48,16 +49,16 @@ public class WorkerProperties {
     private String clientId = DEFAULT_CLIENT_ID;
     @JsonProperty("offset_storage_partitions")
     private Integer offsetStoragePartitions = OFFSET_STORAGE_PARTITIONS;
-    @JsonProperty("offset_flush_interval_ms")
-    private Long offsetFlushIntervalMs = OFFSET_FLUSH_INTERVAL_MS;
-    @JsonProperty("offset_flush_timeout_ms")
-    private Long offsetFlushTimeoutMs = OFFSET_FLUSH_TIMEOUT_MS;
+    @JsonProperty("offset_flush_interval")
+    private Duration offsetFlushInterval = Duration.ofMillis(OFFSET_FLUSH_INTERVAL_MS);
+    @JsonProperty("offset_flush_timeout")
+    private Duration offsetFlushTimeout = Duration.ofMillis(OFFSET_FLUSH_TIMEOUT_MS);
     @JsonProperty("status_storage_partitions")
     private Integer statusStoragePartitions = STATUS_STORAGE_PARTITIONS;
-    @JsonProperty("heartbeat_interval_ms")
-    private Long heartBeatIntervalMs = HEARTBEAT_INTERVAL_MS;
-    @JsonProperty("session_timeout_ms")
-    private Long sessionTimeoutMs = SESSION_TIMEOUT_MS;
+    @JsonProperty("heartbeat_interval")
+    private Duration heartBeatInterval = Duration.ofMillis(HEARTBEAT_INTERVAL_MS);
+    @JsonProperty("session_timeout")
+    private Duration sessionTimeout = Duration.ofMillis(SESSION_TIMEOUT_MS);
     private String keyConverterSchemaRegistryUrl;
     private String valueConverterSchemaRegistryUrl;
     private String bootstrapServers;
@@ -91,24 +92,24 @@ public class WorkerProperties {
         return offsetStoragePartitions;
     }
 
-    public Long getOffsetFlushIntervalMs() {
-        return offsetFlushIntervalMs;
+    public Long getOffsetFlushInterval() {
+        return offsetFlushInterval.toMillis();
     }
 
-    public Long getOffsetFlushTimeoutMs() {
-        return offsetFlushTimeoutMs;
+    public Long getOffsetFlushTimeout() {
+        return offsetFlushTimeout.toMillis();
     }
 
     public Integer getStatusStoragePartitions() {
         return statusStoragePartitions;
     }
 
-    public Long getHeartBeatIntervalMs() {
-        return heartBeatIntervalMs;
+    public Long getHeartBeatInterval() {
+        return heartBeatInterval.toMillis();
     }
 
-    public Long getSessionTimeoutMs() {
-        return sessionTimeoutMs;
+    public Long getSessionTimeout() {
+        return sessionTimeout.toMillis();
     }
 
     public String getBootstrapServers() {
@@ -193,11 +194,11 @@ public class WorkerProperties {
             workerProps.put("value.converter.schema.registry.url", this.getValueConverterSchemaRegistryUrl());
         }
         workerProps.put("offset.storage.partitions", this.getOffsetStoragePartitions().toString());
-        workerProps.put("offset.flush.interval.ms", this.getOffsetFlushIntervalMs().toString());
-        workerProps.put("offset.flush.timeout.ms", this.getOffsetFlushTimeoutMs().toString());
+        workerProps.put("offset.flush.interval.ms", this.getOffsetFlushInterval().toString());
+        workerProps.put("offset.flush.timeout.ms", this.getOffsetFlushTimeout().toString());
         workerProps.put("status.storage.partitions", this.getStatusStoragePartitions().toString());
-        workerProps.put("heartbeat.interval.ms", this.getHeartBeatIntervalMs().toString());
-        workerProps.put("session.timeout.ms", this.getSessionTimeoutMs().toString());
+        workerProps.put("heartbeat.interval.ms", this.getHeartBeatInterval().toString());
+        workerProps.put("session.timeout.ms", this.getSessionTimeout().toString());
         return workerProps;
     }
 }
