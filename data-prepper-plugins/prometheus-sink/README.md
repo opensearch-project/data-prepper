@@ -83,6 +83,7 @@ pipeline:
 
 - `max_retries`(optional): A number indicating the maximum number of times Prometheus Sink should try to push the data to the Http arbitrary endpoint before considering it as failure. Defaults to `Integer.MAX_VALUE`.
 
+- `request_timout`(optional): A duration that represents the request timeout. Example: 1000ms, 5s etc
 ### Prometheus Sink full pipeline
 ```
   sink:
@@ -104,7 +105,8 @@ pipeline:
             token_url: token url
             grant_type: client_credentials
             scope:
-        ssl: false
+        insecure: false
+        insecure_skip_verify: false
         ssl_certificate_file: "/full/path/to/certfile.crt"
         buffer_type: "in_memory"
         use_acm_cert_for_ssl: false
@@ -121,11 +123,19 @@ pipeline:
           sts_role_arn: "arn:aws:iam::1234567890:role/data-prepper-s3source-execution-role"
           sigv4: false
         max_retries: 5
+        request_timout: 20s
 ```
 
 ### SSL
 
-* ssl(Optional) => A `boolean` that enables mTLS/SSL. Default is ```false```.
+* insecure_skip_verify(Optional) => A `boolean` that enables mTLS/SSL. Default is ```false```.
+  * If set to false then the user has two options:
+    * Use default trust. This can allow for reaching many endpoints. The user does not need to provide any .crt/.key files.
+    * Allow the user to specify a .crt file for a certificate (no .key is required because this is the client). By the user providing the .crt file, the user is stating he trusts that certificate. We will still verify the signature match.
+  * If set to true, then skip any verification of the certificate. The user does not need to provide a .crt or .key file.
+* insecure (Optional) => A `boolean` that allows http/https endpoints. Default is ```false```.
+  * If set to false, then only https:// URLs are permitted. Throw an InvalidPluginConfigurationException if the URL is configured with an http:// scheme in the URL.
+  * If set to true, then the user can provide both http:// https:// as the scheme.
 * ssl_certificate_file(Optional) => A `String` that represents the SSL certificate chain file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Required if `ssl` is set to `true` and `use_acm_certificate_for_ssl` is set to `false`.
 * ssl_key_file(Optional) => A `String` that represents the SSL key file path or AWS S3 path. S3 path example `s3://<bucketName>/<path>`. Only decrypted key file is supported. Required if `ssl` is set to `true` and `use_acm_certificate_for_ssl` is set to `false`.
 * use_acm_certificate_for_ssl(Optional) : A `boolean` that enables mTLS/SSL using certificate and private key from AWS Certificate Manager (ACM). Default is `false`.

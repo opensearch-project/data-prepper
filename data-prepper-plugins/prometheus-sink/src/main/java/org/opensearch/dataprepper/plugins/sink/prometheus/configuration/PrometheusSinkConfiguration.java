@@ -21,7 +21,7 @@ public class PrometheusSinkConfiguration {
 
     private static final int DEFAULT_UPLOAD_RETRIES = 5;
 
-    static final boolean DEFAULT_SSL = false;
+    static final boolean DEFAULT_INSECURE = false;
 
     private static final String S3_PREFIX = "s3://";
 
@@ -40,6 +40,8 @@ public class PrometheusSinkConfiguration {
     public static final Duration DEFAULT_HTTP_RETRY_INTERVAL = Duration.ofSeconds(30);
 
     private static final String HTTPS = "https";
+
+    private static final String HTTP = "http";
 
     private static final String AWS_HOST_AMAZONAWS_COM = "amazonaws.com";
 
@@ -104,8 +106,11 @@ public class PrometheusSinkConfiguration {
     @JsonProperty("acm_cert_issue_time_out_millis")
     private long acmCertIssueTimeOutMillis = DEFAULT_ACM_CERT_ISSUE_TIME_OUT_MILLIS;
 
-    @JsonProperty("ssl")
-    private boolean ssl = DEFAULT_SSL;
+    @JsonProperty("insecure")
+    private boolean insecure = DEFAULT_INSECURE;
+
+    @JsonProperty("insecure_skip_verify")
+    private boolean insecureSkipVerify = DEFAULT_INSECURE;
 
     @JsonProperty("http_retry_interval")
     private Duration httpRetryInterval = DEFAULT_HTTP_RETRY_INTERVAL;
@@ -119,15 +124,17 @@ public class PrometheusSinkConfiguration {
     @JsonProperty("remote_write_version")
     private String remoteWriteVersion = DEFAULT_REMOTE_WRITE_VERSION;
 
+    @JsonProperty("request_timout")
+    private Duration requestTimout;
+
     private boolean sslCertAndKeyFileInS3;
 
     public String getUrl() {
         return url;
     }
 
-    public boolean isSsl() {
-        return ssl;
-    }
+    public boolean isInsecureSkipVerify() {
+        return insecureSkipVerify; }
 
     public Duration getHttpRetryInterval() {
         return httpRetryInterval;
@@ -154,7 +161,7 @@ public class PrometheusSinkConfiguration {
         if (useAcmCertForSSL) {
             validateSSLArgument(String.format(SSL_IS_ENABLED, useAcmCertForSSL), acmCertificateArn, acmCertificateArn);
             validateSSLArgument(String.format(SSL_IS_ENABLED, useAcmCertForSSL), awsAuthenticationOptions.getAwsRegion().toString(), AWS_REGION);
-        } else if(ssl) {
+        } else if(!insecureSkipVerify) {
             validateSSLCertificateFiles();
             certAndKeyFileInS3 = isSSLCertificateLocatedInS3();
             if (certAndKeyFileInS3) {
@@ -261,5 +268,18 @@ public class PrometheusSinkConfiguration {
 
     public String getRemoteWriteVersion() {
         return remoteWriteVersion;
+    }
+
+    public boolean isInsecure() {
+        return insecure;
+    }
+
+    public Duration getRequestTimout() {
+        return requestTimout;
+    }
+
+    public boolean isHttpUrl() {
+        URL parsedUrl = PrometheusSinkUtil.getURLByUrlString(url);
+        return parsedUrl.getProtocol().equals(HTTP);
     }
 }

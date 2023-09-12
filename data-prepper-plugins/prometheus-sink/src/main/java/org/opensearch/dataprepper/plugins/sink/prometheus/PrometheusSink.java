@@ -64,6 +64,10 @@ public class PrometheusSink extends AbstractSink<Record<Event>> {
         final HttpRequestRetryStrategy httpRequestRetryStrategy = new DefaultHttpRequestRetryStrategy(prometheusSinkConfiguration.getMaxUploadRetries(),
                 TimeValue.of(prometheusSinkConfiguration.getHttpRetryInterval()));
 
+        if((!prometheusSinkConfiguration.isInsecure()) && (prometheusSinkConfiguration.isHttpUrl())){
+            throw new InvalidPluginConfigurationException ("Cannot configure http url with insecure as false");
+        }
+
         final HttpClientBuilder httpClientBuilder = HttpClients.custom()
                 .setRetryStrategy(httpRequestRetryStrategy);
 

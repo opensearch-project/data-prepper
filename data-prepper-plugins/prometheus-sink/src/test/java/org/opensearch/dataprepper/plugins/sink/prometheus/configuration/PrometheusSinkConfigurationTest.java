@@ -43,7 +43,7 @@ public class PrometheusSinkConfigurationTest {
             "            token_url: https://localhost/oauth2/default/v1/token\n" +
             "            grant_type: client_credentials\n" +
             "            scope: httpSink\n"+
-            "        ssl: false\n" +
+            "        insecure_skip_verify: true\n" +
             "        dlq_file: \"/your/local/dlq-file\"\n" +
             "        dlq:\n" +
             "          s3:\n" +
@@ -95,7 +95,7 @@ public class PrometheusSinkConfigurationTest {
 
     @Test
     void default_ssl_test() {
-        assertThat(new PrometheusSinkConfiguration().isSsl(), equalTo(false));
+        assertThat(new PrometheusSinkConfiguration().isInsecureSkipVerify(), equalTo(false));
     }
 
 
@@ -183,7 +183,7 @@ public class PrometheusSinkConfigurationTest {
                         "          http_basic:\n" +
                         "            username: \"username\"\n" +
                         "            password: \"vip\"\n" +
-                        "        ssl: true\n" +
+                        "        insecure_skip_verify: false\n" +
                         "        use_acm_cert_for_ssl: false\n"+
                         "        acm_certificate_arn: acm_cert\n" +
                         "        ssl_certificate_file: \"/full/path/to/certfile.crt\"\n" +

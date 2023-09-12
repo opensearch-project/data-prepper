@@ -49,7 +49,7 @@ public class PrometheusSinkServiceIT {
             "        url: {0}\n" +
                     "        http_method: POST\n" +
                     "        auth_type: {1}\n" +
-                    "        ssl: false\n";
+                    "        insecure_skip_verify: true\n";
 
     private PrometheusSinkConfiguration prometheusSinkConfiguration;
 

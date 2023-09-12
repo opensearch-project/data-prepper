@@ -8,6 +8,7 @@ import com.arpnetworking.metrics.prometheus.Remote;
 import com.arpnetworking.metrics.prometheus.Types;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.protocol.HttpClientContext;
@@ -16,6 +17,7 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.entity.ByteArrayEntity;
 import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
+import org.apache.hc.core5.util.Timeout;
 import org.opensearch.dataprepper.metrics.PluginMetrics;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.event.Event;
@@ -119,13 +121,12 @@ public class PrometheusSinkService {
         this.httpClientBuilder = httpClientBuilder;
         this.httpPluginSetting = httpPluginSetting;
         this.oAuthAccessTokenManager = new OAuthAccessTokenManager();
-        if (prometheusSinkConfiguration.isSsl() || prometheusSinkConfiguration.useAcmCertForSSL()) {
+        if ((!prometheusSinkConfiguration.isInsecureSkipVerify()) || (prometheusSinkConfiguration.useAcmCertForSSL())) {
             this.certificateProviderFactory = new CertificateProviderFactory(prometheusSinkConfiguration.useAcmCertForSSL(),
                     prometheusSinkConfiguration.getAwsAuthenticationOptions().getAwsRegion(), prometheusSinkConfiguration.getAcmCertificateArn(),
                     prometheusSinkConfiguration.getAcmCertIssueTimeOutMillis(), prometheusSinkConfiguration.getAcmPrivateKeyPassword(),
                     prometheusSinkConfiguration.isSslCertAndKeyFileInS3(), prometheusSinkConfiguration.getSslCertificateFile(),
                     prometheusSinkConfiguration.getSslKeyFile());
-            prometheusSinkConfiguration.validateAndInitializeCertAndKeyFileInS3();
             this.httpClientConnectionManager = new HttpClientSSLConnectionManager()
                     .createHttpClientConnectionManager(prometheusSinkConfiguration, certificateProviderFactory);
         }
@@ -383,6 +384,10 @@ public class PrometheusSinkService {
         if(Objects.nonNull(proxyUrlString)) {
             httpClientBuilder.setProxy(PrometheusSinkUtil.getHttpHostByURL(PrometheusSinkUtil.getURLByUrlString(proxyUrlString)));
             LOG.info("sending data via proxy {}",proxyUrlString);
+        }
+
+        if(prometheusSinkConfiguration.getRequestTimout() != null) {
+            httpClientBuilder.setDefaultRequestConfig(RequestConfig.custom().setConnectionRequestTimeout(Timeout.ofMilliseconds(prometheusSinkConfiguration.getRequestTimout().toMillis())).build());
         }
 
         final HttpAuthOptions.Builder authOptions = new HttpAuthOptions.Builder()
