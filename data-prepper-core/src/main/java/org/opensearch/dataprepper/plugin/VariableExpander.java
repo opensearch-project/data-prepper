@@ -15,9 +15,10 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@Named
 public class VariableExpander {
     static final String VALUE_REFERENCE_KEY = "valueReferenceKey";
-    static final String SECRETS_REFERENCE_PATTERN_STRING = "^\\$\\[\\[%s\\.(?<%s>.*)\\]\\]$";
+    static final String SECRETS_REFERENCE_PATTERN_STRING = "^\\$\\{\\{%s\\:(?<%s>.*)\\}\\}$";
     private final Map<Pattern, PluginConfigValueTranslator> patternPluginConfigValueTranslatorMap;
     private final ObjectMapper objectMapper;
 

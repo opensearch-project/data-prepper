@@ -76,7 +76,7 @@ class VariableExpanderTest {
     @Test
     void testTranslateJsonParserWithStringValue_no_key_match() throws IOException {
         final String testSecretKey = "testSecretKey";
-        final String testSecretReference = String.format("$[[unknown.%s]]", testSecretKey);
+        final String testSecretReference = String.format("${{unknown.%s}}", testSecretKey);
         final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
         jsonParser.nextToken();
         when(pluginConfigValueTranslator.getPrefix()).thenReturn("test_prefix");
@@ -91,7 +91,7 @@ class VariableExpanderTest {
             final Class<?> clazz, final String value, final Object expectedResult) throws IOException {
         final String testSecretKey = "testSecretKey";
         final String testTranslatorKey = "test_prefix";
-        final String testSecretReference = String.format("$[[%s.%s]]", testTranslatorKey, testSecretKey);
+        final String testSecretReference = String.format("${{%s:%s}}", testTranslatorKey, testSecretKey);
         final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
         jsonParser.nextToken();
         when(pluginConfigValueTranslator.getPrefix()).thenReturn(testTranslatorKey);
