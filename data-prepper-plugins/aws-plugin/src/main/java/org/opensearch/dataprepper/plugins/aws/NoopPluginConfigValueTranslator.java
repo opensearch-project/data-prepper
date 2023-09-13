@@ -9,7 +9,7 @@ public class NoopPluginConfigValueTranslator implements PluginConfigValueTransla
     }
 
     @Override
-    public String getKey() {
+    public String getPrefix() {
         return null;
     }
 }

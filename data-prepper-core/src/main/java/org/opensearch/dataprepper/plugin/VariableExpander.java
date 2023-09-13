@@ -30,7 +30,7 @@ public class VariableExpander {
         patternPluginConfigValueTranslatorMap = pluginConfigValueTranslators.stream().collect(Collectors.toMap(
                 pluginConfigValueTranslator -> Pattern.compile(
                         String.format(SECRETS_REFERENCE_PATTERN_STRING,
-                                pluginConfigValueTranslator.getKey(), VALUE_REFERENCE_KEY)),
+                                pluginConfigValueTranslator.getPrefix(), VALUE_REFERENCE_KEY)),
                 Function.identity()));
     }
 

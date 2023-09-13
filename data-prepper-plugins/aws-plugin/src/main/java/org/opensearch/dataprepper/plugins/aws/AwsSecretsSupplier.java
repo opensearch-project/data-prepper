@@ -17,13 +17,13 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     private static final TypeReference<Map<String, String>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
 
-    private final Map<String, Map<String, String>> secretConfigNameToKeyValuePairs;
+    private final Map<String, Object> secretIdToValue;
 
     public AwsSecretsSupplier(final AwsSecretPluginConfig awsSecretPluginConfig) {
-        secretConfigNameToKeyValuePairs = toKeyValuePairs(awsSecretPluginConfig);
+        secretIdToValue = toSecretMap(awsSecretPluginConfig);
     }
 
-    private Map<String, Map<String, String>> toKeyValuePairs(final AwsSecretPluginConfig awsSecretPluginConfig) {
+    private Map<String, Object> toSecretMap(final AwsSecretPluginConfig awsSecretPluginConfig) {
         final Map<String, SecretsManagerClient> secretsManagerClientMap = toSecretsManagerClientMap(
                 awsSecretPluginConfig);
         final Map<String, AwsSecretManagerConfiguration> awsSecretManagerConfigurationMap = awsSecretPluginConfig
@@ -50,7 +50,7 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                     try {
                         return OBJECT_MAPPER.readValue(getSecretValueResponse.secretString(), MAP_TYPE_REFERENCE);
                     } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
+                        return getSecretValueResponse.secretString();
                     }
                 }));
     }
@@ -65,15 +65,35 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     }
 
     @Override
-    public String retrieveValue(String secretConfigName, String key) {
-        if (!secretConfigNameToKeyValuePairs.containsKey(secretConfigName)) {
-            throw new IllegalArgumentException(String.format("Unable to find secretConfigName: %s", secretConfigName));
+    public String retrieveValue(String secretId, String key) {
+        if (!secretIdToValue.containsKey(secretId)) {
+            throw new IllegalArgumentException(String.format("Unable to find secretId: %s", secretId));
         }
-        final Map<String, String> keyValuePairs = secretConfigNameToKeyValuePairs.get(secretConfigName);
-        if (!keyValuePairs.containsKey(key)) {
-            throw new IllegalArgumentException(String.format("Unable to find the value of key: %s under secretConfigName: %s",
-                    key, secretConfigName));
+        final Object keyValuePairs = secretIdToValue.get(secretId);
+        if (!(keyValuePairs instanceof Map)) {
+            throw new IllegalArgumentException(String.format("The value under secretId: %s is not a valid json.",
+                    secretId));
         }
-        return keyValuePairs.get(key);
+        final Map<String, String> keyValueMap = (Map<String, String>) keyValuePairs;
+        if (!keyValueMap.containsKey(key)) {
+            throw new IllegalArgumentException(String.format("Unable to find the value of key: %s under secretId: %s",
+                    key, secretId));
+        }
+        return keyValueMap.get(key);
+    }
+
+    @Override
+    public String retrieveValue(String secretId) {
+        if (!secretIdToValue.containsKey(secretId)) {
+            throw new IllegalArgumentException(String.format("Unable to find secretId: %s", secretId));
+        }
+        try {
+            final Object secretValue = secretIdToValue.get(secretId);
+            return secretValue instanceof Map ? OBJECT_MAPPER.writeValueAsString(secretIdToValue.get(secretId)) :
+                    (String) secretValue;
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException(String.format("Unable to read the value under secretId: %s as string",
+                    secretId));
+        }
     }
 }

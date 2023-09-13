@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -79,15 +81,17 @@ class AwsSecretsSupplierTest {
                 () -> objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "missing-key"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {TEST_VALUE, "{\"a\", \"b\"}"})
+    void testRetrieveValueWithoutKey(String testValue) {
+        when(getSecretValueResponse.secretString()).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig);
+        assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
+    }
+
     @Test
     void testConstructorWithGetSecretValueFailure() {
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(secretsManagerException);
         assertThrows(ResourceNotFoundException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig));
-    }
-
-    @Test
-    void testConstructorWithSecretStringParsingFailure() {
-        when(getSecretValueResponse.secretString()).thenReturn("{");
-        assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig));
     }
 }

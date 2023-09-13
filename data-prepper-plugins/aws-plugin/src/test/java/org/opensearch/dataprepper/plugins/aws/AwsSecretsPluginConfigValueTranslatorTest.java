@@ -32,20 +32,27 @@ class AwsSecretsPluginConfigValueTranslatorTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "",
-            "my_secret",
-            "invalid secret id with space.secret_key"
+            "invalid secret id with space:secret_key"
     })
     void testTranslateInputNoMatch(final String input) {
         assertThrows(IllegalArgumentException.class, () -> objectUnderTest.translate(input));
     }
 
     @Test
-    void testTranslateInputMatch() {
+    void testTranslateSecretIdWithKeyMatch() {
         final String testSecretName = "valid@secret-manager_name";
         final String testSecretKey = UUID.randomUUID().toString();
         final String testSecretValue = UUID.randomUUID().toString();
-        final String input = String.format("%s.%s", testSecretName, testSecretKey);
+        final String input = String.format("%s:%s", testSecretName, testSecretKey);
         when(secretsSupplier.retrieveValue(eq(testSecretName), eq(testSecretKey))).thenReturn(testSecretValue);
         assertThat(objectUnderTest.translate(input), equalTo(testSecretValue));
+    }
+
+    @Test
+    void testTranslateSecretIdWithoutKeyMatch() {
+        final String testSecretName = "valid@secret-manager_name";
+        final String testSecretValue = UUID.randomUUID().toString();
+        when(secretsSupplier.retrieveValue(eq(testSecretName))).thenReturn(testSecretValue);
+        assertThat(objectUnderTest.translate(testSecretName), equalTo(testSecretValue));
     }
 }

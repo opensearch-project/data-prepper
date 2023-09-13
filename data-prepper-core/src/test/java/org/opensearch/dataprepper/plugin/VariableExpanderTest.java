@@ -79,7 +79,7 @@ class VariableExpanderTest {
         final String testSecretReference = String.format("$[[unknown.%s]]", testSecretKey);
         final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
         jsonParser.nextToken();
-        when(pluginConfigValueTranslator.getKey()).thenReturn("test_prefix");
+        when(pluginConfigValueTranslator.getPrefix()).thenReturn("test_prefix");
         objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
         final Object actualResult = objectUnderTest.translate(jsonParser, String.class);
         assertThat(actualResult, equalTo(testSecretReference));
@@ -94,7 +94,7 @@ class VariableExpanderTest {
         final String testSecretReference = String.format("$[[%s.%s]]", testTranslatorKey, testSecretKey);
         final JsonParser jsonParser = JSON_FACTORY.createParser(String.format("\"%s\"", testSecretReference));
         jsonParser.nextToken();
-        when(pluginConfigValueTranslator.getKey()).thenReturn(testTranslatorKey);
+        when(pluginConfigValueTranslator.getPrefix()).thenReturn(testTranslatorKey);
         when(pluginConfigValueTranslator.translate(eq(testSecretKey))).thenReturn(value.replace("\"", ""));
         objectUnderTest = new VariableExpander(OBJECT_MAPPER, Set.of(pluginConfigValueTranslator));
         final Object actualResult = objectUnderTest.translate(jsonParser, clazz);
