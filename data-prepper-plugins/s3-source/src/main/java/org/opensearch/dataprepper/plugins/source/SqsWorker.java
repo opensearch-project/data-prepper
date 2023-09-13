@@ -67,10 +67,11 @@ public class SqsWorker implements Runnable {
     private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
     private int failedAttemptCount;
-    private boolean endToEndAcknowledgementsEnabled;
+    private final boolean endToEndAcknowledgementsEnabled;
     private final AcknowledgementSetManager acknowledgementSetManager;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private boolean isStopped;
 
     public SqsWorker(final AcknowledgementSetManager acknowledgementSetManager,
                      final SqsClient sqsClient,
@@ -99,8 +100,7 @@ public class SqsWorker implements Runnable {
 
     @Override
     public void run() {
-
-        while (!Thread.currentThread().isInterrupted()) {
+        while (!isStopped) {
             int messagesProcessed = 0;
             try {
                 messagesProcessed = processSqsMessages();
@@ -115,6 +115,7 @@ public class SqsWorker implements Runnable {
                     Thread.sleep(s3SourceConfig.getSqsOptions().getPollDelay().toMillis());
                 } catch (final InterruptedException e) {
                     LOG.error("Thread is interrupted while polling SQS.", e);
+                    isStopped = true;
                 }
             }
         }
@@ -165,6 +166,7 @@ public class SqsWorker implements Runnable {
             Thread.sleep(delayMillis);
         } catch (final InterruptedException e){
             LOG.error("Thread is interrupted while polling SQS with retry.", e);
+            isStopped = true;
         }
     }
 
