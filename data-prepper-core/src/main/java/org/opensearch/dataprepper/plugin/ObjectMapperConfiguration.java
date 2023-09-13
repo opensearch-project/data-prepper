@@ -2,7 +2,6 @@ package org.opensearch.dataprepper.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.deser.std.StringDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.opensearch.dataprepper.parser.DataPrepperDurationDeserializer;
 import org.springframework.context.annotation.Bean;

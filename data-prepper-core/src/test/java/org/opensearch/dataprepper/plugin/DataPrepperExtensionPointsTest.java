@@ -102,7 +102,7 @@ class DataPrepperExtensionPointsTest {
         createObjectUnderTest().addExtensionProvider(extensionProvider);
 
         verifyRegisterBeanWithProvideInstance(sharedApplicationContext);
-        verifyRegisterBeanWithProvideInstance(coreApplicationContext);
+        verifyRegisterBeanWithProvideInstanceOrElse(coreApplicationContext);
     }
 
     @Test
@@ -133,6 +133,25 @@ class DataPrepperExtensionPointsTest {
         assertThat(optionalWrapper.isPresent(), equalTo(true));
         final Object actualInstance = optionalWrapper.get();
         assertThat(actualInstance, equalTo(providedInstance));
+        verify(extensionProvider).provideInstance(any());
+    }
+
+    private void verifyRegisterBeanWithProvideInstanceOrElse(final GenericApplicationContext applicationContext) {
+        reset(extensionProvider);
+        final ArgumentCaptor<Supplier<Object>> supplierArgumentCaptor =
+                ArgumentCaptor.forClass(Supplier.class);
+
+        verify(applicationContext).registerBean(eq(extensionClass), supplierArgumentCaptor.capture(), any(BeanDefinitionCustomizer.class));
+
+        final Supplier<Object> extensionProviderSupplier = supplierArgumentCaptor.getValue();
+
+        verify(extensionProvider, never()).provideInstance(any());
+
+        Object providedInstance = mock(Object.class);
+        when(extensionProvider.provideInstance(any())).thenReturn(Optional.of(providedInstance));
+        final Object actualValueFromSupplier = extensionProviderSupplier.get();
+
+        assertThat(actualValueFromSupplier, equalTo(providedInstance));
         verify(extensionProvider).provideInstance(any());
     }
 

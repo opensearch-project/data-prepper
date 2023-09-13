@@ -58,7 +58,6 @@ class AwsSecretPluginIT {
         assertThat(actualExtensionProvider, instanceOf(AwsSecretExtensionProvider.class));
         final Optional<PluginConfigValueTranslator> optionalPluginConfigValueTranslator =
                 actualExtensionProvider.provideInstance(context);
-        assertThat(optionalPluginConfigValueTranslator.isPresent(), is(true));
-        assertThat(optionalPluginConfigValueTranslator.get(), instanceOf(NoopPluginConfigValueTranslator.class));
+        assertThat(optionalPluginConfigValueTranslator.isEmpty(), is(true));
     }
 }

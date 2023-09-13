@@ -17,7 +17,7 @@ public class AwsSecretPlugin implements ExtensionPlugin {
             final SecretsSupplier secretsSupplier = new AwsSecretsSupplier(awsSecretPluginConfig);
             pluginConfigValueTranslator = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
         } else {
-            pluginConfigValueTranslator = new NoopPluginConfigValueTranslator();
+            pluginConfigValueTranslator = null;
         }
     }
 

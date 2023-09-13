@@ -13,7 +13,7 @@ public class AwsSecretExtensionProvider implements ExtensionProvider<PluginConfi
     }
     @Override
     public Optional<PluginConfigValueTranslator> provideInstance(Context context) {
-        return Optional.of(pluginConfigValueTranslator);
+        return Optional.ofNullable(pluginConfigValueTranslator);
     }
 
     @Override

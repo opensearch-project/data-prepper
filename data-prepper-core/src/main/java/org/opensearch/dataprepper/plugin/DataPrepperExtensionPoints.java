@@ -34,7 +34,7 @@ public class DataPrepperExtensionPoints implements ExtensionPoints {
     public void addExtensionProvider(final ExtensionProvider extensionProvider) {
         coreApplicationContext.registerBean(
                 extensionProvider.supportedClass(),
-                () -> extensionProvider.provideInstance(EMPTY_CONTEXT),
+                () -> extensionProvider.provideInstance(EMPTY_CONTEXT).orElse(null),
                 b -> b.setScope(BeanDefinition.SCOPE_PROTOTYPE));
         sharedApplicationContext.registerBean(
                 extensionProvider.supportedClass(),
