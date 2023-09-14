@@ -1,5 +1,5 @@
 # this configuration file is solely for testing formatting
-pipeline_extensions:
+pipeline_configurations:
   test_extension_2:
     test_attribute: test_string
 test-pipeline-2:

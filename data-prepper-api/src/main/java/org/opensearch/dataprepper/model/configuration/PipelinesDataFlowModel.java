@@ -30,7 +30,7 @@ public class PipelinesDataFlowModel {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private DataPrepperVersion version;
 
-    @JsonProperty("pipeline_extensions")
+    @JsonProperty("pipeline_configurations")
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonSetter(nulls = Nulls.SKIP)
     private PipelineExtensions pipelineExtensions;

@@ -1,6 +1,6 @@
 # this configuration file is solely for testing formatting
-pipeline_extensions:
-  test_extension:
+pipeline_configurations:
+  test_extension_1:
     test_attribute: test_string
 test-pipeline-1:
   source:
