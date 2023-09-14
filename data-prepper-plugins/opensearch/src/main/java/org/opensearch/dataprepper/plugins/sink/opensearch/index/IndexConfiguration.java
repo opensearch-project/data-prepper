@@ -34,6 +34,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class IndexConfiguration {
     private static final Logger LOG = LoggerFactory.getLogger(IndexConfiguration.class);
+    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static final String SETTINGS = "settings";
     public static final String INDEX_ALIAS = "index";
@@ -228,7 +229,8 @@ public class IndexConfiguration {
 
         Map<String, Object> awsOption = pluginSetting.getTypedMap(AWS_OPTION, String.class, Object.class);
         if (awsOption != null && !awsOption.isEmpty()) {
-            builder.withServerless((Boolean)awsOption.getOrDefault(SERVERLESS, false));
+            builder.withServerless(OBJECT_MAPPER.convertValue(
+                    awsOption.getOrDefault(SERVERLESS, false), Boolean.class));
         } else {
             builder.withServerless(false);
         }

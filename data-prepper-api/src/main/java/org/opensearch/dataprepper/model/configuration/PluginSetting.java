@@ -103,7 +103,7 @@ public class PluginSetting implements PipelineDescription {
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute. If the value is null, null will be returned.
      */
-    public Integer getIntegerOrDefault(final String attribute, final int defaultValue) {
+    public Integer getIntegerOrDefault(final String attribute, final Integer defaultValue) {
         Object object = getAttributeOrDefault(attribute, defaultValue);
         if (object == null) {
             return null;
@@ -222,7 +222,7 @@ public class PluginSetting implements PipelineDescription {
      * @return the value of the specified attribute, or {@code defaultValue} if this settings contains no value for
      * the attribute
      */
-    public Boolean getBooleanOrDefault(final String attribute, final boolean defaultValue) {
+    public Boolean getBooleanOrDefault(final String attribute, final Boolean defaultValue) {
         Object object = getAttributeOrDefault(attribute, defaultValue);
         if (object == null) {
             return null;

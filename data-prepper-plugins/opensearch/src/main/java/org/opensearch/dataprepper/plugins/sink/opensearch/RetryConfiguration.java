@@ -78,7 +78,7 @@ public class RetryConfiguration {
     if (dlqFile != null) {
       builder = builder.withDlqFile(dlqFile);
     }
-    final Integer maxRetries = (Integer) pluginSetting.getAttributeFromSettings(MAX_RETRIES);
+    final Integer maxRetries = pluginSetting.getIntegerOrDefault(MAX_RETRIES, null);
     if (maxRetries != null) {
       builder = builder.withMaxRetries(maxRetries);
     }

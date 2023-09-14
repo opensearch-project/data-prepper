@@ -537,4 +537,13 @@ public class PluginSettingsTests {
 
         assertThrows(IllegalArgumentException.class, () -> pluginSetting.getLongOrDefault(TEST_LONG_ATTRIBUTE, TEST_LONG_DEFAULT_VALUE));
     }
+
+    @Test
+    public void testSetSettings() {
+        final PluginSetting pluginSetting = new PluginSetting(TEST_PLUGIN_NAME, null);
+
+        final Map<String, Object> settings = Map.of("test", 1);
+        pluginSetting.setSettings(settings);
+        assertThat(pluginSetting.getSettings(), equalTo(settings));
+    }
 }
