@@ -101,7 +101,9 @@ public class SearchAccessorStrategy {
         }
 
         if (Objects.isNull(elasticsearchClient)) {
-            return new OpenSearchAccessor(openSearchClient, searchContextType);
+            return new OpenSearchAccessor(openSearchClient,
+                    openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration),
+                    searchContextType);
         }
 
         return new ElasticsearchAccessor(elasticsearchClient, searchContextType);
@@ -110,14 +112,18 @@ public class SearchAccessorStrategy {
     private SearchAccessor createSearchAccessorForServerlessCollection(final OpenSearchClient openSearchClient) {
         if (Objects.isNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
             LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'none', which uses search_after");
-            return new OpenSearchAccessor(openSearchClient, SearchContextType.NONE);
+            return new OpenSearchAccessor(openSearchClient,
+                    openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration),
+                    SearchContextType.NONE);
         } else {
             if (SearchContextType.POINT_IN_TIME.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
                 throw new InvalidPluginConfigurationException("A search_context_type of point_in_time is not supported for serverless collections");
             }
 
             LOG.info("Using search_context_type set in the config: '{}'", openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType().toString().toLowerCase());
-            return new OpenSearchAccessor(openSearchClient, openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType());
+            return new OpenSearchAccessor(openSearchClient,
+                    openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration),
+                    openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType());
         }
     }
 

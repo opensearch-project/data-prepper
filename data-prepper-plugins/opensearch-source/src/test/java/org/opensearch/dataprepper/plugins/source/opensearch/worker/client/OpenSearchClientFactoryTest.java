@@ -78,6 +78,27 @@ public class OpenSearchClientFactoryTest {
     }
 
     @Test
+    void provideAsyncOpenSearchClient_with_username_and_password() {
+        final String username = UUID.randomUUID().toString();
+        final String password = UUID.randomUUID().toString();
+        when(openSearchSourceConfiguration.getUsername()).thenReturn(username);
+        when(openSearchSourceConfiguration.getPassword()).thenReturn(password);
+
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getSocketTimeout()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+        when(connectionConfiguration.isInsecure()).thenReturn(true);
+
+        when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(null);
+
+        final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchAsyncClient(openSearchSourceConfiguration);
+        assertThat(openSearchClient, notNullValue());
+
+        verifyNoInteractions(awsCredentialsSupplier);
+
+    }
+
+    @Test
     void provideElasticSearchClient_with_username_and_password() {
         final String username = UUID.randomUUID().toString();
         final String password = UUID.randomUUID().toString();
@@ -141,6 +162,33 @@ public class OpenSearchClientFactoryTest {
         when(awsCredentialsSupplier.getProvider(awsCredentialsOptionsArgumentCaptor.capture())).thenReturn(awsCredentialsProvider);
 
         final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchClient(openSearchSourceConfiguration);
+        assertThat(openSearchClient, notNullValue());
+
+        final AwsCredentialsOptions awsCredentialsOptions = awsCredentialsOptionsArgumentCaptor.getValue();
+        assertThat(awsCredentialsOptions, notNullValue());
+        assertThat(awsCredentialsOptions.getRegion(), equalTo(Region.US_EAST_1));
+        assertThat(awsCredentialsOptions.getStsHeaderOverrides(), equalTo(Collections.emptyMap()));
+        assertThat(awsCredentialsOptions.getStsRoleArn(), equalTo(stsRoleArn));
+    }
+
+    @Test
+    void provideAsyncOpenSearchClient_with_aws_auth() {
+        when(connectionConfiguration.getCertPath()).thenReturn(null);
+        when(connectionConfiguration.getConnectTimeout()).thenReturn(null);
+
+        final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
+        when(awsAuthenticationConfiguration.getAwsRegion()).thenReturn(Region.US_EAST_1);
+        final String stsRoleArn = "arn:aws:iam::123456789012:role/my-role";
+        when(awsAuthenticationConfiguration.getAwsStsRoleArn()).thenReturn(stsRoleArn);
+        when(awsAuthenticationConfiguration.getAwsStsHeaderOverrides()).thenReturn(Collections.emptyMap());
+        when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(false);
+        when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationConfiguration);
+
+        final ArgumentCaptor<AwsCredentialsOptions> awsCredentialsOptionsArgumentCaptor = ArgumentCaptor.forClass(AwsCredentialsOptions.class);
+        final AwsCredentialsProvider awsCredentialsProvider = mock(AwsCredentialsProvider.class);
+        when(awsCredentialsSupplier.getProvider(awsCredentialsOptionsArgumentCaptor.capture())).thenReturn(awsCredentialsProvider);
+
+        final OpenSearchClient openSearchClient = createObjectUnderTest().provideOpenSearchAsyncClient(openSearchSourceConfiguration);
         assertThat(openSearchClient, notNullValue());
 
         final AwsCredentialsOptions awsCredentialsOptions = awsCredentialsOptionsArgumentCaptor.getValue();

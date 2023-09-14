@@ -64,6 +64,7 @@ public class SearchAccessStrategyTest {
         final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
         when(openSearchClient.info()).thenReturn(infoResponse);
         when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
+        when(openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
 
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
@@ -143,6 +144,7 @@ public class SearchAccessStrategyTest {
         final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
         when(openSearchClient.info()).thenReturn(infoResponse);
         when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
+        when(openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
 
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
@@ -183,6 +185,7 @@ public class SearchAccessStrategyTest {
         final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
         when(openSearchClient.info()).thenReturn(infoResponse);
         when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
+        when(openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
 
         final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
         when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.NONE);

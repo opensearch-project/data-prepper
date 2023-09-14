@@ -41,6 +41,8 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -74,7 +76,18 @@ public class OpenSearchClientFactory {
     public OpenSearchClient provideOpenSearchClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
         OpenSearchTransport transport;
         if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions())) {
-            transport = createOpenSearchTransportForAws(openSearchSourceConfiguration);
+            transport = createOpenSearchTransportForAws(openSearchSourceConfiguration, false);
+        } else {
+            final RestClient restClient = createOpenSearchRestClient(openSearchSourceConfiguration);
+            transport = createOpenSearchTransport(restClient);
+        }
+        return new OpenSearchClient(transport);
+    }
+
+    public OpenSearchClient provideOpenSearchAsyncClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+        OpenSearchTransport transport;
+        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions())) {
+            transport = createOpenSearchTransportForAws(openSearchSourceConfiguration, true);
         } else {
             final RestClient restClient = createOpenSearchRestClient(openSearchSourceConfiguration);
             transport = createOpenSearchTransport(restClient);
@@ -92,7 +105,7 @@ public class OpenSearchClientFactory {
         return new RestClientTransport(restClient, new JacksonJsonpMapper());
     }
 
-    private OpenSearchTransport createOpenSearchTransportForAws(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+    private OpenSearchTransport createOpenSearchTransportForAws(final OpenSearchSourceConfiguration openSearchSourceConfiguration, final boolean async) {
         final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
                 .withRegion(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion())
                 .withStsRoleArn(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn())
@@ -103,14 +116,26 @@ public class OpenSearchClientFactory {
         final boolean isServerlessCollection = Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) &&
                 openSearchSourceConfiguration.getAwsAuthenticationOptions().isServerlessCollection();
 
-        return new AwsSdk2Transport(createSdkHttpClient(openSearchSourceConfiguration),
-                HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
-                isServerlessCollection ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME,
-                openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
-                AwsSdk2TransportOptions.builder()
-                        .setCredentials(awsCredentialsProvider)
-                        .setMapper(new JacksonJsonpMapper())
-                        .build());
+        if (!async) {
+            return new AwsSdk2Transport(createSdkHttpClient(openSearchSourceConfiguration),
+                    HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
+                    isServerlessCollection ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME,
+                    openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
+                    AwsSdk2TransportOptions.builder()
+                            .setCredentials(awsCredentialsProvider)
+                            .setMapper(new JacksonJsonpMapper())
+                            .build());
+        } else {
+            return new AwsSdk2Transport(createSdkAsyncHttpClient(openSearchSourceConfiguration),
+                    HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
+                    isServerlessCollection ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME,
+                    openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
+                    AwsSdk2TransportOptions.builder()
+                            .setCredentials(awsCredentialsProvider)
+                            .setMapper(new JacksonJsonpMapper())
+                            .build());
+        }
+
     }
 
     private SdkHttpClient createSdkHttpClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
@@ -127,6 +152,18 @@ public class OpenSearchClientFactory {
         attachSSLContext(apacheHttpClientBuilder, openSearchSourceConfiguration);
 
         return apacheHttpClientBuilder.build();
+    }
+
+    public SdkAsyncHttpClient createSdkAsyncHttpClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+        final NettyNioAsyncHttpClient.Builder builder = NettyNioAsyncHttpClient.builder();
+
+        if (Objects.nonNull(openSearchSourceConfiguration.getConnectionConfiguration().getConnectTimeout())) {
+            builder.connectionTimeout(openSearchSourceConfiguration.getConnectionConfiguration().getConnectTimeout());
+        }
+
+        attachSSLContext(builder, openSearchSourceConfiguration);
+
+        return builder.build();
     }
 
     private RestClient createOpenSearchRestClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
@@ -272,6 +309,11 @@ public class OpenSearchClientFactory {
     private void attachSSLContext(final ApacheHttpClient.Builder apacheHttpClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
         TrustManager[] trustManagers = createTrustManagers(openSearchSourceConfiguration.getConnectionConfiguration().getCertPath());
         apacheHttpClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
+    }
+
+    private void attachSSLContext(final NettyNioAsyncHttpClient.Builder asyncClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
+        TrustManager[] trustManagers = createTrustManagers(openSearchSourceConfiguration.getConnectionConfiguration().getCertPath());
+        asyncClientBuilder.tlsTrustManagersProvider(() -> trustManagers);
     }
 
     private void attachSSLContext(final HttpAsyncClientBuilder httpClientBuilder, final OpenSearchSourceConfiguration openSearchSourceConfiguration) {

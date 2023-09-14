@@ -63,11 +63,15 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     static final String SCROLL_RESOURCE_LIMIT_EXCEPTION_MESSAGE = "Trying to create too many scroll contexts";
 
     private final OpenSearchClient openSearchClient;
+    private final OpenSearchClient openSearchAsyncClient;
     private final SearchContextType searchContextType;
 
-    public OpenSearchAccessor(final OpenSearchClient openSearchClient, final SearchContextType searchContextType) {
+    public OpenSearchAccessor(final OpenSearchClient openSearchClient,
+                              final OpenSearchClient asyncOpenSearchClient,
+                              final SearchContextType searchContextType) {
         this.openSearchClient = openSearchClient;
         this.searchContextType = searchContextType;
+        this.openSearchAsyncClient = asyncOpenSearchClient;
     }
 
     @Override
@@ -126,7 +130,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     @Override
     public void deletePit(final DeletePointInTimeRequest deletePointInTimeRequest) {
         try {
-            final DeletePitResponse deletePitResponse = openSearchClient.deletePit(DeletePitRequest.of(builder -> builder.pitId(Collections.singletonList(deletePointInTimeRequest.getPitId()))));
+            final DeletePitResponse deletePitResponse = openSearchAsyncClient.deletePit(DeletePitRequest.of(builder -> builder.pitId(Collections.singletonList(deletePointInTimeRequest.getPitId()))));
             if (isPitDeletedSuccessfully(deletePitResponse)) {
                 LOG.debug("Successfully deleted point in time id {}", deletePointInTimeRequest.getPitId());
             } else {
@@ -193,7 +197,7 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     @Override
     public void deleteScroll(final DeleteScrollRequest deleteScrollRequest) {
         try {
-            final ClearScrollResponse clearScrollResponse = openSearchClient.clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
+            final ClearScrollResponse clearScrollResponse = openSearchAsyncClient.clearScroll(ClearScrollRequest.of(request -> request.scrollId(deleteScrollRequest.getScrollId())));
             if (clearScrollResponse.succeeded()) {
                 LOG.debug("Successfully deleted scroll context with id {}", deleteScrollRequest.getScrollId());
             } else {
