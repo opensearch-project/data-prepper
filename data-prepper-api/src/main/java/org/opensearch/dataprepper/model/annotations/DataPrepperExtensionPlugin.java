@@ -6,11 +6,20 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Annotates a Data Prepper extension plugin which includes a configuration model class.
+ */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface DataPrepperExtensionPlugin {
+    /**
+     * @return extension plugin configuration class.
+     */
     Class<?> modelType();
 
-    String rootKey();
+    /**
+     * @return valid JSON path string starts with "/" pointing towards the configuration block.
+     */
+    String rootKeyJsonPath();
 }

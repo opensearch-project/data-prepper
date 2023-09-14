@@ -1,5 +1,8 @@
 package org.opensearch.dataprepper.plugin;
 
+import com.fasterxml.jackson.core.JsonPointer;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -8,12 +11,14 @@ import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationExcepti
 import javax.inject.Inject;
 import javax.inject.Named;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Named
 public class ExtensionPluginConfigurationConverter {
+    static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
     private final ExtensionPluginConfigurationResolver extensionPluginConfigurationResolver;
     private final ObjectMapper objectMapper;
     private final Validator validator;
@@ -34,7 +39,7 @@ public class ExtensionPluginConfigurationConverter {
         Objects.requireNonNull(rootKey);
 
         final Object configuration = convertSettings(extensionPluginConfigurationType,
-                extensionPluginConfigurationResolver.getExtensionMap().get(rootKey));
+                getExtensionPluginConfigMap(extensionPluginConfigurationResolver.getExtensionMap(), rootKey));
 
         final Set<ConstraintViolation<Object>> constraintViolations = configuration == null ? Collections.emptySet() :
                 validator.validate(configuration);
@@ -53,5 +58,13 @@ public class ExtensionPluginConfigurationConverter {
 
     private Object convertSettings(final Class<?> extensionPluginConfigurationType, final Object extensionPlugin) {
         return objectMapper.convertValue(extensionPlugin, extensionPluginConfigurationType);
+    }
+
+    private Map<String, Object> getExtensionPluginConfigMap(
+            final Map<String, Object> extensionMap, final String rootKey) {
+        final JsonNode jsonNode = objectMapper.valueToTree(extensionMap);
+        final JsonPointer jsonPointer = JsonPointer.compile(rootKey);
+        final JsonNode extensionPluginConfigNode = jsonNode.at(jsonPointer);
+        return objectMapper.convertValue(extensionPluginConfigNode, MAP_TYPE_REFERENCE);
     }
 }

@@ -7,7 +7,7 @@ import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
 import org.opensearch.dataprepper.model.plugin.ExtensionPoints;
 import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
-@DataPrepperExtensionPlugin(modelType = AwsSecretPluginConfig.class, rootKey = "aws_secrets")
+@DataPrepperExtensionPlugin(modelType = AwsSecretPluginConfig.class, rootKeyJsonPath = "/aws/secrets")
 public class AwsSecretPlugin implements ExtensionPlugin {
     private final PluginConfigValueTranslator pluginConfigValueTranslator;
 

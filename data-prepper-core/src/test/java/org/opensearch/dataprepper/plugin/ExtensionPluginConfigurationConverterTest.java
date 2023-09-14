@@ -66,24 +66,26 @@ class ExtensionPluginConfigurationConverterTest {
         when(extensionPluginConfigurationResolver.getExtensionMap()).thenReturn(Map.of(
                 rootKey, Map.of("test_attribute", testValue)
         ));
-        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKey);
+        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, "/" + rootKey);
         assertThat(testExtensionConfig, instanceOf(TestExtensionConfig.class));
         assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
     }
 
     @Test
     void convert_with_null_rootKey_value_should_return_null() {
-        final String rootKey = "test_extension";
+        final String rootKeyPath = "/test_extension";
         when(extensionPluginConfigurationResolver.getExtensionMap()).thenReturn(Collections.emptyMap());
-        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKey);
+        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKeyPath);
         assertThat(testExtensionConfig, nullValue());
     }
 
     @Test
     void convert_should_throw_exception_when_there_are_constraint_violations() {
-        final String rootKey = UUID.randomUUID().toString();
+        final String firstKey = "first";
+        final String secondKey = "second";
+        final String jsonPointer = String.format("/%s/%s", firstKey, secondKey);
         when(extensionPluginConfigurationResolver.getExtensionMap()).thenReturn(
-                Map.of(rootKey, Collections.emptyMap()));
+                Map.of(firstKey, Map.of(secondKey, Collections.emptyMap())));
         final String errorMessage = UUID.randomUUID().toString();
         given(constraintViolation.getMessage()).willReturn(errorMessage);
         final String propertyPathString = UUID.randomUUID().toString();
@@ -95,9 +97,9 @@ class ExtensionPluginConfigurationConverterTest {
                 .willReturn(Collections.singleton(constraintViolation));
 
         final InvalidPluginConfigurationException actualException = assertThrows(InvalidPluginConfigurationException.class,
-                () -> objectUnderTest.convert(TestExtensionConfig.class, rootKey));
+                () -> objectUnderTest.convert(TestExtensionConfig.class, jsonPointer));
 
-        assertThat(actualException.getMessage(), containsString(rootKey));
+        assertThat(actualException.getMessage(), containsString(jsonPointer));
         assertThat(actualException.getMessage(), containsString(propertyPathString));
         assertThat(actualException.getMessage(), containsString(errorMessage));
     }
