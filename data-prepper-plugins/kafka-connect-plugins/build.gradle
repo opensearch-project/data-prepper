@@ -7,6 +7,10 @@ plugins {
     id 'java'
 }
 
+configurations.all {
+    exclude group: 'org.apache.zookeeper', module: 'zookeeper'
+}
+
 dependencies {
     implementation project(':data-prepper-plugins:common')
     implementation project(':data-prepper-plugins:kafka-plugins')

@@ -8,6 +8,6 @@ log-pipeline:
           password: dbz
       tables:
         - topic_prefix: prefix1
-          table_name: inventory.customers
+          table: inventory.customers
   sink:
     - noop:
