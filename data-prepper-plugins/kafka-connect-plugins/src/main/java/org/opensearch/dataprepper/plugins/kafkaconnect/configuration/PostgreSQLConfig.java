@@ -97,7 +97,7 @@ public class PostgreSQLConfig extends ConnectorConfig {
     }
 
     private static class TableConfig {
-        @JsonProperty("database_name")
+        @JsonProperty("database")
         @NotNull
         private String databaseName;
 
@@ -105,7 +105,7 @@ public class PostgreSQLConfig extends ConnectorConfig {
         @NotNull
         private String topicPrefix;
 
-        @JsonProperty("table_name")
+        @JsonProperty("table")
         @NotNull
         private String tableName;
 

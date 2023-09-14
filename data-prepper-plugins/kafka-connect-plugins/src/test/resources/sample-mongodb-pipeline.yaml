@@ -8,6 +8,6 @@ log-pipeline:
           password: dbz
       collections:
         - topic_prefix: prefix1
-          collection_name: test.customers
+          collection: test.customers
   sink:
     - noop:

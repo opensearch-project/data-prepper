@@ -94,7 +94,7 @@ public class MySQLConfig extends ConnectorConfig {
         @NotNull
         private String topicPrefix;
 
-        @JsonProperty("table_name")
+        @JsonProperty("table")
         @NotNull
         private String tableName;
 

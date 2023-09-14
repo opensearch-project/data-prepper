@@ -8,7 +8,7 @@ log-pipeline:
           password: dbz
       tables:
         - topic_prefix: psql
-          database_name: postgres
-          table_name: public.customers
+          database: postgres
+          table: public.customers
   sink:
     - noop:

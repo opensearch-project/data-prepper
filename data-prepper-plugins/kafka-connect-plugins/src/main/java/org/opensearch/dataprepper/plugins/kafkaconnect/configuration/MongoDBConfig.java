@@ -21,6 +21,7 @@ public class MongoDBConfig extends ConnectorConfig {
     private static final String DEFAULT_PORT = "27017";
     private static final String DEFAULT_SNAPSHOT_MODE = "initial";
     private static final Boolean SSL_ENABLED = false;
+    private static final Boolean SSL_INVALID_HOST_ALLOWED = false;
     private static final String DEFAULT_SNAPSHOT_FETCH_SIZE = "1000";
     @JsonProperty("hostname")
     @NotNull
@@ -37,6 +38,8 @@ public class MongoDBConfig extends ConnectorConfig {
     private List<CollectionConfig> collections = new ArrayList<>();
     @JsonProperty("ssl")
     private Boolean ssl = SSL_ENABLED;
+    @JsonProperty("ssl_invalid_host_allowed")
+    private Boolean sslInvalidHostAllowed = SSL_INVALID_HOST_ALLOWED;
 
     @Override
     public List<Connector> buildConnectors() {
@@ -58,6 +61,7 @@ public class MongoDBConfig extends ConnectorConfig {
         config.put("topic.prefix", collection.getTopicPrefix());
         config.put("collection.include.list", collection.getCollectionName());
         config.put("mongodb.ssl.enabled", ssl.toString());
+        config.put("mongodb.ssl.invalid.hostname.allowed", sslInvalidHostAllowed.toString());
         // Non-configurable properties used to transform CDC data before sending to Kafka.
         config.put("transforms", "unwrap");
         config.put("transforms.unwrap.type", "io.debezium.connector.mongodb.transforms.ExtractNewDocumentState");
@@ -72,7 +76,7 @@ public class MongoDBConfig extends ConnectorConfig {
         @NotNull
         private String topicPrefix;
 
-        @JsonProperty("collection_name")
+        @JsonProperty("collection")
         @NotNull
         private String collectionName;
 
