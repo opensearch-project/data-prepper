@@ -108,9 +108,9 @@ public class ScanObjectWorker implements Runnable{
                 LOG.error("Received an exception while processing S3 objects, backing off and retrying", e);
                 try {
                     Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
-                } catch (InterruptedException ex) {
+                } catch (final InterruptedException ex) {
                     LOG.error("S3 Scan worker thread interrupted while backing off.", ex);
-                    return;
+                    shouldStopProcessing = true;
                 }
             }
 
@@ -174,8 +174,10 @@ public class ScanObjectWorker implements Runnable{
         } catch (final PartitionNotOwnedException | PartitionNotFoundException | PartitionUpdateException e) {
             LOG.warn("S3 scan object worker received an exception from the source coordinator. There is a potential for duplicate data from {}, giving up partition and getting next partition: {}", objectKey, e.getMessage());
             sourceCoordinator.giveUpPartitions();
-        } catch (final ExecutionException | TimeoutException | InterruptedException e) {
+        } catch (final ExecutionException | TimeoutException e) {
             LOG.error("Exception occurred while waiting for acknowledgement.", e);
+        } catch (final InterruptedException e) {
+            shouldStopProcessing = true;
         }
     }
 
