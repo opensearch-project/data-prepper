@@ -71,7 +71,7 @@ public class SqsWorker implements Runnable {
     private final AcknowledgementSetManager acknowledgementSetManager;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private boolean isStopped;
+    private volatile boolean isStopped = false;
 
     public SqsWorker(final AcknowledgementSetManager acknowledgementSetManager,
                      final SqsClient sqsClient,
@@ -115,7 +115,6 @@ public class SqsWorker implements Runnable {
                     Thread.sleep(s3SourceConfig.getSqsOptions().getPollDelay().toMillis());
                 } catch (final InterruptedException e) {
                     LOG.error("Thread is interrupted while polling SQS.", e);
-                    isStopped = true;
                 }
             }
         }
@@ -166,7 +165,6 @@ public class SqsWorker implements Runnable {
             Thread.sleep(delayMillis);
         } catch (final InterruptedException e){
             LOG.error("Thread is interrupted while polling SQS with retry.", e);
-            isStopped = true;
         }
     }
 
@@ -338,4 +336,8 @@ public class SqsWorker implements Runnable {
                 .build();
     }
 
+    void stop() {
+        isStopped = true;
+        Thread.currentThread().interrupt();
+    }
 }
