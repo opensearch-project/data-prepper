@@ -26,6 +26,7 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -33,7 +34,7 @@ import static org.mockito.Mockito.mock;
 class PluginConfigurationConverterTest {
     private PluginSetting pluginSetting;
     private Validator validator;
-    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().extensionPluginConfigObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     static class TestConfiguration {
         @SuppressWarnings("unused")
@@ -76,7 +77,7 @@ class PluginConfigurationConverterTest {
         assertThat(createObjectUnderTest().convert(PluginSetting.class, pluginSetting),
                 sameInstance(pluginSetting));
 
-        then(pluginSetting).shouldHaveNoInteractions();
+        then(pluginSetting).should().setSettings(anyMap());
         then(validator).shouldHaveNoInteractions();
     }
 

@@ -14,7 +14,7 @@ public class PluginSetting implements PipelineDescription {
     private static final String UNEXPECTED_ATTRIBUTE_TYPE_MSG = "Unexpected type [%s] for attribute [%s]";
 
     private final String name;
-    private final Map<String, Object> settings;
+    private Map<String, Object> settings;
     private int processWorkers;
     private String pipelineName;
 
@@ -29,6 +29,10 @@ public class PluginSetting implements PipelineDescription {
 
     public Map<String, Object> getSettings() {
         return settings;
+    }
+
+    public void setSettings(final Map<String, Object> settings) {
+        this.settings = settings;
     }
 
     /**
