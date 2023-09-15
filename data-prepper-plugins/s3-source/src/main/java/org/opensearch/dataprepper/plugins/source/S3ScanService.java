@@ -36,6 +36,7 @@ public class S3ScanService {
     private final AcknowledgementSetManager acknowledgementSetManager;
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
     private final PluginMetrics pluginMetrics;
+    private ScanObjectWorker scanObjectWorker;
 
     public S3ScanService(final S3SourceConfig s3SourceConfig,
                          final S3ClientBuilderFactory s3ClientBuilderFactory,
@@ -60,13 +61,14 @@ public class S3ScanService {
     }
 
     public void start() {
-        scanObjectWorkerThread = new Thread(new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
-                getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics));
+        scanObjectWorker = new ScanObjectWorker(s3ClientBuilderFactory.getS3Client(),
+                getScanOptions(),s3ObjectHandler,bucketOwnerProvider, sourceCoordinator, s3SourceConfig, acknowledgementSetManager, s3ObjectDeleteWorker, pluginMetrics);
+        scanObjectWorkerThread = new Thread(scanObjectWorker);
         scanObjectWorkerThread.start();
     }
 
     public void stop() {
-        scanObjectWorkerThread.interrupt();
+        scanObjectWorker.stop();
     }
 
     /**

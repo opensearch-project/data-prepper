@@ -67,10 +67,11 @@ public class SqsWorker implements Runnable {
     private final Timer sqsMessageDelayTimer;
     private final Backoff standardBackoff;
     private int failedAttemptCount;
-    private boolean endToEndAcknowledgementsEnabled;
+    private final boolean endToEndAcknowledgementsEnabled;
     private final AcknowledgementSetManager acknowledgementSetManager;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private volatile boolean isStopped = false;
 
     public SqsWorker(final AcknowledgementSetManager acknowledgementSetManager,
                      final SqsClient sqsClient,
@@ -99,8 +100,7 @@ public class SqsWorker implements Runnable {
 
     @Override
     public void run() {
-
-        while (!Thread.currentThread().isInterrupted()) {
+        while (!isStopped) {
             int messagesProcessed = 0;
             try {
                 messagesProcessed = processSqsMessages();
@@ -336,4 +336,8 @@ public class SqsWorker implements Runnable {
                 .build();
     }
 
+    void stop() {
+        isStopped = true;
+        Thread.currentThread().interrupt();
+    }
 }

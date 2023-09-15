@@ -30,6 +30,7 @@ public class SqsService {
     private final AcknowledgementSetManager acknowledgementSetManager;
 
     private Thread sqsWorkerThread;
+    private SqsWorker sqsWorker;
 
     public SqsService(final AcknowledgementSetManager acknowledgementSetManager,
                       final S3SourceConfig s3SourceConfig,
@@ -46,7 +47,8 @@ public class SqsService {
     public void start() {
         final Backoff backoff = Backoff.exponential(INITIAL_DELAY, MAXIMUM_DELAY).withJitter(JITTER_RATE)
                 .withMaxAttempts(Integer.MAX_VALUE);
-        sqsWorkerThread = new Thread(new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff));
+        sqsWorker = new SqsWorker(acknowledgementSetManager, sqsClient, s3Accessor, s3SourceConfig, pluginMetrics, backoff);
+        sqsWorkerThread = new Thread(sqsWorker);
         sqsWorkerThread.start();
     }
 
@@ -62,6 +64,6 @@ public class SqsService {
     }
 
     public void stop() {
-        sqsWorkerThread.interrupt();
+        sqsWorker.stop();
     }
 }
