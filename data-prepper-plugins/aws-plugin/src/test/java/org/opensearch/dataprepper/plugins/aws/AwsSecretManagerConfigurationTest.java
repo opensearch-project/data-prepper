@@ -84,7 +84,7 @@ class AwsSecretManagerConfigurationTest {
                 "/test-aws-secret-manager-configuration-default.yaml");
         final AwsSecretManagerConfiguration awsSecretManagerConfiguration = OBJECT_MAPPER.readValue(
                 inputStream, AwsSecretManagerConfiguration.class);
-        assertThat(awsSecretManagerConfiguration.getAwsSecretName(), equalTo("test-secret"));
+        assertThat(awsSecretManagerConfiguration.getAwsSecretId(), equalTo("test-secret"));
         when(secretsManagerClientBuilder.region(any(Region.class))).thenReturn(secretsManagerClientBuilder);
         when(secretsManagerClientBuilder.credentialsProvider(any(AwsCredentialsProvider.class)))
                 .thenReturn(secretsManagerClientBuilder);
@@ -105,7 +105,7 @@ class AwsSecretManagerConfigurationTest {
                 "/test-aws-secret-manager-configuration-with-sts.yaml");
         final AwsSecretManagerConfiguration awsSecretManagerConfiguration = OBJECT_MAPPER.readValue(
                 inputStream, AwsSecretManagerConfiguration.class);
-        assertThat(awsSecretManagerConfiguration.getAwsSecretName(), equalTo("test-secret"));
+        assertThat(awsSecretManagerConfiguration.getAwsSecretId(), equalTo("test-secret"));
         when(secretsManagerClientBuilder.region(any(Region.class))).thenReturn(secretsManagerClientBuilder);
         when(secretsManagerClientBuilder.credentialsProvider(any(AwsCredentialsProvider.class)))
                 .thenReturn(secretsManagerClientBuilder);
@@ -141,7 +141,7 @@ class AwsSecretManagerConfigurationTest {
     @Test
     void testDeserializationMissingName() throws IOException {
         final InputStream inputStream = AwsSecretPluginConfigTest.class.getResourceAsStream(
-                "/test-aws-secret-manager-configuration-missing-name.yaml");
+                "/test-aws-secret-manager-configuration-missing-secret-id.yaml");
         final AwsSecretManagerConfiguration awsSecretManagerConfiguration = OBJECT_MAPPER.readValue(
                 inputStream, AwsSecretManagerConfiguration.class);
         final Set<ConstraintViolation<AwsSecretManagerConfiguration>> violations = VALIDATOR.validate(

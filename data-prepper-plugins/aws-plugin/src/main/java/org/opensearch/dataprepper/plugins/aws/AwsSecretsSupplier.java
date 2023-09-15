@@ -41,7 +41,7 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                     } catch (Exception e) {
                         throw ResourceNotFoundException.builder()
                                 .message(String.format("Unable to retrieve secret: %s",
-                                        awsSecretManagerConfiguration.getAwsSecretName()))
+                                        awsSecretManagerConfiguration.getAwsSecretId()))
                                 .cause(e)
                                 .build();
                     }

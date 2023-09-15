@@ -21,10 +21,10 @@ public class AwsSecretManagerConfiguration {
     private static final String AWS_IAM_ROLE = "role";
     private static final String AWS_IAM = "iam";
 
-    @JsonProperty("name")
+    @JsonProperty("secret_id")
     @NotNull
-    @Size(min = 1, max = 512, message = "awsSecretName length should be between 1 and 512 characters")
-    private String awsSecretName;
+    @Size(min = 1, max = 512, message = "awsSecretId length should be between 1 and 512 characters")
+    private String awsSecretId;
 
     @JsonProperty("region")
     @Size(min = 1, message = "Region cannot be empty string")
@@ -34,8 +34,8 @@ public class AwsSecretManagerConfiguration {
     @Size(min = 20, max = 2048, message = "awsStsRoleArn length should be between 1 and 2048 characters")
     private String awsStsRoleArn;
 
-    public String getAwsSecretName() {
-        return awsSecretName;
+    public String getAwsSecretId() {
+        return awsSecretId;
     }
 
     public Region getAwsRegion() {
@@ -51,7 +51,7 @@ public class AwsSecretManagerConfiguration {
 
     public GetSecretValueRequest createGetSecretValueRequest() {
         return GetSecretValueRequest.builder()
-                .secretId(awsSecretName)
+                .secretId(awsSecretId)
                 .build();
     }
 
