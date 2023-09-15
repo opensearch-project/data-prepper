@@ -13,6 +13,7 @@ import io.gatling.javaapi.core.ScenarioBuilder;
 import io.gatling.javaapi.core.Session;
 import io.gatling.javaapi.core.Simulation;
 import io.gatling.javaapi.http.HttpDsl;
+import org.opensearch.dataprepper.test.performance.tools.PathTarget;
 import org.opensearch.dataprepper.test.performance.tools.Protocol;
 import org.opensearch.dataprepper.test.performance.tools.Templates;
 
@@ -52,7 +53,7 @@ public class VariousGrokPatternsSimulation extends Simulation {
 
     ChainBuilder sendMultipleGrokPatterns = CoreDsl.exec(
             HttpDsl.http("Http multiple grok pattern request")
-                    .post("/log/ingest")
+                    .post(PathTarget.getPath())
                     .asJson()
                     .body(CoreDsl.StringBody(VariousGrokPatternsSimulation.multipleGrokPatterns)));
 
@@ -60,6 +61,7 @@ public class VariousGrokPatternsSimulation extends Simulation {
             .during(testDuration)
             .on(sendMultipleGrokPatterns);
 
+    public VariousGrokPatternsSimulation()
     {
         setUp(sendMultipleGrokPatternsScenario.injectOpen(
                 CoreDsl.rampUsers(rampUsers).during(rampUpTime)

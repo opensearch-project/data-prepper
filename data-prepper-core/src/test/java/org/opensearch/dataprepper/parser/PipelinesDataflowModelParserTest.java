@@ -70,18 +70,18 @@ class PipelinesDataflowModelParserTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            TestDataProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_EXTENSIONS_DIRECTOTRY,
-            TestDataProvider.MULTI_FILE_PIPELINE_WITH_SINGLE_PIPELINE_EXTENSIONS_DIRECTOTRY
+            TestDataProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_CONFIGURATIONS_DIRECTOTRY,
+            TestDataProvider.MULTI_FILE_PIPELINE_WITH_SINGLE_PIPELINE_CONFIGURATIONS_DIRECTOTRY
     })
     void parseConfiguration_from_directory_with_multiple_files_and_pipeline_extensions_should_throw() {
         final PipelinesDataflowModelParser pipelinesDataflowModelParser =
                 new PipelinesDataflowModelParser(
-                        TestDataProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_EXTENSIONS_DIRECTOTRY);
+                        TestDataProvider.MULTI_FILE_PIPELINE_WITH_DISTRIBUTED_PIPELINE_CONFIGURATIONS_DIRECTOTRY);
         final ParseException actualException = assertThrows(
                 ParseException.class, pipelinesDataflowModelParser::parseConfiguration);
         assertThat(actualException.getMessage(), equalTo(
-                "Pipeline extensions and configurations must all be defined in a single YAML file " +
-                        "if pipeline_extensions is configured."));
+                "pipeline_configurations and definition must all be defined in a single YAML file " +
+                        "if pipeline_configurations is configured."));
     }
 
     @Test

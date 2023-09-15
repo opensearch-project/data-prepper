@@ -1,7 +1,7 @@
 # this configuration file is solely for testing formatting
 pipeline_configurations:
   test_extension:
-    test_attribute: test_string_1
+    test_attribute: test_string
 test-pipeline-1:
   source:
     file:
@@ -11,17 +11,3 @@ test-pipeline-1:
   sink:
     - pipeline:
        name: "test-pipeline-2"
-test-pipeline-2:
-  source:
-    pipeline:
-      name: "test-pipeline-1"
-  sink:
-    - pipeline:
-       name: "test-pipeline-3"
-test-pipeline-3:
-  source:
-    pipeline:
-      name: "test-pipeline-2"
-  sink:
-    - file:
-        path: "/tmp/todelete.txt"

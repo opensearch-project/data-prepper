@@ -41,16 +41,15 @@ task createDataPrepperDockerFile(type: Dockerfile) {
     dependsOn copyDataPrepperJar
     destFile = project.file('build/docker/Dockerfile')
     from(dataPrepperBaseImage)
-    workingDir("/app/data-prepper")
-    copyFile("${dataPrepperJarFilepath}", "/app/data-prepper/lib")
+    workingDir('/app/data-prepper')
+    copyFile("${dataPrepperJarImageFilepath}", '/app/data-prepper/lib')
     defaultCommand('java', '-Ddata-prepper.dir=/app/data-prepper', '-cp', '/app/data-prepper/lib/*', 'org.opensearch.dataprepper.DataPrepperExecute')
 }
 
 task buildDataPrepperDockerImage(type: DockerBuildImage) {
     dependsOn createDataPrepperDockerFile
-    inputDir  = file(".")
-    dockerFile  = file("build/docker/Dockerfile")
-    images.add("e2e-test-log-pipeline-image")
+    dockerFile  = file('build/docker/Dockerfile')
+    images.add('e2e-test-log-pipeline-image')
 }
 
 def createDataPrepperDockerContainer(final String taskBaseName, final String dataPrepperName, final int sourcePort,

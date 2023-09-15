@@ -19,6 +19,7 @@ import org.opensearch.dataprepper.model.source.coordinator.exceptions.PartitionU
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchIndexProgressState;
 import org.opensearch.dataprepper.plugins.source.opensearch.OpenSearchSourceConfiguration;
 import org.opensearch.dataprepper.plugins.source.opensearch.configuration.SearchConfiguration;
+import org.opensearch.dataprepper.plugins.source.opensearch.metrics.OpenSearchSourcePluginMetrics;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.SearchAccessor;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.exceptions.IndexNotFoundException;
 import org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.NoSearchContextSearchRequest;
@@ -31,6 +32,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.BACKOFF_ON_EXCEPTION;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.calculateExponentialBackoffAndJitter;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.completeIndexPartition;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.createAcknowledgmentSet;
 import static org.opensearch.dataprepper.plugins.source.opensearch.worker.client.model.MetadataKeyAttributes.DOCUMENT_ID_METADATA_ATTRIBUTE_NAME;
@@ -40,27 +43,30 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(NoSearchContextWorker.class);
 
-    private static final int STANDARD_BACKOFF_MILLIS = 30_000;
-
     private final SearchAccessor searchAccessor;
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
     private final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator;
     private final BufferAccumulator<Record<Event>> bufferAccumulator;
     private final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier;
     private final AcknowledgementSetManager acknowledgementSetManager;
+    private final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics;
+
+    private int noAvailableIndicesCount = 0;
 
     public NoSearchContextWorker(final SearchAccessor searchAccessor,
                      final OpenSearchSourceConfiguration openSearchSourceConfiguration,
                      final SourceCoordinator<OpenSearchIndexProgressState> sourceCoordinator,
                      final BufferAccumulator<Record<Event>> bufferAccumulator,
                      final OpenSearchIndexPartitionCreationSupplier openSearchIndexPartitionCreationSupplier,
-                     final AcknowledgementSetManager acknowledgementSetManager) {
+                     final AcknowledgementSetManager acknowledgementSetManager,
+                     final OpenSearchSourcePluginMetrics openSearchSourcePluginMetrics) {
         this.searchAccessor = searchAccessor;
         this.sourceCoordinator = sourceCoordinator;
         this.openSearchSourceConfiguration = openSearchSourceConfiguration;
         this.bufferAccumulator = bufferAccumulator;
         this.openSearchIndexPartitionCreationSupplier = openSearchIndexPartitionCreationSupplier;
         this.acknowledgementSetManager = acknowledgementSetManager;
+        this.openSearchSourcePluginMetrics = openSearchSourcePluginMetrics;
     }
 
     @Override
@@ -73,13 +79,15 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
 
                 if (indexPartition.isEmpty()) {
                     try {
-                        Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                        Thread.sleep(calculateExponentialBackoffAndJitter(++noAvailableIndicesCount));
                         continue;
                     } catch (final InterruptedException e) {
                         LOG.info("The search_after worker was interrupted while sleeping after acquiring no indices to process, stopping processing");
                         return;
                     }
                 }
+
+                noAvailableIndicesCount = 0;
 
                 try {
                     final Pair<AcknowledgementSet, CompletableFuture<Boolean>> acknowledgementSet = createAcknowledgmentSet(
@@ -88,11 +96,13 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                             sourceCoordinator,
                             indexPartition.get());
 
-                    processIndex(indexPartition.get(), acknowledgementSet.getLeft());
+                    openSearchSourcePluginMetrics.getIndexProcessingTimeTimer().record(() -> processIndex(indexPartition.get(), acknowledgementSet.getLeft()));
 
                     completeIndexPartition(openSearchSourceConfiguration, acknowledgementSet.getLeft(), acknowledgementSet.getRight(),
                             indexPartition.get(), sourceCoordinator);
 
+                    openSearchSourcePluginMetrics.getIndicesProcessedCounter().increment();
+                    LOG.info("Completed processing for index: '{}'", indexPartition.get().getPartitionKey());
                 } catch (final PartitionUpdateException | PartitionNotFoundException | PartitionNotOwnedException e) {
                     LOG.warn("The search_after worker received an exception from the source coordinator. There is a potential for duplicate data for index {}, giving up partition and getting next partition: {}", indexPartition.get().getPartitionKey(), e.getMessage());
                     sourceCoordinator.giveUpPartitions();
@@ -102,11 +112,13 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                 } catch (final Exception e) {
                     LOG.error("Unknown exception while processing index '{}', moving on to another index:", indexPartition.get().getPartitionKey(), e);
                     sourceCoordinator.giveUpPartitions();
+                    openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 }
             } catch (final Exception e) {
+                openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                 LOG.error("Received an exception while trying to get index to process with search_after, backing off and retrying", e);
                 try {
-                    Thread.sleep(STANDARD_BACKOFF_MILLIS);
+                    Thread.sleep(BACKOFF_ON_EXCEPTION.toMillis());
                 } catch (final InterruptedException ex) {
                     LOG.info("The search_after worker was interrupted before backing off and retrying, stopping processing");
                     return;
@@ -118,6 +130,8 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
     private void processIndex(final SourcePartition<OpenSearchIndexProgressState> openSearchIndexPartition,
                               final AcknowledgementSet acknowledgementSet) {
         final String indexName = openSearchIndexPartition.getPartitionKey();
+        LOG.info("Started processing for index: '{}'", indexName);
+
         Optional<OpenSearchIndexProgressState> openSearchIndexProgressStateOptional = openSearchIndexPartition.getPartitionState();
 
         if (openSearchIndexProgressStateOptional.isEmpty()) {
@@ -143,7 +157,9 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
                         acknowledgementSet.add(record.getData());
                     }
                     bufferAccumulator.add(record);
+                    openSearchSourcePluginMetrics.getDocumentsProcessedCounter().increment();
                 } catch (Exception e) {
+                    openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
                     LOG.error("Failed writing OpenSearch documents to buffer. The last document created has document id '{}' from index '{}' : {}",
                             record.getData().getMetadata().getAttribute(DOCUMENT_ID_METADATA_ATTRIBUTE_NAME),
                             record.getData().getMetadata().getAttribute(INDEX_METADATA_ATTRIBUTE_NAME), e.getMessage());
@@ -157,6 +173,7 @@ public class NoSearchContextWorker implements SearchWorker, Runnable {
         try {
             bufferAccumulator.flush();
         } catch (final Exception e) {
+            openSearchSourcePluginMetrics.getProcessingErrorsCounter().increment();
             LOG.error("Failed writing remaining OpenSearch documents to buffer due to: {}", e.getMessage());
         }
     }
