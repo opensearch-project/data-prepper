@@ -167,7 +167,7 @@ public class ScrollWorkerTest {
         when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
 
         final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
-        when(schedulingParameterConfiguration.getCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
         when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
@@ -262,7 +262,7 @@ public class ScrollWorkerTest {
         when(sourceCoordinator.getNextPartition(openSearchIndexPartitionCreationSupplier)).thenReturn(Optional.of(sourcePartition)).thenReturn(Optional.empty());
 
         final SchedulingParameterConfiguration schedulingParameterConfiguration = mock(SchedulingParameterConfiguration.class);
-        when(schedulingParameterConfiguration.getCount()).thenReturn(1);
+        when(schedulingParameterConfiguration.getIndexReadCount()).thenReturn(1);
         when(schedulingParameterConfiguration.getInterval()).thenReturn(Duration.ZERO);
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 

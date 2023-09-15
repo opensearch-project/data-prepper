@@ -49,7 +49,7 @@ public class WorkerCommonUtils {
                     sourceCoordinator.closePartition(
                             indexPartition.getPartitionKey(),
                             openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getCount());
+                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount());
                 }
                 completableFuture.complete(result);
             }, Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS));
@@ -70,7 +70,7 @@ public class WorkerCommonUtils {
             sourceCoordinator.closePartition(
                     indexPartition.getPartitionKey(),
                     openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
-                    openSearchSourceConfiguration.getSchedulingParameterConfiguration().getCount());
+                    openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount());
         }
     }
 

@@ -19,8 +19,8 @@ public class SchedulingParameterConfiguration {
     private Duration interval = Duration.ofHours(8);
 
     @Min(1)
-    @JsonProperty("count")
-    private int count = 1;
+    @JsonProperty("index_read_count")
+    private int indexReadCount = 1;
 
     @JsonProperty("start_time")
     private String startTime = Instant.now().toString();
@@ -32,8 +32,8 @@ public class SchedulingParameterConfiguration {
         return interval;
     }
 
-    public int getCount() {
-        return count;
+    public int getIndexReadCount() {
+        return indexReadCount;
     }
 
     public Instant getStartTime() {
