@@ -95,6 +95,7 @@ public class KafkaConnectConfigTest {
         assertThat(workerProperties.get("status.storage.partitions"), is("1"));
         assertThat(workerProperties.get("heartbeat.interval.ms"), is("300"));
         assertThat(workerProperties.get("session.timeout.ms"), is("3000"));
+        assertThat(workerProperties.get("scheduled.rebalance.max.delay.ms"), is("60000"));
         assertThat(workerProperties.get("testClass"), is(this.getClass().getName()));
         assertThat(workerProperties.get("producer.testClass"), is(this.getClass().getName()));
         assertThat(workerProperties.get("testKey"), is(authProperties.getProperty("testKey")));
@@ -106,7 +107,7 @@ public class KafkaConnectConfigTest {
         KafkaConnectConfig testConfig = makeConfig("src/test/resources/sample-data-prepper-config-with-default-kafka-connect-config-extension.yaml");
         assertThat(testConfig, notNullValue());
         assertThat(testConfig.getConnectStartTimeout().getSeconds(), is(60L));
-        assertThat(testConfig.getConnectorStartTimeout().getSeconds(), is(30L));
+        assertThat(testConfig.getConnectorStartTimeout().getSeconds(), is(360L));
         assertThat(testConfig.getBootStrapServers(), nullValue());
         WorkerProperties testWorkerProperties = testConfig.getWorkerProperties();
         assertThat(testWorkerProperties, notNullValue());
@@ -118,5 +119,6 @@ public class KafkaConnectConfigTest {
         assertThat(workerProperties.get("status.storage.partitions"), is("5"));
         assertThat(workerProperties.get("heartbeat.interval.ms"), is("3000"));
         assertThat(workerProperties.get("session.timeout.ms"), is("30000"));
+        assertThat(workerProperties.get("scheduled.rebalance.max.delay.ms"), is("300000"));
     }
 }

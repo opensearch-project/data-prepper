@@ -24,6 +24,7 @@ public class WorkerProperties {
     private static final Integer STATUS_STORAGE_PARTITIONS = 5;
     private static final Long HEARTBEAT_INTERVAL_MS = 3000L;
     private static final Long SESSION_TIMEOUT_MS = 30000L;
+    private static final long CONNECTOR_REBALANCE_DELAY_MS = 300000L; // 300 seconds
     private static final String DEFAULT_GROUP_ID = "localGroup";
     private static final String DEFAULT_CLIENT_ID = "localClient";
     private static final String DEFAULT_CONFIG_STORAGE_TOPIC = "config-storage-topic";
@@ -59,6 +60,8 @@ public class WorkerProperties {
     private Duration heartBeatInterval = Duration.ofMillis(HEARTBEAT_INTERVAL_MS);
     @JsonProperty("session_timeout")
     private Duration sessionTimeout = Duration.ofMillis(SESSION_TIMEOUT_MS);
+    @JsonProperty("connector_rebalance_max_delay")
+    private Duration connectorRebalanceDelay = Duration.ofMillis(CONNECTOR_REBALANCE_DELAY_MS);
     private String keyConverterSchemaRegistryUrl;
     private String valueConverterSchemaRegistryUrl;
     private String bootstrapServers;
@@ -98,6 +101,10 @@ public class WorkerProperties {
 
     public Long getOffsetFlushTimeout() {
         return offsetFlushTimeout.toMillis();
+    }
+
+    public Long getRebalanceMaxDelay() {
+        return connectorRebalanceDelay.toMillis();
     }
 
     public Integer getStatusStoragePartitions() {
@@ -199,6 +206,7 @@ public class WorkerProperties {
         workerProps.put("status.storage.partitions", this.getStatusStoragePartitions().toString());
         workerProps.put("heartbeat.interval.ms", this.getHeartBeatInterval().toString());
         workerProps.put("session.timeout.ms", this.getSessionTimeout().toString());
+        workerProps.put("scheduled.rebalance.max.delay.ms", this.getRebalanceMaxDelay().toString());
         return workerProps;
     }
 }

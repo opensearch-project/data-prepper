@@ -63,7 +63,7 @@ import static org.mockito.Mockito.when;
 public class KafkaConnectTest {
     private static final String TEST_PIPELINE_NAME = "test";
     private static final WorkerProperties DEFAULT_WORDER_PROPERTY = new WorkerProperties();
-    private static final long TEST_CONNECTOR_TIMEOUT_MS = 30000L; // 30 seconds
+    private static final long TEST_CONNECTOR_TIMEOUT_MS = 360000L; // 360 seconds
     private static final long TEST_CONNECT_TIMEOUT_MS = 60000L; // 60 seconds
     private static final Duration TEST_CONNECTOR_TIMEOUT = Duration.ofMillis(TEST_CONNECTOR_TIMEOUT_MS);
     private static final Duration TEST_CONNECT_TIMEOUT = Duration.ofMillis(TEST_CONNECT_TIMEOUT_MS);

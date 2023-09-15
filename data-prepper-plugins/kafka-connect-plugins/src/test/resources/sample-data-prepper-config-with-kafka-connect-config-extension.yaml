@@ -16,3 +16,4 @@ extensions:
       status_storage_partitions: 1 #optional and default is 5
       heartbeat_interval: 300ms #optional and default is 3000 (3s)
       session_timeout: 3s #optional and default is 30000 (30s)
+      connector_rebalance_max_delay: 60s
