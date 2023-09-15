@@ -17,7 +17,7 @@ import java.util.Objects;
 import java.util.Properties;
 
 public class KafkaConnectConfig implements KafkaClusterAuthConfig {
-    private static final long CONNECTOR_TIMEOUT_MS = 30000L; // 30 seconds
+    private static final long CONNECTOR_TIMEOUT_MS = 360000L; // 360 seconds
     private static final long CONNECT_TIMEOUT_MS = 60000L; // 60 seconds
 
     @JsonProperty("worker_properties")
