@@ -43,6 +43,7 @@ public class TargetRpsSimulation extends Simulation {
         ).protocols(Protocol.httpProtocol());
     }
 
+    public TargetRpsSimulation()
     {
         setUp(
                 runScenarioWithTargetRps(smallBatchScenario, 400),

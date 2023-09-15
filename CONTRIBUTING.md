@@ -89,3 +89,32 @@ Each commit must include a DCO which looks like this
 Signed-off-by: Jane Smith <jane.smith@email.com>
 ```
 You may type this line on your own when writing your commit messages. However, if your user.name and user.email are set in your git configs, you can use `-s` or `--signoff` to add the `Signed-off-by` line to the end of the commit message.
+
+## License Headers
+
+New files in your code contributions should contain the following license header.
+If you are modifying existing files with license headers, or including new files that already have license headers, do not remove or modify them without guidance.
+
+### Java, Gradle/Groovy
+
+```
+/*
+ * Copyright OpenSearch Contributors
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The OpenSearch Contributors require contributions made to
+ * this file be licensed under the Apache-2.0 license or a
+ * compatible open source license.
+ *
+*/
+```
+
+### Shell, Python
+```
+# Copyright OpenSearch Contributors
+# SPDX-License-Identifier: Apache-2.0
+#
+# The OpenSearch Contributors require contributions made to
+# this file be licensed under the Apache-2.0 license or a
+# compatible open source license.
+```
