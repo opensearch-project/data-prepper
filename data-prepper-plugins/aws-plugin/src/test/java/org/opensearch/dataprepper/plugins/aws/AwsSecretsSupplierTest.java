@@ -81,8 +81,24 @@ class AwsSecretsSupplierTest {
                 () -> objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, "missing-key"));
     }
 
+    @Test
+    void testRetrieveValueInvalidKeyValuePair() {
+        when(getSecretValueResponse.secretString()).thenReturn(TEST_VALUE);
+        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig);
+        final Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, TEST_KEY));
+        assertThat(exception.getMessage(), equalTo(String.format("The value under secretId: %s is not a valid json.",
+                TEST_AWS_SECRET_CONFIGURATION_NAME)));
+    }
+
+    @Test
+    void testRetrieveValueBySecretIdOnlyDoesNotExist() {
+        assertThrows(IllegalArgumentException.class,
+                () -> objectUnderTest.retrieveValue("missing-config-id"));
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {TEST_VALUE, "{\"a\", \"b\"}"})
+    @ValueSource(strings = {TEST_VALUE, "{\"a\":\"b\"}"})
     void testRetrieveValueWithoutKey(String testValue) {
         when(getSecretValueResponse.secretString()).thenReturn(testValue);
         objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig);
