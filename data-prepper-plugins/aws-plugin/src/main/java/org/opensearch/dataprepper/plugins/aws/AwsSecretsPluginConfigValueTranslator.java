@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.aws;
 
-import org.opensearch.dataprepper.aws.api.SecretsSupplier;
 import org.opensearch.dataprepper.model.plugin.PluginConfigValueTranslator;
 
 import java.util.regex.Matcher;

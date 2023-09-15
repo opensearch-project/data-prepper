@@ -1,6 +1,5 @@
 package org.opensearch.dataprepper.plugins.aws;
 
-import org.opensearch.dataprepper.aws.api.SecretsSupplier;
 import org.opensearch.dataprepper.model.annotations.DataPrepperExtensionPlugin;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPluginConstructor;
 import org.opensearch.dataprepper.model.plugin.ExtensionPlugin;
