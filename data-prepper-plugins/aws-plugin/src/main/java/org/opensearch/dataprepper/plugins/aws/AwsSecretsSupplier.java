@@ -61,7 +61,7 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     }
 
     @Override
-    public String retrieveValue(String secretId, String key) {
+    public Object retrieveValue(String secretId, String key) {
         if (!secretIdToValue.containsKey(secretId)) {
             throw new IllegalArgumentException(String.format("Unable to find secretId: %s", secretId));
         }
@@ -70,7 +70,7 @@ public class AwsSecretsSupplier implements SecretsSupplier {
             throw new IllegalArgumentException(String.format("The value under secretId: %s is not a valid json.",
                     secretId));
         }
-        final Map<String, String> keyValueMap = (Map<String, String>) keyValuePairs;
+        final Map<String, Object> keyValueMap = (Map<String, Object>) keyValuePairs;
         if (!keyValueMap.containsKey(key)) {
             throw new IllegalArgumentException(String.format("Unable to find the value of key: %s under secretId: %s",
                     key, secretId));
@@ -79,14 +79,14 @@ public class AwsSecretsSupplier implements SecretsSupplier {
     }
 
     @Override
-    public String retrieveValue(String secretId) {
+    public Object retrieveValue(String secretId) {
         if (!secretIdToValue.containsKey(secretId)) {
             throw new IllegalArgumentException(String.format("Unable to find secretId: %s", secretId));
         }
         try {
             final Object secretValue = secretIdToValue.get(secretId);
             return secretValue instanceof Map ? OBJECT_MAPPER.writeValueAsString(secretIdToValue.get(secretId)) :
-                    (String) secretValue;
+                    secretValue;
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException(String.format("Unable to read the value under secretId: %s as string",
                     secretId));
