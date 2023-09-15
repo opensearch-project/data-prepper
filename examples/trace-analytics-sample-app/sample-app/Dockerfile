@@ -1,11 +1,11 @@
-FROM gradle:jdk11 as cache
+FROM gradle:jdk17 as cache
 RUN mkdir -p /home/gradle/cache_home
 ENV GRADLE_USER_HOME /home/gradle/cache_home
 COPY analytics-service/build.gradle /home/gradle/src/
 WORKDIR /home/gradle/src
 RUN gradle clean build --daemon
 
-FROM gradle:jdk11 AS build
+FROM gradle:jdk17 AS build
 COPY --from=cache /home/gradle/cache_home /home/gradle/.gradle
 COPY analytics-service /home/gradle/src/
 WORKDIR /home/gradle/src
@@ -13,7 +13,7 @@ RUN gradle bootJar --daemon
 
 RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.0.1/opentelemetry-javaagent-all.jar
 
-FROM openjdk:8-jre-alpine
+FROM eclipse-temurin:17-jre-jammy
 
 RUN apk update \
 && apk upgrade \
