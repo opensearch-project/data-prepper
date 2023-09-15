@@ -66,7 +66,7 @@ public class ScanObjectWorker implements Runnable{
     private final AcknowledgementSetManager acknowledgementSetManager;
 
     // Should there be a duration or time that is configured in the source to stop processing? Otherwise will only stop when data prepper is stopped
-    private boolean shouldStopProcessing = false;
+    private volatile boolean isStopped = false;
     private final boolean deleteS3ObjectsOnRead;
     private final S3ObjectDeleteWorker s3ObjectDeleteWorker;
     private final PluginMetrics pluginMetrics;
@@ -100,15 +100,14 @@ public class ScanObjectWorker implements Runnable{
 
     @Override
     public void run() {
-        while (!shouldStopProcessing) {
-
+        while (!isStopped) {
             try {
                 startProcessingObject(STANDARD_BACKOFF_MILLIS);
             } catch (final Exception e) {
                 LOG.error("Received an exception while processing S3 objects, backing off and retrying", e);
                 try {
                     Thread.sleep(RETRY_BACKOFF_ON_EXCEPTION_MILLIS);
-                } catch (InterruptedException ex) {
+                } catch (final InterruptedException ex) {
                     LOG.error("S3 Scan worker thread interrupted while backing off.", ex);
                     return;
                 }
@@ -131,7 +130,7 @@ public class ScanObjectWorker implements Runnable{
             try {
                 Thread.sleep(waitTimeMillis);
             } catch (InterruptedException e) {
-                shouldStopProcessing = true;
+                LOG.error("S3 Scan worker thread interrupted while backing off.", e);
             }
             return;
         }
@@ -174,8 +173,10 @@ public class ScanObjectWorker implements Runnable{
         } catch (final PartitionNotOwnedException | PartitionNotFoundException | PartitionUpdateException e) {
             LOG.warn("S3 scan object worker received an exception from the source coordinator. There is a potential for duplicate data from {}, giving up partition and getting next partition: {}", objectKey, e.getMessage());
             sourceCoordinator.giveUpPartitions();
-        } catch (final ExecutionException | TimeoutException | InterruptedException e) {
+        } catch (final ExecutionException | TimeoutException e) {
             LOG.error("Exception occurred while waiting for acknowledgement.", e);
+        } catch (final InterruptedException e) {
+            LOG.error("S3 Scan worker thread interrupted while processing S3 object.", e);
         }
     }
 
@@ -193,5 +194,10 @@ public class ScanObjectWorker implements Runnable{
             LOG.error("Error while process the parseS3Object. ",ex);
         }
         return Optional.empty();
+    }
+
+    void stop() {
+        isStopped = true;
+        Thread.currentThread().interrupt();
     }
 }
