@@ -22,4 +22,6 @@ public @interface DataPrepperExtensionPlugin {
      * @return valid JSON path string starts with "/" pointing towards the configuration block.
      */
     String rootKeyJsonPath();
+
+    boolean allowInPipelineConfigurations() default false;
 }

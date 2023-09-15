@@ -49,24 +49,37 @@ class ExtensionPluginConfigurationConverterTest {
     @Test
     void convert_with_null_extensionConfigurationType_should_throw() {
         assertThrows(NullPointerException.class,
-                () -> objectUnderTest.convert(null, "testKey"));
+                () -> objectUnderTest.convert(true, null, "testKey"));
     }
 
     @Test
     void convert_with_null_rootKey_should_throw() {
         assertThrows(NullPointerException.class,
-                () -> objectUnderTest.convert(TestExtension.class, null));
+                () -> objectUnderTest.convert(true, TestExtension.class, null));
     }
 
     @Test
-    void convert_with_test_extension_with_config() {
+    void convert_with_test_extension_with_config_allowed_in_pipeline_configurations() {
         when(validator.validate(any())).thenReturn(Collections.emptySet());
         final String rootKey = "test_extension";
         final String testValue = "test_value";
-        when(extensionPluginConfigurationResolver.getExtensionMap()).thenReturn(Map.of(
+        when(extensionPluginConfigurationResolver.getCombinedExtensionMap()).thenReturn(Map.of(
                 rootKey, Map.of("test_attribute", testValue)
         ));
-        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, "/" + rootKey);
+        final Object testExtensionConfig = objectUnderTest.convert(true, TestExtensionConfig.class, "/" + rootKey);
+        assertThat(testExtensionConfig, instanceOf(TestExtensionConfig.class));
+        assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
+    }
+
+    @Test
+    void convert_with_test_extension_with_config_not_allowed_in_pipeline_configurations() {
+        when(validator.validate(any())).thenReturn(Collections.emptySet());
+        final String rootKey = "test_extension";
+        final String testValue = "test_value";
+        when(extensionPluginConfigurationResolver.getDataPrepperConfigExtensionMap()).thenReturn(Map.of(
+                rootKey, Map.of("test_attribute", testValue)
+        ));
+        final Object testExtensionConfig = objectUnderTest.convert(false, TestExtensionConfig.class, "/" + rootKey);
         assertThat(testExtensionConfig, instanceOf(TestExtensionConfig.class));
         assertThat(((TestExtensionConfig) testExtensionConfig).getTestAttribute(), equalTo(testValue));
     }
@@ -74,8 +87,8 @@ class ExtensionPluginConfigurationConverterTest {
     @Test
     void convert_with_null_rootKey_value_should_return_null() {
         final String rootKeyPath = "/test_extension";
-        when(extensionPluginConfigurationResolver.getExtensionMap()).thenReturn(Collections.emptyMap());
-        final Object testExtensionConfig = objectUnderTest.convert(TestExtensionConfig.class, rootKeyPath);
+        when(extensionPluginConfigurationResolver.getCombinedExtensionMap()).thenReturn(Collections.emptyMap());
+        final Object testExtensionConfig = objectUnderTest.convert(true, TestExtensionConfig.class, rootKeyPath);
         assertThat(testExtensionConfig, nullValue());
     }
 
@@ -84,7 +97,7 @@ class ExtensionPluginConfigurationConverterTest {
         final String firstKey = "first";
         final String secondKey = "second";
         final String jsonPointer = String.format("/%s/%s", firstKey, secondKey);
-        when(extensionPluginConfigurationResolver.getExtensionMap()).thenReturn(
+        when(extensionPluginConfigurationResolver.getCombinedExtensionMap()).thenReturn(
                 Map.of(firstKey, Map.of(secondKey, Collections.emptyMap())));
         final String errorMessage = UUID.randomUUID().toString();
         given(constraintViolation.getMessage()).willReturn(errorMessage);
@@ -97,7 +110,7 @@ class ExtensionPluginConfigurationConverterTest {
                 .willReturn(Collections.singleton(constraintViolation));
 
         final InvalidPluginConfigurationException actualException = assertThrows(InvalidPluginConfigurationException.class,
-                () -> objectUnderTest.convert(TestExtensionConfig.class, jsonPointer));
+                () -> objectUnderTest.convert(true, TestExtensionConfig.class, jsonPointer));
 
         assertThat(actualException.getMessage(), containsString(jsonPointer));
         assertThat(actualException.getMessage(), containsString(propertyPathString));

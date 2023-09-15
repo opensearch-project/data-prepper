@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -38,6 +39,7 @@ class PluginConfigurationConverterTest {
 
     static class TestConfiguration {
         @SuppressWarnings("unused")
+        @JsonProperty("my_value")
         private String myValue;
 
         public String getMyValue() {

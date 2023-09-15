@@ -34,12 +34,18 @@ public class ExtensionPluginConfigurationConverter {
         this.validator = validator;
     }
 
-    public Object convert(final Class<?> extensionPluginConfigurationType, final String rootKey) {
+    public Object convert(final boolean configAllowedInPipelineConfigurations,
+                          final Class<?> extensionPluginConfigurationType, final String rootKey) {
         Objects.requireNonNull(extensionPluginConfigurationType);
         Objects.requireNonNull(rootKey);
 
-        final Object configuration = convertSettings(extensionPluginConfigurationType,
-                getExtensionPluginConfigMap(extensionPluginConfigurationResolver.getExtensionMap(), rootKey));
+        final Object configuration = configAllowedInPipelineConfigurations ?
+                convertSettings(extensionPluginConfigurationType,
+                        getExtensionPluginConfigMap(
+                                extensionPluginConfigurationResolver.getCombinedExtensionMap(), rootKey)) :
+                convertSettings(extensionPluginConfigurationType,
+                        getExtensionPluginConfigMap(
+                                extensionPluginConfigurationResolver.getDataPrepperConfigExtensionMap(), rootKey));
 
         final Set<ConstraintViolation<Object>> constraintViolations = configuration == null ? Collections.emptySet() :
                 validator.validate(configuration);
