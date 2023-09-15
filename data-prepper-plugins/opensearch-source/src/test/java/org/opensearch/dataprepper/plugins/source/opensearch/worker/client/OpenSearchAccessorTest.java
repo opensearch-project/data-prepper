@@ -70,11 +70,8 @@ public class OpenSearchAccessorTest {
     @Mock
     private OpenSearchClient openSearchClient;
 
-    @Mock
-    private OpenSearchClient asyncOpenSearchClient;
-
     private SearchAccessor createObjectUnderTest() {
-        return new OpenSearchAccessor(openSearchClient, asyncOpenSearchClient, SearchContextType.POINT_IN_TIME);
+        return new OpenSearchAccessor(openSearchClient, SearchContextType.POINT_IN_TIME);
     }
 
     @Test
@@ -352,7 +349,7 @@ public class OpenSearchAccessorTest {
         when(deletePitRecord.successful()).thenReturn(successful);
         when(deletePitResponse.pits()).thenReturn(Collections.singletonList(deletePitRecord));
 
-        when(asyncOpenSearchClient.deletePit(any(DeletePitRequest.class))).thenReturn(deletePitResponse);
+        when(openSearchClient.deletePit(any(DeletePitRequest.class))).thenReturn(deletePitResponse);
 
         createObjectUnderTest().deletePit(deletePointInTimeRequest);
     }
@@ -369,7 +366,7 @@ public class OpenSearchAccessorTest {
         when(clearScrollResponse.succeeded()).thenReturn(successful);
 
 
-        when(asyncOpenSearchClient.clearScroll(any(ClearScrollRequest.class))).thenReturn(clearScrollResponse);
+        when(openSearchClient.clearScroll(any(ClearScrollRequest.class))).thenReturn(clearScrollResponse);
 
         createObjectUnderTest().deleteScroll(deleteScrollRequest);
     }
@@ -381,7 +378,7 @@ public class OpenSearchAccessorTest {
         final DeletePointInTimeRequest deletePointInTimeRequest = mock(DeletePointInTimeRequest.class);
         when(deletePointInTimeRequest.getPitId()).thenReturn(pitId);
 
-        when(asyncOpenSearchClient.deletePit(any(DeletePitRequest.class))).thenThrow(OpenSearchException.class);
+        when(openSearchClient.deletePit(any(DeletePitRequest.class))).thenThrow(OpenSearchException.class);
 
         createObjectUnderTest().deletePit(deletePointInTimeRequest);
     }
@@ -394,7 +391,7 @@ public class OpenSearchAccessorTest {
         when(deleteScrollRequest.getScrollId()).thenReturn(scrollId);
 
 
-        when(asyncOpenSearchClient.clearScroll(any(ClearScrollRequest.class))).thenThrow(OpenSearchException.class);
+        when(openSearchClient.clearScroll(any(ClearScrollRequest.class))).thenThrow(OpenSearchException.class);
 
         createObjectUnderTest().deleteScroll(deleteScrollRequest);
     }
@@ -406,7 +403,7 @@ public class OpenSearchAccessorTest {
         final DeletePointInTimeRequest deletePointInTimeRequest = mock(DeletePointInTimeRequest.class);
         when(deletePointInTimeRequest.getPitId()).thenReturn(pitId);
 
-        when(asyncOpenSearchClient.deletePit(any(DeletePitRequest.class))).thenThrow(IOException.class);
+        when(openSearchClient.deletePit(any(DeletePitRequest.class))).thenThrow(IOException.class);
 
         createObjectUnderTest().deletePit(deletePointInTimeRequest);
     }
@@ -419,7 +416,7 @@ public class OpenSearchAccessorTest {
         when(deleteScrollRequest.getScrollId()).thenReturn(scrollId);
 
 
-        when(asyncOpenSearchClient.clearScroll(any(ClearScrollRequest.class))).thenThrow(IOException.class);
+        when(openSearchClient.clearScroll(any(ClearScrollRequest.class))).thenThrow(IOException.class);
 
         createObjectUnderTest().deleteScroll(deleteScrollRequest);
     }

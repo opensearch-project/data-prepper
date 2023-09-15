@@ -64,8 +64,6 @@ public class SearchAccessStrategyTest {
         final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
         when(openSearchClient.info()).thenReturn(infoResponse);
         when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
-        when(openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
-
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.POINT_IN_TIME));
@@ -144,7 +142,6 @@ public class SearchAccessStrategyTest {
         final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
         when(openSearchClient.info()).thenReturn(infoResponse);
         when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
-        when(openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
 
         final SearchAccessor searchAccessor = createObjectUnderTest().getSearchAccessor();
         assertThat(searchAccessor, notNullValue());
@@ -185,7 +182,6 @@ public class SearchAccessStrategyTest {
         final OpenSearchClient openSearchClient = mock(OpenSearchClient.class);
         when(openSearchClient.info()).thenReturn(infoResponse);
         when(openSearchClientFactory.provideOpenSearchClient(openSearchSourceConfiguration)).thenReturn(openSearchClient);
-        when(openSearchClientFactory.provideOpenSearchAsyncClient(openSearchSourceConfiguration)).thenReturn(mock(OpenSearchClient.class));
 
         final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
         when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.NONE);
@@ -212,15 +208,16 @@ public class SearchAccessStrategyTest {
         assertThat(searchAccessor.getSearchContextType(), equalTo(SearchContextType.NONE));
     }
 
-    @Test
-    void serverless_flag_true_throws_InvalidPluginConfiguration_if_search_context_type_is_point_in_time() {
+    @ParameterizedTest
+    @ValueSource(strings = {"POINT_IN_TIME", "SCROLL"})
+    void serverless_flag_true_throws_InvalidPluginConfiguration_if_search_context_type_is_point_in_time_or_scroll(final String searchContextType) {
 
         final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);
         when(awsAuthenticationConfiguration.isServerlessCollection()).thenReturn(true);
         when(openSearchSourceConfiguration.getAwsAuthenticationOptions()).thenReturn(awsAuthenticationConfiguration);
 
         final SearchConfiguration searchConfiguration = mock(SearchConfiguration.class);
-        when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.POINT_IN_TIME);
+        when(searchConfiguration.getSearchContextType()).thenReturn(SearchContextType.valueOf(searchContextType));
         when(openSearchSourceConfiguration.getSearchConfiguration()).thenReturn(searchConfiguration);
 
         final SearchAccessorStrategy objectUnderTest = createObjectUnderTest();
@@ -229,7 +226,7 @@ public class SearchAccessStrategyTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"NONE", "SCROLL"})
+    @ValueSource(strings = {"NONE"})
     void serverless_flag_true_uses_search_context_type_from_config(final String searchContextType) {
 
         final AwsAuthenticationConfiguration awsAuthenticationConfiguration = mock(AwsAuthenticationConfiguration.class);

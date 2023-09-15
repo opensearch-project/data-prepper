@@ -39,7 +39,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.signer.Aws4Signer;
-import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
@@ -76,18 +75,7 @@ public class OpenSearchClientFactory {
     public OpenSearchClient provideOpenSearchClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
         OpenSearchTransport transport;
         if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions())) {
-            transport = createOpenSearchTransportForAws(openSearchSourceConfiguration, false);
-        } else {
-            final RestClient restClient = createOpenSearchRestClient(openSearchSourceConfiguration);
-            transport = createOpenSearchTransport(restClient);
-        }
-        return new OpenSearchClient(transport);
-    }
-
-    public OpenSearchClient provideOpenSearchAsyncClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
-        OpenSearchTransport transport;
-        if (Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions())) {
-            transport = createOpenSearchTransportForAws(openSearchSourceConfiguration, true);
+            transport = createOpenSearchTransportForAws(openSearchSourceConfiguration);
         } else {
             final RestClient restClient = createOpenSearchRestClient(openSearchSourceConfiguration);
             transport = createOpenSearchTransport(restClient);
@@ -105,7 +93,7 @@ public class OpenSearchClientFactory {
         return new RestClientTransport(restClient, new JacksonJsonpMapper());
     }
 
-    private OpenSearchTransport createOpenSearchTransportForAws(final OpenSearchSourceConfiguration openSearchSourceConfiguration, final boolean async) {
+    private OpenSearchTransport createOpenSearchTransportForAws(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
         final AwsCredentialsProvider awsCredentialsProvider = awsCredentialsSupplier.getProvider(AwsCredentialsOptions.builder()
                 .withRegion(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion())
                 .withStsRoleArn(openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsStsRoleArn())
@@ -116,42 +104,15 @@ public class OpenSearchClientFactory {
         final boolean isServerlessCollection = Objects.nonNull(openSearchSourceConfiguration.getAwsAuthenticationOptions()) &&
                 openSearchSourceConfiguration.getAwsAuthenticationOptions().isServerlessCollection();
 
-        if (!async) {
-            return new AwsSdk2Transport(createSdkHttpClient(openSearchSourceConfiguration),
-                    HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
-                    isServerlessCollection ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME,
-                    openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
-                    AwsSdk2TransportOptions.builder()
-                            .setCredentials(awsCredentialsProvider)
-                            .setMapper(new JacksonJsonpMapper())
-                            .build());
-        } else {
-            return new AwsSdk2Transport(createSdkAsyncHttpClient(openSearchSourceConfiguration),
-                    HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
-                    isServerlessCollection ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME,
-                    openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
-                    AwsSdk2TransportOptions.builder()
-                            .setCredentials(awsCredentialsProvider)
-                            .setMapper(new JacksonJsonpMapper())
-                            .build());
-        }
+        return new AwsSdk2Transport(createSdkAsyncHttpClient(openSearchSourceConfiguration),
+                HttpHost.create(openSearchSourceConfiguration.getHosts().get(0)).getHostName(),
+                isServerlessCollection ? AOSS_SERVICE_NAME : AOS_SERVICE_NAME,
+                openSearchSourceConfiguration.getAwsAuthenticationOptions().getAwsRegion(),
+                AwsSdk2TransportOptions.builder()
+                        .setCredentials(awsCredentialsProvider)
+                        .setMapper(new JacksonJsonpMapper())
+                        .build());
 
-    }
-
-    private SdkHttpClient createSdkHttpClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
-        final ApacheHttpClient.Builder apacheHttpClientBuilder = ApacheHttpClient.builder();
-
-        if (Objects.nonNull(openSearchSourceConfiguration.getConnectionConfiguration().getConnectTimeout())) {
-            apacheHttpClientBuilder.connectionTimeout(openSearchSourceConfiguration.getConnectionConfiguration().getConnectTimeout());
-        }
-
-        if (Objects.nonNull(openSearchSourceConfiguration.getConnectionConfiguration().getSocketTimeout())) {
-            apacheHttpClientBuilder.socketTimeout(openSearchSourceConfiguration.getConnectionConfiguration().getSocketTimeout());
-        }
-
-        attachSSLContext(apacheHttpClientBuilder, openSearchSourceConfiguration);
-
-        return apacheHttpClientBuilder.build();
     }
 
     public SdkAsyncHttpClient createSdkAsyncHttpClient(final OpenSearchSourceConfiguration openSearchSourceConfiguration) {
