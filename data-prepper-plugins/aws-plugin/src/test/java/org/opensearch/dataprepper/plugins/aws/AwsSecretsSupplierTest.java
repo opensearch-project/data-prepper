@@ -12,7 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
-import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.secretsmanager.model.SecretsManagerException;
 
 import java.util.Map;
@@ -108,6 +107,6 @@ class AwsSecretsSupplierTest {
     @Test
     void testConstructorWithGetSecretValueFailure() {
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(secretsManagerException);
-        assertThrows(ResourceNotFoundException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig));
+        assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig));
     }
 }

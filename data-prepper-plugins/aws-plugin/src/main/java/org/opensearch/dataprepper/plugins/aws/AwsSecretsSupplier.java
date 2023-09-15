@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
-import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -39,11 +38,9 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                     try {
                         getSecretValueResponse = secretsManagerClient.getSecretValue(getSecretValueRequest);
                     } catch (Exception e) {
-                        throw ResourceNotFoundException.builder()
-                                .message(String.format("Unable to retrieve secret: %s",
-                                        awsSecretManagerConfiguration.getAwsSecretId()))
-                                .cause(e)
-                                .build();
+                        throw new RuntimeException(
+                                String.format("Unable to retrieve secret: %s",
+                                        awsSecretManagerConfiguration.getAwsSecretId()), e);
                     }
 
                     try {
