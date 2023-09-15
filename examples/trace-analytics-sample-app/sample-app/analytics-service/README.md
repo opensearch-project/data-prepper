@@ -6,6 +6,9 @@ The app contains two endpoints:
 - /metrics
 
 ##### Commands to build app and run the JAR:
+
+Building and running this project requires JDK 17 or above.
+
 ```
 $ ./gradlew clean build
 ```
@@ -29,4 +32,16 @@ $ ./gradlew clean build
 ```
 ```
 $ docker-compose up --build
+```
+
+#### Sample requests
+
+To verify the application is running, you can provide some sample requests.
+
+```
+curl http://localhost:8087/metrics
+```
+
+```
+curl http://localhost:8087/logs -X POST -H 'Content-Type: application/json' -d '{"service":"analytics", "message":"my message"}'
 ```
