@@ -48,8 +48,8 @@ public class WorkerCommonUtils {
                 if (result == true) {
                     sourceCoordinator.closePartition(
                             indexPartition.getPartitionKey(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
-                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
+                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
+                            openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount());
                 }
                 completableFuture.complete(result);
             }, Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS));
@@ -69,8 +69,8 @@ public class WorkerCommonUtils {
         } else {
             sourceCoordinator.closePartition(
                     indexPartition.getPartitionKey(),
-                    openSearchSourceConfiguration.getSchedulingParameterConfiguration().getRate(),
-                    openSearchSourceConfiguration.getSchedulingParameterConfiguration().getJobCount());
+                    openSearchSourceConfiguration.getSchedulingParameterConfiguration().getInterval(),
+                    openSearchSourceConfiguration.getSchedulingParameterConfiguration().getIndexReadCount());
         }
     }
 

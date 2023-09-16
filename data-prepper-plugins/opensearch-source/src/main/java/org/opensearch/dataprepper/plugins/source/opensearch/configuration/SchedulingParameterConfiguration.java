@@ -15,12 +15,12 @@ import java.time.Instant;
 
 public class SchedulingParameterConfiguration {
 
-    @JsonProperty("rate")
-    private Duration rate = Duration.ofHours(8);
+    @JsonProperty("interval")
+    private Duration interval = Duration.ofHours(8);
 
     @Min(1)
-    @JsonProperty("job_count")
-    private int jobCount = 1;
+    @JsonProperty("index_read_count")
+    private int indexReadCount = 1;
 
     @JsonProperty("start_time")
     private String startTime = Instant.now().toString();
@@ -28,12 +28,12 @@ public class SchedulingParameterConfiguration {
     @JsonIgnore
     private Instant startTimeInstant;
 
-    public Duration getRate() {
-        return rate;
+    public Duration getInterval() {
+        return interval;
     }
 
-    public int getJobCount() {
-        return jobCount;
+    public int getIndexReadCount() {
+        return indexReadCount;
     }
 
     public Instant getStartTime() {
