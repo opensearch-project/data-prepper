@@ -25,7 +25,7 @@ jobs:
     - name: Checkout Data Prepper
       uses: actions/checkout@v2
     - name: Build with Gradle
-      run: ./gradlew build
+      run: ./gradlew --parallel build
     - name: Upload Unit Test Results
       if: always()
       uses: actions/upload-artifact@v3
@@ -35,7 +35,7 @@ jobs:
     - name: Upload Coverage Report
       uses: codecov/codecov-action@v1
     - name: Generate Javadocs
-      run: ./gradlew javadoc
+      run: ./gradlew --parallel javadoc
 
   publish-test-results:
     name: "Publish Unit Tests Results"

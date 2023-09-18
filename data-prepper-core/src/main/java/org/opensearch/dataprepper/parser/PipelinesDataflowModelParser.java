@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import org.opensearch.dataprepper.model.configuration.DataPrepperVersion;
+import org.opensearch.dataprepper.model.configuration.PipelineExtensions;
 import org.opensearch.dataprepper.model.configuration.PipelineModel;
 import org.opensearch.dataprepper.model.configuration.PipelinesDataFlowModel;
 import org.slf4j.Logger;
@@ -102,6 +103,16 @@ public class PipelinesDataflowModelParser {
                         Map.Entry::getKey,
                         Map.Entry::getValue
                 ));
-        return new PipelinesDataFlowModel(pipelinesDataFlowModelMap);
+        final List<PipelineExtensions> pipelineExtensionsList = pipelinesDataFlowModels.stream()
+                .map(PipelinesDataFlowModel::getPipelineExtensions)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        if (pipelineExtensionsList.size() > 1 ||
+                (pipelineExtensionsList.size() == 1 && pipelinesDataFlowModels.size() > 1)) {
+            throw new ParseException(
+                    "pipeline_configurations and definition must all be defined in a single YAML file if pipeline_configurations is configured.");
+        }
+        return pipelineExtensionsList.isEmpty() ? new PipelinesDataFlowModel(pipelinesDataFlowModelMap) :
+                new PipelinesDataFlowModel(pipelineExtensionsList.get(0), pipelinesDataFlowModelMap);
     }
 }

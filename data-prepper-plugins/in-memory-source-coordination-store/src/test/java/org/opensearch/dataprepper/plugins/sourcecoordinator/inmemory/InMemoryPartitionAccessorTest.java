@@ -171,11 +171,11 @@ public class InMemoryPartitionAccessorTest {
 
         final Optional<SourcePartitionStoreItem> acquiredItem = objectUnderTest.getNextItem();
         assertThat(acquiredItem.isPresent(), equalTo(true));
-        assertThat(acquiredItem.get(), equalTo(item));
+        assertThat(acquiredItem.get(), equalTo(thirdItem));
 
         final Optional<SourcePartitionStoreItem> secondAcquiredItem = objectUnderTest.getNextItem();
         assertThat(secondAcquiredItem.isPresent(), equalTo(true));
-        assertThat(secondAcquiredItem.get(), equalTo(thirdItem));
+        assertThat(secondAcquiredItem.get(), equalTo(item));
     }
 
     @Test

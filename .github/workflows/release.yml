@@ -33,7 +33,7 @@ jobs:
     - name: Get Version
       run:  grep '^version=' gradle.properties >> $GITHUB_ENV
     - name: Build Jar Files
-      run: ./gradlew build
+      run: ./gradlew --parallel build
 
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -42,7 +42,7 @@ jobs:
         aws-region: us-east-1
 
     - name: Build Archives
-      run: ./gradlew :release:archives:buildArchives -Prelease
+      run: ./gradlew --parallel :release:archives:buildArchives -Prelease
 
     - name: Build Maven Artifacts
       run: ./gradlew publish

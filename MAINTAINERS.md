@@ -11,7 +11,6 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Taylor Gray          | [graytaylor0](https://github.com/graytaylor0)         | Amazon      |
 | Dinu John            | [dinujoh](https://github.com/dinujoh)                 | Amazon      |
 | Krishna Kondaka      | [kkondaka](https://github.com/kkondaka)               | Amazon      |
-| Christopher Manning  | [cmanning09](https://github.com/cmanning09)           | Amazon      |
 | Asif Sohail Mohammed | [asifsmohammed](https://github.com/asifsmohammed)     | Amazon      |
 | David Venable        | [dlvenable](https://github.com/dlvenable)             | Amazon      |
 | Hai Yan              | [oeyh](https://github.com/oeyh)                       | Amazon      |
@@ -22,6 +21,7 @@ This document contains a list of maintainers in this repo. See [opensearch-proje
 | Maintainer           | GitHub ID                                             | Affiliation |
 | -------------------- | ----------------------------------------------------- | ----------- |
 | Steven Bayer         | [sbayer55](https://github.com/sbayer55)               | Amazon      |
+| Christopher Manning  | [cmanning09](https://github.com/cmanning09)           | Amazon      |
 | David Powers         | [dapowers87](https://github.com/dapowers87)           | Amazon      |
 | Shivani Shukla       | [sshivanii](https://github.com/sshivanii)             | Amazon      |
 | Phill Treddenick     | [treddeni-amazon](https://github.com/treddeni-amazon) | Amazon      |

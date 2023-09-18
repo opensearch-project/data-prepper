@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 public class SearchConfigurationTest {
@@ -25,7 +24,6 @@ public class SearchConfigurationTest {
     void default_search_configuration() {
         final SearchConfiguration searchConfiguration = new SearchConfiguration();
 
-        assertThat(searchConfiguration.getQuery(), equalTo(null));
         assertThat(searchConfiguration.getBatchSize(), equalTo(1000));
     }
 
@@ -33,13 +31,9 @@ public class SearchConfigurationTest {
     void non_default_search_configuration() {
         final Map<String, Object> pluginSettings = new HashMap<>();
         pluginSettings.put("batch_size", 2000);
-        pluginSettings.put("query", "{\"query\": {\"match_all\": {} }}");
 
         final SearchConfiguration searchConfiguration = objectMapper.convertValue(pluginSettings, SearchConfiguration.class);
         assertThat(searchConfiguration.getBatchSize(),equalTo(2000));
-        assertThat(searchConfiguration.isQueryValid(), equalTo(true));
-        assertThat(searchConfiguration.getQuery(), notNullValue());
-        assertThat(searchConfiguration.getQuery().containsKey("query"), equalTo(true));
     }
 
     @Test
@@ -47,10 +41,8 @@ public class SearchConfigurationTest {
 
         final Map<String, Object> pluginSettings = new HashMap<>();
         pluginSettings.put("batch_size", 1000);
-        pluginSettings.put("query", "\\{query: \"my_query\"}");
 
         final SearchConfiguration searchConfiguration = objectMapper.convertValue(pluginSettings, SearchConfiguration.class);
         assertThat(searchConfiguration.getBatchSize(),equalTo(1000));
-        assertThat(searchConfiguration.isQueryValid(), equalTo(false));
     }
 }

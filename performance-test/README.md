@@ -22,6 +22,28 @@ To run TargetRpsSimulation. Source code available at `./performance-test/src/gat
 ./gradlew :performance-test:gatlingRun-org.opensearch.dataprepper.test.performance.TargetRpsSimulation
 ```
 
+### Configurations
+
+You can configure the test in order to target different endpoints with different configurations.
+Supply the configurations as Java system variables on the command line.
+
+For example, you can configure the port and use HTTPS with a custom certificate with the following:
+
+```
+./gradlew -Dport=7099 -Dprotocol=https -Dpath=/simple-sample-pipeline/logs -Djavax.net.ssl.keyStore=examples/demo/test_keystore.p12 :performance-test:gatlingRun-org.opensearch.dataprepper.test.performance.SingleRequestSimulation
+```
+
+**Available configuration options:**
+
+* `host` - The host name or a comma-delimited list of host names. Defaults to `localhost`.
+* `port` - The destination port. The default value is `2021`.
+* `protocol` - The scheme to use in the URL. Can be `http` or `https`. Defaults to `http`.
+* `path` - The path of the HTTP endpoint. This uses the default `http` path of `/log/ingest`.
+* `authentication` - The authentication to use with the target. Currently supports `aws_sigv4`.
+* `aws_region` - The AWS region to use in signing. Required with `aws_sigv4` authentication.
+* `aws_service` - The AWS service name to use in signing. Required with `aws_sigv4` authentication.
+
+
 ### Verify Gatling scenarios compile
 ```shell
 ./gradlew :performance-test:compileGatlingJava
