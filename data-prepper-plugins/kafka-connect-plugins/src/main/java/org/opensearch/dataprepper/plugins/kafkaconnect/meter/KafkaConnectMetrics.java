@@ -47,6 +47,12 @@ public class KafkaConnectMetrics {
             "source-record-active-count-avg",
             "source-record-active-count"
     );
+    private static final String CLIENT_ID_KEY = "client-id";
+    private static final String CLIENT_ID = "client.id";
+    private static final String NODE_ID_KEY = "node-id";
+    private static final String NODE_ID = "node.id";
+    private static final String CONNECTOR = "connector";
+    private static final String TASK = "task";
 
     private final PluginMetrics pluginMetrics;
 
@@ -119,24 +125,24 @@ public class KafkaConnectMetrics {
     private Iterable<Tag> nameTag(ObjectName name) {
         Tags tags = Tags.empty();
 
-        String clientId = name.getKeyProperty("client-id");
+        String clientId = name.getKeyProperty(CLIENT_ID_KEY);
         if (clientId != null) {
-            tags = Tags.concat(tags, "client.id", clientId);
+            tags = Tags.concat(tags, CLIENT_ID, clientId);
         }
 
-        String nodeId = name.getKeyProperty("node-id");
+        String nodeId = name.getKeyProperty(NODE_ID_KEY);
         if (nodeId != null) {
-            tags = Tags.concat(tags, "node.id", nodeId);
+            tags = Tags.concat(tags, NODE_ID, nodeId);
         }
 
-        String connectorName = name.getKeyProperty("connector");
+        String connectorName = name.getKeyProperty(CONNECTOR);
         if (connectorName != null) {
-            tags = Tags.concat(tags, "connector", connectorName);
+            tags = Tags.concat(tags, CONNECTOR, connectorName);
         }
 
-        String taskName = name.getKeyProperty("task");
+        String taskName = name.getKeyProperty(TASK);
         if (taskName != null) {
-            tags = Tags.concat(tags, "task", taskName);
+            tags = Tags.concat(tags, TASK, taskName);
         }
 
         return tags;

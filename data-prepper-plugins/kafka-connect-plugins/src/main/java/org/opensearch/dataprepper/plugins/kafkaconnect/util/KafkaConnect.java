@@ -61,6 +61,7 @@ public class KafkaConnect {
     private static volatile Map<String, KafkaConnect> instanceMap = new HashMap<>();
     private static final long RETRY_INTERVAL_MS = 3000L; // 3 seconds
     private static final int LATCH_WAIT_TIME = 1; // 1 minute
+    private static final String RUNNING = "RUNNING";
     private final Map<String, Connector> connectorMap;
     private final KafkaConnectMetrics kafkaConnectMetrics;
     private final Time time = Time.SYSTEM;
@@ -238,7 +239,11 @@ public class KafkaConnect {
 
     /**
      * Initialize connectors.
-     * Will add connectors, and delete undeclared connectors.
+     * The Kafka Connectors are managed in orders:
+     * 1. Delete Connectors not in pipeline configurations
+     * 2. Register Connectors
+     * 3. Wait for all connectors in running state.
+     * 4. Bind connectors' metrics
      */
     private void initConnectors() throws InterruptedException {
         this.deleteConnectors();
@@ -338,7 +343,7 @@ public class KafkaConnect {
             while (clock.millis() - startTime < connectorTimeoutMs) {
                 try {
                     ConnectorStateInfo info = herder.connectorStatus(connectorName);
-                    if ("RUNNING".equals(info.connector().state())) {
+                    if (RUNNING.equals(info.connector().state())) {
                         // Connector is running, decrement the latch count
                         isRunning = true;
                         break;
