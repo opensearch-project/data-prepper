@@ -15,6 +15,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.aws.AwsSecretsPluginConfigValueTranslator.AWS_SECRETS_PREFIX;
 
 @ExtendWith(MockitoExtension.class)
 class AwsSecretsPluginConfigValueTranslatorTest {
@@ -26,6 +27,11 @@ class AwsSecretsPluginConfigValueTranslatorTest {
     @BeforeEach
     void setUp() {
         objectUnderTest = new AwsSecretsPluginConfigValueTranslator(secretsSupplier);
+    }
+
+    @Test
+    void testGetPrefix() {
+        assertThat(objectUnderTest.getPrefix(), equalTo(AWS_SECRETS_PREFIX));
     }
 
     @ParameterizedTest

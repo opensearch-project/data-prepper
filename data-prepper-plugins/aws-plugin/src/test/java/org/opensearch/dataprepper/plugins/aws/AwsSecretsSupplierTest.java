@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
@@ -20,7 +21,9 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.opensearch.dataprepper.plugins.aws.AwsSecretsSupplier.MAP_TYPE_REFERENCE;
 
 @ExtendWith(MockitoExtension.class)
 class AwsSecretsSupplierTest {
@@ -60,7 +63,7 @@ class AwsSecretsSupplierTest {
                 Map.of(TEST_KEY, TEST_VALUE)
         ));
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenReturn(getSecretValueResponse);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig);
+        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
     }
 
     @Test
@@ -83,7 +86,7 @@ class AwsSecretsSupplierTest {
     @Test
     void testRetrieveValueInvalidKeyValuePair() {
         when(getSecretValueResponse.secretString()).thenReturn(TEST_VALUE);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig);
+        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
         final Exception exception = assertThrows(IllegalArgumentException.class,
                 () -> objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME, TEST_KEY));
         assertThat(exception.getMessage(), equalTo(String.format("The value under secretId: %s is not a valid json.",
@@ -96,17 +99,32 @@ class AwsSecretsSupplierTest {
                 () -> objectUnderTest.retrieveValue("missing-config-id"));
     }
 
+    @Test
+    void testRetrieveValueBySecretIdOnlyNotSerializable() throws JsonProcessingException {
+        final ObjectMapper mockedObjectMapper = mock(ObjectMapper.class);
+        final JsonProcessingException mockedJsonProcessingException = mock(JsonProcessingException.class);
+        final String testValue = "{\"a\":\"b\"}";
+        when(mockedObjectMapper.readValue(eq(testValue), eq(MAP_TYPE_REFERENCE))).thenReturn(Map.of("a", "b"));
+        when(mockedObjectMapper.writeValueAsString(ArgumentMatchers.any())).thenThrow(mockedJsonProcessingException);
+        when(getSecretValueResponse.secretString()).thenReturn(testValue);
+        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, mockedObjectMapper);
+        final Exception exception = assertThrows(IllegalArgumentException.class,
+                () -> objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME));
+        assertThat(exception.getMessage(), equalTo(String.format("Unable to read the value under secretId: %s as string.",
+                TEST_AWS_SECRET_CONFIGURATION_NAME)));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {TEST_VALUE, "{\"a\":\"b\"}"})
     void testRetrieveValueWithoutKey(String testValue) {
         when(getSecretValueResponse.secretString()).thenReturn(testValue);
-        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig);
+        objectUnderTest = new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER);
         assertThat(objectUnderTest.retrieveValue(TEST_AWS_SECRET_CONFIGURATION_NAME), equalTo(testValue));
     }
 
     @Test
     void testConstructorWithGetSecretValueFailure() {
         when(secretsManagerClient.getSecretValue(eq(getSecretValueRequest))).thenThrow(secretsManagerException);
-        assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig));
+        assertThrows(RuntimeException.class, () -> new AwsSecretsSupplier(awsSecretPluginConfig, OBJECT_MAPPER));
     }
 }

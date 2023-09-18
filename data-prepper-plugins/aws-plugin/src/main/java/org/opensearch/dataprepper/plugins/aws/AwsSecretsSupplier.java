@@ -11,13 +11,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class AwsSecretsSupplier implements SecretsSupplier {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final TypeReference<Map<String, String>> MAP_TYPE_REFERENCE = new TypeReference<>() {
+    static final TypeReference<Map<String, String>> MAP_TYPE_REFERENCE = new TypeReference<>() {
     };
 
+    private final ObjectMapper objectMapper;
     private final Map<String, Object> secretIdToValue;
 
-    public AwsSecretsSupplier(final AwsSecretPluginConfig awsSecretPluginConfig) {
+    public AwsSecretsSupplier(final AwsSecretPluginConfig awsSecretPluginConfig, final ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
         secretIdToValue = toSecretMap(awsSecretPluginConfig);
     }
 
@@ -44,7 +45,7 @@ public class AwsSecretsSupplier implements SecretsSupplier {
                     }
 
                     try {
-                        return OBJECT_MAPPER.readValue(getSecretValueResponse.secretString(), MAP_TYPE_REFERENCE);
+                        return objectMapper.readValue(getSecretValueResponse.secretString(), MAP_TYPE_REFERENCE);
                     } catch (JsonProcessingException e) {
                         return getSecretValueResponse.secretString();
                     }
@@ -85,10 +86,10 @@ public class AwsSecretsSupplier implements SecretsSupplier {
         }
         try {
             final Object secretValue = secretIdToValue.get(secretId);
-            return secretValue instanceof Map ? OBJECT_MAPPER.writeValueAsString(secretIdToValue.get(secretId)) :
+            return secretValue instanceof Map ? objectMapper.writeValueAsString(secretValue) :
                     secretValue;
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException(String.format("Unable to read the value under secretId: %s as string",
+            throw new IllegalArgumentException(String.format("Unable to read the value under secretId: %s as string.",
                     secretId));
         }
     }
