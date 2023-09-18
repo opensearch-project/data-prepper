@@ -13,6 +13,7 @@ import org.apache.kafka.common.config.TopicConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.connect.json.JsonSerializer;
 import org.opensearch.dataprepper.model.types.ByteCount;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerProperties;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
@@ -107,7 +108,7 @@ public class SinkPropertyConfigurer {
 
     public static final String RETRY_BACKOFF_MS = "retry.backoff.ms";
 
-    public static Properties getProducerProperties(final KafkaSinkConfig kafkaSinkConfig) {
+    public static Properties getProducerProperties(final KafkaProducerConfig kafkaSinkConfig) {
         final Properties properties = new Properties();
 
         setCommonServerProperties(properties, kafkaSinkConfig);
@@ -126,7 +127,7 @@ public class SinkPropertyConfigurer {
         return properties;
     }
 
-    private static void setAuthProperties(final KafkaSinkConfig kafkaSinkConfig, final Properties properties) {
+    private static void setAuthProperties(final KafkaProducerConfig kafkaSinkConfig, final Properties properties) {
         if (kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getPlainTextAuthConfig() != null) {
             final String sslEndpointAlgorithm = kafkaSinkConfig.getAuthConfig().getSaslAuthConfig().getSslEndpointAlgorithm();
             if (null != sslEndpointAlgorithm && !sslEndpointAlgorithm.isEmpty() && sslEndpointAlgorithm.equalsIgnoreCase("https")) {
@@ -144,7 +145,7 @@ public class SinkPropertyConfigurer {
 
     }
 
-    private static void setCommonServerProperties(final Properties properties, final KafkaSinkConfig kafkaSinkConfig) {
+    private static void setCommonServerProperties(final Properties properties, final KafkaProducerConfig kafkaSinkConfig) {
         properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafkaSinkConfig.getBootStrapServers());
         properties.put(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG, SESSION_TIMEOUT_MS_CONFIG);
     }
@@ -323,11 +324,11 @@ public class SinkPropertyConfigurer {
         LOG.info("Producer properties ends");
     }
 
-    public static Properties getPropertiesForAdmintClient(final KafkaSinkConfig kafkaSinkConfig) {
+    public static Properties getPropertiesForAdmintClient(final KafkaProducerConfig kafkaProducerConfig) {
         Properties properties = new Properties();
-        setCommonServerProperties(properties, kafkaSinkConfig);
-        setAuthProperties(kafkaSinkConfig, properties);
-        properties.put(TopicConfig.RETENTION_MS_CONFIG,kafkaSinkConfig.getTopic().getRetentionPeriod());
+        setCommonServerProperties(properties, kafkaProducerConfig);
+        setAuthProperties(kafkaProducerConfig, properties);
+        properties.put(TopicConfig.RETENTION_MS_CONFIG,kafkaProducerConfig.getTopics().get(0).getRetentionPeriod());
         return properties;
     }
 

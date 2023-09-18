@@ -61,7 +61,7 @@ class KafkaSinkConfigTest {
 
     @Test
     void test_topics_not_null() {
-        assertThat(kafkaSinkConfig.getTopic(), notNullValue());
+        assertThat(kafkaSinkConfig.getTopics(), notNullValue());
     }
 
     @Test

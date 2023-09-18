@@ -6,6 +6,7 @@ package org.opensearch.dataprepper.plugins.kafka.service;
 
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
 import org.opensearch.dataprepper.plugins.kafka.util.SinkPropertyConfigurer;
 import org.slf4j.Logger;
@@ -18,8 +19,8 @@ public class TopicService {
     private final AdminClient adminClient;
 
 
-    public TopicService(final KafkaSinkConfig sinkConfig) {
-        this.adminClient = AdminClient.create(SinkPropertyConfigurer.getPropertiesForAdmintClient(sinkConfig));
+    public TopicService(final KafkaProducerConfig kafkaProducerConfig) {
+        this.adminClient = AdminClient.create(SinkPropertyConfigurer.getPropertiesForAdmintClient(kafkaProducerConfig));
     }
 
     public void createTopic(final String topicName, final Integer numberOfPartitions, final Short replicationFactor) {

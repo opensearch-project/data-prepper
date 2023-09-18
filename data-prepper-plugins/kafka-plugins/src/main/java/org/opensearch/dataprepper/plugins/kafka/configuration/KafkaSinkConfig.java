@@ -14,6 +14,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.opensearch.dataprepper.model.configuration.PluginModel;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,7 +25,7 @@ import java.util.Optional;
  * pipelines.yaml
  */
 
-public class KafkaSinkConfig {
+public class KafkaSinkConfig implements KafkaProducerConfig{
 
     public static final String DLQ = "dlq";
 
@@ -122,8 +123,8 @@ public class KafkaSinkConfig {
         this.schemaConfig = schemaConfig;
     }
 
-    public TopicConfig getTopic() {
-        return topic;
+    public List<TopicConfig> getTopics() {
+        return Collections.singletonList(topic);
     }
 
     public void setTopic(TopicConfig topic) {

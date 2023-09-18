@@ -33,6 +33,7 @@ import org.opensearch.dataprepper.model.record.Record;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionType;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.MskBrokerConnectionType;
@@ -97,7 +98,7 @@ public class MskGlueRegistryMultiTypeIT {
     private AwsConfig.AwsMskConfig awsMskConfig;
 
     @Mock
-    private KafkaSourceConfig.EncryptionConfig encryptionConfig;
+    private EncryptionConfig encryptionConfig;
 
     private KafkaSource kafkaSource;
     private TopicConfig jsonTopic;
@@ -180,8 +181,8 @@ public class MskGlueRegistryMultiTypeIT {
         testAvroSchemaName = System.getProperty("tests.kafka.glue_avro_schema_name");
         testMskArn = System.getProperty("tests.msk.arn");
         testMskRegion = System.getProperty("tests.msk.region");
-        when(sourceConfig.getBootStrapServers()).thenReturn(bootstrapServers);
-        encryptionConfig = mock(KafkaSourceConfig.EncryptionConfig.class);
+        when(sourceConfig.getBootStrapServers()).thenReturn(Collections.singletonList(bootstrapServers));
+        encryptionConfig = mock(EncryptionConfig.class);
         when(sourceConfig.getEncryptionConfig()).thenReturn(encryptionConfig);
         System.setProperty("software.amazon.awssdk.http.service.impl", "software.amazon.awssdk.http.urlconnection.UrlConnectionSdkHttpService");
     }

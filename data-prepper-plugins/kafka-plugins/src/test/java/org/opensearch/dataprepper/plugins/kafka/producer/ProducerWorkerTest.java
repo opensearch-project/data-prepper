@@ -35,7 +35,7 @@ class ProducerWorkerTest {
 
 
     private ProducerWorker createObjectUnderTest() {
-        return new ProducerWorker(mock(KafkaSinkProducer.class), record);
+        return new ProducerWorker(mock(KafkaCustomProducer.class), record);
     }
 
     @Test

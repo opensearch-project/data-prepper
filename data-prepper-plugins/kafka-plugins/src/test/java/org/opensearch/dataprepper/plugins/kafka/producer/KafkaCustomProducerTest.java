@@ -34,6 +34,7 @@ import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
@@ -48,16 +49,16 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 
-public class KafkaSinkProducerTest {
+public class KafkaCustomProducerTest {
 
-    private KafkaSinkProducer producer;
+    private KafkaCustomProducer producer;
 
     @Mock
     private KafkaSinkConfig kafkaSinkConfig;
 
     private Record<Event> record;
 
-    KafkaSinkProducer sinkProducer;
+    KafkaCustomProducer sinkProducer;
 
     @Mock
     private DLQSink dlqSink;
@@ -73,7 +74,7 @@ public class KafkaSinkProducerTest {
         final TopicConfig topicConfig = new TopicConfig();
         topicConfig.setName("test-topic");
 
-        when(kafkaSinkConfig.getTopic()).thenReturn(topicConfig);
+        when(kafkaSinkConfig.getTopics()).thenReturn(Collections.singletonList(topicConfig));
         when(kafkaSinkConfig.getSchemaConfig()).thenReturn(mock(SchemaConfig.class));
         when(kafkaSinkConfig.getSchemaConfig().getRegistryURL()).thenReturn("http://localhost:8085/");
         when(kafkaSinkConfig.getPartitionKey()).thenReturn("testkey");
@@ -84,7 +85,7 @@ public class KafkaSinkProducerTest {
     public void producePlainTextRecordsTest() throws ExecutionException, InterruptedException {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("plaintext");
         MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new StringSerializer());
-        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
+        producer = new KafkaCustomProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
         sinkProducer = spy(producer);
         sinkProducer.produceRecords(record);
         verify(sinkProducer).produceRecords(record);
@@ -96,7 +97,7 @@ public class KafkaSinkProducerTest {
     public void produceJsonRecordsTest() throws RestClientException, IOException {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("JSON");
         MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new JsonSerializer());
-        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
+        producer = new KafkaCustomProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
         SchemaMetadata schemaMetadata = mock(SchemaMetadata.class);
         String jsonSchema = "{\n" +
                 "  \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n" +
@@ -119,7 +120,7 @@ public class KafkaSinkProducerTest {
     public void produceAvroRecordsTest() throws Exception {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("AVRO");
         MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new StringSerializer());
-        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
+        producer = new KafkaCustomProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
         SchemaMetadata schemaMetadata = mock(SchemaMetadata.class);
         String avroSchema = "{\"type\":\"record\",\"name\":\"MyMessage\",\"fields\":[{\"name\":\"message\",\"type\":\"string\"}]}";
         when(schemaMetadata.getSchema()).thenReturn(avroSchema);
@@ -131,9 +132,9 @@ public class KafkaSinkProducerTest {
 
     @Test
     public void testGetGenericRecord() throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        producer = new KafkaSinkProducer(new MockProducer(), kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
+        producer = new KafkaCustomProducer(new MockProducer(), kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
         final Schema schema = createMockSchema();
-        Method privateMethod = KafkaSinkProducer.class.getDeclaredMethod("getGenericRecord", Event.class, Schema.class);
+        Method privateMethod = KafkaCustomProducer.class.getDeclaredMethod("getGenericRecord", Event.class, Schema.class);
         privateMethod.setAccessible(true);
         GenericRecord result = (GenericRecord) privateMethod.invoke(producer, event, schema);
         Assertions.assertNotNull(result);
@@ -149,7 +150,7 @@ public class KafkaSinkProducerTest {
     public void validateSchema() throws IOException, ProcessingException {
         when(kafkaSinkConfig.getSerdeFormat()).thenReturn("avro");
         MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new StringSerializer());
-        producer = new KafkaSinkProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
+        producer = new KafkaCustomProducer(mockProducer, kafkaSinkConfig, dlqSink, mock(ExpressionEvaluator.class), null);
         String jsonSchema = "{\"type\": \"object\",\"properties\": {\"Year\": {\"type\": \"string\"},\"Age\": {\"type\": \"string\"},\"Ethnic\": {\"type\":\"string\",\"default\": null}}}";
         String jsonSchema2 = "{\"type\": \"object\",\"properties\": {\"Year\": {\"type\": \"string\"},\"Age\": {\"type\": \"string\"},\"Ethnic\": {\"type\":\"string\",\"default\": null}}}";
         assertTrue(producer.validateSchema(jsonSchema, jsonSchema2));

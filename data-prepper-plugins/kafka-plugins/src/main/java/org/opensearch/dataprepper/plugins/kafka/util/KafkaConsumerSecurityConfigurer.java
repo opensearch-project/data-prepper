@@ -7,6 +7,8 @@ package org.opensearch.dataprepper.plugins.kafka.util;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AuthConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.AwsIamAuthConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.EncryptionConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaConsumerConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSourceConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.SchemaConfig;
 import org.opensearch.dataprepper.plugins.kafka.configuration.OAuthConfig;
@@ -30,7 +32,6 @@ import software.amazon.awssdk.regions.Region;
 import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
 import com.amazonaws.services.schemaregistry.utils.AWSSchemaRegistryConstants;
 import com.amazonaws.services.schemaregistry.utils.AvroRecordType;
-import com.amazonaws.services.schemaregistry.deserializers.GlueSchemaRegistryKafkaDeserializer;
 import software.amazon.awssdk.services.glue.model.Compatibility;
 
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ import java.util.UUID;
  * * This is static property configure dedicated to authentication related information given in pipeline.yml
  */
 
-public class KafkaSourceSecurityConfigurer {
+public class KafkaConsumerSecurityConfigurer {
 
     private static final String SASL_MECHANISM = "sasl.mechanism";
 
@@ -119,9 +120,9 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static void setOauthProperties(final KafkaSourceConfig kafkaSourConfig,
+    public static void setOauthProperties(final KafkaConsumerConfig kafkaConsumerConfig,
                                           final Properties properties) {
-        final OAuthConfig oAuthConfig = kafkaSourConfig.getAuthConfig().getSaslAuthConfig().getOAuthConfig();
+        final OAuthConfig oAuthConfig = kafkaConsumerConfig.getAuthConfig().getSaslAuthConfig().getOAuthConfig();
         final String oauthClientId = oAuthConfig.getOauthClientId();
         final String oauthClientSecret = oAuthConfig.getOauthClientSecret();
         final String oauthLoginServer = oAuthConfig.getOauthLoginServer();
@@ -156,9 +157,9 @@ public class KafkaSourceSecurityConfigurer {
         String jass_config = String.format(OAUTH_JAASCONFIG, oauthClientId, oauthClientSecret, oauthLoginScope, oauthLoginServer,
                 oauthLoginEndpoint, oauthLoginGrantType, oauthLoginScope, oauthAuthorizationToken, instrospect_properties);
 
-        if ("USER_INFO".equalsIgnoreCase(kafkaSourConfig.getSchemaConfig().getBasicAuthCredentialsSource())) {
-            final String apiKey = kafkaSourConfig.getSchemaConfig().getSchemaRegistryApiKey();
-            final String apiSecret = kafkaSourConfig.getSchemaConfig().getSchemaRegistryApiSecret();
+        if ("USER_INFO".equalsIgnoreCase(kafkaConsumerConfig.getSchemaConfig().getBasicAuthCredentialsSource())) {
+            final String apiKey = kafkaConsumerConfig.getSchemaConfig().getSchemaRegistryApiKey();
+            final String apiSecret = kafkaConsumerConfig.getSchemaConfig().getSchemaRegistryApiSecret();
             final String extensionLogicalCluster = oAuthConfig.getExtensionLogicalCluster();
             final String extensionIdentityPoolId = oAuthConfig.getExtensionIdentityPoolId();
             properties.put(REGISTRY_BASIC_AUTH_USER_INFO, apiKey + ":" + apiSecret);
@@ -247,15 +248,15 @@ public class KafkaSourceSecurityConfigurer {
         }
     }
 
-    public static void setAuthProperties(Properties properties, final KafkaSourceConfig sourceConfig, final Logger LOG) {
+    public static void setAuthProperties(Properties properties, final KafkaConsumerConfig sourceConfig, final Logger LOG) {
         final AwsConfig awsConfig = sourceConfig.getAwsConfig();
         final AuthConfig authConfig = sourceConfig.getAuthConfig();
-        final KafkaSourceConfig.EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
+        final EncryptionConfig encryptionConfig = sourceConfig.getEncryptionConfig();
         final EncryptionType encryptionType = encryptionConfig.getType();
 
         credentialsProvider = DefaultCredentialsProvider.create();
 
-        String bootstrapServers = sourceConfig.getBootStrapServers();
+        String bootstrapServers = sourceConfig.getBootStrapServers().iterator().next();
         AwsIamAuthConfig awsIamAuthConfig = null;
         if (Objects.nonNull(authConfig)) {
             AuthConfig.SaslAuthConfig saslAuthConfig = authConfig.getSaslAuthConfig();
@@ -295,13 +296,13 @@ public class KafkaSourceSecurityConfigurer {
         properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     }
 
-    public static GlueSchemaRegistryKafkaDeserializer getGlueSerializer(final KafkaSourceConfig sourceConfig) {
-        SchemaConfig schemaConfig = sourceConfig.getSchemaConfig();
+    public static GlueSchemaRegistryKafkaDeserializer getGlueSerializer(final KafkaConsumerConfig kafkaConsumerConfig) {
+        SchemaConfig schemaConfig = kafkaConsumerConfig.getSchemaConfig();
         if (Objects.isNull(schemaConfig) || schemaConfig.getType() != SchemaRegistryType.AWS_GLUE) {
             return null;
         }
         Map<String, Object> configs = new HashMap();
-        configs.put(AWSSchemaRegistryConstants.AWS_REGION, sourceConfig.getAwsConfig().getRegion());
+        configs.put(AWSSchemaRegistryConstants.AWS_REGION, kafkaConsumerConfig.getAwsConfig().getRegion());
         configs.put(AWSSchemaRegistryConstants.AVRO_RECORD_TYPE, AvroRecordType.GENERIC_RECORD.getName());
         configs.put(AWSSchemaRegistryConstants.CACHE_TIME_TO_LIVE_MILLIS, "86400000");
         configs.put(AWSSchemaRegistryConstants.CACHE_SIZE, "10");

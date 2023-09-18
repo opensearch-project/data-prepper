@@ -25,7 +25,7 @@ import org.opensearch.dataprepper.model.event.Event;
 import org.opensearch.dataprepper.model.event.EventHandle;
 import org.opensearch.dataprepper.model.log.JacksonLog;
 import org.opensearch.dataprepper.model.record.Record;
-import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaSinkConfig;
+import org.opensearch.dataprepper.plugins.kafka.configuration.KafkaProducerConfig;
 import org.opensearch.dataprepper.plugins.kafka.service.SchemaService;
 import org.opensearch.dataprepper.plugins.kafka.sink.DLQSink;
 import org.opensearch.dataprepper.plugins.kafka.util.MessageFormat;
@@ -43,13 +43,13 @@ import java.util.Map;
  * and produce it to a given kafka topic
  */
 
-public class KafkaSinkProducer<T> {
+public class KafkaCustomProducer<T> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaSinkProducer.class);
+    private static final Logger LOG = LoggerFactory.getLogger(KafkaCustomProducer.class);
 
     private final Producer<String, T> producer;
 
-    private final KafkaSinkConfig kafkaSinkConfig;
+    private final KafkaProducerConfig kafkaProducerConfig;
 
     private final DLQSink dlqSink;
 
@@ -68,21 +68,21 @@ public class KafkaSinkProducer<T> {
     private final SchemaService schemaService;
 
 
-    public KafkaSinkProducer(final Producer producer,
-                             final KafkaSinkConfig kafkaSinkConfig,
-                             final DLQSink dlqSink,
-                             final ExpressionEvaluator expressionEvaluator,
-                             final String tagTargetKey
+    public KafkaCustomProducer(final Producer producer,
+                               final KafkaProducerConfig kafkaProducerConfig,
+                               final DLQSink dlqSink,
+                               final ExpressionEvaluator expressionEvaluator,
+                               final String tagTargetKey
     ) {
         this.producer = producer;
-        this.kafkaSinkConfig = kafkaSinkConfig;
+        this.kafkaProducerConfig = kafkaProducerConfig;
         this.dlqSink = dlqSink;
         bufferedEventHandles = new LinkedList<>();
         this.expressionEvaluator = expressionEvaluator;
         this.tagTargetKey = tagTargetKey;
-        this.topicName = ObjectUtils.isEmpty(kafkaSinkConfig.getTopic()) ? null : kafkaSinkConfig.getTopic().getName();
-        this.serdeFormat = ObjectUtils.isEmpty(kafkaSinkConfig.getSerdeFormat()) ? null : kafkaSinkConfig.getSerdeFormat();
-        schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaSinkConfig.getSchemaConfig()).build();
+        this.topicName = ObjectUtils.isEmpty(kafkaProducerConfig.getTopics()) ? null : kafkaProducerConfig.getTopics().get(0).getName();
+        this.serdeFormat = ObjectUtils.isEmpty(kafkaProducerConfig.getSerdeFormat()) ? null : kafkaProducerConfig.getSerdeFormat();
+        schemaService = new SchemaService.SchemaServiceBuilder().getFetchSchemaService(topicName, kafkaProducerConfig.getSchemaConfig()).build();
 
 
     }
@@ -92,7 +92,7 @@ public class KafkaSinkProducer<T> {
             bufferedEventHandles.add(record.getData().getEventHandle());
         }
         Event event = getEvent(record);
-        final String key = event.formatString(kafkaSinkConfig.getPartitionKey(), expressionEvaluator);
+        final String key = event.formatString(kafkaProducerConfig.getPartitionKey(), expressionEvaluator);
         try {
             if (serdeFormat == MessageFormat.JSON.toString()) {
                 publishJsonMessage(record, key);
