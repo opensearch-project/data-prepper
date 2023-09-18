@@ -29,7 +29,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class ScretManagerHelperTest {
+public class SecretManagerHelperTest {
     private final String expectedSecretString = "expectedSecret";
     private final String testStsRole = "testRole";
     private final String testRegion = "testRegion";

@@ -110,7 +110,7 @@ public class KafkaConnectSourceTest {
                 e.printStackTrace();
             }
             kafkaConnectSource.stop();
-            verify(kafkaConnect).start();
+            verify(kafkaConnect).stop();
         }
     }
 
