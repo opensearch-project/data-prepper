@@ -271,6 +271,11 @@ configure(coreProjects) {
     check.dependsOn jacocoTestCoverageVerification
 }
 
+task generateAggregateTestReport(type: TestReport) {
+    destinationDirectory = file("${layout.buildDirectory}/reports/tests")
+    reportOn subprojects*.test
+}
+
 licenseReport {
     excludeOwnGroup = true
     excludeBoms = true

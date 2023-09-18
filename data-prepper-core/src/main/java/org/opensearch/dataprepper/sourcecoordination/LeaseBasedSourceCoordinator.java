@@ -183,7 +183,7 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifierWithPartitionType, partitionIdentifier.getPartitionKey());
 
             if (optionalPartitionItem.isPresent()) {
-                return;
+                continue;
             }
 
             final boolean partitionCreated = sourceCoordinationStore.tryCreatePartitionItem(

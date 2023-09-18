@@ -252,6 +252,11 @@ public class DynamoDbSourceCoordinationStoreTest {
                 1))
                 .willReturn(Optional.empty());
         given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
+                SourcePartitionStatus.UNASSIGNED,
+                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.UNASSIGNED),
+                5))
+                .willReturn(Optional.empty());
+        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
                 SourcePartitionStatus.CLOSED,
                 String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED),
                 1))
@@ -276,11 +281,6 @@ public class DynamoDbSourceCoordinationStoreTest {
         given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
                 SourcePartitionStatus.ASSIGNED,
                 String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.ASSIGNED),
-                1))
-                .willReturn(Optional.empty());
-        given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
-                SourcePartitionStatus.CLOSED,
-                String.format(SOURCE_STATUS_COMBINATION_KEY_FORMAT, sourceIdentifier, SourcePartitionStatus.CLOSED),
                 1))
                 .willReturn(Optional.empty());
         given(dynamoDbClientWrapper.getAvailablePartition(ownerId, ownershipTimeout,
