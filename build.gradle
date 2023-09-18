@@ -171,6 +171,23 @@ subprojects {
             }
         }
     }
+
+    configurations.all {
+        resolutionStrategy.eachDependency { def details ->
+            if (details.requested.group == 'io.netty') {
+                if (details.requested.name == 'netty') {
+                    details.useTarget group: 'io.netty', name: 'netty-all', version: '4.1.96.Final'
+                    // replace with your desired version
+                } else if (!details.requested.name.startsWith('netty-tcnative')) {
+                    details.useVersion '4.1.96.Final'
+                    details.because 'Fixes CVE-2022-41881, CVE-2021-21290 and CVE-2022-41915.'
+                }
+            } else if (details.requested.group == 'log4j' && details.requested.name == 'log4j') {
+                details.useTarget group: 'org.apache.logging.log4j', name: 'log4j-1.2-api', version: '2.17.1'
+            }
+        }
+    }
+
     test {
         useJUnitPlatform()
     }
