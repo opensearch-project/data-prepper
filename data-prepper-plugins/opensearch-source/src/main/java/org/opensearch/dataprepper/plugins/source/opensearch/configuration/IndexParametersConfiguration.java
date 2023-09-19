@@ -13,6 +13,9 @@ import java.util.List;
 
 public class IndexParametersConfiguration {
 
+    @JsonProperty("include_system_indices")
+    private Boolean includeSystemIndices = false;
+
     @JsonProperty("include")
     @Valid
     private List<OpenSearchIndex> include = Collections.emptyList();
@@ -27,6 +30,10 @@ public class IndexParametersConfiguration {
 
     public List<OpenSearchIndex> getExcludedIndices() {
         return exclude;
+    }
+
+    public Boolean isIncludeSystemIndices() {
+        return includeSystemIndices;
     }
 
 }

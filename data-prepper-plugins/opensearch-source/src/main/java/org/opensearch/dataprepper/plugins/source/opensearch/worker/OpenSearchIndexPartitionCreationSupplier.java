@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<String, Object>, List<PartitionIdentifier>> {
 
+    private static final String SYSTEM_INDEX_PREFIX = ".";
     private static final Logger LOG = LoggerFactory.getLogger(OpenSearchIndexPartitionCreationSupplier.class);
 
     private final OpenSearchSourceConfiguration openSearchSourceConfiguration;
@@ -107,8 +108,8 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
             return false;
         }
 
-        if (Objects.isNull(indexParametersConfiguration)) {
-            return true;
+        if (!indexParametersConfiguration.isIncludeSystemIndices() && isSystemIndex(indexName)) {
+            return false;
         }
 
         final List<OpenSearchIndex> includedIndices = indexParametersConfiguration.getIncludedIndices();
@@ -130,5 +131,9 @@ public class OpenSearchIndexPartitionCreationSupplier implements Function<Map<St
             }
         }
         return false;
+    }
+
+    private boolean isSystemIndex(final String indexName) {
+        return indexName.startsWith(SYSTEM_INDEX_PREFIX);
     }
 }

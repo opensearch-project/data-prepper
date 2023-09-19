@@ -41,7 +41,7 @@ public class OpenSearchSourceConfiguration {
 
     @JsonProperty("indices")
     @Valid
-    private IndexParametersConfiguration indexParametersConfiguration;
+    private IndexParametersConfiguration indexParametersConfiguration = new IndexParametersConfiguration();
 
     @JsonProperty("aws")
     @Valid

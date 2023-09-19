@@ -137,11 +137,18 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
         final IndexParametersConfiguration indexParametersConfiguration = mock(IndexParametersConfiguration.class);
 
+        when(indexParametersConfiguration.isIncludeSystemIndices()).thenReturn(true);
+
         final List<OpenSearchIndex> includedIndices = new ArrayList<>();
         final OpenSearchIndex includeIndex = mock(OpenSearchIndex.class);
         final String includePattern = "my-pattern-[a-c].*";
         when(includeIndex.getIndexNamePattern()).thenReturn(Pattern.compile(includePattern));
         includedIndices.add(includeIndex);
+
+        final OpenSearchIndex includeSystemIndex = mock(OpenSearchIndex.class);
+        final String includePatternSystemIndex = "\\..*";
+        when(includeSystemIndex.getIndexNamePattern()).thenReturn(Pattern.compile(includePatternSystemIndex));
+        includedIndices.add(includeSystemIndex);
 
         final List<OpenSearchIndex> excludedIndices = new ArrayList<>();
         final OpenSearchIndex excludeIndex = mock(OpenSearchIndex.class);
@@ -161,6 +168,8 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         final List<IndicesRecord> indicesRecords = new ArrayList<>();
         final IndicesRecord includedIndex = mock(IndicesRecord.class);
         when(includedIndex.index()).thenReturn("my-pattern-a-include");
+        final IndicesRecord includedSystemIndex = mock(IndicesRecord.class);
+        when(includedSystemIndex.index()).thenReturn(".system_index");
         final IndicesRecord excludedIndex = mock(IndicesRecord.class);
         when(excludedIndex.index()).thenReturn("second-exclude-test");
         final IndicesRecord includedAndThenExcluded = mock(IndicesRecord.class);
@@ -169,6 +178,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         when(neitherIncludedOrExcluded.index()).thenReturn("random-index");
 
         indicesRecords.add(includedIndex);
+        indicesRecords.add(includedSystemIndex);
         indicesRecords.add(excludedIndex);
         indicesRecords.add(includedAndThenExcluded);
         indicesRecords.add(neitherIncludedOrExcluded);
@@ -181,6 +191,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         final List<PartitionIdentifier> partitionIdentifierList = createObjectUnderTest().apply(Collections.emptyMap());
 
         assertThat(partitionIdentifierList, notNullValue());
+        assertThat(partitionIdentifierList.size(), equalTo(2));
     }
 
     @Test
@@ -191,6 +202,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         final co.elastic.clients.elasticsearch.cat.IndicesResponse indicesResponse = mock(co.elastic.clients.elasticsearch.cat.IndicesResponse.class);
 
         final IndexParametersConfiguration indexParametersConfiguration = mock(IndexParametersConfiguration.class);
+        when(indexParametersConfiguration.isIncludeSystemIndices()).thenReturn(false);
 
         final List<OpenSearchIndex> includedIndices = new ArrayList<>();
         final OpenSearchIndex includeIndex = mock(OpenSearchIndex.class);
@@ -218,6 +230,8 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         when(includedIndex.index()).thenReturn("my-pattern-a-include");
         final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord excludedIndex = mock(co.elastic.clients.elasticsearch.cat.indices.IndicesRecord.class);
         when(excludedIndex.index()).thenReturn("second-exclude-test");
+        final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord excludedSystemIndex = mock(co.elastic.clients.elasticsearch.cat.indices.IndicesRecord.class);
+        when(excludedSystemIndex.index()).thenReturn(".system_index");
         final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord includedAndThenExcluded = mock(co.elastic.clients.elasticsearch.cat.indices.IndicesRecord.class);
         when(includedAndThenExcluded.index()).thenReturn("my-pattern-a-exclude");
         final co.elastic.clients.elasticsearch.cat.indices.IndicesRecord neitherIncludedOrExcluded = mock(co.elastic.clients.elasticsearch.cat.indices.IndicesRecord.class);
@@ -225,6 +239,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
 
         indicesRecords.add(includedIndex);
         indicesRecords.add(excludedIndex);
+        indicesRecords.add(excludedSystemIndex);
         indicesRecords.add(includedAndThenExcluded);
         indicesRecords.add(neitherIncludedOrExcluded);
 
@@ -236,6 +251,7 @@ public class OpenSearchIndexPartitionCreationSupplierTest {
         final List<PartitionIdentifier> partitionIdentifierList = createObjectUnderTest().apply(Collections.emptyMap());
 
         assertThat(partitionIdentifierList, notNullValue());
+        assertThat(partitionIdentifierList.size(), equalTo(1));
     }
 
     private static Stream<Arguments> opensearchCatIndicesExceptions() {
