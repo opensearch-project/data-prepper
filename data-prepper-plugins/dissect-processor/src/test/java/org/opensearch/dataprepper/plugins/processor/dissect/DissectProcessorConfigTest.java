@@ -4,7 +4,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opensearch.dataprepper.plugins.processor.mutateevent.TargetType;
 
-import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.core.Is.is;
