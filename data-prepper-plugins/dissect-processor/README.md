@@ -47,11 +47,10 @@ The fields `Date`, `Time`, `Log_Type`, and `Message` have been extracted from `l
 * `map` (Required): `map` is required to specify the dissect patterns. It takes a `Map<String, String>` with fields as keys and respective dissect patterns as values.
 
 
-* `target_types` (Optional): A `Map<String, String>` that specifies what the target type of specific field should be. By default, all the values are `string`. Target types will be changed after the dissection process.
+* `target_types` (Optional): A `Map<String, String>` that specifies what the target type of specific field should be. Valid options are `integer`, `double`, `string`, and `boolean`. By default, all the values are `string`. Target types will be changed after the dissection process. 
 
 
-* `dissect_when` (Optional): When a conditional statement is configured with `dissect_when`, the processor will evaluate the statement before proceeding with the dissection process.
-If the statement evaluates to `true`, the processor will perform the dissection. Else, skipped.
+* `dissect_when` (Optional): A Data Prepper Expression string following the [Data Prepper Expression syntax](../../docs/expression_syntax.md). When configured, the processor will evaluate the expression before proceeding with the dissection process and perform the dissection if the expression evaluates to `true`.
 
 ## Field Notations
 
@@ -88,7 +87,7 @@ Symbols like `?, +, ->, /, &`  can be  used to perform logical extraction of dat
 
     If the order is not mentioned, the append operation will take place in the order of fields specified in the dissect pattern.<br><br>
 
-* **Indirect Field** : While defining a pattern, prefix the field with a `&` to assign the value found with this to the value of another field found.
+* **Indirect Field** : While defining a pattern, prefix the field with a `&` to assign the value found with this field to the value of another field found as the key.
     * **Usage**:
 
             Pattern : "%{?field_name}, %{&field_name}"

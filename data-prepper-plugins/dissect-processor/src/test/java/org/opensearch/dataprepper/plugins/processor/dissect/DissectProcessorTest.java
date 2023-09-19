@@ -257,6 +257,7 @@ class DissectProcessorTest {
         final List<Record<Event>> dissectedRecords = (List<Record<Event>>) processor.doExecute(Collections.singletonList(record));
 
         assertTrue(dissectedRecords.get(0).getData().containsKey("field1"));
+        assertTrue(dissectedRecords.get(0).getData().get("field1", Object.class) instanceof Integer);
         assertThat(dissectedRecords.get(0).getData().get("field1", Object.class), is(20));
     }
 
