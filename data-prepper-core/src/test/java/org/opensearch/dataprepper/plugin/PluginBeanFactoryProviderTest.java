@@ -8,7 +8,6 @@ package org.opensearch.dataprepper.plugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -25,11 +24,11 @@ import static org.mockito.Mockito.verify;
 
 class PluginBeanFactoryProviderTest {
 
-    private ApplicationContext context;
+    private GenericApplicationContext context;
 
     @BeforeEach
     void setUp() {
-        context = mock(ApplicationContext.class);
+        context = mock(GenericApplicationContext.class);
     }
 
     private PluginBeanFactoryProvider createObjectUnderTest() {
@@ -54,7 +53,7 @@ class PluginBeanFactoryProviderTest {
 
     @Test
     void testPluginBeanFactoryProviderRequiresParentContext() {
-        context = mock(ApplicationContext.class);
+        context = mock(GenericApplicationContext.class);
 
         assertThrows(NullPointerException.class, () -> createObjectUnderTest());
     }

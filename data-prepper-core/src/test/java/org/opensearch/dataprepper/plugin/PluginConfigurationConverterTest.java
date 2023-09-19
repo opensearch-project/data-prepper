@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
@@ -26,6 +27,7 @@ import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -33,10 +35,11 @@ import static org.mockito.Mockito.mock;
 class PluginConfigurationConverterTest {
     private PluginSetting pluginSetting;
     private Validator validator;
-    private final ObjectMapper objectMapper = new ObjectMapperConfiguration().objectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     static class TestConfiguration {
         @SuppressWarnings("unused")
+        @JsonProperty("my_value")
         private String myValue;
 
         public String getMyValue() {
@@ -76,7 +79,7 @@ class PluginConfigurationConverterTest {
         assertThat(createObjectUnderTest().convert(PluginSetting.class, pluginSetting),
                 sameInstance(pluginSetting));
 
-        then(pluginSetting).shouldHaveNoInteractions();
+        then(pluginSetting).should().setSettings(anyMap());
         then(validator).shouldHaveNoInteractions();
     }
 

@@ -5,6 +5,7 @@
 
 package org.opensearch.dataprepper.plugins.sink.opensearch;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
@@ -62,6 +63,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.opensearch.dataprepper.plugins.sink.opensearch.index.IndexConfiguration.DISTRIBUTION_VERSION;
 
 public class ConnectionConfiguration {
+  static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final Logger LOG = LoggerFactory.getLogger(OpenSearchSink.class);
   private static final String AWS_IAM_ROLE = "role";
   private static final String AWS_IAM = "iam";
@@ -189,11 +191,11 @@ public class ConnectionConfiguration {
     if (password != null) {
       builder = builder.withPassword(password);
     }
-    final Integer socketTimeout = (Integer) pluginSetting.getAttributeFromSettings(SOCKET_TIMEOUT);
+    final Integer socketTimeout = pluginSetting.getIntegerOrDefault(SOCKET_TIMEOUT, null);
     if (socketTimeout != null) {
       builder = builder.withSocketTimeout(socketTimeout);
     }
-    final Integer connectTimeout = (Integer) pluginSetting.getAttributeFromSettings(CONNECT_TIMEOUT);
+    final Integer connectTimeout = pluginSetting.getIntegerOrDefault(CONNECT_TIMEOUT, null);
     if (connectTimeout != null) {
       builder = builder.withConnectTimeout(connectTimeout);
     }
@@ -208,7 +210,8 @@ public class ConnectionConfiguration {
         builder.withAWSStsRoleArn((String)(awsOption.getOrDefault(AWS_STS_ROLE_ARN.substring(4), null)));
         builder.withAWSStsExternalId((String)(awsOption.getOrDefault(AWS_STS_EXTERNAL_ID.substring(4), null)));
         builder.withAwsStsHeaderOverrides((Map<String, String>)awsOption.get(AWS_STS_HEADER_OVERRIDES.substring(4)));
-        builder.withServerless((Boolean)awsOption.getOrDefault(SERVERLESS, false));
+        builder.withServerless(OBJECT_MAPPER.convertValue(
+                awsOption.getOrDefault(SERVERLESS, false), Boolean.class));
     } else {
       builder.withServerless(false);
     }

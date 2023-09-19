@@ -11,19 +11,26 @@ import java.util.Map;
 
 @Named
 public class ExtensionPluginConfigurationResolver {
-    private final Map<String, Object> extensionMap;
+    private final Map<String, Object> combinedExtensionMap;
+
+    private final Map<String, Object> dataPrepperConfigExtensionMap;
 
     @Inject
     public ExtensionPluginConfigurationResolver(final DataPrepperConfiguration dataPrepperConfiguration,
                                                 final PipelinesDataFlowModel pipelinesDataFlowModel) {
-        extensionMap = dataPrepperConfiguration.getPipelineExtensions() == null?
+        this.dataPrepperConfigExtensionMap = dataPrepperConfiguration.getPipelineExtensions() == null?
                 new HashMap<>() : new HashMap<>(dataPrepperConfiguration.getPipelineExtensions().getExtensionMap());
+        combinedExtensionMap = new HashMap<>(dataPrepperConfigExtensionMap);
         if (pipelinesDataFlowModel.getPipelineExtensions() != null) {
-            extensionMap.putAll(pipelinesDataFlowModel.getPipelineExtensions().getExtensionMap());
+            combinedExtensionMap.putAll(pipelinesDataFlowModel.getPipelineExtensions().getExtensionMap());
         }
     }
 
-    public Map<String, Object> getExtensionMap() {
-        return Collections.unmodifiableMap(extensionMap);
+    public Map<String, Object> getDataPrepperConfigExtensionMap() {
+        return Collections.unmodifiableMap(dataPrepperConfigExtensionMap);
+    }
+
+    public Map<String, Object> getCombinedExtensionMap() {
+        return Collections.unmodifiableMap(combinedExtensionMap);
     }
 }
