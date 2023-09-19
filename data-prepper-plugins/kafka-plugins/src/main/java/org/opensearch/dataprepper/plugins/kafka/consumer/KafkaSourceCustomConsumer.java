@@ -121,6 +121,10 @@ public class KafkaSourceCustomConsumer implements Runnable, ConsumerRebalanceLis
         this.errLogRateLimiter = new LogRateLimiter(2, System.currentTimeMillis());
     }
 
+    KafkaTopicMetrics getTopicMetrics() {
+        return topicMetrics;
+    }
+
     private long getCurrentTimeNanos() {
         Instant now = Instant.now();
         return now.getEpochSecond()*1000000000+now.getNano();
