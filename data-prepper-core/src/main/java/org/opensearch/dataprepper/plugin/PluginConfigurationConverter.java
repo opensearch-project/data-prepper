@@ -5,12 +5,14 @@
 
 package org.opensearch.dataprepper.plugin;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.opensearch.dataprepper.model.annotations.DataPrepperPlugin;
 import org.opensearch.dataprepper.model.configuration.PluginSetting;
 import org.opensearch.dataprepper.model.plugin.InvalidPluginConfigurationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import org.springframework.context.annotation.DependsOn;
 
 import javax.inject.Named;
 import java.util.Collections;
@@ -24,7 +26,9 @@ import java.util.stream.Collectors;
  * and converting it to the plugin model type which should be denoted by {@link DataPrepperPlugin#pluginConfigurationType()}
  */
 @Named
+@DependsOn({"extensionsApplier"})
 class PluginConfigurationConverter {
+    static final TypeReference<Map<String, Object>> MAP_TYPE_REFERENCE = new TypeReference<>() {};
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
@@ -48,8 +52,12 @@ class PluginConfigurationConverter {
         Objects.requireNonNull(pluginConfigurationType);
         Objects.requireNonNull(pluginSetting);
 
-        if (pluginConfigurationType.equals(PluginSetting.class))
+        if (pluginConfigurationType.equals(PluginSetting.class)) {
+            final Map<String, Object> settings = pluginSetting.getSettings();
+            final Map<String, Object> convertedSettings = objectMapper.convertValue(settings, MAP_TYPE_REFERENCE);
+            pluginSetting.setSettings(convertedSettings);
             return pluginSetting;
+        }
 
         final Object configuration = convertSettings(pluginConfigurationType, pluginSetting);
 

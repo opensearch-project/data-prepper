@@ -11,11 +11,11 @@ COPY . /home/gradle/src/
 WORKDIR /home/gradle/src
 RUN gradle bootJar --daemon
 
-RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.0.1/opentelemetry-javaagent-all.jar
+RUN wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v1.30.0/opentelemetry-javaagent.jar
 
 FROM eclipse-temurin:17-jre-jammy
 EXPOSE 8087
 RUN mkdir /app
 COPY --from=build /home/gradle/src/build/libs/*.jar /app/spring-boot-application.jar
-COPY --from=build /home/gradle/src/opentelemetry-javaagent-all.jar /app/opentelemetry-javaagent-all.jar
-ENTRYPOINT ["java","-javaagent:/app/opentelemetry-javaagent-all.jar","-jar","/app/spring-boot-application.jar"]
+COPY --from=build /home/gradle/src/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
+ENTRYPOINT ["java","-javaagent:/app/opentelemetry-javaagent.jar","-jar","/app/spring-boot-application.jar"]

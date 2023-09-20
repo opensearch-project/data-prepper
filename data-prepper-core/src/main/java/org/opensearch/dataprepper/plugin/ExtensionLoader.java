@@ -49,8 +49,9 @@ public class ExtensionLoader {
             return new NoArgumentsArgumentsContext();
         } else {
             final Class<?> pluginConfigurationType = pluginAnnotation.modelType();
-            final String rootKey = pluginAnnotation.rootKey();
+            final String rootKey = pluginAnnotation.rootKeyJsonPath();
             final Object configuration = extensionPluginConfigurationConverter.convert(
+                    pluginAnnotation.allowInPipelineConfigurations(),
                     pluginConfigurationType, rootKey);
             return new SingleConfigArgumentArgumentsContext(configuration);
         }

@@ -95,13 +95,14 @@ public class SearchAccessorStrategy {
             searchContextType = SearchContextType.POINT_IN_TIME;
         } else {
             LOG.info("{} distribution, version {} detected. Scroll contexts will be used to search documents. " +
-                    "Upgrade your cluster to at least version {} to use Point in Time APIs instead of scroll.", distribution, versionNumber,
-                    distribution.equals(ELASTICSEARCH_DISTRIBUTION) ? ELASTICSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF : OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF);
+                    "Upgrade your cluster to at least OpenSearch {} to use Point in Time APIs instead of scroll.", distribution, versionNumber,
+                    OPENSEARCH_POINT_IN_TIME_SUPPORT_VERSION_CUTOFF);
             searchContextType = SearchContextType.SCROLL;
         }
 
         if (Objects.isNull(elasticsearchClient)) {
-            return new OpenSearchAccessor(openSearchClient, searchContextType);
+            return new OpenSearchAccessor(openSearchClient,
+                    searchContextType);
         }
 
         return new ElasticsearchAccessor(elasticsearchClient, searchContextType);
@@ -110,14 +111,17 @@ public class SearchAccessorStrategy {
     private SearchAccessor createSearchAccessorForServerlessCollection(final OpenSearchClient openSearchClient) {
         if (Objects.isNull(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
             LOG.info("Configured with AOS serverless flag as true, defaulting to search_context_type as 'none', which uses search_after");
-            return new OpenSearchAccessor(openSearchClient, SearchContextType.NONE);
+            return new OpenSearchAccessor(openSearchClient,
+                    SearchContextType.NONE);
         } else {
-            if (SearchContextType.POINT_IN_TIME.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
-                throw new InvalidPluginConfigurationException("A search_context_type of point_in_time is not supported for serverless collections");
+            if (SearchContextType.POINT_IN_TIME.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType()) ||
+                SearchContextType.SCROLL.equals(openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType())) {
+                throw new InvalidPluginConfigurationException("A search_context_type of point_in_time or scroll is not supported for serverless collections");
             }
 
             LOG.info("Using search_context_type set in the config: '{}'", openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType().toString().toLowerCase());
-            return new OpenSearchAccessor(openSearchClient, openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType());
+            return new OpenSearchAccessor(openSearchClient,
+                    openSearchSourceConfiguration.getSearchConfiguration().getSearchContextType());
         }
     }
 
