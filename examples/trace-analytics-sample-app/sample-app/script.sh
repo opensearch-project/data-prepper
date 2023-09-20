@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-java -javaagent:/app/opentelemetry-javaagent-all.jar -jar /app/spring-boot-application.jar &
+java -javaagent:/app/opentelemetry-javaagent.jar -jar /app/spring-boot-application.jar &
 
 until [[ $(curl -o /dev/null -s -w "%{http_code}\n" http://localhost:8087) != 000 ]]; do
   echo "Waiting for analytics-service to be ready"
