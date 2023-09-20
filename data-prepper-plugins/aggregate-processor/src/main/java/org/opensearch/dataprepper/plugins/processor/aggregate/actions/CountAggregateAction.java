@@ -53,7 +53,6 @@ public class CountAggregateAction implements AggregateAction {
         this.countKey = countAggregateActionConfig.getCountKey();
         this.startTimeKey = countAggregateActionConfig.getStartTimeKey();
         this.outputFormat = countAggregateActionConfig.getOutputFormat();
-        this.exemplarList = new ArrayList<>();
     }
 
     private long getTimeNanos(Instant time) {
@@ -87,6 +86,7 @@ public class CountAggregateAction implements AggregateAction {
             groupState.put(startTimeKey, Instant.now());
             groupState.putAll(aggregateActionInput.getIdentificationKeys());
             groupState.put(countKey, 1);
+            exemplarList = new ArrayList<>();
             exemplarList.add(createExemplar(event));
         } else {
             Integer v = (Integer)groupState.get(countKey) + 1;
