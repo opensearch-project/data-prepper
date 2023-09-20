@@ -56,14 +56,14 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     private final Set<String> validWhitespaceSet = Set.of(whitespaceLenient, whitespaceStrict);
     final String delimiterBracketCheck = "[\\[\\]()<>]";
     private final Set<Character> bracketSet = Set.of('[', ']', '(', ')', '<', '>');
-    private final List<String> tagOnFailure;
+    private final List<String> tagsOnFailure;
 
     @DataPrepperPluginConstructor
     public KeyValueProcessor(final PluginMetrics pluginMetrics, final KeyValueProcessorConfig keyValueProcessorConfig) {
         super(pluginMetrics);
         this.keyValueProcessorConfig = keyValueProcessorConfig;
 
-        tagOnFailure = keyValueProcessorConfig.getTagOnFailure();
+        tagsOnFailure = keyValueProcessorConfig.getTagsOnFailure();
 
         if (keyValueProcessorConfig.getFieldDelimiterRegex() != null
                 && !keyValueProcessorConfig.getFieldDelimiterRegex().isEmpty()) {
@@ -97,7 +97,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             if (keyValueProcessorConfig.getRecursive()
                 && fieldDelimiterPattern.matcher(delimiterBracketCheck).matches()) {
-                throw new IllegalArgumentException("While recursive is true, the set field split characters cannot contain brackets while you are trying to recurse.");
+                throw new IllegalArgumentException("While recursive is true, the set field delimiter cannot contain brackets while you are trying to recurse.");
             }
         }
 
@@ -214,8 +214,8 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private void validateKeySets(final Set<String> includeSet, final Set<String> excludeSet, final Set<String> defaultSet) {
-        final Set<String> includeIntersectionSet = new HashSet<String>(includeSet);
-        final Set<String> defaultIntersectionSet = new HashSet<String>(defaultSet);
+        final Set<String> includeIntersectionSet = new HashSet<>(includeSet);
+        final Set<String> defaultIntersectionSet = new HashSet<>(defaultSet);
 
         includeIntersectionSet.retainAll(excludeSet);
         if (!includeIntersectionSet.isEmpty()) {
@@ -232,7 +232,7 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     public Collection<Record<Event>> doExecute(final Collection<Record<Event>> records) {
         final ObjectMapper mapper = new ObjectMapper();
 
-        for(final Record<Event> record : records) {
+        for (final Record<Event> record : records) {
             final Map<String, Object> outputMap = new HashMap<>();
             final Event recordEvent = record.getData();
             final String groupsRaw = recordEvent.get(keyValueProcessorConfig.getSource(), String.class);
@@ -243,10 +243,16 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
                     JsonNode recursedTree = recurse(groupsRaw, mapper);
                     outputMap.putAll(createRecursedMap(recursedTree, mapper));
                 } catch (Exception e) {
-                    LOG.error("Recursive parsing ran into an unexpected error, treating message as non-recursive");
+                    LOG.error("Recursive parsing ran into an unexpected error, treating message as non-recursive", e);
+                    recordEvent.getMetadata().addTags(tagsOnFailure);
                 }
             } else {
-                outputMap.putAll(createNonRecursedMap(groups));
+                try {
+                    outputMap.putAll(createNonRecursedMap(groups));
+                } catch (Exception e) {
+                    LOG.error("Non-recursive parsing ran into an unexpected error", e);
+                    recordEvent.getMetadata().addTags(tagsOnFailure);
+                }
             }
 
             final Map<String, Object> processedMap = executeConfigs(outputMap);
@@ -278,11 +284,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
     }
 
     private ObjectNode recurse(final String input, final ObjectMapper mapper) {
-        Stack<Character> bracketStack = new Stack<Character>();
+        Stack<Character> bracketStack = new Stack<>();
         Map<Character, Character> bracketMap = initBracketMap();
         int pairStart = 0;
 
-        ArrayList<String> pairs = new ArrayList<String>();
+        ArrayList<String> pairs = new ArrayList<>();
         ObjectNode root = mapper.createObjectNode();
 
         for (int i = 0; i < input.length(); i++) {
