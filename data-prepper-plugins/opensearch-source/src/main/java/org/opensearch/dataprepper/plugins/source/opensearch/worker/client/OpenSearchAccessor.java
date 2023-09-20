@@ -65,7 +65,8 @@ public class OpenSearchAccessor implements SearchAccessor, ClusterClientFactory 
     private final OpenSearchClient openSearchClient;
     private final SearchContextType searchContextType;
 
-    public OpenSearchAccessor(final OpenSearchClient openSearchClient, final SearchContextType searchContextType) {
+    public OpenSearchAccessor(final OpenSearchClient openSearchClient,
+                              final SearchContextType searchContextType) {
         this.openSearchClient = openSearchClient;
         this.searchContextType = searchContextType;
     }
