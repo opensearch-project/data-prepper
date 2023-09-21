@@ -46,8 +46,7 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
         Map<String, String> patternsMap = dissectConfig.getMap();
         for (String key : patternsMap.keySet()) {
             Dissector dissector = new Dissector(patternsMap.get(key));
-            dissectorMap.put(key,
-                             dissector);
+            dissectorMap.put(key, dissector);
         }
 
     }
@@ -77,7 +76,7 @@ public class DissectProcessor extends AbstractProcessor<Record<Event>, Record<Ev
     private void dissectField(Event event, String field){
         Dissector dissector = dissectorMap.get(field);
         String text = event.get(field, String.class);
-        if(dissector.dissectText(text)) {
+        if (dissector.dissectText(text)) {
             List<Field> dissectedFields = dissector.getDissectedFields();
             for(Field disectedField: dissectedFields) {
                 String dissectFieldName = disectedField.getKey();

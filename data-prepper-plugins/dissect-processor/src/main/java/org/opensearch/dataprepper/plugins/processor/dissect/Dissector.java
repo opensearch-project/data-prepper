@@ -63,28 +63,32 @@ public class Dissector {
     }
 
     public boolean dissectText(String text){
-        if(!setDelimiterIndexes(text)){
+        try {
+            if (!setDelimiterIndexes(text)) {
+                return false;
+            }
+            Field head = fieldsList.getFirst();
+            for (final Delimiter delimiter : delimiterList) {
+                int fieldStart = 0;
+                int fieldEnd = delimiter.getStart();
+                if (delimiter.getPrev() == null && delimiter.getStart() == 0) {
+                    continue;
+                }
+                if (delimiter.getPrev() != null || delimiter.getStart() == 0) {
+                    fieldStart = delimiter.getPrev().getEnd() + 1;
+                }
+                head.setValue(text.substring(fieldStart, fieldEnd));
+                head = head.getNext();
+            }
+            if (delimiterList.getLast().getEnd() != text.length() - 1) {
+                int fieldStart = delimiterList.getLast().getEnd() + 1;
+                int fieldEnd = text.length();
+                head.setValue(text.substring(fieldStart, fieldEnd));
+            }
+            return true;
+        } catch (Exception e) {
             return false;
         }
-        Field head = fieldsList.getFirst();
-        for (final Delimiter delimiter: delimiterList){
-            int fieldStart = 0;
-            int fieldEnd = delimiter.getStart();
-            if(delimiter.getPrev() == null && delimiter.getStart()==0){
-                continue;
-            }
-            if (delimiter.getPrev() != null || delimiter.getStart() == 0) {
-                fieldStart = delimiter.getPrev().getEnd() + 1;
-            }
-            head.setValue(text.substring(fieldStart, fieldEnd));
-            head = head.getNext();
-        }
-        if (delimiterList.getLast().getEnd() != text.length() - 1) {
-            int fieldStart = delimiterList.getLast().getEnd() + 1;
-            int fieldEnd = text.length();
-            head.setValue(text.substring(fieldStart, fieldEnd));
-        }
-        return true;
     }
 
     public List<Field> getDissectedFields(){
