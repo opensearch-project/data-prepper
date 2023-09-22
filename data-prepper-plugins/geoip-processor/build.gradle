@@ -66,6 +66,7 @@ task downloadFile(type: Download) {
 
 }
 task downloadEnterpriseFile(type: Download) {
+    dependsOn downloadFile
     def urls = [
             'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoIP2-Enterprise-Test.mmdb'
     ]
@@ -92,9 +93,14 @@ task downloadEnterpriseFile(type: Download) {
 
 }
 
-
+/*task processTestResources(type: Copy) {
+    dependsOn  downloadEnterpriseFile
+    from 'src/test/resources' // Source directory containing test resources
+    into 'build/resources/test' // Destination directory for processed test resources
+}*/
+tasks.test.dependsOn 'processTestResources'
+tasks.processTestResources.dependsOn 'downloadEnterpriseFile'
 test {
-    dependsOn (downloadFile,downloadEnterpriseFile)
     useJUnitPlatform()
 }
 

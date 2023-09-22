@@ -88,8 +88,8 @@ class GetGeoLite2DataTest {
         GeoIPProcessorService.downloadReady = false;
         Map<String, Object> geoData = getGeoLite2Data.getGeoData(inetAddress, attributes, tempFolderPath);
         Assertions.assertNotNull(geoData);
-        assertThat(geoData.get("country_name"), equalTo("United States"));
-        assertThat(geoData.get("ip"), equalTo("2001:4860:4860:0:0:0:0:8888"));
+        assertThat(geoData.get("country_name"), equalTo("France"));
+        assertThat(geoData.get("ip"), equalTo("2a02:ec00:0:0:0:0:0:0"));
         assertDoesNotThrow(() -> {
             getGeoLite2Data.closeReader();
         });
