@@ -31,13 +31,14 @@ dependencies {
     testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
     testImplementation project(':data-prepper-test-common')
 }
-
+def geoIP2='GeoIP2'
+def geoLite2= 'GeoLite2'
 task downloadFile(type: Download) {
 
     def urls = [
-            'https://github.com/maxmind/MaxMind-DB/tree/main/test-data/GeoLite2-City-Test.mmdb',
-            'https://github.com/maxmind/MaxMind-DB/tree/main/test-data/GeoLite2-Country-Test.mmdb',
-            'https://github.com/maxmind/MaxMind-DB/tree/main/test-data/GeoLite2-ASN-Test.mmdb'
+            'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoIP2-City-Test.mmdb',
+            'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoIP2-Country-Test.mmdb',
+            'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoLite2-ASN-Test.mmdb'
     ]
     def mmdbFileExtension = '.mmdb'
     def baseDirPath =  'src/test/resources/mmdb-file/geo-lite2/'
@@ -50,6 +51,10 @@ task downloadFile(type: Download) {
             def testFileName = url.substring(url.lastIndexOf('/') + 1)
             def testMmdbSubString = testFileName.substring(testFileName.lastIndexOf('-'))
             def fileName = testFileName.substring(0, testFileName.length() - testMmdbSubString.length())
+
+            if(fileName.contains(geoIP2)) {
+                fileName = fileName.replace(geoIP2, geoLite2)
+            }
             File sourceFile = file(baseDirPath+testFileName)
             File destinationFile = file( baseDirPath+fileName+mmdbFileExtension)
             sourceFile.renameTo(destinationFile)
@@ -62,7 +67,7 @@ task downloadFile(type: Download) {
 }
 task downloadEnterpriseFile(type: Download) {
     def urls = [
-            'https://github.com/maxmind/MaxMind-DB/tree/main/test-data/GeoIP2-Enterprise-Test.mmdb'
+            'https://raw.githubusercontent.com/maxmind/MaxMind-DB/main/test-data/GeoIP2-Enterprise-Test.mmdb'
     ]
     def mmdbFileExtension = '.mmdb'
     def baseDirPath =  'src/test/resources/mmdb-file/geo-enterprise/'
@@ -75,6 +80,9 @@ task downloadEnterpriseFile(type: Download) {
 
         dest(baseDirPath+testFileName)
         doLast {
+            if(fileName.contains(geoIP2)) {
+                fileName = fileName.replace(geoIP2, geoLite2)
+            }
             File sourceFile = file(baseDirPath+testFileName)
             File destinationFile = file( baseDirPath+fileName+mmdbFileExtension)
             sourceFile.renameTo(destinationFile)
@@ -86,6 +94,7 @@ task downloadEnterpriseFile(type: Download) {
 
 
 test {
+    dependsOn (downloadFile,downloadEnterpriseFile)
     useJUnitPlatform()
 }
 

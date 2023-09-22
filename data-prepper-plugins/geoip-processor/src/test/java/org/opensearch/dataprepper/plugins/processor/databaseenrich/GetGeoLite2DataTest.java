@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 class GetGeoLite2DataTest {
 
     private static final String PATH = "./src/test/resources/mmdb-file/geo-lite2";
-    public static final String IP = "2001:4860:4860::8888";
+    public static final String IP = "2a02:ec00:0:0:0:0:0:0";
     private static final String PREFIX_DIR = "first_database";
     private String tempFolderPath = System.getProperty("java.io.tmpdir") + File.separator + "GeoIP";
     @Mock
@@ -64,8 +64,8 @@ class GetGeoLite2DataTest {
         GeoIPProcessorService.downloadReady = false;
         Map<String, Object> geoData = getGeoLite2Data.getGeoData(inetAddress, attributes, tempFolderPath);
         Assertions.assertNotNull(geoData);
-        assertThat(geoData.get("country_iso_code"), equalTo("US"));
-        assertThat(geoData.get("ip"), equalTo("2001:4860:4860:0:0:0:0:8888"));
+        assertThat(geoData.get("country_iso_code"), equalTo("FR"));
+        assertThat(geoData.get("ip"), equalTo("2a02:ec00:0:0:0:0:0:0"));
         assertDoesNotThrow(() -> {
             getGeoLite2Data.closeReader();
         });
