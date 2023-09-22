@@ -31,7 +31,7 @@ When run, the processor will parse the message into the following output:
 ## Configuration
 * `source` - The field in the message that will be parsed. 
   * Default: `message`
-* `destination` - The field the parsed source will be output to. This will overwrite any preexisting data for that key.
+* `destination` - The field the parsed source will be output to. This will overwrite any preexisting data for that key. If `destination` is set to `null`, the parsed fields will be written to the root of the event.
   * Default: `parsed_message`
 * `field_delimiter_regex` - A regex specifying the delimiter between key/value pairs. Special regex characters such as `[` and `]` must be escaped using `\\`.
   * There is no default.
@@ -98,6 +98,8 @@ When run, the processor will parse the message into the following output:
   * While `recursive` is `true`, `remove_brackets` cannot also be `true`.
   * While `recursive` is `true`, `skip_duplicate_values` will always be `true`.
   * While `recursive` is `true`, `whitespace` will always be `"strict"`.
+* `overwrite_if_destination_exists` - Specify whether to overwrite existing fields if there are key conflicts when writing parsed fields to the event. 
+  * Default: `true` 
 
 ## Developer Guide
 This plugin is compatible with Java 14. See

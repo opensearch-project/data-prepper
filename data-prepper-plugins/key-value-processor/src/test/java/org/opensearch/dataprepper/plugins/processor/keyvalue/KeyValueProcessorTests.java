@@ -72,6 +72,7 @@ public class KeyValueProcessorTests {
         lenient().when(mockConfig.getSkipDuplicateValues()).thenReturn(defaultConfig.getSkipDuplicateValues());
         lenient().when(mockConfig.getRemoveBrackets()).thenReturn(defaultConfig.getRemoveBrackets());
         lenient().when(mockConfig.getRecursive()).thenReturn(defaultConfig.getRecursive());
+        lenient().when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(defaultConfig.getOverwriteIfDestinationExists());
 
         keyValueProcessor = new KeyValueProcessor(pluginMetrics, mockConfig);
     }
@@ -95,6 +96,76 @@ public class KeyValueProcessorTests {
         assertThat(parsed_message.size(), equalTo(2));
         assertThatKeyEquals(parsed_message, "key1", "value1");
         assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testWriteToRoot() {
+        when(mockConfig.getDestination()).thenReturn(null);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+
+        final Event event = editedRecords.get(0).getData();
+        assertThat(event.containsKey("parsed_message"), is(false));
+
+        assertThat(event.containsKey("key1"), is(true));
+        assertThat(event.containsKey("key2"), is(true));
+        assertThat(event.get("key1", Object.class), is("value1"));
+        assertThat(event.get("key2", Object.class), is("value2"));
+    }
+
+    @Test
+    void testWriteToRootWithOverwrite() {
+        when(mockConfig.getDestination()).thenReturn(null);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        record.getData().put("key1", "value to be overwritten");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("key1"), is(true));
+        assertThat(event.containsKey("key2"), is(true));
+        assertThat(event.get("key1", Object.class), is("value1"));
+        assertThat(event.get("key2", Object.class), is("value2"));
+    }
+
+    @Test
+    void testWriteToDestinationWithOverwrite() {
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        record.getData().put("parsed_message", "value to be overwritten");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final LinkedHashMap<String, Object> parsed_message = getLinkedHashMap(editedRecords);
+
+        assertThat(parsed_message.size(), equalTo(2));
+        assertThatKeyEquals(parsed_message, "key1", "value1");
+        assertThatKeyEquals(parsed_message, "key2", "value2");
+    }
+
+    @Test
+    void testWriteToRootWithOverwriteDisabled() {
+        when(mockConfig.getDestination()).thenReturn(null);
+        when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(false);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        record.getData().put("key1", "value will not be overwritten");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("key1"), is(true));
+        assertThat(event.containsKey("key2"), is(true));
+        assertThat(event.get("key1", Object.class), is("value will not be overwritten"));
+        assertThat(event.get("key2", Object.class), is("value2"));
+    }
+
+    @Test
+    void testWriteToDestinationWithOverwriteDisabled() {
+        when(mockConfig.getOverwriteIfDestinationExists()).thenReturn(false);
+        final Record<Event> record = getMessage("key1=value1&key2=value2");
+        record.getData().put("parsed_message", "value will not be overwritten");
+        final List<Record<Event>> editedRecords = (List<Record<Event>>) keyValueProcessor.doExecute(Collections.singletonList(record));
+        final Event event = editedRecords.get(0).getData();
+
+        assertThat(event.containsKey("parsed_message"), is(true));
+        assertThat(event.get("parsed_message", Object.class), is("value will not be overwritten"));
     }
 
     @Test

@@ -34,7 +34,6 @@ public class KeyValueProcessorConfig {
     @NotEmpty
     private String source = DEFAULT_SOURCE;
 
-    @NotEmpty
     private String destination = DEFAULT_DESTINATION;
 
     @JsonProperty("field_delimiter_regex")
@@ -95,6 +94,9 @@ public class KeyValueProcessorConfig {
     @JsonProperty("recursive")
     @NotNull
     private boolean recursive = DEFAULT_RECURSIVE;
+
+    @JsonProperty("overwrite_if_destination_exists")
+    private boolean overwriteIfDestinationExists = true;
 
     public String getSource() {
         return source;
@@ -166,5 +168,9 @@ public class KeyValueProcessorConfig {
 
     public boolean getRecursive() {
         return recursive;
+    }
+
+    public boolean getOverwriteIfDestinationExists() {
+        return overwriteIfDestinationExists;
     }
 }
