@@ -248,10 +248,30 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
 
             final Map<String, Object> processedMap = executeConfigs(outputMap);
 
-            recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap);
+            if (Objects.isNull(keyValueProcessorConfig.getDestination())) {
+                writeToRoot(recordEvent, processedMap);
+            } else {
+                if (keyValueProcessorConfig.getOverwriteIfDestinationExists() ||
+                        !recordEvent.containsKey(keyValueProcessorConfig.getDestination())) {
+                    recordEvent.put(keyValueProcessorConfig.getDestination(), processedMap);
+                }
+            }
         }
 
         return records;
+    }
+
+    @Override
+    public void prepareForShutdown() {
+    }
+
+    @Override
+    public boolean isReadyForShutdown() {
+        return true;
+    }
+
+    @Override
+    public void shutdown() {
     }
 
     private ObjectNode recurse(final String input, final ObjectMapper mapper) {
@@ -495,16 +515,11 @@ public class KeyValueProcessor extends AbstractProcessor<Record<Event>, Record<E
         }
     }
 
-    @Override
-    public void prepareForShutdown() {
-    }
-
-    @Override
-    public boolean isReadyForShutdown() {
-        return true;
-    }
-
-    @Override
-    public void shutdown() {
+    private void writeToRoot(final Event event, final Map<String, Object> parsedJson) {
+        for (Map.Entry<String, Object> entry : parsedJson.entrySet()) {
+            if (keyValueProcessorConfig.getOverwriteIfDestinationExists() || !event.containsKey(entry.getKey())) {
+                event.put(entry.getKey(), entry.getValue());
+            }
+        }
     }
 }
