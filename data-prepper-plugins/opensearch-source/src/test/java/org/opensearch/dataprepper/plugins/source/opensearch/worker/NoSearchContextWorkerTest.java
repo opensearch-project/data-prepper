@@ -46,6 +46,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -58,7 +59,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS;
+import static org.opensearch.dataprepper.plugins.source.opensearch.worker.WorkerCommonUtils.ACKNOWLEDGEMENT_SET_TIMEOUT;
 
 @ExtendWith(MockitoExtension.class)
 public class NoSearchContextWorkerTest {
@@ -153,8 +154,8 @@ public class NoSearchContextWorkerTest {
 
         assertThat(executorService.awaitTermination(100, TimeUnit.MILLISECONDS), equalTo(true));
 
-        verify(sourceCoordinator).completePartition(partitionKey);
-        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt());
+        verify(sourceCoordinator).completePartition(partitionKey, false);
+        verify(sourceCoordinator, never()).closePartition(anyString(), any(Duration.class), anyInt(), anyBoolean());
 
         verifyNoInteractions(documentsProcessedCounter);
         verifyNoInteractions(indicesProcessedCounter);
@@ -193,7 +194,7 @@ public class NoSearchContextWorkerTest {
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
-                Duration.ZERO, 1);
+                Duration.ZERO, 1, false);
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());
@@ -239,7 +240,7 @@ public class NoSearchContextWorkerTest {
             Consumer<Boolean> consumer = invocation.getArgument(0);
             consumer.accept(true);
             return acknowledgementSet;
-        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS)));
+        }).when(acknowledgementSetManager).create(any(Consumer.class), eq(ACKNOWLEDGEMENT_SET_TIMEOUT));
         when(openSearchSourceConfiguration.isAcknowledgmentsEnabled()).thenReturn(true);
 
         final SourcePartition<OpenSearchIndexProgressState> sourcePartition = mock(SourcePartition.class);
@@ -270,7 +271,7 @@ public class NoSearchContextWorkerTest {
         when(openSearchSourceConfiguration.getSchedulingParameterConfiguration()).thenReturn(schedulingParameterConfiguration);
 
         doNothing().when(sourceCoordinator).closePartition(partitionKey,
-                Duration.ZERO, 1);
+                Duration.ZERO, 1, true);
 
 
         final Future<?> future = executorService.submit(() -> createObjectUnderTest().run());

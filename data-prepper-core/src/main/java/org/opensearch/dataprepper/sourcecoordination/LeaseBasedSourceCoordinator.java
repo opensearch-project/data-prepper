@@ -202,10 +202,10 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
     }
 
     @Override
-    public void completePartition(final String partitionKey) {
+    public void completePartition(final String partitionKey, final Boolean fromAcknowledgmentsCallback) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "complete");
+        final SourcePartitionStoreItem itemToUpdate = fromAcknowledgmentsCallback ? getSourcePartitionStoreItem(partitionKey, "complete") : validateAndGetSourcePartitionStoreItem(partitionKey, "complete");
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -220,17 +220,19 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             throw e;
         }
 
-        partitionManager.removeActivePartition();
+        if (!fromAcknowledgmentsCallback) {
+            partitionManager.removeActivePartition();
+        }
 
         LOG.info("Partition key {} was completed by owner {}.", partitionKey, ownerId);
         partitionsCompletedCounter.increment();
     }
 
     @Override
-    public void closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount) {
+    public void closePartition(final String partitionKey, final Duration reopenAfter, final int maxClosedCount, final Boolean fromAcknowledgmentsCallback) {
         validateIsInitialized();
 
-        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "close");
+        final SourcePartitionStoreItem itemToUpdate = fromAcknowledgmentsCallback ? getSourcePartitionStoreItem(partitionKey, "close") : validateAndGetSourcePartitionStoreItem(partitionKey, "close");
         validatePartitionOwnership(itemToUpdate);
 
         itemToUpdate.setPartitionOwner(null);
@@ -262,7 +264,9 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             partitionsClosedCounter.increment();
         }
 
-        partitionManager.removeActivePartition();
+        if (!fromAcknowledgmentsCallback) {
+            partitionManager.removeActivePartition();
+        }
 
         LOG.info("Partition key {} was closed by owner {}. The resulting status of the partition is now {}", partitionKey, ownerId, itemToUpdate.getSourcePartitionStatus());
     }
@@ -288,6 +292,20 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
                 partitionKey, ownerId, itemToUpdate.getPartitionProgressState());
 
         saveProgressStateInvocationSuccessCounter.increment();
+    }
+
+    @Override
+    public void updatePartitionForAckWait(final String partitionKey, final Duration ackowledgmentTimeout) {
+        validateIsInitialized();
+
+        final SourcePartitionStoreItem itemToUpdate = validateAndGetSourcePartitionStoreItem(partitionKey, "update for ack wait");
+        validatePartitionOwnership(itemToUpdate);
+
+        itemToUpdate.setPartitionOwnershipTimeout(Instant.now().plus(ackowledgmentTimeout));
+
+        sourceCoordinationStore.tryUpdateSourcePartitionItem(itemToUpdate);
+
+        partitionManager.removeActivePartition();
     }
 
     @Override
@@ -380,6 +398,10 @@ public class LeaseBasedSourceCoordinator<T> implements SourceCoordinator<T> {
             );
         }
 
+        return getSourcePartitionStoreItem(partitionKey, action);
+    }
+
+    private SourcePartitionStoreItem getSourcePartitionStoreItem(final String partitionKey, final String action) {
         final Optional<SourcePartitionStoreItem> optionalPartitionItem = sourceCoordinationStore.getSourcePartitionItem(sourceIdentifierWithPartitionType, partitionKey);
 
         if (optionalPartitionItem.isEmpty()) {
