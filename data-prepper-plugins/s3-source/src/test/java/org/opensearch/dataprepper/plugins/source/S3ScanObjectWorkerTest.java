@@ -48,11 +48,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.opensearch.dataprepper.plugins.source.ScanObjectWorker.ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME;
+import static org.opensearch.dataprepper.plugins.source.ScanObjectWorker.ACKNOWLEDGEMENT_SET_TIMEOUT;
 
 @ExtendWith(MockitoExtension.class)
 class S3ScanObjectWorkerTest {
@@ -150,7 +152,7 @@ class S3ScanObjectWorkerTest {
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
         doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
-        doNothing().when(sourceCoordinator).completePartition(anyString());
+        doNothing().when(sourceCoordinator).completePartition(anyString(), eq(false));
 
         createObjectUnderTest().runWithoutInfiniteLoop();
 
@@ -179,7 +181,7 @@ class S3ScanObjectWorkerTest {
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
         doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(acknowledgementSet), eq(sourceCoordinator), eq(partitionKey));
-        doNothing().when(sourceCoordinator).completePartition(anyString());
+        doNothing().when(sourceCoordinator).completePartition(anyString(), eq(true));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
 
@@ -191,7 +193,8 @@ class S3ScanObjectWorkerTest {
 
         scanObjectWorker.runWithoutInfiniteLoop();
 
-        verify(sourceCoordinator).completePartition(partitionKey);
+        verify(sourceCoordinator).updatePartitionForAcknowledgmentWait(partitionKey, ACKNOWLEDGEMENT_SET_TIMEOUT);
+        verify(sourceCoordinator).completePartition(partitionKey, true);
         verify(s3ObjectDeleteWorker).buildDeleteObjectRequest(bucket, objectKey);
         verify(acknowledgementSet).complete();
         verify(counter).increment();
@@ -220,13 +223,14 @@ class S3ScanObjectWorkerTest {
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
         doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
-        doNothing().when(sourceCoordinator).completePartition(anyString());
+        doNothing().when(sourceCoordinator).completePartition(anyString(), eq(false));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
 
         scanObjectWorker.runWithoutInfiniteLoop();
 
-        verify(sourceCoordinator).completePartition(partitionKey);
+        verify(sourceCoordinator).completePartition(partitionKey, false);
+        verify(sourceCoordinator, times(0)).updatePartitionForAcknowledgmentWait(anyString(), any(Duration.class));
         verifyNoInteractions(s3ObjectDeleteWorker);
         verifyNoInteractions(acknowledgementSetManager);
 
@@ -254,14 +258,14 @@ class S3ScanObjectWorkerTest {
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
         doNothing().when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
-        doNothing().when(sourceCoordinator).completePartition(anyString());
+        doNothing().when(sourceCoordinator).completePartition(anyString(), eq(false));
 
         final ScanObjectWorker scanObjectWorker = createObjectUnderTest();
 
         scanObjectWorker.runWithoutInfiniteLoop();
 
         verifyNoInteractions(acknowledgementSetManager);
-        verify(sourceCoordinator).completePartition(partitionKey);
+        verify(sourceCoordinator).completePartition(partitionKey, false);
         verifyNoInteractions(s3ObjectDeleteWorker);
 
         final S3ObjectReference processedObject = objectReferenceArgumentCaptor.getValue();
@@ -289,7 +293,7 @@ class S3ScanObjectWorkerTest {
 
         final ArgumentCaptor<S3ObjectReference> objectReferenceArgumentCaptor = ArgumentCaptor.forClass(S3ObjectReference.class);
         doThrow(NoSuchKeyException.class).when(s3ObjectHandler).parseS3Object(objectReferenceArgumentCaptor.capture(), eq(null), eq(sourceCoordinator), eq(partitionKey));
-        doNothing().when(sourceCoordinator).completePartition(partitionKey);
+        doNothing().when(sourceCoordinator).completePartition(partitionKey, false);
 
         createObjectUnderTest().runWithoutInfiniteLoop();
 

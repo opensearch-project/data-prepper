@@ -253,8 +253,7 @@ public class PluginSetting implements PipelineDescription {
         throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
     }
 
-    private <T> void checkObjectType(final String attribute, final Object object, final Class<T> type) {
-        if (object != null && !(type.isAssignableFrom(object.getClass()))){
+    private <T> void checkObjectType(final String attribute, final Object object, final Class<T> type) {if (object != null && !(type.isAssignableFrom(object.getClass()))){
             throw new IllegalArgumentException(String.format(UNEXPECTED_ATTRIBUTE_TYPE_MSG, object.getClass(), attribute));
         }
     }

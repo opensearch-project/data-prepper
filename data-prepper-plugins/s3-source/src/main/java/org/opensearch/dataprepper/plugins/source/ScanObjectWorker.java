@@ -28,10 +28,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 /**
@@ -45,7 +41,7 @@ public class ScanObjectWorker implements Runnable{
     private static final int STANDARD_BACKOFF_MILLIS = 30_000;
     private static final int RETRY_BACKOFF_ON_EXCEPTION_MILLIS = 5_000;
 
-    static final int ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS = Integer.MAX_VALUE;
+    static final Duration ACKNOWLEDGEMENT_SET_TIMEOUT = Duration.ofHours(2);
     static final String ACKNOWLEDGEMENT_SET_CALLBACK_METRIC_NAME = "acknowledgementSetCallbackCounter";
 
     private final S3Client s3Client;
@@ -141,18 +137,16 @@ public class ScanObjectWorker implements Runnable{
         try {
             List<DeleteObjectRequest> waitingForAcknowledgements = new ArrayList<>();
             AcknowledgementSet acknowledgementSet = null;
-            CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
 
             if (endToEndAcknowledgementsEnabled) {
                 acknowledgementSet = acknowledgementSetManager.create((result) -> {
                     acknowledgementSetCallbackCounter.increment();
                     // Delete only if this is positive acknowledgement
                     if (result == true) {
-                        sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey());
+                        sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), true);
                         waitingForAcknowledgements.forEach(s3ObjectDeleteWorker::deleteS3Object);
                     }
-                    completableFuture.complete(result);
-                }, Duration.ofSeconds(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS));
+                }, ACKNOWLEDGEMENT_SET_TIMEOUT);
             }
 
 
@@ -161,22 +155,18 @@ public class ScanObjectWorker implements Runnable{
 
             if (endToEndAcknowledgementsEnabled) {
                 deleteObjectRequest.ifPresent(waitingForAcknowledgements::add);
+                sourceCoordinator.updatePartitionForAcknowledgmentWait(objectToProcess.get().getPartitionKey(), ACKNOWLEDGEMENT_SET_TIMEOUT);
                 acknowledgementSet.complete();
-                completableFuture.get(ACKNOWLEDGEMENT_SET_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             } else {
-                sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey());
+                sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), false);
                 deleteObjectRequest.ifPresent(s3ObjectDeleteWorker::deleteS3Object);
             }
         } catch (final NoSuchKeyException e) {
             LOG.warn("Object {} from bucket {} could not be found, marking this object as complete and continuing processing", objectKey, bucket);
-            sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey());
+            sourceCoordinator.completePartition(objectToProcess.get().getPartitionKey(), false);
         } catch (final PartitionNotOwnedException | PartitionNotFoundException | PartitionUpdateException e) {
             LOG.warn("S3 scan object worker received an exception from the source coordinator. There is a potential for duplicate data from {}, giving up partition and getting next partition: {}", objectKey, e.getMessage());
             sourceCoordinator.giveUpPartitions();
-        } catch (final ExecutionException | TimeoutException e) {
-            LOG.error("Exception occurred while waiting for acknowledgement.", e);
-        } catch (final InterruptedException e) {
-            LOG.error("S3 Scan worker thread interrupted while processing S3 object.", e);
         }
     }
 
