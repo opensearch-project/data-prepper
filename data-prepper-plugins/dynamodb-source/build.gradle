@@ -1,0 +1,42 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.opensearch.dataprepper.plugins.source'
+version = '2.4.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(path: ':data-prepper-api')
+    implementation project(path: ':data-prepper-core')
+    implementation project(path: ':data-prepper-plugins:dynamodb-source-coordination-store')
+
+    implementation libs.armeria.core
+    implementation 'io.micrometer:micrometer-core'
+
+    implementation 'software.amazon.awssdk:sts'
+    implementation 'software.amazon.awssdk:arns'
+    implementation 'software.amazon.awssdk:dynamodb'
+    implementation 'software.amazon.awssdk:dynamodb-enhanced'
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:netty-nio-client'
+
+    implementation 'com.fasterxml.jackson.core:jackson-core'
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    // https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat-ion
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-ion'
+
+    implementation project(path: ':data-prepper-plugins:aws-plugin-api')
+
+
+    testImplementation platform('org.junit:junit-bom:5.9.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml'
+}
+
+test {
+    useJUnitPlatform()
+}
