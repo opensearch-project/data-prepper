@@ -47,19 +47,11 @@ dependencies {
     testImplementation project(':data-prepper-core')
     testImplementation project(':data-prepper-plugins:parquet-codecs')
     testImplementation 'org.apache.avro:avro:1.11.0'
-    testImplementation 'org.apache.hadoop:hadoop-common:3.3.5'
+    testImplementation testLibs.hadoop.common
     testImplementation 'org.apache.parquet:parquet-avro:1.13.1'
     testImplementation 'org.apache.parquet:parquet-column:1.13.1'
     testImplementation 'org.apache.parquet:parquet-common:1.13.1'
     testImplementation 'org.apache.parquet:parquet-hadoop:1.13.1'
-    constraints {
-        testImplementation('org.eclipse.jetty:jetty-bom') {
-            version {
-                require '11.0.14'
-            }
-            because 'Fixes CVE-2023-26048'
-        }
-    }
 }
 
 test {
