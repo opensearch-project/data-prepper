@@ -52,7 +52,8 @@ public class DynamoDBSource implements Source<Record<Event>> {
         this.pluginFactory = pluginFactory;
 
 
-        // Load Coordination Store vai PluginFactory
+        // Load Coordination Store via PluginFactory
+        // This part will be updated.
         PluginSetting sourceCoordinationStoreSetting = new PluginSetting(sourceConfig.getCoordinationStoreConfig().getPluginName(), sourceConfig.getCoordinationStoreConfig().getPluginSettings());
         sourceCoordinationStoreSetting.setPipelineName(SOURCE_COORDINATOR_METRIC_PREFIX);
         coordinationStore = pluginFactory.loadPlugin(SourceCoordinationStore.class, sourceCoordinationStoreSetting);
